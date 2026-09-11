@@ -36,6 +36,7 @@ export interface Task {
   projectId: string; // Relation: Projects table
   title: string;
   statusId: string; // Relation: Task status table
+  taskTypeId?: string; // Relation: Task types table
   assigneeIds: string[]; // Relation: Users table (team type)
   estimatedDate: string;
   description: string;
@@ -48,13 +49,22 @@ export interface Task {
   notes: string;
   deleted: boolean;
   createdDate: string;
-  isMilestone?: boolean; // Se é um "Novo marco" (sem utilizador nem tempo)
+  isMilestone?: boolean; // Retrocompatibilidade (substituído pelo tipo de tarefa "Marco de projeto")
+}
+
+export interface TaskType {
+  id: string;
+  name: string;
+  scale: number; // Nível da tarefa
+  deleted?: boolean;
+  sort_order?: number;
 }
 
 export interface TaskStatus {
   id: string;
   name: string;
   scale: number;
+  deleted?: boolean;
   sort_order?: number;
 }
 
@@ -290,6 +300,7 @@ export interface DefaultTask {
   title: string;
   description: string;
   estimatedHours: string;
+  taskTypeId?: string;
 }
 
 export interface AutomationAction {
@@ -339,6 +350,7 @@ export interface ERPState {
   projects: Project[];
   tasks: Task[];
   taskStatuses: TaskStatus[];
+  taskTypes?: TaskType[];
   comments: Comment[];
   userAbsences: UserAbsence[];
   users: User[];

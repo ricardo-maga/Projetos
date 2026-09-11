@@ -35,6 +35,7 @@ const getEmptyState = (): ERPState => ({
   projectTeams: INITIAL_ERP_STATE.projectTeams,
   projectPartners: INITIAL_ERP_STATE.projectPartners,
   taskStatuses: INITIAL_ERP_STATE.taskStatuses,
+  taskTypes: INITIAL_ERP_STATE.taskTypes || [],
   riskCategories: INITIAL_ERP_STATE.riskCategories,
   riskStatuses: INITIAL_ERP_STATE.riskStatuses,
   riskPriorities: INITIAL_ERP_STATE.riskPriorities,
@@ -155,6 +156,37 @@ export function useERP() {
           loadedState = configured ? getEmptyState() : INITIAL_ERP_STATE;
         }
         console.log('Using fallback state:', configured ? 'Empty' : 'Demo/Cached');
+      }
+
+      // Ensure taskTypes exist and deduplicate by name
+      if (!loadedState.taskTypes || loadedState.taskTypes.length === 0) {
+        loadedState.taskTypes = INITIAL_ERP_STATE.taskTypes || [];
+      } else {
+        const seen = new Set<string>();
+        loadedState.taskTypes = loadedState.taskTypes.filter((tt: any) => {
+          const key = (tt.name || '').trim().toLowerCase();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+
+      // Ensure tasks have taskTypeId and migrate isMilestone tasks
+      const milestoneType = (loadedState.taskTypes || []).find((tt: any) => tt.name?.toLowerCase().includes('marco'));
+      const defaultType = (loadedState.taskTypes || []).find((tt: any) => !tt.deleted);
+
+      if (loadedState.tasks && loadedState.tasks.length > 0) {
+        loadedState.tasks = loadedState.tasks.map(t => {
+          if (!t.taskTypeId) {
+            if (t.isMilestone && milestoneType) {
+              return { ...t, taskTypeId: milestoneType.id };
+            }
+            if (defaultType) {
+              return { ...t, taskTypeId: defaultType.id };
+            }
+          }
+          return t;
+        });
       }
 
       // Ensure all IDs are standard UUIDs for database safety
@@ -291,6 +323,7 @@ export function useERP() {
       projectPartners: [...(state.projectPartners || [])].sort(sortByOrder),
       userGroups: [...(state.userGroups || [])].sort(sortByOrder),
       taskStatuses: [...(state.taskStatuses || [])].sort(sortByOrder),
+      taskTypes: [...(state.taskTypes || [])].sort(sortByOrder),
       riskCategories: [...(state.riskCategories || [])].sort(sortByOrder),
       riskStatuses: [...(state.riskStatuses || [])].sort(sortByOrder),
       riskPriorities: [...(state.riskPriorities || [])].sort(sortByOrder),
@@ -925,10 +958,11 @@ export function useERP() {
   };
 
   // ==================== AUX TABLES CRUD ====================
-  type AuxTableName = 'projectStatuses' | 'projectCategories' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'userGroups' | 'taskStatuses' | 'riskCategories' | 'riskStatuses' | 'riskPriorities';
+  type AuxTableName = 'projectStatuses' | 'projectCategories' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'userGroups' | 'taskStatuses' | 'taskTypes' | 'riskCategories' | 'riskStatuses' | 'riskPriorities';
 
   const addAuxRecord = (tableName: AuxTableName, name: string, extra?: { scale?: number }) => {
-    const id = genId(tableName.slice(0, 3));
+    const prefix = tableName === 'taskTypes' ? 'tt' : tableName === 'taskStatuses' ? 'ts' : tableName.slice(0, 3);
+    const id = genId(prefix);
     
     saveState(prev => {
       const newRecord = {
@@ -982,12 +1016,13 @@ export function useERP() {
   };
 
   // ==================== DEFAULT TASKS ====================
-  const addDefaultTask = (title: string, description: string, estimatedHours: string) => {
+  const addDefaultTask = (title: string, description: string, estimatedHours: string, taskTypeId?: string) => {
     const newTask = {
       id: genId('dt'),
       title,
       description,
-      estimatedHours
+      estimatedHours,
+      taskTypeId
     };
     saveState(prev => ({
       ...prev,
@@ -995,7 +1030,7 @@ export function useERP() {
     }));
   };
 
-  const updateDefaultTask = (id: string, updates: Partial<{ title: string; description: string; estimatedHours: string }>) => {
+  const updateDefaultTask = (id: string, updates: Partial<{ title: string; description: string; estimatedHours: string; taskTypeId?: string }>) => {
     saveState(prev => ({
       ...prev,
       defaultTasks: (prev.defaultTasks || []).map(dt => dt.id === id ? { ...dt, ...updates } : dt)

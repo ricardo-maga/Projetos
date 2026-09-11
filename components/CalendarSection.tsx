@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Project, Task, UserAbsence, User, Client, SpecialDay, ProjectRiskItem } from '../lib/types';
+import { Project, Task, UserAbsence, User, Client, SpecialDay, ProjectRiskItem, TaskType } from '../lib/types';
 import { 
   ChevronLeft, ChevronRight, Calendar, AlertTriangle, Users, 
   Clock, Flag, AlertCircle, Info, Briefcase, Plus, X, Maximize2
@@ -9,7 +9,7 @@ import {
 
 import { hasPermission } from '../lib/permissions';
 import { AssigneeSelector } from './AssigneeSelector';
-import { getTaskStatusName, getDefaultTaskStatusId } from '../lib/utils';
+import { getTaskStatusName, getDefaultTaskStatusId, getTaskTypeName, getDefaultTaskTypeId } from '../lib/utils';
 
 interface CalendarSectionProps {
   projects: Project[];
@@ -23,6 +23,7 @@ interface CalendarSectionProps {
   addTask?: (task: any) => void;
   updateTask?: (id: string, updates: any) => void;
   taskStatuses: any[];
+  taskTypes?: TaskType[];
   projectStatuses?: any[];
   currentUser?: any;
   userGroups?: any[];
@@ -40,6 +41,7 @@ export default function CalendarSection({
   addTask,
   updateTask,
   taskStatuses = [],
+  taskTypes = [],
   projectStatuses = [],
   currentUser,
   userGroups = [],
@@ -68,6 +70,7 @@ export default function CalendarSection({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
   const [taskEditStatus, setTaskEditStatus] = useState('');
+  const [taskEditType, setTaskEditType] = useState('');
   const [taskEditActualHours, setTaskEditActualHours] = useState('');
   const [taskEditNotes, setTaskEditNotes] = useState('');
   const [taskEditStartDate, setTaskEditStartDate] = useState('');
@@ -78,6 +81,7 @@ export default function CalendarSection({
   const openTaskDetailsModal = (task: Task) => {
     setSelectedTaskForDetails(task);
     setTaskEditStatus(task.statusId);
+    setTaskEditType(task.taskTypeId || getDefaultTaskTypeId(taskTypes));
     setTaskEditActualHours(task.actualHours || '00:00');
     setTaskEditNotes(task.notes || '');
     setTaskEditStartDate(task.startDate || '');
@@ -96,6 +100,7 @@ export default function CalendarSection({
 
     updateTask(selectedTaskForDetails.id, {
       statusId: taskEditStatus,
+      taskTypeId: taskEditType || getDefaultTaskTypeId(taskTypes),
       actualHours: taskEditActualHours,
       notes: taskEditNotes,
       startDate: taskEditStartDate,
@@ -112,6 +117,7 @@ export default function CalendarSection({
   const [taskDescription, setTaskDescription] = useState('');
   const [taskAssigneeIds, setTaskAssigneeIds] = useState<string[]>([]);
   const [taskStatusId, setTaskStatusId] = useState<string>('ts-1');
+  const [taskTypeId, setTaskTypeId] = useState<string>('');
   const [taskEstimatedHours, setTaskEstimatedHours] = useState<string>('08:00');
 
   const handleDayClick = (projectId: string, dateStr: string) => {
@@ -125,6 +131,7 @@ export default function CalendarSection({
     setTaskDescription('');
     setTaskAssigneeIds([]);
     setTaskStatusId(getDefaultTaskStatusId(taskStatuses));
+    setTaskTypeId(getDefaultTaskTypeId(taskTypes));
     setTaskEstimatedHours('08:00');
     setIsModalOpen(true);
   };
@@ -142,6 +149,7 @@ export default function CalendarSection({
       description: taskDescription.trim() || 'Criado via linha de tempo',
       projectId: modalProjectId,
       statusId: taskStatusId || getDefaultTaskStatusId(taskStatuses),
+      taskTypeId: taskTypeId || getDefaultTaskTypeId(taskTypes),
       estimatedDate: modalDateStr,
       startDate: modalDateStr,
       endDate: modalDateStr,
@@ -519,8 +527,9 @@ export default function CalendarSection({
                                     }}
                                   >
                                     {/* Task Title (Compact) */}
-                                    <div className="text-[9px] font-bold text-slate-700 truncate mb-1">
-                                      {task.title}
+                                    <div className="text-[9px] font-bold text-slate-700 truncate mb-1 flex items-center gap-1">
+                                      {getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco') && <Flag className="w-2.5 h-2.5 text-purple-600 shrink-0" />}
+                                      <span className="truncate">{task.title}</span>
                                     </div>
 
                                     {/* Assignees initials list with conflicts and warnings */}
@@ -845,8 +854,22 @@ export default function CalendarSection({
                   onChange={e => setTaskEditStatus(e.target.value)}
                   className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
                 >
-                  {taskStatuses.map(s => (
+                  {taskStatuses.filter(s => !s.deleted).map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Task Type Dropdown */}
+              <div className="space-y-1 text-xs font-bold text-slate-700">
+                <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
+                <select 
+                  value={taskEditType || getDefaultTaskTypeId(taskTypes)}
+                  onChange={e => setTaskEditType(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
+                >
+                  {taskTypes.filter(s => !s.deleted).map(s => (
+                    <option key={s.id} value={s.id}>{s.name} (Nível {s.scale ?? 1})</option>
                   ))}
                 </select>
               </div>
@@ -1011,15 +1034,28 @@ export default function CalendarSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Horas Previstas (HH:MM)</label>
-                  <input 
-                    type="text"
-                    value={taskEstimatedHours}
-                    onChange={e => setTaskEstimatedHours(e.target.value)}
-                    placeholder="08:00"
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none"
-                  />
+                  <label className="block font-bold text-slate-700">Tipo de Tarefa</label>
+                  <select
+                    value={taskTypeId || getDefaultTaskTypeId(taskTypes)}
+                    onChange={e => setTaskTypeId(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
+                  >
+                    {taskTypes.filter(s => !s.deleted).map(s => (
+                      <option key={s.id} value={s.id}>{s.name} (Nível {s.scale ?? 1})</option>
+                    ))}
+                  </select>
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Horas Previstas (HH:MM)</label>
+                <input 
+                  type="text"
+                  value={taskEstimatedHours}
+                  onChange={e => setTaskEstimatedHours(e.target.value)}
+                  placeholder="08:00"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                />
               </div>
 
               {/* Assignees */}

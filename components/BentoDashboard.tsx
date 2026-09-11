@@ -18,6 +18,7 @@ interface BentoDashboardProps {
   clients: Client[];
   users: any[];
   projectStatuses: any[];
+  taskStatuses?: any[];
   projectCategories: any[];
   projectPriorities: any[];
   onNavigate: (tab: string) => void;
@@ -49,6 +50,7 @@ export default function BentoDashboard({
   clients,
   users,
   projectStatuses,
+  taskStatuses = [],
   projectCategories,
   projectPriorities,
   onNavigate,
@@ -271,10 +273,20 @@ export default function BentoDashboard({
   const tasksNextWeek = activeTasks.filter(t => t.startDate && getWeekNumber(safeParseDate(t.startDate)) === currentWeek + 1).length;
 
   const totalTasks = activeTasks.length;
-  const completedTasks = activeTasks.filter(t => matchTaskStatusId(t.statusId, 'ts-3')).length;
-  const inProgressTasks = activeTasks.filter(t => matchTaskStatusId(t.statusId, 'ts-2')).length;
-  const notStartedTasks = activeTasks.filter(t => matchTaskStatusId(t.statusId, 'ts-1')).length;
-  const onHoldTasks = activeTasks.filter(t => matchTaskStatusId(t.statusId, 'ts-4')).length;
+
+  const getTaskScale = (statusId: string) => {
+    const found = (taskStatuses || []).find((s: any) => s.id === statusId || matchTaskStatusId(s.id, statusId));
+    if (found && typeof found.scale === 'number') return found.scale;
+    if (matchTaskStatusId(statusId, 'ts-3')) return 3;
+    if (matchTaskStatusId(statusId, 'ts-2')) return 2;
+    if (matchTaskStatusId(statusId, 'ts-4')) return 4;
+    return 1;
+  };
+
+  const completedTasks = activeTasks.filter(t => getTaskScale(t.statusId) === 3).length;
+  const inProgressTasks = activeTasks.filter(t => getTaskScale(t.statusId) === 2).length;
+  const notStartedTasks = activeTasks.filter(t => getTaskScale(t.statusId) === 1).length;
+  const onHoldTasks = activeTasks.filter(t => getTaskScale(t.statusId) >= 4).length;
 
   const completedPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const inProgressPct = totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;

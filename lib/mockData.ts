@@ -58,6 +58,15 @@ export const INITIAL_ERP_STATE: ERPState = {
     { id: 'ts-3', name: 'Completa', scale: 3 },
     { id: 'ts-4', name: 'Suspensa', scale: 4 },
   ],
+  taskTypes: [
+    { id: 'tt-1', name: 'Marco de projeto', scale: 1, deleted: false, sort_order: 0 },
+    { id: 'tt-2', name: 'Planeamento/Requisitos', scale: 2, deleted: false, sort_order: 1 },
+    { id: 'tt-3', name: 'Preparação', scale: 3, deleted: false, sort_order: 2 },
+    { id: 'tt-4', name: 'Instalação', scale: 4, deleted: false, sort_order: 3 },
+    { id: 'tt-5', name: 'Reparação', scale: 5, deleted: false, sort_order: 4 },
+    { id: 'tt-6', name: 'Formação', scale: 6, deleted: false, sort_order: 5 },
+    { id: 'tt-7', name: 'Outro', scale: 7, deleted: false, sort_order: 6 },
+  ],
   riskCategories: [
     { id: 'rc-1', name: 'Técnico / Engenharia', deleted: false, sort_order: 0 },
     { id: 'rc-2', name: 'Fornecedor / Equipamentos', deleted: false, sort_order: 1 },
@@ -192,6 +201,7 @@ export const INITIAL_ERP_STATE: ERPState = {
       projectId: 'p-1',
       title: 'Programação do PLC Siemens S7-1200',
       statusId: 'ts-2', // In progress
+      taskTypeId: 'tt-4', // Instalação
       assigneeIds: ['u-1'], // Ricardo Silva
       estimatedDate: '2026-07-15',
       description: 'Desenvolvimento do programa de controlo em TIA Portal para as esteiras de pesagem, integração com o protocolo Dibal e controlo do cilindro pneumático de rejeição.',
@@ -210,6 +220,7 @@ export const INITIAL_ERP_STATE: ERPState = {
       projectId: 'p-1',
       title: 'Montagem Mecânica da Estrutura de Pesagem',
       statusId: 'ts-3', // Completed
+      taskTypeId: 'tt-4', // Instalação
       assigneeIds: ['u-3'], // Carlos Antunes
       estimatedDate: '2026-06-30',
       description: 'Fixação das células de carga e montagem do quadro elétrico de comando na estrutura principal em aço inox.',
@@ -228,6 +239,7 @@ export const INITIAL_ERP_STATE: ERPState = {
       projectId: 'p-2',
       title: 'Configuração da Câmara Cognex e Algoritmo OCR',
       statusId: 'ts-1', // Not started
+      taskTypeId: 'tt-3', // Preparação
       assigneeIds: ['u-1', 'u-2'], // Ricardo e Sofia
       estimatedDate: '2026-07-25',
       description: 'Configuração de lentes, focagem, filtros de cor polarizadores e criação da rotina de deteção de presença/ausência de tampa na ferramenta Cognex In-Sight Explorer.',
@@ -271,11 +283,11 @@ export const INITIAL_ERP_STATE: ERPState = {
     { id: 'sd-2', date: '2026-10-05', name: 'Implantação da República' }
   ],
   defaultTasks: [
-    { id: 'dt-1', title: 'Levantamento de Requisitos e Layout', description: 'Visita técnica de levantamento de campo e definição final do desenho físico.', estimatedHours: '08:00' },
-    { id: 'dt-2', title: 'Programação de PLC & IHM', description: 'Criação do código lógico em TIA Portal e desenho das janelas de supervisão.', estimatedHours: '40:00' },
-    { id: 'dt-3', title: 'Montagem de Quadro e Cablagem', description: 'Instalação elétrica de disjuntores, fontes, PLC e cablagens de potência e sinal.', estimatedHours: '16:00' },
-    { id: 'dt-4', title: 'Testes de Aceitação em Fábrica (FAT)', description: 'Validação da lógica, calibrações e sensores nas nossas instalações na presença do cliente.', estimatedHours: '08:00' },
-    { id: 'dt-5', title: 'Instalação Física e Comissionamento (SAT)', description: 'Montagem final na fábrica do cliente, interligação de esteiras e arranque produtivo.', estimatedHours: '24:00' }
+    { id: 'dt-1', title: 'Levantamento de Requisitos e Layout', description: 'Visita técnica de levantamento de campo e definição final do desenho físico.', estimatedHours: '08:00', taskTypeId: 'tt-2' },
+    { id: 'dt-2', title: 'Programação de PLC & IHM', description: 'Criação do código lógico em TIA Portal e desenho das janelas de supervisão.', estimatedHours: '40:00', taskTypeId: 'tt-4' },
+    { id: 'dt-3', title: 'Montagem de Quadro e Cablagem', description: 'Instalação elétrica de disjuntores, fontes, PLC e cablagens de potência e sinal.', estimatedHours: '16:00', taskTypeId: 'tt-4' },
+    { id: 'dt-4', title: 'Testes de Aceitação em Fábrica (FAT)', description: 'Validação da lógica, calibrações e sensores nas nossas instalações na presença do cliente.', estimatedHours: '08:00', taskTypeId: 'tt-3' },
+    { id: 'dt-5', title: 'Instalação Física e Comissionamento (SAT)', description: 'Montagem final na fábrica do cliente, interligação de esteiras e arranque produtivo.', estimatedHours: '24:00', taskTypeId: 'tt-4' }
   ],
   notificationSettings: [
     { id: 'ns-1', type: 'new_project', name: 'Novo projeto', enabled: true, daysBefore: 0, targetGroup: 'all' },

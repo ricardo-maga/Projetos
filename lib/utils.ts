@@ -86,36 +86,54 @@ export function getTaskStatusName(
   statusId?: string | null,
   taskStatuses: { id: string; name: string; scale?: number }[] = []
 ): string {
-  if (!statusId) return 'Por iniciar';
+  if (!statusId) return '';
   const found = taskStatuses.find(s => s.id === statusId || matchTaskStatusId(s.id, statusId));
   if (found && found.name) return found.name;
 
-  // Fallback map by standard codes
+  if (taskStatuses.length > 0) {
+    return statusId;
+  }
+
+  // Fallback map only if taskStatuses array is completely empty/uninitialized
   if (statusId === 'ts-1' || statusId === '99999999-9999-9999-9999-999999999901') return 'Por iniciar';
   if (statusId === 'ts-2' || statusId === '99999999-9999-9999-9999-999999999902') return 'Em andamento';
   if (statusId === 'ts-3' || statusId === '99999999-9999-9999-9999-999999999903') return 'Completa';
   if (statusId === 'ts-4' || statusId === '99999999-9999-9999-9999-999999999904') return 'Suspensa';
 
-  return 'Por iniciar';
+  return statusId;
 }
 
 export function getDefaultTaskStatusId(
-  taskStatuses: { id: string; name?: string; scale?: number }[] = []
+  taskStatuses: { id: string; name?: string; scale?: number; deleted?: boolean }[] = []
 ): string {
-  if (taskStatuses.length > 0) {
-    const defaultByScale = taskStatuses.find(s => s.scale === 1);
+  const activeStatuses = taskStatuses.filter(s => !s.deleted);
+  if (activeStatuses.length > 0) {
+    const defaultByScale = activeStatuses.find(s => s.scale === 1);
     if (defaultByScale) return defaultByScale.id;
 
-    const defaultByCode = taskStatuses.find(s => 
-      s.id === '99999999-9999-9999-9999-999999999901' || 
-      s.id === 'ts-1' ||
-      s.name?.toLowerCase().includes('iniciar') ||
-      s.name?.toLowerCase().includes('not started')
-    );
-    if (defaultByCode) return defaultByCode.id;
-
-    return taskStatuses[0].id;
+    return activeStatuses[0].id;
   }
   return '99999999-9999-9999-9999-999999999901';
 }
+
+export function getTaskTypeName(
+  taskTypeId?: string | null,
+  taskTypes: { id: string; name: string; scale?: number }[] = []
+): string {
+  if (!taskTypeId) return '';
+  const found = taskTypes.find(t => t.id === taskTypeId);
+  if (found && found.name) return found.name;
+  return '';
+}
+
+export function getDefaultTaskTypeId(
+  taskTypes: { id: string; name?: string; scale?: number; deleted?: boolean }[] = []
+): string {
+  const activeTypes = taskTypes.filter(t => !t.deleted);
+  if (activeTypes.length > 0) {
+    return activeTypes[0].id;
+  }
+  return '';
+}
+
 

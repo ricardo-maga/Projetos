@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Task, Project, Client } from '../lib/types';
+import { Task, Project, Client, TaskType } from '../lib/types';
 import { Plus, Search, Trash2, Edit2, Clock, Calendar, CheckSquare, PlusCircle, X, Users, Link2, Maximize2, Minimize2 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
 
 import { hasPermission } from '../lib/permissions';
-import { getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
+import { getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId } from '../lib/utils';
 
 interface TaskSectionProps {
   tasks: Task[];
@@ -15,6 +15,7 @@ interface TaskSectionProps {
   clients: Client[];
   users: any[];
   taskStatuses: any[];
+  taskTypes?: TaskType[];
   addTask: (t: any) => void;
   updateTask: (id: string, updates: any) => void;
   deleteTask: (id: string) => void;
@@ -43,6 +44,7 @@ export default function TaskSection({
   clients = [],
   users,
   taskStatuses,
+  taskTypes = [],
   addTask,
   updateTask,
   deleteTask,
@@ -55,6 +57,7 @@ export default function TaskSection({
   const [search, setSearch] = useState('');
   const [filterProject, setFilterProject] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterType, setFilterType] = useState('');
   const [filterStatusGroup, setFilterStatusGroup] = useState<'all' | 'not_started' | 'in_progress' | 'completed_suspended'>('all');
   const [filterAssignee, setFilterAssignee] = useState('');
 
@@ -111,6 +114,7 @@ export default function TaskSection({
   const [projectSearchInput, setProjectSearchInput] = useState('');
   const [isAutocompleteOpen, setIsAutocompleteOpen] = useState(false);
   const [formStatus, setFormStatus] = useState('');
+  const [formTaskType, setFormTaskType] = useState('');
   const [formAssignees, setFormAssignees] = useState<string[]>([]);
   const [formEstDate, setFormEstDate] = useState('');
   const [formEstHours, setFormEstHours] = useState('08:00');
@@ -134,6 +138,7 @@ export default function TaskSection({
   // View/Edit Single Task Modal State
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
   const [taskEditStatus, setTaskEditStatus] = useState('');
+  const [taskEditType, setTaskEditType] = useState('');
   const [taskEditActualHours, setTaskEditActualHours] = useState('');
   const [taskEditNotes, setTaskEditNotes] = useState('');
   const [taskEditStartDate, setTaskEditStartDate] = useState('');
@@ -144,6 +149,7 @@ export default function TaskSection({
   const openTaskDetailsModal = (task: Task) => {
     setSelectedTaskForDetails(task);
     setTaskEditStatus(task.statusId);
+    setTaskEditType(task.taskTypeId || getDefaultTaskTypeId(taskTypes));
     setTaskEditActualHours(task.actualHours || '00:00');
     setTaskEditNotes(task.notes || '');
     setTaskEditStartDate(task.startDate || '');
@@ -158,6 +164,7 @@ export default function TaskSection({
 
     updateTask(selectedTaskForDetails.id, {
       statusId: taskEditStatus,
+      taskTypeId: taskEditType || getDefaultTaskTypeId(taskTypes),
       actualHours: taskEditActualHours,
       notes: taskEditNotes,
       startDate: taskEditStartDate,
@@ -242,11 +249,12 @@ export default function TaskSection({
                             clientShortName.includes(q) ||
                             projTitle.includes(q);
       const matchesProject = filterProject ? t.projectId === filterProject : true;
+      const matchesType = filterType ? t.taskTypeId === filterType : true;
       const matchesStatus = matchesStatusGroup(t.statusId);
       const matchesAssignee = filterAssignee ? t.assigneeIds.some(id => matchUserId(id, filterAssignee)) : true;
-      return matchesSearch && matchesProject && matchesStatus && matchesAssignee;
+      return matchesSearch && matchesProject && matchesType && matchesStatus && matchesAssignee;
     });
-  }, [activeTasks, search, filterProject, matchesStatusGroup, filterAssignee, projectMap, clientMap]);
+  }, [activeTasks, search, filterProject, filterType, matchesStatusGroup, filterAssignee, projectMap, clientMap]);
 
   const sortTasks = (taskList: Task[]) => {
     return [...taskList].sort((a, b) => {
@@ -310,6 +318,7 @@ export default function TaskSection({
       setFormDesc(task.description);
       setFormProj(task.projectId);
       setFormStatus(task.statusId);
+      setFormTaskType(task.taskTypeId || getDefaultTaskTypeId(taskTypes));
       setFormAssignees(task.assigneeIds || []);
       setFormEstDate(task.estimatedDate);
       setFormEstHours(task.estimatedHours);
@@ -332,6 +341,7 @@ export default function TaskSection({
       setFormDesc('');
       setFormProj('');
       setFormStatus(getDefaultTaskStatusId(taskStatuses));
+      setFormTaskType(getDefaultTaskTypeId(taskTypes));
       setFormAssignees([]);
       setFormEstDate('');
       setFormEstHours('08:00');
@@ -358,6 +368,7 @@ export default function TaskSection({
       description: formDesc,
       projectId: formProj,
       statusId: formStatus,
+      taskTypeId: formTaskType || getDefaultTaskTypeId(taskTypes),
       assigneeIds: formAssignees,
       estimatedDate: formEstDate,
       estimatedHours: formEstHours,
@@ -447,8 +458,15 @@ export default function TaskSection({
         className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs hover:shadow-md cursor-grab active:cursor-grabbing hover:border-slate-300 transition-all duration-200 select-none group text-left"
       >
         <div className="flex items-start justify-between gap-2">
-          <div className="font-extrabold text-slate-800 text-xs group-hover:text-blue-600 transition-colors">
-            {task.title}
+          <div>
+            <div className="font-extrabold text-slate-800 text-xs group-hover:text-blue-600 transition-colors">
+              {task.title}
+            </div>
+            {task.taskTypeId && (
+              <span className="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[9px] font-bold mt-1">
+                {getTaskTypeName(task.taskTypeId, taskTypes)}
+              </span>
+            )}
           </div>
           
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
@@ -543,7 +561,7 @@ export default function TaskSection({
   };
 
   const renderKanbanColumns = () => {
-    return taskStatuses.map(status => {
+    return taskStatuses.filter(s => !s.deleted).map(status => {
       const isColumnCollapsed = collapsedColumns[status.id] || false;
       const columnTasks = activeTasks.filter(t => t.statusId === status.id || matchTaskStatusId(t.statusId, status.id));
       
@@ -782,7 +800,22 @@ export default function TaskSection({
                 onChange={e => setFormStatus(e.target.value)}
                 className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold"
               >
-                {taskStatuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {taskStatuses.filter(s => !s.deleted).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-slate-500">Tipo de Tarefa *</label>
+              <select 
+                value={formTaskType || getDefaultTaskTypeId(taskTypes)}
+                onChange={e => setFormTaskType(e.target.value)}
+                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold"
+              >
+                {taskTypes.filter(tt => !tt.deleted).map(tt => (
+                  <option key={tt.id} value={tt.id}>
+                    {tt.name} (Nível {tt.scale ?? 1})
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -939,6 +972,18 @@ export default function TaskSection({
               </div>
             )}
 
+            {/* Task Type Filter */}
+            <select 
+              value={filterType}
+              onChange={e => setFilterType(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold cursor-pointer outline-none"
+            >
+              <option value="">Todos os Tipos</option>
+              {taskTypes.filter(tt => !tt.deleted).map(tt => (
+                <option key={tt.id} value={tt.id}>{tt.name}</option>
+              ))}
+            </select>
+
             {/* Assignee Filter (Only users with assigned tasks) */}
             <select 
               value={filterAssignee}
@@ -1046,7 +1091,14 @@ export default function TaskSection({
                         className="hover:bg-slate-50/80 transition-colors cursor-pointer"
                       >
                         <td className="px-5 py-4">
-                          <div className="font-extrabold text-slate-800 text-sm">{t.title}</div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-extrabold text-slate-800 text-sm">{t.title}</span>
+                            {t.taskTypeId && (
+                              <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[9px] font-bold">
+                                {getTaskTypeName(t.taskTypeId, taskTypes)}
+                              </span>
+                            )}
+                          </div>
                           <div className="text-blue-600 font-medium mt-0.5 line-clamp-1">{getProjectTitle(t.projectId)}</div>
                           <div className="text-[10px] text-slate-400 mt-1 line-clamp-1 italic">{t.description}</div>
                         </td>
@@ -1338,8 +1390,24 @@ export default function TaskSection({
                   onChange={e => setTaskEditStatus(e.target.value)}
                   className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
                 >
-                  {taskStatuses.map(s => (
+                  {taskStatuses.filter(s => !s.deleted).map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Task Type Dropdown */}
+              <div className="space-y-1 text-xs font-bold text-slate-700">
+                <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
+                <select 
+                  value={taskEditType || getDefaultTaskTypeId(taskTypes)}
+                  onChange={e => setTaskEditType(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
+                >
+                  {taskTypes.filter(tt => !tt.deleted).map(tt => (
+                    <option key={tt.id} value={tt.id}>
+                      {tt.name} (Nível {tt.scale ?? 1})
+                    </option>
                   ))}
                 </select>
               </div>

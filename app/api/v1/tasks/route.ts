@@ -59,12 +59,23 @@ export async function POST(req: NextRequest) {
       return getDefaultTaskStatusId(currentState.taskStatuses || []);
     })();
 
+    const resolvedTaskTypeId = (() => {
+      if (body.taskTypeId) return body.taskTypeId;
+      if (body.isMilestone) {
+        const milestoneType = (currentState.taskTypes || []).find((tt: any) => tt.name.toLowerCase().includes('marco'));
+        if (milestoneType) return milestoneType.id;
+      }
+      const defaultType = (currentState.taskTypes || []).find((tt: any) => !tt.deleted);
+      return defaultType ? defaultType.id : '';
+    })();
+
     const newTask: Task = {
       id: crypto.randomUUID(),
       projectId: body.projectId,
       title: body.title,
       description: body.description || '',
       statusId: resolvedStatusId,
+      taskTypeId: resolvedTaskTypeId,
       assigneeIds: Array.isArray(body.assigneeIds) ? body.assigneeIds : Array.isArray(body.userIds) ? body.userIds : [],
       estimatedDate: body.estimatedDate || '',
       estimatedHours: String(body.estimatedHours || '0'),

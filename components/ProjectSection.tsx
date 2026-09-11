@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Project, Client, Comment, Task, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '../lib/types';
+import { Project, Client, Comment, Task, TaskType, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '../lib/types';
 import { 
   Plus, Search, Edit2, Trash2, ArrowLeft, Calendar, FileText, 
   Sparkles, DollarSign, Users, ShieldAlert, PlusCircle, MessageSquare, ListTodo, CheckSquare, BrainCircuit,
@@ -13,7 +13,7 @@ import { AssigneeSelector } from './AssigneeSelector';
 
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
-import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
+import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId } from '../lib/utils';
 
 const calculateSuggestedReviewDate = (prob: number, imp: number, identDateStr: string) => {
   const score = (prob || 1) * (imp || 1);
@@ -53,6 +53,7 @@ interface ProjectSectionProps {
   addTasks?: (tasks: any[]) => any[];
   updateTask: (id: string, updates: any) => void;
   taskStatuses: any[];
+  taskTypes?: TaskType[];
   specialDays?: any[];
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
@@ -96,6 +97,7 @@ export default function ProjectSection({
   addTasks,
   updateTask,
   taskStatuses,
+  taskTypes = [],
   specialDays = [],
   selectedProjectId,
   setSelectedProjectId,
@@ -249,9 +251,9 @@ export default function ProjectSection({
   const [newTaskEstHours, setNewTaskEstHours] = useState('08:00');
   const [newTaskAssignees, setNewTaskAssignees] = useState<string[]>([]);
   const [newTaskEstDate, setNewTaskEstDate] = useState('');
-  const [newTaskIsMilestone, setNewTaskIsMilestone] = useState(false);
+  const [newTaskTypeId, setNewTaskTypeId] = useState('');
   const [taskEditAssignees, setTaskEditAssignees] = useState<string[]>([]);
-  const [taskEditIsMilestone, setTaskEditIsMilestone] = useState(false);
+  const [taskEditTypeId, setTaskEditTypeId] = useState('');
 
   // Monthly Calendar Offset
   const [calMonthOffset, setCalMonthOffset] = useState(0);
@@ -417,6 +419,7 @@ export default function ProjectSection({
       projectId: selectedProj.id,
       title: newTaskTitle.trim(),
       statusId: getDefaultTaskStatusId(taskStatuses),
+      taskTypeId: newTaskTypeId || getDefaultTaskTypeId(taskTypes),
       assigneeIds: newTaskAssignees,
       estimatedDate: newTaskEstDate,
       description: newTaskDesc.trim(),
@@ -427,7 +430,6 @@ export default function ProjectSection({
       endDate: '',
       endTime: '',
       notes: '',
-      isMilestone: newTaskIsMilestone,
     });
 
     // Reset task form
@@ -436,7 +438,7 @@ export default function ProjectSection({
     setNewTaskEstHours('08:00');
     setNewTaskAssignees([]);
     setNewTaskEstDate('');
-    setNewTaskIsMilestone(false);
+    setNewTaskTypeId(getDefaultTaskTypeId(taskTypes));
     setShowAddTaskForm(false);
   };
 
@@ -453,6 +455,7 @@ export default function ProjectSection({
   const openTaskDetailsModal = (task: Task) => {
     setSelectedTaskForDetails(task);
     setTaskEditStatus(task.statusId);
+    setTaskEditTypeId(task.taskTypeId || getDefaultTaskTypeId(taskTypes));
     setTaskEditActualHours(task.actualHours || '00:00');
     setTaskEditNotes(task.notes || '');
     setTaskEditStartDate(task.startDate || '');
@@ -460,7 +463,6 @@ export default function ProjectSection({
     setTaskEditEndDate(task.endDate || '');
     setTaskEditEndTime(task.endTime || '');
     setTaskEditAssignees(task.assigneeIds || []);
-    setTaskEditIsMilestone(Boolean(task.isMilestone));
   };
 
   const handleSaveTaskDetails = (e: React.FormEvent) => {
@@ -473,6 +475,7 @@ export default function ProjectSection({
 
     updateTask(selectedTaskForDetails.id, {
       statusId: taskEditStatus,
+      taskTypeId: taskEditTypeId || getDefaultTaskTypeId(taskTypes),
       actualHours: taskEditActualHours,
       notes: taskEditNotes,
       startDate: taskEditStartDate,
@@ -480,7 +483,6 @@ export default function ProjectSection({
       endDate: taskEditEndDate,
       endTime: taskEditEndTime,
       assigneeIds: taskEditAssignees,
-      isMilestone: taskEditIsMilestone,
     });
 
     setSelectedTaskForDetails(null);
@@ -651,6 +653,7 @@ export default function ProjectSection({
               projectId: newProj.id,
               title: dt.title,
               statusId: getDefaultTaskStatusId(taskStatuses),
+              taskTypeId: dt.taskTypeId || getDefaultTaskTypeId(taskTypes),
               assigneeIds: [],
               estimatedDate: '',
               description: dt.description || '',
@@ -1480,8 +1483,12 @@ export default function ProjectSection({
                               return t.estimatedDate === dateStr;
                             });
 
-                            const milestonesOnDay = tasksOnDay.filter(t => t.isMilestone || (t.title && t.title.toLowerCase().includes('marco')));
-                            const regularTasksOnDay = tasksOnDay.filter(t => !t.isMilestone && !(t.title && t.title.toLowerCase().includes('marco')));
+                            const isMilestoneTask = (t: Task) => {
+                              const typeName = getTaskTypeName(t.taskTypeId, taskTypes);
+                              return typeName.toLowerCase().includes('marco') || (t.title && t.title.toLowerCase().includes('marco'));
+                            };
+                            const milestonesOnDay = tasksOnDay.filter(t => isMilestoneTask(t));
+                            const regularTasksOnDay = tasksOnDay.filter(t => !isMilestoneTask(t));
                             const materialsOnDay = projMaterials.filter(pm => pm.expectedDeliveryDate === dateStr);
                             const risksOnDay = projRiskItems.filter(ri => ri.reviewDate === dateStr);
 
@@ -2343,6 +2350,7 @@ export default function ProjectSection({
                             projectId: selectedProj.id,
                             title: dt.title,
                             statusId: getDefaultTaskStatusId(taskStatuses),
+                            taskTypeId: dt.taskTypeId || getDefaultTaskTypeId(taskTypes),
                             assigneeIds: [],
                             estimatedDate: '',
                             description: dt.description || '',
@@ -2413,19 +2421,20 @@ export default function ProjectSection({
                     />
                   </div>
 
-                  {/* Milestone Checkbox / Toggle */}
-                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl flex items-center gap-2.5">
-                    <input 
-                      type="checkbox" 
-                      id="newTaskIsMilestone"
-                      checked={newTaskIsMilestone}
-                      onChange={e => setNewTaskIsMilestone(e.target.checked)}
-                      className="w-4 h-4 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
-                    />
-                    <label htmlFor="newTaskIsMilestone" className="text-xs font-extrabold text-purple-900 flex items-center gap-1.5 cursor-pointer">
-                      <Flag className="w-4 h-4 text-purple-600" />
-                      Marcar esta entrada como Marco do Projeto (Milestone / Etapa Chave)
-                    </label>
+                  {/* Task Type Dropdown */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa *</label>
+                    <select
+                      value={newTaskTypeId || getDefaultTaskTypeId(taskTypes)}
+                      onChange={e => setNewTaskTypeId(e.target.value)}
+                      className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 outline-none"
+                    >
+                      {taskTypes.filter(tt => !tt.deleted).map(tt => (
+                        <option key={tt.id} value={tt.id}>
+                          {tt.name} (Nível {tt.scale ?? 1})
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -2496,11 +2505,10 @@ export default function ProjectSection({
                             <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded">
                               {getTaskStatusName(task.statusId, taskStatuses)}
                             </span>
-                            {task.isMilestone && (
-                              <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-extrabold rounded flex items-center gap-1 border border-purple-200">
-                                <Flag className="w-3 h-3 text-purple-600" /> Marco
-                              </span>
-                            )}
+                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold rounded flex items-center gap-1">
+                              {getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco') && <Flag className="w-3 h-3 text-purple-600" />}
+                              {getTaskTypeName(task.taskTypeId, taskTypes)}
+                            </span>
                           </div>
                           <h4 className="font-extrabold text-slate-900 text-sm hover:text-blue-600 transition-colors">{task.title}</h4>
                         </div>
@@ -3906,25 +3914,26 @@ export default function ProjectSection({
                   onChange={e => setTaskEditStatus(e.target.value)}
                   className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
                 >
-                  {taskStatuses.map(s => (
+                  {taskStatuses.filter(s => !s.deleted).map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Marco do Projeto / Milestone Toggle */}
-              <div className="p-3 bg-purple-50 border border-purple-200/80 rounded-xl flex items-center gap-2.5">
-                <input 
-                  type="checkbox" 
-                  id="taskEditIsMilestone"
-                  checked={taskEditIsMilestone}
-                  onChange={e => setTaskEditIsMilestone(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded border-purple-300 focus:ring-purple-500 cursor-pointer"
-                />
-                <label htmlFor="taskEditIsMilestone" className="text-xs font-extrabold text-purple-900 flex items-center gap-1.5 cursor-pointer">
-                  <Flag className="w-4 h-4 text-purple-600" />
-                  Classificar como Marco de Projeto (Milestone)
-                </label>
+              {/* Task Type Dropdown */}
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
+                <select 
+                  value={taskEditTypeId || getDefaultTaskTypeId(taskTypes)}
+                  onChange={e => setTaskEditTypeId(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
+                >
+                  {taskTypes.filter(tt => !tt.deleted).map(tt => (
+                    <option key={tt.id} value={tt.id}>
+                      {tt.name} (Nível {tt.scale ?? 1})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Consumed Hours */}

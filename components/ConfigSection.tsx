@@ -49,11 +49,13 @@ interface ConfigSectionProps {
   addSpecialDay: (date: string, name: string) => void;
   deleteSpecialDay: (id: string) => void;
   defaultTasks?: DefaultTask[];
-  addDefaultTask?: (title: string, description: string, estimatedHours: string) => void;
+  addDefaultTask?: (title: string, description: string, estimatedHours: string, taskTypeId?: string) => void;
   updateDefaultTask?: (id: string, updates: Partial<DefaultTask>) => void;
   deleteDefaultTask?: (id: string) => void;
   projectCategories?: any[];
   projectStatuses?: any[];
+  taskStatuses?: any[];
+  taskTypes?: any[];
   projectRisks?: any[];
   projectPriorities?: any[];
   projectTeams?: any[];
@@ -153,13 +155,13 @@ function SortableAuxRow({
         )}
       </td>
 
-      {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses') && (
+      {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') && (
         <td className="p-3">
           {isEditingThis ? (
             <input 
               type="number"
               min={activeAuxTab === 'projectStatuses' ? 0 : 1}
-              max={activeAuxTab === 'projectStatuses' ? 5 : 3}
+              max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes') ? 10 : 3}
               value={editAuxScale}
               onChange={e => setEditAuxScale(Number(e.target.value))}
               className="w-16 p-1 px-2 border border-slate-200 rounded-md font-semibold text-xs text-slate-800 focus:ring-2 focus:ring-blue-100 outline-none"
@@ -237,6 +239,8 @@ export default function ConfigSection({
   deleteDefaultTask,
   projectCategories = [],
   projectStatuses = [],
+  taskStatuses = [],
+  taskTypes = [],
   projectRisks = [],
   projectPriorities = [],
   projectTeams = [],
@@ -411,15 +415,17 @@ export default function ConfigSection({
   const [dtTitle, setDtTitle] = useState('');
   const [dtDesc, setDtDesc] = useState('');
   const [dtHours, setDtHours] = useState('08:00');
+  const [dtTypeId, setDtTypeId] = useState('');
 
   // Inline editing state for default tasks
   const [editingDtId, setEditingDtId] = useState<string | null>(null);
   const [editDtTitle, setEditDtTitle] = useState('');
   const [editDtDesc, setEditDtDesc] = useState('');
   const [editDtHours, setEditDtHours] = useState('');
+  const [editDtTypeId, setEditDtTypeId] = useState('');
 
   // Aux tables state
-  const [activeAuxTab, setActiveAuxTab] = useState<'projectCategories' | 'projectStatuses' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'riskCategories' | 'riskStatuses' | 'riskPriorities'>('projectCategories');
+  const [activeAuxTab, setActiveAuxTab] = useState<'projectCategories' | 'projectStatuses' | 'taskStatuses' | 'taskTypes' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'riskCategories' | 'riskStatuses' | 'riskPriorities'>('projectCategories');
   const [newAuxName, setNewAuxName] = useState('');
   const [newAuxScale, setNewAuxScale] = useState(1);
   const [editingAuxId, setEditingAuxId] = useState<string | null>(null);
@@ -457,7 +463,7 @@ export default function ConfigSection({
     if (!newAuxName.trim() || !addAuxRecord) return;
     
     const extra: any = {};
-    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses') {
+    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') {
       extra.scale = Number(newAuxScale);
     }
     
@@ -474,7 +480,7 @@ export default function ConfigSection({
     if (!editAuxName.trim() || !updateAuxRecord) return;
     
     const updates: any = { name: editAuxName.trim() };
-    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses') {
+    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') {
       updates.scale = Number(editAuxScale);
     }
     
@@ -499,6 +505,8 @@ export default function ConfigSection({
     switch (activeAuxTab) {
       case 'projectCategories': return projectCategories;
       case 'projectStatuses': return projectStatuses;
+      case 'taskStatuses': return (taskStatuses && taskStatuses.length > 0) ? taskStatuses : (state.taskStatuses || []);
+      case 'taskTypes': return (taskTypes && taskTypes.length > 0) ? taskTypes : (state.taskTypes || []);
       case 'projectRisks': return projectRisks;
       case 'projectPriorities': return projectPriorities;
       case 'projectTeams': return projectTeams;
@@ -510,14 +518,26 @@ export default function ConfigSection({
     }
   };
 
-  const activeAuxItems = (getAuxItems() || [])
-    .filter((item: any) => !item.deleted)
-    .sort((a: any, b: any) => {
-      if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses') {
+  const activeAuxItems = (() => {
+    const raw = (getAuxItems() || []).filter((item: any) => !item.deleted);
+    const seen = new Set<string>();
+    const deduped: any[] = [];
+    for (const item of raw) {
+      const key = (item.name || '').trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(item);
+    }
+    return deduped.sort((a: any, b: any) => {
+      if (a.sort_order !== undefined && b.sort_order !== undefined && a.sort_order !== b.sort_order) {
+        return a.sort_order - b.sort_order;
+      }
+      if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') {
         return (a.scale ?? 0) - (b.scale ?? 0);
       }
       return 0;
     });
+  })();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -575,10 +595,11 @@ export default function ConfigSection({
       return;
     }
     if (!dtTitle.trim() || !addDefaultTask) return;
-    addDefaultTask(dtTitle.trim(), dtDesc.trim(), dtHours);
+    addDefaultTask(dtTitle.trim(), dtDesc.trim(), dtHours, dtTypeId || undefined);
     setDtTitle('');
     setDtDesc('');
     setDtHours('08:00');
+    setDtTypeId('');
   };
 
   const startEditingDefaultTask = (dt: DefaultTask) => {
@@ -586,6 +607,7 @@ export default function ConfigSection({
     setEditDtTitle(dt.title);
     setEditDtDesc(dt.description);
     setEditDtHours(dt.estimatedHours);
+    setEditDtTypeId(dt.taskTypeId || '');
   };
 
   const handleSaveEditDefaultTask = (id: string) => {
@@ -593,7 +615,8 @@ export default function ConfigSection({
     updateDefaultTask(id, {
       title: editDtTitle.trim(),
       description: editDtDesc.trim(),
-      estimatedHours: editDtHours
+      estimatedHours: editDtHours,
+      taskTypeId: editDtTypeId || undefined
     });
     setEditingDtId(null);
   };
@@ -1102,7 +1125,7 @@ export default function ConfigSection({
           Configure modelos de tarefas padronizadas (ex: Instalação mecânica, FAT, Automação). Ao criar ou editar um projeto, poderá selecionar e clonar estas tarefas de forma automática e instantânea.
         </p>
 
-        <form onSubmit={handleAddDefaultTask} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end bg-slate-50/50 p-4 rounded-2xl border border-slate-100 mb-6">
+        <form onSubmit={handleAddDefaultTask} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end bg-slate-50/50 p-4 rounded-2xl border border-slate-100 mb-6">
           <div className="md:col-span-2 space-y-1">
             <label className="block text-[11px] text-slate-500">Título da tarefa *</label>
             <input 
@@ -1115,7 +1138,20 @@ export default function ConfigSection({
             />
           </div>
           <div className="space-y-1">
-            <label className="block text-[11px] text-slate-500">Duração prevista (e.g. HH:MM)</label>
+            <label className="block text-[11px] text-slate-500">Tipo de Tarefa</label>
+            <select
+              value={dtTypeId}
+              onChange={e => setDtTypeId(e.target.value)}
+              className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 bg-white font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
+            >
+              <option value="">Por defeito</option>
+              {taskTypes.filter((s: any) => !s.deleted).map((s: any) => (
+                <option key={s.id} value={s.id}>{s.name} (Nível {s.scale ?? 1})</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-[11px] text-slate-500">Duração prevista (HH:MM)</label>
             <input 
               type="text"
               required
@@ -1133,7 +1169,7 @@ export default function ConfigSection({
             Adicionar Modelo
           </button>
           
-          <div className="md:col-span-4 space-y-1 mt-2">
+          <div className="md:col-span-5 space-y-1 mt-2">
             <label className="block text-[11px] text-slate-500">Descrição Técnica do Modelo</label>
             <textarea 
               placeholder="Descreva as instruções padrão que o técnico deverá cumprir..."
@@ -1153,6 +1189,7 @@ export default function ConfigSection({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {defaultTasks.map(dt => {
               const isEditingThis = editingDtId === dt.id;
+              const typeName = dt.taskTypeId ? taskTypes.find((tt: any) => tt.id === dt.taskTypeId)?.name : null;
               return (
                 <div key={dt.id} className="p-4 bg-white border border-slate-200/80 rounded-2xl -sm space-y-3 transition- hover:-md flex flex-col justify-between">
                   {isEditingThis ? (
@@ -1167,6 +1204,30 @@ export default function ConfigSection({
                           className="w-full p-1.5 border border-slate-200 rounded-md font-semibold text-xs text-slate-800"
                         />
                       </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-400 block font-bold">Tipo de Tarefa</label>
+                          <select
+                            value={editDtTypeId}
+                            onChange={e => setEditDtTypeId(e.target.value)}
+                            className="w-full p-1.5 border border-slate-200 rounded-md font-semibold text-xs text-slate-800 bg-white"
+                          >
+                            <option value="">Por defeito</option>
+                            {taskTypes.filter((s: any) => !s.deleted).map((s: any) => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-400 block font-bold">Horas Estimadas</label>
+                          <input 
+                            type="text"
+                            value={editDtHours}
+                            onChange={e => setEditDtHours(e.target.value)}
+                            className="w-full p-1.5 border border-slate-200 rounded-md font-semibold text-xs text-slate-800"
+                          />
+                        </div>
+                      </div>
                       <div className="space-y-1">
                         <label className="text-[10px] text-slate-400 block font-bold">Instruções Técnicas</label>
                         <textarea 
@@ -1176,21 +1237,19 @@ export default function ConfigSection({
                           className="w-full p-1.5 border border-slate-200 rounded-md text-xs text-slate-600 font-medium"
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] text-slate-400 block font-bold">Horas Estimadas</label>
-                        <input 
-                          type="text"
-                          value={editDtHours}
-                          onChange={e => setEditDtHours(e.target.value)}
-                          className="w-40 p-1.5 border border-slate-200 rounded-md font-semibold text-xs text-slate-800"
-                        />
-                      </div>
                     </div>
                   ) : (
                     // Standard View Mode
                     <div className="space-y-1.5 flex-1">
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-xs font-bold text-slate-800 tracking-tight leading-snug">{dt.title}</h4>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="text-xs font-bold text-slate-800 tracking-tight leading-snug">{dt.title}</h4>
+                          {typeName && (
+                            <span className="px-1.5 py-0.5 bg-blue-50 border border-blue-100 text-blue-700 rounded text-[9px] font-bold">
+                              {typeName}
+                            </span>
+                          )}
+                        </div>
                         <span className="flex-shrink-0 px-2 py-0.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-lg text-[9px] font-black font-mono">
                           {dt.estimatedHours}
                         </span>
@@ -1263,7 +1322,7 @@ export default function ConfigSection({
           Opções e tabelas de apoio
         </h2>
         <p className="text-slate-400 text-[11px] font-medium mb-5 leading-relaxed">
-          Personalize as opções disponíveis nos formulários de criação e edição de projetos (Categorias, Estados, Graus de Risco, Prioridades, Equipas e Parceiros).
+          Personalize as opções disponíveis nos formulários e quadros (Categorias, Estados do Projeto, Tipos de Tarefa, Estados de Tarefa, Graus de Risco, Prioridades, Equipas e Parceiros).
         </p>
 
         {/* Tab Selector */}
@@ -1271,6 +1330,8 @@ export default function ConfigSection({
           {[
             { id: 'projectCategories', label: 'Categorias' },
             { id: 'projectStatuses', label: 'Estados do Projeto' },
+            { id: 'taskTypes', label: 'Tipos de Tarefa' },
+            { id: 'taskStatuses', label: 'Estados de Tarefa' },
             { id: 'projectPriorities', label: 'Prioridades' },
             { id: 'projectTeams', label: 'Equipas Internas' },
             { id: 'projectPartners', label: 'Parceiros Externos' },
@@ -1300,7 +1361,7 @@ export default function ConfigSection({
 
         {/* Addition form */}
         <form onSubmit={handleAddAuxRecord} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end bg-slate-50/50 p-4 rounded-2xl border border-slate-100 mb-6">
-          <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
+          <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
             <label className="block text-[11px] text-slate-500">Nome da Nova Opção *</label>
             <input 
               type="text"
@@ -1312,13 +1373,13 @@ export default function ConfigSection({
             />
           </div>
 
-          {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses') && (
+          {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') && (
             <div className="space-y-1">
-              <label className="block text-[11px] text-slate-500">Escala / Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : '1 a 3'})</label>
+              <label className="block text-[11px] text-slate-500">Escala / Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes') ? '1 a 10' : '1 a 3'})</label>
               <input 
                 type="number"
                 min={activeAuxTab === 'projectStatuses' ? 0 : 1}
-                max={activeAuxTab === 'projectStatuses' ? 5 : 3}
+                max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes') ? 10 : 3}
                 required
                 value={newAuxScale}
                 onChange={e => setNewAuxScale(Number(e.target.value))}
@@ -1353,8 +1414,8 @@ export default function ConfigSection({
                   <tr className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 tracking-wider">
                     <th className="p-3 w-10"></th>
                     <th className="p-3">Nome da Opção</th>
-                    {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses') && (
-                      <th className="p-3 w-32">Escala / Peso</th>
+                    {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') && (
+                      <th className="p-3 w-32">Escala / Nível</th>
                     )}
                     <th className="p-3 w-36 text-right">Ações</th>
                   </tr>

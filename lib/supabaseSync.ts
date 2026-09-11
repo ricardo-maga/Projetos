@@ -96,6 +96,15 @@ export const stringToUUID = (str: string): string => {
     'ts-3': '99999999-9999-9999-9999-999999999903',
     'ts-4': '99999999-9999-9999-9999-999999999904',
     
+    // Task Types
+    'tt-1': '33333333-3333-3333-3333-333333333301',
+    'tt-2': '33333333-3333-3333-3333-333333333302',
+    'tt-3': '33333333-3333-3333-3333-333333333303',
+    'tt-4': '33333333-3333-3333-3333-333333333304',
+    'tt-5': '33333333-3333-3333-3333-333333333305',
+    'tt-6': '33333333-3333-3333-3333-333333333306',
+    'tt-7': '33333333-3333-3333-3333-333333333307',
+    
     // Users
     'u-1': '11111111-1111-1111-1111-111111111111',
     'u-2': '11111111-1111-1111-1111-111111111112',
@@ -153,6 +162,7 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
     projectTeams: (state.projectTeams || []).map(t => ({ ...t, id: stringToUUID(t.id) })),
     projectPartners: (state.projectPartners || []).map(p => ({ ...p, id: stringToUUID(p.id) })),
     taskStatuses: (state.taskStatuses || []).map(s => ({ ...s, id: stringToUUID(s.id) })),
+    taskTypes: (state.taskTypes || []).map(tt => ({ ...tt, id: stringToUUID(tt.id) })),
     users: (state.users || []).map(u => ({
       ...u,
       id: stringToUUID(u.id),
@@ -183,6 +193,7 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
       id: stringToUUID(t.id),
       projectId: stringToUUID(t.projectId),
       statusId: stringToUUID(t.statusId),
+      taskTypeId: t.taskTypeId ? stringToUUID(t.taskTypeId) : undefined,
       assigneeIds: (t.assigneeIds || []).map(stringToUUID),
     })),
     comments: (state.comments || []).map(c => ({
@@ -226,6 +237,7 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
     defaultTasks: (state.defaultTasks || []).map(dt => ({
       ...dt,
       id: stringToUUID(dt.id),
+      taskTypeId: dt.taskTypeId ? stringToUUID(dt.taskTypeId) : undefined,
     })),
     riskCategories: (state.riskCategories || []).map(rc => ({
       ...rc,
@@ -410,6 +422,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       resProjectTeams,
       resProjectPartners,
       resTaskStatuses,
+      resTaskTypes,
       resUsers,
       resClients,
       resProjects,
@@ -436,6 +449,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       supabase.from('project_teams').select('*').order('sort_order', { ascending: true }),
       supabase.from('project_partners').select('*').order('sort_order', { ascending: true }),
       supabase.from('task_status').select('*').order('scale', { ascending: true }),
+      supabase.from('task_types').select('*').order('sort_order', { ascending: true }),
       supabase.from('users').select('*'),
       supabase.from('clients').select('*'),
       supabase.from('projects').select('*'),
@@ -599,25 +613,35 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       clientContactPhone: p.client_contact_phone || '',
     }));
 
-    const tasks: Task[] = (resTasks.data || []).map(t => ({
-      id: t.id,
-      projectId: t.project_id || '',
-      title: t.task_title || '',
-      statusId: t.status_id || '',
-      assigneeIds: assigneesMap[t.id] || [],
-      estimatedDate: t.estimated_date || '',
-      description: t.task_description || '',
-      estimatedHours: t.estimated_hours || '',
-      actualHours: t.actual_hours || '',
-      startDate: t.start_date || '',
-      startTime: t.start_time || '',
-      endDate: t.end_date || '',
-      endTime: t.end_time || '',
-      notes: t.notes || '',
-      deleted: t.deleted || false,
-      createdDate: t.created_at || '',
-      isMilestone: t.is_milestone || false,
-    }));
+    const milestoneTaskType = (resTaskTypes?.data || []).find((tt: any) => tt.name?.toLowerCase().includes('marco'));
+    const defaultTaskType = (resTaskTypes?.data || []).find((tt: any) => !tt.deleted);
+
+    const tasks: Task[] = (resTasks.data || []).map(t => {
+      let resolvedTaskTypeId = t.task_type_id;
+      if (!resolvedTaskTypeId && t.is_milestone && milestoneTaskType) {
+        resolvedTaskTypeId = milestoneTaskType.id;
+      }
+      return {
+        id: t.id,
+        projectId: t.project_id || '',
+        title: t.task_title || '',
+        statusId: t.status_id || '',
+        taskTypeId: resolvedTaskTypeId || (defaultTaskType ? defaultTaskType.id : undefined),
+        assigneeIds: assigneesMap[t.id] || [],
+        estimatedDate: t.estimated_date || '',
+        description: t.task_description || '',
+        estimatedHours: t.estimated_hours || '',
+        actualHours: t.actual_hours || '',
+        startDate: t.start_date || '',
+        startTime: t.start_time || '',
+        endDate: t.end_date || '',
+        endTime: t.end_time || '',
+        notes: t.notes || '',
+        deleted: t.deleted || false,
+        createdDate: t.created_at || '',
+        isMilestone: t.is_milestone || false,
+      };
+    });
 
     const clients: Client[] = (resClients.data || []).map(c => ({
       id: c.id,
@@ -796,7 +820,34 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       projectPriorities: resProjectPriorities.data || [],
       projectTeams: resProjectTeams.data || [],
       projectPartners: resProjectPartners.data || [],
-      taskStatuses: resTaskStatuses.data || [],
+      taskStatuses: (resTaskStatuses.data || []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        scale: s.scale ?? 1,
+        deleted: s.deleted || false,
+        sort_order: s.sort_order ?? s.scale ?? 0,
+      })),
+      taskTypes: (() => {
+        const rawTypes = (resTaskTypes.data && resTaskTypes.data.length > 0)
+          ? resTaskTypes.data.map((tt: any) => ({
+              id: tt.id,
+              name: tt.name,
+              scale: tt.scale ?? 1,
+              deleted: tt.deleted || false,
+              sort_order: tt.sort_order ?? tt.scale ?? 0,
+            }))
+          : (INITIAL_ERP_STATE.taskTypes || []);
+        
+        const seen = new Set<string>();
+        const deduped: any[] = [];
+        for (const item of rawTypes) {
+          const key = (item.name || '').trim().toLowerCase();
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          deduped.push(item);
+        }
+        return deduped;
+      })(),
       users,
       clients,
       projects,
@@ -900,9 +951,18 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         sort_order: p.sort_order || 0
       }))),
       supabase.from('task_status').upsert((state.taskStatuses || []).map(s => ({
-        id: s.id,
+        id: stringToUUID(s.id),
         name: s.name,
-        scale: s.scale || 1
+        scale: s.scale ?? 1,
+        deleted: s.deleted ?? false,
+        sort_order: s.sort_order ?? (s as any).sortOrder ?? s.scale ?? 0,
+      }))),
+      supabase.from('task_types').upsert((state.taskTypes || []).map(tt => ({
+        id: stringToUUID(tt.id),
+        name: tt.name,
+        scale: tt.scale ?? 1,
+        deleted: tt.deleted ?? false,
+        sort_order: tt.sort_order ?? tt.scale ?? 0,
       }))),
       supabase.from('risk_categories').upsert((state.riskCategories || []).map(rc => ({
         id: stringToUUID(rc.id),
@@ -1133,16 +1193,19 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     // 4. Save Tasks (depends on Projects)
     const validProjectIds = new Set(state.projects.map(p => p.id));
     const validTaskStatusIds = new Set(state.taskStatuses.map(s => s.id));
+    const validTaskTypeIds = new Set((state.taskTypes || []).map(tt => tt.id));
 
     const taskUpserts = state.tasks.map(t => {
       const projectId = t.projectId ? stringToUUID(t.projectId) : null;
       const statusId = t.statusId ? stringToUUID(t.statusId) : null;
+      const taskTypeId = t.taskTypeId ? stringToUUID(t.taskTypeId) : null;
 
       return {
         id: t.id,
         project_id: (projectId && validProjectIds.has(projectId)) ? projectId : null,
         task_title: t.title,
         status_id: (statusId && validTaskStatusIds.has(statusId)) ? statusId : null,
+        task_type_id: (taskTypeId && validTaskTypeIds.has(taskTypeId)) ? taskTypeId : null,
         estimated_date: formatDbDate(t.estimatedDate),
         task_description: t.description || null,
         estimated_hours: t.estimatedHours || null,
@@ -1160,8 +1223,8 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
     if (taskUpserts.length > 0) {
       let resTasks = await supabase.from('tasks').upsert(taskUpserts);
-      if (resTasks.error && (resTasks.error.code === '42703' || resTasks.error.message.includes('is_milestone'))) {
-        const basicTaskUpserts = taskUpserts.map(({ is_milestone, ...rest }) => rest);
+      if (resTasks.error && (resTasks.error.code === '42703' || resTasks.error.message.includes('task_type_id') || resTasks.error.message.includes('is_milestone'))) {
+        const basicTaskUpserts = taskUpserts.map(({ task_type_id, is_milestone, ...rest }) => rest);
         resTasks = await supabase.from('tasks').upsert(basicTaskUpserts);
       }
       if (resTasks.error) return { success: false, message: `Erro ao gravar tarefas: ${formatSupabaseError(resTasks.error)}` };
@@ -1580,6 +1643,7 @@ ALTER TABLE IF EXISTS project_priority DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS project_teams DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS project_partners DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS task_status DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS task_types DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS clients DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS projects DISABLE ROW LEVEL SECURITY;
@@ -1654,6 +1718,64 @@ CREATE TABLE IF NOT EXISTS project_category_link (
     category_id UUID REFERENCES project_category(id) ON DELETE CASCADE,
     PRIMARY KEY (project_id, category_id)
 );
+
+CREATE TABLE IF NOT EXISTS task_status (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    scale INT DEFAULT 1,
+    deleted BOOLEAN DEFAULT false,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE IF EXISTS task_status ADD COLUMN IF NOT EXISTS scale INT DEFAULT 1;
+ALTER TABLE IF EXISTS task_status ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false;
+ALTER TABLE IF EXISTS task_status ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0;
+ALTER TABLE IF EXISTS task_status ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+
+CREATE TABLE IF NOT EXISTS task_types (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    scale INT DEFAULT 1,
+    deleted BOOLEAN DEFAULT false,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE IF EXISTS task_types ADD COLUMN IF NOT EXISTS scale INT DEFAULT 1;
+ALTER TABLE IF EXISTS task_types ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false;
+ALTER TABLE IF EXISTS task_types ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0;
+ALTER TABLE IF EXISTS task_types ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE IF EXISTS tasks ADD COLUMN IF NOT EXISTS task_type_id UUID;
+ALTER TABLE IF EXISTS default_tasks ADD COLUMN IF NOT EXISTS task_type_id UUID;
+
+-- Seed dos Tipos de Tarefa com Níveis
+INSERT INTO task_types (id, name, scale, sort_order)
+VALUES 
+    ('33333333-3333-3333-3333-333333333301', 'Marco de projeto', 1, 1),
+    ('33333333-3333-3333-3333-333333333302', 'Planeamento/Requisitos', 2, 2),
+    ('33333333-3333-3333-3333-333333333303', 'Preparação', 3, 3),
+    ('33333333-3333-3333-3333-333333333304', 'Instalação', 4, 4),
+    ('33333333-3333-3333-3333-333333333305', 'Reparação', 5, 5),
+    ('33333333-3333-3333-3333-333333333306', 'Formação', 6, 6),
+    ('33333333-3333-3333-3333-333333333307', 'Outro', 7, 7)
+ON CONFLICT (id) DO NOTHING;
+
+-- Limpeza de eventuais duplicados por nome em task_types
+DELETE FROM task_types a USING task_types b
+WHERE a.id > b.id AND lower(trim(a.name)) = lower(trim(b.name));
+
+-- Migração automática de tarefas existentes: mapear tarefas marcadas como marco para o tipo 'Marco de projeto'
+UPDATE tasks 
+SET task_type_id = '33333333-3333-3333-3333-333333333301'
+WHERE (task_type_id IS NULL) 
+  AND (is_milestone = true OR task_title ILIKE '%marco%');
+
+-- Atribuir tipo padrão às restantes tarefas sem tipo
+UPDATE tasks 
+SET task_type_id = '33333333-3333-3333-3333-333333333302'
+WHERE task_type_id IS NULL;
 
 CREATE TABLE IF NOT EXISTS special_days (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

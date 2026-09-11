@@ -649,6 +649,7 @@ export default function Page() {
                   clients={state.clients}
                   users={state.users}
                   projectStatuses={state.projectStatuses}
+                  taskStatuses={state.taskStatuses}
                   projectCategories={state.projectCategories}
                   projectPriorities={state.projectPriorities}
                   onNavigate={handleTabChange}
@@ -699,6 +700,7 @@ export default function Page() {
                   addTasks={addTasks}
                   updateTask={updateTask}
                   taskStatuses={state.taskStatuses}
+                  taskTypes={state.taskTypes || []}
                   specialDays={state.specialDays}
                   selectedProjectId={selectedProjectId}
                   setSelectedProjectId={handleSelectProject}
@@ -727,6 +729,7 @@ export default function Page() {
                   clients={state.clients}
                   users={state.users}
                   taskStatuses={state.taskStatuses}
+                  taskTypes={state.taskTypes || []}
                   addTask={addTask}
                   updateTask={updateTask}
                   deleteTask={deleteTask}
@@ -743,6 +746,7 @@ export default function Page() {
                   users={state.users}
                   clients={state.clients}
                   taskStatuses={state.taskStatuses}
+                  taskTypes={state.taskTypes || []}
                   projectStatuses={state.projectStatuses}
                   specialDays={state.specialDays}
                   projectRiskItems={state.projectRiskItems || []}
@@ -799,6 +803,8 @@ export default function Page() {
                   deleteDefaultTask={deleteDefaultTask!}
                   projectCategories={state.projectCategories || []}
                   projectStatuses={state.projectStatuses || []}
+                  taskStatuses={state.taskStatuses || []}
+                  taskTypes={state.taskTypes || []}
                   projectRisks={state.projectRisks || []}
                   projectPriorities={state.projectPriorities || []}
                   projectTeams={state.projectTeams || []}
