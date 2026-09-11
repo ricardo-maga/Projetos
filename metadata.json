@@ -1,0 +1,6 @@
+{
+  "name": "Gestão de projetos e planeamento",
+  "description": "Plataforma completa de gestão de projetos, tarefas, clientes, orçamentos, materiais, equipamentos e ausências de utilizadores.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
