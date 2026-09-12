@@ -207,6 +207,7 @@ export interface AppConfiguration {
   salesRepGroupIds?: string[];
   projManagerGroupIds?: string[];
   fieldManagerGroupIds?: string[];
+  autoDailyBackupEnabled?: boolean;
 }
 
 export interface Client {
@@ -346,6 +347,20 @@ export interface Notification {
   linkUrl?: string;
 }
 
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  userId?: string;
+  userName?: string;
+  userEmail?: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'RESTORE' | 'EXPORT' | 'SETTINGS' | string;
+  entityType: 'PROJECT' | 'TASK' | 'CLIENT' | 'USER' | 'MATERIAL' | 'RISK' | 'QUOTE' | 'SYSTEM' | string;
+  entityId?: string;
+  entityName?: string;
+  details: string;
+  createdDate?: string;
+}
+
 export interface ERPState {
   projects: Project[];
   tasks: Task[];
@@ -377,4 +392,5 @@ export interface ERPState {
   riskStatuses?: RiskStatus[];
   riskPriorities?: RiskPriority[];
   automationRules?: AutomationRule[];
+  auditLogs?: AuditLog[];
 }

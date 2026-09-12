@@ -14,11 +14,14 @@ import NotificationDropdown from '../components/NotificationDropdown';
 import CalendarSection from '../components/CalendarSection';
 import MyFocusSection from '../components/MyFocusSection';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
+import { logAuditEventToSupabase } from '../lib/supabaseSync';
 import { hasPermission } from '../lib/permissions';
+import AppLogo from '../components/AppLogo';
 
 import { 
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
-  Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw
+  Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw,
+  Bell, Zap, ShieldCheck, Database, ListTodo
 } from 'lucide-react';
 
 import { hashPassword } from '../lib/utils';
@@ -26,6 +29,7 @@ import { hashPassword } from '../lib/utils';
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeConfigTab, setActiveConfigTab] = useState('sistema');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -205,6 +209,18 @@ export default function Page() {
     }
   }, [mounted, state]);
 
+  // Synchronize active theme attribute on document.documentElement for global styling
+  React.useEffect(() => {
+    const currentTheme = state?.appConfig?.theme || 'default';
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      const root = document.getElementById('main-root');
+      if (root) {
+        root.setAttribute('data-theme', currentTheme);
+      }
+    }
+  }, [state?.appConfig?.theme]);
+
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     setSelectedProjectId(null);
@@ -362,9 +378,12 @@ export default function Page() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="loading-screen">
         <div className="w-full max-w-sm bg-white rounded-2xl -xl border border-slate-100 p-8 text-center space-y-6 animate-fade-in">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto -lg animate-pulse">
-            <Briefcase className="w-8 h-8 text-white" />
-          </div>
+          <AppLogo 
+            logoUrl={state?.appConfig?.logoImagePath || state?.appConfig?.logo} 
+            appName={state?.appConfig?.appName || 'Portal'}
+            className="w-48 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mx-auto shadow-lg animate-pulse p-2"
+            fallbackIconClassName="w-8 h-8 text-white"
+          />
           <div>
             <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">A carregar o sistema...</h1>
             <p className="text-slate-400 text-xs mt-1.5 font-medium">Por favor, aguarde enquanto ligamos à base de dados.</p>
@@ -383,12 +402,15 @@ export default function Page() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
         <div className="w-full max-w-md bg-white rounded-2xl -xl border border-slate-100 overflow-hidden">
-          <div className="p-8 pb-6 bg-slate-800 text-white text-center">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 -lg">
-              <Briefcase className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold font-sans tracking-tight">Portal</h1>
-            <p className="text-slate-400 text-sm mt-2">Gestão de projetos</p>
+          <div className="p-8 pb-6 bg-slate-800 text-white text-center flex flex-col items-center">
+            <AppLogo 
+              logoUrl={state?.appConfig?.logoImagePath || state?.appConfig?.logo} 
+              appName={state?.appConfig?.appName || 'Portal'}
+              className="w-48 h-16 rounded-2xl bg-white/10 p-2 mb-4 shadow-lg border border-white/20 mx-auto"
+              fallbackIconClassName="w-8 h-8 text-white"
+            />
+            <h1 className="text-2xl font-bold font-sans tracking-tight">{state?.appConfig?.appName || 'Portal'}</h1>
+            <p className="text-slate-400 text-sm mt-1">{state?.appConfig?.appDescription || 'Gestão de projetos'}</p>
           </div>
           
           <form onSubmit={handleLogin} className="p-8 space-y-5">
@@ -484,9 +506,11 @@ export default function Page() {
             onClick={() => handleTabChange('dashboard')}
             title="Ir para o Dashboard"
           >
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold text-sm -md -blue-100 shrink-0">
-              N
-            </div>
+            <AppLogo 
+              logoUrl={appConfig.logoImagePath || appConfig.logo} 
+              appName={appConfig.appName}
+              className="w-24 h-8 rounded-lg bg-slate-100 border border-slate-200/80 p-0.5 shadow-2xs"
+            />
             <div className="min-w-0">
               <h1 className="text-sm font-black text-slate-900 tracking-tight leading-none truncate">{appConfig.appName}</h1>
               <p className="text-[10px] text-slate-500 font-semibold mt-0.5 truncate hidden sm:block">{appConfig.appDescription}</p>
@@ -524,6 +548,18 @@ export default function Page() {
           <button 
             onClick={(e) => {
               e.stopPropagation();
+              if (currentUser) {
+                logAuditEventToSupabase({
+                  userId: currentUser.id,
+                  userName: currentUser.name,
+                  userEmail: currentUser.email,
+                  action: 'LOGOUT',
+                  entityType: 'USER',
+                  entityId: currentUser.id,
+                  entityName: currentUser.name,
+                  details: `Sessão terminada por ${currentUser.name}`
+                }).catch(() => {});
+              }
               setCurrentUser(null);
               localStorage.removeItem('erp_session');
             }}
@@ -559,11 +595,13 @@ export default function Page() {
         >
           {/* Mobile drawer top bar with close button */}
           <div className="p-3.5 border-b border-slate-100 flex items-center justify-between md:hidden bg-slate-50">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold text-xs">
-                N
-              </div>
-              <span className="font-extrabold text-xs text-slate-900">{appConfig.appName}</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <AppLogo 
+                logoUrl={appConfig.logoImagePath || appConfig.logo} 
+                appName={appConfig.appName}
+                className="w-[84px] h-7 rounded-lg bg-slate-100 border border-slate-200/80 p-0.5"
+              />
+              <span className="font-extrabold text-xs text-slate-900 truncate">{appConfig.appName}</span>
             </div>
             <button 
               onClick={() => setSidebarOpen(false)}
@@ -578,6 +616,78 @@ export default function Page() {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               const isDisabled = (tab as any).disabled;
+
+              if (tab.id === 'configuracoes') {
+                const configSubItems = [
+                  { id: 'sistema', label: 'Configurações do Sistema', icon: Settings },
+                  { id: 'campos', label: 'Campos Auxiliares', icon: ListTodo },
+                  { id: 'dias', label: 'Dias Especiais', icon: Calendar },
+                  { id: 'tarefas', label: 'Tarefas Modelo', icon: CheckSquare },
+                  { id: 'utilizadores', label: 'Utilizadores e Equipas', icon: Users },
+                  { id: 'notificacoes', label: 'Notificações', icon: Bell },
+                  { id: 'automacoes', label: 'Automações', icon: Zap },
+                  { id: 'auditoria', label: 'Registo de Auditoria', icon: ShieldCheck },
+                  { id: 'importacao', label: 'Importação e Backup', icon: Database },
+                ];
+
+                return (
+                  <div key={tab.id} className="space-y-1">
+                    <button
+                      disabled={isDisabled}
+                      onClick={() => {
+                        if (!isDisabled) {
+                          handleTabChange(tab.id);
+                        }
+                      }}
+                      className={`w-full flex items-center ${
+                        isCollapsed ? 'md:justify-center md:px-2' : 'gap-3 px-3'
+                      } py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isDisabled 
+                          ? 'opacity-40 cursor-not-allowed text-slate-400' 
+                          : isActive 
+                            ? 'bg-slate-900 text-white -sm' 
+                            : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
+                      }`}
+                      id={`tab-${tab.id}`}
+                      title={isCollapsed ? (isDisabled ? `${tab.label} (Desativado)` : tab.label) : undefined}
+                    >
+                      <Icon className={`w-4 h-4 flex-shrink-0 ${isDisabled ? 'text-slate-300' : isActive ? 'text-blue-400' : 'text-slate-400'}`} />
+                      <span className={`${isCollapsed ? 'md:hidden' : 'block'}`}>{tab.label}</span>
+                    </button>
+
+                    {/* Submenu under Configurações */}
+                    {isActive && (
+                      <div className={`${isCollapsed ? 'md:pl-0' : 'pl-3 pr-1'} py-1 space-y-1 my-1`}>
+                        {configSubItems.map(sub => {
+                          const SubIcon = sub.icon;
+                          const isSubActive = activeConfigTab === sub.id;
+                          return (
+                            <button
+                              key={sub.id}
+                              onClick={() => {
+                                handleTabChange('configuracoes');
+                                setActiveConfigTab(sub.id);
+                              }}
+                              className={`w-full flex items-center ${
+                                isCollapsed ? 'md:justify-center md:px-2' : 'gap-2.5 px-3'
+                              } py-2 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                                isSubActive
+                                  ? 'bg-blue-50 text-blue-700 font-bold border-l-2 border-blue-600'
+                                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/70 border-l-2 border-transparent'
+                              }`}
+                              title={isCollapsed ? sub.label : undefined}
+                            >
+                              <SubIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                              <span className={`truncate ${isCollapsed ? 'md:hidden' : 'block'}`}>{sub.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <button
                   key={tab.id}
@@ -838,6 +948,8 @@ export default function Page() {
 
               {activeTab === 'configuracoes' && (
                 <ConfigSection 
+                  activeConfigTab={activeConfigTab}
+                  onChangeConfigTab={setActiveConfigTab}
                   config={appConfig}
                   specialDays={state.specialDays}
                   updateConfig={updateConfig}

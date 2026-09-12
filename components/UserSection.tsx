@@ -103,9 +103,9 @@ export default function UserSection({
       alert('Não tem permissão para registar ausências.');
       return;
     }
-    const activeUserId = userId || users.find(u => !u.deleted)?.id || '';
+    const activeUserId = userId;
     if (!activeUserId || !startDate || !endDate) {
-      alert('Por favor, preencha todos os campos da ausência.');
+      alert('Por favor, selecione um utilizador e preencha todos os campos da ausência.');
       return;
     }
 
@@ -134,6 +134,7 @@ export default function UserSection({
       absenceEndDate: endDate,
       reason,
     });
+    setUserId('');
     setStartDate('');
     setEndDate('');
   };
@@ -454,10 +455,11 @@ export default function UserSection({
                 <div className="space-y-1">
                   <label className="block text-slate-500">Utilizador *</label>
                   <select 
-                    value={userId || users.find(u => !u.deleted)?.id || ''}
+                    value={userId}
                     onChange={e => setUserId(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold text-xs"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold text-xs text-slate-800"
                   >
+                    <option value="" disabled>Selecione um utilizador...</option>
                     {users
                       .filter(u => !u.deleted)
                       .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }))

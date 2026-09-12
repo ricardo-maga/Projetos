@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem } from './types';
+import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem, AuditLog } from './types';
 
 export interface SupabaseBackup {
   id: string;
@@ -403,6 +403,143 @@ export async function deleteBackupFromSupabase(id: string): Promise<{ success: b
 }
 
 /**
+ * Calculates start of week date string (YYYY-MM-DD) for weekly snapshot grouping
+ */
+function getStartOfWeekKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  const day = d.getUTCDay();
+  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));
+  return monday.toISOString().slice(0, 10);
+}
+
+/**
+ * Prunes automatic snapshots based on retention rules:
+ * - Keeps up to 10 daily snapshots (newest 1 for each of the last 10 distinct days)
+ * - Keeps up to 10 weekly snapshots (newest 1 for each of the last 10 distinct weeks)
+ * - Deletes any automatic snapshot that does not fit either rule
+ * - Manual snapshots are NEVER touched or pruned
+ */
+export async function pruneAutoBackups(autoBackups: SupabaseBackup[]): Promise<{ deletedCount: number }> {
+  if (!isSupabaseConfigured || !supabase || !autoBackups || autoBackups.length === 0) {
+    return { deletedCount: 0 };
+  }
+
+  // Sort newest first
+  const sorted = [...autoBackups].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  
+  const keepIds = new Set<string>();
+
+  // 1. Up to 10 daily snapshots (newest 1 for each distinct day)
+  const dayMap = new Map<string, string>(); // YYYY-MM-DD -> snapshotId
+  for (const snap of sorted) {
+    const dayKey = snap.created_at.slice(0, 10);
+    if (!dayMap.has(dayKey)) {
+      dayMap.set(dayKey, snap.id);
+    }
+  }
+  const recentDays = Array.from(dayMap.keys()).slice(0, 10);
+  for (const dayKey of recentDays) {
+    keepIds.add(dayMap.get(dayKey)!);
+  }
+
+  // 2. Up to 10 weekly snapshots (newest 1 for each distinct week)
+  const weekMap = new Map<string, string>(); // startOfWeek -> snapshotId
+  for (const snap of sorted) {
+    const weekKey = getStartOfWeekKey(snap.created_at);
+    if (!weekMap.has(weekKey)) {
+      weekMap.set(weekKey, snap.id);
+    }
+  }
+  const recentWeeks = Array.from(weekMap.keys()).slice(0, 10);
+  for (const weekKey of recentWeeks) {
+    keepIds.add(weekMap.get(weekKey)!);
+  }
+
+  // Delete all auto snapshots that are not in keepIds
+  let deletedCount = 0;
+  for (const snap of sorted) {
+    if (!keepIds.has(snap.id)) {
+      await supabase.from('portal_erp_snapshots').delete().eq('id', snap.id);
+      deletedCount++;
+    }
+  }
+
+  return { deletedCount };
+}
+
+/**
+ * Checks if a daily automatic backup exists for today; if not, creates one and prunes old auto backups.
+ */
+export async function checkAndCreateAutoDailyBackup(currentState: ERPState): Promise<{ created: boolean; message: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { created: false, message: 'Supabase não está configurado.' };
+  }
+
+  try {
+    const { data: backups, error } = await supabase
+      .from('portal_erp_snapshots')
+      .select('id, name, created_at')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const autoBackups = (backups || []).filter((b: any) => 
+      b.name && (b.name.startsWith('[Auto-Diário]') || b.name.startsWith('[Auto-'))
+    );
+
+    // Check if an auto backup was already created today
+    const createdToday = autoBackups.some((b: any) => {
+      const bDate = new Date(b.created_at).toISOString().slice(0, 10);
+      return bDate === todayStr;
+    });
+
+    if (createdToday) {
+      return { created: false, message: 'Já existe uma cópia de segurança automática criada hoje.' };
+    }
+
+    // Format date and time for auto snapshot name
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const timeFormatted = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const autoName = `[Auto-Diário] ${timeFormatted}`;
+
+    const saveRes = await saveSnapshotToSupabase(currentState, autoName);
+    if (!saveRes.success) {
+      return { created: false, message: saveRes.message };
+    }
+
+    // Log audit event
+    await logAuditEventToSupabase({
+      action: 'CREATE',
+      entityType: 'SYSTEM',
+      details: `Criada cópia de segurança automática diária: "${autoName}"`
+    });
+
+    // Re-fetch all auto backups and prune according to 10 daily / 10 weekly retention rule
+    const { data: updatedBackups } = await supabase
+      .from('portal_erp_snapshots')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    const allAuto = (updatedBackups || []).filter((b: any) => 
+      b.name && (b.name.startsWith('[Auto-Diário]') || b.name.startsWith('[Auto-'))
+    ) as SupabaseBackup[];
+
+    const { deletedCount } = await pruneAutoBackups(allAuto);
+
+    return { 
+      created: true, 
+      message: `Cópia automática diária criada com sucesso: ${autoName}${deletedCount > 0 ? ` (${deletedCount} cópias antigas eliminadas pela regra de retenção)` : ''}` 
+    };
+  } catch (err: any) {
+    console.error('Erro na cópia automática diária:', err);
+    return { created: false, message: formatSupabaseError(err) };
+  }
+}
+
+/**
  * Get the active real-time state from Supabase by fetching from all individual SQL tables
  */
 export async function getActiveStateFromSupabase(): Promise<{ success: boolean; data?: ERPState; message?: string }> {
@@ -450,15 +587,15 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       supabase.from('task_status').select('*').order('scale', { ascending: true }),
       supabase.from('task_types').select('*').order('sort_order', { ascending: true }),
       supabase.from('users').select('*'),
-      supabase.from('clients').select('*'),
-      supabase.from('projects').select('*'),
-      supabase.from('tasks').select('*'),
-      supabase.from('comments').select('*'),
+      supabase.from('clients').select('*').order('created_at', { ascending: false }),
+      supabase.from('projects').select('*').order('created_at', { ascending: false }),
+      supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+      supabase.from('comments').select('*').order('created_at', { ascending: true }),
       supabase.from('user_absences').select('*'),
-      supabase.from('material').select('*'),
-      supabase.from('quotes').select('*'),
+      supabase.from('material').select('*').order('created_at', { ascending: false }),
+      supabase.from('quotes').select('*').order('created_at', { ascending: false }),
       supabase.from('bill_of_materials').select('*'),
-      supabase.from('equipment').select('*'),
+      supabase.from('equipment').select('*').order('created_at', { ascending: false }),
       supabase.from('app_configuration').select('*').limit(1),
       supabase.from('special_days').select('*'),
       supabase.from('default_tasks').select('*'),
@@ -877,6 +1014,217 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
   } catch (error: any) {
     console.error('Relational load error from Supabase:', error);
     return { success: false, message: `Erro ao ler dados do Supabase SQL: ${formatSupabaseError(error)}` };
+  }
+}
+
+export interface PaginatedResult<T> {
+  success: boolean;
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  message?: string;
+}
+
+/**
+ * Fetches projects directly from Supabase with SQL-level pagination and indexing
+ */
+export async function fetchPaginatedProjectsDirectly(params: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  statusId?: string;
+  categoryId?: string;
+  managerId?: string;
+  includeCompleted?: boolean;
+}): Promise<PaginatedResult<Project>> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: false, data: [], total: 0, page: 1, pageSize: 25, totalPages: 0, message: 'Supabase não configurado.' };
+  }
+
+  const page = Math.max(1, Number(params.page) || 1);
+  const pageSize = Math.min(100, Math.max(5, Number(params.pageSize) || 25));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  try {
+    let query = supabase
+      .from('projects')
+      .select('*', { count: 'exact' })
+      .eq('deleted', false);
+
+    if (params.search && params.search.trim()) {
+      const q = `%${params.search.trim()}%`;
+      query = query.or(`project_title.ilike.${q},install_project_no.ilike.${q},description.ilike.${q}`);
+    }
+
+    if (params.statusId) {
+      query = query.eq('status_id', params.statusId);
+    }
+
+    if (params.categoryId) {
+      query = query.eq('category_id', params.categoryId);
+    }
+
+    if (params.managerId) {
+      query = query.eq('project_manager_id', params.managerId);
+    }
+
+    // Uses idx_projects_deleted_created_at
+    query = query.order('created_at', { ascending: false }).range(from, to);
+
+    const { data, count, error } = await query;
+    if (error) throw error;
+
+    const total = count ?? (data ? data.length : 0);
+    const totalPages = Math.ceil(total / pageSize) || 1;
+
+    const projects: Project[] = (data || []).map((row: any) => ({
+      id: row.id,
+      title: row.project_title || row.title || 'Sem Título',
+      clientId: row.client_id || '',
+      description: row.description || '',
+      categoryId: row.category_id || '',
+      categoryIds: [row.category_id].filter(Boolean),
+      statusId: row.status_id || '',
+      projectManagerId: row.project_manager_id || '',
+      fieldManagerId: row.field_manager_id || '',
+      salesRepId: row.sales_rep_id || '',
+      startDate: row.start_date || '',
+      deliveryDate: row.delivery_date || '',
+      estimatedDate: row.estimated_date || '',
+      scheduledDate: row.scheduled_date || '',
+      installProjectNo: row.install_project_no || '',
+      sfOpportunityNo: row.sf_opportunity_no || '',
+      riskId: row.risk_id || '',
+      priorityId: row.priority_id || '',
+      teamsInvolvedIds: [],
+      partnersIds: [],
+      documents: [],
+      budgetValue: Number(row.budget_value) || 0,
+      createdById: row.created_by || '',
+      demo: Boolean(row.demo),
+      deleted: Boolean(row.deleted),
+      createdDate: row.created_at || new Date().toISOString(),
+      updatedDate: row.updated_at || new Date().toISOString(),
+    }));
+
+    return {
+      success: true,
+      data: projects,
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
+  } catch (error: any) {
+    console.error('Error in fetchPaginatedProjectsDirectly:', error);
+    return {
+      success: false,
+      data: [],
+      total: 0,
+      page,
+      pageSize,
+      totalPages: 0,
+      message: formatSupabaseError(error),
+    };
+  }
+}
+
+/**
+ * Fetches tasks directly from Supabase with SQL-level pagination and indexing
+ */
+export async function fetchPaginatedTasksDirectly(params: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  projectId?: string;
+  statusId?: string;
+  taskTypeId?: string;
+}): Promise<PaginatedResult<Task>> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: false, data: [], total: 0, page: 1, pageSize: 25, totalPages: 0, message: 'Supabase não configurado.' };
+  }
+
+  const page = Math.max(1, Number(params.page) || 1);
+  const pageSize = Math.min(100, Math.max(5, Number(params.pageSize) || 25));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  try {
+    let query = supabase
+      .from('tasks')
+      .select('*', { count: 'exact' })
+      .eq('deleted', false);
+
+    if (params.projectId) {
+      query = query.eq('project_id', params.projectId);
+    }
+
+    if (params.statusId) {
+      query = query.eq('status_id', params.statusId);
+    }
+
+    if (params.taskTypeId) {
+      query = query.eq('task_type_id', params.taskTypeId);
+    }
+
+    if (params.search && params.search.trim()) {
+      const q = `%${params.search.trim()}%`;
+      query = query.or(`title.ilike.${q},description.ilike.${q},notes.ilike.${q}`);
+    }
+
+    // Uses idx_tasks_project_deleted and idx_tasks_deleted_created_at
+    query = query.order('created_at', { ascending: false }).range(from, to);
+
+    const { data, count, error } = await query;
+    if (error) throw error;
+
+    const total = count ?? (data ? data.length : 0);
+    const totalPages = Math.ceil(total / pageSize) || 1;
+
+    const tasks: Task[] = (data || []).map((row: any) => ({
+      id: row.id,
+      projectId: row.project_id || '',
+      title: row.title || 'Sem Título',
+      statusId: row.status_id || '',
+      taskTypeId: row.task_type_id || '',
+      assigneeIds: [],
+      estimatedDate: row.estimated_date || '',
+      description: row.description || '',
+      estimatedHours: row.estimated_hours || '00:00',
+      actualHours: row.actual_hours || '00:00',
+      startDate: row.start_date || '',
+      startTime: row.start_time || '',
+      endDate: row.end_date || '',
+      endTime: row.end_time || '',
+      notes: row.notes || '',
+      deleted: Boolean(row.deleted),
+      isMilestone: Boolean(row.is_milestone),
+      createdDate: row.created_at || new Date().toISOString(),
+      updatedDate: row.updated_at || new Date().toISOString(),
+    }));
+
+    return {
+      success: true,
+      data: tasks,
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
+  } catch (error: any) {
+    console.error('Error in fetchPaginatedTasksDirectly:', error);
+    return {
+      success: false,
+      data: [],
+      total: 0,
+      page,
+      pageSize,
+      totalPages: 0,
+      message: formatSupabaseError(error),
+    };
   }
 }
 
@@ -1868,8 +2216,207 @@ CREATE TABLE IF NOT EXISTS automation_rules (
 
 ALTER TABLE IF EXISTS automation_rules DISABLE ROW LEVEL SECURITY;
 
+-- ==========================================
+-- MÓDULO DE REGISTOS DE AUDITORIA (AUDIT LOGS)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    user_name TEXT,
+    user_email TEXT,
+    action TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id UUID,
+    entity_name TEXT,
+    details TEXT
+);
+
+ALTER TABLE IF EXISTS audit_logs DISABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs (user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs (entity_type, entity_id);
+
+-- ============================================================================
+-- AUDITORIA E ÍNDICES DE ALTO DESEMPENHO (PAGINAÇÃO E PESQUISA OTIMIZADAS)
+-- ============================================================================
+CREATE INDEX IF NOT EXISTS idx_projects_deleted ON projects (deleted);
+CREATE INDEX IF NOT EXISTS idx_projects_deleted_created_at ON projects (deleted, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_created_at_desc ON projects (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects (client_id);
+CREATE INDEX IF NOT EXISTS idx_projects_status_id ON projects (status_id);
+CREATE INDEX IF NOT EXISTS idx_projects_category_id ON projects (category_id);
+CREATE INDEX IF NOT EXISTS idx_projects_manager_id ON projects (project_manager_id);
+CREATE INDEX IF NOT EXISTS idx_projects_active_status ON projects (status_id, created_at DESC) WHERE deleted = FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks (project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_deleted ON tasks (deleted);
+CREATE INDEX IF NOT EXISTS idx_tasks_status_id ON tasks (status_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_created_at_desc ON tasks (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_deleted ON tasks (project_id, deleted);
+CREATE INDEX IF NOT EXISTS idx_tasks_deleted_created_at ON tasks (deleted, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_active_project ON tasks (project_id, status_id) WHERE deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_tasks_task_type_id ON tasks (task_type_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_estimated_date ON tasks (estimated_date);
+
+CREATE INDEX IF NOT EXISTS idx_task_assignees_user_id ON task_assignees (user_id);
+CREATE INDEX IF NOT EXISTS idx_task_assignees_task_id ON task_assignees (task_id);
+
+CREATE INDEX IF NOT EXISTS idx_comments_project_id ON comments (project_id);
+CREATE INDEX IF NOT EXISTS idx_comments_project_created ON comments (project_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_project_materials_project_id ON project_materials (project_id);
+CREATE INDEX IF NOT EXISTS idx_project_materials_proj_del ON project_materials (project_id, deleted);
+
+CREATE INDEX IF NOT EXISTS idx_risk_items_project_id ON project_risk_items (project_id);
+CREATE INDEX IF NOT EXISTS idx_risk_items_proj_del ON project_risk_items (project_id, deleted);
+
 -- OU, se preferir manter o RLS ativo, execute estes comandos para conceder políticas públicas:
 -- DROP POLICY IF EXISTS "Full access to auth users on projects" ON projects;
 -- CREATE POLICY "Acesso público total ao projects" ON projects FOR ALL USING (true) WITH CHECK (true);
 -- ...etc para todas as tabelas
 `;
+
+export const SUPABASE_OPTIMIZE_INDEXES_SQL = `-- ============================================================================
+-- AUDITORIA E ÍNDICES DE ALTO DESEMPENHO (PAGINAÇÃO E PESQUISA OTIMIZADAS)
+-- ============================================================================
+-- Executar no SQL Editor do Supabase para acelerar consultas e paginação:
+
+-- 1. Projetos (Paginação & Filtros)
+CREATE INDEX IF NOT EXISTS idx_projects_deleted ON projects (deleted);
+CREATE INDEX IF NOT EXISTS idx_projects_deleted_created_at ON projects (deleted, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_created_at_desc ON projects (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects (client_id);
+CREATE INDEX IF NOT EXISTS idx_projects_status_id ON projects (status_id);
+CREATE INDEX IF NOT EXISTS idx_projects_category_id ON projects (category_id);
+CREATE INDEX IF NOT EXISTS idx_projects_manager_id ON projects (project_manager_id);
+CREATE INDEX IF NOT EXISTS idx_projects_active_status ON projects (status_id, created_at DESC) WHERE deleted = FALSE;
+
+-- 2. Tarefas (Paginação & Ordenação)
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks (project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_deleted ON tasks (deleted);
+CREATE INDEX IF NOT EXISTS idx_tasks_status_id ON tasks (status_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_created_at_desc ON tasks (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_deleted ON tasks (project_id, deleted);
+CREATE INDEX IF NOT EXISTS idx_tasks_deleted_created_at ON tasks (deleted, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_active_project ON tasks (project_id, status_id) WHERE deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_tasks_task_type_id ON tasks (task_type_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_estimated_date ON tasks (estimated_date);
+
+-- 3. Técnicos Atribuídos (O Meu Foco & Conflitos)
+CREATE INDEX IF NOT EXISTS idx_task_assignees_user_id ON task_assignees (user_id);
+CREATE INDEX IF NOT EXISTS idx_task_assignees_task_id ON task_assignees (task_id);
+
+-- 4. Comentários
+CREATE INDEX IF NOT EXISTS idx_comments_project_id ON comments (project_id);
+CREATE INDEX IF NOT EXISTS idx_comments_project_created ON comments (project_id, created_at DESC);
+
+-- 5. Materiais e Encomendas
+CREATE INDEX IF NOT EXISTS idx_project_materials_project_id ON project_materials (project_id);
+CREATE INDEX IF NOT EXISTS idx_project_materials_proj_del ON project_materials (project_id, deleted);
+
+-- 6. Matriz de Riscos
+CREATE INDEX IF NOT EXISTS idx_risk_items_project_id ON project_risk_items (project_id);
+CREATE INDEX IF NOT EXISTS idx_risk_items_proj_del ON project_risk_items (project_id, deleted);
+
+-- 7. Audit Logs
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs (user_id);
+`;
+
+/**
+ * Registers an event in the audit log system in Supabase
+ */
+export async function logAuditEventToSupabase(log: {
+  userId?: string;
+  userName?: string;
+  userEmail?: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'RESTORE' | 'EXPORT' | 'SETTINGS' | string;
+  entityType: 'PROJECT' | 'TASK' | 'CLIENT' | 'USER' | 'MATERIAL' | 'RISK' | 'QUOTE' | 'SYSTEM' | string;
+  entityId?: string;
+  entityName?: string;
+  details: string;
+}): Promise<{ success: boolean; data?: AuditLog; message?: string }> {
+  if (!isSupabaseConfigured || !supabase) return { success: false, message: 'Supabase não está configurado.' };
+
+  try {
+    const payload = {
+      user_id: log.userId && isUUID(log.userId) ? log.userId : null,
+      user_name: log.userName || 'Sistema',
+      user_email: log.userEmail || '',
+      action: log.action || 'UPDATE',
+      entity_type: log.entityType || 'SYSTEM',
+      entity_id: log.entityId && isUUID(log.entityId) ? log.entityId : null,
+      entity_name: log.entityName || '',
+      details: log.details || '',
+      created_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .insert([payload])
+      .select()
+      .single();
+
+    if (error) {
+      console.warn('Aviso: Erro ao gravar registo de auditoria no Supabase:', error.message);
+      return { success: false, message: error.message };
+    }
+
+    return {
+      success: true,
+      data: {
+        id: data.id,
+        timestamp: data.created_at || data.timestamp,
+        userId: data.user_id,
+        userName: data.user_name,
+        userEmail: data.user_email,
+        action: data.action,
+        entityType: data.entity_type,
+        entityId: data.entity_id,
+        entityName: data.entity_name,
+        details: data.details,
+        createdDate: data.created_at
+      }
+    };
+  } catch (err: any) {
+    return { success: false, message: formatSupabaseError(err) };
+  }
+}
+
+/**
+ * Fetches recent audit logs from Supabase
+ */
+export async function fetchAuditLogsFromSupabase(limit = 100): Promise<{ success: boolean; data?: AuditLog[]; message?: string }> {
+  if (!isSupabaseConfigured || !supabase) return { success: false, message: 'Supabase não está configurado.' };
+
+  try {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      return { success: false, message: error.message };
+    }
+
+    const formatted: AuditLog[] = (data || []).map((item: any) => ({
+      id: item.id,
+      timestamp: item.created_at || item.timestamp,
+      userId: item.user_id,
+      userName: item.user_name,
+      userEmail: item.user_email,
+      action: item.action,
+      entityType: item.entity_type,
+      entityId: item.entity_id,
+      entityName: item.entity_name,
+      details: item.details,
+      createdDate: item.created_at
+    }));
+
+    return { success: true, data: formatted };
+  } catch (err: any) {
+    return { success: false, message: formatSupabaseError(err) };
+  }
+}

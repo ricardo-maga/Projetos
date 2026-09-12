@@ -615,3 +615,35 @@ CREATE POLICY "Full access to auth users on bill_of_materials" ON bill_of_materi
 CREATE POLICY "Full access to auth users on equipment" ON equipment FOR ALL TO authenticated USING (true);
 CREATE POLICY "Full access to auth users on special_days" ON special_days FOR ALL TO authenticated USING (true);
 CREATE POLICY "Full access to auth users on default_tasks" ON default_tasks FOR ALL TO authenticated USING (true);
+
+-- ============================================================================
+-- AUDITORIA E OTIMIZAÇÃO DE ÍNDICES SUPABASE / POSTGRESQL
+-- ============================================================================
+CREATE INDEX IF NOT EXISTS idx_projects_deleted ON projects (deleted);
+CREATE INDEX IF NOT EXISTS idx_projects_deleted_created_at ON projects (deleted, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_created_at_desc ON projects (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects (client_id);
+CREATE INDEX IF NOT EXISTS idx_projects_status_id ON projects (status_id);
+CREATE INDEX IF NOT EXISTS idx_projects_category_id ON projects (category_id);
+CREATE INDEX IF NOT EXISTS idx_projects_manager_id ON projects (project_manager_id);
+CREATE INDEX IF NOT EXISTS idx_projects_install_no ON projects (install_project_no);
+CREATE INDEX IF NOT EXISTS idx_projects_active_status ON projects (status_id, created_at DESC) WHERE deleted = FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks (project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_deleted ON tasks (deleted);
+CREATE INDEX IF NOT EXISTS idx_tasks_status_id ON tasks (status_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_created_at_desc ON tasks (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_deleted ON tasks (project_id, deleted);
+CREATE INDEX IF NOT EXISTS idx_tasks_deleted_created_at ON tasks (deleted, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_active_project ON tasks (project_id, status_id) WHERE deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_tasks_estimated_date ON tasks (estimated_date);
+
+CREATE INDEX IF NOT EXISTS idx_task_assignees_user_id ON task_assignees (user_id);
+CREATE INDEX IF NOT EXISTS idx_task_assignees_task_id ON task_assignees (task_id);
+
+CREATE INDEX IF NOT EXISTS idx_comments_project_id ON comments (project_id);
+CREATE INDEX IF NOT EXISTS idx_comments_project_created ON comments (project_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_clients_deleted ON clients (deleted);
+CREATE INDEX IF NOT EXISTS idx_quotes_project_id ON quotes (project_id);
+CREATE INDEX IF NOT EXISTS idx_bom_quote_id ON bill_of_materials (quote_id);

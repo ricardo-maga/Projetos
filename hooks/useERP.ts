@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment } from '../lib/types';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
-import { getActiveStateFromSupabase, saveActiveStateToSupabase, mapStateToUUIDs } from '../lib/supabaseSync';
+import { getActiveStateFromSupabase, saveActiveStateToSupabase, mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
 
 const STORAGE_KEY = 'gestao_projetos_erp_state_v1';
@@ -49,6 +49,16 @@ export function useERP() {
         if (syncResult.success) {
           if (syncResult.data) {
             const mapped = mapStateToUUIDs(syncResult.data);
+            
+            // Try fetching audit logs
+            if (isSupabaseConfigured) {
+              fetchAuditLogsFromSupabase(100).then(res => {
+                if (res.success && res.data) {
+                  setState(prev => prev ? { ...prev, auditLogs: res.data } : null);
+                }
+              }).catch(() => {});
+            }
+
             setState(mapped);
             setSyncStatus('synced');
             setSyncError(null);
@@ -314,6 +324,71 @@ export function useERP() {
     });
   };
 
+  // Helper to record audit log in state and Supabase
+  const logAudit = (
+    action: string,
+    entityType: string,
+    entityId?: string,
+    entityName?: string,
+    details?: string
+  ) => {
+    let userName = 'Sistema';
+    let userEmail = '';
+    let userId: string | undefined = undefined;
+
+    if (typeof window !== 'undefined') {
+      try {
+        const sessionStr = localStorage.getItem('erp_session');
+        if (sessionStr) {
+          const session = JSON.parse(sessionStr);
+          if (session?.user) {
+            userId = session.user.id;
+            userName = session.user.name || session.user.email || 'Utilizador';
+            userEmail = session.user.email || '';
+          }
+        }
+      } catch (e) {}
+    }
+
+    const logItem: import('../lib/types').AuditLog = {
+      id: genId('audit'),
+      timestamp: new Date().toISOString(),
+      userId,
+      userName,
+      userEmail,
+      action,
+      entityType,
+      entityId,
+      entityName,
+      details: details || `${action} em ${entityType} ${entityName ? `"${entityName}"` : ''}`,
+      createdDate: new Date().toISOString()
+    };
+
+    // Update local state auditLogs immediately so UI reflects it instantly
+    setState(prev => prev ? {
+      ...prev,
+      auditLogs: [logItem, ...(prev.auditLogs || [])]
+    } : prev);
+
+    // Persist directly to Supabase table audit_logs
+    if (isSupabaseConfigured) {
+      logAuditEventToSupabase({
+        userId,
+        userName,
+        userEmail,
+        action,
+        entityType,
+        entityId,
+        entityName,
+        details: logItem.details
+      }).catch(err => {
+        console.warn('Erro ao gravar audit_log no Supabase:', err);
+      });
+    }
+
+    return logItem;
+  };
+
   // ==================== PROJECTS CRUD ====================
   const addProject = (project: Omit<Project, 'id' | 'deleted' | 'createdDate' | 'updatedDate'>) => {
     const now = new Date().toISOString();
@@ -328,11 +403,28 @@ export function useERP() {
       ...prev,
       projects: [newProj, ...prev.projects]
     }));
+    logAudit('CREATE', 'PROJECT', newProj.id, newProj.title, `Criado o projeto "${newProj.title}" (Cód. Instalação: ${newProj.installProjectNo || 'N/A'})`);
     return newProj;
   };
 
   const updateProject = (id: string, updates: Partial<Omit<Project, 'id' | 'createdDate'>>) => {
     const now = new Date().toISOString();
+
+    // Generate audit log for project change
+    const existingProj = state?.projects?.find(p => p.id === id);
+    const projName = updates.title || existingProj?.title || id;
+    let detailMsg = `Atualizado projeto "${projName}"`;
+
+    if (updates.title && existingProj && updates.title !== existingProj.title) {
+      detailMsg = `Nome do projeto alterado de "${existingProj.title}" para "${updates.title}"`;
+    } else if (updates.statusId && existingProj && updates.statusId !== existingProj.statusId) {
+      const oldStatus = state?.projectStatuses?.find(s => s.id === existingProj.statusId)?.name || existingProj.statusId;
+      const newStatus = state?.projectStatuses?.find(s => s.id === updates.statusId)?.name || updates.statusId;
+      detailMsg = `Estado do projeto "${projName}" alterado de "${oldStatus}" para "${newStatus}"`;
+    }
+
+    logAudit('UPDATE', 'PROJECT', id, projName, detailMsg);
+
     saveState(prev => {
       let newProjects = prev.projects.map(p => p.id === id ? { ...p, ...updates, updatedDate: now } as Project : p);
       let newTasks = prev.tasks;
@@ -394,6 +486,8 @@ export function useERP() {
 
   const deleteProject = (id: string) => {
     const now = new Date().toISOString();
+    const existingProj = state?.projects?.find(p => p.id === id);
+    logAudit('DELETE', 'PROJECT', id, existingProj?.title, `Eliminado projeto "${existingProj?.title || id}"`);
     saveState(prev => ({
       ...prev,
       projects: prev.projects.map(p => p.id === id ? { ...p, deleted: true, updatedDate: now } : p)
@@ -419,6 +513,8 @@ export function useERP() {
       deleted: false,
       createdDate: now
     };
+    logAudit('CREATE', 'TASK', newTask.id, newTask.title, `Criada a tarefa "${newTask.title}"`);
+
     saveState(prev => {
       let newTasks = [newTask, ...prev.tasks];
       let newProjects = prev.projects;
@@ -474,6 +570,9 @@ export function useERP() {
         createdDate: now
       };
     });
+
+    logAudit('CREATE', 'TASK', newTasks[0]?.id, `${newTasks.length} Tarefas`, `Criadas ${newTasks.length} tarefas em lote`);
+
     saveState(prev => ({
       ...prev,
       tasks: [...newTasks, ...prev.tasks]
@@ -483,6 +582,22 @@ export function useERP() {
 
   const updateTask = (id: string, updates: Partial<Omit<Task, 'id' | 'createdDate'>>) => {
     const now = new Date().toISOString();
+
+    // Audit Log for Task Update
+    const existingTask = state?.tasks?.find(t => t.id === id);
+    const taskTitle = updates.title || existingTask?.title || id;
+    let detailMsg = `Atualizada tarefa "${taskTitle}"`;
+
+    if (updates.statusId && existingTask && updates.statusId !== existingTask.statusId) {
+      const oldStatus = state?.taskStatuses?.find(s => s.id === existingTask.statusId || matchTaskStatusId(s.id, existingTask.statusId))?.name || existingTask.statusId;
+      const newStatus = state?.taskStatuses?.find(s => s.id === updates.statusId || matchTaskStatusId(s.id, updates.statusId))?.name || updates.statusId;
+      detailMsg = `Estado da tarefa "${taskTitle}" alterado de "${oldStatus}" para "${newStatus}"`;
+    } else if (updates.title && existingTask && updates.title !== existingTask.title) {
+      detailMsg = `Título da tarefa alterado de "${existingTask.title}" para "${updates.title}"`;
+    }
+
+    logAudit('UPDATE', 'TASK', id, taskTitle, detailMsg);
+
     saveState(prev => {
       const targetTask = prev.tasks.find(t => t.id === id);
       let newTasks = prev.tasks.map(t => t.id === id ? { ...t, ...updates } as Task : t);
@@ -527,6 +642,8 @@ export function useERP() {
   };
 
   const deleteTask = (id: string) => {
+    const existingTask = state?.tasks?.find(t => t.id === id);
+    logAudit('DELETE', 'TASK', id, existingTask?.title, `Eliminada a tarefa "${existingTask?.title || id}"`);
     saveState(prev => ({
       ...prev,
       tasks: prev.tasks.map(t => t.id === id ? { ...t, deleted: true } : t)
@@ -583,6 +700,7 @@ export function useERP() {
       deleted: false,
       createdDate: new Date().toISOString()
     };
+    logAudit('CREATE', 'USER', newUser.id, newUser.name, `Criado utilizador "${newUser.name}" (${newUser.email})`);
     saveState(prev => ({
       ...prev,
       users: [...prev.users, newUser]
@@ -590,6 +708,9 @@ export function useERP() {
   };
 
   const updateUser = (id: string, updates: Partial<Omit<User, 'id' | 'createdDate'>>) => {
+    const existingUser = state?.users?.find(u => u.id === id);
+    const userName = updates.name || existingUser?.name || id;
+    logAudit('UPDATE', 'USER', id, userName, `Atualizado utilizador "${userName}"`);
     saveState(prev => ({
       ...prev,
       users: prev.users.map(u => u.id === id ? { ...u, ...updates } as User : u)
@@ -597,6 +718,8 @@ export function useERP() {
   };
 
   const deleteUser = (id: string) => {
+    const existingUser = state?.users?.find(u => u.id === id);
+    logAudit('DELETE', 'USER', id, existingUser?.name, `Eliminado utilizador "${existingUser?.name || id}"`);
     saveState(prev => ({
       ...prev,
       users: prev.users.map(u => u.id === id ? { ...u, deleted: true } : u)
@@ -611,6 +734,7 @@ export function useERP() {
       deleted: false,
       createdDate: new Date().toISOString()
     };
+    logAudit('CREATE', 'CLIENT', newClient.id, newClient.clientName, `Criado cliente "${newClient.clientName}"`);
     saveState(prev => ({
       ...prev,
       clients: [newClient, ...prev.clients]
@@ -619,6 +743,9 @@ export function useERP() {
   };
 
   const updateClient = (id: string, updates: Partial<Omit<Client, 'id' | 'createdDate'>>) => {
+    const existingClient = state?.clients?.find(c => matchId(c.id, id));
+    const clientName = updates.clientName || existingClient?.clientName || id;
+    logAudit('UPDATE', 'CLIENT', id, clientName, `Atualizado cliente "${clientName}"`);
     saveState(prev => ({
       ...prev,
       clients: (prev.clients || []).map(c => matchId(c.id, id) ? { ...c, ...updates } as Client : c)
@@ -626,6 +753,8 @@ export function useERP() {
   };
 
   const deleteClient = (id: string) => {
+    const existingClient = state?.clients?.find(c => matchId(c.id, id));
+    logAudit('DELETE', 'CLIENT', id, existingClient?.clientName, `Eliminado cliente "${existingClient?.clientName || id}"`);
     saveState(prev => ({
       ...prev,
       clients: (prev.clients || []).map(c => matchId(c.id, id) ? { ...c, deleted: true } : c)
@@ -640,6 +769,7 @@ export function useERP() {
       deleted: false,
       createdDate: new Date().toISOString()
     };
+    logAudit('CREATE', 'MATERIAL', newMat.id, newMat.name, `Criado material/artigo "${newMat.name}"`);
     saveState(prev => ({
       ...prev,
       materials: [newMat, ...prev.materials]
@@ -647,6 +777,9 @@ export function useERP() {
   };
 
   const updateMaterial = (id: string, updates: Partial<Omit<Material, 'id' | 'createdDate'>>) => {
+    const existingMat = state?.materials?.find(m => m.id === id);
+    const matName = updates.name || existingMat?.name || id;
+    logAudit('UPDATE', 'MATERIAL', id, matName, `Atualizado material/artigo "${matName}"`);
     saveState(prev => ({
       ...prev,
       materials: prev.materials.map(m => m.id === id ? { ...m, ...updates } as Material : m)
@@ -654,6 +787,8 @@ export function useERP() {
   };
 
   const deleteMaterial = (id: string) => {
+    const existingMat = state?.materials?.find(m => m.id === id);
+    logAudit('DELETE', 'MATERIAL', id, existingMat?.name, `Eliminado material/artigo "${existingMat?.name || id}"`);
     saveState(prev => ({
       ...prev,
       materials: prev.materials.map(m => m.id === id ? { ...m, deleted: true } : m)

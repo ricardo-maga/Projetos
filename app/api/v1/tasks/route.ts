@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
+import { 
+  getActiveStateFromSupabase, 
+  saveActiveStateToSupabase, 
+  formatSupabaseError,
+  fetchPaginatedTasksDirectly 
+} from '@/lib/supabaseSync';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { Task } from '@/lib/types';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '@/lib/utils';
@@ -11,7 +16,37 @@ export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const projectId = searchParams.get('projectId');
+    const pageParam = searchParams.get('page');
+    const pageSizeParam = searchParams.get('pageSize') || searchParams.get('limit');
+    const projectId = searchParams.get('projectId') || '';
+    const statusId = searchParams.get('statusId') || '';
+    const taskTypeId = searchParams.get('taskTypeId') || '';
+    const search = searchParams.get('search') || '';
+
+    // If explicit pagination requested, use high performance direct SQL query
+    if (pageParam || pageSizeParam) {
+      const page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
+      const pageSize = Math.min(100, Math.max(1, parseInt(pageSizeParam || '25', 10) || 25));
+
+      const paginated = await fetchPaginatedTasksDirectly({
+        page,
+        pageSize,
+        projectId,
+        statusId,
+        taskTypeId,
+        search,
+      });
+
+      return NextResponse.json({
+        success: paginated.success,
+        count: paginated.data.length,
+        total: paginated.total,
+        page: paginated.page,
+        pageSize: paginated.pageSize,
+        totalPages: paginated.totalPages,
+        data: paginated.data,
+      });
+    }
 
     const result = await getActiveStateFromSupabase();
     if (!result.success || !result.data) {
@@ -22,6 +57,20 @@ export async function GET(req: NextRequest) {
 
     if (projectId) {
       tasks = tasks.filter((t: any) => t.projectId === projectId);
+    }
+    if (statusId) {
+      tasks = tasks.filter((t: any) => t.statusId === statusId);
+    }
+    if (taskTypeId) {
+      tasks = tasks.filter((t: any) => t.taskTypeId === taskTypeId);
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      tasks = tasks.filter((t: any) => 
+        (t.title && t.title.toLowerCase().includes(q)) ||
+        (t.description && t.description.toLowerCase().includes(q)) ||
+        (t.notes && t.notes.toLowerCase().includes(q))
+      );
     }
 
     return NextResponse.json({ success: true, count: tasks.length, data: tasks });

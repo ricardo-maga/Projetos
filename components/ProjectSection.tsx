@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, Client, Comment, Task, TaskType, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '../lib/types';
 import { 
   Plus, Search, Edit2, Trash2, ArrowLeft, Calendar, FileText, 
@@ -14,6 +14,19 @@ import { AssigneeSelector } from './AssigneeSelector';
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours } from '../lib/utils';
+
+const getPaginationPages = (current: number, total: number): (number | string)[] => {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total];
+};
 
 const calculateSuggestedReviewDate = (prob: number, imp: number, identDateStr: string) => {
   const score = (prob || 1) * (imp || 1);
@@ -170,6 +183,16 @@ export default function ProjectSection({
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterManager, setFilterManager] = useState('');
+
+  // Project List Pagination state
+  const [projectPageSize, setProjectPageSize] = useState<number>(25);
+  const [projectCurrentPage, setProjectCurrentPage] = useState<number>(1);
+
+  // Reset pagination when any filter or page size changes
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setProjectCurrentPage(1);
+  }, [search, filterCategory, filterStatus, filterManager, showCompleted, projectPageSize]);
   
   const sortedStatuses = [...(projectStatuses || [])].sort((a, b) => (a.scale ?? 0) - (b.scale ?? 0));
   
@@ -827,6 +850,14 @@ export default function ProjectSection({
     const matchesCompleted = showCompleted ? true : !isProjectLevel5(p.statusId);
     return matchesSearch && matchesCategory && matchesStatus && matchesManager && matchesCompleted;
   });
+
+  // Project Pagination calculations
+  const totalProjects = filteredProjects.length;
+  const totalProjectPages = Math.ceil(totalProjects / projectPageSize) || 1;
+  const validProjectPage = Math.min(Math.max(1, projectCurrentPage), totalProjectPages);
+  const startProjectIndex = (validProjectPage - 1) * projectPageSize;
+  const endProjectIndex = Math.min(startProjectIndex + projectPageSize, totalProjects);
+  const paginatedProjects = filteredProjects.slice(startProjectIndex, endProjectIndex);
 
   const selectedProj = activeProjects.find(p => matchId(p.id, selectedProjectId));
   const projTasks = tasks.filter(t => matchId(t.projectId, selectedProjectId) && !t.deleted);
@@ -4079,7 +4110,7 @@ export default function ProjectSection({
                   </tr>
                 </thead>
                 <tbody className="text-xs divide-y divide-slate-100">
-                  {filteredProjects.map(proj => {
+                  {paginatedProjects.map(proj => {
                     const calcRisk = getProjectCalculatedRisk(proj.id, projectRiskItems);
                     const isCritical = calcRisk.score >= 16;
                     return (
@@ -4138,6 +4169,77 @@ export default function ProjectSection({
               </table>
             )}
           </div>
+
+          {/* Project List Pagination Controls */}
+          {totalProjects > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50 border-t border-slate-100 text-xs gap-3">
+              <div className="flex items-center gap-3 text-slate-500 font-medium">
+                <span>
+                  A mostrar <span className="font-bold text-slate-700">{totalProjects === 0 ? 0 : startProjectIndex + 1}</span> a{' '}
+                  <span className="font-bold text-slate-700">{endProjectIndex}</span> de{' '}
+                  <span className="font-bold text-slate-700">{totalProjects}</span> projetos
+                </span>
+                <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+                  <span className="text-slate-400">Por página:</span>
+                  <select
+                    value={projectPageSize}
+                    onChange={e => {
+                      setProjectPageSize(Number(e.target.value));
+                      setProjectCurrentPage(1);
+                    }}
+                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value={15}>15</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
+
+              {totalProjectPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setProjectCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={validProjectPage === 1}
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Anterior</span>
+                  </button>
+                  
+                  <div className="flex items-center gap-1 mx-1">
+                    {getPaginationPages(validProjectPage, totalProjectPages).map((p, idx) => (
+                      p === '...' ? (
+                        <span key={`ellipsis-proj-${idx}`} className="px-1 text-slate-400 font-bold">...</span>
+                      ) : (
+                        <button
+                          key={`page-proj-${p}`}
+                          onClick={() => setProjectCurrentPage(Number(p))}
+                          className={`min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg font-bold text-xs transition-colors ${
+                            validProjectPage === p
+                              ? 'bg-slate-900 text-white'
+                              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setProjectCurrentPage(prev => Math.min(prev + 1, totalProjectPages))}
+                    disabled={validProjectPage === totalProjectPages}
+                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                  >
+                    <span>Seguinte</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

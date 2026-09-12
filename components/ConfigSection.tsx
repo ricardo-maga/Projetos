@@ -5,9 +5,11 @@ import { AppConfiguration, SpecialDay, DefaultTask, ERPState } from '../lib/type
 import { 
   Settings, RefreshCw, Key, Info, Calendar, Plus, Trash2, ListTodo, Edit2, Check, X,
   Database, UploadCloud, DownloadCloud, CheckCircle, AlertCircle, Terminal, Copy, ExternalLink, ShieldCheck,
-  Users, GripVertical, Zap
+  Users, GripVertical, Zap, Clock
 } from 'lucide-react';
 import AutomationEditor from './AutomationEditor';
+import AuditLogSection from './AuditLogSection';
+import AppLogo from './AppLogo';
 import {
   DndContext, 
   closestCenter,
@@ -33,6 +35,8 @@ import {
   listBackupsFromSupabase, 
   deleteBackupFromSupabase, 
   SUPABASE_SETUP_SQL, 
+  SUPABASE_OPTIMIZE_INDEXES_SQL,
+  checkAndCreateAutoDailyBackup,
   SupabaseBackup 
 } from '../lib/supabaseSync';
 // import Papa from 'papaparse';
@@ -41,11 +45,13 @@ import UserSection from './UserSection';
 import { hasPermission } from '../lib/permissions';
 
 interface ConfigSectionProps {
+  activeConfigTab?: string;
+  onChangeConfigTab?: (tab: string) => void;
   config: AppConfiguration;
   specialDays: SpecialDay[];
   updateConfig: (updates: Partial<AppConfiguration>) => void;
-  onResetDemoData: () => void;
-  onClearDemoData: () => void;
+  onResetDemoData?: () => void;
+  onClearDemoData?: () => void;
   addSpecialDay: (date: string, name: string) => void;
   deleteSpecialDay: (id: string) => void;
   defaultTasks?: DefaultTask[];
@@ -227,6 +233,8 @@ function SortableAuxRow({
 }
 
 export default function ConfigSection({
+  activeConfigTab: activeConfigTabProp = 'sistema',
+  onChangeConfigTab,
   config,
   specialDays = [],
   updateConfig,
@@ -275,14 +283,27 @@ export default function ConfigSection({
   const canWriteConfig = hasPermission(currentUser, 'config_write', userGroups);
   const [appName, setAppName] = useState(config.appName);
   const [appDesc, setAppDesc] = useState(config.appDescription);
-  const [logo, setLogo] = useState(config.logoImagePath);
+  const [logo, setLogo] = useState(config.logoImagePath || config.logo || '');
   const [footer, setFooter] = useState(config.footerCopyrightText);
   const [theme, setTheme] = useState(config.theme || 'default');
   const [salesRepGroupIds, setSalesRepGroupIds] = useState<string[]>(config.salesRepGroupIds || (config.salesRepGroupId ? [config.salesRepGroupId] : []));
   const [projManagerGroupIds, setProjManagerGroupIds] = useState<string[]>(config.projManagerGroupIds || (config.projManagerGroupId ? [config.projManagerGroupId] : []));
   const [fieldManagerGroupIds, setFieldManagerGroupIds] = useState<string[]>(config.fieldManagerGroupIds || (config.fieldManagerGroupId ? [config.fieldManagerGroupId] : []));
 
-  const [activeConfigTab, setActiveConfigTab] = useState<'sistema' | 'campos' | 'tarefas' | 'importacao' | 'utilizadores' | 'dias' | 'notificacoes' | 'automacoes'>('sistema');
+  const [prevConfig, setPrevConfig] = useState(config);
+  if (prevConfig !== config) {
+    setPrevConfig(config);
+    setAppName(config.appName);
+    setAppDesc(config.appDescription);
+    setLogo(config.logoImagePath || config.logo || '');
+    setFooter(config.footerCopyrightText);
+    setTheme(config.theme || 'default');
+  }
+
+  const activeConfigTab = activeConfigTabProp || 'sistema';
+  const setActiveConfigTab = (tab: string) => {
+    if (onChangeConfigTab) onChangeConfigTab(tab);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -313,6 +334,14 @@ export default function ConfigSection({
   const [newBackupName, setNewBackupName] = useState('');
   const [sqlCopied, setSqlCopied] = useState(false);
   const [showSql, setShowSql] = useState(false);
+  const [showIndexSql, setShowIndexSql] = useState(false);
+  const [indexSqlCopied, setIndexSqlCopied] = useState(false);
+
+  const copyIndexSqlToClipboard = () => {
+    navigator.clipboard.writeText(SUPABASE_OPTIMIZE_INDEXES_SQL);
+    setIndexSqlCopied(true);
+    setTimeout(() => setIndexSqlCopied(false), 2000);
+  };
 
   const handleTestConnection = async () => {
     setSupabaseStatus('testing');
@@ -551,6 +580,7 @@ export default function ConfigSection({
       appName,
       appDescription: appDesc,
       logoImagePath: logo,
+      logo: logo,
       footerCopyrightText: footer,
       theme,
       salesRepGroupIds,
@@ -743,59 +773,6 @@ export default function ConfigSection({
   return (
     <div className="space-y-6" id="config-section-root">
       
-      {/* Tabs Menu */}
-      <div className="flex overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 border-b border-slate-200 whitespace-nowrap -mx-1 px-1 sm:mx-0 sm:px-0">
-        <button 
-          onClick={() => setActiveConfigTab('sistema')}
-          className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeConfigTab === 'sistema' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-        >
-          Configurações do Sistema
-        </button>
-        <button 
-          onClick={() => setActiveConfigTab('campos')}
-          className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeConfigTab === 'campos' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-        >
-          Campos Auxiliares
-        </button>
-        <button 
-          onClick={() => setActiveConfigTab('dias')}
-          className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeConfigTab === 'dias' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-        >
-          Dias Especiais
-        </button>
-        <button 
-          onClick={() => setActiveConfigTab('tarefas')}
-          className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeConfigTab === 'tarefas' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-        >
-          Tarefas Modelo
-        </button>
-        <button 
-          onClick={() => setActiveConfigTab('utilizadores')}
-          className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeConfigTab === 'utilizadores' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-        >
-          Utilizadores e Equipas
-        </button>
-        <button 
-          onClick={() => setActiveConfigTab('notificacoes')}
-          className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeConfigTab === 'notificacoes' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-        >
-          Notificações
-        </button>
-        <button 
-          onClick={() => setActiveConfigTab('automacoes')}
-          className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors shrink-0 whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${activeConfigTab === 'automacoes' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-        >
-          <Zap className="w-4 h-4 text-amber-500" />
-          Automações
-        </button>
-        <button 
-          onClick={() => setActiveConfigTab('importacao')}
-          className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeConfigTab === 'importacao' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-        >
-          Importação e Backup
-        </button>
-      </div>
-
       {/* SISTEMA TAB */}
       {activeConfigTab === 'sistema' && (
       <form onSubmit={handleSubmit} className="w-full">
@@ -829,14 +806,31 @@ export default function ConfigSection({
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="block text-slate-500">Caminho da Imagem do Logótipo (URL ou local)</label>
+              <div className="space-y-1.5">
+                <label className="block text-slate-600 font-bold">Caminho da Imagem do Logótipo (URL, SVG ou Local)</label>
                 <input 
                   type="text" 
                   value={logo}
                   onChange={e => setLogo(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-blue-100 outline-none"
+                  placeholder="https://exemplo.com/logo.svg, /logo.png, data:image/svg+xml;... ou <svg...>"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-100 outline-none"
                 />
+                <p className="text-[11px] text-slate-400 font-normal">
+                  Suporta URLs de imagens (SVG, PNG, JPG, WebP), ficheiros locais (/logo.svg), Data URIs (base64) e código SVG inline.
+                </p>
+
+                {/* Live Preview */}
+                <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-xl mt-2">
+                  <span className="text-xs font-semibold text-slate-500 shrink-0">Pré-visualização:</span>
+                  <AppLogo 
+                    logoUrl={logo} 
+                    appName={appName} 
+                    className="w-[108px] h-9 rounded-xl bg-white border border-slate-200 shadow-2xs p-1"
+                  />
+                  <span className="text-xs text-slate-600 font-medium truncate">
+                    {logo ? (logo.startsWith('<svg') ? 'Código SVG personalizado' : logo) : 'Sem logótipo (usando inicial predefinida)'}
+                  </span>
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -853,24 +847,34 @@ export default function ConfigSection({
                 <label className="block text-slate-500">Esquema de Cores do Portal</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {[
-                    { id: 'default', name: 'Azul Clássico', desc: 'Padrão original azul', color: 'bg-blue-600' },
-                    { id: 'emerald', name: 'Verde Esmeralda', desc: 'Moderno e sofisticado', color: 'bg-emerald-600' },
-                    { id: 'violet', name: 'Violeta Elegante', desc: 'Design criativo', color: 'bg-violet-600' },
-                    { id: 'amber', name: 'Âmbar Solar', desc: 'Quente e acolhedor', color: 'bg-amber-600' },
-                    { id: 'slate', name: 'Cinzento Minimal', desc: 'Industrial e limpo', color: 'bg-slate-600' },
-                    { id: 'rose', name: 'Rosa Coral', desc: 'Vibrante e inovador', color: 'bg-rose-600' },
+                    { id: 'default', name: 'Azul Clássico', desc: 'Padrão original azul', hex: '#2563eb' },
+                    { id: 'emerald', name: 'Verde Esmeralda', desc: 'Moderno e sofisticado', hex: '#059669' },
+                    { id: 'violet', name: 'Violeta Elegante', desc: 'Design criativo', hex: '#7c3aed' },
+                    { id: 'amber', name: 'Âmbar Solar', desc: 'Quente e acolhedor', hex: '#d97706' },
+                    { id: 'slate', name: 'Cinzento Minimal', desc: 'Industrial e limpo', hex: '#475569' },
+                    { id: 'rose', name: 'Rosa Coral', desc: 'Vibrante e inovador', hex: '#e11d48' },
                   ].map(t => (
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => setTheme(t.id)}
+                      onClick={() => {
+                        setTheme(t.id);
+                        if (typeof document !== 'undefined') {
+                          document.documentElement.setAttribute('data-theme', t.id);
+                          const root = document.getElementById('main-root');
+                          if (root) root.setAttribute('data-theme', t.id);
+                        }
+                      }}
                       className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
                         theme === t.id
                           ? 'border-slate-800 bg-slate-50/70 -sm ring-2 ring-slate-100'
                           : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/40'
                       }`}
                     >
-                      <span className={`w-4 h-4 rounded-full border border-black/10 flex-shrink-0 ${t.color}`} />
+                      <span 
+                        className="w-4 h-4 rounded-full border border-black/10 shrink-0 shadow-2xs" 
+                        style={{ backgroundColor: t.hex }}
+                      />
                       <div>
                         <div className="font-bold text-slate-800 text-[11px] leading-tight font-sans">{t.name}</div>
                         <div className="text-[9px] text-slate-400 font-medium leading-none mt-0.5 font-sans">{t.desc}</div>
@@ -1522,21 +1526,29 @@ export default function ConfigSection({
 
       {activeConfigTab === 'importacao' && (
         <div className="space-y-6">
-          {/* CSV Import */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm text-xs font-bold text-slate-700" id="csv-import-card">
-            <h2 className="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
-              <UploadCloud className="w-5 h-5 text-indigo-600" />
-              Importação de Projetos via CSV
-            </h2>
-            <p className="text-slate-400 text-[11px] font-medium mb-5 leading-relaxed">
-              Cole o conteúdo CSV ou texto delimitado. Certifique-se de que inclui colunas para: Título do Projeto, Cliente, Orçamento, Data de Início, Data Limite, Install Project e Oportunidade SF.
+          {/* CSV Import Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm text-xs font-bold text-slate-700 animate-fade-in" id="csv-import-card">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
+                  <UploadCloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">Importação de Projetos via CSV</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Cole o conteúdo CSV para criar múltiplos projetos de forma massiva.</p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-slate-500 text-[11px] font-normal mb-4 leading-relaxed">
+              Certifique-se de que o CSV inclui colunas para: Título do Projeto, Cliente, Orçamento, Data de Início, Data Limite, Install Project e Oportunidade SF.
             </p>
             <div className="space-y-4">
               <textarea 
                 value={csvText}
                 onChange={e => setCsvText(e.target.value)}
                 placeholder={`Exemplo:\nTítulo, Cliente, Orçamento, Data Início\nProjeto A, Cliente X, 50000, 2024-01-01`}
-                rows={6}
+                rows={5}
                 className="w-full p-3 border border-slate-200 rounded-xl font-mono text-xs text-slate-600 focus:ring-2 focus:ring-blue-100 outline-none"
               />
               
@@ -1545,7 +1557,7 @@ export default function ConfigSection({
                   type="button"
                   onClick={handleCsvImport}
                   disabled={importingCsv || !csvText.trim()}
-                  className="px-5 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="px-5 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs"
                 >
                   {importingCsv ? 'A importar...' : 'Importar Dados'}
                 </button>
@@ -1570,108 +1582,105 @@ export default function ConfigSection({
             </div>
           </div>
 
-      {/* Database Integrity & Maintenance */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm max-w-2xl text-xs" id="maintenance-panel">
-        <h3 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-1.5">
-          <Database className="w-4 h-4 text-emerald-600" />
-          Integridade de Dados & Sincronização Estrita
-        </h3>
-        <p className="text-slate-500 font-medium leading-relaxed mb-4">
-          A aplicação opera com persistência garantida na base de dados PostgreSQL / Supabase como única fonte de verdade. Dados que não estejam na base de dados não são apresentados nem mantidos. Qualquer tentativa de gravação que falhe no servidor é automaticamente revertida para proteger a integridade.
-        </p>
-
-        <div className="flex flex-wrap gap-3">
-          {onRefreshFromDatabase && (
-            <button 
-              type="button"
-              onClick={async () => {
-                const ok = await onRefreshFromDatabase();
-                if (ok) {
-                  alert('Dados recarregados com sucesso diretamente da base de dados!');
-                } else {
-                  alert('Não foi possível sincronizar com a base de dados. Verifique a ligação.');
-                }
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold transition-all"
-            >
-              <RefreshCw className="w-4 h-4 text-emerald-600" />
-              Recarregar da Base de Dados
-            </button>
-          )}
-
-          <button 
-            type="button"
-            onClick={() => {
-              askConfirmation(
-                'Repor Configurações Base de Fábrica',
-                'Aviso: Isto irá repor as tabelas de suporte limpas diretamente na base de dados e eliminar projetos ou tarefas não associados. Pretende continuar?',
-                () => {
-                  onResetDemoData();
-                  alert('Configurações base repostas na base de dados!');
-                }
-              );
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 rounded-xl font-bold transition-all"
-          >
-            <RefreshCw className="w-4 h-4 text-amber-600" />
-            Repor Configuração Base Limpa
-          </button>
-
-          <button 
-            type="button"
-            onClick={() => {
-              askConfirmation(
-                'Confirmar Limpeza de Dados da Base de Dados',
-                'Aviso: Isto irá apagar permanentemente todos os projetos, tarefas, clientes, materiais, orçamentos, comentários e equipamentos da base de dados. Pretende continuar?',
-                () => {
-                  onClearDemoData();
-                  alert('Todos os dados foram limpos da base de dados com sucesso!');
-                }
-              );
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-800 rounded-xl font-bold transition-all"
-          >
-            <Trash2 className="w-4 h-4 text-rose-600" />
-            Limpar Todos os Dados
-          </button>
-        </div>
-      </div>
-
-      {/* Supabase Integration Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm text-xs" id="supabase-panel">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 -sm">
-              <Database className="w-5 h-5" />
+          {/* Automatic Daily Backup Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm text-xs font-bold text-slate-700 animate-fade-in" id="auto-backup-card">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">Gravação Automática Diária</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Política de retenção: até 10 snapshots diários e 10 snapshots semanais.</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={config.autoDailyBackupEnabled !== false}
+                  onChange={e => updateConfig({ autoDailyBackupEnabled: e.target.checked })}
+                />
+                <div className="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
             </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
-                Integração Supabase Cloud
-              </h3>
-              <p className="text-slate-400 font-semibold text-[10px]">
-                Sincronize a base de dados do portal de forma resiliente com a nuvem do Supabase.
-              </p>
+
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-3 text-slate-600 font-medium leading-relaxed">
+                <p className="text-xs">
+                  Quando ativada, a aplicação efetua automaticamente um snapshot diário completo da base de dados no Supabase.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center gap-2.5 shadow-2xs">
+                    <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span><strong>10 Diários:</strong> Mantém sempre os últimos 10 snapshots diários.</span>
+                  </div>
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center gap-2.5 shadow-2xs">
+                    <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span><strong>10 Semanais:</strong> Mantém 1 snapshot de cada semana das últimas 10 semanas.</span>
+                  </div>
+                </div>
+                <div className="text-[11px] text-slate-500 space-y-1 pt-1">
+                  <p>• O nome dos snapshots automáticos inclui a data e a hora de criação (ex: <code className="font-mono bg-slate-200/60 px-1.5 py-0.5 rounded text-slate-800">[Auto-Diário] 2026-09-12 12:30:00</code>).</p>
+                  <p>• À medida que novos snapshots são gravados, os mais antigos que não se enquadrem na regra são eliminados automaticamente.</p>
+                  <p>• Esta regra <strong>não influencia</strong> de todo os snapshots criados manualmente por si.</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setLoadingBackups(true);
+                    const res = await checkAndCreateAutoDailyBackup(state);
+                    alert(res.message);
+                    fetchBackups();
+                    setLoadingBackups(false);
+                  }}
+                  disabled={loadingBackups || !isSupabaseConfigured || config.autoDailyBackupEnabled === false}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all flex items-center gap-2 text-xs disabled:bg-slate-200 disabled:text-slate-400 cursor-pointer shadow-2xs"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingBackups ? 'animate-spin' : ''}`} />
+                  Executar Cópia Automática Diária Agora
+                </button>
+                <span className="text-[11px] text-slate-400 font-semibold">
+                  Estado: {config.autoDailyBackupEnabled !== false ? '✅ Gravação Automática Ativa' : '⏸️ Gravação Automática Pausada'}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {isSupabaseConfigured ? (
-              <button
-                type="button"
-                onClick={handleTestConnection}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold rounded-lg transition-all flex items-center gap-1.5"
-                title="Testar ligação à base de dados"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${supabaseStatus === 'testing' ? 'animate-spin' : ''}`} />
-                Testar Ligação
-              </button>
-            ) : (
-              <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 font-extrabold rounded-lg text-[10px] tracking-wide">
-                NÃO CONFIGURADO
-              </span>
-            )}
-          </div>
-        </div>
+          {/* Supabase Integration & Backups List Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm text-xs animate-fade-in" id="supabase-panel">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">Integração Supabase Cloud & Restauro</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Grave snapshots manuais ou restaure cópias guardadas na nuvem.</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isSupabaseConfigured ? (
+                  <button
+                    type="button"
+                    onClick={handleTestConnection}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold rounded-lg transition-all flex items-center gap-1.5 text-xs"
+                    title="Testar ligação à base de dados"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${supabaseStatus === 'testing' ? 'animate-spin' : ''}`} />
+                    Testar Ligação
+                  </button>
+                ) : (
+                  <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 font-extrabold rounded-lg text-[10px] tracking-wide">
+                    NÃO CONFIGURADO
+                  </span>
+                )}
+              </div>
+            </div>
 
         {/* Status Indicator Bar */}
         <div className={`p-4 rounded-xl mb-6 border ${
@@ -1940,6 +1949,81 @@ export default function ConfigSection({
             </div>
           </div>
         )}
+
+          {/* Auditoria de Consultas & Índices Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm text-xs animate-fade-in" id="index-panel">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 shrink-0">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">Auditoria de Consultas & Índices Supabase</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Índices B-Tree compostos e paginação no servidor para otimização de desempenho.</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowIndexSql(!showIndexSql)}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold rounded-lg transition-all flex items-center gap-1.5 text-xs cursor-pointer"
+              >
+                <Terminal className="w-3.5 h-3.5 text-slate-500" />
+                {showIndexSql ? 'Ocultar Script' : 'Ver Script de Índices'}
+              </button>
+            </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-150">
+              <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-[11px]">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                Índices de Projetos
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1 font-mono leading-tight">
+                idx_projects_deleted_created_at, idx_projects_active_status
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-150">
+              <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-[11px]">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                Índices de Tarefas
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1 font-mono leading-tight">
+                idx_tasks_project_deleted, idx_tasks_deleted_created_at
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-150">
+              <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-[11px]">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                Paginação e APIs
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1 font-mono leading-tight">
+                /api/v1/projects & /api/v1/tasks (LIMIT/OFFSET ativo)
+              </p>
+            </div>
+          </div>
+
+          {showIndexSql && (
+            <div className="space-y-2 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-slate-500 font-mono font-bold">SCRIPT SQL DE OTIMIZAÇÃO (supabase/optimize_indexes.sql)</span>
+                <button
+                  type="button"
+                  onClick={copyIndexSqlToClipboard}
+                  className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg text-[10px] flex items-center gap-1 transition-colors"
+                >
+                  <Copy className="w-3 h-3 text-slate-500" />
+                  {indexSqlCopied ? 'Copiado para o clipboard!' : 'Copiar Script SQL'}
+                </button>
+              </div>
+              <pre className="p-3 bg-slate-950 text-emerald-400 rounded-xl font-mono text-[9px] overflow-x-auto max-h-[200px] leading-relaxed border border-slate-800">
+                {SUPABASE_OPTIMIZE_INDEXES_SQL}
+              </pre>
+            </div>
+          )}
+        </div>
       </div>
       </div>
       )}
@@ -1959,6 +2043,11 @@ export default function ConfigSection({
           users={state.users || []}
           canWrite={canWriteConfig}
         />
+      )}
+
+      {/* AUDITORIA TAB */}
+      {activeConfigTab === 'auditoria' && (
+        <AuditLogSection auditLogs={state.auditLogs || []} currentUser={currentUser} />
       )}
 
       {/* UTILIZADORES TAB */}

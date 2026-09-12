@@ -2,12 +2,25 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Task, Project, Client, TaskType } from '../lib/types';
-import { Plus, Search, Trash2, Edit2, Clock, Calendar, CheckSquare, PlusCircle, X, Users, Link2, Maximize2, Minimize2 } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, Clock, Calendar, CheckSquare, PlusCircle, X, Users, Link2, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
 
 import { hasPermission } from '../lib/permissions';
 import { getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, formatToOnlyHours } from '../lib/utils';
+
+const getPaginationPages = (current: number, total: number): (number | string)[] => {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total];
+};
 
 interface TaskSectionProps {
   tasks: Task[];
@@ -1194,44 +1207,73 @@ export default function TaskSection({
             </div>
 
             {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-5 py-4 bg-slate-50 border-t border-slate-100 text-xs">
-                <div className="text-slate-500 font-medium">
-                  A mostrar <span className="font-bold text-slate-700">{startIndex + 1}</span> a{' '}
-                  <span className="font-bold text-slate-700">{endIndex}</span> de{' '}
-                  <span className="font-bold text-slate-700">{totalTasks}</span> tarefas
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={validCurrentPage === 1}
-                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Anterior
-                  </button>
-                  
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`w-8 h-8 flex items-center justify-center rounded-xl font-bold transition-colors ${
-                        validCurrentPage === pageNum
-                          ? 'bg-slate-900 text-white'
-                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
+            {totalTasks > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50 border-t border-slate-100 text-xs gap-3">
+                <div className="flex items-center gap-3 text-slate-500 font-medium">
+                  <span>
+                    A mostrar <span className="font-bold text-slate-700">{startIndex + 1}</span> a{' '}
+                    <span className="font-bold text-slate-700">{endIndex}</span> de{' '}
+                    <span className="font-bold text-slate-700">{totalTasks}</span> tarefas
+                  </span>
+                  <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+                    <span className="text-slate-400">Por página:</span>
+                    <select
+                      value={pageSize}
+                      onChange={e => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-blue-500"
                     >
-                      {pageNum}
-                    </button>
-                  ))}
-
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={validCurrentPage === totalPages}
-                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Seguinte
-                  </button>
+                      <option value={15}>15</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
                 </div>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={validCurrentPage === 1}
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>Anterior</span>
+                    </button>
+                    
+                    <div className="flex items-center gap-1 mx-1">
+                      {getPaginationPages(validCurrentPage, totalPages).map((p, idx) => (
+                        p === '...' ? (
+                          <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 font-bold">...</span>
+                        ) : (
+                          <button
+                            key={`page-${p}`}
+                            onClick={() => setCurrentPage(Number(p))}
+                            className={`min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg font-bold text-xs transition-colors ${
+                              validCurrentPage === p
+                                ? 'bg-slate-900 text-white'
+                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        )
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={validCurrentPage === totalPages}
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                    >
+                      <span>Seguinte</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

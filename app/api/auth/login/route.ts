@@ -127,6 +127,23 @@ export async function POST(req: NextRequest) {
 
     const token = signSession(userPayload, rememberMe ? 30 * 24 : 8);
 
+    // 5. Register audit log in database
+    try {
+      await supabase.from('audit_logs').insert([{
+        user_id: dbUser.id,
+        user_name: dbUser.name,
+        user_email: dbUser.email,
+        action: 'LOGIN',
+        entity_type: 'USER',
+        entity_id: dbUser.id,
+        entity_name: dbUser.name,
+        details: `Sessão iniciada com sucesso por ${dbUser.name} (${dbUser.email})`,
+        created_at: new Date().toISOString()
+      }]);
+    } catch (auditErr) {
+      console.warn('Erro ao registar login no audit_logs:', auditErr);
+    }
+
     return NextResponse.json({
       success: true,
       user: userPayload,
