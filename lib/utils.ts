@@ -122,18 +122,137 @@ export function getTaskTypeName(
 ): string {
   if (!taskTypeId) return '';
   const found = taskTypes.find(t => t.id === taskTypeId);
-  if (found && found.name) return found.name;
+  if (found && found.name) {
+    // Return only name, without level/scale if present in text
+    return found.name.replace(/\s*\((?:Nível|Nivel|Level)\s*\d+\)/gi, '').trim();
+  }
   return '';
 }
 
 export function getDefaultTaskTypeId(
   taskTypes: { id: string; name?: string; scale?: number; deleted?: boolean }[] = []
 ): string {
-  const activeTypes = taskTypes.filter(t => !t.deleted);
-  if (activeTypes.length > 0) {
-    return activeTypes[0].id;
-  }
+  // Requirement: Do not pre-fill any default value on task creation
   return '';
+}
+
+export function parseTimeToHours(timeStr?: string | null): number {
+  if (!timeStr) return 0;
+  const clean = String(timeStr).trim();
+  if (!clean) return 0;
+  if (clean.includes(':')) {
+    const parts = clean.split(':');
+    const hours = parseInt(parts[0], 10) || 0;
+    const mins = parseInt(parts[1], 10) || 0;
+    return hours + mins / 60;
+  }
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+}
+
+export function formatHoursToHHMM(hoursFloat: number): string {
+  if (isNaN(hoursFloat) || hoursFloat < 0) return '00:00';
+  const totalMins = Math.round(hoursFloat * 60);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+export function stripSecondsFromHours(timeStr?: string | null): string {
+  if (!timeStr) return '0';
+  const clean = String(timeStr).trim();
+  if (clean.includes(':')) {
+    const parts = clean.split(':');
+    const h = parts[0] || '0';
+    return h;
+  }
+  return clean;
+}
+
+export function formatToOnlyHours(timeStr?: string | null): string {
+  if (!timeStr) return '0';
+  const clean = String(timeStr).trim();
+  if (!clean) return '0';
+  const hours = parseTimeToHours(clean);
+  if (isNaN(hours) || hours <= 0) return '0';
+  return String(Math.round(hours));
+}
+
+export interface TaskConflictWarning {
+  type: 'absence' | 'task';
+  userName: string;
+  detail: string;
+}
+
+export function checkTaskSchedulingConflicts(params: {
+  taskId?: string | null;
+  startDate?: string;
+  endDate?: string;
+  estimatedDate?: string;
+  assigneeIds?: string[];
+  users?: { id: string; name: string }[];
+  tasks?: { id: string; title: string; startDate?: string; endDate?: string; estimatedDate?: string; assigneeIds?: string[]; deleted?: boolean }[];
+  userAbsences?: { id?: string; userId: string; absenceStartDate: string; absenceEndDate: string; reason?: string }[];
+}): TaskConflictWarning[] {
+  const { taskId, startDate, endDate, estimatedDate, assigneeIds = [], users = [], tasks = [], userAbsences = [] } = params;
+  if (!assigneeIds || assigneeIds.length === 0) return [];
+
+  const taskStart = startDate || estimatedDate || endDate;
+  const taskEnd = endDate || estimatedDate || startDate;
+  if (!taskStart || !taskEnd) return [];
+
+  const warnings: TaskConflictWarning[] = [];
+
+  const sDate = taskStart <= taskEnd ? taskStart : taskEnd;
+  const eDate = taskStart <= taskEnd ? taskEnd : taskStart;
+
+  assigneeIds.forEach(userId => {
+    const user = users.find(u => u.id === userId);
+    const userName = user ? user.name : 'Técnico';
+
+    // 1. Check absences
+    userAbsences.forEach(abs => {
+      if (abs.userId === userId) {
+        const absStart = abs.absenceStartDate;
+        const absEnd = abs.absenceEndDate || abs.absenceStartDate;
+        if (absStart && absEnd) {
+          const aStart = absStart <= absEnd ? absStart : absEnd;
+          const aEnd = absStart <= absEnd ? absEnd : absStart;
+          // Check overlap
+          if (sDate <= aEnd && eDate >= aStart) {
+            warnings.push({
+              type: 'absence',
+              userName,
+              detail: `Ausência registada (${abs.reason || 'Ausência'}) de ${aStart} a ${aEnd}`
+            });
+          }
+        }
+      }
+    });
+
+    // 2. Check other tasks
+    tasks.forEach(t => {
+      if (t.deleted) return;
+      if (taskId && t.id === taskId) return;
+      if (t.assigneeIds && t.assigneeIds.includes(userId)) {
+        const oStart = t.startDate || t.estimatedDate || t.endDate;
+        const oEnd = t.endDate || t.estimatedDate || t.startDate;
+        if (oStart && oEnd) {
+          const otherStart = oStart <= oEnd ? oStart : oEnd;
+          const otherEnd = oStart <= oEnd ? oEnd : oStart;
+          if (sDate <= otherEnd && eDate >= otherStart) {
+            warnings.push({
+              type: 'task',
+              userName,
+              detail: `Tarefa "${t.title}" já agendada de ${otherStart} a ${otherEnd}`
+            });
+          }
+        }
+      }
+    });
+  });
+
+  return warnings;
 }
 
 

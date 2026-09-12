@@ -73,9 +73,9 @@ export default function ClientSection({
 
   const activeClients = (clients || []).filter(c => c && (showDeleted ? c.deleted : !c.deleted));
   const sortedClients = [...activeClients].sort((a, b) => {
-    const nameA = (a.clientName || a.shortName || '').toLowerCase();
-    const nameB = (b.clientName || b.shortName || '').toLowerCase();
-    return nameA.localeCompare(nameB, 'pt', { sensitivity: 'base' });
+    const nameA = (a.clientName || a.shortName || '').trim();
+    const nameB = (b.clientName || b.shortName || '').trim();
+    return nameA.localeCompare(nameB, 'pt-PT', { sensitivity: 'base' });
   });
 
   const filteredClients = sortedClients.filter(c => {

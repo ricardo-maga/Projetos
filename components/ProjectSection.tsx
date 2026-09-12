@@ -6,14 +6,14 @@ import {
   Plus, Search, Edit2, Trash2, ArrowLeft, Calendar, FileText, 
   Sparkles, DollarSign, Users, ShieldAlert, PlusCircle, MessageSquare, ListTodo, CheckSquare, BrainCircuit,
   X, Clock, ChevronLeft, ChevronRight, AlertTriangle, AlertCircle, Info, Flag, Maximize2, Link2, UserCheck, Check,
-  Package, Truck, CheckCircle2, Boxes, Tag, ShoppingBag
+  Package, Truck, CheckCircle2, Boxes, Tag, ShoppingBag, BarChart3
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
 
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
-import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId } from '../lib/utils';
+import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours } from '../lib/utils';
 
 const calculateSuggestedReviewDate = (prob: number, imp: number, identDateStr: string) => {
   const score = (prob || 1) * (imp || 1);
@@ -125,8 +125,8 @@ export default function ProjectSection({
   const canWriteTasks = hasPermission(currentUser, 'tasks_write', userGroups);
   const canDeleteTasks = hasPermission(currentUser, 'tasks_delete', userGroups);
   
-  // Tab state inside project view: 'geral' | 'tarefas' | 'material' | 'riscos'
-  const [activeDetailTab, setActiveDetailTab] = useState<'geral' | 'tarefas' | 'material' | 'riscos'>('geral');
+  // Tab state inside project view: 'geral' | 'tarefas' | 'material' | 'riscos' | 'analise'
+  const [activeDetailTab, setActiveDetailTab] = useState<'geral' | 'tarefas' | 'material' | 'riscos' | 'analise'>('geral');
 
   // Risk Form State
   const [showRiskModal, setShowRiskModal] = useState(false);
@@ -169,6 +169,7 @@ export default function ProjectSection({
   const [showCompleted, setShowCompleted] = useState(false);
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterManager, setFilterManager] = useState('');
   
   const sortedStatuses = [...(projectStatuses || [])].sort((a, b) => (a.scale ?? 0) - (b.scale ?? 0));
   
@@ -415,31 +416,52 @@ export default function ProjectSection({
     }
     if (!newTaskTitle.trim() || !selectedProj) return;
 
-    addTask({
-      projectId: selectedProj.id,
-      title: newTaskTitle.trim(),
-      statusId: getDefaultTaskStatusId(taskStatuses),
-      taskTypeId: newTaskTypeId || getDefaultTaskTypeId(taskTypes),
-      assigneeIds: newTaskAssignees,
+    const executeCreate = () => {
+      addTask({
+        projectId: selectedProj.id,
+        title: newTaskTitle.trim(),
+        statusId: getDefaultTaskStatusId(taskStatuses),
+        taskTypeId: newTaskTypeId || '',
+        assigneeIds: newTaskAssignees,
+        estimatedDate: newTaskEstDate,
+        description: newTaskDesc.trim(),
+        estimatedHours: newTaskEstHours,
+        actualHours: '0',
+        startDate: '',
+        startTime: '',
+        endDate: '',
+        endTime: '',
+        notes: '',
+      });
+
+      // Reset task form
+      setNewTaskTitle('');
+      setNewTaskDesc('');
+      setNewTaskEstHours('08:00');
+      setNewTaskAssignees([]);
+      setNewTaskEstDate('');
+      setNewTaskTypeId('');
+      setShowAddTaskForm(false);
+    };
+
+    const conflicts = checkTaskSchedulingConflicts({
       estimatedDate: newTaskEstDate,
-      description: newTaskDesc.trim(),
-      estimatedHours: newTaskEstHours,
-      actualHours: '00:00',
-      startDate: '',
-      startTime: '',
-      endDate: '',
-      endTime: '',
-      notes: '',
+      assigneeIds: newTaskAssignees,
+      users,
+      tasks,
+      userAbsences: absences || []
     });
 
-    // Reset task form
-    setNewTaskTitle('');
-    setNewTaskDesc('');
-    setNewTaskEstHours('08:00');
-    setNewTaskAssignees([]);
-    setNewTaskEstDate('');
-    setNewTaskTypeId(getDefaultTaskTypeId(taskTypes));
-    setShowAddTaskForm(false);
+    if (conflicts.length > 0) {
+      const conflictList = conflicts.map(c => `• ${c.userName}: ${c.detail}`).join('\n');
+      askConfirmation(
+        'Aviso de Conflito de Agendamento',
+        `Atenção: Foram detetados os seguintes conflitos de ausência ou dupla alocação:\n\n${conflictList}\n\nQuer mesmo continuar e gravar a tarefa?`,
+        executeCreate
+      );
+    } else {
+      executeCreate();
+    }
   };
 
   // View/Edit Single Task Modal State
@@ -455,8 +477,8 @@ export default function ProjectSection({
   const openTaskDetailsModal = (task: Task) => {
     setSelectedTaskForDetails(task);
     setTaskEditStatus(task.statusId);
-    setTaskEditTypeId(task.taskTypeId || getDefaultTaskTypeId(taskTypes));
-    setTaskEditActualHours(task.actualHours || '00:00');
+    setTaskEditTypeId(task.taskTypeId || '');
+    setTaskEditActualHours(formatToOnlyHours(task.actualHours));
     setTaskEditNotes(task.notes || '');
     setTaskEditStartDate(task.startDate || '');
     setTaskEditStartTime(task.startTime || '');
@@ -473,19 +495,43 @@ export default function ProjectSection({
     }
     if (!selectedTaskForDetails) return;
 
-    updateTask(selectedTaskForDetails.id, {
-      statusId: taskEditStatus,
-      taskTypeId: taskEditTypeId || getDefaultTaskTypeId(taskTypes),
-      actualHours: taskEditActualHours,
-      notes: taskEditNotes,
+    const executeSave = () => {
+      updateTask(selectedTaskForDetails.id, {
+        statusId: taskEditStatus,
+        taskTypeId: taskEditTypeId || '',
+        actualHours: formatToOnlyHours(taskEditActualHours),
+        notes: taskEditNotes,
+        startDate: taskEditStartDate,
+        startTime: taskEditStartTime,
+        endDate: taskEditEndDate,
+        endTime: taskEditEndTime,
+        assigneeIds: taskEditAssignees,
+      });
+
+      setSelectedTaskForDetails(null);
+    };
+
+    const conflicts = checkTaskSchedulingConflicts({
+      taskId: selectedTaskForDetails.id,
       startDate: taskEditStartDate,
-      startTime: taskEditStartTime,
       endDate: taskEditEndDate,
-      endTime: taskEditEndTime,
+      estimatedDate: selectedTaskForDetails.estimatedDate,
       assigneeIds: taskEditAssignees,
+      users,
+      tasks,
+      userAbsences: absences || []
     });
 
-    setSelectedTaskForDetails(null);
+    if (conflicts.length > 0) {
+      const conflictList = conflicts.map(c => `• ${c.userName}: ${c.detail}`).join('\n');
+      askConfirmation(
+        'Aviso de Conflito de Agendamento',
+        `Atenção: Foram detetados os seguintes conflitos de ausência ou dupla alocação:\n\n${conflictList}\n\nQuer mesmo continuar e gravar as alterações?`,
+        executeSave
+      );
+    } else {
+      executeSave();
+    }
   };
 
   // Open Form
@@ -536,7 +582,7 @@ export default function ProjectSection({
       setFormDesc('');
       setFormClient('');
       setClientSearchQuery('');
-      setFormCategory(projectCategories[0]?.id || '');
+      setFormCategory(projectCategories.find(c => !c.deleted)?.id || '');
       setFormCategories([]);
       setFormStatus(projectStatuses[0]?.id || '');
       setFormProjManager('');
@@ -777,8 +823,9 @@ export default function ProjectSection({
 
     const matchesCategory = filterCategory ? (p.categoryId === filterCategory || (p.categoryIds && p.categoryIds.includes(filterCategory))) : true;
     const matchesStatus = filterStatus ? p.statusId === filterStatus : true;
+    const matchesManager = filterManager ? (p.projectManagerId === filterManager || matchId(p.projectManagerId, filterManager)) : true;
     const matchesCompleted = showCompleted ? true : !isProjectLevel5(p.statusId);
-    return matchesSearch && matchesCategory && matchesStatus && matchesCompleted;
+    return matchesSearch && matchesCategory && matchesStatus && matchesManager && matchesCompleted;
   });
 
   const selectedProj = activeProjects.find(p => matchId(p.id, selectedProjectId));
@@ -1177,6 +1224,39 @@ export default function ProjectSection({
               )}
             </div>
           </div>
+
+          {/* PROJECT BANNER HEADER (Client, Name, Risk, Priority, Material status) */}
+          <div className="p-6 bg-white border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">{getClientName(selectedProj.clientId)}</span>
+                {selectedProj.demo && <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Demo</span>}
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">{selectedProj.title}</h1>
+              <p className="text-xs text-slate-500 font-mono">IP: {selectedProj.installProjectNo || 'S/N'} • Oportunidade SF: {selectedProj.sfOpportunityNo || 'S/N'}</p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {hasMissingMaterials && (
+                <span className="text-xs font-bold uppercase px-3 py-1.5 rounded-xl bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                  <span>Material em falta ({missingMaterialsCount})</span>
+                </span>
+              )}
+              {(() => {
+                const calcRisk = getProjectCalculatedRisk(selectedProj.id, projectRiskItems);
+                return (
+                  <span className={`text-xs font-extrabold uppercase px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${calcRisk.color}`}>
+                    <span>{calcRisk.dot}</span>
+                    <span>Risco: {calcRisk.label}</span>
+                  </span>
+                );
+              })()}
+              <span className="text-xs font-bold uppercase px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+                Prioridade: {getPriorityName(selectedProj.priorityId)}
+              </span>
+            </div>
+          </div>
           
           {/* FLOW PIPELINE PROGRESS BAR */}
           {(() => {
@@ -1336,23 +1416,19 @@ export default function ProjectSection({
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping inline-block" />
                 )}
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab('analise')}
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                  activeDetailTab === 'analise'
+                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" /> Análise
+              </button>
             </div>
 
-            {/* Warning badges */}
-            <div className="flex gap-2 flex-wrap items-center">
-              {hasMissingMaterials && (
-                <div className="mb-2 flex items-center gap-1.5 px-3 py-1 bg-rose-100 text-rose-800 border border-rose-300 rounded-full text-xs font-extrabold animate-pulse">
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                  <span>Aviso: Material em falta ({missingMaterialsCount})</span>
-                </div>
-              )}
-              {projCriticalRisksCount > 0 && (
-                <div className="mb-2 flex items-center gap-1.5 px-3 py-1 bg-rose-500 text-white border border-rose-600 rounded-full text-xs font-extrabold animate-pulse">
-                  <ShieldAlert className="w-3.5 h-3.5 text-white shrink-0" />
-                  <span>Alerta: Riscos Críticos ({projCriticalRisksCount})</span>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* TAB 1: VISÃO GERAL */}
@@ -1361,33 +1437,7 @@ export default function ProjectSection({
               
               {/* Left Content Column (Main info) */}
               <div className="md:col-span-8 space-y-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    {selectedProj.demo && <span className="text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">Demonstração</span>}
-                    {hasMissingMaterials && (
-                      <span className="text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Material em falta
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm font-semibold text-blue-600 mt-1">{getClientName(selectedProj.clientId)}</p>
-                  <h1 className="text-2xl font-bold tracking-tight text-slate-900">{selectedProj.title}</h1>
-                  <div className="flex gap-3 mt-2">
-                    {(() => {
-                      const calcRisk = getProjectCalculatedRisk(selectedProj.id, projectRiskItems);
-                      return (
-                        <span className={`text-[11px] font-extrabold uppercase px-2.5 py-1 rounded-full border flex items-center gap-1.5 ${calcRisk.color}`}>
-                          <span className={`w-2 h-2 rounded-full ${calcRisk.dot}`} />
-                          Risco: {calcRisk.label}
-                        </span>
-                      );
-                    })()}
-                    <span className="text-[11px] font-bold uppercase px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                      Prioridade: {getPriorityName(selectedProj.priorityId)}
-                    </span>
-                  </div>
-                </div>
-
+ 
                 {/* Description Block */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                   <h3 className="font-bold text-xs uppercase text-slate-400 mb-2 flex items-center gap-1"><FileText className="w-3.5 h-3.5"/> Descrição do Projeto</h3>
@@ -2388,7 +2438,12 @@ export default function ProjectSection({
               {showAddTaskForm && (
                 <form id="add-task-form-panel" onSubmit={handleCreateTask} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-xs font-bold text-slate-700 animate-fade-in shadow-xs">
                   <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                    <span className="text-slate-800 font-extrabold text-sm">Nova Tarefa / Marco para o Projeto</span>
+                    <div>
+                      <span className="text-slate-800 font-extrabold text-sm block">Nova Tarefa / Marco para o Projeto</span>
+                      <span className="text-xs font-medium text-slate-500 block mt-0.5">
+                        Cliente: <strong className="text-slate-700 font-bold">{getClientName(selectedProj.clientId)}</strong> | Projeto: <strong className="text-slate-700 font-bold">{selectedProj.title}</strong>
+                      </span>
+                    </div>
                     <button 
                       type="button" 
                       onClick={() => setShowAddTaskForm(false)}
@@ -2423,15 +2478,16 @@ export default function ProjectSection({
 
                   {/* Task Type Dropdown */}
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa *</label>
+                    <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
                     <select
-                      value={newTaskTypeId || getDefaultTaskTypeId(taskTypes)}
+                      value={newTaskTypeId}
                       onChange={e => setNewTaskTypeId(e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 outline-none"
+                      className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 outline-none cursor-pointer"
                     >
+                      <option value="">Selecione o tipo de tarefa...</option>
                       {taskTypes.filter(tt => !tt.deleted).map(tt => (
                         <option key={tt.id} value={tt.id}>
-                          {tt.name} (Nível {tt.scale ?? 1})
+                          {getTaskTypeName(tt.id, taskTypes)}
                         </option>
                       ))}
                     </select>
@@ -2493,7 +2549,14 @@ export default function ProjectSection({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {projTasks.map(task => (
+                  {[...projTasks].sort((a, b) => {
+                    const dateA = a.startDate || a.estimatedDate || a.endDate || '';
+                    const dateB = b.startDate || b.estimatedDate || b.endDate || '';
+                    if (!dateA && !dateB) return 0;
+                    if (!dateA) return 1;
+                    if (!dateB) return -1;
+                    return dateA.localeCompare(dateB);
+                  }).map(task => (
                     <div 
                       key={task.id} 
                       onClick={() => openTaskDetailsModal(task)}
@@ -3192,6 +3255,196 @@ export default function ProjectSection({
             </div>
           )}
 
+          {/* TAB 5: ANÁLISE DO PROJETO */}
+          {activeDetailTab === 'analise' && (
+            <div className="p-6 space-y-6 animate-fade-in">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                  Análise Geral do Projeto
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Estatísticas acumuladas de carga horária, técnicos, desvios de datas e distribuição de tarefas</p>
+              </div>
+
+              {/* Stats & Charts Content */}
+              {(() => {
+                let totalWorkloadMins = 0;
+                let totalEstMins = 0;
+                let totalActMins = 0;
+                const technicianIds = new Set<string>();
+                const taskCountsByType: Record<string, { count: number; workloadMins: number; estMins: number; actMins: number }> = {};
+                const taskCountsByTech: Record<string, { count: number; workloadMins: number }> = {};
+
+                const parseMins = (timeStr?: string) => {
+                  if (!timeStr) return 0;
+                  const parts = timeStr.split(':').map(Number);
+                  if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                    return parts[0] * 60 + parts[1];
+                  }
+                  return 0;
+                };
+
+                projTasks.forEach(t => {
+                  const estM = parseMins(t.estimatedHours);
+                  const actM = parseMins(t.actualHours);
+                  const taskWorkload = actM > 0 ? actM : estM;
+
+                  totalWorkloadMins += taskWorkload;
+                  totalEstMins += estM;
+                  totalActMins += actM;
+
+                  if (t.assigneeIds && t.assigneeIds.length > 0) {
+                    t.assigneeIds.forEach(id => {
+                      technicianIds.add(id);
+                      const uName = getUserName(id) || 'Técnico';
+                      if (!taskCountsByTech[uName]) {
+                        taskCountsByTech[uName] = { count: 0, workloadMins: 0 };
+                      }
+                      taskCountsByTech[uName].count += 1;
+                      taskCountsByTech[uName].workloadMins += taskWorkload;
+                    });
+                  } else {
+                    const unassigned = 'Sem Técnico Atribuído';
+                    if (!taskCountsByTech[unassigned]) {
+                      taskCountsByTech[unassigned] = { count: 0, workloadMins: 0 };
+                    }
+                    taskCountsByTech[unassigned].count += 1;
+                    taskCountsByTech[unassigned].workloadMins += taskWorkload;
+                  }
+
+                  const typeName = getTaskTypeName(t.taskTypeId, taskTypes) || 'Geral';
+                  if (!taskCountsByType[typeName]) {
+                    taskCountsByType[typeName] = { count: 0, workloadMins: 0, estMins: 0, actMins: 0 };
+                  }
+                  taskCountsByType[typeName].count += 1;
+                  taskCountsByType[typeName].workloadMins += taskWorkload;
+                  taskCountsByType[typeName].estMins += estM;
+                  taskCountsByType[typeName].actMins += actM;
+                });
+
+                const formatMins = (m: number) => {
+                  const hrs = Math.floor(m / 60);
+                  const mins = m % 60;
+                  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                };
+
+                const startDateStr = selectedProj.startDate ? new Date(selectedProj.startDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
+                const deliveryDateStr = selectedProj.deliveryDate ? new Date(selectedProj.deliveryDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
+                const estimatedDateStr = selectedProj.estimatedDate ? new Date(selectedProj.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
+                const scheduledDateStr = selectedProj.scheduledDate ? new Date(selectedProj.scheduledDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
+
+                let daysDiffAdjudicationToDelivery = '-';
+                if (selectedProj.startDate && selectedProj.deliveryDate) {
+                  const diffTime = new Date(selectedProj.deliveryDate).getTime() - new Date(selectedProj.startDate).getTime();
+                  const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
+                  daysDiffAdjudicationToDelivery = `${diffDays} dias`;
+                }
+
+                let daysDiffEstimatedToDelivery = '-';
+                if (selectedProj.deliveryDate && selectedProj.estimatedDate) {
+                  const diffTime = new Date(selectedProj.estimatedDate).getTime() - new Date(selectedProj.deliveryDate).getTime();
+                  const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
+                  daysDiffEstimatedToDelivery = diffDays > 0 ? `+${diffDays}d (Atraso)` : `${diffDays}d`;
+                }
+
+                return (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* Card 1: Carga Horária */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-1 shadow-2xs">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Carga horária</span>
+                        <div className="text-xl font-black text-slate-900">{formatMins(totalWorkloadMins)}h</div>
+                        <p className="text-[10px] text-slate-500 font-medium truncate">Soma de horas efetivas e estimativas pendentes</p>
+                      </div>
+
+                      {/* Card 2: Prazo Venda */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-1 shadow-2xs">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Prazo de Entrega (Venda)</span>
+                        <div className="text-xl font-black text-slate-900">{daysDiffAdjudicationToDelivery}</div>
+                        <div className="text-[10px] text-slate-500 font-medium">De {startDateStr} a {deliveryDateStr}</div>
+                      </div>
+
+                      {/* Card 3: Desvio Estimativa Real */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-1 shadow-2xs">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Desvio de Estimativa Real</span>
+                        <div className={`text-xl font-black ${daysDiffEstimatedToDelivery.includes('Atraso') ? 'text-amber-600' : 'text-slate-900'}`}>
+                          {daysDiffEstimatedToDelivery}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium">Estimada real: {estimatedDateStr}</div>
+                      </div>
+                    </div>
+
+                    {/* Contagem por Tipo de Tarefa */}
+                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                      <div className="p-4 bg-slate-50 border-b border-slate-100 font-extrabold text-xs text-slate-800 uppercase tracking-wide">
+                        Contagem e Carga Horária por Tipo de Tarefa
+                      </div>
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-100">
+                          <tr>
+                            <th className="px-4 py-2.5">Tipo de Tarefa</th>
+                            <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
+                            <th className="px-4 py-2.5 text-right">Carga Horária</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                          {Object.keys(taskCountsByType).length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="px-4 py-6 text-center text-slate-400 italic font-normal">Nenhuma tarefa registada para este projeto.</td>
+                            </tr>
+                          ) : (
+                            Object.entries(taskCountsByType).map(([tName, data]) => (
+                              <tr key={tName} className="hover:bg-slate-50">
+                                <td className="px-4 py-3 font-extrabold text-slate-800">{tName}</td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full font-extrabold">{data.count}</span>
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{formatMins(data.workloadMins)}h</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Contagem e Carga Horária por Técnico */}
+                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                      <div className="p-4 bg-slate-50 border-b border-slate-100 font-extrabold text-xs text-slate-800 uppercase tracking-wide">
+                        Contagem e Carga Horária por Técnico
+                      </div>
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-100">
+                          <tr>
+                            <th className="px-4 py-2.5">Técnico</th>
+                            <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
+                            <th className="px-4 py-2.5 text-right">Carga Horária</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                          {Object.keys(taskCountsByTech).length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="px-4 py-6 text-center text-slate-400 italic font-normal">Nenhum técnico atribuído a tarefas deste projeto.</td>
+                            </tr>
+                          ) : (
+                            Object.entries(taskCountsByTech).map(([techName, data]) => (
+                              <tr key={techName} className="hover:bg-slate-50">
+                                <td className="px-4 py-3 font-extrabold text-slate-800">{techName}</td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full font-extrabold">{data.count}</span>
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{formatMins(data.workloadMins)}h</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
         </div>
       ) : isEditing ? (
         
@@ -3317,7 +3570,7 @@ export default function ProjectSection({
             <div className="space-y-1">
               <label className="block text-slate-500 font-bold">Categorias</label>
               <div className="border border-slate-200 rounded-xl p-3 max-h-[120px] overflow-y-auto bg-slate-50/50 space-y-1.5">
-                {projectCategories.map(c => {
+                {projectCategories.filter(c => !c.deleted).map(c => {
                   const isChecked = formCategories.includes(c.id);
                   return (
                     <label key={c.id} className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
@@ -3376,6 +3629,8 @@ export default function ProjectSection({
                     }
                   }
 
+                  filteredUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }));
+
                   return filteredUsers.map(u => (
                     <option key={u.id} value={u.id}>
                       {u.name}
@@ -3408,6 +3663,8 @@ export default function ProjectSection({
                     }
                   }
 
+                  filteredUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }));
+
                   return filteredUsers.map(u => (
                     <option key={u.id} value={u.id}>
                       {u.name}
@@ -3439,6 +3696,8 @@ export default function ProjectSection({
                       filteredUsers.push(currentSales);
                     }
                   }
+
+                  filteredUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }));
 
                   return filteredUsers.map(u => (
                     <option key={u.id} value={u.id}>
@@ -3758,7 +4017,20 @@ export default function ProjectSection({
                 className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold"
               >
                 <option value="">Todas as Categorias</option>
-                {projectCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {projectCategories.filter(c => !c.deleted).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+
+              {/* Manager dropdown */}
+              <select 
+                value={filterManager}
+                onChange={e => setFilterManager(e.target.value)}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                <option value="">Todos os Gestores</option>
+                {users.filter(u => !u.deleted && projects.some(p => !p.deleted && (p.projectManagerId === u.id || matchId(p.projectManagerId, u.id))))
+                  .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }))
+                  .map(u => <option key={u.id} value={u.id}>{u.name}</option>)
+                }
               </select>
 
               {/* Status dropdown */}
@@ -3792,7 +4064,7 @@ export default function ProjectSection({
               <table className="w-full text-left border-collapse">
                 <thead className="text-[11px] uppercase text-slate-400 font-extrabold bg-slate-50 border-b border-slate-100">
                   <tr>
-                    <th className="px-5 py-3">IP</th>
+                    <th className="px-5 py-3">IP / Gestor</th>
                     <th className="px-5 py-3">Projeto</th>
                     <th className="px-5 py-3">Datas</th>
                     <th className="px-5 py-3">Estado</th>
@@ -3811,8 +4083,9 @@ export default function ProjectSection({
                         }`}
                         onClick={() => setSelectedProjectId(proj.id)}
                       >
-                        <td className="px-5 py-4 font-mono">
-                          <span className="font-bold text-slate-800">{proj.installProjectNo || '-'}</span>
+                        <td className="px-5 py-4">
+                          <div className="font-mono font-bold text-slate-800">{proj.installProjectNo || '-'}</div>
+                          <div className="text-[12px] text-slate-500 font-medium">{getUserName(proj.projectManagerId)}</div>
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-2">
@@ -3867,10 +4140,20 @@ export default function ProjectSection({
           <div className="bg-white rounded-2xl border border-slate-200 -xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
             {/* Header */}
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div>
-                <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider">Visualização Individual de Tarefa</span>
-                <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">{selectedTaskForDetails.title}</h3>
-              </div>
+              {(() => {
+                const taskProj = projects.find(p => p.id === selectedTaskForDetails.projectId || matchId(p.id, selectedTaskForDetails.projectId));
+                const taskClientName = taskProj ? getClientName(taskProj.clientId) : 'N/A';
+                const taskProjTitle = taskProj ? taskProj.title : 'N/A';
+                return (
+                  <div>
+                    <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider block">Visualização Individual de Tarefa</span>
+                    <div className="text-xs font-medium text-slate-500 mt-0.5">
+                      Cliente: <strong className="text-slate-800 font-bold">{taskClientName}</strong> | Projeto: <strong className="text-slate-800 font-bold">{taskProjTitle}</strong>
+                    </div>
+                    <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">{selectedTaskForDetails.title}</h3>
+                  </div>
+                );
+              })()}
               <button 
                 onClick={() => setSelectedTaskForDetails(null)}
                 className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
@@ -3920,34 +4203,28 @@ export default function ProjectSection({
                 </select>
               </div>
 
-              {/* Task Type Dropdown */}
+              {/* Task Type (Informativo / Não editável) */}
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
-                <select 
-                  value={taskEditTypeId || getDefaultTaskTypeId(taskTypes)}
-                  onChange={e => setTaskEditTypeId(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
-                >
-                  {taskTypes.filter(tt => !tt.deleted).map(tt => (
-                    <option key={tt.id} value={tt.id}>
-                      {tt.name} (Nível {tt.scale ?? 1})
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 select-none">
+                  {getTaskTypeName(taskEditTypeId || selectedTaskForDetails.taskTypeId, taskTypes) || 'Não definido'}
+                </div>
               </div>
 
               {/* Consumed Hours */}
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700">Horas Consumidas Efetivas (HH:MM)</label>
+                <label className="block text-xs font-bold text-slate-700">Horas Consumidas Efetivas (Horas)</label>
                 <input 
-                  type="text" 
+                  type="number" 
+                  min="0"
+                  step="1"
                   required
                   value={taskEditActualHours}
                   onChange={e => setTaskEditActualHours(e.target.value)}
-                  placeholder="Ex: 04:30"
+                  placeholder="Ex: 8"
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
                 />
-                <p className="text-[10px] text-slate-400 font-medium">Indique o tempo efetivamente gasto nesta tarefa.</p>
+                <p className="text-[10px] text-slate-400 font-medium">Indique o número de horas efetivamente gastas nesta tarefa.</p>
               </div>
 
               {/* Date & Time grids */}

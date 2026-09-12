@@ -9,7 +9,7 @@ import {
 
 import { hasPermission } from '../lib/permissions';
 import { AssigneeSelector } from './AssigneeSelector';
-import { getTaskStatusName, getDefaultTaskStatusId, getTaskTypeName, getDefaultTaskTypeId } from '../lib/utils';
+import { getTaskStatusName, getDefaultTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, stripSecondsFromHours, formatToOnlyHours } from '../lib/utils';
 
 interface CalendarSectionProps {
   projects: Project[];
@@ -62,6 +62,9 @@ export default function CalendarSection({
   const [showCompleted, setShowCompleted] = useState(false);
   const [showRiskReviews, setShowRiskReviews] = useState(true);
 
+  // Event proximity date filter (default: 'off')
+  const [filterEventDays, setFilterEventDays] = useState<number | 'off'>('off');
+
   // Timeline Pagination & Fullscreen state
   const [timelineItemsPerPage, setTimelineItemsPerPage] = useState<number>(25);
   const [timelineCurrentPage, setTimelineCurrentPage] = useState<number>(1);
@@ -81,8 +84,8 @@ export default function CalendarSection({
   const openTaskDetailsModal = (task: Task) => {
     setSelectedTaskForDetails(task);
     setTaskEditStatus(task.statusId);
-    setTaskEditType(task.taskTypeId || getDefaultTaskTypeId(taskTypes));
-    setTaskEditActualHours(task.actualHours || '00:00');
+    setTaskEditType(task.taskTypeId || '');
+    setTaskEditActualHours(formatToOnlyHours(task.actualHours));
     setTaskEditNotes(task.notes || '');
     setTaskEditStartDate(task.startDate || '');
     setTaskEditStartTime(task.startTime || '');
@@ -100,8 +103,8 @@ export default function CalendarSection({
 
     updateTask(selectedTaskForDetails.id, {
       statusId: taskEditStatus,
-      taskTypeId: taskEditType || getDefaultTaskTypeId(taskTypes),
-      actualHours: taskEditActualHours,
+      taskTypeId: taskEditType || '',
+      actualHours: formatToOnlyHours(taskEditActualHours),
       notes: taskEditNotes,
       startDate: taskEditStartDate,
       startTime: taskEditStartTime,
@@ -131,7 +134,7 @@ export default function CalendarSection({
     setTaskDescription('');
     setTaskAssigneeIds([]);
     setTaskStatusId(getDefaultTaskStatusId(taskStatuses));
-    setTaskTypeId(getDefaultTaskTypeId(taskTypes));
+    setTaskTypeId('');
     setTaskEstimatedHours('08:00');
     setIsModalOpen(true);
   };
@@ -149,7 +152,7 @@ export default function CalendarSection({
       description: taskDescription.trim() || 'Criado via linha de tempo',
       projectId: modalProjectId,
       statusId: taskStatusId || getDefaultTaskStatusId(taskStatuses),
-      taskTypeId: taskTypeId || getDefaultTaskTypeId(taskTypes),
+      taskTypeId: taskTypeId || '',
       estimatedDate: modalDateStr,
       startDate: modalDateStr,
       endDate: modalDateStr,
@@ -309,9 +312,61 @@ export default function CalendarSection({
     return name.includes('conclu') || name.includes('suspen') || name.includes('cancel');
   };
 
+  const isWithinDays = (dateStr?: string, daysLimit?: number | 'off') => {
+    if (!daysLimit || daysLimit === 'off' || !dateStr) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date(dateStr + 'T00:00:00');
+    if (isNaN(targetDate.getTime())) return false;
+    const diffTime = targetDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 3600 * 24));
+    return diffDays >= 0 && diffDays <= Number(daysLimit);
+  };
+
+  const isTaskActiveInDays = (t: Task, daysLimit: number) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetEnd = new Date(today);
+    targetEnd.setDate(today.getDate() + daysLimit);
+
+    const todayStr = formatDateToString(today);
+    const targetEndStr = formatDateToString(targetEnd);
+
+    if (t.estimatedDate && t.estimatedDate >= todayStr && t.estimatedDate <= targetEndStr) return true;
+    if (t.startDate && t.startDate >= todayStr && t.startDate <= targetEndStr) return true;
+    if (t.endDate && t.endDate >= todayStr && t.endDate <= targetEndStr) return true;
+    if (t.startDate && t.endDate) {
+      return t.startDate <= targetEndStr && t.endDate >= todayStr;
+    }
+    return false;
+  };
+
   const activeProjects = projects.filter(p => {
     if (p.deleted) return false;
     if (!showCompleted && isProjectLevel5(p.statusId)) return false;
+
+    // Filter by event proximity (project dates, risk review dates, or tasks)
+    if (filterEventDays !== 'off') {
+      const days = Number(filterEventDays);
+
+      const hasProjectDateEvent = 
+        isWithinDays(p.startDate, days) ||
+        isWithinDays(p.deliveryDate, days) ||
+        isWithinDays(p.estimatedDate, days) ||
+        isWithinDays(p.scheduledDate, days);
+
+      const hasRiskReviewEvent = showRiskReviews && (projectRiskItems || []).some(
+        ri => !ri.deleted && matchId(ri.projectId, p.id) && isWithinDays(ri.reviewDate, days)
+      );
+
+      const projTasks = tasks.filter(t => t.projectId === p.id && !t.deleted);
+      const hasTaskEvent = projTasks.some(t => isTaskActiveInDays(t, days));
+
+      if (!hasProjectDateEvent && !hasRiskReviewEvent && !hasTaskEvent) {
+        return false;
+      }
+    }
+
     return true;
   });
 
@@ -612,9 +667,9 @@ export default function CalendarSection({
           </p>
         </div>
 
-        {/* Row 1: Filters (Técnicos & Concluídos) */}
+        {/* Row 1: Filters (Técnicos, Datas & Concluídos) */}
         <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
-          Filtros:
+          <span className="text-xs font-bold text-slate-500">Filtros:</span>
           <select
             value={selectedAssignee}
             onChange={(e) => setSelectedAssignee(e.target.value)}
@@ -627,6 +682,24 @@ export default function CalendarSection({
                 {u.name}
               </option>
             ))}
+          </select>
+
+          {/* Filter: Events Proximity */}
+          <select
+            value={filterEventDays}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFilterEventDays(val === 'off' ? 'off' : Number(val));
+              setTimelineCurrentPage(1);
+            }}
+            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+            title="Filtrar por eventos nos próximos dias (datas de projeto, tarefas ou revisões de risco)"
+          >
+            <option value="off">Com eventos: Todos os projetos</option>
+            <option value="5">Eventos nos próximos 5 dias</option>
+            <option value="10">Eventos nos próximos 10 dias</option>
+            <option value="20">Eventos nos próximos 20 dias</option>
+            <option value="30">Eventos nos próximos 30 dias</option>
           </select>
 
           <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer">
@@ -807,10 +880,21 @@ export default function CalendarSection({
           <div className="bg-white rounded-2xl border border-slate-200 -xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
             {/* Header */}
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div>
-                <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider">Visualização Individual de Tarefa</span>
-                <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">{selectedTaskForDetails.title}</h3>
-              </div>
+              {(() => {
+                const selProj = projects.find(p => p.id === selectedTaskForDetails.projectId);
+                const selClient = selProj ? clients.find(c => c.id === selProj.clientId) : null;
+                const cName = selClient ? selClient.clientName : 'N/A';
+                const pTitle = selProj ? selProj.title : 'N/A';
+                return (
+                  <div>
+                    <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider block">Visualização Individual de Tarefa</span>
+                    <div className="text-xs font-medium text-slate-500 mt-0.5">
+                      Cliente: <strong className="text-slate-800 font-bold">{cName}</strong> | Projeto: <strong className="text-slate-800 font-bold">{pTitle}</strong>
+                    </div>
+                    <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">{selectedTaskForDetails.title}</h3>
+                  </div>
+                );
+              })()}
               <button 
                 onClick={() => setSelectedTaskForDetails(null)}
                 className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
@@ -860,32 +944,28 @@ export default function CalendarSection({
                 </select>
               </div>
 
-              {/* Task Type Dropdown */}
+              {/* Task Type (Informativo / Não editável) */}
               <div className="space-y-1 text-xs font-bold text-slate-700">
                 <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
-                <select 
-                  value={taskEditType || getDefaultTaskTypeId(taskTypes)}
-                  onChange={e => setTaskEditType(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
-                >
-                  {taskTypes.filter(s => !s.deleted).map(s => (
-                    <option key={s.id} value={s.id}>{s.name} (Nível {s.scale ?? 1})</option>
-                  ))}
-                </select>
+                <div className="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 select-none">
+                  {getTaskTypeName(taskEditType || selectedTaskForDetails.taskTypeId, taskTypes) || 'Não definido'}
+                </div>
               </div>
 
               {/* Consumed Hours */}
               <div className="space-y-1 text-xs font-bold text-slate-700">
-                <label className="block text-xs font-bold text-slate-700">Horas Consumidas Efetivas (HH:MM)</label>
+                <label className="block text-xs font-bold text-slate-700">Horas Consumidas Efetivas (Horas)</label>
                 <input 
-                  type="text" 
+                  type="number" 
+                  min="0"
+                  step="1"
                   required
                   value={taskEditActualHours}
                   onChange={e => setTaskEditActualHours(e.target.value)}
-                  placeholder="Ex: 04:30"
+                  placeholder="Ex: 8"
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
                 />
-                <p className="text-[10px] text-slate-400 font-medium">Indique o tempo efetivamente gasto nesta tarefa.</p>
+                <p className="text-[10px] text-slate-400 font-medium">Indique o número de horas efetivamente gastas nesta tarefa.</p>
               </div>
 
               {/* Date & Time grids */}
@@ -974,15 +1054,23 @@ export default function CalendarSection({
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
             {/* Header */}
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div>
-                <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider">Nova Tarefa no Calendário</span>
-                <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">
-                  {projects.find(p => p.id === modalProjectId)?.title || 'Criar Tarefa'}
-                </h3>
-                <p className="text-xs text-slate-500 font-medium">
-                  Data selecionada: {modalDateStr ? new Date(modalDateStr + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : ''}
-                </p>
-              </div>
+              {(() => {
+                const modalProj = projects.find(p => p.id === modalProjectId);
+                const modalClient = modalProj ? clients.find(c => c.id === modalProj.clientId) : null;
+                const cName = modalClient ? modalClient.clientName : 'N/A';
+                const pTitle = modalProj ? modalProj.title : 'Criar Tarefa';
+                return (
+                  <div>
+                    <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider block">Nova Tarefa no Calendário</span>
+                    <div className="text-xs font-medium text-slate-500 mt-0.5">
+                      Cliente: <strong className="text-slate-800 font-bold">{cName}</strong> | Projeto: <strong className="text-slate-800 font-bold">{pTitle}</strong>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      Data selecionada: {modalDateStr ? new Date(modalDateStr + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+                    </p>
+                  </div>
+                );
+              })()}
               <button 
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -1036,12 +1124,13 @@ export default function CalendarSection({
                 <div className="space-y-1">
                   <label className="block font-bold text-slate-700">Tipo de Tarefa</label>
                   <select
-                    value={taskTypeId || getDefaultTaskTypeId(taskTypes)}
+                    value={taskTypeId}
                     onChange={e => setTaskTypeId(e.target.value)}
                     className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
                   >
+                    <option value="">Selecione o tipo de tarefa...</option>
                     {taskTypes.filter(s => !s.deleted).map(s => (
-                      <option key={s.id} value={s.id}>{s.name} (Nível {s.scale ?? 1})</option>
+                      <option key={s.id} value={s.id}>{getTaskTypeName(s.id, taskTypes)}</option>
                     ))}
                   </select>
                 </div>

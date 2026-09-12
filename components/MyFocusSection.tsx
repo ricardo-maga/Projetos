@@ -222,9 +222,19 @@ export default function MyFocusSection({
   }, [tasks, currentUser.id, projectMap]);
 
   const filteredTasks = useMemo(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+
     return myAssignedTasks.filter(t => {
       const scaleInfo = getTaskScaleInfo(t.statusId);
       const isCompleted = scaleInfo.scale === 3;
+      if (isCompleted) {
+        const completionDate = t.endDate || t.estimatedDate || t.startDate || '';
+        if (completionDate && completionDate < thirtyDaysAgoStr) {
+          return false;
+        }
+      }
       if (taskFilter === 'pending') return !isCompleted;
       if (taskFilter === 'completed') return isCompleted;
       return true;
@@ -658,11 +668,20 @@ export default function MyFocusSection({
                   const client = clientsMap.get(proj.clientId);
                   const pStatus = projectStatusMap.get(proj.statusId);
                   
-                  // Calculate tasks progress for this project
-                  const projTasks = tasks.filter(t => t.projectId === proj.id && !t.deleted);
+                  // Calculate tasks progress for this project (ignoring suspended/cancelled/level 0 tasks)
+                  const projTasks = tasks.filter(t => {
+                    if (t.projectId !== proj.id || t.deleted) return false;
+                    const st = taskStatusMap.get(t.statusId) || (TASK_STATUS_ID_MAPPINGS[t.statusId] ? taskStatusMap.get(TASK_STATUS_ID_MAPPINGS[t.statusId]) : undefined);
+                    if (st) {
+                      if (st.scale === 0) return false;
+                      const lower = (st.name || '').toLowerCase();
+                      if (lower.includes('susp') || lower.includes('canc')) return false;
+                    }
+                    return true;
+                  });
                   const completedTasks = projTasks.filter(t => {
-                    const st = taskStatusMap.get(t.statusId);
-                    return st ? st.name.toLowerCase().includes('conclu') || st.scale === 100 : false;
+                    const st = taskStatusMap.get(t.statusId) || (TASK_STATUS_ID_MAPPINGS[t.statusId] ? taskStatusMap.get(TASK_STATUS_ID_MAPPINGS[t.statusId]) : undefined);
+                    return st ? st.name.toLowerCase().includes('conclu') || st.scale === 3 || st.scale === 100 : false;
                   }).length;
 
                   const progressPct = projTasks.length > 0 ? Math.round((completedTasks / projTasks.length) * 100) : 0;
@@ -1036,13 +1055,11 @@ export default function MyFocusSection({
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${scaleInfo.badgeClass}`}>
                       {scaleInfo.statusName}
                     </span>
-                    {client && (
-                      <span className="text-xs font-bold text-slate-500">
-                        {client.clientName}
-                      </span>
-                    )}
                   </div>
-                  <h3 className="text-lg font-extrabold text-slate-900 mt-1">
+                  <div className="text-xs font-medium text-slate-500 mt-1">
+                    Cliente: <strong className="text-slate-800 font-bold">{client ? client.clientName : 'N/A'}</strong> | Projeto: <strong className="text-slate-800 font-bold">{proj ? proj.title : 'N/A'}</strong>
+                  </div>
+                  <h3 className="text-lg font-extrabold text-slate-900 mt-0.5">
                     {selectedTaskForDetails.title}
                   </h3>
                 </div>

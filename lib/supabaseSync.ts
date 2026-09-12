@@ -814,12 +814,12 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
 
     const loadedState: ERPState = {
       userGroups: userGroupsMapped,
-      projectStatuses: resProjectStatuses.data || [],
-      projectCategories: resProjectCategories.data || [],
-      projectRisks: resProjectRisks.data || [],
-      projectPriorities: resProjectPriorities.data || [],
-      projectTeams: resProjectTeams.data || [],
-      projectPartners: resProjectPartners.data || [],
+      projectStatuses: (resProjectStatuses.data || []).map((s: any) => ({ ...s, deleted: s.deleted === true || s.deleted === 1 || s.deleted === 'true' })),
+      projectCategories: (resProjectCategories.data || []).map((c: any) => ({ ...c, deleted: c.deleted === true || c.deleted === 1 || c.deleted === 'true' })),
+      projectRisks: (resProjectRisks.data || []).map((r: any) => ({ ...r, deleted: r.deleted === true || r.deleted === 1 || r.deleted === 'true' })),
+      projectPriorities: (resProjectPriorities.data || []).map((p: any) => ({ ...p, deleted: p.deleted === true || p.deleted === 1 || p.deleted === 'true' })),
+      projectTeams: (resProjectTeams.data || []).map((t: any) => ({ ...t, deleted: t.deleted === true || t.deleted === 1 || t.deleted === 'true' })),
+      projectPartners: (resProjectPartners.data || []).map((pt: any) => ({ ...pt, deleted: pt.deleted === true || pt.deleted === 1 || pt.deleted === 'true' })),
       taskStatuses: (resTaskStatuses.data || []).map((s: any) => ({
         id: s.id,
         name: s.name,

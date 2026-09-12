@@ -7,7 +7,7 @@ import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
 
 import { hasPermission } from '../lib/permissions';
-import { getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId } from '../lib/utils';
+import { getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, formatToOnlyHours } from '../lib/utils';
 
 interface TaskSectionProps {
   tasks: Task[];
@@ -149,8 +149,8 @@ export default function TaskSection({
   const openTaskDetailsModal = (task: Task) => {
     setSelectedTaskForDetails(task);
     setTaskEditStatus(task.statusId);
-    setTaskEditType(task.taskTypeId || getDefaultTaskTypeId(taskTypes));
-    setTaskEditActualHours(task.actualHours || '00:00');
+    setTaskEditType(task.taskTypeId || '');
+    setTaskEditActualHours(formatToOnlyHours(task.actualHours));
     setTaskEditNotes(task.notes || '');
     setTaskEditStartDate(task.startDate || '');
     setTaskEditStartTime(task.startTime || '');
@@ -164,8 +164,8 @@ export default function TaskSection({
 
     updateTask(selectedTaskForDetails.id, {
       statusId: taskEditStatus,
-      taskTypeId: taskEditType || getDefaultTaskTypeId(taskTypes),
-      actualHours: taskEditActualHours,
+      taskTypeId: taskEditType || '',
+      actualHours: formatToOnlyHours(taskEditActualHours),
       notes: taskEditNotes,
       startDate: taskEditStartDate,
       startTime: taskEditStartTime,
@@ -318,11 +318,11 @@ export default function TaskSection({
       setFormDesc(task.description);
       setFormProj(task.projectId);
       setFormStatus(task.statusId);
-      setFormTaskType(task.taskTypeId || getDefaultTaskTypeId(taskTypes));
+      setFormTaskType(task.taskTypeId || '');
       setFormAssignees(task.assigneeIds || []);
       setFormEstDate(task.estimatedDate);
       setFormEstHours(task.estimatedHours);
-      setFormActHours(task.actualHours || '00:00');
+      setFormActHours(formatToOnlyHours(task.actualHours));
       setFormStartDate(task.startDate || '');
       setFormStartTime(task.startTime || '');
       setFormEndDate(task.endDate || '');
@@ -341,11 +341,11 @@ export default function TaskSection({
       setFormDesc('');
       setFormProj('');
       setFormStatus(getDefaultTaskStatusId(taskStatuses));
-      setFormTaskType(getDefaultTaskTypeId(taskTypes));
+      setFormTaskType('');
       setFormAssignees([]);
       setFormEstDate('');
       setFormEstHours('08:00');
-      setFormActHours('00:00');
+      setFormActHours('0');
       setFormStartDate('');
       setFormStartTime('');
       setFormEndDate('');
@@ -368,11 +368,11 @@ export default function TaskSection({
       description: formDesc,
       projectId: formProj,
       statusId: formStatus,
-      taskTypeId: formTaskType || getDefaultTaskTypeId(taskTypes),
+      taskTypeId: formTaskType || '',
       assigneeIds: formAssignees,
       estimatedDate: formEstDate,
       estimatedHours: formEstHours,
-      actualHours: formActHours,
+      actualHours: formatToOnlyHours(formActHours),
       startDate: formStartDate,
       startTime: formStartTime,
       endDate: formEndDate,
@@ -689,9 +689,22 @@ export default function TaskSection({
       {isEditing ? (
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 -sm animate-fade-in">
           <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-            <h2 className="text-base font-bold text-slate-800">
-              {editingId ? 'Editar Tarefa' : 'Adicionar Nova Tarefa ao Projeto'}
-            </h2>
+            <div className="flex flex-col">
+              <h2 className="text-base font-bold text-slate-800">
+                {editingId ? 'Editar Tarefa' : 'Adicionar Nova Tarefa ao Projeto'}
+              </h2>
+              {(() => {
+                const selProj = projectMap.get(formProj) || projects.find(p => p.id === formProj);
+                if (!selProj) return null;
+                const selClient = clientMap.get(selProj.clientId) || clients.find(c => c.id === selProj.clientId);
+                const cName = selClient ? selClient.clientName : 'N/A';
+                return (
+                  <span className="text-xs font-medium text-slate-500 mt-0.5">
+                    Cliente: <strong className="text-slate-700 font-bold">{cName}</strong> | Projeto: <strong className="text-slate-700 font-bold">{selProj.title}</strong>
+                  </span>
+                );
+              })()}
+            </div>
             <button 
               type="button" 
               onClick={() => setIsEditing(false)}
@@ -805,15 +818,16 @@ export default function TaskSection({
             </div>
 
             <div className="space-y-1">
-              <label className="block text-slate-500">Tipo de Tarefa *</label>
+              <label className="block text-slate-500">Tipo de Tarefa</label>
               <select 
-                value={formTaskType || getDefaultTaskTypeId(taskTypes)}
+                value={formTaskType}
                 onChange={e => setFormTaskType(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold"
+                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold cursor-pointer text-slate-800"
               >
+                <option value="">Selecione o tipo de tarefa...</option>
                 {taskTypes.filter(tt => !tt.deleted).map(tt => (
                   <option key={tt.id} value={tt.id}>
-                    {tt.name} (Nível {tt.scale ?? 1})
+                    {getTaskTypeName(tt.id, taskTypes)}
                   </option>
                 ))}
               </select>
@@ -1343,10 +1357,21 @@ export default function TaskSection({
           <div className="bg-white rounded-2xl border border-slate-200 -xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
             {/* Header */}
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div>
-                <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider">Visualização Individual de Tarefa</span>
-                <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">{selectedTaskForDetails.title}</h3>
-              </div>
+              {(() => {
+                const detailProj = projectMap.get(selectedTaskForDetails.projectId) || projects.find(p => p.id === selectedTaskForDetails.projectId);
+                const detailClient = detailProj ? (clientMap.get(detailProj.clientId) || clients.find(c => c.id === detailProj.clientId)) : null;
+                const cName = detailClient ? detailClient.clientName : 'N/A';
+                const pTitle = detailProj ? detailProj.title : 'N/A';
+                return (
+                  <div>
+                    <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider block">Visualização Individual de Tarefa</span>
+                    <div className="text-xs font-medium text-slate-500 mt-0.5">
+                      Cliente: <strong className="text-slate-800 font-bold">{cName}</strong> | Projeto: <strong className="text-slate-800 font-bold">{pTitle}</strong>
+                    </div>
+                    <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">{selectedTaskForDetails.title}</h3>
+                  </div>
+                );
+              })()}
               <button 
                 onClick={() => setSelectedTaskForDetails(null)}
                 className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
@@ -1396,34 +1421,28 @@ export default function TaskSection({
                 </select>
               </div>
 
-              {/* Task Type Dropdown */}
+              {/* Task Type (Informativo / Não editável) */}
               <div className="space-y-1 text-xs font-bold text-slate-700">
                 <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
-                <select 
-                  value={taskEditType || getDefaultTaskTypeId(taskTypes)}
-                  onChange={e => setTaskEditType(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
-                >
-                  {taskTypes.filter(tt => !tt.deleted).map(tt => (
-                    <option key={tt.id} value={tt.id}>
-                      {tt.name} (Nível {tt.scale ?? 1})
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 select-none">
+                  {getTaskTypeName(taskEditType || selectedTaskForDetails.taskTypeId, taskTypes) || 'Não definido'}
+                </div>
               </div>
 
               {/* Consumed Hours */}
               <div className="space-y-1 text-xs font-bold text-slate-700">
-                <label className="block text-xs font-bold text-slate-700">Horas Consumidas Efetivas (HH:MM)</label>
+                <label className="block text-xs font-bold text-slate-700">Horas Consumidas Efetivas (Horas)</label>
                 <input 
-                  type="text" 
+                  type="number" 
+                  min="0"
+                  step="1"
                   required
                   value={taskEditActualHours}
                   onChange={e => setTaskEditActualHours(e.target.value)}
-                  placeholder="Ex: 04:30"
+                  placeholder="Ex: 8"
                   className="w-full p-2.5 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
                 />
-                <p className="text-[10px] text-slate-400 font-medium">Indique o tempo efetivamente gasto nesta tarefa.</p>
+                <p className="text-[10px] text-slate-400 font-medium">Indique o número de horas efetivamente gastas nesta tarefa.</p>
               </div>
 
               {/* Date & Time grids */}
