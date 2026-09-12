@@ -309,12 +309,12 @@ export default function InventorySection({
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               {filteredMaterials.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 font-medium text-xs">Nenhum material registado.</div>
               ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100">
+                <table className="w-full min-w-[700px] text-left border-collapse">
+                  <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100 whitespace-nowrap">
                     <tr>
                       <th className="px-5 py-3">Artigo / Nome</th>
                       <th className="px-5 py-3">Código Interno</th>
@@ -501,12 +501,12 @@ export default function InventorySection({
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               {filteredEq.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 font-medium text-xs">Nenhum equipamento industrial registado.</div>
               ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100">
+                <table className="w-full min-w-[700px] text-left border-collapse">
+                  <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100 whitespace-nowrap">
                     <tr>
                       <th className="px-5 py-3">Número de Série (S/N)</th>
                       <th className="px-5 py-3">Marca / Modelo</th>

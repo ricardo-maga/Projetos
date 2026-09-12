@@ -18,7 +18,7 @@ import { hasPermission } from '../lib/permissions';
 
 import { 
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
-  Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass
+  Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw
 } from 'lucide-react';
 
 import { hashPassword } from '../lib/utils';
@@ -152,6 +152,7 @@ export default function Page() {
     syncStatus,
     syncError,
     isDbConfigured,
+    refreshFromDatabase,
   } = useERP();
 
   const hasProcessedDeepLink = React.useRef(false);
@@ -458,19 +459,20 @@ export default function Page() {
     <div className="min-h-screen flex flex-col bg-slate-50/50 text-slate-800" id="main-root" data-theme={appConfig.theme || 'default'}>
       
       {/* HEADER BAR */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-4 py-3 -sm flex items-center justify-between" id="app-header">
-        <div className="flex items-center gap-3">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-3 sm:px-4 py-2.5 sm:py-3 -sm flex items-center justify-between" id="app-header">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1.5 hover:bg-slate-100 rounded-lg md:hidden text-slate-500"
+            className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded-xl md:hidden text-slate-600 transition-colors"
             id="toggle-sidebar"
+            aria-label={sidebarOpen ? "Fechar menu" : "Abrir menu"}
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1.5 hover:bg-slate-100 rounded-lg hidden md:block text-slate-500 transition-colors"
+            className="w-9 h-9 items-center justify-center hover:bg-slate-100 rounded-xl hidden md:flex text-slate-500 transition-colors"
             title={isCollapsed ? "Expandir menu" : "Colapsar menu"}
             id="toggle-desktop-sidebar"
           >
@@ -482,19 +484,19 @@ export default function Page() {
             onClick={() => handleTabChange('dashboard')}
             title="Ir para o Dashboard"
           >
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold text-sm -md -blue-100">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold text-sm -md -blue-100 shrink-0">
               N
             </div>
-            <div>
-              <h1 className="text-sm font-black text-slate-900 tracking-tight leading-none">{appConfig.appName}</h1>
-              <p className="text-[10px] text-slate-500 font-semibold mt-0.5">{appConfig.appDescription}</p>
+            <div className="min-w-0">
+              <h1 className="text-sm font-black text-slate-900 tracking-tight leading-none truncate">{appConfig.appName}</h1>
+              <p className="text-[10px] text-slate-500 font-semibold mt-0.5 truncate hidden sm:block">{appConfig.appDescription}</p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           
-                    <NotificationDropdown 
+          <NotificationDropdown 
             notifications={(state.notifications || []).filter(n => !n.userId || n.userId === currentUser.id || n.userId === 'all')}
             markAsRead={markNotificationAsRead}
             markAllAsRead={() => markAllNotificationsAsRead(currentUser.id)}
@@ -507,10 +509,10 @@ export default function Page() {
             setConfirmNewPassword('');
             setIsChangingPassword(true);
           }}
-          className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-all" 
+          className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:opacity-85 transition-all" 
           id="user-profile"
         >
-          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs border border-slate-200 -sm uppercase">
+          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs border border-slate-200 -sm uppercase shrink-0">
             {(() => {
               const parts = (currentUser.name || '').trim().split(/\s+/);
               if (parts.length >= 2) {
@@ -535,17 +537,42 @@ export default function Page() {
       </header>
 
       {/* BODY WRAPPER */}
-      <div className="flex-1 flex" id="body-wrapper">
+      <div className="flex-1 flex relative" id="body-wrapper">
+
+        {/* Mobile drawer backdrop overlay */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 md:hidden animate-fade-in"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Fechar menu"
+          />
+        )}
         
-        {/* SIDEBAR NAVIGATION */}
+        {/* SIDEBAR NAVIGATION - Completely visible on large screens (tablet/PC), collapsible drawer on mobile */}
         <aside 
-          className={`fixed top-[57px] bottom-0 left-0 transform ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } md:static md:translate-x-0 md:flex flex-col ${
+          className={`fixed top-0 bottom-0 left-0 z-50 md:top-[57px] transform ${
+            sidebarOpen ? 'translate-x-0 -2xl' : '-translate-x-full'
+          } md:static md:translate-x-0 md:-none md:flex flex-col ${
             isCollapsed ? 'md:w-16' : 'md:w-64'
-          } w-64 bg-white border-r border-slate-200 z-30 transition-all duration-200 ease-in-out`}
+          } w-72 max-w-[85vw] bg-white border-r border-slate-200 transition-all duration-200 ease-in-out`}
           id="sidebar-nav"
         >
+          {/* Mobile drawer top bar with close button */}
+          <div className="p-3.5 border-b border-slate-100 flex items-center justify-between md:hidden bg-slate-50">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold text-xs">
+                N
+              </div>
+              <span className="font-extrabold text-xs text-slate-900">{appConfig.appName}</span>
+            </div>
+            <button 
+              onClick={() => setSidebarOpen(false)}
+              className="p-1.5 hover:bg-slate-200 text-slate-500 rounded-lg transition-colors"
+              aria-label="Fechar menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
           <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
             {tabs.map(tab => {
               const Icon = tab.icon;
@@ -592,11 +619,11 @@ export default function Page() {
                 <div className="flex justify-between items-center w-full">
                   <span>Sincronização:</span>
                   {!isDbConfigured ? (
-                    <span className="font-bold text-red-500 flex items-center gap-0.5">● Memória (Sem base de dados)</span>
+                    <span className="font-bold text-rose-600 flex items-center gap-0.5">● Base de Dados Não Configurada</span>
                   ) : syncStatus === 'syncing' ? (
-                    <span className="font-bold text-amber-500 flex items-center gap-0.5 animate-pulse">● A guardar...</span>
+                    <span className="font-bold text-amber-500 flex items-center gap-0.5 animate-pulse">● A gravar na BD...</span>
                   ) : syncStatus === 'error' ? (
-                    <span className="font-bold text-red-600 flex items-center gap-0.5 cursor-help" title={syncError || 'Erro ao sincronizar'}>● Erro base de dados</span>
+                    <span className="font-bold text-rose-600 flex items-center gap-0.5 cursor-help" title={syncError || 'Erro ao sincronizar'}>● Erro BD (Revertido)</span>
                   ) : (
                     <span className="font-bold text-emerald-600 flex items-center gap-0.5">● Base de dados (Live)</span>
                   )}
@@ -612,7 +639,7 @@ export default function Page() {
         </aside>
 
         {/* MAIN PANEL CONTENT */}
-        <main className="flex-1 p-4 md:p-6 overflow-x-hidden" id="main-content">
+        <main className="flex-1 min-w-0 p-3 sm:p-4 md:p-6 overflow-x-hidden" id="main-content">
           <div className="max-w-7xl mx-auto space-y-6">
             
             {/* Header info */}
@@ -633,6 +660,27 @@ export default function Page() {
                 </p>
               </div>
             </div>
+
+            {/* Error or Rollback Notification */}
+            {syncStatus === 'error' && (
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-800 text-xs font-semibold shadow-xs" id="db-error-banner">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0 animate-ping" />
+                  <div>
+                    <span className="font-bold">Aviso de Integridade da Base de Dados: </span>
+                    <span>{syncError || 'A última operação não pôde ser gravada na base de dados e foi revertida para proteção de dados.'}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => refreshFromDatabase()}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs transition-colors shrink-0 flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Recarregar da Base de Dados
+                </button>
+              </div>
+            )}
 
             {/* Content view switcher */}
             <div id="active-tab-content" key={`${activeTab}-${navKey}`}>
@@ -795,6 +843,7 @@ export default function Page() {
                   updateConfig={updateConfig}
                   onResetDemoData={resetToDefault}
                   onClearDemoData={clearAllData}
+                  onRefreshFromDatabase={refreshFromDatabase}
                   addSpecialDay={addSpecialDay!}
                   deleteSpecialDay={deleteSpecialDay!}
                   defaultTasks={state.defaultTasks || []}

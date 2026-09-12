@@ -709,9 +709,9 @@ export default function UserSection({
                   )}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100 font-bold select-none">
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full min-w-[650px] text-left border-collapse">
+                    <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100 font-bold select-none whitespace-nowrap">
                       <tr>
                         <th className="px-5 py-3">Utilizador</th>
                         <th 
@@ -932,8 +932,9 @@ export default function UserSection({
                 </div>
               </div>
 
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100 font-bold">
+              <div className="overflow-x-auto w-full">
+                <table className="w-full min-w-[700px] text-left border-collapse">
+                  <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100 font-bold whitespace-nowrap">
                   <tr>
                     <th className="px-5 py-3">Nome</th>
                     <th className="px-5 py-3">E-mail</th>
@@ -1002,6 +1003,7 @@ export default function UserSection({
                   ))}
                 </tbody>
               </table>
+              </div>
 
             </div>
           )}

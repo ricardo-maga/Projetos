@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment } from '../lib/types';
-import { INITIAL_ERP_STATE } from '../lib/mockData';
+import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, mapStateToUUIDs } from '../lib/supabaseSync';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
@@ -25,261 +25,185 @@ const getAuthHeaders = (): Record<string, string> => {
   return headers;
 };
 
-// Função para gerar um estado limpo, sem dados de demonstração/mock, ideal para uso real em SQL
+// Clean baseline with zero mock entities (no mock clients, projects, tasks or materials)
 const getEmptyState = (): ERPState => ({
-  userGroups: INITIAL_ERP_STATE.userGroups,
-  projectStatuses: INITIAL_ERP_STATE.projectStatuses,
-  projectCategories: INITIAL_ERP_STATE.projectCategories,
-  projectRisks: INITIAL_ERP_STATE.projectRisks,
-  projectPriorities: INITIAL_ERP_STATE.projectPriorities,
-  projectTeams: INITIAL_ERP_STATE.projectTeams,
-  projectPartners: INITIAL_ERP_STATE.projectPartners,
-  taskStatuses: INITIAL_ERP_STATE.taskStatuses,
-  taskTypes: INITIAL_ERP_STATE.taskTypes || [],
-  riskCategories: INITIAL_ERP_STATE.riskCategories,
-  riskStatuses: INITIAL_ERP_STATE.riskStatuses,
-  riskPriorities: INITIAL_ERP_STATE.riskPriorities,
-  projectRiskItems: [],
-  appConfig: INITIAL_ERP_STATE.appConfig,
-  users: INITIAL_ERP_STATE.users,
-  clients: [],
-  materials: [],
-  projectMaterials: [],
-  projects: [],
-  tasks: [],
-  comments: [],
-  userAbsences: [],
-  quotes: [],
-  billOfMaterials: [],
-  equipmentList: [],
-  specialDays: [],
-  defaultTasks: [],
-  automationRules: INITIAL_ERP_STATE.automationRules || []
+  ...CLEAN_BASELINE_STATE
 });
 
 export function useERP() {
-  const [state, setState] = useState<ERPState | null>(() => {
-    if (typeof window !== 'undefined') {
-      const cached = localStorage.getItem(STORAGE_KEY);
-      if (cached) {
-        try {
-          return JSON.parse(cached);
-        } catch (e) {
-          console.error('Failed to parse state from localStorage', e);
-        }
-      }
-    }
-    return null;
-  });
+  // Start with null so that only authoritative data from the database is rendered
+  const [state, setState] = useState<ERPState | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isDbConfigured, setIsDbConfigured] = useState<boolean>(false);
 
-  // Load state on mount
-  useEffect(() => {
-    const loadState = async () => {
-      let loadedState: ERPState | null = null;
-      let configured = isSupabaseConfigured;
-      let needsSync = false;
-
-      try {
-        // Check configuration dynamically from server
-        try {
-          const configRes = await fetch('/api/supabase/config');
-          if (configRes.ok) {
-            const configData = await configRes.json();
-            if (configData && typeof configData.isConfigured === 'boolean') {
-              configured = configData.isConfigured;
-            }
-          }
-        } catch (configErr) {
-          console.warn('Could not check Supabase config from server, using local check:', configErr);
-        }
-
-        setIsDbConfigured(configured);
-
-        if (configured) {
-          // Try to load from Supabase proxy first
-          setSyncStatus('syncing');
-          const headers = getAuthHeaders();
-          try {
-            const syncRes = await fetch('/api/supabase/sync', { headers });
-            if (syncRes.ok) {
-              const syncResult = await syncRes.json();
-              if (syncResult.success) {
-                if (syncResult.data) {
-                  loadedState = syncResult.data;
-                  setSyncStatus('synced');
-                  setSyncError(null);
-                  console.log('Loaded live state from Supabase server proxy');
-                } else {
-                  // Conectado com sucesso, mas a tabela está vazia. Inicializar com o estado limpo/vazio
-                  loadedState = getEmptyState();
-                  console.log('No active state found in Supabase. Initializing with empty state.');
-                  needsSync = true;
-                }
-              } else {
-                setSyncStatus('error');
-                setSyncError(syncResult.message || 'Erro ao carregar do Supabase.');
-              }
+  // Authoritative fetch directly from database (bypasses any local stale cache)
+  const refreshFromDatabase = useCallback(async (): Promise<boolean> => {
+    setSyncStatus('syncing');
+    setSyncError(null);
+    try {
+      const headers = getAuthHeaders();
+      const syncRes = await fetch('/api/supabase/sync', { headers });
+      if (syncRes.ok) {
+        const syncResult = await syncRes.json();
+        if (syncResult.success) {
+          if (syncResult.data) {
+            const mapped = mapStateToUUIDs(syncResult.data);
+            setState(mapped);
+            setSyncStatus('synced');
+            setSyncError(null);
+            console.log('Authoritative data loaded from Supabase SQL database');
+            return true;
+          } else {
+            // Database is connected but empty/unseeded. Initialize with clean baseline
+            const freshState = mapStateToUUIDs(CLEAN_BASELINE_STATE);
+            setState(freshState);
+            const initRes = await fetch('/api/supabase/sync', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify(freshState),
+            });
+            const initJson = await initRes.json().catch(() => ({}));
+            if (initRes.ok && initJson.success) {
+              setSyncStatus('synced');
+              setSyncError(null);
+              return true;
             } else {
               setSyncStatus('error');
-              setSyncError('Não foi possível conectar ao serviço de dados.');
+              setSyncError(initJson.message || 'Erro ao inicializar tabelas na base de dados.');
+              return false;
             }
-          } catch (syncErr: any) {
-            console.warn('Network error when contacting Supabase sync endpoint:', syncErr);
-            setSyncStatus('idle');
           }
         } else {
-          setSyncStatus('idle');
-          setSyncError(null);
+          setSyncStatus('error');
+          setSyncError(syncResult.message || 'Erro retornado pela base de dados.');
+          return false;
         }
-      } catch (err: any) {
-        console.warn('Notice during init load:', err);
-        setSyncStatus('idle');
-        setSyncError(null);
-      }
-
-      // Fallback
-      if (!loadedState) {
-        if (typeof window !== 'undefined') {
-          const cached = localStorage.getItem(STORAGE_KEY);
-          if (cached) {
-            try {
-              loadedState = JSON.parse(cached);
-            } catch (e) {
-              console.error('Failed to parse cached state from localStorage', e);
-            }
-          }
-        }
-        if (!loadedState) {
-          loadedState = configured ? getEmptyState() : INITIAL_ERP_STATE;
-        }
-        console.log('Using fallback state:', configured ? 'Empty' : 'Demo/Cached');
-      }
-
-      // Ensure taskTypes exist and deduplicate by name
-      if (!loadedState.taskTypes || loadedState.taskTypes.length === 0) {
-        loadedState.taskTypes = INITIAL_ERP_STATE.taskTypes || [];
       } else {
-        const seen = new Set<string>();
-        loadedState.taskTypes = loadedState.taskTypes.filter((tt: any) => {
-          const key = (tt.name || '').trim().toLowerCase();
-          if (!key || seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+        const errJson = await syncRes.json().catch(() => ({}));
+        const msg = errJson.message || `Erro do servidor ao contactar a base de dados (Status: ${syncRes.status}).`;
+        setSyncStatus('error');
+        setSyncError(msg);
+        return false;
       }
+    } catch (err: any) {
+      const msg = err?.message || 'Erro de rede ao contactar a base de dados.';
+      setSyncStatus('error');
+      setSyncError(msg);
+      return false;
+    }
+  }, []);
 
-      // Ensure tasks have taskTypeId and migrate isMilestone tasks
-      const milestoneType = (loadedState.taskTypes || []).find((tt: any) => tt.name?.toLowerCase().includes('marco'));
-      const defaultType = (loadedState.taskTypes || []).find((tt: any) => !tt.deleted);
+  // Load state strictly from database on mount
+  useEffect(() => {
+    // Purge any legacy localStorage state cache to prevent using stale or mock data
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem('gestao_projetos_erp_state');
+        localStorage.removeItem('gestao_projetos_erp_state_v0');
+      } catch (e) {}
+    }
 
-      if (loadedState.tasks && loadedState.tasks.length > 0) {
-        loadedState.tasks = loadedState.tasks.map(t => {
-          if (!t.taskTypeId) {
-            if (t.isMilestone && milestoneType) {
-              return { ...t, taskTypeId: milestoneType.id };
-            }
-            if (defaultType) {
-              return { ...t, taskTypeId: defaultType.id };
-            }
+    const loadState = async () => {
+      let configured = isSupabaseConfigured;
+
+      try {
+        const configRes = await fetch('/api/supabase/config');
+        if (configRes.ok) {
+          const configData = await configRes.json();
+          if (configData && typeof configData.isConfigured === 'boolean') {
+            configured = configData.isConfigured;
           }
-          return t;
-        });
-      }
-
-      // Ensure all IDs are standard UUIDs for database safety
-      loadedState = mapStateToUUIDs(loadedState);
-
-      setState(loadedState);
-
-      if (needsSync && configured) {
-        try {
-          const headers = getAuthHeaders();
-          fetch('/api/supabase/sync', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(loadedState),
-          })
-            .then(res => res.json())
-            .then(result => {
-              if (result && result.success) {
-                setSyncStatus('synced');
-              } else {
-                setSyncStatus('error');
-                setSyncError(result?.message || 'Erro ao inicializar estado no Supabase.');
-              }
-            })
-            .catch(err => {
-              console.warn('Sync POST error during init:', err);
-            });
-        } catch (e) {
-          console.warn('Sync post dispatch error:', e);
         }
+      } catch (configErr) {
+        console.warn('Could not check Supabase config from server:', configErr);
       }
+
+      setIsDbConfigured(configured);
+
+      if (!configured) {
+        setSyncStatus('error');
+        setSyncError('A base de dados não está configurada no servidor. Por razões de integridade, a aplicação não permite operar com dados não gravados na base de dados.');
+        // Provide empty baseline with zero records so app layout can render without crashing
+        setState(mapStateToUUIDs(CLEAN_BASELINE_STATE));
+        return;
+      }
+
+      await refreshFromDatabase();
     };
 
     loadState();
-  }, []);
+  }, [refreshFromDatabase]);
 
-  // Helper to save state
-  const saveState = (updater: ERPState | ((prev: ERPState) => ERPState)) => {
-    setState(prev => {
-      if (!prev) return prev; // Cannot update if not loaded yet
-      
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      
-      // Save locally to localStorage
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch (e) {
-        console.error('Failed to write to localStorage', e);
-      }
-      
-      // Save remotely async
-      if (isDbConfigured) {
-        setSyncStatus('syncing');
-        const headers = getAuthHeaders();
-        fetch('/api/supabase/sync', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(next),
-        })
-          .then(res => res.json())
-          .then(result => {
-            if (result.success) {
-              setSyncStatus('synced');
-              setSyncError(null);
-            } else {
-              setSyncStatus('error');
-              setSyncError(result.message || 'Erro de sincronização.');
-              console.error('Supabase sync error:', result.message);
-            }
-          })
-          .catch(err => {
-            setSyncStatus('error');
-            setSyncError(err.message || 'Erro de rede desconhecido.');
-            console.error('Supabase catch error:', err);
-          });
-      }
-      
-      return next;
-    });
-  };
+  // Robust, fail-safe database write with automatic state rollback on any failure
+  const saveState = async (updater: ERPState | ((prev: ERPState) => ERPState)): Promise<{ success: boolean; message?: string }> => {
+    if (!state) {
+      return { success: false, message: 'Estado da aplicação não inicializado.' };
+    }
 
-  // Reset to default seed data
-  const resetToDefault = () => {
-    if (confirm('Tem a certeza que deseja repor os dados de demonstração originais? Todas as alterações serão perdidas.')) {
-      saveState(INITIAL_ERP_STATE);
+    if (!isDbConfigured) {
+      const msg = 'Gravação bloqueada: A base de dados não está configurada. Não é permitido criar ou alterar dados fora da base de dados.';
+      setSyncStatus('error');
+      setSyncError(msg);
+      return { success: false, message: msg };
+    }
+
+    const prevState = state;
+    const computed = typeof updater === 'function' ? updater(prevState) : updater;
+    const nextState = mapStateToUUIDs(computed);
+
+    // Apply optimistic update for responsive UI
+    setState(nextState);
+    setSyncStatus('syncing');
+    setSyncError(null);
+
+    try {
+      const headers = getAuthHeaders();
+      const res = await fetch('/api/supabase/sync', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(nextState),
+      });
+
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.ok && result.success) {
+        setSyncStatus('synced');
+        setSyncError(null);
+        return { success: true };
+      } else {
+        // ROLLBACK! The write was not accepted by the database
+        console.error('Falha na gravação na base de dados. A reverter estado local:', result?.message);
+        setState(prevState);
+        const errMsg = result?.message || `A base de dados rejeitou a gravação (${res.status}). A alteração foi revertida para garantir que apenas dados válidos da base de dados são mantidos.`;
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        return { success: false, message: errMsg };
+      }
+    } catch (netErr: any) {
+      // ROLLBACK on network or server error
+      console.error('Exceção de rede durante a gravação na base de dados. A reverter estado local:', netErr);
+      setState(prevState);
+      const errMsg = netErr?.message || 'Falha de comunicação com a base de dados. A alteração foi revertida para proteção de integridade.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      return { success: false, message: errMsg };
     }
   };
 
-  // Clear all data (reset to empty state)
+  // Reset to clean default baseline (no mock data)
+  const resetToDefault = () => {
+    if (confirm('Aviso: Esta ação irá repor as tabelas de configuração limpas e remover todos os projetos, tarefas e materiais diretamente na base de dados. Deseja continuar?')) {
+      saveState(CLEAN_BASELINE_STATE);
+    }
+  };
+
+  // Clear all data (reset to empty state directly in database)
   const clearAllData = () => {
-    if (confirm('Tem a certeza que deseja limpar todos os dados de demonstração e de utilizador? Esta ação não pode ser revertida.')) {
+    if (confirm('Tem a certeza que deseja limpar todos os projetos, tarefas, clientes e materiais da base de dados? Esta ação é definitiva na base de dados.')) {
       saveState(prev => ({
-        ...getEmptyState(),
+        ...CLEAN_BASELINE_STATE,
         appConfig: prev.appConfig,
         users: prev.users,
       }));
@@ -301,7 +225,7 @@ export function useERP() {
   };
 
   const sortedState: ERPState = useMemo(() => {
-    if (!state) return INITIAL_ERP_STATE;
+    if (!state) return CLEAN_BASELINE_STATE;
     
     const sortByOrder = (a: any, b: any) => {
       if (a.sort_order !== undefined && b.sort_order !== undefined) {
@@ -313,7 +237,7 @@ export function useERP() {
       return 0;
     };
 
-  return {
+    return {
       ...state,
       projectCategories: [...(state.projectCategories || [])].sort(sortByOrder),
       projectStatuses: [...(state.projectStatuses || [])].sort(sortByOrder),
@@ -333,12 +257,15 @@ export function useERP() {
   if (!state) {
     return {
       loading: true,
-      state: INITIAL_ERP_STATE,
+      state: CLEAN_BASELINE_STATE,
       resetToDefault: () => {},
       clearAllData: () => {},
       importState: () => false,
+      refreshFromDatabase,
+      saveState,
       syncStatus,
       syncError,
+      isDbConfigured,
       // Empty handlers for safety before load
       addProject: () => {}, updateProject: () => {}, deleteProject: () => {},
       addTask: () => {}, updateTask: () => {}, deleteTask: () => {},
@@ -358,7 +285,12 @@ export function useERP() {
       updateNotificationSetting: () => {},
       markNotificationAsRead: () => {},
       markAllNotificationsAsRead: () => {},
-      addNotification: () => {}
+      addNotification: () => {},
+      addAutomationRule: () => {},
+      updateAutomationRule: () => {},
+      deleteAutomationRule: () => {},
+      toggleAutomationRule: () => {},
+      runAutomationRule: () => {}
     };
   }
 
@@ -1257,6 +1189,8 @@ export function useERP() {
     updateAutomationRule,
     deleteAutomationRule,
     toggleAutomationRule,
-    runAutomationRule
+    runAutomationRule,
+    refreshFromDatabase,
+    saveState
   };
 }

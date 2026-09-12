@@ -116,6 +116,9 @@ export async function POST(req: NextRequest) {
 
     // 4. Save state
     const result = await saveActiveStateToSupabase(state);
+    if (!result.success) {
+      return NextResponse.json(result, { status: 400 });
+    }
     return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json({ 

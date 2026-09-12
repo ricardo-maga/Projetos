@@ -1280,123 +1280,125 @@ export default function ProjectSection({
             ];
 
             return (
-              <div className="relative flex w-full justify-between items-center px-10 py-10 bg-slate-50/50 border-b border-slate-100">
-                {/* Connecting Lines */}
-                <div className="absolute left-[56px] right-[56px] top-[56px] flex items-center z-0">
-                  {levels.slice(0, -1).map((_, idx) => {
-                    const isPassed = displayScale > levels[idx + 1].targetScale;
-                    const isCurrent = displayScale === levels[idx + 1].targetScale;
-                    const isActive = displayScale >= levels[idx + 1].targetScale;
-                    
-                    let lineColor = "bg-slate-200";
-                    if (isPassed) {
-                      lineColor = "bg-slate-400"; // cinza
-                    } else if (isCurrent) {
-                      if (displayScale === 5) {
-                        lineColor = "bg-emerald-800"; // verde-escuro
-                      } else {
-                        lineColor = "bg-blue-500"; // azul
+              <div className="overflow-x-auto w-full border-b border-slate-100">
+                <div className="relative flex w-full min-w-[560px] justify-between items-center px-6 sm:px-10 py-8 sm:py-10 bg-slate-50/50">
+                  {/* Connecting Lines */}
+                  <div className="absolute left-[56px] right-[56px] top-[56px] flex items-center z-0">
+                    {levels.slice(0, -1).map((_, idx) => {
+                      const isPassed = displayScale > levels[idx + 1].targetScale;
+                      const isCurrent = displayScale === levels[idx + 1].targetScale;
+                      const isActive = displayScale >= levels[idx + 1].targetScale;
+                      
+                      let lineColor = "bg-slate-200";
+                      if (isPassed) {
+                        lineColor = "bg-slate-400"; // cinza
+                      } else if (isCurrent) {
+                        if (displayScale === 5) {
+                          lineColor = "bg-emerald-800"; // verde-escuro
+                        } else {
+                          lineColor = "bg-blue-500"; // azul
+                        }
                       }
+
+                      return (
+                        <div key={idx} className="flex-1 h-[2px] bg-slate-200">
+                          <div 
+                            className={`h-full transition-all duration-700 ease-in-out ${isActive ? lineColor : 'bg-transparent'}`}
+                            style={{ width: isActive ? '100%' : '0%' }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Step Indicators */}
+                  {levels.map((lvl, idx) => {
+                    const isCurrent = lvl.targetScale === displayScale;
+                    const isPassed = lvl.targetScale < displayScale;
+                    
+                    let circleClass = "";
+                    let labelColorClass = "";
+
+                    if (isCurrent) {
+                      if (lvl.targetScale === 1) {
+                        circleClass = "ring-red-100 bg-red-500 border-red-500 text-white ring-4 scale-110 font-bold";
+                        labelColorClass = "text-red-600 font-extrabold";
+                      } else if (lvl.targetScale === 5) {
+                        circleClass = "ring-emerald-200 bg-emerald-800 border-emerald-800 text-white ring-4 scale-110 font-bold";
+                        labelColorClass = "text-emerald-800 font-extrabold";
+                      } else {
+                        circleClass = "ring-blue-100 bg-blue-600 border-blue-600 text-white ring-4 scale-110 font-bold";
+                        labelColorClass = "text-blue-600 font-extrabold";
+                      }
+                    } else if (isPassed) {
+                      // cinza se já tiver num estado com escala superior
+                      circleClass = "bg-slate-400 border-slate-400 text-white";
+                      labelColorClass = "text-slate-500 font-semibold";
+                    } else {
+                      // cinza claro se estiver num estado de escala inferior
+                      circleClass = "bg-slate-100 border-slate-200 text-slate-300";
+                      labelColorClass = "text-slate-300";
                     }
 
                     return (
-                      <div key={idx} className="flex-1 h-[2px] bg-slate-200">
-                        <div 
-                          className={`h-full transition-all duration-700 ease-in-out ${isActive ? lineColor : 'bg-transparent'}`}
-                          style={{ width: isActive ? '100%' : '0%' }}
-                        />
+                      <div
+                        key={idx}
+                        className="relative z-10 flex flex-col items-center select-none"
+                      >
+                        {/* Step Circle */}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 border-[2px] ${circleClass}`}>
+                          {isPassed ? <Check className="w-4 h-4 stroke-[3]" /> : <span className="text-[11px] font-black">{idx + 1}</span>}
+                        </div>
+                        
+                        {/* Label */}
+                        <span className={`absolute top-11 whitespace-nowrap text-[10px] uppercase tracking-widest font-extrabold transition-colors mt-1 ${labelColorClass}`}>
+                          {lvl.label}
+                        </span>
                       </div>
                     );
                   })}
                 </div>
-
-                {/* Step Indicators */}
-                {levels.map((lvl, idx) => {
-                  const isCurrent = lvl.targetScale === displayScale;
-                  const isPassed = lvl.targetScale < displayScale;
-                  
-                  let circleClass = "";
-                  let labelColorClass = "";
-
-                  if (isCurrent) {
-                    if (lvl.targetScale === 1) {
-                      circleClass = "ring-red-100 bg-red-500 border-red-500 text-white ring-4 scale-110 font-bold";
-                      labelColorClass = "text-red-600 font-extrabold";
-                    } else if (lvl.targetScale === 5) {
-                      circleClass = "ring-emerald-200 bg-emerald-800 border-emerald-800 text-white ring-4 scale-110 font-bold";
-                      labelColorClass = "text-emerald-800 font-extrabold";
-                    } else {
-                      circleClass = "ring-blue-100 bg-blue-600 border-blue-600 text-white ring-4 scale-110 font-bold";
-                      labelColorClass = "text-blue-600 font-extrabold";
-                    }
-                  } else if (isPassed) {
-                    // cinza se já tiver num estado com escala superior
-                    circleClass = "bg-slate-400 border-slate-400 text-white";
-                    labelColorClass = "text-slate-500 font-semibold";
-                  } else {
-                    // cinza claro se estiver num estado de escala inferior
-                    circleClass = "bg-slate-100 border-slate-200 text-slate-300";
-                    labelColorClass = "text-slate-300";
-                  }
-
-                  return (
-                    <div
-                      key={idx}
-                      className="relative z-10 flex flex-col items-center select-none"
-                    >
-                      {/* Step Circle */}
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 border-[2px] ${circleClass}`}>
-                        {isPassed ? <Check className="w-4 h-4 stroke-[3]" /> : <span className="text-[11px] font-black">{idx + 1}</span>}
-                      </div>
-                      
-                      {/* Label */}
-                      <span className={`absolute top-11 whitespace-nowrap text-[10px] uppercase tracking-widest font-extrabold transition-colors mt-1 ${labelColorClass}`}>
-                        {lvl.label}
-                      </span>
-                    </div>
-                  );
-                })}
               </div>
             );
           })()}
 
-          {/* Project Separators Header (Tabs: Visão Geral / Tarefas / Material) */}
-          <div className="border-b border-slate-200 bg-slate-50/80 px-6 pt-3 flex items-center justify-between flex-wrap gap-2">
-            <div className="flex gap-2">
+          {/* Project Separators Header (Tabs: Visão Geral / Tarefas / Material / Riscos / Análise) */}
+          <div className="border-b border-slate-200 bg-slate-50/80 px-3 sm:px-6 pt-2.5 sm:pt-3 overflow-x-auto w-full scrollbar-thin">
+            <div className="flex gap-2 min-w-max pb-0.5">
               <button
                 type="button"
                 onClick={() => setActiveDetailTab('geral')}
-                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   activeDetailTab === 'geral'
                     ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <FileText className="w-4 h-4" /> Visão Geral
+                <FileText className="w-4 h-4 shrink-0" /> Visão Geral
               </button>
               <button
                 type="button"
                 onClick={() => setActiveDetailTab('tarefas')}
-                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   activeDetailTab === 'tarefas'
                     ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <ListTodo className="w-4 h-4" /> Tarefas ({projTasks.length})
+                <ListTodo className="w-4 h-4 shrink-0" /> Tarefas ({projTasks.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveDetailTab('material')}
-                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   activeDetailTab === 'material'
                     ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <Package className="w-4 h-4" /> Material ({projMaterials.length})
+                <Package className="w-4 h-4 shrink-0" /> Material ({projMaterials.length})
                 {hasMissingMaterials && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping inline-block" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping inline-block shrink-0" />
                 )}
               </button>
               <button
@@ -1405,30 +1407,29 @@ export default function ProjectSection({
                   setActiveDetailTab('riscos');
                   resetRiskForm();
                 }}
-                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   activeDetailTab === 'riscos'
                     ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <ShieldAlert className="w-4 h-4" /> Riscos ({projRiskItems.length})
+                <ShieldAlert className="w-4 h-4 shrink-0" /> Riscos ({projRiskItems.length})
                 {projCriticalRisksCount > 0 && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping inline-block" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping inline-block shrink-0" />
                 )}
               </button>
               <button
                 type="button"
                 onClick={() => setActiveDetailTab('analise')}
-                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   activeDetailTab === 'analise'
                     ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                <BarChart3 className="w-4 h-4" /> Análise
+                <BarChart3 className="w-4 h-4 shrink-0" /> Análise
               </button>
             </div>
-
           </div>
 
           {/* TAB 1: VISÃO GERAL */}
@@ -1446,32 +1447,34 @@ export default function ProjectSection({
 
               {/* Tabs Switcher: Calendário vs Cronograma */}
               <div className="space-y-4">
-                <div className="flex border-b border-slate-200 gap-6">
-                  <button
-                    type="button"
-                    onClick={() => setProjectViewTab('calendario')}
-                    className={`pb-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
-                      projectViewTab === 'calendario'
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-slate-400 hover:text-slate-700'
-                    }`}
-                  >
-                    <Calendar className="w-4 h-4" />
-                    Calendário Mensal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setProjectViewTab('cronograma')}
-                    className={`pb-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
-                      projectViewTab === 'cronograma'
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-slate-400 hover:text-slate-700'
-                    }`}
-                    id="tab-cronograma-btn"
-                  >
-                    <Clock className="w-4 h-4" />
-                    Cronograma
-                  </button>
+                <div className="overflow-x-auto w-full border-b border-slate-200 scrollbar-thin">
+                  <div className="flex gap-6 min-w-max pb-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setProjectViewTab('calendario')}
+                      className={`pb-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
+                        projectViewTab === 'calendario'
+                          ? 'border-blue-600 text-blue-600'
+                          : 'border-transparent text-slate-400 hover:text-slate-700'
+                      }`}
+                    >
+                      <Calendar className="w-4 h-4 shrink-0" />
+                      Calendário Mensal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProjectViewTab('cronograma')}
+                      className={`pb-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
+                        projectViewTab === 'cronograma'
+                          ? 'border-blue-600 text-blue-600'
+                          : 'border-transparent text-slate-400 hover:text-slate-700'
+                      }`}
+                      id="tab-cronograma-btn"
+                    >
+                      <Clock className="w-4 h-4 shrink-0" />
+                      Cronograma
+                    </button>
+                  </div>
                 </div>
 
                 {projectViewTab === 'calendario' ? (
@@ -2686,9 +2689,9 @@ export default function ProjectSection({
                           </div>
 
                           {/* Table of items */}
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs divide-y divide-slate-100">
-                              <thead className="bg-slate-50/50 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                          <div className="overflow-x-auto w-full">
+                            <table className="w-full min-w-[850px] text-left text-xs divide-y divide-slate-100">
+                              <thead className="bg-slate-50/50 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                                 <tr>
                                   <th className="px-4 py-3">Descrição</th>
                                   <th className="px-3 py-3">Ref.</th>
@@ -3112,9 +3115,9 @@ export default function ProjectSection({
                 </div>
               ) : (
                 <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs divide-y divide-slate-100">
-                      <thead className="bg-slate-50 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full min-w-[900px] text-left text-xs divide-y divide-slate-100">
+                      <thead className="bg-slate-50 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                         <tr>
                           <th className="px-5 py-3.5">Título / Categoria</th>
                           <th className="px-3 py-3.5">Responsável</th>
@@ -3379,32 +3382,34 @@ export default function ProjectSection({
                       <div className="p-4 bg-slate-50 border-b border-slate-100 font-extrabold text-xs text-slate-800 uppercase tracking-wide">
                         Contagem e Carga Horária por Tipo de Tarefa
                       </div>
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-100">
-                          <tr>
-                            <th className="px-4 py-2.5">Tipo de Tarefa</th>
-                            <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
-                            <th className="px-4 py-2.5 text-right">Carga Horária</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                          {Object.keys(taskCountsByType).length === 0 ? (
+                      <div className="overflow-x-auto w-full">
+                        <table className="w-full min-w-[420px] text-left border-collapse text-xs">
+                          <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-100 whitespace-nowrap">
                             <tr>
-                              <td colSpan={3} className="px-4 py-6 text-center text-slate-400 italic font-normal">Nenhuma tarefa registada para este projeto.</td>
+                              <th className="px-4 py-2.5">Tipo de Tarefa</th>
+                              <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
+                              <th className="px-4 py-2.5 text-right">Carga Horária</th>
                             </tr>
-                          ) : (
-                            Object.entries(taskCountsByType).map(([tName, data]) => (
-                              <tr key={tName} className="hover:bg-slate-50">
-                                <td className="px-4 py-3 font-extrabold text-slate-800">{tName}</td>
-                                <td className="px-4 py-3 text-center">
-                                  <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full font-extrabold">{data.count}</span>
-                                </td>
-                                <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{formatMins(data.workloadMins)}h</td>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                            {Object.keys(taskCountsByType).length === 0 ? (
+                              <tr>
+                                <td colSpan={3} className="px-4 py-6 text-center text-slate-400 italic font-normal">Nenhuma tarefa registada para este projeto.</td>
                               </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
+                            ) : (
+                              Object.entries(taskCountsByType).map(([tName, data]) => (
+                                <tr key={tName} className="hover:bg-slate-50">
+                                  <td className="px-4 py-3 font-extrabold text-slate-800">{tName}</td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full font-extrabold">{data.count}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{formatMins(data.workloadMins)}h</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
 
                     {/* Contagem e Carga Horária por Técnico */}
@@ -3412,32 +3417,34 @@ export default function ProjectSection({
                       <div className="p-4 bg-slate-50 border-b border-slate-100 font-extrabold text-xs text-slate-800 uppercase tracking-wide">
                         Contagem e Carga Horária por Técnico
                       </div>
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-100">
-                          <tr>
-                            <th className="px-4 py-2.5">Técnico</th>
-                            <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
-                            <th className="px-4 py-2.5 text-right">Carga Horária</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                          {Object.keys(taskCountsByTech).length === 0 ? (
+                      <div className="overflow-x-auto w-full">
+                        <table className="w-full min-w-[420px] text-left border-collapse text-xs">
+                          <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-100 whitespace-nowrap">
                             <tr>
-                              <td colSpan={3} className="px-4 py-6 text-center text-slate-400 italic font-normal">Nenhum técnico atribuído a tarefas deste projeto.</td>
+                              <th className="px-4 py-2.5">Técnico</th>
+                              <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
+                              <th className="px-4 py-2.5 text-right">Carga Horária</th>
                             </tr>
-                          ) : (
-                            Object.entries(taskCountsByTech).map(([techName, data]) => (
-                              <tr key={techName} className="hover:bg-slate-50">
-                                <td className="px-4 py-3 font-extrabold text-slate-800">{techName}</td>
-                                <td className="px-4 py-3 text-center">
-                                  <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full font-extrabold">{data.count}</span>
-                                </td>
-                                <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{formatMins(data.workloadMins)}h</td>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                            {Object.keys(taskCountsByTech).length === 0 ? (
+                              <tr>
+                                <td colSpan={3} className="px-4 py-6 text-center text-slate-400 italic font-normal">Nenhum técnico atribuído a tarefas deste projeto.</td>
                               </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
+                            ) : (
+                              Object.entries(taskCountsByTech).map(([techName, data]) => (
+                                <tr key={techName} className="hover:bg-slate-50">
+                                  <td className="px-4 py-3 font-extrabold text-slate-800">{techName}</td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full font-extrabold">{data.count}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{formatMins(data.workloadMins)}h</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 );
@@ -4057,12 +4064,12 @@ export default function ProjectSection({
           </div>
 
           {/* Table list output */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full">
             {filteredProjects.length === 0 ? (
               <div className="p-8 text-center text-slate-400 font-medium text-xs">Nenhum projeto encontrado para os filtros selecionados.</div>
             ) : (
-              <table className="w-full text-left border-collapse">
-                <thead className="text-[11px] uppercase text-slate-400 font-extrabold bg-slate-50 border-b border-slate-100">
+              <table className="w-full min-w-[700px] text-left border-collapse">
+                <thead className="text-[11px] uppercase text-slate-400 font-extrabold bg-slate-50 border-b border-slate-100 whitespace-nowrap">
                   <tr>
                     <th className="px-5 py-3">IP / Gestor</th>
                     <th className="px-5 py-3">Projeto</th>

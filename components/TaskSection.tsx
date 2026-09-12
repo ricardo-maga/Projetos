@@ -1083,12 +1083,12 @@ export default function TaskSection({
             </div>
 
             {/* Table List Output */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               {paginatedTasks.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 font-medium text-xs">Nenhuma tarefa encontrada.</div>
               ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead className="text-[11px] uppercase text-slate-400 font-bold bg-slate-50 border-b border-slate-100">
+                <table className="w-full min-w-[750px] text-left border-collapse">
+                  <thead className="text-[11px] uppercase text-slate-400 font-bold bg-slate-50 border-b border-slate-100 whitespace-nowrap">
                     <tr>
                       <th className="px-5 py-3">Tarefa / Projeto</th>
                       <th className="px-5 py-3">Responsáveis</th>

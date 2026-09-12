@@ -1,6 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem } from './types';
-import { INITIAL_ERP_STATE } from './mockData';
 
 export interface SupabaseBackup {
   id: string;
@@ -836,7 +835,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
               deleted: tt.deleted || false,
               sort_order: tt.sort_order ?? tt.scale ?? 0,
             }))
-          : (INITIAL_ERP_STATE.taskTypes || []);
+          : [];
         
         const seen = new Set<string>();
         const deduped: any[] = [];
@@ -862,10 +861,10 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       equipmentList,
       specialDays,
       defaultTasks,
-      riskCategories: riskCategories.length > 0 ? riskCategories : INITIAL_ERP_STATE.riskCategories,
-      riskStatuses: riskStatuses.length > 0 ? riskStatuses : INITIAL_ERP_STATE.riskStatuses,
-      riskPriorities: riskPriorities.length > 0 ? riskPriorities : INITIAL_ERP_STATE.riskPriorities,
-      projectRiskItems: projectRiskItems.length > 0 ? projectRiskItems : (INITIAL_ERP_STATE.projectRiskItems || []),
+      riskCategories: riskCategories || [],
+      riskStatuses: riskStatuses || [],
+      riskPriorities: riskPriorities || [],
+      projectRiskItems: projectRiskItems || [],
     };
 
     // If completely empty database (unseeded), return undefined to let /hooks/useERP seed defaults.

@@ -333,14 +333,14 @@ export default function ClientSection({
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full">
             {filteredClients.length === 0 ? (
               <div className="p-8 text-center text-slate-400 font-medium text-xs">
                 {showDeleted ? 'Nenhum cliente eliminado encontrado.' : 'Nenhum cliente registado ou encontrado.'}
               </div>
             ) : (
-              <table className="w-full text-left border-collapse">
-                <thead className="text-[11px] uppercase text-slate-400 font-bold bg-slate-50 border-b border-slate-100">
+              <table className="w-full min-w-[750px] text-left border-collapse">
+                <thead className="text-[11px] uppercase text-slate-400 font-bold bg-slate-50 border-b border-slate-100 whitespace-nowrap">
                   <tr>
                     <th className="px-5 py-3">Cliente</th>
                     <th className="px-5 py-3">NIF / Tax ID</th>

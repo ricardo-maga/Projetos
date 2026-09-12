@@ -249,8 +249,9 @@ export default function QuoteSection({
                 <p className="text-slate-400 italic py-6 text-center">Este orçamento não possui materiais ou custos associados. Adicione artigos acima para computar o valor total!</p>
               ) : (
                 <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100">
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full min-w-[550px] text-left border-collapse text-xs">
+                      <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100 whitespace-nowrap">
                       <tr>
                         <th className="px-4 py-2.5">Artigo / Referência</th>
                         <th className="px-4 py-2.5 text-center">Quant.</th>
@@ -289,7 +290,8 @@ export default function QuoteSection({
                         );
                       })}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -415,12 +417,12 @@ export default function QuoteSection({
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full">
             {filteredQuotes.length === 0 ? (
               <div className="p-8 text-center text-slate-400 font-medium text-xs">Nenhuma proposta ou orçamento registado.</div>
             ) : (
-              <table className="w-full text-left border-collapse text-xs">
-                <thead className="text-[11px] uppercase text-slate-400 font-bold bg-slate-50 border-b border-slate-100">
+              <table className="w-full min-w-[780px] text-left border-collapse text-xs">
+                <thead className="text-[11px] uppercase text-slate-400 font-bold bg-slate-50 border-b border-slate-100 whitespace-nowrap">
                   <tr>
                     <th className="px-5 py-3">Código Orçamento</th>
                     <th className="px-5 py-3">Cliente</th>

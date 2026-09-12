@@ -464,12 +464,12 @@ export default function BentoDashboard({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full">
           {displayedProjects.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-xs font-medium">Nenhum projeto ativo registado.</div>
           ) : (
-            <table className="w-full text-left border-collapse text-xs">
-              <thead className="text-[10px] uppercase text-slate-400 font-extrabold bg-slate-50/50 border-b border-slate-100">
+            <table className="w-full min-w-[620px] text-left border-collapse text-xs">
+              <thead className="text-[10px] uppercase text-slate-400 font-extrabold bg-slate-50/50 border-b border-slate-100 whitespace-nowrap">
                 <tr>
                   <th className="px-5 py-3">IP / Gestor</th>
                   <th className="px-5 py-3">Projeto</th>

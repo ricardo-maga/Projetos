@@ -83,6 +83,7 @@ interface ConfigSectionProps {
   deleteAutomationRule?: any;
   toggleAutomationRule?: any;
   runAutomationRule?: any;
+  onRefreshFromDatabase?: () => Promise<boolean>;
 }
 
 interface SortableAuxRowProps {
@@ -268,6 +269,7 @@ export default function ConfigSection({
   deleteAutomationRule,
   toggleAutomationRule,
   runAutomationRule,
+  onRefreshFromDatabase,
 }: ConfigSectionProps) {
   const canReadConfig = hasPermission(currentUser, 'config_read', userGroups);
   const canWriteConfig = hasPermission(currentUser, 'config_write', userGroups);
@@ -1326,37 +1328,39 @@ export default function ConfigSection({
         </p>
 
         {/* Tab Selector */}
-        <div className="flex flex-wrap gap-1.5 border-b border-slate-200 pb-3 mb-5">
-          {[
-            { id: 'projectCategories', label: 'Categorias' },
-            { id: 'projectStatuses', label: 'Estados do Projeto' },
-            { id: 'taskTypes', label: 'Tipos de Tarefa' },
-            { id: 'taskStatuses', label: 'Estados de Tarefa' },
-            { id: 'projectPriorities', label: 'Prioridades' },
-            { id: 'projectTeams', label: 'Equipas Internas' },
-            { id: 'projectPartners', label: 'Parceiros Externos' },
-            { id: 'riskCategories', label: 'Categorias de Risco' },
-            { id: 'riskStatuses', label: 'Estados de Risco' },
-            { id: 'riskPriorities', label: 'Prioridades de Risco' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setActiveAuxTab(tab.id as any);
-                setEditingAuxId(null);
-                setNewAuxName('');
-                setNewAuxScale(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                activeAuxTab === tab.id
-                  ? 'bg-blue-600 text-white -sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="overflow-x-auto w-full border-b border-slate-200 pb-3 mb-5 scrollbar-thin">
+          <div className="flex gap-1.5 min-w-max">
+            {[
+              { id: 'projectCategories', label: 'Categorias' },
+              { id: 'projectStatuses', label: 'Estados do Projeto' },
+              { id: 'taskTypes', label: 'Tipos de Tarefa' },
+              { id: 'taskStatuses', label: 'Estados de Tarefa' },
+              { id: 'projectPriorities', label: 'Prioridades' },
+              { id: 'projectTeams', label: 'Equipas Internas' },
+              { id: 'projectPartners', label: 'Parceiros Externos' },
+              { id: 'riskCategories', label: 'Categorias de Risco' },
+              { id: 'riskStatuses', label: 'Estados de Risco' },
+              { id: 'riskPriorities', label: 'Prioridades de Risco' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveAuxTab(tab.id as any);
+                  setEditingAuxId(null);
+                  setNewAuxName('');
+                  setNewAuxScale(1);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all whitespace-nowrap shrink-0 ${
+                  activeAuxTab === tab.id
+                    ? 'bg-blue-600 text-white -sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Addition form */}
@@ -1404,14 +1408,15 @@ export default function ConfigSection({
           </div>
         ) : (
           <div className="border border-slate-200 rounded-xl overflow-hidden -sm bg-white mb-6">
-            <DndContext 
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEndAux}
-            >
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 tracking-wider">
+            <div className="overflow-x-auto w-full">
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEndAux}
+              >
+                <table className="w-full min-w-[520px] text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 tracking-wider whitespace-nowrap">
                     <th className="p-3 w-10"></th>
                     <th className="p-3">Nome da Opção</th>
                     {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') && (
@@ -1444,6 +1449,7 @@ export default function ConfigSection({
                 </tbody>
               </table>
             </DndContext>
+            </div>
           </div>
         )}
       </div>
@@ -1564,53 +1570,69 @@ export default function ConfigSection({
             </div>
           </div>
 
-      {/* Reset Demo Data & System Info */}
+      {/* Database Integrity & Maintenance */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm max-w-2xl text-xs" id="maintenance-panel">
         <h3 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-1.5">
-          <Info className="w-4 h-4 text-amber-600" />
-          Manutenção do Sistema & Demonstração
+          <Database className="w-4 h-4 text-emerald-600" />
+          Integridade de Dados & Sincronização Estrita
         </h3>
         <p className="text-slate-500 font-medium leading-relaxed mb-4">
-          Para fins de testes ou auditorias, pode redefinir o estado de toda a aplicação para as referências e dados de demonstração iniciais. Isto irá reverter projetos, materiais e orçamentos eliminados para as amostras padrão de engenharia.
+          A aplicação opera com persistência garantida na base de dados PostgreSQL / Supabase como única fonte de verdade. Dados que não estejam na base de dados não são apresentados nem mantidos. Qualquer tentativa de gravação que falhe no servidor é automaticamente revertida para proteger a integridade.
         </p>
 
         <div className="flex flex-wrap gap-3">
+          {onRefreshFromDatabase && (
+            <button 
+              type="button"
+              onClick={async () => {
+                const ok = await onRefreshFromDatabase();
+                if (ok) {
+                  alert('Dados recarregados com sucesso diretamente da base de dados!');
+                } else {
+                  alert('Não foi possível sincronizar com a base de dados. Verifique a ligação.');
+                }
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold transition-all"
+            >
+              <RefreshCw className="w-4 h-4 text-emerald-600" />
+              Recarregar da Base de Dados
+            </button>
+          )}
+
           <button 
             type="button"
             onClick={() => {
               askConfirmation(
-                'Confirmar Restauro de Dados de Demonstração',
-                'Aviso: Isto irá apagar todas as modificações atuais e restaurar os dados de demonstração de fábrica. Pretende continuar?',
+                'Repor Configurações Base de Fábrica',
+                'Aviso: Isto irá repor as tabelas de suporte limpas diretamente na base de dados e eliminar projetos ou tarefas não associados. Pretende continuar?',
                 () => {
                   onResetDemoData();
-                  alert('Dados de demonstração restaurados com sucesso!');
-                  window.location.reload();
+                  alert('Configurações base repostas na base de dados!');
                 }
               );
             }}
             className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 rounded-xl font-bold transition-all"
           >
             <RefreshCw className="w-4 h-4 text-amber-600" />
-            Restaurar Dados de Demonstração
+            Repor Configuração Base Limpa
           </button>
 
           <button 
             type="button"
             onClick={() => {
               askConfirmation(
-                'Confirmar Limpeza de Dados de Demonstração',
-                'Aviso: Isto irá apagar permanentemente todos os projetos, tarefas, clientes, materiais, orçamentos, comentários e equipamentos da aplicação, deixando-a limpa para utilização real. Pretende continuar?',
+                'Confirmar Limpeza de Dados da Base de Dados',
+                'Aviso: Isto irá apagar permanentemente todos os projetos, tarefas, clientes, materiais, orçamentos, comentários e equipamentos da base de dados. Pretende continuar?',
                 () => {
                   onClearDemoData();
-                  alert('Todos os dados de demonstração foram limpos com sucesso!');
-                  window.location.reload();
+                  alert('Todos os dados foram limpos da base de dados com sucesso!');
                 }
               );
             }}
             className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-800 rounded-xl font-bold transition-all"
           >
             <Trash2 className="w-4 h-4 text-rose-600" />
-            Limpar todos os dados de demonstração
+            Limpar Todos os Dados
           </button>
         </div>
       </div>
@@ -1869,9 +1891,10 @@ export default function ConfigSection({
                 </div>
               ) : (
                 <div className="border border-slate-200 rounded-2xl overflow-hidden -sm bg-white">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 tracking-wider">
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full min-w-[520px] text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 tracking-wider whitespace-nowrap">
                         <th className="p-3">Nome da Cópia</th>
                         <th className="p-3">Data de Gravação</th>
                         <th className="p-3 text-right">Ações de Restauro</th>
@@ -1911,6 +1934,7 @@ export default function ConfigSection({
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </div>
