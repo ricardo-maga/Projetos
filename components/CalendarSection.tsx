@@ -9,6 +9,7 @@ import {
 
 import { hasPermission } from '../lib/permissions';
 import { AssigneeSelector } from './AssigneeSelector';
+import TaskDetailsModal from './TaskDetailsModal';
 import { getTaskStatusName, getDefaultTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, stripSecondsFromHours, formatToOnlyHours } from '../lib/utils';
 
 interface CalendarSectionProps {
@@ -27,6 +28,7 @@ interface CalendarSectionProps {
   projectStatuses?: any[];
   currentUser?: any;
   userGroups?: any[];
+  appConfig?: any;
 }
 
 export default function CalendarSection({
@@ -45,6 +47,7 @@ export default function CalendarSection({
   projectStatuses = [],
   currentUser,
   userGroups = [],
+  appConfig,
 }: CalendarSectionProps) {
   const canReadCalendar = hasPermission(currentUser, 'calendar_read', userGroups);
   const canWriteCalendar = hasPermission(currentUser, 'calendar_write', userGroups);
@@ -60,7 +63,7 @@ export default function CalendarSection({
 
   const [selectedAssignee, setSelectedAssignee] = useState<string>('');
   const [showCompleted, setShowCompleted] = useState(false);
-  const [showRiskReviews, setShowRiskReviews] = useState(true);
+  const [showRiskReviews, setShowRiskReviews] = useState(false);
 
   // Event proximity date filter (default: 'off')
   const [filterEventDays, setFilterEventDays] = useState<number | 'off'>('off');
@@ -379,15 +382,15 @@ export default function CalendarSection({
 
   const renderTimelineMatrixTable = (projectsToDisplay: Project[], isFullscreen = false) => {
     return (
-      <div className={`bg-white rounded-2xl border border-slate-200 shadow-xs relative ${
+      <div className={`bg-white rounded-2xl border border-slate-200 shadow-2xs relative ${
         isFullscreen ? 'h-full max-h-none overflow-auto' : 'sticky top-[57px] z-20 max-h-[calc(100vh-70px)] overflow-auto'
       }`}>
         <table className="w-full min-w-[1200px] border-collapse text-left table-fixed relative">
           {/* Header Columns definition */}
-          <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 shadow-xs">
+          <thead className="sticky top-0 z-20 bg-slate-50/90 border-b border-slate-200/80 shadow-2xs">
             <tr>
               {/* Project Header Column */}
-              <th className="w-72 p-4 text-xs font-extrabold text-slate-700 sticky top-0 left-0 z-30 bg-slate-100 border-r border-b border-slate-200 shadow-[2px_2px_5px_rgba(0,0,0,0.04)]">
+              <th className="w-72 p-3.5 text-[11px] uppercase tracking-wider font-bold text-slate-500 sticky top-0 left-0 z-30 bg-slate-50/95 border-r border-b border-slate-200/80 shadow-[2px_2px_5px_rgba(0,0,0,0.04)]">
                 Projeto / Cliente
               </th>
               
@@ -875,178 +878,18 @@ export default function CalendarSection({
       </div>
 
       {/* Task Single View / Edit Modal */}
-      {selectedTaskForDetails && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 -xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
-            {/* Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              {(() => {
-                const selProj = projects.find(p => p.id === selectedTaskForDetails.projectId);
-                const selClient = selProj ? clients.find(c => c.id === selProj.clientId) : null;
-                const cName = selClient ? selClient.clientName : 'N/A';
-                const pTitle = selProj ? selProj.title : 'N/A';
-                return (
-                  <div>
-                    <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider block">Visualização Individual de Tarefa</span>
-                    <div className="text-xs font-medium text-slate-500 mt-0.5">
-                      Cliente: <strong className="text-slate-800 font-bold">{cName}</strong> | Projeto: <strong className="text-slate-800 font-bold">{pTitle}</strong>
-                    </div>
-                    <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">{selectedTaskForDetails.title}</h3>
-                  </div>
-                );
-              })()}
-              <button 
-                onClick={() => setSelectedTaskForDetails(null)}
-                className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Read-only Task Info */}
-            <div className="px-5 py-4 bg-blue-50/40 border-b border-blue-50 text-xs text-slate-600 space-y-2">
-              {selectedTaskForDetails.description && (
-                <p className="font-medium text-slate-700 italic bg-white p-2.5 rounded-xl border border-slate-100">
-                  &quot;{selectedTaskForDetails.description}&quot;
-                </p>
-              )}
-              <div className="flex flex-wrap gap-4 text-[11px] font-semibold text-slate-500 pt-1">
-                <span className="flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5 text-slate-400" />
-                  Atribuído: <span className="text-slate-700 font-bold">
-                    {selectedTaskForDetails.assigneeIds && selectedTaskForDetails.assigneeIds.length > 0
-                      ? selectedTaskForDetails.assigneeIds.map(id => users.find(u => u.id === id)?.name || 'N/A').join(', ')
-                      : 'Ninguém'}
-                  </span>
-                </span>
-                {selectedTaskForDetails.estimatedDate && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    Data Prevista: <span className="text-slate-700 font-bold">{new Date(selectedTaskForDetails.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT')}</span>
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Edit Form */}
-            <form onSubmit={handleSaveTaskDetails} className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Task Status Dropdown */}
-              <div className="space-y-1 text-xs font-bold text-slate-700">
-                <label className="block text-xs font-bold text-slate-700">Estado da Tarefa</label>
-                <select 
-                  value={taskEditStatus}
-                  onChange={e => setTaskEditStatus(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
-                >
-                  {taskStatuses.filter(s => !s.deleted).map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Task Type (Informativo / Não editável) */}
-              <div className="space-y-1 text-xs font-bold text-slate-700">
-                <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
-                <div className="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 select-none">
-                  {getTaskTypeName(taskEditType || selectedTaskForDetails.taskTypeId, taskTypes) || 'Não definido'}
-                </div>
-              </div>
-
-              {/* Consumed Hours */}
-              <div className="space-y-1 text-xs font-bold text-slate-700">
-                <label className="block text-xs font-bold text-slate-700">Horas Consumidas Efetivas (Horas)</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  step="1"
-                  required
-                  value={taskEditActualHours}
-                  onChange={e => setTaskEditActualHours(e.target.value)}
-                  placeholder="Ex: 8"
-                  className="w-full p-2.5 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                />
-                <p className="text-[10px] text-slate-400 font-medium">Indique o número de horas efetivamente gastas nesta tarefa.</p>
-              </div>
-
-              {/* Date & Time grids */}
-              <div className="border-t border-slate-100 pt-3 space-y-3">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Planeamento de Execução Efetiva</span>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Data de Início Efetiva</label>
-                    <input 
-                      type="date" 
-                      value={taskEditStartDate}
-                      onChange={e => setTaskEditStartDate(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Hora de Início Efetiva</label>
-                    <input 
-                      type="time" 
-                      value={taskEditStartTime}
-                      onChange={e => setTaskEditStartTime(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Data de Fim Efetiva</label>
-                    <input 
-                      type="date" 
-                      value={taskEditEndDate}
-                      onChange={e => setTaskEditEndDate(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Hora de Fim Efetiva</label>
-                    <input 
-                      type="time" 
-                      value={taskEditEndTime}
-                      onChange={e => setTaskEditEndTime(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Execution Notes */}
-              <div className="space-y-1 border-t border-slate-100 pt-3">
-                <label className="block text-xs font-bold text-slate-700">Notas de Execução / Observações</label>
-                <textarea 
-                  rows={3}
-                  value={taskEditNotes}
-                  onChange={e => setTaskEditNotes(e.target.value)}
-                  placeholder="Descreva detalhes da intervenção técnica realizada..."
-                  className="w-full p-2.5 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100/60">
-                <button 
-                  type="button" 
-                  onClick={() => setSelectedTaskForDetails(null)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors cursor-pointer text-xs"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-colors cursor-pointer text-xs shadow-md shadow-slate-100"
-                >
-                  Gravar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <TaskDetailsModal
+        task={selectedTaskForDetails}
+        onClose={() => setSelectedTaskForDetails(null)}
+        updateTask={updateTask}
+        taskStatuses={taskStatuses}
+        taskTypes={taskTypes}
+        users={users}
+        userGroups={userGroups}
+        appConfig={appConfig}
+        projects={projects}
+        clients={clients}
+      />
 
       {/* Task Creation Modal for Timeline Day Click */}
       {isModalOpen && (
@@ -1150,8 +993,11 @@ export default function CalendarSection({
               {/* Assignees */}
               <AssigneeSelector 
                 users={users} 
+                userGroups={userGroups}
+                allowedGroupIds={appConfig?.taskAssigneeGroupIds}
                 selectedIds={taskAssigneeIds} 
                 onChange={setTaskAssigneeIds} 
+                filterTeamOnly
               />
 
               {/* Action Buttons */}

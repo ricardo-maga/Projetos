@@ -54,7 +54,7 @@ export const CLEAN_BASELINE_STATE: ERPState = {
   ],
   taskStatuses: [
     { id: 'ts-1', name: 'Por iniciar', scale: 1, deleted: false, sort_order: 1 },
-    { id: 'ts-2', name: 'Em andamento', scale: 2, deleted: false, sort_order: 2 },
+    { id: 'ts-2', name: 'Em curso', scale: 2, deleted: false, sort_order: 2 },
     { id: 'ts-3', name: 'Completa', scale: 3, deleted: false, sort_order: 3 },
     { id: 'ts-4', name: 'Suspensa', scale: 4, deleted: false, sort_order: 4 },
   ],
@@ -90,13 +90,14 @@ export const CLEAN_BASELINE_STATE: ERPState = {
   ],
   projectRiskItems: [],
   appConfig: {
-    appName: 'Gestão de Projetos e ERP',
-    appDescription: 'Plataforma integrada de planeamento, orçamentação e controlo de projetos industriais.',
-    footerText: '© 2026 Gestão de Projetos e ERP. Todos os direitos reservados.',
+    appName: '',
+    appDescription: '',
+    footerText: '',
     logo: '',
-    footerCopyrightText: '© 2026 Gestão de Projetos e ERP. Todos os direitos reservados.',
+    footerCopyrightText: '',
     logoImagePath: '',
     theme: 'default',
+    taskAssigneeGroupIds: [],
   },
   // STRICT ZERO-DATA POLICY: absolutely no mock projects, clients, tasks or users
   users: [],

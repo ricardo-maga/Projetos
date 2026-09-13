@@ -5,6 +5,7 @@ import { Task, Project, Client, TaskType } from '../lib/types';
 import { Plus, Search, Trash2, Edit2, Clock, Calendar, CheckSquare, PlusCircle, X, Users, Link2, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
+import TaskDetailsModal from './TaskDetailsModal';
 
 import { hasPermission } from '../lib/permissions';
 import { getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, formatToOnlyHours } from '../lib/utils';
@@ -34,6 +35,7 @@ interface TaskSectionProps {
   deleteTask: (id: string) => void;
   currentUser?: any;
   userGroups?: any[];
+  appConfig?: any;
 }
 
 const matchUserId = (idA: string, idB: string) => {
@@ -63,6 +65,7 @@ export default function TaskSection({
   deleteTask,
   currentUser,
   userGroups = [],
+  appConfig,
 }: TaskSectionProps) {
   const canReadTasks = hasPermission(currentUser, 'tasks_read', userGroups);
   const canWriteTasks = hasPermission(currentUser, 'tasks_write', userGroups);
@@ -71,7 +74,7 @@ export default function TaskSection({
   const [filterProject, setFilterProject] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [filterStatusGroup, setFilterStatusGroup] = useState<'all' | 'not_started' | 'in_progress' | 'completed_suspended'>('all');
+  const [filterStatusGroup, setFilterStatusGroup] = useState<'pending' | 'completed' | 'all'>('pending');
   const [filterAssignee, setFilterAssignee] = useState('');
 
   // Pagination & Sorting state
@@ -138,6 +141,17 @@ export default function TaskSection({
   const [formEndTime, setFormEndTime] = useState('');
   const [formNotes, setFormNotes] = useState('');
 
+  const selectedProjectExistingTasks = useMemo(() => {
+    if (!formProj) return [];
+    return tasks
+      .filter(t => t.projectId === formProj && !t.deleted && (!isEditing || t.id !== editingId))
+      .sort((a, b) => {
+        const dateA = a.estimatedDate || a.startDate || a.createdDate || '';
+        const dateB = b.estimatedDate || b.startDate || b.createdDate || '';
+        return dateA.localeCompare(dateB);
+      });
+  }, [formProj, tasks, isEditing, editingId]);
+
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
 
   const handleCopyTaskLink = (taskId: string) => {
@@ -198,7 +212,8 @@ export default function TaskSection({
     if (!proj) return '';
     const client = clientMap.get(proj.clientId);
     const clientName = client ? client.clientName : 'Desconhecido';
-    return `${clientName} - ${proj.title}`;
+    const ipPart = proj.installProjectNo ? ` (${proj.installProjectNo})` : '';
+    return `${clientName} - ${proj.title}${ipPart}`;
   };
 
   // Filter tasks (only include tasks for active projects with deleted === false)
@@ -225,9 +240,8 @@ export default function TaskSection({
   const matchesStatusGroup = React.useCallback((statusId: string) => {
     if (filterStatusGroup === 'all') return true;
     const scale = getTaskScale(statusId);
-    if (filterStatusGroup === 'not_started') return scale === 1;
-    if (filterStatusGroup === 'in_progress') return scale === 2;
-    if (filterStatusGroup === 'completed_suspended') return scale === 3 || scale === 4;
+    if (filterStatusGroup === 'pending') return scale === 1 || scale === 2;
+    if (filterStatusGroup === 'completed') return scale === 3;
     return true;
   }, [filterStatusGroup, getTaskScale]);
 
@@ -751,45 +765,67 @@ export default function TaskSection({
               />
             </div>
 
-            <div className="space-y-1 relative" id="project-autocomplete-container">
-              <label className="block text-slate-500">Projeto Associado *</label>
-              <input 
-                type="text"
-                required
-                value={projectSearchInput}
-                onChange={e => {
-                  setProjectSearchInput(e.target.value);
-                  setIsAutocompleteOpen(true);
-                }}
-                onFocus={() => setIsAutocompleteOpen(true)}
-                onBlur={() => {
-                  setTimeout(() => {
-                    setIsAutocompleteOpen(false);
-                    const activeProjects = projects.filter(p => !p.deleted);
-                    const exactProj = activeProjects.find(p => {
-                      const client = clients.find(c => c.id === p.clientId);
-                      const label = client ? `${client.clientName} - ${p.title}` : p.title;
-                      return label.toLowerCase() === projectSearchInput.toLowerCase();
-                    });
-                    if (exactProj) {
-                      setFormProj(exactProj.id);
-                      setProjectSearchInput(getProjectWithClientLabel(exactProj.id));
-                    } else {
-                      setProjectSearchInput(getProjectWithClientLabel(formProj));
+            <div className="space-y-1 relative md:col-span-2" id="project-autocomplete-container">
+              <div className="flex items-center justify-between">
+                <label className="block text-slate-500">Projeto Associado *</label>
+                {formProj && (
+                  <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                    Projeto Selecionado
+                  </span>
+                )}
+              </div>
+              <div className="relative flex items-center">
+                <input 
+                  type="text"
+                  required
+                  value={projectSearchInput}
+                  onChange={e => {
+                    setProjectSearchInput(e.target.value);
+                    setIsAutocompleteOpen(true);
+                    if (!e.target.value) {
+                      setFormProj('');
                     }
-                  }, 250);
-                }}
-                placeholder="Escreva para pesquisar projetos ou clientes..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold text-slate-800"
-              />
+                  }}
+                  onFocus={() => setIsAutocompleteOpen(true)}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      setIsAutocompleteOpen(false);
+                      if (!projectSearchInput.trim()) {
+                        setFormProj('');
+                      } else if (!formProj) {
+                        const activeProjects = projects.filter(p => !p.deleted);
+                        const match = activeProjects.find(p => getProjectWithClientLabel(p.id).toLowerCase() === projectSearchInput.trim().toLowerCase());
+                        if (match) {
+                          setFormProj(match.id);
+                          setProjectSearchInput(getProjectWithClientLabel(match.id));
+                        }
+                      }
+                    }, 200);
+                  }}
+                  placeholder="Escreva para pesquisar projetos, clientes ou IP..."
+                  className="w-full p-2.5 pr-8 border border-slate-200 rounded-xl bg-white font-semibold text-slate-800"
+                />
+                {projectSearchInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormProj('');
+                      setProjectSearchInput('');
+                      setIsAutocompleteOpen(false);
+                    }}
+                    className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 cursor-pointer"
+                    title="Limpar seleção"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
               {isAutocompleteOpen && (
-                <div className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-xl -lg divide-y divide-slate-100">
+                <div className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg divide-y divide-slate-100">
                   {(() => {
                     const activeProjects = projects.filter(p => !p.deleted);
                     const filtered = activeProjects.map(p => {
-                      const client = clients.find(c => c.id === p.clientId);
-                      const clientName = client ? client.clientName : 'Desconhecido';
-                      const label = `${clientName} - ${p.title}`;
+                      const label = getProjectWithClientLabel(p.id);
                       return { id: p.id, label };
                     }).filter(item => {
                       if (!projectSearchInput) return true;
@@ -804,17 +840,81 @@ export default function TaskSection({
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => {
+                        onMouseDown={(e) => {
+                          e.preventDefault(); // Prevents blur event, allowing immediate 1-click selection!
                           setFormProj(item.id);
                           setProjectSearchInput(item.label);
                           setIsAutocompleteOpen(false);
                         }}
-                        className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors text-xs flex flex-col font-semibold"
+                        className={`w-full text-left px-4 py-2.5 hover:bg-blue-50/70 transition-colors text-xs flex flex-col font-semibold cursor-pointer ${
+                          formProj === item.id ? 'bg-blue-50 text-blue-900 font-bold' : 'text-slate-800'
+                        }`}
                       >
-                        <span className="text-slate-800">{item.label}</span>
+                        <span>{item.label}</span>
                       </button>
                     ));
                   })()}
+                </div>
+              )}
+
+              {/* Display existing tasks for selected project */}
+              {formProj && (
+                <div className="mt-3 p-3.5 bg-slate-50/90 border border-slate-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <CheckSquare className="w-4 h-4 text-blue-600" />
+                      <span className="text-xs font-bold text-slate-800">
+                        Tarefas Existentes no Projeto ({selectedProjectExistingTasks.length})
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-medium italic">
+                      Informativo (não clicável)
+                    </span>
+                  </div>
+
+                  {selectedProjectExistingTasks.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic py-1">
+                      Este projeto ainda não tem tarefas associadas.
+                    </p>
+                  ) : (
+                    <div className="border border-slate-200 rounded-lg overflow-hidden bg-white max-h-48 overflow-y-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100/90 border-b border-slate-200 text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                            <th className="py-2 px-3">Data</th>
+                            <th className="py-2 px-3">Nome da Tarefa</th>
+                            <th className="py-2 px-3 text-right">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 select-none pointer-events-none">
+                          {selectedProjectExistingTasks.map(t => {
+                            const statusName = getTaskStatusName(t.statusId, taskStatuses);
+                            const dateDisplay = t.estimatedDate 
+                              ? new Date(t.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT')
+                              : (t.startDate ? new Date(t.startDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Sem data');
+                            return (
+                              <tr key={t.id} className="text-slate-700 font-medium">
+                                <td className="py-2 px-3 text-slate-500 whitespace-nowrap text-[11px]">
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                                    <span>{dateDisplay}</span>
+                                  </div>
+                                </td>
+                                <td className="py-2 px-3 font-semibold text-slate-800">
+                                  {t.title}
+                                </td>
+                                <td className="py-2 px-3 text-right whitespace-nowrap">
+                                  <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                    {statusName}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -885,6 +985,8 @@ export default function TaskSection({
             <div className="md:col-span-2">
               <AssigneeSelector
                 users={users}
+                userGroups={userGroups}
+                allowedGroupIds={appConfig?.taskAssigneeGroupIds}
                 selectedIds={formAssignees}
                 onChange={setFormAssignees}
                 filterTeamOnly
@@ -939,13 +1041,13 @@ export default function TaskSection({
           <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
             {/* Search Input */}
             <div className="flex-1 min-w-[220px] relative">
-              <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
               <input 
                 type="text" 
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Procurar por termo, título ou instrução técnica..."
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-100 outline-none font-medium"
+                placeholder="Pesquisar..."
+                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
               />
             </div>
 
@@ -954,36 +1056,25 @@ export default function TaskSection({
               <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200/80">
                 <button
                   type="button"
-                  onClick={() => setFilterStatusGroup('not_started')}
+                  onClick={() => setFilterStatusGroup('pending')}
                   className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    filterStatusGroup === 'not_started'
+                    filterStatusGroup === 'pending'
                       ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Por iniciar
+                  Pendente
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFilterStatusGroup('in_progress')}
+                  onClick={() => setFilterStatusGroup('completed')}
                   className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    filterStatusGroup === 'in_progress'
+                    filterStatusGroup === 'completed'
                       ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  A decorrer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterStatusGroup('completed_suspended')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    filterStatusGroup === 'completed_suspended'
-                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Concluídas/Suspensas
+                  Concluídas
                 </button>
                 <button
                   type="button"
@@ -1003,7 +1094,7 @@ export default function TaskSection({
             <select 
               value={filterType}
               onChange={e => setFilterType(e.target.value)}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold cursor-pointer outline-none"
+              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
             >
               <option value="">Todos os Tipos</option>
               {taskTypes.filter(tt => !tt.deleted).map(tt => (
@@ -1015,7 +1106,7 @@ export default function TaskSection({
             <select 
               value={filterAssignee}
               onChange={e => setFilterAssignee(e.target.value)}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold cursor-pointer outline-none"
+              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
             >
               <option value="">Qualquer Responsável</option>
               {usersWithTasks.map(u => (
@@ -1025,18 +1116,19 @@ export default function TaskSection({
           </div>
 
           {activeTaskViewTab === 'lista' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden animate-fade-in">
             
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50 space-y-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h2 className="text-base font-bold text-slate-800">Lista de tarefas</h2>
-                  <p className="text-xs text-slate-500">Monitorize o estado de cada tarefa, horas estimadas e horas reais consumidas.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Monitorize o estado de cada tarefa, horas estimadas e horas reais consumidas.</p>
                 </div>
                 {canWriteTasks && (
                   <button 
+                    type="button"
                     onClick={() => openForm(null)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl shadow-sm self-start md:self-auto"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
                   >
                     <Plus className="w-4 h-4" /> Criar Tarefa
                   </button>
@@ -1044,8 +1136,8 @@ export default function TaskSection({
               </div>
 
               {/* Pagination, Sorting and Grouping controls */}
-              <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-slate-100">
-                <div className="flex flex-wrap items-center gap-4 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200/60">
+                <div className="flex flex-wrap items-center gap-3 text-xs">
                   {/* Registos por página */}
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-medium">Mostrar:</span>
@@ -1055,7 +1147,7 @@ export default function TaskSection({
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold cursor-pointer"
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value={10}>10</option>
                       <option value={25}>25</option>
@@ -1070,7 +1162,7 @@ export default function TaskSection({
                     <select
                       value={sortBy}
                       onChange={e => setSortBy(e.target.value as 'estimatedDate' | 'status')}
-                      className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold cursor-pointer"
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="estimatedDate">Data prevista (padrão)</option>
                       <option value="status">Estado</option>
@@ -1078,19 +1170,19 @@ export default function TaskSection({
                   </div>
 
                   {/* Agrupar por projeto */}
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <label className="flex items-center gap-2 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer select-none hover:bg-slate-50 transition-colors">
                     <input
                       type="checkbox"
                       checked={groupByProject}
                       onChange={e => setGroupByProject(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded border-slate-300 cursor-pointer"
+                      className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 cursor-pointer"
                     />
-                    <span className="text-slate-700 font-bold">Agrupar por Projeto</span>
+                    <span>Agrupar por Projeto</span>
                   </label>
                 </div>
 
-                <div className="text-[11px] text-slate-400 font-medium">
-                  Total filtrado: <span className="font-bold text-slate-600">{totalTasks}</span> {totalTasks === 1 ? 'tarefa' : 'tarefas'}
+                <div className="text-xs text-slate-500 font-medium">
+                  Total: <span className="font-bold text-slate-800">{totalTasks}</span> {totalTasks === 1 ? 'tarefa' : 'tarefas'}
                 </div>
               </div>
             </div>
@@ -1098,16 +1190,16 @@ export default function TaskSection({
             {/* Table List Output */}
             <div className="overflow-x-auto w-full">
               {paginatedTasks.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 font-medium text-xs">Nenhuma tarefa encontrada.</div>
+                <div className="p-10 text-center text-slate-400 font-medium text-xs">Nenhuma tarefa encontrada.</div>
               ) : (
                 <table className="w-full min-w-[750px] text-left border-collapse">
-                  <thead className="text-[11px] uppercase text-slate-400 font-bold bg-slate-50 border-b border-slate-100 whitespace-nowrap">
+                  <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                     <tr>
-                      <th className="px-5 py-3">Tarefa / Projeto</th>
-                      <th className="px-5 py-3">Responsáveis</th>
-                      <th className="px-5 py-3">Data prevista</th>
-                      <th className="px-5 py-3">Estado</th>
-                      <th className="px-5 py-3 text-right">Ações</th>
+                      <th className="px-5 py-3.5 text-left">Tarefa / Projeto</th>
+                      <th className="px-5 py-3.5 text-left">Responsáveis</th>
+                      <th className="px-5 py-3.5 text-left">Data prevista</th>
+                      <th className="px-5 py-3.5 text-left w-[200px] whitespace-nowrap">Estado</th>
+                      <th className="px-5 py-3.5 text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="text-xs divide-y divide-slate-100">
@@ -1143,7 +1235,7 @@ export default function TaskSection({
                         <td className="px-5 py-4 text-slate-500 font-medium font-mono">
                           {t.estimatedDate || 'N/A'}
                         </td>
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 whitespace-nowrap">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                             getTaskScale(t.statusId) === 3 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
                             getTaskScale(t.statusId) === 2 ? 'bg-blue-50 text-blue-700 border border-blue-100' :
@@ -1208,7 +1300,7 @@ export default function TaskSection({
 
             {/* Pagination Controls */}
             {totalTasks > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50 border-t border-slate-100 text-xs gap-3">
+              <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50/70 border-t border-slate-200/80 text-xs gap-3 font-medium">
                 <div className="flex items-center gap-3 text-slate-500 font-medium">
                   <span>
                     A mostrar <span className="font-bold text-slate-700">{startIndex + 1}</span> a{' '}
@@ -1394,178 +1486,18 @@ export default function TaskSection({
       )}
 
       {/* Task Single View / Edit Modal */}
-      {selectedTaskForDetails && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 -xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
-            {/* Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              {(() => {
-                const detailProj = projectMap.get(selectedTaskForDetails.projectId) || projects.find(p => p.id === selectedTaskForDetails.projectId);
-                const detailClient = detailProj ? (clientMap.get(detailProj.clientId) || clients.find(c => c.id === detailProj.clientId)) : null;
-                const cName = detailClient ? detailClient.clientName : 'N/A';
-                const pTitle = detailProj ? detailProj.title : 'N/A';
-                return (
-                  <div>
-                    <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider block">Visualização Individual de Tarefa</span>
-                    <div className="text-xs font-medium text-slate-500 mt-0.5">
-                      Cliente: <strong className="text-slate-800 font-bold">{cName}</strong> | Projeto: <strong className="text-slate-800 font-bold">{pTitle}</strong>
-                    </div>
-                    <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">{selectedTaskForDetails.title}</h3>
-                  </div>
-                );
-              })()}
-              <button 
-                onClick={() => setSelectedTaskForDetails(null)}
-                className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Read-only Task Info */}
-            <div className="px-5 py-4 bg-blue-50/40 border-b border-blue-50 text-xs text-slate-600 space-y-2">
-              {selectedTaskForDetails.description && (
-                <p className="font-medium text-slate-700 italic bg-white p-2.5 rounded-xl border border-slate-100">
-                  &quot;{selectedTaskForDetails.description}&quot;
-                </p>
-              )}
-              <div className="flex flex-wrap gap-4 text-[11px] font-semibold text-slate-500 pt-1">
-                <span className="flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5 text-slate-400" />
-                  Atribuído: <span className="text-slate-700 font-bold">
-                    {selectedTaskForDetails.assigneeIds && selectedTaskForDetails.assigneeIds.length > 0
-                      ? selectedTaskForDetails.assigneeIds.map(id => getUserName(id)).join(', ')
-                      : 'Ninguém'}
-                  </span>
-                </span>
-                {selectedTaskForDetails.estimatedDate && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    Data Prevista: <span className="text-slate-700 font-bold">{new Date(selectedTaskForDetails.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT')}</span>
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Edit Form */}
-            <form onSubmit={handleSaveTaskDetails} className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Task Status Dropdown */}
-              <div className="space-y-1 text-xs font-bold text-slate-700">
-                <label className="block text-xs font-bold text-slate-700">Estado da Tarefa</label>
-                <select 
-                  value={taskEditStatus}
-                  onChange={e => setTaskEditStatus(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
-                >
-                  {taskStatuses.filter(s => !s.deleted).map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Task Type (Informativo / Não editável) */}
-              <div className="space-y-1 text-xs font-bold text-slate-700">
-                <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
-                <div className="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 select-none">
-                  {getTaskTypeName(taskEditType || selectedTaskForDetails.taskTypeId, taskTypes) || 'Não definido'}
-                </div>
-              </div>
-
-              {/* Consumed Hours */}
-              <div className="space-y-1 text-xs font-bold text-slate-700">
-                <label className="block text-xs font-bold text-slate-700">Horas Consumidas Efetivas (Horas)</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  step="1"
-                  required
-                  value={taskEditActualHours}
-                  onChange={e => setTaskEditActualHours(e.target.value)}
-                  placeholder="Ex: 8"
-                  className="w-full p-2.5 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                />
-                <p className="text-[10px] text-slate-400 font-medium">Indique o número de horas efetivamente gastas nesta tarefa.</p>
-              </div>
-
-              {/* Date & Time grids */}
-              <div className="border-t border-slate-100 pt-3 space-y-3">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Planeamento de Execução Efetiva</span>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Data de Início Efetiva</label>
-                    <input 
-                      type="date" 
-                      value={taskEditStartDate}
-                      onChange={e => setTaskEditStartDate(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Hora de Início Efetiva</label>
-                    <input 
-                      type="time" 
-                      value={taskEditStartTime}
-                      onChange={e => setTaskEditStartTime(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Data de Fim Efetiva</label>
-                    <input 
-                      type="date" 
-                      value={taskEditEndDate}
-                      onChange={e => setTaskEditEndDate(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Hora de Fim Efetiva</label>
-                    <input 
-                      type="time" 
-                      value={taskEditEndTime}
-                      onChange={e => setTaskEditEndTime(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Execution Notes */}
-              <div className="space-y-1 border-t border-slate-100 pt-3">
-                <label className="block text-xs font-bold text-slate-700">Notas de Execução / Observações</label>
-                <textarea 
-                  rows={3}
-                  value={taskEditNotes}
-                  onChange={e => setTaskEditNotes(e.target.value)}
-                  placeholder="Descreva detalhes da intervenção técnica realizada..."
-                  className="w-full p-2.5 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100/60">
-                <button 
-                  type="button" 
-                  onClick={() => setSelectedTaskForDetails(null)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors cursor-pointer text-xs"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-colors cursor-pointer text-xs -md -slate-100"
-                >
-                  Gravar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <TaskDetailsModal
+        task={selectedTaskForDetails}
+        onClose={() => setSelectedTaskForDetails(null)}
+        updateTask={updateTask}
+        taskStatuses={taskStatuses}
+        taskTypes={taskTypes}
+        users={users}
+        userGroups={userGroups}
+        appConfig={appConfig}
+        projects={projects}
+        clients={clients}
+      />
 
       <ConfirmModal
         isOpen={confirmState.isOpen}

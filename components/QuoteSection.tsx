@@ -248,16 +248,16 @@ export default function QuoteSection({
               {activeBoms.length === 0 ? (
                 <p className="text-slate-400 italic py-6 text-center">Este orçamento não possui materiais ou custos associados. Adicione artigos acima para computar o valor total!</p>
               ) : (
-                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                <div className="border border-slate-200/80 rounded-xl overflow-hidden bg-white shadow-2xs">
                   <div className="overflow-x-auto w-full">
                     <table className="w-full min-w-[550px] text-left border-collapse text-xs">
-                      <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100 whitespace-nowrap">
+                      <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                       <tr>
-                        <th className="px-4 py-2.5">Artigo / Referência</th>
-                        <th className="px-4 py-2.5 text-center">Quant.</th>
-                        <th className="px-4 py-2.5 text-right">Custo Unitário</th>
-                        <th className="px-4 py-2.5 text-right">Total Subparcial</th>
-                        <th className="px-4 py-2.5 text-right">Ação</th>
+                        <th className="px-4 py-3 text-left">Artigo / Referência</th>
+                        <th className="px-4 py-3 text-center">Quant.</th>
+                        <th className="px-4 py-3 text-right">Custo Unitário</th>
+                        <th className="px-4 py-3 text-right">Total Subparcial</th>
+                        <th className="px-4 py-3 text-right">Ação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -280,8 +280,9 @@ export default function QuoteSection({
                             </td>
                             <td className="px-4 py-3 text-right">
                               <button 
+                                type="button"
                                 onClick={() => handleRemoveBOM(item.id)}
-                                className="text-red-500 hover:text-red-700"
+                                className="text-red-500 hover:text-red-700 font-bold cursor-pointer transition-colors"
                               >
                                 Remover
                               </button>
@@ -389,48 +390,49 @@ export default function QuoteSection({
           </div>
         </form>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 -sm overflow-hidden animate-fade-in">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden animate-fade-in">
           
-          <div className="p-5 border-b border-slate-100 bg-slate-50/50 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-bold text-slate-800">Orçamentação Comercial & BOM</h2>
-                <p className="text-xs text-slate-500">Elabore orçamentos e listas de materiais industriais com auto-calculador de custos de catálogo.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Elabore orçamentos e listas de materiais industriais com auto-calculador de custos de catálogo.</p>
               </div>
               <button 
+                type="button"
                 onClick={() => openForm(null)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl -sm self-start md:self-auto"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4" /> Nova Proposta
               </button>
             </div>
 
             <div className="relative">
-              <Search className="absolute left-3 top-3 text-slate-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
               <input 
                 type="text" 
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Procurar por código ou entidade cliente..."
-                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-100 outline-none font-medium"
+                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
               />
             </div>
           </div>
 
           <div className="overflow-x-auto w-full">
             {filteredQuotes.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 font-medium text-xs">Nenhuma proposta ou orçamento registado.</div>
+              <div className="p-10 text-center text-slate-400 font-medium text-xs">Nenhuma proposta ou orçamento registado.</div>
             ) : (
               <table className="w-full min-w-[780px] text-left border-collapse text-xs">
-                <thead className="text-[11px] uppercase text-slate-400 font-bold bg-slate-50 border-b border-slate-100 whitespace-nowrap">
+                <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                   <tr>
-                    <th className="px-5 py-3">Código Orçamento</th>
-                    <th className="px-5 py-3">Cliente</th>
-                    <th className="px-5 py-3">Versão / Responsável</th>
-                    <th className="px-5 py-3">Validade</th>
-                    <th className="px-5 py-3">Estado</th>
-                    <th className="px-5 py-3 text-right">Valor Total Estimado</th>
-                    <th className="px-5 py-3 text-right">Ações</th>
+                    <th className="px-5 py-3.5 text-left">Código Orçamento</th>
+                    <th className="px-5 py-3.5 text-left">Cliente</th>
+                    <th className="px-5 py-3.5 text-left">Versão / Responsável</th>
+                    <th className="px-5 py-3.5 text-left">Validade</th>
+                    <th className="px-5 py-3.5 text-left">Estado</th>
+                    <th className="px-5 py-3.5 text-right">Valor Total Estimado</th>
+                    <th className="px-5 py-3.5 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -440,21 +442,21 @@ export default function QuoteSection({
                       className="hover:bg-slate-50/50 cursor-pointer transition-colors"
                       onClick={() => setSelectedQuoteId(q.id)}
                     >
-                      <td className="px-5 py-4 font-mono font-bold text-slate-400">
+                      <td className="px-5 py-3.5 font-mono font-bold text-slate-500">
                         {q.id}
                       </td>
-                      <td className="px-5 py-4 font-extrabold text-slate-800 text-sm">
+                      <td className="px-5 py-3.5 font-extrabold text-slate-800 text-sm">
                         {getClientName(q.projectIdOrClientId || q.clientId || q.projectId || '')}
                       </td>
-                      <td className="px-5 py-4 text-slate-600 font-medium">
-                        <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono mr-1.5">{q.version}</span>
+                      <td className="px-5 py-3.5 text-slate-600 font-medium">
+                        <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[11px] font-mono mr-1.5 font-semibold">{q.version}</span>
                         {q.responsible}
                       </td>
-                      <td className="px-5 py-4 text-slate-500 font-mono">
+                      <td className="px-5 py-3.5 text-slate-500 font-mono">
                         {q.validUntil || 'N/A'}
                       </td>
-                      <td className="px-5 py-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                      <td className="px-5 py-3.5">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
                           q.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                           q.status === 'Sent' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
                           q.status === 'Declined' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-500'
@@ -462,25 +464,27 @@ export default function QuoteSection({
                           {q.status}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-right font-extrabold text-slate-950 font-mono text-sm">
+                      <td className="px-5 py-3.5 text-right font-extrabold text-slate-950 font-mono text-sm">
                         {new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(q.totalValue)}
                       </td>
-                      <td className="px-5 py-4 text-right" onClick={e => e.stopPropagation()}>
+                      <td className="px-5 py-3.5 text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex gap-2 justify-end">
                           <button 
+                            type="button"
                             onClick={() => openForm(q)}
-                            className="p-1.5 hover:bg-blue-50 hover:text-blue-700 rounded-md text-slate-500"
+                            className="p-1.5 hover:bg-blue-50 hover:text-blue-700 rounded-md text-slate-500 cursor-pointer transition-colors"
                             title="Editar"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button 
+                            type="button"
                             onClick={() => {
                               if (confirm('Eliminar esta proposta?')) {
                                 deleteQuote(q.id);
                               }
                             }}
-                            className="p-1.5 hover:bg-red-50 hover:text-red-700 rounded-md text-slate-500"
+                            className="p-1.5 hover:bg-red-50 hover:text-red-700 rounded-md text-slate-500 cursor-pointer transition-colors"
                             title="Eliminar"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -492,6 +496,10 @@ export default function QuoteSection({
                 </tbody>
               </table>
             )}
+          </div>
+
+          <div className="px-5 py-3.5 border-t border-slate-200/80 bg-slate-50/70 text-right text-xs text-slate-500 font-medium">
+            A mostrar <span className="font-bold text-slate-800">{filteredQuotes.length}</span> {filteredQuotes.length === 1 ? 'orçamento' : 'orçamentos'}
           </div>
         </div>
       )}

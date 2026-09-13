@@ -96,7 +96,7 @@ export function getTaskStatusName(
 
   // Fallback map only if taskStatuses array is completely empty/uninitialized
   if (statusId === 'ts-1' || statusId === '99999999-9999-9999-9999-999999999901') return 'Por iniciar';
-  if (statusId === 'ts-2' || statusId === '99999999-9999-9999-9999-999999999902') return 'Em andamento';
+  if (statusId === 'ts-2' || statusId === '99999999-9999-9999-9999-999999999902') return 'Em curso';
   if (statusId === 'ts-3' || statusId === '99999999-9999-9999-9999-999999999903') return 'Completa';
   if (statusId === 'ts-4' || statusId === '99999999-9999-9999-9999-999999999904') return 'Suspensa';
 

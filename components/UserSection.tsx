@@ -455,11 +455,12 @@ export default function UserSection({
                 <div className="space-y-1">
                   <label className="block text-slate-500">Utilizador *</label>
                   <select 
+                    required
                     value={userId}
                     onChange={e => setUserId(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold text-xs text-slate-800"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   >
-                    <option value="" disabled>Selecione um utilizador...</option>
+                    <option value="">-- Selecione um utilizador --</option>
                     {users
                       .filter(u => !u.deleted)
                       .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }))
@@ -654,22 +655,21 @@ export default function UserSection({
           </div>
 
           {/* Absences List Table with Filters & Sorting */}
-          <div className="bg-white rounded-2xl border border-slate-200 -sm overflow-hidden text-xs">
-              <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden text-xs animate-fade-in">
+              <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
-                  <h3 className="font-bold text-slate-800">Registo de ausências</h3>
-                  <p className="text-[10px] text-slate-400 font-medium mt-0.5">Últimos 25 registos guardados</p>
+                  <h2 className="text-base font-bold text-slate-800">Registo de ausências</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Últimos 25 registos guardados</p>
                 </div>
                 
                 {/* Filters Row */}
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
                   {/* User Filter */}
-                  <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-1">
-                    <Filter className="w-3 h-3 text-slate-400" />
+                  <div className="relative">
                     <select
                       value={filterUserId}
                       onChange={e => setFilterUserId(e.target.value)}
-                      className="bg-transparent border-none outline-none text-[11px] font-semibold text-slate-600 cursor-pointer pr-1"
+                      className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
                     >
                       <option value="all">Todos os utilizadores</option>
                       {users
@@ -682,12 +682,11 @@ export default function UserSection({
                   </div>
 
                   {/* Year Filter */}
-                  <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-1">
-                    <Calendar className="w-3 h-3 text-slate-400" />
+                  <div className="relative">
                     <select
                       value={filterYear}
                       onChange={e => setFilterYear(e.target.value)}
-                      className="bg-transparent border-none outline-none text-[11px] font-semibold text-slate-600 cursor-pointer pr-1"
+                      className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
                     >
                       <option value="all">Todos os anos</option>
                       {years.map(y => (
@@ -699,12 +698,13 @@ export default function UserSection({
               </div>
 
               {processedAbsences.length === 0 ? (
-                <div className="p-8 text-center space-y-2">
+                <div className="p-10 text-center space-y-2">
                   <p className="text-slate-400 font-medium">Nenhuma ausência encontrada com os filtros selecionados.</p>
                   {(filterUserId !== 'all' || filterYear !== 'all') && (
                     <button 
+                      type="button"
                       onClick={() => { setFilterUserId('all'); setFilterYear('all'); }}
-                      className="text-blue-600 hover:underline font-bold text-[11px]"
+                      className="text-blue-600 hover:underline font-bold text-xs cursor-pointer"
                     >
                       Limpar filtros
                     </button>
@@ -713,22 +713,22 @@ export default function UserSection({
               ) : (
                 <div className="overflow-x-auto w-full">
                   <table className="w-full min-w-[650px] text-left border-collapse">
-                    <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100 font-bold select-none whitespace-nowrap">
+                    <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                       <tr>
-                        <th className="px-5 py-3">Utilizador</th>
+                        <th className="px-5 py-3.5 text-left">Utilizador</th>
                         <th 
-                          className="px-5 py-3 cursor-pointer hover:text-slate-700 hover:bg-slate-100/50 transition-colors"
+                          className="px-5 py-3.5 cursor-pointer hover:text-slate-800 transition-colors"
                           onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                         >
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             Data início
-                            <ArrowUpDown className={`w-3 h-3 ${sortOrder === 'asc' ? 'text-blue-600' : 'text-slate-400'}`} />
+                            <ArrowUpDown className={`w-3.5 h-3.5 ${sortOrder === 'asc' ? 'text-blue-600' : 'text-slate-400'}`} />
                           </div>
                         </th>
-                        <th className="px-5 py-3">Data fim</th>
-                        <th className="px-5 py-3">Motivo</th>
-                        <th className="px-5 py-3 text-center">Duração</th>
-                        <th className="px-5 py-3 text-right">Ação</th>
+                        <th className="px-5 py-3.5 text-left">Data fim</th>
+                        <th className="px-5 py-3.5 text-left">Motivo</th>
+                        <th className="px-5 py-3.5 text-center">Duração</th>
+                        <th className="px-5 py-3.5 text-right">Ação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -736,29 +736,30 @@ export default function UserSection({
                         const totalDays = calculateDays(abs.absenceStartDate, abs.absenceEndDate);
                         return (
                           <tr key={abs.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="px-5 py-3">
+                            <td className="px-5 py-3.5">
                               <span className="font-bold text-slate-900">{getUserName(abs.userId)}</span>
                             </td>
-                            <td className="px-5 py-3 font-mono">{abs.absenceStartDate}</td>
-                            <td className="px-5 py-3 font-mono text-blue-600 font-bold">{abs.absenceEndDate}</td>
-                            <td className="px-5 py-3">
-                              <span className="inline-block px-2 py-0.5 bg-slate-50 border border-slate-150 rounded text-slate-600 text-[10px]">
+                            <td className="px-5 py-3.5 font-mono text-slate-600">{abs.absenceStartDate}</td>
+                            <td className="px-5 py-3.5 font-mono text-blue-600 font-bold">{abs.absenceEndDate}</td>
+                            <td className="px-5 py-3.5">
+                              <span className="inline-block px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 text-[11px] font-semibold">
                                 {getTranslatedReason(abs.reason || 'Other')}
                               </span>
                             </td>
-                            <td className="px-5 py-3 text-center">
-                              <span className="inline-block px-2.5 py-1 bg-slate-100 text-slate-600 font-bold rounded-full text-[10px]">
+                            <td className="px-5 py-3.5 text-center">
+                              <span className="inline-block px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-full text-[10px]">
                                 {totalDays} {totalDays === 1 ? 'dia' : 'dias'}
                               </span>
                             </td>
-                            <td className="px-5 py-3 text-right">
+                            <td className="px-5 py-3.5 text-right">
                               <button 
+                                type="button"
                                 onClick={() => askConfirmation(
                                   'Confirmar Eliminação de Ausência',
                                   `Aviso: Isto irá remover permanentemente o registo de ausência de ${getUserName(abs.userId)} (${abs.absenceStartDate} a ${abs.absenceEndDate}). Pretende continuar?`,
                                   () => deleteAbsence(abs.id)
                                 )}
-                                className="text-red-500 hover:text-red-700 font-bold"
+                                className="text-red-500 hover:text-red-700 font-bold cursor-pointer transition-colors"
                               >
                                 Eliminar
                               </button>
@@ -768,8 +769,8 @@ export default function UserSection({
                       })}
                     </tbody>
                   </table>
-                  <div className="p-3 border-t border-slate-100 bg-slate-50/30 text-right text-[10px] text-slate-400 font-medium">
-                    A mostrar {processedAbsences.length} {processedAbsences.length === 1 ? 'resultado' : 'resultados'}
+                  <div className="px-5 py-3.5 border-t border-slate-200/80 bg-slate-50/70 text-right text-xs text-slate-500 font-medium">
+                    A mostrar <span className="font-bold text-slate-800">{processedAbsences.length}</span> {processedAbsences.length === 1 ? 'resultado' : 'resultados'}
                   </div>
                 </div>
               )}
@@ -904,30 +905,31 @@ export default function UserSection({
               </div>
             </form>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 -sm overflow-hidden text-xs">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden text-xs animate-fade-in">
               
-              <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h2 className="text-base font-bold text-slate-800">Utilizadores</h2>
-                  <p className="text-xs text-slate-500">Utilizadores ativos na plataforma</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Utilizadores ativos na plataforma</p>
                 </div>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 self-start md:self-auto">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider whitespace-nowrap">Filtrar por Grupo:</span>
+                    <span className="text-xs text-slate-500 font-medium whitespace-nowrap">Grupo:</span>
                     <select
                       value={filterGroupId}
                       onChange={e => setFilterGroupId(e.target.value)}
-                      className="p-2 border border-slate-200 rounded-xl bg-white font-bold text-slate-700 text-xs focus:ring-2 focus:ring-blue-100 outline-none cursor-pointer"
+                      className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
                     >
-                      <option value="all">-- Todos --</option>
+                      <option value="all">Todos os grupos</option>
                       {userGroups?.filter(g => !g.deleted).map(g => (
                         <option key={g.id} value={g.id}>{g.name}</option>
                       ))}
                     </select>
                   </div>
                   <button 
+                    type="button"
                     onClick={startAddUser}
-                    className="flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl -sm"
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
                   >
                     <Plus className="w-4 h-4" /> Novo utilizador
                   </button>
@@ -936,13 +938,13 @@ export default function UserSection({
 
               <div className="overflow-x-auto w-full">
                 <table className="w-full min-w-[700px] text-left border-collapse">
-                  <thead className="bg-slate-50 text-[10px] text-slate-400 uppercase border-b border-slate-100 font-bold whitespace-nowrap">
+                  <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                   <tr>
-                    <th className="px-5 py-3">Nome</th>
-                    <th className="px-5 py-3">E-mail</th>
-                    <th className="px-5 py-3">Grupo / Permissão</th>
-                    <th className="px-5 py-3">Estado</th>
-                    <th className="px-5 py-3 text-right">Ações</th>
+                    <th className="px-5 py-3.5 text-left">Nome</th>
+                    <th className="px-5 py-3.5 text-left">E-mail</th>
+                    <th className="px-5 py-3.5 text-left">Grupo / Permissão</th>
+                    <th className="px-5 py-3.5 text-left">Estado</th>
+                    <th className="px-5 py-3.5 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">

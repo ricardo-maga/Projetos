@@ -207,6 +207,8 @@ export interface AppConfiguration {
   salesRepGroupIds?: string[];
   projManagerGroupIds?: string[];
   fieldManagerGroupIds?: string[];
+  taskAssigneeGroupIds?: string[];
+  taskAssigneeGroupId?: string;
   autoDailyBackupEnabled?: boolean;
 }
 

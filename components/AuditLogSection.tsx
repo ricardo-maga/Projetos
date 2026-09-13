@@ -4,7 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { AuditLog, User } from '../lib/types';
 import { 
   ShieldCheck, Search, Download, RefreshCw, Filter, 
-  Clock, User as UserIcon, AlertTriangle, CheckCircle, Info, Database, Layers
+  Clock, User as UserIcon, AlertTriangle, CheckCircle, Info, Database, Layers,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { fetchAuditLogsFromSupabase } from '../lib/supabaseSync';
 
@@ -204,12 +205,13 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
         </div>
       </div>
 
-      {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 -sm space-y-3">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+      {/* Audit Log Table Container with Filters Toolbar */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+        {/* Filters Toolbar */}
+        <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 flex flex-col md:flex-row items-center justify-between gap-3">
           {/* Search */}
-          <div className="relative w-full md:w-96">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative w-full md:flex-1 md:max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={search}
@@ -218,66 +220,58 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                 setCurrentPage(1);
               }}
               placeholder="Pesquisar utilizador, ação, detalhes ou entidade..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
+              className="w-full pl-9 pr-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
             {/* Filter Action */}
-            <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
-              <span>Ação:</span>
-              <select
-                value={filterAction}
-                onChange={e => {
-                  setFilterAction(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="bg-transparent font-bold outline-none cursor-pointer"
-              >
-                <option value="ALL">Todas as Ações</option>
-                <option value="CREATE">Criar (CREATE)</option>
-                <option value="UPDATE">Editar (UPDATE)</option>
-                <option value="DELETE">Eliminar (DELETE)</option>
-                <option value="LOGIN">Autenticação (LOGIN)</option>
-                <option value="RESTORE">Restauro (RESTORE)</option>
-                <option value="SETTINGS">Definições (SETTINGS)</option>
-              </select>
-            </div>
+            <select
+              value={filterAction}
+              onChange={e => {
+                setFilterAction(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
+            >
+              <option value="ALL">Todas as Ações</option>
+              <option value="CREATE">Criar (CREATE)</option>
+              <option value="UPDATE">Editar (UPDATE)</option>
+              <option value="DELETE">Eliminar (DELETE)</option>
+              <option value="LOGIN">Autenticação (LOGIN)</option>
+              <option value="RESTORE">Restauro (RESTORE)</option>
+              <option value="SETTINGS">Definições (SETTINGS)</option>
+            </select>
 
             {/* Filter Entity */}
-            <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
-              <Layers className="w-3.5 h-3.5 text-slate-400" />
-              <span>Entidade:</span>
-              <select
-                value={filterEntity}
-                onChange={e => {
-                  setFilterEntity(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="bg-transparent font-bold outline-none cursor-pointer"
-              >
-                <option value="ALL">Todas as Entidades</option>
-                <option value="PROJECT">Projetos</option>
-                <option value="TASK">Tarefas</option>
-                <option value="CLIENT">Clientes</option>
-                <option value="USER">Utilizadores</option>
-                <option value="MATERIAL">Materiais</option>
-                <option value="RISK">Riscos</option>
-                <option value="SYSTEM">Sistema</option>
-              </select>
-            </div>
+            <select
+              value={filterEntity}
+              onChange={e => {
+                setFilterEntity(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
+            >
+              <option value="ALL">Todas as Entidades</option>
+              <option value="PROJECT">Projetos</option>
+              <option value="TASK">Tarefas</option>
+              <option value="CLIENT">Clientes</option>
+              <option value="USER">Utilizadores</option>
+              <option value="MATERIAL">Materiais</option>
+              <option value="RISK">Riscos</option>
+              <option value="SYSTEM">Sistema</option>
+            </select>
 
             {/* Page Size */}
-            <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
-              <span>Por página:</span>
+            <div className="flex items-center gap-1.5 pl-1">
+              <span className="text-xs text-slate-500 font-medium whitespace-nowrap">Mostrar:</span>
               <select
                 value={pageSize}
                 onChange={e => {
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="bg-transparent font-bold outline-none cursor-pointer"
+                className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value={15}>15</option>
                 <option value={25}>25</option>
@@ -287,25 +281,23 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Audit Log Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 -sm overflow-hidden">
+        {/* Audit Log Table */}
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse min-w-[700px]">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">
-                <th className="p-3.5">Data e Hora</th>
-                <th className="p-3.5">Utilizador</th>
-                <th className="p-3.5">Ação</th>
-                <th className="p-3.5">Entidade</th>
-                <th className="p-3.5">Detalhes do Registo</th>
+            <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+              <tr>
+                <th className="px-5 py-3.5 text-left">Data e Hora</th>
+                <th className="px-5 py-3.5 text-left">Utilizador</th>
+                <th className="px-5 py-3.5 text-left">Ação</th>
+                <th className="px-5 py-3.5 text-left">Entidade</th>
+                <th className="px-5 py-3.5 text-left">Detalhes do Registo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-medium">
               {paginatedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400 font-bold">
+                  <td colSpan={5} className="p-10 text-center text-slate-400 font-medium">
                     <Info className="w-6 h-6 mx-auto mb-2 text-slate-300" />
                     Nenhum registo de auditoria encontrado.
                   </td>
@@ -313,23 +305,23 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
               ) : (
                 paginatedLogs.map((log, index) => (
                   <tr key={log.id || index} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="p-3.5 whitespace-nowrap text-slate-500 font-mono text-[11px]">
+                    <td className="px-5 py-3.5 whitespace-nowrap text-slate-500 font-mono text-[11px]">
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
                         {log.timestamp ? new Date(log.timestamp).toLocaleString('pt-PT') : 'N/A'}
                       </div>
                     </td>
 
-                    <td className="p-3.5 whitespace-nowrap">
+                    <td className="px-5 py-3.5 whitespace-nowrap">
                       <div className="font-bold text-slate-800">{log.userName || 'Sistema'}</div>
                       {log.userEmail && <div className="text-[10px] text-slate-400 font-mono">{log.userEmail}</div>}
                     </td>
 
-                    <td className="p-3.5 whitespace-nowrap">
+                    <td className="px-5 py-3.5 whitespace-nowrap">
                       {getActionBadge(log.action)}
                     </td>
 
-                    <td className="p-3.5 whitespace-nowrap">
+                    <td className="px-5 py-3.5 whitespace-nowrap">
                       <div className="font-extrabold text-slate-700 font-mono text-[11px]">
                         {log.entityType || 'GERAL'}
                       </div>
@@ -340,7 +332,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                       )}
                     </td>
 
-                    <td className="p-3.5 text-slate-700 font-medium">
+                    <td className="px-5 py-3.5 text-slate-700 font-medium">
                       <span className="leading-relaxed break-words">{log.details}</span>
                     </td>
                   </tr>
@@ -352,32 +344,36 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
 
         {/* Pagination Footer */}
         {filteredLogs.length > 0 && (
-          <div className="p-4 border-t border-slate-150 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50">
-            <span className="text-xs font-semibold text-slate-500">
-              A mostrar <strong className="text-slate-800">{((currentPage - 1) * pageSize) + 1}</strong> a <strong className="text-slate-800">{Math.min(currentPage * pageSize, filteredLogs.length)}</strong> de <strong className="text-slate-800">{filteredLogs.length}</strong> registos de auditoria
+          <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50/70 border-t border-slate-200/80 text-xs gap-3 font-medium">
+            <span className="text-slate-500">
+              A mostrar <strong className="text-slate-800">{((currentPage - 1) * pageSize) + 1}</strong> a <strong className="text-slate-800">{Math.min(currentPage * pageSize, filteredLogs.length)}</strong> de <strong className="text-slate-800">{filteredLogs.length}</strong> registos
             </span>
 
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 transition-colors disabled:opacity-40 cursor-pointer"
-              >
-                Anterior
-              </button>
-              <span className="px-3 text-xs font-bold text-slate-600">
-                Página {currentPage} de {totalPages}
-              </span>
-              <button
-                type="button"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 transition-colors disabled:opacity-40 cursor-pointer"
-              >
-                Seguinte
-              </button>
-            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Anterior</span>
+                </button>
+                <span className="px-3 text-xs font-bold text-slate-700">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Seguinte</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -685,7 +685,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       appName: configRow.app_name || 'Gestão de projetos e planeamento',
       appDescription: configRow.app_description || '',
       footerText: configRow.footer_text || '',
-      logo: configRow.logo_url || '',
+      logo: configRow.logo_image_path || configRow.logo_url || '',
       footerCopyrightText: configRow.footer_copyright_text || configRow.footer_text || '',
       logoImagePath: configRow.logo_image_path || configRow.logo_url || '',
       theme: configRow.theme_name || 'default',
@@ -695,6 +695,8 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       salesRepGroupIds: configRow.sales_rep_group_id ? configRow.sales_rep_group_id.split(',').filter(Boolean) : [],
       projManagerGroupIds: configRow.proj_manager_group_id ? configRow.proj_manager_group_id.split(',').filter(Boolean) : [],
       fieldManagerGroupIds: configRow.field_manager_group_id ? configRow.field_manager_group_id.split(',').filter(Boolean) : [],
+      taskAssigneeGroupIds: configRow.task_assignee_group_id ? configRow.task_assignee_group_id.split(',').filter(Boolean) : [],
+      taskAssigneeGroupId: configRow.task_assignee_group_id || '',
     } : {
       appName: 'Gestão de Projetos Planeamento',
       appDescription: 'Plataforma integrada de planeamento, orçamentação e gestão de projetos.',
@@ -709,6 +711,8 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       salesRepGroupIds: [],
       projManagerGroupIds: [],
       fieldManagerGroupIds: [],
+      taskAssigneeGroupIds: [],
+      taskAssigneeGroupId: '',
     };
 
     // Map database structures to React types
@@ -1347,8 +1351,8 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         app_name: state.appConfig.appName,
         app_description: state.appConfig.appDescription,
         footer_text: state.appConfig.footerText,
-        logo_url: state.appConfig.logo,
-        logo_image_path: state.appConfig.logoImagePath || null,
+        logo_url: state.appConfig.logoImagePath || state.appConfig.logo || null,
+        logo_image_path: state.appConfig.logoImagePath || state.appConfig.logo || null,
         footer_copyright_text: state.appConfig.footerCopyrightText || null,
         theme_name: state.appConfig.theme || 'default',
         sales_rep_group_id: state.appConfig.salesRepGroupIds?.length 
@@ -1359,17 +1363,20 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           : (state.appConfig.projManagerGroupId || null),
         field_manager_group_id: state.appConfig.fieldManagerGroupIds?.length 
           ? state.appConfig.fieldManagerGroupIds.join(',') 
-          : (state.appConfig.fieldManagerGroupId || null)
+          : (state.appConfig.fieldManagerGroupId || null),
+        task_assignee_group_id: state.appConfig.taskAssigneeGroupIds?.length 
+          ? state.appConfig.taskAssigneeGroupIds.join(',') 
+          : (state.appConfig.taskAssigneeGroupId || null)
       }]).then(res => {
-        if (res.error && (res.error.message.includes('sales_rep_group_id') || res.error.message.includes('proj_manager_group_id') || res.error.message.includes('field_manager_group_id') || res.error.code === '42703')) {
+        if (res.error && (res.error.message.includes('sales_rep_group_id') || res.error.message.includes('proj_manager_group_id') || res.error.message.includes('field_manager_group_id') || res.error.message.includes('task_assignee_group_id') || res.error.code === '42703')) {
           // Fallback if the new manager group ID columns do not exist yet on live DB
           return supabase!.from('app_configuration').upsert([{
             id: '33333333-4444-5555-6666-777777777777',
             app_name: state.appConfig.appName,
             app_description: state.appConfig.appDescription,
             footer_text: state.appConfig.footerText,
-            logo_url: state.appConfig.logo,
-            logo_image_path: state.appConfig.logoImagePath || null,
+            logo_url: state.appConfig.logoImagePath || state.appConfig.logo || null,
+            logo_image_path: state.appConfig.logoImagePath || state.appConfig.logo || null,
             footer_copyright_text: state.appConfig.footerCopyrightText || null,
             theme_name: state.appConfig.theme || 'default'
           }]).then(res2 => {
@@ -1380,8 +1387,8 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
                 app_name: state.appConfig.appName,
                 app_description: state.appConfig.appDescription,
                 footer_text: state.appConfig.footerText,
-                logo_url: state.appConfig.logo,
-                logo_image_path: state.appConfig.logoImagePath || null,
+                logo_url: state.appConfig.logoImagePath || state.appConfig.logo || null,
+                logo_image_path: state.appConfig.logoImagePath || state.appConfig.logo || null,
                 footer_copyright_text: state.appConfig.footerCopyrightText || null
               }]);
             }
@@ -1394,8 +1401,8 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
             app_name: state.appConfig.appName,
             app_description: state.appConfig.appDescription,
             footer_text: state.appConfig.footerText,
-            logo_url: state.appConfig.logo,
-            logo_image_path: state.appConfig.logoImagePath || null,
+            logo_url: state.appConfig.logoImagePath || state.appConfig.logo || null,
+            logo_image_path: state.appConfig.logoImagePath || state.appConfig.logo || null,
             footer_copyright_text: state.appConfig.footerCopyrightText || null
           }]);
         }
@@ -2197,6 +2204,9 @@ ALTER TABLE IF EXISTS project_risk_items DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS sales_rep_group_id TEXT;
 ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS proj_manager_group_id TEXT;
 ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS field_manager_group_id TEXT;
+ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS task_assignee_group_id TEXT;
+ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS logo_image_path TEXT;
+ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS theme_name TEXT;
 
 -- ==========================================
 -- MÓDULO DE REGRAS DE AUTOMAÇÃO NO-CODE

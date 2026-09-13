@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
-import { User } from '../lib/types';
+import { User, UserGroup } from '../lib/types';
 
 interface AssigneeSelectorProps {
   users: User[];
+  userGroups?: UserGroup[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
+  allowedGroupIds?: string[];
   filterTeamOnly?: boolean;
   label?: string;
   className?: string;
@@ -13,8 +15,10 @@ interface AssigneeSelectorProps {
 
 export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
   users,
+  userGroups = [],
   selectedIds,
   onChange,
+  allowedGroupIds,
   filterTeamOnly = false,
   label = 'Técnicos Alocados',
   className = ''
@@ -23,10 +27,19 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
 
   const filteredUsers = useMemo(() => {
     return users
-      .filter(u => !u.deleted && (!filterTeamOnly || u.type === 'Team'))
+      .filter(u => !u.deleted)
+      .filter(u => {
+        if (allowedGroupIds && allowedGroupIds.length > 0) {
+          return u.roleId && allowedGroupIds.includes(u.roleId);
+        }
+        if (filterTeamOnly) {
+          return u.type === 'Team';
+        }
+        return true;
+      })
       .filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase().trim()))
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-PT'));
-  }, [users, filterTeamOnly, searchTerm]);
+  }, [users, allowedGroupIds, filterTeamOnly, searchTerm]);
 
   const handleToggle = (id: string) => {
     if (selectedIds.includes(id)) {
@@ -78,6 +91,9 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
         ) : (
           filteredUsers.map(u => {
             const isSelected = selectedIds.includes(u.id);
+            const userGroup = userGroups?.find(g => g.id === u.roleId);
+            const groupLabel = userGroup?.name || (u.type === 'Team' ? 'Técnico' : u.type || 'Sem Grupo');
+
             return (
               <label
                 key={u.id}
@@ -92,11 +108,9 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                   className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
                 />
                 <span className="truncate flex-1">{u.name}</span>
-                {u.type && (
-                  <span className="text-[10px] text-slate-400 font-normal truncate max-w-[120px]">
-                    {u.type === 'Team' ? 'Técnico' : u.type}
-                  </span>
-                )}
+                <span className="text-[10px] text-slate-500 font-medium truncate max-w-[130px] px-1.5 py-0.5 bg-slate-200/60 rounded">
+                  {groupLabel}
+                </span>
               </label>
             );
           })

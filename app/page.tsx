@@ -211,9 +211,11 @@ export default function Page() {
 
   // Synchronize active theme attribute on document.documentElement for global styling
   React.useEffect(() => {
-    const currentTheme = state?.appConfig?.theme || 'default';
+    const cachedTheme = typeof window !== 'undefined' ? localStorage.getItem('erp_theme') : null;
+    const currentTheme = state?.appConfig?.theme || cachedTheme || 'default';
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('data-theme', currentTheme);
+      document.body?.setAttribute('data-theme', currentTheme);
       const root = document.getElementById('main-root');
       if (root) {
         root.setAttribute('data-theme', currentTheme);
@@ -374,15 +376,15 @@ export default function Page() {
     }
   }, [activeTab, tabs, mounted, state, currentUser]);
 
-  if (!mounted || isTransitioning || (currentUser && loading)) {
+  if (!mounted || isTransitioning || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="loading-screen">
         <div className="w-full max-w-sm bg-white rounded-2xl -xl border border-slate-100 p-8 text-center space-y-6 animate-fade-in">
           <AppLogo 
             logoUrl={state?.appConfig?.logoImagePath || state?.appConfig?.logo} 
-            appName={state?.appConfig?.appName || 'Portal'}
-            className="w-48 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mx-auto shadow-lg animate-pulse p-2"
-            fallbackIconClassName="w-8 h-8 text-white"
+            appName={state?.appConfig?.appName || ''}
+            className="w-72 max-w-full h-16 rounded-2xl bg-white p-2.5 flex items-center justify-center mx-auto shadow-sm border border-slate-100 animate-pulse"
+            fallbackIconClassName="w-8 h-8 text-blue-600"
           />
           <div>
             <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">A carregar o sistema...</h1>
@@ -405,12 +407,16 @@ export default function Page() {
           <div className="p-8 pb-6 bg-slate-800 text-white text-center flex flex-col items-center">
             <AppLogo 
               logoUrl={state?.appConfig?.logoImagePath || state?.appConfig?.logo} 
-              appName={state?.appConfig?.appName || 'Portal'}
-              className="w-48 h-16 rounded-2xl bg-white/10 p-2 mb-4 shadow-lg border border-white/20 mx-auto"
-              fallbackIconClassName="w-8 h-8 text-white"
+              appName={state?.appConfig?.appName || ''}
+              className="w-72 max-w-full h-16 rounded-2xl bg-white p-2.5 mb-4 shadow-md mx-auto"
+              fallbackIconClassName="w-8 h-8 text-blue-600"
             />
-            <h1 className="text-2xl font-bold font-sans tracking-tight">{state?.appConfig?.appName || 'Portal'}</h1>
-            <p className="text-slate-400 text-sm mt-1">{state?.appConfig?.appDescription || 'Gestão de projetos'}</p>
+            {state?.appConfig?.appName ? (
+              <h1 className="text-2xl font-bold font-sans tracking-tight">{state.appConfig.appName}</h1>
+            ) : null}
+            {state?.appConfig?.appDescription ? (
+              <p className="text-slate-400 text-sm mt-1">{state.appConfig.appDescription}</p>
+            ) : null}
           </div>
           
           <form onSubmit={handleLogin} className="p-8 space-y-5">
@@ -438,7 +444,7 @@ export default function Page() {
                 type="password" 
                 value={loginPassword}
                 onChange={e => setLoginPassword(e.target.value)}
-                placeholder="A sua password (ex: 12345)"
+                placeholder="A sua password"
                 className="w-full p-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 required
               />
@@ -452,10 +458,10 @@ export default function Page() {
                   onChange={e => setRememberMe(e.target.checked)}
                   className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                 />
-                Lembrar login
+                Lembrar
               </label>
               <span className="text-[10px] text-slate-400">
-                {rememberMe ? 'Sessão dura 30 dias' : 'Sessão dura 8 horas'}
+                {rememberMe ? '30 dias' : '8 horas'}
               </span>
             </div>
             
@@ -481,7 +487,7 @@ export default function Page() {
     <div className="min-h-screen flex flex-col bg-slate-50/50 text-slate-800" id="main-root" data-theme={appConfig.theme || 'default'}>
       
       {/* HEADER BAR */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-3 sm:px-4 py-2.5 sm:py-3 -sm flex items-center justify-between" id="app-header">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 h-14 sm:h-16 px-3 sm:px-4 shadow-2xs flex items-center justify-between shrink-0" id="app-header">
         <div className="flex items-center gap-2 sm:gap-3">
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -509,7 +515,7 @@ export default function Page() {
             <AppLogo 
               logoUrl={appConfig.logoImagePath || appConfig.logo} 
               appName={appConfig.appName}
-              className="w-24 h-8 rounded-lg bg-slate-100 border border-slate-200/80 p-0.5 shadow-2xs"
+              className="w-72 max-w-[280px] sm:max-w-[320px] h-10 bg-transparent border-0 shadow-none p-0"
             />
             <div className="min-w-0">
               <h1 className="text-sm font-black text-slate-900 tracking-tight leading-none truncate">{appConfig.appName}</h1>
@@ -536,7 +542,7 @@ export default function Page() {
           className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:opacity-85 transition-all" 
           id="user-profile"
         >
-          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs border border-slate-200 -sm uppercase shrink-0">
+          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs border border-slate-200 shadow-sm uppercase shrink-0">
             {(() => {
               const parts = (currentUser.name || '').trim().split(/\s+/);
               if (parts.length >= 2) {
@@ -578,39 +584,21 @@ export default function Page() {
         {/* Mobile drawer backdrop overlay */}
         {sidebarOpen && (
           <div 
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 md:hidden animate-fade-in"
+            className="fixed inset-0 top-14 sm:top-16 bg-slate-900/40 backdrop-blur-xs z-30 md:hidden animate-fade-in"
             onClick={() => setSidebarOpen(false)}
             aria-label="Fechar menu"
           />
         )}
         
-        {/* SIDEBAR NAVIGATION - Completely visible on large screens (tablet/PC), collapsible drawer on mobile */}
+        {/* SIDEBAR NAVIGATION - Positioned strictly below header, collapsible on mobile & desktop */}
         <aside 
-          className={`fixed top-0 bottom-0 left-0 z-50 md:top-[57px] transform ${
-            sidebarOpen ? 'translate-x-0 -2xl' : '-translate-x-full'
-          } md:static md:translate-x-0 md:-none md:flex flex-col ${
+          className={`fixed top-14 sm:top-16 bottom-0 left-0 z-40 h-[calc(100dvh-3.5rem)] sm:h-[calc(100dvh-4rem)] transform ${
+            sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+          } md:static md:top-auto md:bottom-auto md:h-auto md:translate-x-0 md:shadow-none md:flex flex-col ${
             isCollapsed ? 'md:w-16' : 'md:w-64'
           } w-72 max-w-[85vw] bg-white border-r border-slate-200 transition-all duration-200 ease-in-out`}
           id="sidebar-nav"
         >
-          {/* Mobile drawer top bar with close button */}
-          <div className="p-3.5 border-b border-slate-100 flex items-center justify-between md:hidden bg-slate-50">
-            <div className="flex items-center gap-2 min-w-0">
-              <AppLogo 
-                logoUrl={appConfig.logoImagePath || appConfig.logo} 
-                appName={appConfig.appName}
-                className="w-[84px] h-7 rounded-lg bg-slate-100 border border-slate-200/80 p-0.5"
-              />
-              <span className="font-extrabold text-xs text-slate-900 truncate">{appConfig.appName}</span>
-            </div>
-            <button 
-              onClick={() => setSidebarOpen(false)}
-              className="p-1.5 hover:bg-slate-200 text-slate-500 rounded-lg transition-colors"
-              aria-label="Fechar menu"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
           <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
             {tabs.map(tab => {
               const Icon = tab.icon;
@@ -823,14 +811,18 @@ export default function Page() {
                   tasks={state.tasks}
                   projects={state.projects}
                   clients={state.clients}
+                  specialDays={state.specialDays || []}
                   notifications={state.notifications || []}
                   taskStatuses={state.taskStatuses}
+                  taskTypes={state.taskTypes}
+                  userAbsences={state.userAbsences}
                   projectStatuses={state.projectStatuses}
                   markNotificationAsRead={markNotificationAsRead}
                   markAllNotificationsAsRead={markAllNotificationsAsRead}
                   updateTask={updateTask}
                   onSelectProject={handleSelectProject}
                   onNavigateTab={handleTabChange}
+                  appConfig={state.appConfig}
                 />
               )}
 
@@ -893,6 +885,7 @@ export default function Page() {
                   deleteTask={deleteTask}
                   currentUser={currentUser}
                   userGroups={state.userGroups}
+                  appConfig={state.appConfig}
                 />
               )}
 
@@ -913,6 +906,7 @@ export default function Page() {
                   onSelectProject={handleSelectProject}
                   currentUser={currentUser}
                   userGroups={state.userGroups}
+                  appConfig={state.appConfig}
                 />
               )}
 

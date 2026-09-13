@@ -2,13 +2,15 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { 
-  Task, Project, Client, Notification, TaskStatus, ProjectStatus, User
+  Task, Project, Client, Notification, TaskStatus, ProjectStatus, User, SpecialDay, TaskType
 } from '../lib/types';
-import { TASK_STATUS_ID_MAPPINGS } from '../lib/utils';
+import { TASK_STATUS_ID_MAPPINGS, getTaskTypeName, formatToOnlyHours } from '../lib/utils';
+import { AssigneeSelector } from './AssigneeSelector';
+import TaskDetailsModal from './TaskDetailsModal';
 import { 
   CheckSquare, Briefcase, Bell, Calendar as CalendarIcon, ChevronLeft, 
   ChevronRight, Check, Sparkles, Clock, AlertCircle, ArrowRight, 
-  CheckCircle2, Circle, CircleDot, StickyNote, Plus, Trash2, FolderKanban, Flag, UserCheck, X
+  CheckCircle2, Circle, CircleDot, StickyNote, Plus, Trash2, FolderKanban, Flag, UserCheck, X, PartyPopper
 } from 'lucide-react';
 
 interface MyFocusSectionProps {
@@ -18,30 +20,39 @@ interface MyFocusSectionProps {
   tasks: Task[];
   projects: Project[];
   clients: Client[];
+  specialDays?: SpecialDay[];
   notifications: Notification[];
   taskStatuses: TaskStatus[];
+  taskTypes?: TaskType[];
+  userAbsences?: any[];
   projectStatuses: ProjectStatus[];
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: (userId: string) => void;
   updateTask: (id: string, updates: any) => void;
   onSelectProject: (id: string) => void;
   onNavigateTab: (tabId: string) => void;
+  appConfig?: any;
 }
 
 export default function MyFocusSection({
   currentUser,
   users = [],
+  userGroups = [],
   tasks = [],
   projects = [],
   clients = [],
+  specialDays = [],
   notifications = [],
   taskStatuses = [],
+  taskTypes = [],
+  userAbsences = [],
   projectStatuses = [],
   markNotificationAsRead,
   markAllNotificationsAsRead,
   updateTask,
   onSelectProject,
-  onNavigateTab
+  onNavigateTab,
+  appConfig
 }: MyFocusSectionProps) {
   // Task filter state
   const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'completed'>('pending');
@@ -51,6 +62,47 @@ export default function MyFocusSection({
 
   // Task details modal state
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
+  const [taskEditStatus, setTaskEditStatus] = useState('');
+  const [taskEditType, setTaskEditType] = useState('');
+  const [taskEditActualHours, setTaskEditActualHours] = useState('');
+  const [taskEditNotes, setTaskEditNotes] = useState('');
+  const [taskEditStartDate, setTaskEditStartDate] = useState('');
+  const [taskEditStartTime, setTaskEditStartTime] = useState('');
+  const [taskEditEndDate, setTaskEditEndDate] = useState('');
+  const [taskEditEndTime, setTaskEditEndTime] = useState('');
+  const [taskEditAssignees, setTaskEditAssignees] = useState<string[]>([]);
+
+  const openTaskDetailsModal = (task: Task) => {
+    setSelectedTaskForDetails(task);
+    setTaskEditStatus(task.statusId || '');
+    setTaskEditType(task.taskTypeId || '');
+    setTaskEditActualHours(formatToOnlyHours(task.actualHours));
+    setTaskEditNotes(task.notes || '');
+    setTaskEditStartDate(task.startDate || '');
+    setTaskEditStartTime(task.startTime || '');
+    setTaskEditEndDate(task.endDate || '');
+    setTaskEditEndTime(task.endTime || '');
+    setTaskEditAssignees(task.assigneeIds || []);
+  };
+
+  const handleSaveTaskDetails = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTaskForDetails || !updateTask) return;
+
+    updateTask(selectedTaskForDetails.id, {
+      statusId: taskEditStatus,
+      taskTypeId: taskEditType || '',
+      actualHours: formatToOnlyHours(taskEditActualHours),
+      notes: taskEditNotes,
+      startDate: taskEditStartDate,
+      startTime: taskEditStartTime,
+      endDate: taskEditEndDate,
+      endTime: taskEditEndTime,
+      assigneeIds: taskEditAssignees,
+    });
+
+    setSelectedTaskForDetails(null);
+  };
 
   // Notification filter state
   const [notifFilter, setNotifFilter] = useState<'all' | 'unread'>('all');
@@ -371,17 +423,55 @@ export default function MyFocusSection({
   }, [myAssignedTasks]);
 
   const projectsByDate = useMemo(() => {
-    const map = new Map<string, Project[]>();
+    const map = new Map<string, Array<{ project: Project; milestoneLabel: string }>>();
+    
     myManagedProjects.forEach(p => {
-      const d = getProjectEffectiveDeliveryDate(p);
-      if (d) {
-        const list = map.get(d) || [];
-        list.push(p);
-        map.set(d, list);
+      const addedDates = new Set<string>();
+
+      // 1. Scheduled / Installation date
+      if (p.scheduledDate) {
+        const list = map.get(p.scheduledDate) || [];
+        list.push({ project: p, milestoneLabel: 'Agendamento / Instalação' });
+        map.set(p.scheduledDate, list);
+        addedDates.add(p.scheduledDate);
+      }
+
+      // 2. Delivery date
+      if (p.deliveryDate && !addedDates.has(p.deliveryDate)) {
+        const list = map.get(p.deliveryDate) || [];
+        list.push({ project: p, milestoneLabel: 'Data de Entrega' });
+        map.set(p.deliveryDate, list);
+        addedDates.add(p.deliveryDate);
+      }
+
+      // 3. Estimated completion date
+      if (p.estimatedDate && !addedDates.has(p.estimatedDate)) {
+        const list = map.get(p.estimatedDate) || [];
+        list.push({ project: p, milestoneLabel: 'Previsão de Conclusão' });
+        map.set(p.estimatedDate, list);
+        addedDates.add(p.estimatedDate);
+      }
+
+      // 4. Effective delivery date if not already included
+      const effDelivery = getProjectEffectiveDeliveryDate(p);
+      const effType = getProjectDeliveryDateType(p);
+      if (effDelivery && !addedDates.has(effDelivery)) {
+        const list = map.get(effDelivery) || [];
+        list.push({ project: p, milestoneLabel: `Entrega (${effType})` });
+        map.set(effDelivery, list);
+        addedDates.add(effDelivery);
+      }
+
+      // 5. Start date
+      if (p.startDate && !addedDates.has(p.startDate)) {
+        const list = map.get(p.startDate) || [];
+        list.push({ project: p, milestoneLabel: 'Início de Projeto' });
+        map.set(p.startDate, list);
+        addedDates.add(p.startDate);
       }
     });
     return map;
-  }, [myManagedProjects, getProjectEffectiveDeliveryDate]);
+  }, [myManagedProjects, getProjectEffectiveDeliveryDate, getProjectDeliveryDateType]);
 
   // Items for selected date
   const selectedDateTasks = tasksByDate.get(selectedDateStr) || [];
@@ -496,7 +586,7 @@ export default function MyFocusSection({
             </div>
 
             {/* TASK LIST */}
-            <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
+            <div className="divide-y divide-slate-100">
               {filteredTasks.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
                   <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
@@ -520,15 +610,20 @@ export default function MyFocusSection({
                   return (
                     <div 
                       key={task.id} 
-                      className={`p-4 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      onClick={() => openTaskDetailsModal(task)}
+                      className={`p-4 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer group ${
                         isDone ? 'opacity-75 bg-slate-50/40' : ''
                       }`}
+                      title="Clique para preencher ou editar a tarefa"
                     >
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <button
                             type="button"
-                            onClick={() => handleCycleStatus(task)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCycleStatus(task);
+                            }}
                             className={`p-1.5 rounded-full transition-all flex items-center justify-center cursor-pointer ${scaleInfo.circleClass}`}
                             title={`Escala ${scaleInfo.scale}: ${scaleInfo.statusName}. Clique para alterar para a próxima escala.`}
                           >
@@ -541,7 +636,7 @@ export default function MyFocusSection({
                             )}
                           </button>
 
-                          <span className={`text-sm font-bold tracking-tight ${isDone ? 'line-through text-slate-500' : 'text-slate-900'}`}>
+                          <span className={`text-sm font-bold tracking-tight group-hover:text-blue-600 transition-colors ${isDone ? 'line-through text-slate-500' : 'text-slate-900'}`}>
                             {task.title}
                           </span>
 
@@ -553,17 +648,17 @@ export default function MyFocusSection({
                         <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap pl-7">
                           {proj && (
                             <span 
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 onSelectProject(proj.id);
                               }}
                               className="font-semibold text-blue-600 hover:underline cursor-pointer flex items-center gap-1"
+                              title={`Aceder ao projeto ${proj.title}`}
                             >
                               <Briefcase className="w-3 h-3" />
                               {client && `${client.shortName || client.clientName}`} {proj.title}
                             </span>
                           )}
-                          
-                           
                           
                           {task.estimatedHours && (
                             <span className="text-slate-400 flex items-center gap-0.5">
@@ -648,7 +743,7 @@ export default function MyFocusSection({
             </div>
 
             {/* PROJECTS LIST */}
-            <div className="divide-y divide-slate-100 max-h-[380px] overflow-y-auto">
+            <div className="divide-y divide-slate-100">
               {myManagedProjects.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
                   <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
@@ -866,16 +961,16 @@ export default function MyFocusSection({
               </div>
 
               {/* CALENDAR GRID */}
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {/* DAYS OF WEEK HEADER */}
-                <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-extrabold text-slate-400 uppercase">
-                  <span>Seg</span>
-                  <span>Ter</span>
-                  <span>Qua</span>
-                  <span>Qui</span>
-                  <span>Sex</span>
-                  <span>Sáb</span>
-                  <span>Dom</span>
+                <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-extrabold uppercase select-none">
+                  <span className="text-slate-500 py-0.5">Seg</span>
+                  <span className="text-slate-500 py-0.5">Ter</span>
+                  <span className="text-slate-500 py-0.5">Qua</span>
+                  <span className="text-slate-500 py-0.5">Qui</span>
+                  <span className="text-slate-500 py-0.5">Sex</span>
+                  <span className="text-slate-500 bg-slate-100/70 py-0.5 rounded-md font-bold">Sáb</span>
+                  <span className="text-slate-500 bg-slate-100/70 py-0.5 rounded-md font-bold">Dom</span>
                 </div>
 
                 {/* DAYS MATRIX */}
@@ -888,23 +983,52 @@ export default function MyFocusSection({
                     const isToday = cell.dateStr === todayStr;
                     const isSelected = cell.dateStr === selectedDateStr;
 
+                    const cellDate = new Date(cell.dateStr + 'T00:00:00');
+                    const isWeekend = cellDate.getDay() === 0 || cellDate.getDay() === 6;
+                    const specialDay = specialDays.find(sd => sd.date === cell.dateStr);
+                    const isSpecial = !!specialDay;
+
                     const hasEvents = dayTasks.length > 0 || dayProjects.length > 0 || dayNotes.length > 0;
+
+                    let cellStyleClass = '';
+                    if (!cell.isCurrentMonth) {
+                      cellStyleClass = 'text-slate-300 bg-slate-50/30 opacity-40 hover:opacity-80';
+                    } else if (isSelected) {
+                      cellStyleClass = 'bg-slate-900 text-white shadow-md ring-2 ring-slate-900 font-bold z-10';
+                    } else if (isToday) {
+                      cellStyleClass = 'bg-amber-100/90 text-amber-950 font-black border border-amber-300 ring-1 ring-amber-400/50 shadow-2xs hover:bg-amber-200/80';
+                    } else if (isSpecial) {
+                      cellStyleClass = 'bg-rose-50 text-rose-900 border border-rose-200 font-bold hover:bg-rose-100/80 shadow-2xs';
+                    } else if (isWeekend) {
+                      cellStyleClass = 'bg-slate-100/80 text-slate-500 font-semibold hover:bg-slate-200/60 border border-slate-200/50';
+                    } else {
+                      cellStyleClass = 'bg-white text-slate-800 font-bold hover:bg-slate-50 border border-slate-200/60 shadow-2xs';
+                    }
+
+                    const tooltipText = specialDay 
+                      ? `${specialDay.name} (${cell.dateStr})`
+                      : isWeekend
+                        ? `${cellDate.getDay() === 6 ? 'Sábado' : 'Domingo'} (${cell.dateStr})`
+                        : cell.dateStr;
 
                     return (
                       <button
                         key={idx}
                         onClick={() => setSelectedDateStr(cell.dateStr)}
-                        className={`p-1.5 rounded-xl text-center flex flex-col items-center justify-between min-h-[44px] transition-all relative ${
-                          !cell.isCurrentMonth ? 'text-slate-300' : 'text-slate-800 font-bold'
-                        } ${
-                          isSelected 
-                            ? 'bg-slate-900 text-white shadow-md ring-2 ring-slate-900' 
-                            : isToday 
-                              ? 'bg-blue-50 text-blue-700 font-black border border-blue-300' 
-                              : 'hover:bg-slate-100/80'
-                        }`}
+                        className={`p-1.5 rounded-xl text-center flex flex-col items-center justify-between min-h-[46px] transition-all relative ${cellStyleClass}`}
+                        title={tooltipText}
                       >
-                        <span className="text-xs">{cell.dayNum}</span>
+                        <div className="flex items-center justify-center w-full relative">
+                          <span className={`text-xs ${isSpecial && !isSelected ? 'text-rose-900 font-extrabold' : ''}`}>
+                            {cell.dayNum}
+                          </span>
+                          {isSpecial && cell.isCurrentMonth && !isSelected && (
+                            <span 
+                              className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-rose-500" 
+                              title={`Feriado / Dia Especial: ${specialDay?.name}`}
+                            />
+                          )}
+                        </div>
 
                         {/* DOT INDICATORS */}
                         {hasEvents && (
@@ -924,6 +1048,22 @@ export default function MyFocusSection({
                     );
                   })}
                 </div>
+
+                {/* CALENDAR LEGEND */}
+                <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 text-[10px] text-slate-500 font-medium flex-wrap px-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded bg-slate-100 border border-slate-200"></span>
+                    <span>Fim de semana</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded bg-rose-50 border border-rose-200 flex items-center justify-center text-[7px] text-rose-600">●</span>
+                    <span className="text-rose-700 font-semibold">Dia Especial / Feriado</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded bg-amber-100 border border-amber-300"></span>
+                    <span className="text-amber-900 font-semibold">Hoje</span>
+                  </div>
+                </div>
               </div>
 
               {/* SELECTED DATE DETAIL / NOTES PANEL */}
@@ -942,8 +1082,45 @@ export default function MyFocusSection({
                   )}
                 </div>
 
+                {/* SPECIAL DAY / WEEKEND BANNER */}
+                {(() => {
+                  const selSpecial = specialDays.find(sd => sd.date === selectedDateStr);
+                  const selDate = new Date(selectedDateStr + 'T00:00:00');
+                  const isSelWknd = selDate.getDay() === 0 || selDate.getDay() === 6;
+
+                  if (selSpecial) {
+                    return (
+                      <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between text-xs text-rose-900 font-medium">
+                        <div className="flex items-center gap-2 font-bold">
+                          <PartyPopper className="w-4 h-4 text-rose-600 shrink-0" />
+                          <span>{selSpecial.name}</span>
+                        </div>
+                        <span className="text-[9px] uppercase tracking-wider bg-rose-200/80 text-rose-800 px-2 py-0.5 rounded-full font-extrabold">
+                          Dia Especial / Feriado
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  if (isSelWknd) {
+                    return (
+                      <div className="p-2 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-600">
+                        <div className="flex items-center gap-1.5 font-semibold">
+                          <span>☕</span>
+                          <span>Fim de Semana ({selDate.getDay() === 6 ? 'Sábado' : 'Domingo'})</span>
+                        </div>
+                        <span className="text-[9px] uppercase tracking-wider bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                          Não Útil
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })()}
+
                 {/* EVENTS & TASKS ON SELECTED DAY */}
-                <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                <div className="space-y-2">
                   {selectedDateTasks.length === 0 && selectedDateProjects.length === 0 && selectedDateUserNotes.length === 0 ? (
                     <p className="text-xs text-slate-400 italic text-center py-2">
                       Nenhum compromisso ou nota gravada para este dia.
@@ -959,9 +1136,9 @@ export default function MyFocusSection({
                         return (
                           <div 
                             key={t.id} 
-                            onClick={() => setSelectedTaskForDetails(t)}
+                            onClick={() => openTaskDetailsModal(t)}
                             className="p-2.5 bg-white rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition-all cursor-pointer text-xs space-y-1 group shadow-2xs"
-                            title="Clique para ver detalhes da tarefa"
+                            title="Clique para preencher ou editar a tarefa"
                           >
                             <div className="flex justify-between items-start gap-2">
                               <div className="space-y-0.5 flex-1 min-w-0">
@@ -970,9 +1147,26 @@ export default function MyFocusSection({
                                   <span className="truncate">{t.title}</span>
                                 </span>
                                 <div className="text-[11px] font-medium text-slate-600 flex items-center gap-1 flex-wrap pl-5">
-                                  <span className="text-slate-800 font-bold">{client?.clientName || 'Cliente N/D'}</span>
+                                  <span className="text-slate-800 font-bold">{client?.clientName || client?.shortName || 'Cliente N/D'}</span>
                                   <span className="text-slate-300">•</span>
-                                  <span className="text-blue-700 font-semibold">{proj?.title || 'Projeto N/D'}</span>
+                                  <span 
+                                    className="text-blue-700 font-semibold hover:underline"
+                                    onClick={(e) => {
+                                      if (proj) {
+                                        e.stopPropagation();
+                                        onSelectProject(proj.id);
+                                      }
+                                    }}
+                                    title={proj ? `Aceder ao projeto ${proj.title}` : undefined}
+                                  >
+                                    {proj?.title || 'Projeto N/D'}
+                                  </span>
+                                  {proj?.installProjectNo && (
+                                    <>
+                                      <span className="text-slate-300">•</span>
+                                      <span className="text-slate-400">N.º {proj.installProjectNo}</span>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                               <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-extrabold shrink-0 ${scaleInfo.badgeClass}`}>
@@ -983,17 +1177,52 @@ export default function MyFocusSection({
                         );
                       })}
 
-                      {/* PROJECTS */}
-                      {selectedDateProjects.map(p => (
-                        <div key={p.id} className="p-2 bg-amber-50/80 rounded-lg border border-amber-200 text-xs space-y-0.5">
-                          <div className="flex justify-between items-center font-bold text-amber-900">
-                            <span className="flex items-center gap-1">
-                              <Flag className="w-3 h-3 text-amber-600" /> Entrega de Projeto: {p.title}
-                            </span>
-                            <span className="text-[9px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-mono">Projeto</span>
+                      {/* PROJECT MILESTONES & DATES */}
+                      {selectedDateProjects.map((item, idx) => {
+                        const p = item.project;
+                        const client = clientsMap.get(p.clientId);
+                        const pStatus = projectStatusMap.get(p.statusId);
+
+                        return (
+                          <div 
+                            key={`proj-milestone-${p.id}-${idx}`}
+                            onClick={() => onSelectProject(p.id)}
+                            className="p-2.5 bg-white rounded-xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50/40 transition-all cursor-pointer text-xs space-y-1 group shadow-2xs"
+                            title={`Clique para aceder ao projeto: ${p.title}`}
+                          >
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="space-y-0.5 flex-1 min-w-0">
+                                <span className="font-bold text-slate-900 group-hover:text-amber-800 transition-colors flex items-center gap-1.5 truncate">
+                                  <Flag className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  <span className="truncate">{item.milestoneLabel}: {p.title}</span>
+                                </span>
+                                <div className="text-[11px] font-medium text-slate-600 flex items-center gap-1 flex-wrap pl-5">
+                                  <span className="text-slate-800 font-bold">{client?.clientName || client?.shortName || 'Cliente N/D'}</span>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-amber-800 font-semibold group-hover:underline">{p.title}</span>
+                                  {p.installProjectNo && (
+                                    <>
+                                      <span className="text-slate-300">•</span>
+                                      <span className="text-slate-400">N.º {p.installProjectNo}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {pStatus && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-full font-extrabold bg-slate-100 text-slate-700 border border-slate-200">
+                                    {pStatus.name}
+                                  </span>
+                                )}
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-extrabold bg-amber-100 text-amber-900 border border-amber-200 flex items-center gap-1">
+                                  <span>Projeto</span>
+                                  <ArrowRight className="w-2.5 h-2.5 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
 
                       {/* PERSONAL NOTES */}
                       {selectedDateUserNotes.map((note, idx) => (
@@ -1038,135 +1267,19 @@ export default function MyFocusSection({
 
       </div>
 
-      {/* TASK DETAILS MODAL */}
-      {selectedTaskForDetails && (() => {
-        const proj = projectMap.get(selectedTaskForDetails.projectId);
-        const client = proj ? clientsMap.get(proj.clientId) : null;
-        const scaleInfo = getTaskScaleInfo(selectedTaskForDetails.statusId);
-        const dateVal = selectedTaskForDetails.estimatedDate || selectedTaskForDetails.startDate || selectedTaskForDetails.endDate;
-
-        return (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
-              {/* Header */}
-              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${scaleInfo.badgeClass}`}>
-                      {scaleInfo.statusName}
-                    </span>
-                  </div>
-                  <div className="text-xs font-medium text-slate-500 mt-1">
-                    Cliente: <strong className="text-slate-800 font-bold">{client ? client.clientName : 'N/A'}</strong> | Projeto: <strong className="text-slate-800 font-bold">{proj ? proj.title : 'N/A'}</strong>
-                  </div>
-                  <h3 className="text-lg font-extrabold text-slate-900 mt-0.5">
-                    {selectedTaskForDetails.title}
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setSelectedTaskForDetails(null)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/70 rounded-full transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
-                {proj && (
-                  <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase text-blue-500 tracking-wider">Projeto</span>
-                      <p className="font-extrabold text-slate-800 text-sm">{proj.title}</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        onSelectProject(proj.id);
-                        setSelectedTaskForDetails(null);
-                      }}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 transition-colors"
-                    >
-                      <span>Ver Projeto</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
-
-                {selectedTaskForDetails.description && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Descrição</label>
-                    <p className="text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap font-medium">
-                      {selectedTaskForDetails.description}
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Data Prevista</span>
-                    <span className="font-extrabold text-slate-800 flex items-center gap-1">
-                      <CalendarIcon className="w-3.5 h-3.5 text-slate-500" />
-                      {dateVal ? new Date(dateVal + 'T00:00:00').toLocaleDateString('pt-PT') : 'Sem data'}
-                    </span>
-                  </div>
-
-                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Horas Estimadas</span>
-                    <span className="font-extrabold text-slate-800 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-slate-500" />
-                      {selectedTaskForDetails.estimatedHours || 'N/D'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Assignees */}
-                {users && selectedTaskForDetails.assigneeIds && selectedTaskForDetails.assigneeIds.length > 0 && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Técnicos Alocados</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedTaskForDetails.assigneeIds.map(uid => {
-                        const u = users.find(x => x.id === uid);
-                        return (
-                          <span key={uid} className="px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-800 rounded-lg font-bold text-[11px] flex items-center gap-1">
-                            <UserCheck className="w-3 h-3 text-slate-500" />
-                            {u?.name || uid}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Notes */}
-                {selectedTaskForDetails.notes && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Notas de Execução</label>
-                    <p className="text-slate-600 bg-amber-50 p-3 rounded-xl border border-amber-200/60 italic">
-                      &quot;{selectedTaskForDetails.notes}&quot;
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
-                <button
-                  onClick={() => handleCycleStatus(selectedTaskForDetails)}
-                  className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold text-xs transition-colors flex items-center gap-1.5"
-                >
-                  <span>Alterar Estado ({scaleInfo.statusName})</span>
-                </button>
-                <button
-                  onClick={() => setSelectedTaskForDetails(null)}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition-colors"
-                >
-                  Fechar
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* TASK EDIT/FILL DETAILS MODAL (SHARED FORM) */}
+      <TaskDetailsModal
+        task={selectedTaskForDetails}
+        onClose={() => setSelectedTaskForDetails(null)}
+        updateTask={updateTask}
+        taskStatuses={taskStatuses}
+        taskTypes={taskTypes}
+        users={users}
+        userGroups={userGroups}
+        appConfig={appConfig}
+        projects={projects}
+        clients={clients}
+      />
 
     </div>
   );

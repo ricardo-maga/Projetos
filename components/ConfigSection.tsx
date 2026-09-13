@@ -137,9 +137,9 @@ function SortableAuxRow({
     <tr 
       ref={setNodeRef} 
       style={style} 
-      className={`border-b border-slate-150/60 hover:bg-slate-50/40 text-xs ${isDragging ? 'bg-slate-100' : ''}`}
+      className={`border-b border-slate-100 hover:bg-slate-50/50 text-xs transition-colors ${isDragging ? 'bg-slate-100' : ''}`}
     >
-      <td className="p-3 w-10">
+      <td className="p-3.5 w-10">
         <button
           type="button"
           {...attributes}
@@ -149,7 +149,7 @@ function SortableAuxRow({
           <GripVertical className="w-4 h-4" />
         </button>
       </td>
-      <td className="p-3">
+      <td className="p-3.5">
         {isEditingThis ? (
           <input 
             type="text"
@@ -163,7 +163,7 @@ function SortableAuxRow({
       </td>
 
       {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') && (
-        <td className="p-3">
+        <td className="p-3.5">
           {isEditingThis ? (
             <input 
               type="number"
@@ -181,7 +181,7 @@ function SortableAuxRow({
         </td>
       )}
 
-      <td className="p-3 text-right">
+      <td className="p-3.5 text-right">
         <div className="flex items-center justify-end gap-1.5">
           {isEditingThis ? (
             <>
@@ -289,6 +289,7 @@ export default function ConfigSection({
   const [salesRepGroupIds, setSalesRepGroupIds] = useState<string[]>(config.salesRepGroupIds || (config.salesRepGroupId ? [config.salesRepGroupId] : []));
   const [projManagerGroupIds, setProjManagerGroupIds] = useState<string[]>(config.projManagerGroupIds || (config.projManagerGroupId ? [config.projManagerGroupId] : []));
   const [fieldManagerGroupIds, setFieldManagerGroupIds] = useState<string[]>(config.fieldManagerGroupIds || (config.fieldManagerGroupId ? [config.fieldManagerGroupId] : []));
+  const [taskAssigneeGroupIds, setTaskAssigneeGroupIds] = useState<string[]>(config.taskAssigneeGroupIds || (config.taskAssigneeGroupId ? [config.taskAssigneeGroupId] : []));
 
   const [prevConfig, setPrevConfig] = useState(config);
   if (prevConfig !== config) {
@@ -298,6 +299,10 @@ export default function ConfigSection({
     setLogo(config.logoImagePath || config.logo || '');
     setFooter(config.footerCopyrightText);
     setTheme(config.theme || 'default');
+    setSalesRepGroupIds(config.salesRepGroupIds || (config.salesRepGroupId ? [config.salesRepGroupId] : []));
+    setProjManagerGroupIds(config.projManagerGroupIds || (config.projManagerGroupId ? [config.projManagerGroupId] : []));
+    setFieldManagerGroupIds(config.fieldManagerGroupIds || (config.fieldManagerGroupId ? [config.fieldManagerGroupId] : []));
+    setTaskAssigneeGroupIds(config.taskAssigneeGroupIds || (config.taskAssigneeGroupId ? [config.taskAssigneeGroupId] : []));
   }
 
   const activeConfigTab = activeConfigTabProp || 'sistema';
@@ -586,9 +591,11 @@ export default function ConfigSection({
       salesRepGroupIds,
       projManagerGroupIds,
       fieldManagerGroupIds,
+      taskAssigneeGroupIds,
       salesRepGroupId: salesRepGroupIds[0] || '',
       projManagerGroupId: projManagerGroupIds[0] || '',
       fieldManagerGroupId: fieldManagerGroupIds[0] || '',
+      taskAssigneeGroupId: taskAssigneeGroupIds[0] || '',
     });
     alert('Configurações da aplicação gravadas com sucesso!');
   };
@@ -786,7 +793,7 @@ export default function ConfigSection({
 
             <div className="space-y-5">
               <div className="space-y-1">
-                <label className="block text-slate-500">Nome do Portal ERP / Sistema</label>
+                <label className="block text-slate-500">Nome do portal</label>
                 <input 
                   type="text" 
                   required
@@ -797,7 +804,7 @@ export default function ConfigSection({
               </div>
 
               <div className="space-y-1">
-                <label className="block text-slate-500">Slogan / Descrição do Portal</label>
+                <label className="block text-slate-500">Descrição do portal</label>
                 <input 
                   type="text" 
                   value={appDesc}
@@ -807,7 +814,7 @@ export default function ConfigSection({
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-slate-600 font-bold">Caminho da Imagem do Logótipo (URL, SVG ou Local)</label>
+                <label className="block text-slate-600 font-bold">Caminho da imagem do logótipo</label>
                 <input 
                   type="text" 
                   value={logo}
@@ -825,16 +832,14 @@ export default function ConfigSection({
                   <AppLogo 
                     logoUrl={logo} 
                     appName={appName} 
-                    className="w-[108px] h-9 rounded-xl bg-white border border-slate-200 shadow-2xs p-1"
+                    className="w-72 max-w-full h-10 rounded-xl bg-white border border-slate-200 shadow-2xs p-1"
                   />
-                  <span className="text-xs text-slate-600 font-medium truncate">
-                    {logo ? (logo.startsWith('<svg') ? 'Código SVG personalizado' : logo) : 'Sem logótipo (usando inicial predefinida)'}
-                  </span>
+
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="block text-slate-500">Texto de Rodapé (Copyright)</label>
+                <label className="block text-slate-500">Texto de rodapé</label>
                 <input 
                   type="text" 
                   value={footer}
@@ -844,7 +849,7 @@ export default function ConfigSection({
               </div>
 
               <div className="space-y-2 pt-2">
-                <label className="block text-slate-500">Esquema de Cores do Portal</label>
+                <label className="block text-slate-500">Esquema de cores</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {[
                     { id: 'default', name: 'Azul Clássico', desc: 'Padrão original azul', hex: '#2563eb' },
@@ -859,11 +864,16 @@ export default function ConfigSection({
                       type="button"
                       onClick={() => {
                         setTheme(t.id);
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem('erp_theme', t.id);
+                        }
                         if (typeof document !== 'undefined') {
                           document.documentElement.setAttribute('data-theme', t.id);
+                          document.body?.setAttribute('data-theme', t.id);
                           const root = document.getElementById('main-root');
                           if (root) root.setAttribute('data-theme', t.id);
                         }
+                        updateConfig({ theme: t.id });
                       }}
                       className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
                         theme === t.id
@@ -890,7 +900,7 @@ export default function ConfigSection({
           <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm animate-fade-in text-xs font-bold text-slate-700" id="managers-config-card">
             <h2 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
               <Users className="w-5 h-5 text-blue-600" />
-              Grupos Associados aos Gestores
+              Associação de grupos
             </h2>
 
             <div className="space-y-6">
@@ -990,6 +1000,39 @@ export default function ConfigSection({
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium font-sans">
                   Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Gestor de Obra&quot; no formulário dos projetos.
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-slate-100" id="task-assignee-groups-config">
+                <label className="block text-slate-700 font-bold">Grupos Associados Tarefas (Técnicos Alocados - Escolha Múltipla)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
+                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
+                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
+                  ) : (
+                    state.userGroups?.filter(g => !g.deleted).map(g => {
+                      const isChecked = taskAssigneeGroupIds.includes(g.id);
+                      return (
+                        <label key={g.id} className="flex items-center gap-2.5 p-2 bg-white border border-slate-100 rounded-lg cursor-pointer select-none hover:bg-slate-50 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setTaskAssigneeGroupIds(taskAssigneeGroupIds.filter(id => id !== g.id));
+                              } else {
+                                setTaskAssigneeGroupIds([...taskAssigneeGroupIds, g.id]);
+                              }
+                            }}
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                          />
+                          <span className="text-slate-700 font-semibold text-xs">{g.name}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium font-sans">
+                  Selecione os grupos de utilizadores que poderão aparecer na seleção de Técnicos Alocados na criação e edição de tarefas em toda a aplicação.
                 </p>
               </div>
             </div>
@@ -1411,7 +1454,7 @@ export default function ConfigSection({
             Nenhuma opção configurada nesta tabela auxiliar.
           </div>
         ) : (
-          <div className="border border-slate-200 rounded-xl overflow-hidden -sm bg-white mb-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden mb-6">
             <div className="overflow-x-auto w-full">
               <DndContext 
                 sensors={sensors}
@@ -1420,13 +1463,13 @@ export default function ConfigSection({
               >
                 <table className="w-full min-w-[520px] text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 tracking-wider whitespace-nowrap">
-                    <th className="p-3 w-10"></th>
-                    <th className="p-3">Nome da Opção</th>
+                    <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] uppercase text-slate-500 font-bold tracking-wider whitespace-nowrap">
+                    <th className="p-3.5 w-10"></th>
+                    <th className="p-3.5">Nome da Opção</th>
                     {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') && (
-                      <th className="p-3 w-32">Escala / Nível</th>
+                      <th className="p-3.5 w-32">Escala / Nível</th>
                     )}
-                    <th className="p-3 w-36 text-right">Ações</th>
+                    <th className="p-3.5 w-36 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1899,26 +1942,26 @@ export default function ConfigSection({
                   )}
                 </div>
               ) : (
-                <div className="border border-slate-200 rounded-2xl overflow-hidden -sm bg-white">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
                   <div className="overflow-x-auto w-full">
                     <table className="w-full min-w-[520px] text-left border-collapse">
                       <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 tracking-wider whitespace-nowrap">
-                        <th className="p-3">Nome da Cópia</th>
-                        <th className="p-3">Data de Gravação</th>
-                        <th className="p-3 text-right">Ações de Restauro</th>
+                        <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] uppercase text-slate-500 font-bold tracking-wider whitespace-nowrap">
+                        <th className="p-3.5">Nome da Cópia</th>
+                        <th className="p-3.5">Data de Gravação</th>
+                        <th className="p-3.5 text-right">Ações de Restauro</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100 text-xs">
                       {backups.map(backup => (
-                        <tr key={backup.id} className="border-b border-slate-150/60 hover:bg-slate-50/40 text-xs">
-                          <td className="p-3">
+                        <tr key={backup.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="p-3.5">
                             <span className="text-slate-800 font-bold font-mono">{backup.name}</span>
                           </td>
-                          <td className="p-3 text-slate-500 font-medium font-mono">
+                          <td className="p-3.5 text-slate-500 font-medium font-mono">
                             {new Date(backup.created_at).toLocaleString('pt-PT')}
                           </td>
-                          <td className="p-3 text-right">
+                          <td className="p-3.5 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
+import TaskDetailsModal from './TaskDetailsModal';
 
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
@@ -282,6 +283,13 @@ export default function ProjectSection({
   // Monthly Calendar Offset
   const [calMonthOffset, setCalMonthOffset] = useState(0);
 
+  const resetCalMonthToToday = () => {
+    const baseDate = selectedProj?.startDate ? new Date(selectedProj.startDate + 'T00:00:00') : new Date();
+    const now = new Date();
+    const diffMonths = (now.getFullYear() - baseDate.getFullYear()) * 12 + (now.getMonth() - baseDate.getMonth());
+    setCalMonthOffset(diffMonths);
+  };
+
   // Project View Tab (Calendário / Cronograma)
   const [projectViewTab, setProjectViewTab] = useState<'calendario' | 'cronograma'>('calendario');
 
@@ -290,7 +298,8 @@ export default function ProjectSection({
 
   // Timeline (Cronograma) Start Date
   const [cronogramaStartDate, setCronogramaStartDate] = useState<Date>(() => {
-    const d = new Date('2026-07-10T12:00:00');
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() - 5);
     return d;
   });
@@ -312,7 +321,8 @@ export default function ProjectSection({
   };
 
   const resetCronogramaToDefault = () => {
-    const d = new Date('2026-07-10T12:00:00');
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() - 5);
     setCronogramaStartDate(d);
   };
@@ -1512,16 +1522,38 @@ export default function ProjectSection({
                   <div className="space-y-4 animate-fade-in">
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">Calendário Mensal do Projeto</h3>
-                      <div className="flex gap-2">
-                        <button onClick={() => setCalMonthOffset(o => o - 1)} className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded font-bold cursor-pointer">&larr;</button>
-                        <span className="text-xs font-bold w-32 text-center my-auto">
+                      <div className="flex items-center gap-1.5">
+                        <button 
+                          type="button"
+                          onClick={() => setCalMonthOffset(o => o - 1)} 
+                          className="flex items-center justify-center p-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-600 cursor-pointer transition-colors"
+                          title="Mês anterior"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={resetCalMonthToToday} 
+                          className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 cursor-pointer transition-colors"
+                          title="Voltar para o mês atual"
+                        >
+                          Hoje
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setCalMonthOffset(o => o + 1)} 
+                          className="flex items-center justify-center p-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-600 cursor-pointer transition-colors"
+                          title="Mês seguinte"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-xs font-bold text-slate-700 min-w-[120px] text-center my-auto ml-2 capitalize">
                           {(() => {
                             const targetDate = selectedProj.startDate ? new Date(selectedProj.startDate + 'T00:00:00') : new Date();
                             targetDate.setMonth(targetDate.getMonth() + calMonthOffset);
                             return targetDate.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
                           })()}
                         </span>
-                        <button onClick={() => setCalMonthOffset(o => o + 1)} className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded font-bold cursor-pointer">&rarr;</button>
                       </div>
                     </div>
                     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden -sm">
@@ -1819,12 +1851,12 @@ export default function ProjectSection({
                       </div>
                     </div>
 
-                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden -sm">
+                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
                       <div className="overflow-x-auto">
                         <table className="w-full min-w-[1850px] text-xs text-left border-collapse table-fixed">
-                          <thead>
+                          <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200 whitespace-nowrap select-none">
                             <tr className="bg-slate-50 border-b border-slate-200">
-                              <th className="p-3 sticky left-0 bg-slate-50 border-r border-slate-200 font-extrabold text-slate-700 w-56 min-w-[210px] -[2px_0_5px_rgba(0,0,0,0.03)] z-10 text-[10px] uppercase tracking-wider">
+                              <th className="p-3.5 sticky left-0 bg-slate-50 border-r border-slate-200 font-bold text-slate-700 w-56 min-w-[210px] shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-20 text-[11px] uppercase tracking-wider">
                                 Tarefa
                               </th>
                               {(() => {
@@ -1833,7 +1865,7 @@ export default function ProjectSection({
                                   const d = new Date(cronogramaStartDate);
                                   d.setDate(cronogramaStartDate.getDate() + i);
                                   const dayStr = formatDateToString(d);
-                                  const isToday = dayStr === '2026-07-10'; // Consistent today reference
+                                  const isToday = dayStr === formatDateToString(new Date());
                                   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                                   
                                   days.push(
@@ -1847,8 +1879,8 @@ export default function ProjectSection({
                                           document.getElementById('add-task-form-panel')?.scrollIntoView({ behavior: 'smooth' });
                                         }, 50);
                                       }}
-                                      className={`p-2 border-r border-slate-150/70 text-center min-w-[55px] font-bold cursor-pointer hover:bg-slate-200/50 transition-colors ${
-                                        isToday ? 'bg-amber-100/50 text-amber-900 border-x border-amber-200' :
+                                      className={`p-2 border-r border-slate-200/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-slate-200/50 transition-colors ${
+                                        isToday ? 'bg-amber-100/60 text-amber-950 border-x border-amber-300' :
                                         isWeekend ? 'bg-slate-100/70 text-slate-500 hover:bg-slate-200/40' : 'text-slate-600'
                                       }`}
                                       title="Clique para adicionar tarefa neste dia"
@@ -1856,7 +1888,7 @@ export default function ProjectSection({
                                       <div className="text-[10px] uppercase font-semibold text-slate-400">
                                         {d.toLocaleDateString('pt-PT', { weekday: 'short' }).charAt(0).toUpperCase()}
                                       </div>
-                                      <div className={`text-xs ${isToday ? 'font-extrabold' : ''}`}>{d.getDate()}</div>
+                                      <div className={`text-xs ${isToday ? 'font-extrabold text-amber-900' : ''}`}>{d.getDate()}</div>
                                       <div className="text-[8px] font-normal text-slate-400">
                                         {d.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '')}
                                       </div>
@@ -1869,8 +1901,8 @@ export default function ProjectSection({
                           </thead>
                           <tbody>
                             {/* Project Dates Summary Row */}
-                            <tr className="bg-blue-50/25 border-b border-slate-150/50">
-                              <td className="p-2.5 sticky left-0 bg-blue-50/40 border-r border-slate-200 font-bold text-slate-700 -[2px_0_5px_rgba(0,0,0,0.03)] z-10">
+                            <tr className="bg-slate-50/60 border-b border-slate-200">
+                              <td className="p-2.5 sticky left-0 bg-slate-100 border-r border-slate-200 font-bold text-slate-700 shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10">
                                 <div className="flex items-center gap-1.5 text-blue-800">
                                   <Flag className="w-3.5 h-3.5 text-blue-600" />
                                   <span className="text-[10px] uppercase font-bold tracking-wide">Marcos do Projeto</span>
@@ -1882,6 +1914,8 @@ export default function ProjectSection({
                                   const d = new Date(cronogramaStartDate);
                                   d.setDate(cronogramaStartDate.getDate() + i);
                                   const dayStr = formatDateToString(d);
+                                  const isToday = dayStr === formatDateToString(new Date());
+                                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                                   
                                   const isProjStart = selectedProj.startDate === dayStr;
                                   const isProjDelivery = selectedProj.deliveryDate === dayStr;
@@ -1890,30 +1924,30 @@ export default function ProjectSection({
                                   const risksOnDay = projRiskItems.filter(ri => !ri.deleted && matchId(ri.projectId, selectedProj.id) && ri.reviewDate === dayStr);
 
                                   cells.push(
-                                    <td key={dayStr} className="p-1 border-r border-slate-150/50 text-center align-middle">
+                                    <td key={dayStr} className={`p-1 border-r border-slate-200/80 text-center align-middle ${isToday ? 'bg-amber-50/40' : isWeekend ? 'bg-slate-100/40' : ''}`}>
                                       <div className="flex flex-col gap-0.5 items-center justify-center">
                                         {isProjStart && (
-                                          <span className="px-1 py-0.5 bg-blue-600 text-white text-[8px] font-extrabold rounded -sm scale-90" title="Data de Início do Projeto">
+                                          <span className="px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Data de Início do Projeto">
                                             INÍCIO
                                           </span>
                                         )}
                                         {isProjDelivery && (
-                                          <span className="px-1 py-0.5 bg-emerald-600 text-white text-[8px] font-extrabold rounded -sm scale-90" title="Data de Entrega do Projeto">
+                                          <span className="px-1.5 py-0.5 bg-emerald-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Data de Entrega do Projeto">
                                             ENTREGA
                                           </span>
                                         )}
                                         {isProjEstimated && !isProjDelivery && (
-                                          <span className="px-1 py-0.5 bg-slate-700 text-white text-[8px] font-extrabold rounded scale-90" title="Previsão de Conclusão">
+                                          <span className="px-1.5 py-0.5 bg-slate-700 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Previsão de Conclusão">
                                             PREVISTO
                                           </span>
                                         )}
                                         {isProjScheduled && !isProjStart && (
-                                          <span className="px-1 py-0.5 bg-indigo-600 text-white text-[8px] font-extrabold rounded scale-90" title="Instalação/Agendamento">
+                                          <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Instalação/Agendamento">
                                             AGENDADO
                                           </span>
                                         )}
                                         {risksOnDay.map(ri => (
-                                          <span key={ri.id} className="px-1 py-0.5 bg-rose-600 text-white text-[8px] font-extrabold rounded shadow-2xs flex items-center gap-0.5 scale-90 truncate max-w-[50px]" title={`Revisão de Risco: ${ri.title}`}>
+                                          <span key={ri.id} className="px-1 py-0.5 bg-rose-600 text-white text-[8px] font-extrabold rounded shadow-xs flex items-center gap-0.5 scale-90 truncate max-w-[50px]" title={`Revisão de Risco: ${ri.title}`}>
                                             ⚠️ Rev. Risco
                                           </span>
                                         ))}
@@ -1955,7 +1989,7 @@ export default function ProjectSection({
                                   <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/20 group">
                                     <td 
                                       onClick={() => openTaskDetailsModal(t)}
-                                      className="p-3 sticky left-0 bg-white group-hover:bg-slate-100/80 hover:bg-slate-100 border-r border-slate-200 -[2px_0_5px_rgba(0,0,0,0.03)] z-10 font-medium cursor-pointer transition-colors"
+                                      className="p-3 sticky left-0 bg-white group-hover:bg-slate-50 hover:bg-slate-50 border-r border-slate-200 shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10 font-medium cursor-pointer transition-colors"
                                       title={`Clique para ver/editar: ${t.title}`}
                                     >
                                       <div className="space-y-1">
@@ -1999,7 +2033,7 @@ export default function ProjectSection({
                                         const d = new Date(cronogramaStartDate);
                                         d.setDate(cronogramaStartDate.getDate() + i);
                                         const dayStr = formatDateToString(d);
-                                        const isToday = dayStr === '2026-07-10';
+                                        const isToday = dayStr === formatDateToString(new Date());
                                         const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                                         const isActive = isTaskActiveOnDay(t, dayStr);
                                         
@@ -2026,10 +2060,10 @@ export default function ProjectSection({
                                                 });
                                               }
                                             }}
-                                            className={`p-1 border-r border-slate-100 text-center align-middle relative min-w-[55px] ${
+                                            className={`p-1 border-r border-slate-200/80 text-center align-middle relative min-w-[55px] ${
                                               isActive ? 'bg-blue-50/10' : ''
                                             } ${
-                                              isToday ? 'bg-amber-50/20' : 
+                                              isToday ? 'bg-amber-50/30' : 
                                               isWeekend ? 'bg-slate-50/60' : ''
                                             }`}
                                           >
@@ -2542,6 +2576,8 @@ export default function ProjectSection({
 
                     <AssigneeSelector
                       users={users}
+                      userGroups={userGroups}
+                      allowedGroupIds={appConfig?.taskAssigneeGroupIds}
                       selectedIds={newTaskAssignees}
                       onChange={setNewTaskAssignees}
                       filterTeamOnly
@@ -2722,7 +2758,7 @@ export default function ProjectSection({
                           {/* Table of items */}
                           <div className="overflow-x-auto w-full">
                             <table className="w-full min-w-[850px] text-left text-xs divide-y divide-slate-100">
-                              <thead className="bg-slate-50/50 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                              <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                                 <tr>
                                   <th className="px-4 py-3">Descrição</th>
                                   <th className="px-3 py-3">Ref.</th>
@@ -3148,7 +3184,7 @@ export default function ProjectSection({
                 <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                   <div className="overflow-x-auto w-full">
                     <table className="w-full min-w-[900px] text-left text-xs divide-y divide-slate-100">
-                      <thead className="bg-slate-50 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                      <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                         <tr>
                           <th className="px-5 py-3.5">Título / Categoria</th>
                           <th className="px-3 py-3.5">Responsável</th>
@@ -3415,7 +3451,7 @@ export default function ProjectSection({
                       </div>
                       <div className="overflow-x-auto w-full">
                         <table className="w-full min-w-[420px] text-left border-collapse text-xs">
-                          <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-100 whitespace-nowrap">
+                          <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                             <tr>
                               <th className="px-4 py-2.5">Tipo de Tarefa</th>
                               <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
@@ -3450,7 +3486,7 @@ export default function ProjectSection({
                       </div>
                       <div className="overflow-x-auto w-full">
                         <table className="w-full min-w-[420px] text-left border-collapse text-xs">
-                          <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-100 whitespace-nowrap">
+                          <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                             <tr>
                               <th className="px-4 py-2.5">Técnico</th>
                               <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
@@ -4019,16 +4055,17 @@ export default function ProjectSection({
         <div className="bg-white rounded-2xl border border-slate-200 -sm overflow-hidden animate-fade-in">
           
           {/* List Header and Filter controls */}
-          <div className="p-5 border-b border-slate-100 bg-slate-50/50 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-bold text-slate-800">Lista de projetos</h2>
-                <p className="text-xs text-slate-500">Consulta e pesquisa de projetos</p>
+                <p className="text-xs text-slate-500 mt-0.5">Consulta e pesquisa de projetos</p>
               </div>
               {canWriteProjects && (
                 <button 
+                  type="button"
                   onClick={() => openForm(null)}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl transition-colors -sm self-start md:self-auto"
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
                 >
                   <Plus className="w-4 h-4" /> Novo projeto
                 </button>
@@ -4036,15 +4073,15 @@ export default function ProjectSection({
             </div>
 
             {/* Filter inputs */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <div className="flex-1 min-w-[240px] relative">
-                <Search className="absolute left-3 top-3 text-slate-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
                 <input 
                   type="text" 
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Pesquisar por título, ID ou referência de instalação..."
-                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-100 outline-none font-medium"
+                  className="w-full pl-9 pr-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
                 />
               </div>
 
@@ -4052,7 +4089,7 @@ export default function ProjectSection({
               <select 
                 value={filterCategory}
                 onChange={e => setFilterCategory(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
               >
                 <option value="">Todas as Categorias</option>
                 {projectCategories.filter(c => !c.deleted).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -4062,7 +4099,7 @@ export default function ProjectSection({
               <select 
                 value={filterManager}
                 onChange={e => setFilterManager(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold cursor-pointer"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
               >
                 <option value="">Todos os Gestores</option>
                 {users.filter(u => !u.deleted && projects.some(p => !p.deleted && (p.projectManagerId === u.id || matchId(p.projectManagerId, u.id))))
@@ -4075,21 +4112,21 @@ export default function ProjectSection({
               <select 
                 value={filterStatus}
                 onChange={e => setFilterStatus(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
               >
                 <option value="">Todos os Estados</option>
                 {sortedStatuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
 
               {/* Completed filter checkbox */}
-              <label className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold cursor-pointer">
+              <label className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 select-none cursor-pointer hover:bg-slate-50 transition-colors">
                 <input 
                   type="checkbox"
                   checked={showCompleted}
                   onChange={e => setShowCompleted(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 rounded border-slate-300"
+                  className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 cursor-pointer"
                 />
-                Mostrar concluídos
+                <span>Mostrar concluídos</span>
               </label>
             </div>
           </div>
@@ -4097,16 +4134,16 @@ export default function ProjectSection({
           {/* Table list output */}
           <div className="overflow-x-auto w-full">
             {filteredProjects.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 font-medium text-xs">Nenhum projeto encontrado para os filtros selecionados.</div>
+              <div className="p-10 text-center text-slate-400 font-medium text-xs">Nenhum projeto encontrado para os filtros selecionados.</div>
             ) : (
               <table className="w-full min-w-[700px] text-left border-collapse">
-                <thead className="text-[11px] uppercase text-slate-400 font-extrabold bg-slate-50 border-b border-slate-100 whitespace-nowrap">
+                <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                   <tr>
-                    <th className="px-5 py-3">IP / Gestor</th>
-                    <th className="px-5 py-3">Projeto</th>
-                    <th className="px-5 py-3">Datas</th>
-                    <th className="px-5 py-3">Estado</th>
-                    <th className="px-5 py-3">Risco / Prioridade</th>
+                    <th className="px-5 py-3.5 text-left">IP / Gestor</th>
+                    <th className="px-5 py-3.5 text-left">Projeto</th>
+                    <th className="px-5 py-3.5 text-left">Datas</th>
+                    <th className="px-5 py-3.5 text-left">Estado</th>
+                    <th className="px-5 py-3.5 text-left">Risco / Prioridade</th>
                   </tr>
                 </thead>
                 <tbody className="text-xs divide-y divide-slate-100">
@@ -4172,7 +4209,7 @@ export default function ProjectSection({
 
           {/* Project List Pagination Controls */}
           {totalProjects > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50 border-t border-slate-100 text-xs gap-3">
+            <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50/70 border-t border-slate-200/80 text-xs gap-3 font-medium">
               <div className="flex items-center gap-3 text-slate-500 font-medium">
                 <span>
                   A mostrar <span className="font-bold text-slate-700">{totalProjects === 0 ? 0 : startProjectIndex + 1}</span> a{' '}
@@ -4244,187 +4281,18 @@ export default function ProjectSection({
       )}
 
       {/* Task Single View / Edit Modal */}
-      {selectedTaskForDetails && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 -xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
-            {/* Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              {(() => {
-                const taskProj = projects.find(p => p.id === selectedTaskForDetails.projectId || matchId(p.id, selectedTaskForDetails.projectId));
-                const taskClientName = taskProj ? getClientName(taskProj.clientId) : 'N/A';
-                const taskProjTitle = taskProj ? taskProj.title : 'N/A';
-                return (
-                  <div>
-                    <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider block">Visualização Individual de Tarefa</span>
-                    <div className="text-xs font-medium text-slate-500 mt-0.5">
-                      Cliente: <strong className="text-slate-800 font-bold">{taskClientName}</strong> | Projeto: <strong className="text-slate-800 font-bold">{taskProjTitle}</strong>
-                    </div>
-                    <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">{selectedTaskForDetails.title}</h3>
-                  </div>
-                );
-              })()}
-              <button 
-                onClick={() => setSelectedTaskForDetails(null)}
-                className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Read-only Task Info */}
-            <div className="px-5 py-4 bg-blue-50/40 border-b border-blue-50 text-xs text-slate-600 space-y-2">
-              {selectedTaskForDetails.description && (
-                <p className="font-medium text-slate-700 italic bg-white p-2.5 rounded-xl border border-slate-100">
-                  &quot;{selectedTaskForDetails.description}&quot;
-                </p>
-              )}
-              <div className="flex flex-wrap gap-4 text-[11px] font-semibold text-slate-500 pt-1">
-                <span className="flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5 text-slate-400" />
-                  Atribuído: <span className="text-slate-700 font-bold">
-                    {selectedTaskForDetails.assigneeIds && selectedTaskForDetails.assigneeIds.length > 0
-                      ? selectedTaskForDetails.assigneeIds.map(id => getUserName(id)).join(', ')
-                      : 'Ninguém'}
-                  </span>
-                </span>
-                {selectedTaskForDetails.estimatedDate && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    Data Prevista: <span className="text-slate-700 font-bold">{new Date(selectedTaskForDetails.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT')}</span>
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Edit Form */}
-            <form onSubmit={handleSaveTaskDetails} className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Task Status Dropdown */}
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700">Estado da Tarefa</label>
-                <select 
-                  value={taskEditStatus}
-                  onChange={e => setTaskEditStatus(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-lg bg-white text-xs font-semibold text-slate-800"
-                >
-                  {taskStatuses.filter(s => !s.deleted).map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Task Type (Informativo / Não editável) */}
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
-                <div className="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 select-none">
-                  {getTaskTypeName(taskEditTypeId || selectedTaskForDetails.taskTypeId, taskTypes) || 'Não definido'}
-                </div>
-              </div>
-
-              {/* Consumed Hours */}
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700">Horas Consumidas Efetivas (Horas)</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  step="1"
-                  required
-                  value={taskEditActualHours}
-                  onChange={e => setTaskEditActualHours(e.target.value)}
-                  placeholder="Ex: 8"
-                  className="w-full p-2.5 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                />
-                <p className="text-[10px] text-slate-400 font-medium">Indique o número de horas efetivamente gastas nesta tarefa.</p>
-              </div>
-
-              {/* Date & Time grids */}
-              <div className="border-t border-slate-100 pt-3 space-y-3">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Planeamento de Execução Efetiva</span>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Data de Início Efetiva</label>
-                    <input 
-                      type="date" 
-                      value={taskEditStartDate}
-                      onChange={e => setTaskEditStartDate(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Hora de Início Efetiva</label>
-                    <input 
-                      type="time" 
-                      value={taskEditStartTime}
-                      onChange={e => setTaskEditStartTime(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Data de Fim Efetiva</label>
-                    <input 
-                      type="date" 
-                      value={taskEditEndDate}
-                      onChange={e => setTaskEditEndDate(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-500">Hora de Fim Efetiva</label>
-                    <input 
-                      type="time" 
-                      value={taskEditEndTime}
-                      onChange={e => setTaskEditEndTime(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Alocação de Técnicos */}
-              <div className="border-t border-slate-100 pt-3">
-                <AssigneeSelector
-                  users={users}
-                  selectedIds={taskEditAssignees}
-                  onChange={setTaskEditAssignees}
-                  filterTeamOnly
-                />
-              </div>
-
-              {/* Execution Notes */}
-              <div className="space-y-1 border-t border-slate-100 pt-3">
-                <label className="block text-xs font-bold text-slate-700">Notas de Execução / Observações</label>
-                <textarea 
-                  rows={3}
-                  value={taskEditNotes}
-                  onChange={e => setTaskEditNotes(e.target.value)}
-                  placeholder="Descreva detalhes da intervenção técnica realizada..."
-                  className="w-full p-2.5 border border-slate-200 rounded-lg text-xs font-semibold bg-white text-slate-800"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100/60">
-                <button 
-                  type="button" 
-                  onClick={() => setSelectedTaskForDetails(null)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors cursor-pointer text-xs"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-colors cursor-pointer text-xs -md -slate-100"
-                >
-                  Gravar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <TaskDetailsModal
+        task={selectedTaskForDetails}
+        onClose={() => setSelectedTaskForDetails(null)}
+        updateTask={updateTask}
+        taskStatuses={taskStatuses}
+        taskTypes={taskTypes}
+        users={users}
+        userGroups={userGroups}
+        appConfig={appConfig}
+        projects={projects}
+        clients={clients}
+      />
 
       {/* Modal do Cronograma em Ecrã Cheio */}
       {isFullTimelineModalOpen && selectedProj && (
@@ -4496,12 +4364,12 @@ export default function ProjectSection({
 
             {/* Modal Body - Scrollable Timeline Table */}
             <div className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50/50">
-              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden -sm h-full flex flex-col">
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs h-full flex flex-col">
                 <div className="overflow-auto flex-1">
                   <table className="w-full min-w-[1850px] text-xs text-left border-collapse table-fixed">
-                    <thead>
+                    <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200 whitespace-nowrap select-none">
                       <tr className="bg-slate-50 border-b border-slate-200 sticky top-0 z-20">
-                        <th className="p-3 sticky left-0 bg-slate-50 border-r border-slate-200 font-extrabold text-slate-700 w-56 min-w-[210px] -[2px_0_5px_rgba(0,0,0,0.03)] z-30 text-[10px] uppercase tracking-wider">
+                        <th className="p-3.5 sticky left-0 bg-slate-50 border-r border-slate-200 font-bold text-slate-700 w-56 min-w-[210px] shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-30 text-[11px] uppercase tracking-wider">
                           Tarefa
                         </th>
                         {(() => {
@@ -4510,7 +4378,7 @@ export default function ProjectSection({
                             const d = new Date(cronogramaStartDate);
                             d.setDate(cronogramaStartDate.getDate() + i);
                             const dayStr = formatDateToString(d);
-                            const isToday = dayStr === '2026-07-10';
+                            const isToday = dayStr === formatDateToString(new Date());
                             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                             
                             days.push(
@@ -4525,8 +4393,8 @@ export default function ProjectSection({
                                     document.getElementById('add-task-form-panel')?.scrollIntoView({ behavior: 'smooth' });
                                   }, 150);
                                 }}
-                                className={`p-2 border-r border-slate-150/70 text-center min-w-[55px] font-bold cursor-pointer hover:bg-slate-200/50 transition-colors ${
-                                  isToday ? 'bg-amber-100/50 text-amber-900 border-x border-amber-200' :
+                                className={`p-2 border-r border-slate-200/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-slate-200/50 transition-colors ${
+                                  isToday ? 'bg-amber-100/60 text-amber-950 border-x border-amber-300' :
                                   isWeekend ? 'bg-slate-100/70 text-slate-500 hover:bg-slate-200/40' : 'text-slate-600'
                                 }`}
                                 title="Clique para adicionar tarefa neste dia"
@@ -4534,7 +4402,7 @@ export default function ProjectSection({
                                 <div className="text-[10px] uppercase font-semibold text-slate-400">
                                   {d.toLocaleDateString('pt-PT', { weekday: 'short' }).charAt(0).toUpperCase()}
                                 </div>
-                                <div className={`text-xs ${isToday ? 'font-extrabold' : ''}`}>{d.getDate()}</div>
+                                <div className={`text-xs ${isToday ? 'font-extrabold text-amber-900' : ''}`}>{d.getDate()}</div>
                                 <div className="text-[8px] font-normal text-slate-400">
                                   {d.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '')}
                                 </div>
@@ -4547,8 +4415,8 @@ export default function ProjectSection({
                     </thead>
                     <tbody>
                       {/* Project Dates Summary Row */}
-                      <tr className="bg-blue-50/25 border-b border-slate-150/50">
-                        <td className="p-2.5 sticky left-0 bg-blue-50/40 border-r border-slate-200 font-bold text-slate-700 -[2px_0_5px_rgba(0,0,0,0.03)] z-10">
+                      <tr className="bg-slate-50/60 border-b border-slate-200">
+                        <td className="p-2.5 sticky left-0 bg-slate-100 border-r border-slate-200 font-bold text-slate-700 shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10">
                           <div className="flex items-center gap-1.5 text-blue-800">
                             <Flag className="w-3.5 h-3.5 text-blue-600" />
                             <span className="text-[10px] uppercase font-bold tracking-wide">Marcos do Projeto</span>
@@ -4560,6 +4428,8 @@ export default function ProjectSection({
                             const d = new Date(cronogramaStartDate);
                             d.setDate(cronogramaStartDate.getDate() + i);
                             const dayStr = formatDateToString(d);
+                            const isToday = dayStr === formatDateToString(new Date());
+                            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                             
                             const isProjStart = selectedProj.startDate === dayStr;
                             const isProjDelivery = selectedProj.deliveryDate === dayStr;
@@ -4567,25 +4437,25 @@ export default function ProjectSection({
                             const isProjScheduled = selectedProj.scheduledDate === dayStr;
 
                             cells.push(
-                              <td key={`modal-cell-proj-${dayStr}`} className="p-1 border-r border-slate-150/50 text-center align-middle">
+                              <td key={`modal-cell-proj-${dayStr}`} className={`p-1 border-r border-slate-200/80 text-center align-middle ${isToday ? 'bg-amber-50/40' : isWeekend ? 'bg-slate-100/40' : ''}`}>
                                 <div className="flex flex-col gap-0.5 items-center justify-center">
                                   {isProjStart && (
-                                    <span className="px-1 py-0.5 bg-blue-600 text-white text-[8px] font-extrabold rounded -sm scale-90" title="Data de Início do Projeto">
+                                    <span className="px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Data de Início do Projeto">
                                       INÍCIO
                                     </span>
                                   )}
                                   {isProjDelivery && (
-                                    <span className="px-1 py-0.5 bg-emerald-600 text-white text-[8px] font-extrabold rounded -sm scale-90" title="Data de Entrega do Projeto">
+                                    <span className="px-1.5 py-0.5 bg-emerald-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Data de Entrega do Projeto">
                                       ENTREGA
                                     </span>
                                   )}
                                   {isProjEstimated && !isProjDelivery && (
-                                    <span className="px-1 py-0.5 bg-slate-700 text-white text-[8px] font-extrabold rounded scale-90" title="Previsão de Conclusão">
+                                    <span className="px-1.5 py-0.5 bg-slate-700 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Previsão de Conclusão">
                                       PREVISTO
                                     </span>
                                   )}
                                   {isProjScheduled && !isProjStart && (
-                                    <span className="px-1 py-0.5 bg-indigo-600 text-white text-[8px] font-extrabold rounded scale-90" title="Instalação/Agendamento">
+                                    <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Instalação/Agendamento">
                                       AGENDADO
                                     </span>
                                   )}
@@ -4627,7 +4497,7 @@ export default function ProjectSection({
                             <tr key={`modal-row-task-${t.id}`} className="border-b border-slate-100 hover:bg-slate-50/20 group">
                               <td 
                                 onClick={() => openTaskDetailsModal(t)}
-                                className="p-3 sticky left-0 bg-white group-hover:bg-slate-100/80 hover:bg-slate-100 border-r border-slate-200 -[2px_0_5px_rgba(0,0,0,0.03)] z-10 font-medium cursor-pointer transition-colors"
+                                className="p-3 sticky left-0 bg-white group-hover:bg-slate-50 hover:bg-slate-50 border-r border-slate-200 shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10 font-medium cursor-pointer transition-colors"
                                 title={`Clique para ver/editar: ${t.title}`}
                               >
                                 <div className="space-y-1">
@@ -4671,7 +4541,7 @@ export default function ProjectSection({
                                   const d = new Date(cronogramaStartDate);
                                   d.setDate(cronogramaStartDate.getDate() + i);
                                   const dayStr = formatDateToString(d);
-                                  const isToday = dayStr === '2026-07-10';
+                                  const isToday = dayStr === formatDateToString(new Date());
                                   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                                   const isActive = isTaskActiveOnDay(t, dayStr);
                                   
@@ -4698,10 +4568,10 @@ export default function ProjectSection({
                                           });
                                         }
                                       }}
-                                      className={`p-1 border-r border-slate-100 text-center align-middle relative min-w-[55px] ${
+                                      className={`p-1 border-r border-slate-200/80 text-center align-middle relative min-w-[55px] ${
                                         isActive ? 'bg-blue-50/10' : ''
                                       } ${
-                                        isToday ? 'bg-amber-50/20' : 
+                                        isToday ? 'bg-amber-50/30' : 
                                         isWeekend ? 'bg-slate-50/60' : ''
                                       }`}
                                     >
