@@ -647,7 +647,7 @@ export default function ProjectSection({
   };
 
   // Submit Form
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canWriteProjects) {
       alert('Não tem permissão para criar ou editar projetos.');
@@ -720,9 +720,9 @@ export default function ProjectSection({
     };
 
     if (editingId) {
-      updateProject(editingId, payload);
+      await updateProject(editingId, payload);
     } else {
-      const newProj = addProject(payload);
+      const newProj = await addProject(payload);
       if (newProj && newProj.id) {
         const tasksToCreate: any[] = [];
         selectedDefaultTaskIds.forEach(dtId => {
@@ -834,43 +834,82 @@ export default function ProjectSection({
     return 0;
   };
 
-  // Filter projects
-  const activeProjects = projects.filter(p => !p.deleted);
-  const filteredProjects = activeProjects.filter(p => {
-    const client = clients.find(c => matchId(c.id, p.clientId));
-    const clientName = (client?.clientName || getClientName(p.clientId) || '').toLowerCase();
-    const clientShortName = (client?.shortName || '').toLowerCase();
-    const projTitle = (p.title || '').toLowerCase();
-    const projDesc = (p.description || '').toLowerCase();
-    const projId = (p.id || '').toLowerCase();
-    const installNo = (p.installProjectNo || '').toLowerCase();
-    const q = search.toLowerCase().trim();
+  // --- SERVER SIDE FETCHING LOGIC ---
+  const [serverProjects, setServerProjects] = useState<Project[]>([]);
+  const [totalServerProjects, setTotalServerProjects] = useState(0);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [serverSelectedProj, setServerSelectedProj] = useState<Project | null>(null);
+  const [serverTasks, setServerTasks] = useState<Task[]>([]);
+  
+  useEffect(() => {
+    if (selectedProjectId) return;
+    let isMounted = true;
+    const fetchProj = async () => {
+      setIsLoadingProjects(true);
+      try {
+        const query = new URLSearchParams({
+          page: projectCurrentPage.toString(),
+          pageSize: projectPageSize.toString(),
+          search: search,
+          categoryId: filterCategory,
+          statusId: filterStatus,
+          managerId: filterManager
+        });
+        const res = await fetch(`/api/v1/projects?${query.toString()}`);
+        const result = await res.json();
+        if (result.success && isMounted) {
+          setServerProjects(result.data);
+          setTotalServerProjects(result.total || result.count);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (isMounted) setIsLoadingProjects(false);
+      }
+    };
+    fetchProj();
+    return () => { isMounted = false; };
+  }, [projectCurrentPage, projectPageSize, search, filterCategory, filterStatus, filterManager, selectedProjectId, projects, refreshTrigger]); // Re-run if 'projects' prop changes as a fallback refresh
 
-    const matchesSearch = !q || 
-                          projTitle.includes(q) ||
-                          projDesc.includes(q) ||
-                          clientName.includes(q) ||
-                          clientShortName.includes(q) ||
-                          projId.includes(q) ||
-                          installNo.includes(q);
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setServerSelectedProj(null);
+      return;
+    }
+    let isMounted = true;
+    const fetchDetails = async () => {
+      try {
+        const res = await fetch(`/api/v1/projects/${selectedProjectId}`);
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && isMounted) setServerSelectedProj(result.data);
+        }
+      } catch (err) {}
+      
+      try {
+        const taskRes = await fetch(`/api/v1/tasks?projectId=${selectedProjectId}`);
+        if (taskRes.ok) {
+          const taskResult = await taskRes.json();
+          if (taskResult.success && isMounted) setServerTasks(taskResult.data);
+        }
+      } catch (err) {}
+    };
+    fetchDetails();
+    return () => { isMounted = false; };
+  }, [selectedProjectId, tasks]);
 
-    const matchesCategory = filterCategory ? (p.categoryId === filterCategory || (p.categoryIds && p.categoryIds.includes(filterCategory))) : true;
-    const matchesStatus = filterStatus ? p.statusId === filterStatus : true;
-    const matchesManager = filterManager ? (p.projectManagerId === filterManager || matchId(p.projectManagerId, filterManager)) : true;
-    const matchesCompleted = showCompleted ? true : !isProjectLevel5(p.statusId);
-    return matchesSearch && matchesCategory && matchesStatus && matchesManager && matchesCompleted;
-  });
+  // Use server data if available, fallback to props
+  const activeProjects = serverProjects.length > 0 ? serverProjects : projects.filter(p => !p.deleted);
+  const paginatedProjects = serverProjects.length > 0 ? serverProjects : projects.filter(p => !p.deleted).slice((projectCurrentPage - 1) * projectPageSize, projectCurrentPage * projectPageSize);
+  const totalProjects = serverProjects.length > 0 ? totalServerProjects : projects.filter(p => !p.deleted).length;
+  const startProjectIndex = (projectCurrentPage - 1) * projectPageSize;
+  const endProjectIndex = startProjectIndex + paginatedProjects.length;
+  
+  const selectedProj = serverSelectedProj || activeProjects.find(p => p.id === selectedProjectId);
+  const projTasks = serverTasks.length > 0 ? serverTasks : tasks.filter(t => t.projectId === selectedProjectId && !t.deleted);
 
-  // Project Pagination calculations
-  const totalProjects = filteredProjects.length;
-  const totalProjectPages = Math.ceil(totalProjects / projectPageSize) || 1;
-  const validProjectPage = Math.min(Math.max(1, projectCurrentPage), totalProjectPages);
-  const startProjectIndex = (validProjectPage - 1) * projectPageSize;
-  const endProjectIndex = Math.min(startProjectIndex + projectPageSize, totalProjects);
-  const paginatedProjects = filteredProjects.slice(startProjectIndex, endProjectIndex);
 
-  const selectedProj = activeProjects.find(p => matchId(p.id, selectedProjectId));
-  const projTasks = tasks.filter(t => matchId(t.projectId, selectedProjectId) && !t.deleted);
   const projComments = comments.filter(c => matchId(c.projectId, selectedProjectId));
   const projMaterials = (projectMaterials || []).filter(pm => matchId(pm.projectId, selectedProjectId) && !pm.deleted);
   const materialGroupsDict: Record<string, ProjectMaterial[]> = {};

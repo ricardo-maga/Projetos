@@ -552,11 +552,11 @@ export default function Page() {
     <div className="min-h-screen flex flex-col bg-slate-50/50 text-slate-800" id="main-root" data-theme={appConfig.theme || 'default'}>
       
       {/* HEADER BAR */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 h-14 sm:h-16 px-3 sm:px-4 shadow-2xs flex items-center justify-between shrink-0" id="app-header">
-        <div className="flex items-center gap-2 sm:gap-3">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 h-14 sm:h-16 px-2.5 sm:px-4 shadow-2xs flex items-center justify-between shrink-0 overflow-x-hidden" id="app-header">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded-xl md:hidden text-slate-600 transition-colors"
+            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded-xl md:hidden text-slate-600 transition-colors shrink-0"
             id="toggle-sidebar"
             aria-label={sidebarOpen ? "Fechar menu" : "Abrir menu"}
           >
@@ -565,7 +565,7 @@ export default function Page() {
           
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-9 h-9 items-center justify-center hover:bg-slate-100 rounded-xl hidden md:flex text-slate-500 transition-colors"
+            className="w-9 h-9 items-center justify-center hover:bg-slate-100 rounded-xl hidden md:flex text-slate-500 transition-colors shrink-0"
             title={isCollapsed ? "Expandir menu" : "Colapsar menu"}
             id="toggle-desktop-sidebar"
           >
@@ -573,23 +573,23 @@ export default function Page() {
           </button>
           
           <div 
-            className="flex items-center gap-2 cursor-pointer select-none hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0"
             onClick={() => handleTabChange('dashboard')}
             title="Ir para o Dashboard"
           >
             <AppLogo 
               logoUrl={appConfig.logoImagePath || appConfig.logo} 
               appName={appConfig.appName}
-              className="w-72 max-w-[280px] sm:max-w-[320px] h-10 bg-transparent border-0 shadow-none p-0"
+              className="w-auto max-w-[238px] sm:max-w-[320px] h-9 sm:h-10 bg-transparent border-0 shadow-none p-0 shrink"
             />
-            <div className="min-w-0">
+            <div className="min-w-0 hidden sm:block">
               <h1 className="text-sm font-black text-slate-900 tracking-tight leading-none truncate">{appConfig.appName}</h1>
-              <p className="text-[10px] text-slate-500 font-semibold mt-0.5 truncate hidden sm:block">{appConfig.appDescription}</p>
+              <p className="text-[10px] text-slate-500 font-semibold mt-0.5 truncate">{appConfig.appDescription}</p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           
           <NotificationDropdown 
             notifications={(state.notifications || []).filter(n => !n.userId || n.userId === currentUser.id || n.userId === 'all')}

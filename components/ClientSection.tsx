@@ -71,7 +71,28 @@ export default function ClientSection({
     });
   };
 
-  const activeClients = (clients || []).filter(c => c && (showDeleted ? c.deleted : !c.deleted));
+
+  const [serverClients, setServerClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  useEffect(() => {
+    let isMounted = true;
+    const fetchClients = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/v1/clients');
+        const json = await res.json();
+        if (json.success && isMounted) setServerClients(json.data);
+      } catch (err) {} finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    fetchClients();
+    return () => { isMounted = false; };
+  }, []);
+
+  const activeClients = (serverClients.length > 0 ? serverClients : (clients || [])).filter(c => c && (showDeleted ? c.deleted : !c.deleted));
+
   const sortedClients = [...activeClients].sort((a, b) => {
     const nameA = (a.clientName || a.shortName || '').trim();
     const nameB = (b.clientName || b.shortName || '').trim();

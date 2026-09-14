@@ -606,14 +606,14 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       supabase.from('task_status').select('*').order('scale', { ascending: true }),
       supabase.from('task_types').select('*').order('sort_order', { ascending: true }),
       supabase.from('users').select('*'),
-      supabase.from('clients').select('*').order('created_at', { ascending: false }),
-      supabase.from('projects').select('*').order('created_at', { ascending: false }),
-      supabase.from('tasks').select('*').order('created_at', { ascending: false }),
-      supabase.from('comments').select('*').order('created_at', { ascending: true }),
-      supabase.from('user_absences').select('*'),
-      supabase.from('material').select('*').order('created_at', { ascending: false }),
-      supabase.from('quotes').select('*').order('created_at', { ascending: false }),
-      supabase.from('bill_of_materials').select('*'),
+      Promise.resolve({ data: [], error: null }),
+      Promise.resolve({ data: [], error: null }),
+      Promise.resolve({ data: [], error: null }),
+      Promise.resolve({ data: [], error: null }),
+      Promise.resolve({ data: [], error: null }),
+      Promise.resolve({ data: [], error: null }),
+      Promise.resolve({ data: [], error: null }),
+      Promise.resolve({ data: [], error: null }),
       supabase.from('equipment').select('*').order('created_at', { ascending: false }),
       supabase.from('app_configuration').select('*').limit(1),
       supabase.from('special_days').select('*'),
@@ -621,7 +621,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       supabase.from('risk_categories').select('*').order('sort_order', { ascending: true }),
       supabase.from('risk_statuses').select('*').order('sort_order', { ascending: true }),
       supabase.from('risk_priorities').select('*').order('sort_order', { ascending: true }),
-      supabase.from('project_risk_items').select('*').order('created_at', { ascending: false }),
+      Promise.resolve({ data: [], error: null }),
       supabase.from('ticket_statuses').select('*').order('sort_order', { ascending: true }),
       supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
       supabase.from('automation_rules').select('*').order('created_at', { ascending: false }),
@@ -977,7 +977,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
 
     let tickets: any[] = [];
     try {
-      const resTickets = await supabase.from('tickets').select('*').order('created_at', { ascending: false });
+      const resTickets = await Promise.resolve({ data: [], error: null });
       if (!resTickets.error && resTickets.data) {
         tickets = resTickets.data.map((t: any) => ({
           id: t.id,
