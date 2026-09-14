@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment } from '../lib/types';
+import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, Ticket } from '../lib/types';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
@@ -288,6 +288,12 @@ export function useERP() {
       addQuote: () => {}, updateQuote: () => {}, deleteQuote: () => {},
       addBOMItem: () => {}, updateBOMItem: () => {}, deleteBOMItem: () => {},
       addEquipment: () => {}, updateEquipment: () => {}, deleteEquipment: () => {},
+      addTicket: () => ({} as any),
+      updateTicket: () => {},
+      deleteTicket: () => {},
+      validateAndApproveTicket: () => {},
+      convertTicketToTask: () => '',
+      resolveTicketDirectly: () => {},
       updateConfig: () => {},
       addAuxRecord: () => {}, updateAuxRecord: () => {}, deleteAuxRecord: () => {}, reorderAuxRecords: () => {},
       addSpecialDay: () => {}, deleteSpecialDay: () => {},
@@ -399,10 +405,36 @@ export function useERP() {
       createdDate: now,
       updatedDate: now,
     };
-    saveState(prev => ({
-      ...prev,
-      projects: [newProj, ...prev.projects]
-    }));
+    saveState(prev => {
+      let newNotifs = prev.notifications || [];
+      if (newProj.projectManagerId) {
+        newNotifs = [{
+          id: genId('notif'),
+          userId: newProj.projectManagerId,
+          title: `Gestor de Projeto Atribuído: ${newProj.title}`,
+          message: `Foi designado como Gestor do projeto "${newProj.title}".`,
+          isRead: false,
+          createdDate: now,
+          linkUrl: `/projects?project=${newProj.id}`
+        }, ...newNotifs];
+      }
+      if (newProj.fieldManagerId && newProj.fieldManagerId !== newProj.projectManagerId) {
+        newNotifs = [{
+          id: genId('notif'),
+          userId: newProj.fieldManagerId,
+          title: `Encarregado de Obra: ${newProj.title}`,
+          message: `Foi designado como Encarregado de Obra do projeto "${newProj.title}".`,
+          isRead: false,
+          createdDate: now,
+          linkUrl: `/projects?project=${newProj.id}`
+        }, ...newNotifs];
+      }
+      return {
+        ...prev,
+        projects: [newProj, ...prev.projects],
+        notifications: newNotifs
+      };
+    });
     logAudit('CREATE', 'PROJECT', newProj.id, newProj.title, `Criado o projeto "${newProj.title}" (Cód. Instalação: ${newProj.installProjectNo || 'N/A'})`);
     return newProj;
   };
@@ -520,6 +552,22 @@ export function useERP() {
       let newProjects = prev.projects;
       let newNotifs = prev.notifications || [];
 
+      // Notificar técnicos alocados à nova tarefa
+      if (newTask.assigneeIds && newTask.assigneeIds.length > 0) {
+        const proj = prev.projects.find(p => p.id === newTask.projectId);
+        const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
+        const taskNotifs = newTask.assigneeIds.map(uid => ({
+          id: genId('notif'),
+          userId: uid,
+          title: `Nova Tarefa Atribuída: ${newTask.title}`,
+          message: `Foi-lhe atribuída a tarefa "${newTask.title}"${projTitle}.`,
+          isRead: false,
+          createdDate: now,
+          linkUrl: `/projects?project=${newTask.projectId}`
+        }));
+        newNotifs = [...taskNotifs, ...newNotifs];
+      }
+
       // Trigger 'task_created' automations
       const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_created');
       for (const rule of activeRules) {
@@ -573,10 +621,30 @@ export function useERP() {
 
     logAudit('CREATE', 'TASK', newTasks[0]?.id, `${newTasks.length} Tarefas`, `Criadas ${newTasks.length} tarefas em lote`);
 
-    saveState(prev => ({
-      ...prev,
-      tasks: [...newTasks, ...prev.tasks]
-    }));
+    saveState(prev => {
+      let newNotifs = prev.notifications || [];
+      for (const t of newTasks) {
+        if (t.assigneeIds && t.assigneeIds.length > 0) {
+          const proj = prev.projects.find(p => p.id === t.projectId);
+          const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
+          const notifs = t.assigneeIds.map(uid => ({
+            id: genId('notif'),
+            userId: uid,
+            title: `Nova Tarefa Atribuída: ${t.title}`,
+            message: `Foi-lhe atribuída a tarefa "${t.title}"${projTitle}.`,
+            isRead: false,
+            createdDate: now,
+            linkUrl: `/projects?project=${t.projectId}`
+          }));
+          newNotifs = [...notifs, ...newNotifs];
+        }
+      }
+      return {
+        ...prev,
+        tasks: [...newTasks, ...prev.tasks],
+        notifications: newNotifs
+      };
+    });
     return newTasks;
   };
 
@@ -603,6 +671,26 @@ export function useERP() {
       let newTasks = prev.tasks.map(t => t.id === id ? { ...t, ...updates } as Task : t);
       let newProjects = prev.projects;
       let newNotifs = prev.notifications || [];
+
+      // Notificar novos técnicos atribuídos à tarefa
+      if (updates.assigneeIds && targetTask) {
+        const oldAssignees = new Set(targetTask.assigneeIds || []);
+        const newlyAdded = updates.assigneeIds.filter(uid => !oldAssignees.has(uid));
+        if (newlyAdded.length > 0) {
+          const proj = prev.projects.find(p => p.id === targetTask.projectId);
+          const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
+          const assignNotifs = newlyAdded.map(uid => ({
+            id: genId('notif'),
+            userId: uid,
+            title: `Nova Tarefa Atribuída: ${updates.title || targetTask.title}`,
+            message: `Foi-lhe atribuída a tarefa "${updates.title || targetTask.title}"${projTitle}.`,
+            isRead: false,
+            createdDate: now,
+            linkUrl: `/projects?project=${targetTask.projectId}`
+          }));
+          newNotifs = [...assignNotifs, ...newNotifs];
+        }
+      }
 
       if (targetTask && updates.statusId) {
         const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_status_changed');
@@ -1025,10 +1113,10 @@ export function useERP() {
   };
 
   // ==================== AUX TABLES CRUD ====================
-  type AuxTableName = 'projectStatuses' | 'projectCategories' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'userGroups' | 'taskStatuses' | 'taskTypes' | 'riskCategories' | 'riskStatuses' | 'riskPriorities';
+  type AuxTableName = 'projectStatuses' | 'projectCategories' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'userGroups' | 'taskStatuses' | 'taskTypes' | 'riskCategories' | 'riskStatuses' | 'riskPriorities' | 'ticketStatuses';
 
   const addAuxRecord = (tableName: AuxTableName, name: string, extra?: { scale?: number }) => {
-    const prefix = tableName === 'taskTypes' ? 'tt' : tableName === 'taskStatuses' ? 'ts' : tableName.slice(0, 3);
+    const prefix = tableName === 'taskTypes' ? 'tt' : tableName === 'taskStatuses' ? 'ts' : tableName === 'ticketStatuses' ? 'tks' : tableName.slice(0, 3);
     const id = genId(prefix);
     
     saveState(prev => {
@@ -1246,6 +1334,249 @@ export function useERP() {
     });
   };
 
+  // ==================== TICKETS & SUPORTE ====================
+  const addTicket = (
+    ticketData: Omit<Ticket, 'id' | 'ticketNumber' | 'createdDate' | 'updatedDate'>
+  ) => {
+    const id = genId('tck');
+    const existingCount = (state?.tickets || []).length + 1;
+    const year = new Date().getFullYear();
+    const ticketNumber = `TCK-${year}-${String(existingCount).padStart(3, '0')}`;
+    const now = new Date().toISOString();
+
+    const isExternal = ticketData.source === 'email' || ticketData.source === 'teams' || ticketData.source === 'portal';
+    // Se criado por canal externo, entra em fase de 'validacao'
+    const status = isExternal ? 'validacao' : (ticketData.status || 'aberto');
+
+    const newTicket: Ticket = {
+      ...ticketData,
+      id,
+      ticketNumber,
+      status,
+      createdDate: now,
+      updatedDate: now,
+      deleted: false
+    };
+
+    saveState(prev => {
+      let newNotifs = prev.notifications || [];
+      // Se for criado manualmente com atribuição a técnico, notificar imediatamente o técnico
+      if (newTicket.assignedToId && !isExternal) {
+        const notif = {
+          id: genId('notif'),
+          userId: newTicket.assignedToId,
+          title: `Novo Ticket Atribuído: ${ticketNumber}`,
+          message: `Foi-lhe atribuído o ticket ${ticketNumber}: "${newTicket.title}".`,
+          isRead: false,
+          createdDate: now,
+          linkUrl: `?tab=tickets&ticketId=${id}`
+        };
+        newNotifs = [notif, ...newNotifs];
+      }
+
+      return {
+        ...prev,
+        tickets: [newTicket, ...(prev.tickets || [])],
+        notifications: newNotifs
+      };
+    });
+
+    return newTicket;
+  };
+
+  const updateTicket = (id: string, updates: Partial<Ticket>) => {
+    const now = new Date().toISOString();
+    saveState(prev => {
+      const existing = (prev.tickets || []).find(t => t.id === id);
+      let newNotifs = prev.notifications || [];
+
+      // Se o técnico responsável mudou ou foi atribuído agora
+      if (updates.assignedToId && existing && updates.assignedToId !== existing.assignedToId) {
+        const notif = {
+          id: genId('notif'),
+          userId: updates.assignedToId,
+          title: `Ticket Atribuído: ${existing.ticketNumber || id}`,
+          message: `Foi-lhe atribuído o ticket ${existing.ticketNumber || id}: "${updates.title || existing.title}".`,
+          isRead: false,
+          createdDate: now,
+          linkUrl: `?tab=tickets&ticketId=${id}`
+        };
+        newNotifs = [notif, ...newNotifs];
+      }
+
+      const newTickets = (prev.tickets || []).map(t => {
+        if (t.id !== id) return t;
+        return {
+          ...t,
+          ...updates,
+          updatedDate: now
+        };
+      });
+
+      return {
+        ...prev,
+        tickets: newTickets,
+        notifications: newNotifs
+      };
+    });
+  };
+
+  const deleteTicket = (id: string) => {
+    saveState(prev => ({
+      ...prev,
+      tickets: (prev.tickets || []).map(t => t.id === id ? { ...t, deleted: true } : t)
+    }));
+  };
+
+  const validateAndApproveTicket = (
+    ticketId: string, 
+    validation: { 
+      clientId?: string; 
+      assignedToId?: string; 
+      priority?: string; 
+      category?: string; 
+      taskTypeId?: string;
+      validationNotes?: string; 
+    }
+  ) => {
+    const now = new Date().toISOString();
+    saveState(prev => {
+      const existing = (prev.tickets || []).find(t => t.id === ticketId);
+      if (!existing) return prev;
+
+      let newNotifs = prev.notifications || [];
+      const assignedUser = validation.assignedToId || existing.assignedToId;
+      if (assignedUser) {
+        const notif = {
+          id: genId('notif'),
+          userId: assignedUser,
+          title: `Ticket Validado & Atribuído: ${existing.ticketNumber}`,
+          message: `O ticket ${existing.ticketNumber} ("${existing.title}") foi validado e atribuído a si.`,
+          isRead: false,
+          createdDate: now,
+          linkUrl: `?tab=tickets&ticketId=${ticketId}`
+        };
+        newNotifs = [notif, ...newNotifs];
+      }
+
+      const updated = (prev.tickets || []).map(t => {
+        if (t.id !== ticketId) return t;
+        return {
+          ...t,
+          status: 'aberto',
+          clientId: validation.clientId || t.clientId,
+          assignedToId: validation.assignedToId || t.assignedToId,
+          priority: validation.priority || t.priority,
+          category: validation.category || t.category,
+          taskTypeId: validation.taskTypeId || t.taskTypeId,
+          validationNotes: validation.validationNotes || t.validationNotes,
+          updatedDate: now
+        };
+      });
+
+      return {
+        ...prev,
+        tickets: updated,
+        notifications: newNotifs
+      };
+    });
+  };
+
+  const convertTicketToTask = (
+    ticketId: string,
+    taskData: {
+      projectId: string;
+      title: string;
+      description?: string;
+      assigneeIds: string[];
+      estimatedDate?: string;
+      estimatedHours?: string;
+      taskTypeId?: string;
+      statusId?: string;
+      notes?: string;
+    }
+  ) => {
+    const taskId = genId('tsk');
+    const now = new Date().toISOString();
+    const defaultStatus = state?.taskStatuses.find(s => !s.deleted)?.id || 'ts-1';
+
+    const newTask: Task = {
+      id: taskId,
+      projectId: taskData.projectId,
+      title: taskData.title,
+      description: taskData.description || '',
+      statusId: taskData.statusId || defaultStatus,
+      assigneeIds: taskData.assigneeIds || [],
+      estimatedDate: taskData.estimatedDate || '',
+      estimatedHours: taskData.estimatedHours || '',
+      actualHours: '',
+      startDate: '',
+      startTime: '',
+      endDate: '',
+      endTime: '',
+      notes: taskData.notes || '',
+      taskTypeId: taskData.taskTypeId,
+      deleted: false,
+      createdDate: now
+    };
+
+    saveState(prev => {
+      const ticket = (prev.tickets || []).find(t => t.id === ticketId);
+      let newNotifs = prev.notifications || [];
+
+      // Notificar técnicos alocados à nova tarefa
+      if (newTask.assigneeIds.length > 0) {
+        const notifs = newTask.assigneeIds.map(uid => ({
+          id: genId('notif'),
+          userId: uid,
+          title: `Nova Tarefa (Origem Ticket ${ticket?.ticketNumber || ''})`,
+          message: `Foi alocado à tarefa "${newTask.title}" convertida a partir do ticket.`,
+          isRead: false,
+          createdDate: now,
+          linkUrl: `?tab=tasks&taskId=${taskId}`
+        }));
+        newNotifs = [...notifs, ...newNotifs];
+      }
+
+      const updatedTickets = (prev.tickets || []).map(t => {
+        if (t.id !== ticketId) return t;
+        return {
+          ...t,
+          status: 'convertido',
+          convertedTaskId: taskId,
+          convertedProjectId: taskData.projectId,
+          updatedDate: now
+        };
+      });
+
+      return {
+        ...prev,
+        tasks: [newTask, ...prev.tasks],
+        tickets: updatedTickets,
+        notifications: newNotifs
+      };
+    });
+
+    return taskId;
+  };
+
+  const resolveTicketDirectly = (ticketId: string, resolutionNotes: string) => {
+    const now = new Date().toISOString();
+    saveState(prev => ({
+      ...prev,
+      tickets: (prev.tickets || []).map(t => {
+        if (t.id !== ticketId) return t;
+        return {
+          ...t,
+          status: 'resolvido',
+          resolutionNotes,
+          resolvedDate: now,
+          updatedDate: now
+        };
+      })
+    }));
+  };
+
   return {
     loading: false,
     state: sortedState,
@@ -1303,6 +1634,14 @@ export function useERP() {
     addEquipment,
     updateEquipment,
     deleteEquipment,
+
+    // Tickets
+    addTicket,
+    updateTicket,
+    deleteTicket,
+    validateAndApproveTicket,
+    convertTicketToTask,
+    resolveTicketDirectly,
     
     updateConfig,
     

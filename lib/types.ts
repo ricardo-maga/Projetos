@@ -363,6 +363,44 @@ export interface AuditLog {
   createdDate?: string;
 }
 
+export interface TicketStatus {
+  id: string;
+  name: string;
+  color?: string;
+  scale?: number;
+  deleted?: boolean;
+  sort_order?: number;
+}
+
+export interface Ticket {
+  id: string;
+  ticketNumber: string; // e.g. "TCK-2026-001"
+  title: string;
+  description: string;
+  source: 'manual' | 'email' | 'teams' | 'phone' | 'portal' | string;
+  sourceDetails?: string; // e.g. "Email: suporte@empresa.com" or "Teams: #suporte-obras"
+  status: string; // e.g. "validacao", "aberto", "em_analise", "convertido", "resolvido", "cancelado" or id from ticketStatuses
+  statusId?: string; // Relation: TicketStatus
+  priority: string; // Relation: ProjectPriority name or id
+  priorityId?: string; // Relation: ProjectPriority
+  taskTypeId?: string; // Relation: TaskType (substitui Categoria)
+  category?: string; // Mantido para compatibilidade
+  clientId?: string; // Relation: Clients table
+  requesterName?: string;
+  requesterEmail?: string;
+  requesterPhone?: string;
+  assignedToId?: string; // Relation: Users table (Técnico / Responsável das tarefas)
+  createdById?: string; // Relation: Users table
+  convertedTaskId?: string; // Relation: Task table (se convertido em tarefa)
+  convertedProjectId?: string; // Relation: Projects table
+  resolutionNotes?: string; // Notas de resolução caso resolvido diretamente
+  validationNotes?: string; // Notas da fase de validação
+  createdDate: string;
+  updatedDate: string;
+  resolvedDate?: string;
+  deleted?: boolean;
+}
+
 export interface ERPState {
   projects: Project[];
   tasks: Task[];
@@ -395,4 +433,6 @@ export interface ERPState {
   riskPriorities?: RiskPriority[];
   automationRules?: AutomationRule[];
   auditLogs?: AuditLog[];
+  tickets?: Ticket[];
+  ticketStatuses?: TicketStatus[];
 }

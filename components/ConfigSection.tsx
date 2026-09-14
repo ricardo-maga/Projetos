@@ -291,9 +291,21 @@ export default function ConfigSection({
   const [fieldManagerGroupIds, setFieldManagerGroupIds] = useState<string[]>(config.fieldManagerGroupIds || (config.fieldManagerGroupId ? [config.fieldManagerGroupId] : []));
   const [taskAssigneeGroupIds, setTaskAssigneeGroupIds] = useState<string[]>(config.taskAssigneeGroupIds || (config.taskAssigneeGroupId ? [config.taskAssigneeGroupId] : []));
 
-  const [prevConfig, setPrevConfig] = useState(config);
-  if (prevConfig !== config) {
-    setPrevConfig(config);
+  const configKey = JSON.stringify({
+    appName: config.appName,
+    appDescription: config.appDescription,
+    logo: config.logoImagePath || config.logo || '',
+    footer: config.footerCopyrightText,
+    theme: config.theme || 'default',
+    salesRepGroupIds: config.salesRepGroupIds || (config.salesRepGroupId ? [config.salesRepGroupId] : []),
+    projManagerGroupIds: config.projManagerGroupIds || (config.projManagerGroupId ? [config.projManagerGroupId] : []),
+    fieldManagerGroupIds: config.fieldManagerGroupIds || (config.fieldManagerGroupId ? [config.fieldManagerGroupId] : []),
+    taskAssigneeGroupIds: config.taskAssigneeGroupIds || (config.taskAssigneeGroupId ? [config.taskAssigneeGroupId] : []),
+  });
+
+  const [prevConfigKey, setPrevConfigKey] = useState(configKey);
+  if (prevConfigKey !== configKey) {
+    setPrevConfigKey(configKey);
     setAppName(config.appName);
     setAppDesc(config.appDescription);
     setLogo(config.logoImagePath || config.logo || '');
@@ -461,7 +473,7 @@ export default function ConfigSection({
   const [editDtTypeId, setEditDtTypeId] = useState('');
 
   // Aux tables state
-  const [activeAuxTab, setActiveAuxTab] = useState<'projectCategories' | 'projectStatuses' | 'taskStatuses' | 'taskTypes' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'riskCategories' | 'riskStatuses' | 'riskPriorities'>('projectCategories');
+  const [activeAuxTab, setActiveAuxTab] = useState<'projectCategories' | 'projectStatuses' | 'taskStatuses' | 'taskTypes' | 'ticketStatuses' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'riskCategories' | 'riskStatuses' | 'riskPriorities'>('projectCategories');
   const [newAuxName, setNewAuxName] = useState('');
   const [newAuxScale, setNewAuxScale] = useState(1);
   const [editingAuxId, setEditingAuxId] = useState<string | null>(null);
@@ -499,7 +511,7 @@ export default function ConfigSection({
     if (!newAuxName.trim() || !addAuxRecord) return;
     
     const extra: any = {};
-    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') {
+    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') {
       extra.scale = Number(newAuxScale);
     }
     
@@ -516,7 +528,7 @@ export default function ConfigSection({
     if (!editAuxName.trim() || !updateAuxRecord) return;
     
     const updates: any = { name: editAuxName.trim() };
-    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') {
+    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') {
       updates.scale = Number(editAuxScale);
     }
     
@@ -543,6 +555,7 @@ export default function ConfigSection({
       case 'projectStatuses': return projectStatuses;
       case 'taskStatuses': return (taskStatuses && taskStatuses.length > 0) ? taskStatuses : (state.taskStatuses || []);
       case 'taskTypes': return (taskTypes && taskTypes.length > 0) ? taskTypes : (state.taskTypes || []);
+      case 'ticketStatuses': return (state.ticketStatuses && state.ticketStatuses.length > 0) ? state.ticketStatuses : [];
       case 'projectRisks': return projectRisks;
       case 'projectPriorities': return projectPriorities;
       case 'projectTeams': return projectTeams;
@@ -568,7 +581,7 @@ export default function ConfigSection({
       if (a.sort_order !== undefined && b.sort_order !== undefined && a.sort_order !== b.sort_order) {
         return a.sort_order - b.sort_order;
       }
-      if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') {
+      if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') {
         return (a.scale ?? 0) - (b.scale ?? 0);
       }
       return 0;
@@ -938,7 +951,7 @@ export default function ConfigSection({
               </div>
 
               <div className="space-y-2">
-                <label className="block text-slate-500">Grupos para &quot;Gestor de Projeto&quot; (Escolha Múltipla)</label>
+                <label className="block text-slate-500">Grupos para &quot;Project Leader&quot; (Escolha Múltipla)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
                   {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
                     <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
@@ -966,12 +979,12 @@ export default function ConfigSection({
                   )}
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium font-sans">
-                  Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Gestor de Projeto&quot; no formulário dos projetos.
+                  Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Project Lader&quot; no formulário dos projetos.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <label className="block text-slate-500">Grupos para &quot;Gestor de Obra&quot; (Escolha Múltipla)</label>
+                <label className="block text-slate-500">Grupos para &quot;Técnico Responsável&quot; (Escolha Múltipla)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
                   {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
                     <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
@@ -999,7 +1012,7 @@ export default function ConfigSection({
                   )}
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium font-sans">
-                  Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Gestor de Obra&quot; no formulário dos projetos.
+                  Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Técnico responsável&quot; no formulário dos projetos.
                 </p>
               </div>
 
@@ -1382,6 +1395,7 @@ export default function ConfigSection({
               { id: 'projectStatuses', label: 'Estados do Projeto' },
               { id: 'taskTypes', label: 'Tipos de Tarefa' },
               { id: 'taskStatuses', label: 'Estados de Tarefa' },
+              { id: 'ticketStatuses', label: 'Estados de Tickets' },
               { id: 'projectPriorities', label: 'Prioridades' },
               { id: 'projectTeams', label: 'Equipas Internas' },
               { id: 'projectPartners', label: 'Parceiros Externos' },
@@ -1412,10 +1426,10 @@ export default function ConfigSection({
 
         {/* Addition form */}
         <form onSubmit={handleAddAuxRecord} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end bg-slate-50/50 p-4 rounded-2xl border border-slate-100 mb-6">
-          <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
+          <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
             <label className="block text-[11px] text-slate-500">Nome da Nova Opção *</label>
             <input 
-              type="text"
+              type="text" 
               required
               placeholder={`Introduza o nome...`}
               value={newAuxName}
@@ -1424,13 +1438,13 @@ export default function ConfigSection({
             />
           </div>
 
-          {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') && (
+          {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') && (
             <div className="space-y-1">
-              <label className="block text-[11px] text-slate-500">Escala / Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes') ? '1 a 10' : '1 a 3'})</label>
+              <label className="block text-[11px] text-slate-500">Escala / Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? '1 a 10' : '1 a 3'})</label>
               <input 
                 type="number"
                 min={activeAuxTab === 'projectStatuses' ? 0 : 1}
-                max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes') ? 10 : 3}
+                max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? 10 : 3}
                 required
                 value={newAuxScale}
                 onChange={e => setNewAuxScale(Number(e.target.value))}

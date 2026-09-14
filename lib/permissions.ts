@@ -29,6 +29,11 @@ export interface GroupPermissions {
   config_read: boolean;
   config_write: boolean;
 
+  // 7. TICKETS & SUPORTE
+  tickets_read?: boolean;
+  tickets_write?: boolean;
+  tickets_delete?: boolean;
+
   // Outras permissões existentes no sistema
   quotes_read?: boolean;
   quotes_write?: boolean;
@@ -63,6 +68,9 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
     absences_delete: true,
     config_read: true,
     config_write: true,
+    tickets_read: true,
+    tickets_write: true,
+    tickets_delete: true,
     quotes_read: true,
     quotes_write: true,
     quotes_delete: true,
@@ -76,7 +84,7 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
     users_write: true,
     users_delete: true,
   },
-  // ug-2: Gestor de Projetos
+  // ug-2: Project Leader
   'ug-2': {
     projects_read: true,
     projects_write: true,
@@ -94,6 +102,9 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
     absences_delete: false,
     config_read: true,
     config_write: false,
+    tickets_read: true,
+    tickets_write: true,
+    tickets_delete: true,
     quotes_read: true,
     quotes_write: true,
     quotes_delete: false,
@@ -125,6 +136,9 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
     absences_delete: false,
     config_read: false,
     config_write: false,
+    tickets_read: true,
+    tickets_write: true,
+    tickets_delete: false,
     quotes_read: false,
     quotes_write: false,
     quotes_delete: false,
@@ -156,6 +170,9 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
     absences_delete: false,
     config_read: false,
     config_write: false,
+    tickets_read: true,
+    tickets_write: false,
+    tickets_delete: false,
     quotes_read: false,
     quotes_write: false,
     quotes_delete: false,

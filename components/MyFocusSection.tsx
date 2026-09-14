@@ -752,10 +752,10 @@ export default function MyFocusSection({
                   <p className="text-sm font-bold text-slate-700">Sem projetos</p>
                   <p className="text-xs text-slate-400 max-w-xs mx-auto">
                     {projectFilter === 'completed'
-                      ? 'Atualmente não figura como gestor de projeto em nenhum projeto concluído.'
+                      ? 'Atualmente não figura como Project Leader em nenhum projeto concluído.'
                       : projectFilter === 'active'
-                      ? 'Atualmente não figura como gestor de projeto em nenhum projeto ativo.'
-                      : 'Atualmente não figura como gestor de projeto em nenhum projeto.'}
+                      ? 'Atualmente não figura como Project Leader em nenhum projeto ativo.'
+                      : 'Atualmente não figura como Project Leader em nenhum projeto.'}
                   </p>
                 </div>
               ) : (

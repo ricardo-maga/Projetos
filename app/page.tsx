@@ -13,6 +13,7 @@ import ConfigSection from '../components/ConfigSection';
 import NotificationDropdown from '../components/NotificationDropdown';
 import CalendarSection from '../components/CalendarSection';
 import MyFocusSection from '../components/MyFocusSection';
+import { TicketSection } from '../components/TicketSection';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { logAuditEventToSupabase } from '../lib/supabaseSync';
 import { hasPermission } from '../lib/permissions';
@@ -21,7 +22,7 @@ import AppLogo from '../components/AppLogo';
 import { 
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
   Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw,
-  Bell, Zap, ShieldCheck, Database, ListTodo
+  Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Ticket as TicketIcon
 } from 'lucide-react';
 
 import { hashPassword } from '../lib/utils';
@@ -41,6 +42,8 @@ export default function Page() {
   const [loginError, setLoginError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginStatusMessage, setLoginStatusMessage] = useState('');
   
   // Change password state
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -59,6 +62,9 @@ export default function Page() {
           try {
             const session = JSON.parse(sessionStr);
             if (Date.now() < session.expiresAt && session.token) {
+              if (session.user) {
+                setCurrentUser(session.user);
+              }
               try {
                 const res = await fetch('/api/auth/session', {
                   method: 'POST',
@@ -73,6 +79,7 @@ export default function Page() {
                   } else {
                     console.warn('Sessão inválida ou expirada no servidor');
                     localStorage.removeItem('erp_session');
+                    setCurrentUser(null);
                   }
                 } else {
                   console.warn('Servidor respondeu com erro ao verificar sessão');
@@ -82,6 +89,7 @@ export default function Page() {
               }
             } else {
               localStorage.removeItem('erp_session');
+              setCurrentUser(null);
             }
           } catch (e) {
             console.error('Error parsing erp_session:', e);
@@ -128,6 +136,13 @@ export default function Page() {
     addEquipment,
     updateEquipment,
     deleteEquipment,
+    // Tickets
+    addTicket,
+    updateTicket,
+    deleteTicket,
+    validateAndApproveTicket,
+    convertTicketToTask,
+    resolveTicketDirectly,
     addProjectMaterial,
     updateProjectMaterial,
     deleteProjectMaterial,
@@ -258,6 +273,8 @@ export default function Page() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
+    setIsLoggingIn(true);
+    setLoginStatusMessage('A validar credenciais com o servidor...');
     
     try {
       const res = await fetch('/api/auth/login', {
@@ -273,12 +290,14 @@ export default function Page() {
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
         setLoginError('O servidor está a inicializar ou indisponível. Por favor, tente novamente em alguns segundos.');
+        setIsLoggingIn(false);
+        setLoginStatusMessage('');
         return;
       }
 
       const data = await res.json();
       if (data.success) {
-        setIsTransitioning(true);
+        setLoginStatusMessage('Autenticado com sucesso! A carregar sistema...');
         const expireHours = rememberMe ? 30 * 24 : 8;
         const expiresAt = Date.now() + expireHours * 60 * 60 * 1000;
         localStorage.setItem('erp_session', JSON.stringify({ 
@@ -287,14 +306,30 @@ export default function Page() {
           expiresAt 
         }));
         
-        // Refresh page to load secure synchronized state from Supabase proxy using authorization token
-        window.location.reload();
+        // Show loading screen immediately and activate user session
+        setIsTransitioning(true);
+        setCurrentUser(data.user);
+
+        // Fetch authoritative database records directly using the active session token
+        try {
+          await refreshFromDatabase();
+        } catch (refreshErr) {
+          console.warn('Erro ao atualizar dados após autenticação:', refreshErr);
+        } finally {
+          setIsTransitioning(false);
+          setIsLoggingIn(false);
+          setLoginStatusMessage('');
+        }
       } else {
         setLoginError(data.message || 'Email ou palavra-passe incorretos.');
+        setIsLoggingIn(false);
+        setLoginStatusMessage('');
       }
     } catch (err) {
       console.error('Error logging in:', err);
       setLoginError('Ocorreu um erro ao ligar ao servidor de autenticação. Por favor, tente novamente.');
+      setIsLoggingIn(false);
+      setLoginStatusMessage('');
     }
   };
 
@@ -356,6 +391,7 @@ export default function Page() {
     return [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'meu-foco', label: 'O meu foco', icon: Compass },
+      { id: 'tickets', label: 'Tickets', icon: TicketIcon, permission: 'tickets_read' },
       { id: 'projetos', label: 'Projetos', icon: Briefcase, permission: 'projects_read' },
       { id: 'tarefas', label: 'Tarefas', icon: CheckSquare, permission: 'tasks_read' },
       { id: 'calendario', label: 'Calendário', icon: Calendar, permission: 'calendar_read' },
@@ -387,8 +423,14 @@ export default function Page() {
             fallbackIconClassName="w-8 h-8 text-blue-600"
           />
           <div>
-            <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">A carregar o sistema...</h1>
-            <p className="text-slate-400 text-xs mt-1.5 font-medium">Por favor, aguarde enquanto ligamos à base de dados.</p>
+            <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">
+              {isTransitioning ? 'A preparar a sua sessão...' : 'A carregar o sistema...'}
+            </h1>
+            <p className="text-slate-400 text-xs mt-1.5 font-medium">
+              {isTransitioning 
+                ? 'A sincronizar dados e permissões com a base de dados...' 
+                : 'Por favor, aguarde enquanto ligamos à base de dados.'}
+            </p>
           </div>
           <div className="flex justify-center items-center gap-1.5">
             <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
@@ -433,7 +475,8 @@ export default function Page() {
                 value={loginEmail}
                 onChange={e => setLoginEmail(e.target.value)}
                 placeholder="Introduza o seu email"
-                className="w-full p-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                disabled={isLoggingIn}
+                className="w-full p-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
                 required
               />
             </div>
@@ -445,17 +488,19 @@ export default function Page() {
                 value={loginPassword}
                 onChange={e => setLoginPassword(e.target.value)}
                 placeholder="A sua password"
-                className="w-full p-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                disabled={isLoggingIn}
+                className="w-full p-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
                 required
               />
             </div>
 
             <div className="flex items-center justify-between py-1">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none">
+              <label className={`flex items-center gap-2 text-xs font-semibold select-none ${isLoggingIn ? 'text-slate-400 cursor-not-allowed' : 'text-slate-600 cursor-pointer'}`}>
                 <input 
                   type="checkbox" 
                   checked={rememberMe}
                   onChange={e => setRememberMe(e.target.checked)}
+                  disabled={isLoggingIn}
                   className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                 />
                 Lembrar
@@ -467,10 +512,30 @@ export default function Page() {
             
             <button 
               type="submit"
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors -sm"
+              disabled={isLoggingIn}
+              className={`w-full py-3 text-white rounded-xl font-bold transition-all duration-200 shadow-sm flex items-center justify-center gap-2.5 ${
+                isLoggingIn 
+                  ? 'bg-blue-500/90 cursor-wait' 
+                  : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.99] cursor-pointer'
+              }`}
             >
-              Entrar
+              {isLoggingIn ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>A autenticar...</span>
+                </>
+              ) : (
+                <span>Entrar</span>
+              )}
             </button>
+
+            {/* Instant feedback message immediately upon clicking */}
+            {isLoggingIn && (
+              <div className="p-3 bg-blue-50 border border-blue-200/70 rounded-xl flex items-center gap-2.5 text-xs text-blue-800 font-semibold animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
+                <span>{loginStatusMessage || 'A validar credenciais com o servidor...'}</span>
+              </div>
+            )}
             
             <div className="pt-4 text-center text-xs text-slate-400">
               <p>Acesso Restrito - Uso Interno</p>
@@ -823,6 +888,30 @@ export default function Page() {
                   onSelectProject={handleSelectProject}
                   onNavigateTab={handleTabChange}
                   appConfig={state.appConfig}
+                />
+              )}
+
+              {activeTab === 'tickets' && (
+                <TicketSection 
+                  tickets={state.tickets || []}
+                  users={state.users || []}
+                  clients={state.clients || []}
+                  projects={state.projects || []}
+                  tasks={state.tasks || []}
+                  taskStatuses={state.taskStatuses || []}
+                  taskTypes={state.taskTypes || []}
+                  projectPriorities={state.projectPriorities || []}
+                  ticketStatuses={state.ticketStatuses || []}
+                  userGroups={state.userGroups || []}
+                  currentUser={currentUser}
+                  onAddTicket={addTicket}
+                  onUpdateTicket={updateTicket}
+                  onDeleteTicket={deleteTicket}
+                  onValidateAndApprove={validateAndApproveTicket}
+                  onConvertToTask={convertTicketToTask}
+                  onResolveDirectly={resolveTicketDirectly}
+                  onNavigateToProject={handleSelectProject}
+                  onAddClient={addClient}
                 />
               )}
 

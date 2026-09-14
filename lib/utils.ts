@@ -255,4 +255,11 @@ export function checkTaskSchedulingConflicts(params: {
   return warnings;
 }
 
+export function genId(prefix: string = 'id'): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
 

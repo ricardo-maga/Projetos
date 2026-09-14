@@ -259,6 +259,21 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
       statusId: stringToUUID(pri.statusId),
       priorityId: stringToUUID(pri.priorityId),
     })),
+    tickets: (state.tickets || []).map(t => ({
+      ...t,
+      id: stringToUUID(t.id),
+      statusId: t.statusId ? stringToUUID(t.statusId) : undefined,
+      priorityId: t.priorityId ? stringToUUID(t.priorityId) : undefined,
+      taskTypeId: t.taskTypeId ? stringToUUID(t.taskTypeId) : undefined,
+      clientId: t.clientId ? stringToUUID(t.clientId) : undefined,
+      assignedToId: t.assignedToId ? stringToUUID(t.assignedToId) : undefined,
+      createdById: t.createdById ? stringToUUID(t.createdById) : undefined,
+      convertedTaskId: t.convertedTaskId ? stringToUUID(t.convertedTaskId) : undefined,
+      convertedProjectId: t.convertedProjectId ? stringToUUID(t.convertedProjectId) : undefined,
+    })),
+    ticketStatuses: (state.ticketStatuses || []).map(ts => ({ ...ts, id: stringToUUID(ts.id) })),
+    notifications: (state.notifications || []).map(n => ({ ...n, id: stringToUUID(n.id) })),
+    automationRules: (state.automationRules || []).map(r => ({ ...r, id: stringToUUID(r.id) })),
   };
 }
 
@@ -576,6 +591,10 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       resRiskStatuses,
       resRiskPriorities,
       resProjectRiskItems,
+      resTicketStatuses,
+      resNotifications,
+      resAutomationRules,
+      resLatestSnapshot,
     ] = await Promise.all([
       supabase.from('user_groups').select('*'),
       supabase.from('project_status').select('*').order('sort_order', { ascending: true }),
@@ -603,6 +622,10 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       supabase.from('risk_statuses').select('*').order('sort_order', { ascending: true }),
       supabase.from('risk_priorities').select('*').order('sort_order', { ascending: true }),
       supabase.from('project_risk_items').select('*').order('created_at', { ascending: false }),
+      supabase.from('ticket_statuses').select('*').order('sort_order', { ascending: true }),
+      supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
+      supabase.from('automation_rules').select('*').order('created_at', { ascending: false }),
+      supabase.from('portal_erp_snapshots').select('*').eq('name', '__LATEST_ACTIVE_STATE__').order('created_at', { ascending: false }).limit(1),
     ]);
 
     // Check for schema issues
@@ -681,7 +704,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
 
     // Handle App Config
     const configRow = resConfig.data?.[0];
-    const appConfig = configRow ? {
+    let appConfig = configRow ? {
       appName: configRow.app_name || 'Gestão de projetos e planeamento',
       appDescription: configRow.app_description || '',
       footerText: configRow.footer_text || '',
@@ -716,7 +739,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
     };
 
     // Map database structures to React types
-    const projects: Project[] = (resProjects.data || []).map(p => ({
+    let projects: Project[] = (resProjects.data || []).map(p => ({
       id: p.id,
       demo: p.demo || false,
       clientId: p.client_id || '',
@@ -756,7 +779,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
     const milestoneTaskType = (resTaskTypes?.data || []).find((tt: any) => tt.name?.toLowerCase().includes('marco'));
     const defaultTaskType = (resTaskTypes?.data || []).find((tt: any) => !tt.deleted);
 
-    const tasks: Task[] = (resTasks.data || []).map(t => {
+    let tasks: Task[] = (resTasks.data || []).map(t => {
       let resolvedTaskTypeId = t.task_type_id;
       if (!resolvedTaskTypeId && t.is_milestone && milestoneTaskType) {
         resolvedTaskTypeId = milestoneTaskType.id;
@@ -952,6 +975,117 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       createdDate: pri.created_at || '',
     }));
 
+    let tickets: any[] = [];
+    try {
+      const resTickets = await supabase.from('tickets').select('*').order('created_at', { ascending: false });
+      if (!resTickets.error && resTickets.data) {
+        tickets = resTickets.data.map((t: any) => ({
+          id: t.id,
+          ticketNumber: t.ticket_number || t.ticketNumber || `TCK-${t.id.slice(0, 4)}`,
+          title: t.title || '',
+          description: t.description || '',
+          source: t.source || 'manual',
+          sourceDetails: t.source_details || t.sourceDetails || '',
+          status: t.status || 'aberto',
+          statusId: t.status_id || t.statusId || undefined,
+          priority: t.priority || 'media',
+          priorityId: t.priority_id || t.priorityId || undefined,
+          category: t.category || '',
+          taskTypeId: t.task_type_id || t.taskTypeId || undefined,
+          clientId: t.client_id || t.clientId || '',
+          requesterName: t.requester_name || t.requesterName || '',
+          requesterEmail: t.requester_email || t.requesterEmail || '',
+          requesterPhone: t.requester_phone || t.requesterPhone || '',
+          assignedToId: t.assigned_to_id || t.assignedToId || '',
+          createdById: t.created_by_id || t.createdById || '',
+          convertedTaskId: t.converted_task_id || t.convertedTaskId || '',
+          convertedProjectId: t.converted_project_id || t.convertedProjectId || '',
+          resolutionNotes: t.resolution_notes || t.resolutionNotes || '',
+          validationNotes: t.validation_notes || t.validationNotes || '',
+          createdDate: t.created_at || t.createdDate || '',
+          updatedDate: t.updated_at || t.updatedDate || '',
+          resolvedDate: t.resolved_at || t.resolvedDate || '',
+          deleted: t.deleted === true || t.deleted === 'true' || t.deleted === 1
+        }));
+      }
+    } catch (e) {}
+
+    let ticketStatuses: any[] = (resTicketStatuses?.data || []).map((ts: any) => ({
+      id: ts.id,
+      name: ts.name,
+      color: ts.color || 'blue',
+      deleted: ts.deleted === true || ts.deleted === 1 || ts.deleted === 'true',
+      sort_order: ts.sort_order ?? 0
+    }));
+
+    let notifications: any[] = (resNotifications?.data || []).map((n: any) => ({
+      id: n.id,
+      userId: n.user_id || n.userId || 'all',
+      title: n.title || '',
+      message: n.message || '',
+      isRead: n.is_read === true || n.isRead === true || n.is_read === 1,
+      createdDate: n.created_at || n.createdDate || new Date().toISOString(),
+      linkUrl: n.link_url || n.linkUrl || ''
+    }));
+
+    let automationRules: any[] = (resAutomationRules?.data || []).map((ar: any) => ({
+      id: ar.id,
+      name: ar.name || '',
+      description: ar.description || '',
+      triggerType: ar.trigger_type || ar.triggerType || 'manual',
+      triggerCondition: ar.trigger_condition || ar.triggerCondition || {},
+      actions: ar.actions || [],
+      enabled: ar.enabled !== false,
+      createdDate: ar.created_at || ar.createdDate || new Date().toISOString()
+    }));
+
+    // Fallback or enrichment from latest snapshot if tables were empty or not yet created in Supabase
+    let latestSnapState: any = null;
+    if (resLatestSnapshot?.data && resLatestSnapshot.data.length > 0) {
+      latestSnapState = resLatestSnapshot.data[0].state_data || resLatestSnapshot.data[0].data;
+    }
+
+    if (tickets.length === 0 && latestSnapState?.tickets?.length > 0) {
+      tickets = latestSnapState.tickets;
+    }
+    if (ticketStatuses.length === 0 && latestSnapState?.ticketStatuses?.length > 0) {
+      ticketStatuses = latestSnapState.ticketStatuses;
+    }
+    if (notifications.length === 0 && latestSnapState?.notifications?.length > 0) {
+      notifications = latestSnapState.notifications;
+    }
+    if (automationRules.length === 0 && latestSnapState?.automationRules?.length > 0) {
+      automationRules = latestSnapState.automationRules;
+    }
+    if (projects.length === 0 && latestSnapState?.projects?.length > 0) {
+      projects = latestSnapState.projects;
+    }
+    if (tasks.length === 0 && latestSnapState?.tasks?.length > 0) {
+      tasks = latestSnapState.tasks;
+    }
+
+    if (latestSnapState?.appConfig) {
+      if (configRow && configRow.task_assignee_group_id === undefined && latestSnapState.appConfig.taskAssigneeGroupIds?.length) {
+        appConfig.taskAssigneeGroupIds = latestSnapState.appConfig.taskAssigneeGroupIds;
+        appConfig.taskAssigneeGroupId = latestSnapState.appConfig.taskAssigneeGroupId || appConfig.taskAssigneeGroupIds[0] || '';
+      }
+      if (configRow && configRow.sales_rep_group_id === undefined && latestSnapState.appConfig.salesRepGroupIds?.length) {
+        appConfig.salesRepGroupIds = latestSnapState.appConfig.salesRepGroupIds;
+        appConfig.salesRepGroupId = latestSnapState.appConfig.salesRepGroupId || appConfig.salesRepGroupIds[0] || '';
+      }
+      if (configRow && configRow.proj_manager_group_id === undefined && latestSnapState.appConfig.projManagerGroupIds?.length) {
+        appConfig.projManagerGroupIds = latestSnapState.appConfig.projManagerGroupIds;
+        appConfig.projManagerGroupId = latestSnapState.appConfig.projManagerGroupId || appConfig.projManagerGroupIds[0] || '';
+      }
+      if (configRow && configRow.field_manager_group_id === undefined && latestSnapState.appConfig.fieldManagerGroupIds?.length) {
+        appConfig.fieldManagerGroupIds = latestSnapState.appConfig.fieldManagerGroupIds;
+        appConfig.fieldManagerGroupId = latestSnapState.appConfig.fieldManagerGroupId || appConfig.fieldManagerGroupIds[0] || '';
+      }
+      if (!configRow && latestSnapState.appConfig) {
+        appConfig = { ...latestSnapState.appConfig, ...appConfig };
+      }
+    }
+
     const loadedState: ERPState = {
       userGroups: userGroupsMapped,
       projectStatuses: (resProjectStatuses.data || []).map((s: any) => ({ ...s, deleted: s.deleted === true || s.deleted === 1 || s.deleted === 'true' })),
@@ -1006,6 +1140,11 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       riskStatuses: riskStatuses || [],
       riskPriorities: riskPriorities || [],
       projectRiskItems: projectRiskItems || [],
+      tickets: tickets || [],
+      ticketStatuses: ticketStatuses || [],
+      notifications: notifications || [],
+      automationRules: automationRules || [],
+      notificationSettings: latestSnapState?.notificationSettings || [],
     };
 
     // If completely empty database (unseeded), return undefined to let /hooks/useERP seed defaults.
@@ -1355,17 +1494,17 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         logo_image_path: state.appConfig.logoImagePath || state.appConfig.logo || null,
         footer_copyright_text: state.appConfig.footerCopyrightText || null,
         theme_name: state.appConfig.theme || 'default',
-        sales_rep_group_id: state.appConfig.salesRepGroupIds?.length 
-          ? state.appConfig.salesRepGroupIds.join(',') 
+        sales_rep_group_id: Array.isArray(state.appConfig.salesRepGroupIds)
+          ? (state.appConfig.salesRepGroupIds.length ? state.appConfig.salesRepGroupIds.join(',') : null)
           : (state.appConfig.salesRepGroupId || null),
-        proj_manager_group_id: state.appConfig.projManagerGroupIds?.length 
-          ? state.appConfig.projManagerGroupIds.join(',') 
+        proj_manager_group_id: Array.isArray(state.appConfig.projManagerGroupIds)
+          ? (state.appConfig.projManagerGroupIds.length ? state.appConfig.projManagerGroupIds.join(',') : null)
           : (state.appConfig.projManagerGroupId || null),
-        field_manager_group_id: state.appConfig.fieldManagerGroupIds?.length 
-          ? state.appConfig.fieldManagerGroupIds.join(',') 
+        field_manager_group_id: Array.isArray(state.appConfig.fieldManagerGroupIds)
+          ? (state.appConfig.fieldManagerGroupIds.length ? state.appConfig.fieldManagerGroupIds.join(',') : null)
           : (state.appConfig.fieldManagerGroupId || null),
-        task_assignee_group_id: state.appConfig.taskAssigneeGroupIds?.length 
-          ? state.appConfig.taskAssigneeGroupIds.join(',') 
+        task_assignee_group_id: Array.isArray(state.appConfig.taskAssigneeGroupIds)
+          ? (state.appConfig.taskAssigneeGroupIds.length ? state.appConfig.taskAssigneeGroupIds.join(',') : null)
           : (state.appConfig.taskAssigneeGroupId || null)
       }]).then(res => {
         if (res.error && (res.error.message.includes('sales_rep_group_id') || res.error.message.includes('proj_manager_group_id') || res.error.message.includes('field_manager_group_id') || res.error.message.includes('task_assignee_group_id') || res.error.code === '42703')) {
@@ -1975,6 +2114,108 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       }
     }
 
+    // Save Ticket Statuses
+    if (state.ticketStatuses && state.ticketStatuses.length > 0) {
+      try {
+        const mappedTS = state.ticketStatuses.map(ts => ({
+          id: stringToUUID(ts.id),
+          name: ts.name,
+          color: ts.color || 'blue',
+          deleted: ts.deleted || false,
+          sort_order: ts.sort_order || 0
+        }));
+        await supabase.from('ticket_statuses').upsert(mappedTS);
+      } catch (e) {
+        console.warn('ticket_statuses upsert notice:', e);
+      }
+    }
+
+    // Save Notifications
+    if (state.notifications && state.notifications.length > 0) {
+      try {
+        const mappedNotifs = state.notifications.slice(0, 100).map(n => ({
+          id: stringToUUID(n.id),
+          user_id: n.userId || 'all',
+          title: n.title,
+          message: n.message || '',
+          is_read: n.isRead || false,
+          link_url: n.linkUrl || null,
+          created_at: n.createdDate || new Date().toISOString()
+        }));
+        await supabase.from('notifications').upsert(mappedNotifs);
+      } catch (e) {
+        console.warn('notifications upsert notice:', e);
+      }
+    }
+
+    // Save Automation Rules
+    if (state.automationRules && state.automationRules.length > 0) {
+      try {
+        const mappedRules = state.automationRules.map(r => ({
+          id: stringToUUID(r.id),
+          name: r.name,
+          description: r.description || null,
+          trigger_type: r.triggerType,
+          trigger_condition: r.triggerCondition || {},
+          actions: r.actions || [],
+          enabled: r.enabled !== false,
+          created_at: r.createdDate || new Date().toISOString()
+        }));
+        await supabase.from('automation_rules').upsert(mappedRules);
+      } catch (e) {
+        console.warn('automation_rules upsert notice:', e);
+      }
+    }
+
+    // Save Tickets
+    if (state.tickets && state.tickets.length > 0) {
+      try {
+        const mappedTickets = state.tickets.map(t => ({
+          id: stringToUUID(t.id),
+          ticket_number: t.ticketNumber,
+          title: t.title,
+          description: t.description || null,
+          source: t.source || 'manual',
+          source_details: t.sourceDetails || null,
+          status: t.status || 'aberto',
+          status_id: t.statusId ? stringToUUID(t.statusId) : null,
+          priority: t.priority || 'media',
+          priority_id: t.priorityId ? stringToUUID(t.priorityId) : null,
+          category: t.category || null,
+          task_type_id: t.taskTypeId ? stringToUUID(t.taskTypeId) : null,
+          client_id: t.clientId ? stringToUUID(t.clientId) : null,
+          requester_name: t.requesterName || null,
+          requester_email: t.requesterEmail || null,
+          requester_phone: t.requesterPhone || null,
+          assigned_to_id: t.assignedToId ? stringToUUID(t.assignedToId) : null,
+          created_by_id: t.createdById ? stringToUUID(t.createdById) : null,
+          converted_task_id: t.convertedTaskId ? stringToUUID(t.convertedTaskId) : null,
+          converted_project_id: t.convertedProjectId ? stringToUUID(t.convertedProjectId) : null,
+          resolution_notes: t.resolutionNotes || null,
+          validation_notes: t.validationNotes || null,
+          deleted: t.deleted || false,
+          created_at: t.createdDate || new Date().toISOString(),
+          updated_at: t.updatedDate || new Date().toISOString(),
+          resolved_at: t.resolvedDate || null,
+        }));
+        await supabase.from('tickets').upsert(mappedTickets);
+      } catch (e) {
+        console.warn('tickets upsert warning:', e);
+      }
+    }
+
+    // Always update the LATEST active state snapshot so no data is ever lost between refreshes
+    try {
+      await supabase.from('portal_erp_snapshots').upsert({
+        id: stringToUUID('snap_latest_active_state'),
+        name: '__LATEST_ACTIVE_STATE__',
+        state_data: state,
+        created_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+    } catch (snapErr) {
+      console.warn('Snapshot active state sync notice:', snapErr);
+    }
+
     return { success: true };
   } catch (error: any) {
     console.error('Supabase relational save state error:', error);
@@ -2018,6 +2259,98 @@ ALTER TABLE IF EXISTS equipment DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS portal_erp_snapshots DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS special_days DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS default_tasks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS ticket_statuses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS tickets DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS notifications DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS notification_settings DISABLE ROW LEVEL SECURITY;
+
+-- ==========================================
+-- MÓDULO DE TICKETS & SUPORTE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS ticket_statuses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    color TEXT DEFAULT 'blue',
+    scale INT DEFAULT 1,
+    sort_order INT DEFAULT 0,
+    deleted BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS color TEXT DEFAULT 'blue';
+ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS scale INT DEFAULT 1;
+ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0;
+ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false;
+ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE IF EXISTS ticket_statuses DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS tickets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    ticket_number TEXT,
+    title TEXT NOT NULL,
+    description TEXT,
+    source TEXT DEFAULT 'manual',
+    source_details TEXT,
+    status TEXT DEFAULT 'aberto',
+    status_id UUID,
+    priority TEXT DEFAULT 'media',
+    priority_id UUID,
+    category TEXT,
+    task_type_id UUID,
+    client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
+    requester_name TEXT,
+    requester_email TEXT,
+    requester_phone TEXT,
+    assigned_to_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    converted_task_id UUID,
+    converted_project_id UUID,
+    resolution_notes TEXT,
+    validation_notes TEXT,
+    deleted BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMPTZ
+);
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS priority_id UUID;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS task_type_id UUID;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS status_id UUID;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'manual';
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS source_details TEXT;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS client_id UUID;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS assigned_to_id UUID;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS created_by_id UUID;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS requester_name TEXT;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS requester_email TEXT;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS requester_phone TEXT;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS converted_task_id UUID;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS converted_project_id UUID;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS validation_notes TEXT;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS resolution_notes TEXT;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE IF EXISTS tickets DISABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets (status);
+CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets (assigned_to_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_client_id ON tickets (client_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets (created_at DESC);
+
+-- ==========================================
+-- MÓDULO DE NOTIFICAÇÕES
+-- ==========================================
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id TEXT NOT NULL DEFAULT 'all',
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    link_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE IF EXISTS notifications DISABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications (user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications (created_at DESC);
 
 -- Adicionar campo de password aos utilizadores e definir valor por defeito para 12345 (hashed)
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS password TEXT;
@@ -2200,7 +2533,25 @@ ALTER TABLE IF EXISTS risk_statuses DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS risk_priorities DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS project_risk_items DISABLE ROW LEVEL SECURITY;
 
--- Adicionar campo de grupo de gestores na tabela de configurações
+-- Adicionar/Criar tabela de configurações da aplicação
+CREATE TABLE IF NOT EXISTS app_configuration (
+    id UUID PRIMARY KEY DEFAULT '33333333-4444-5555-6666-777777777777',
+    app_name TEXT,
+    app_description TEXT,
+    footer_text TEXT,
+    logo_url TEXT,
+    logo_image_path TEXT,
+    footer_copyright_text TEXT,
+    theme_name TEXT DEFAULT 'default',
+    sales_rep_group_id TEXT,
+    proj_manager_group_id TEXT,
+    field_manager_group_id TEXT,
+    task_assignee_group_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE IF EXISTS app_configuration DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS sales_rep_group_id TEXT;
 ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS proj_manager_group_id TEXT;
 ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS field_manager_group_id TEXT;

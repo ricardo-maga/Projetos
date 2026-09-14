@@ -41,6 +41,7 @@ export default function TaskDetailsModal({
 
   useEffect(() => {
     if (task) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTaskEditStatus(task.statusId || '');
       setTaskEditTypeId(task.taskTypeId || '');
       setTaskEditActualHours(formatToOnlyHours(task.actualHours));

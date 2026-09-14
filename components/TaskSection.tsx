@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Task, Project, Client, TaskType } from '../lib/types';
-import { Plus, Search, Trash2, Edit2, Clock, Calendar, CheckSquare, PlusCircle, X, Users, Link2, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, Clock, Calendar, CheckSquare, PlusCircle, X, Users, Link2, Maximize2, Minimize2, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
 import TaskDetailsModal from './TaskDetailsModal';
+import { TaskAnalytics } from './TaskAnalytics';
 
 import { hasPermission } from '../lib/permissions';
 import { getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, formatToOnlyHours } from '../lib/utils';
@@ -89,7 +90,7 @@ export default function TaskSection({
   const [collapsedColumns, setCollapsedColumns] = useState<Record<string, boolean>>({});
   const [draggingOverColumnId, setDraggingOverColumnId] = useState<string | null>(null);
   const [isDraggingTaskId, setIsDraggingTaskId] = useState<string | null>(null);
-  const [activeTaskViewTab, setActiveTaskViewTab] = useState<'lista' | 'kanban'>('lista');
+  const [activeTaskViewTab, setActiveTaskViewTab] = useState<'lista' | 'kanban' | 'analise'>('lista');
   const [isKanbanFullscreen, setIsKanbanFullscreen] = useState<boolean>(false);
 
   // Reset pagination when filter/sorting/grouping variables change
@@ -1035,9 +1036,21 @@ export default function TaskSection({
             >
               Quadro Kanban
             </button>
+            <button
+              onClick={() => setActiveTaskViewTab('analise')}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+                activeTaskViewTab === 'analise'
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <BarChart2 className="w-4 h-4" />
+              Análise de Tarefas
+            </button>
           </div>
 
-          {/* Shared Filters Bar */}
+          {/* Shared Filters Bar (Only for Lista and Kanban views) */}
+          {activeTaskViewTab !== 'analise' && (
           <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
             {/* Search Input */}
             <div className="flex-1 min-w-[220px] relative">
@@ -1114,6 +1127,7 @@ export default function TaskSection({
               ))}
             </select>
           </div>
+          )}
 
           {activeTaskViewTab === 'lista' && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden animate-fade-in">
@@ -1481,6 +1495,17 @@ export default function TaskSection({
                 </div>
               </div>
             </div>
+          )}
+
+          {activeTaskViewTab === 'analise' && (
+            <TaskAnalytics 
+              tasks={tasks}
+              projects={projects}
+              taskTypes={taskTypes || []}
+              taskStatuses={taskStatuses}
+              users={users}
+              clients={clients}
+            />
           )}
         </div>
       )}

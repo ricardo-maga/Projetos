@@ -2216,11 +2216,11 @@ export default function ProjectSection({
                 <h4 className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Equipa</h4>
                 <div className="space-y-1.5 text-slate-700">
                   <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Gestor Projeto:</span>
+                    <span className="font-medium text-slate-500">Project Leader:</span>
                     <span className="font-bold">{getUserName(selectedProj.projectManagerId)}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Gestor de Campo:</span>
+                    <span className="font-medium text-slate-500">Técnico responsável:</span>
                     <span className="font-bold">{getUserName(selectedProj.fieldManagerId)}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-slate-100">
@@ -3681,7 +3681,7 @@ export default function ProjectSection({
 
             {/* Project Manager (Team Type Users) */}
             <div className="space-y-1">
-              <label className="block text-slate-500">Gestor de projeto *</label>
+              <label className="block text-slate-500">Project Leader *</label>
               <select 
                 required
                 value={formProjManager}
@@ -3716,7 +3716,7 @@ export default function ProjectSection({
 
             {/* Field Manager (Team Type Users) */}
             <div className="space-y-1">
-              <label className="block text-slate-500">Gestor da obra</label>
+              <label className="block text-slate-500">Técnico responsável</label>
               <select 
                 value={formFieldManager}
                 onChange={e => setFormFieldManager(e.target.value)}
