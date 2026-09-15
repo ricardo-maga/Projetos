@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
 import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
-import { verifySession } from '@/lib/serverAuth';
+import { requireAuth, AuthError } from '@/lib/auth/requireAuth';
 
 export async function GET(req: NextRequest) {
   if (!isSupabaseConfigured) {
@@ -12,7 +12,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const session = verifySession(req);
+    let user = null;
+    try {
+      user = await requireAuth();
+    } catch {
+      user = null;
+    }
+
     const result = await getActiveStateFromSupabase();
 
     if (!result.success || !result.data) {
@@ -28,7 +34,7 @@ export async function GET(req: NextRequest) {
     }
 
     // If there is no valid session, return ONLY non-confidential configuration and user profiles (with passwords stripped)
-    if (!session) {
+    if (!user) {
       return NextResponse.json({
         success: true,
         data: {
@@ -64,17 +70,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ 
       success: false, 
       message: 'Supabase não está configurado no servidor.' 
-    }, { status: 400 });
+    });
   }
 
   try {
-    const session = verifySession(req);
-    if (!session) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Não autorizado. Faça login novamente.' 
-      }, { status: 401 });
-    }
+    await requireAuth();
 
     // Extract state
     const state = await req.json();
@@ -106,6 +106,12 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json(result);
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ 
+        success: false, 
+        message: error.message || 'Não autorizado. Faça login novamente.' 
+      }, { status: error.statusCode || 401 });
+    }
     return NextResponse.json({ 
       success: false, 
       message: formatSupabaseError(error) 
