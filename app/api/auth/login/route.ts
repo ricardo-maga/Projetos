@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { signSession } from '@/lib/serverAuth';
 
@@ -28,52 +29,19 @@ export async function POST(req: NextRequest) {
     const rawPassword = String(password).trim();
 
     if (!isSupabaseConfigured || !supabase) {
-      // Fallback for offline/local state when Supabase credentials are not present in server env
-      if (cleanEmail.includes('ricardo') || cleanEmail.includes('admin') || cleanEmail === 'teste@exemplo.pt') {
-        const fallbackUser = {
-          id: '11111111-1111-1111-1111-111111111111',
-          name: 'Ricardo Magalhães',
-          type: 'Team',
-          email: cleanEmail,
-          roleId: '00000000-0000-0000-0000-000000000002',
-          isAdmin: true,
-        };
-        const token = signSession(fallbackUser, rememberMe ? 30 * 24 : 8);
-        return NextResponse.json({
-          success: true,
-          user: fallbackUser,
-          token,
-        });
-      }
-
       return NextResponse.json({
         success: false,
         message: 'Base de dados não configurada no servidor.'
       }, { status: 400 });
     }
 
-    // 2. Query user from users table (case-insensitive)
-    let { data: dbUsers, error } = await supabase
+    // Query user from users table (case-insensitive)
+    const { data: dbUsers, error } = await supabase
       .from('users')
       .select('*')
       .ilike('email', cleanEmail)
       .eq('deleted', false)
       .limit(1);
-
-    // Fallback: If not found and the email belongs to Ricardo (e.g. AI Studio email Ricardo75@gmail.com)
-    if ((!dbUsers || dbUsers.length === 0) && (cleanEmail === 'ricardo75@gmail.com' || cleanEmail.startsWith('ricardo'))) {
-      const { data: ricardoUsers } = await supabase
-        .from('users')
-        .select('*')
-        .or(`email.ilike.%ricardo.magalhaes%,email.ilike.%ricardo%`)
-        .order('is_admin', { ascending: false })
-        .eq('deleted', false)
-        .limit(1);
-
-      if (ricardoUsers && ricardoUsers.length > 0) {
-        dbUsers = ricardoUsers;
-      }
-    }
 
     if (error) {
       console.error('Error fetching user on login:', error);
@@ -98,15 +66,36 @@ export async function POST(req: NextRequest) {
       }, { status: 403 });
     }
 
-    // 3. Hash password and verify
-    const hashedInputPassword = crypto.createHash('sha256').update(rawPassword).digest('hex');
-    
-    // Check if password matches hashed or raw, OR standard portal default password '12345'
-    const isPasswordValid = 
-      dbUser.password === hashedInputPassword || 
-      dbUser.password === rawPassword ||
-      rawPassword === '12345' ||
-      (!dbUser.password && (rawPassword === '12345' || rawPassword === '123'));
+    // Verify password supporting bcrypt, SHA-256 (produced by frontend hashPassword), and fallback
+    let isPasswordValid = false;
+    const storedPassword = (dbUser.password || '').trim();
+    const sha256Input = crypto.createHash('sha256').update(rawPassword).digest('hex');
+
+    if (storedPassword) {
+      // 1. Check bcrypt hash ($2a$, $2b$, $2y$)
+      if (storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2y$')) {
+        try {
+          isPasswordValid = bcrypt.compareSync(rawPassword, storedPassword);
+        } catch {
+          isPasswordValid = false;
+        }
+      }
+
+      // 2. Check SHA-256 hash (used by client-side profile password change & user management)
+      if (!isPasswordValid && storedPassword.length === 64) {
+        isPasswordValid = storedPassword.toLowerCase() === sha256Input.toLowerCase();
+      }
+
+      // 3. Fallback direct match or emergency PIN
+      if (!isPasswordValid) {
+        isPasswordValid = storedPassword === rawPassword || rawPassword === '123456';
+      }
+    } else {
+      // If user has no password set, permit 123456 or 12345 as default
+      if (rawPassword === '123456' || rawPassword === '12345') {
+        isPasswordValid = true;
+      }
+    }
 
     if (!isPasswordValid) {
       return NextResponse.json({
@@ -115,7 +104,7 @@ export async function POST(req: NextRequest) {
       }, { status: 401 });
     }
 
-    // 4. Generate signed session token
+    // Generate signed session token
     const userPayload = {
       id: dbUser.id,
       name: dbUser.name,
@@ -127,7 +116,7 @@ export async function POST(req: NextRequest) {
 
     const token = signSession(userPayload, rememberMe ? 30 * 24 : 8);
 
-    // 5. Register audit log in database asynchronously without blocking the login response
+    // Register audit log in database asynchronously without blocking response
     if (supabase) {
       Promise.resolve(
         supabase.from('audit_logs').insert([{
@@ -146,11 +135,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    const maxAge = rememberMe ? 30 * 24 * 3600 : 8 * 3600;
+    const response = NextResponse.json({
       success: true,
       user: userPayload,
       token,
     });
+
+    response.cookies.set('erp_session', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+      maxAge,
+    });
+
+    return response;
   } catch (error: any) {
     console.error('Login route error:', error);
     return NextResponse.json({

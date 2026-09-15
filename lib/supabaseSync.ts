@@ -606,14 +606,14 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       supabase.from('task_status').select('*').order('scale', { ascending: true }),
       supabase.from('task_types').select('*').order('sort_order', { ascending: true }),
       supabase.from('users').select('*'),
-      Promise.resolve({ data: [], error: null }),
-      Promise.resolve({ data: [], error: null }),
-      Promise.resolve({ data: [], error: null }),
-      Promise.resolve({ data: [], error: null }),
-      Promise.resolve({ data: [], error: null }),
-      Promise.resolve({ data: [], error: null }),
-      Promise.resolve({ data: [], error: null }),
-      Promise.resolve({ data: [], error: null }),
+      supabase.from('clients').select('*').order('created_at', { ascending: false }),
+      supabase.from('projects').select('*').order('created_at', { ascending: false }),
+      supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+      supabase.from('comments').select('*').order('created_at', { ascending: true }),
+      supabase.from('user_absences').select('*'),
+      supabase.from('material').select('*').order('created_at', { ascending: false }),
+      supabase.from('quotes').select('*').order('created_at', { ascending: false }),
+      supabase.from('bill_of_materials').select('*'),
       supabase.from('equipment').select('*').order('created_at', { ascending: false }),
       supabase.from('app_configuration').select('*').limit(1),
       supabase.from('special_days').select('*'),
@@ -621,7 +621,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       supabase.from('risk_categories').select('*').order('sort_order', { ascending: true }),
       supabase.from('risk_statuses').select('*').order('sort_order', { ascending: true }),
       supabase.from('risk_priorities').select('*').order('sort_order', { ascending: true }),
-      Promise.resolve({ data: [], error: null }),
+      supabase.from('project_risk_items').select('*').order('created_at', { ascending: false }),
       supabase.from('ticket_statuses').select('*').order('sort_order', { ascending: true }),
       supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
       supabase.from('automation_rules').select('*').order('created_at', { ascending: false }),
@@ -977,7 +977,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
 
     let tickets: any[] = [];
     try {
-      const resTickets = await Promise.resolve({ data: [], error: null });
+      const resTickets = await supabase.from('tickets').select('*').order('created_at', { ascending: false });
       if (!resTickets.error && resTickets.data) {
         tickets = resTickets.data.map((t: any) => ({
           id: t.id,
@@ -2229,40 +2229,40 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 export const SUPABASE_SETUP_SQL = `-- EXECUTE ESTE SCRIPT NO EDITOR SQL DO SUPABASE (SQL Editor) PARA PERMITIR TRABALHO ONLINE SEM RESTRIÇÕES DE RLS:
 -- 
 
--- Desativar RLS para permitir ligações diretas anónimas da app (método ideal recomendado pelo cliente):
-ALTER TABLE IF EXISTS user_groups DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_status DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_category DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_risk DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_priority DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_teams DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_partners DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS task_status DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS task_types DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS users DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS clients DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS projects DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_risk_link DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_priority_link DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_category_link DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_teams_link DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_partners_link DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS tasks DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS task_assignees DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS comments DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS user_absences DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS app_configuration DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS material DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS quotes DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS bill_of_materials DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS equipment DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS portal_erp_snapshots DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS special_days DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS default_tasks DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS ticket_statuses DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS tickets DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS notifications DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS notification_settings DISABLE ROW LEVEL SECURITY;
+-- Ativar RLS para segurança de dados por função/utilizador
+ALTER TABLE IF EXISTS user_groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_status ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_category ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_risk ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_priority ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_partners ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS task_status ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS task_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_risk_link ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_priority_link ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_category_link ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_teams_link ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_partners_link ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS task_assignees ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS user_absences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS app_configuration ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS material ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS quotes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS bill_of_materials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS equipment ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS portal_erp_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS special_days ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS default_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS ticket_statuses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS notification_settings ENABLE ROW LEVEL SECURITY;
 
 -- ==========================================
 -- MÓDULO DE TICKETS & SUPORTE
@@ -2281,7 +2281,7 @@ ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS scale INT DEFAULT
 ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0;
 ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false;
 ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE IF EXISTS ticket_statuses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS ticket_statuses ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE IF NOT EXISTS tickets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -2330,7 +2330,7 @@ ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
 ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false;
 ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE IF EXISTS tickets DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS tickets ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets (status);
 CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets (assigned_to_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_client_id ON tickets (client_id);
@@ -2348,7 +2348,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     link_url TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
-ALTER TABLE IF EXISTS notifications DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS notifications ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications (user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications (created_at DESC);
 
@@ -2528,10 +2528,10 @@ CREATE TABLE IF NOT EXISTS project_risk_items (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-ALTER TABLE IF EXISTS risk_categories DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS risk_statuses DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS risk_priorities DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS project_risk_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS risk_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS risk_statuses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS risk_priorities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS project_risk_items ENABLE ROW LEVEL SECURITY;
 
 -- Adicionar/Criar tabela de configurações da aplicação
 CREATE TABLE IF NOT EXISTS app_configuration (
@@ -2551,7 +2551,7 @@ CREATE TABLE IF NOT EXISTS app_configuration (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-ALTER TABLE IF EXISTS app_configuration DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS app_configuration ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS sales_rep_group_id TEXT;
 ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS proj_manager_group_id TEXT;
 ALTER TABLE IF EXISTS app_configuration ADD COLUMN IF NOT EXISTS field_manager_group_id TEXT;
@@ -2575,7 +2575,7 @@ CREATE TABLE IF NOT EXISTS automation_rules (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-ALTER TABLE IF EXISTS automation_rules DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS automation_rules ENABLE ROW LEVEL SECURITY;
 
 -- ==========================================
 -- MÓDULO DE REGISTOS DE AUDITORIA (AUDIT LOGS)
@@ -2593,7 +2593,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     details TEXT
 );
 
-ALTER TABLE IF EXISTS audit_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS audit_logs ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs (user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs (entity_type, entity_id);

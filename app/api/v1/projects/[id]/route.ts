@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import { authorizeRequest } from '@/lib/serverAuth';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = authorizeRequest(req, 'projects_read');
+  if ('errorResponse' in auth) return auth.errorResponse;
+
   const { id } = await params;
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
@@ -26,6 +30,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = authorizeRequest(req, 'projects_write');
+  if ('errorResponse' in auth) return auth.errorResponse;
+
   const { id } = await params;
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
@@ -69,6 +76,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = authorizeRequest(req, 'projects_delete');
+  if ('errorResponse' in auth) return auth.errorResponse;
+
   const { id } = await params;
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });

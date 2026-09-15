@@ -6,24 +6,9 @@ import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
+import { getAuthHeaders, getClientUser } from '../lib/clientAuth';
 
 const STORAGE_KEY = 'gestao_projetos_erp_state_v1';
-
-const getAuthHeaders = (): Record<string, string> => {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (typeof window !== 'undefined') {
-    try {
-      const cached = localStorage.getItem('erp_session');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed && parsed.token) {
-          headers['Authorization'] = `Bearer ${parsed.token}`;
-        }
-      }
-    } catch (e) {}
-  }
-  return headers;
-};
 
 // Clean baseline with zero mock entities (no mock clients, projects, tasks or materials)
 const getEmptyState = (): ERPState => ({
@@ -342,18 +327,11 @@ export function useERP() {
     let userEmail = '';
     let userId: string | undefined = undefined;
 
-    if (typeof window !== 'undefined') {
-      try {
-        const sessionStr = localStorage.getItem('erp_session');
-        if (sessionStr) {
-          const session = JSON.parse(sessionStr);
-          if (session?.user) {
-            userId = session.user.id;
-            userName = session.user.name || session.user.email || 'Utilizador';
-            userEmail = session.user.email || '';
-          }
-        }
-      } catch (e) {}
+    const cu = getClientUser();
+    if (cu) {
+      userId = cu.id;
+      userName = cu.name || cu.email || 'Utilizador';
+      userEmail = cu.email || '';
     }
 
     const logItem: import('../lib/types').AuditLog = {
@@ -396,14 +374,47 @@ export function useERP() {
   };
 
   // ==================== PROJECTS CRUD ====================
-  const addProject = async (project: Omit<Project, 'id' | 'deleted' | 'createdDate' | 'updatedDate'>) => {
-    const res = await fetch('/api/v1/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(project)
+  const addProject = (project: Omit<Project, 'id' | 'deleted' | 'createdDate' | 'updatedDate'>) => {
+    const now = new Date().toISOString();
+    const newProj: Project = {
+      ...project,
+      id: genId('p'),
+      deleted: false,
+      createdDate: now,
+      updatedDate: now,
+    };
+    saveState(prev => {
+      let newNotifs = prev.notifications || [];
+      if (newProj.projectManagerId) {
+        newNotifs = [{
+          id: genId('notif'),
+          userId: newProj.projectManagerId,
+          title: `Gestor de Projeto Atribuído: ${newProj.title}`,
+          message: `Foi designado como Gestor do projeto "${newProj.title}".`,
+          isRead: false,
+          createdDate: now,
+          linkUrl: `/projects?project=${newProj.id}`
+        }, ...newNotifs];
+      }
+      if (newProj.fieldManagerId && newProj.fieldManagerId !== newProj.projectManagerId) {
+        newNotifs = [{
+          id: genId('notif'),
+          userId: newProj.fieldManagerId,
+          title: `Encarregado de Obra: ${newProj.title}`,
+          message: `Foi designado como Encarregado de Obra do projeto "${newProj.title}".`,
+          isRead: false,
+          createdDate: now,
+          linkUrl: `/projects?project=${newProj.id}`
+        }, ...newNotifs];
+      }
+      return {
+        ...prev,
+        projects: [newProj, ...prev.projects],
+        notifications: newNotifs
+      };
     });
-    const json = await res.json();
-    return json.data;
+    logAudit('CREATE', 'PROJECT', newProj.id, newProj.title, `Criado o projeto "${newProj.title}" (Cód. Instalação: ${newProj.installProjectNo || 'N/A'})`);
+    return newProj;
   };
 
   const updateProject = (id: string, updates: Partial<Omit<Project, 'id' | 'createdDate'>>) => {
@@ -494,14 +505,75 @@ export function useERP() {
   };
 
   // ==================== TASKS CRUD ====================
-  const addTask = async (task: Omit<Task, 'id' | 'deleted' | 'createdDate' | 'updatedDate'>) => {
-    const res = await fetch('/api/v1/tasks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(task)
+  const addTask = (task: Omit<Task, 'id' | 'deleted' | 'createdDate'>) => {
+    const now = new Date().toISOString();
+    const resolvedStatusId = (() => {
+      if (task.statusId && task.statusId !== 'ts-1') {
+        const match = (state.taskStatuses || []).find(s => s.id === task.statusId || matchTaskStatusId(s.id, task.statusId));
+        if (match) return match.id;
+        return task.statusId;
+      }
+      return getDefaultTaskStatusId(state.taskStatuses || []);
+    })();
+
+    const newTask: Task = {
+      ...task,
+      statusId: resolvedStatusId,
+      id: genId('t'),
+      deleted: false,
+      createdDate: now
+    };
+    logAudit('CREATE', 'TASK', newTask.id, newTask.title, `Criada a tarefa "${newTask.title}"`);
+
+    saveState(prev => {
+      let newTasks = [newTask, ...prev.tasks];
+      let newProjects = prev.projects;
+      let newNotifs = prev.notifications || [];
+
+      // Notificar técnicos alocados à nova tarefa
+      if (newTask.assigneeIds && newTask.assigneeIds.length > 0) {
+        const proj = prev.projects.find(p => p.id === newTask.projectId);
+        const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
+        const taskNotifs = newTask.assigneeIds.map(uid => ({
+          id: genId('notif'),
+          userId: uid,
+          title: `Nova Tarefa Atribuída: ${newTask.title}`,
+          message: `Foi-lhe atribuída a tarefa "${newTask.title}"${projTitle}.`,
+          isRead: false,
+          createdDate: now,
+          linkUrl: `/projects?project=${newTask.projectId}`
+        }));
+        newNotifs = [...taskNotifs, ...newNotifs];
+      }
+
+      // Trigger 'task_created' automations
+      const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_created');
+      for (const rule of activeRules) {
+        for (const action of rule.actions) {
+          if (action.type === 'send_notification') {
+            newNotifs = [{
+              id: genId('notif'),
+              userId: action.params?.targetUserId || 'all',
+              title: action.params?.notificationTitle || 'Nova Tarefa Criada',
+              message: action.params?.notificationMessage || `Nova tarefa "${newTask.title}" adicionada.`,
+              isRead: false,
+              createdDate: now,
+              linkUrl: `/projects?project=${newTask.projectId}`
+            }, ...newNotifs];
+          } else if (action.type === 'change_project_status' && action.params?.targetStatusId) {
+            newProjects = newProjects.map(p => p.id === newTask.projectId ? { ...p, statusId: action.params!.targetStatusId!, updatedDate: now } : p);
+          }
+        }
+      }
+
+      return {
+        ...prev,
+        tasks: newTasks,
+        projects: newProjects,
+        notifications: newNotifs
+      };
     });
-    const json = await res.json();
-    return json.data;
+    return newTask;
   };
 
   const addTasks = (tasksList: Omit<Task, 'id' | 'deleted' | 'createdDate'>[]) => {

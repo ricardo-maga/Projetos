@@ -8,8 +8,12 @@ import {
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { Task } from '@/lib/types';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '@/lib/utils';
+import { authorizeRequest } from '@/lib/serverAuth';
 
 export async function GET(req: NextRequest) {
+  const auth = authorizeRequest(req, 'tasks_read');
+  if ('errorResponse' in auth) return auth.errorResponse;
+
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
   }
@@ -80,6 +84,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = authorizeRequest(req, 'tasks_write');
+  if ('errorResponse' in auth) return auth.errorResponse;
+
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
   }

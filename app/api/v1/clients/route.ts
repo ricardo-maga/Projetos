@@ -1,38 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { formatSupabaseError } from '@/lib/supabaseSync';
-import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
+import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
+import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import { Client } from '@/lib/types';
+import { authorizeRequest } from '@/lib/serverAuth';
 
-export async function GET() {
-  if (!isSupabaseConfigured || !supabase) {
+export async function GET(req: NextRequest) {
+  const auth = authorizeRequest(req, 'clients_read');
+  if ('errorResponse' in auth) return auth.errorResponse;
+
+  if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
   }
+
   try {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('deleted', false)
-      .order('created_at', { ascending: false });
+    const result = await getActiveStateFromSupabase();
+    if (!result.success || !result.data) {
+      return NextResponse.json(result, { status: 500 });
+    }
 
-    if (error) throw error;
-    
-    // transform keys to camelCase if needed, but the client expects camelCase.
-    // The DB uses snake_case, but actually the types and save logic in lib/supabaseSync might map them.
-    // Let's check how the DB schema is.
-    // Actually, saveActiveStateToSupabase maps them. We should just return the data.
-    const clients = (data || []).map(c => ({
-      id: c.id,
-      clientName: c.client_name || c.clientName,
-      shortName: c.short_name || c.shortName,
-      location: c.location,
-      taxId: c.tax_id || c.taxId,
-      contactPerson: c.contact_person || c.contactPerson,
-      contactEmail: c.contact_email || c.contactEmail,
-      contactPhone: c.contact_phone || c.contactPhone,
-      notes: c.notes,
-      deleted: c.deleted,
-      createdDate: c.created_at || c.createdDate
-    }));
-
+    const clients = (result.data.clients || []).filter((c: any) => !c.deleted);
     return NextResponse.json({ success: true, count: clients.length, data: clients });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
@@ -40,9 +26,13 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isSupabaseConfigured || !supabase) {
+  const auth = authorizeRequest(req, 'clients_write');
+  if ('errorResponse' in auth) return auth.errorResponse;
+
+  if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
   }
+
   try {
     const body = await req.json();
     const clientName = body.clientName || body.name;
@@ -50,33 +40,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'O campo "clientName" ou "name" é obrigatório.' }, { status: 400 });
     }
 
-    const newClient = {
+    const result = await getActiveStateFromSupabase();
+    if (!result.success || !result.data) {
+      return NextResponse.json(result, { status: 500 });
+    }
+
+    const currentState = result.data;
+    const newClient: Client = {
       id: crypto.randomUUID(),
-      client_name: clientName,
-      short_name: body.shortName || clientName.substring(0, 10),
+      clientName: clientName,
+      shortName: body.shortName || clientName.substring(0, 10),
       location: body.location || body.address || '',
-      tax_id: body.taxId || body.nif || '',
-      contact_person: body.contactPerson || '',
-      contact_email: body.contactEmail || body.email || '',
-      contact_phone: body.contactPhone || body.phone || '',
+      taxId: body.taxId || body.nif || '',
+      contactPerson: body.contactPerson || '',
+      contactEmail: body.contactEmail || body.email || '',
+      contactPhone: body.contactPhone || body.phone || '',
       notes: body.notes || '',
       deleted: false,
+      createdDate: new Date().toISOString()
     };
 
-    const { error } = await supabase.from('clients').insert([newClient]);
-    if (error) throw error;
+    currentState.clients = [newClient, ...(currentState.clients || [])];
+    const saveResult = await saveActiveStateToSupabase(currentState);
 
-    const returnClient = {
-      ...newClient,
-      clientName: newClient.client_name,
-      shortName: newClient.short_name,
-      taxId: newClient.tax_id,
-      contactPerson: newClient.contact_person,
-      contactEmail: newClient.contact_email,
-      contactPhone: newClient.contact_phone,
-    };
+    if (!saveResult.success) {
+      return NextResponse.json(saveResult, { status: 500 });
+    }
 
-    return NextResponse.json({ success: true, message: 'Cliente criado com sucesso.', data: returnClient }, { status: 201 });
+    return NextResponse.json({ success: true, message: 'Cliente criado com sucesso.', data: newClient }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
   }

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 
 import { hashPassword } from '../lib/utils';
+import { getClientToken, getClientUser, setClientSession, clearClientSession } from '../lib/clientAuth';
 
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
@@ -53,50 +54,57 @@ export default function Page() {
   const [changePasswordError, setChangePasswordError] = useState('');
   const [changePasswordSuccess, setChangePasswordSuccess] = useState(false);
 
-  // Restore session and set mounted status on mount
+  // Restore session and set mounted status on mount (supports cookies and authorization token in iframes)
   React.useEffect(() => {
     const restoreSession = async () => {
-      if (typeof window !== 'undefined') {
-        const sessionStr = localStorage.getItem('erp_session');
-        if (sessionStr) {
-          try {
-            const session = JSON.parse(sessionStr);
-            if (Date.now() < session.expiresAt && session.token) {
-              if (session.user) {
-                setCurrentUser(session.user);
-              }
-              try {
-                const res = await fetch('/api/auth/session', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ token: session.token })
-                });
-                const contentType = res.headers.get('content-type') || '';
-                if (res.ok && contentType.includes('application/json')) {
-                  const data = await res.json();
-                  if (data && data.success) {
-                    setCurrentUser(data.user);
-                  } else {
-                    console.warn('Sessão inválida ou expirada no servidor');
-                    localStorage.removeItem('erp_session');
-                    setCurrentUser(null);
-                  }
-                } else {
-                  console.warn('Servidor respondeu com erro ao verificar sessão');
-                }
-              } catch (fetchErr) {
-                console.warn('Erro na verificação de sessão com o servidor:', fetchErr);
-              }
+      try {
+        const token = getClientToken();
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const res = await fetch('/api/auth/session', {
+          method: token ? 'POST' : 'GET',
+          headers,
+          body: token ? JSON.stringify({ token }) : undefined,
+        });
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data && data.success && data.user) {
+            setCurrentUser(data.user);
+            if (token) {
+              setClientSession(token, data.user);
+            }
+          } else {
+            clearClientSession();
+            setCurrentUser(null);
+          }
+        } else {
+          if (res.status === 401) {
+            clearClientSession();
+            setCurrentUser(null);
+          } else {
+            const cached = getClientUser();
+            if (cached && token) {
+              setCurrentUser(cached);
             } else {
-              localStorage.removeItem('erp_session');
               setCurrentUser(null);
             }
-          } catch (e) {
-            console.error('Error parsing erp_session:', e);
           }
         }
+      } catch (fetchErr) {
+        console.warn('Erro na verificação de sessão com o servidor:', fetchErr);
+        const cached = getClientUser();
+        const token = getClientToken();
+        if (cached && token) {
+          setCurrentUser(cached);
+        } else {
+          setCurrentUser(null);
+        }
+      } finally {
+        setMounted(true);
       }
-      setMounted(true);
     };
     restoreSession();
   }, []);
@@ -298,13 +306,9 @@ export default function Page() {
       const data = await res.json();
       if (data.success) {
         setLoginStatusMessage('Autenticado com sucesso! A carregar sistema...');
-        const expireHours = rememberMe ? 30 * 24 : 8;
-        const expiresAt = Date.now() + expireHours * 60 * 60 * 1000;
-        localStorage.setItem('erp_session', JSON.stringify({ 
-          user: data.user, 
-          token: data.token, 
-          expiresAt 
-        }));
+        if (data.token) {
+          setClientSession(data.token, data.user, rememberMe);
+        }
         
         // Show loading screen immediately and activate user session
         setIsTransitioning(true);
@@ -361,20 +365,6 @@ export default function Page() {
       
       const updatedUser = { ...currentUser, ...updates };
       setCurrentUser(updatedUser);
-
-      // update session storage
-      if (typeof window !== 'undefined') {
-        const sessionStr = localStorage.getItem('erp_session');
-        if (sessionStr) {
-          try {
-            const session = JSON.parse(sessionStr);
-            session.user = updatedUser;
-            localStorage.setItem('erp_session', JSON.stringify(session));
-          } catch (e2) {
-            console.error(e2);
-          }
-        }
-      }
     }
     
     setChangePasswordSuccess(true);
@@ -631,8 +621,9 @@ export default function Page() {
                   details: `Sessão terminada por ${currentUser.name}`
                 }).catch(() => {});
               }
+              clearClientSession();
+              fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
               setCurrentUser(null);
-              localStorage.removeItem('erp_session');
             }}
             className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
             title="Terminar sessão"

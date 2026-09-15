@@ -12,21 +12,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 1. Parse Authorization header
-    const authHeader = req.headers.get('Authorization');
-    let token = '';
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
-
-    const session = verifySession(token);
+    const session = verifySession(req);
     const result = await getActiveStateFromSupabase();
 
     if (!result.success || !result.data) {
       return NextResponse.json(result);
     }
 
-    // 2. Strip passwords for EVERYONE (including authenticated users) for maximum security
+    // Strip passwords for EVERYONE for maximum security
     if (result.data.users) {
       result.data.users = result.data.users.map((u: any) => {
         const { password, ...rest } = u;
@@ -34,15 +27,14 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 3. If there is no valid session, return ONLY non-confidential configuration and user profiles (with passwords stripped)
+    // If there is no valid session, return ONLY non-confidential configuration and user profiles (with passwords stripped)
     if (!session) {
       return NextResponse.json({
         success: true,
         data: {
           appConfig: result.data.appConfig,
           userGroups: result.data.userGroups,
-          users: result.data.users || [], // passwords already stripped above
-          // Empty arrays for confidential info to prevent leaks
+          users: result.data.users || [],
           projects: [],
           tasks: [],
           clients: [],
@@ -76,14 +68,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 1. Verify Session Token
-    const authHeader = req.headers.get('Authorization');
-    let token = '';
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
-
-    const session = verifySession(token);
+    const session = verifySession(req);
     if (!session) {
       return NextResponse.json({ 
         success: false, 
@@ -91,7 +76,7 @@ export async function POST(req: NextRequest) {
       }, { status: 401 });
     }
 
-    // 2. Extract state
+    // Extract state
     const state = await req.json();
 
     // 3. Preserve existing password hashes from DB so we don't overwrite them with nulls/empty strings

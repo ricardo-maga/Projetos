@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Client } from '../lib/types';
 import { Plus, Search, Edit2, Trash2, Building, Mail, Phone, MapPin, Hash, X, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
 import { hasPermission } from '../lib/permissions';
+import { getAuthHeaders } from '../lib/clientAuth';
 
 interface ClientSectionProps {
   clients: Client[];
@@ -80,7 +81,7 @@ export default function ClientSection({
     const fetchClients = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch('/api/v1/clients');
+        const res = await fetch('/api/v1/clients', { headers: getAuthHeaders() });
         const json = await res.json();
         if (json.success && isMounted) setServerClients(json.data);
       } catch (err) {} finally {

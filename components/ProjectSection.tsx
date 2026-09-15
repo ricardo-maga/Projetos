@@ -14,6 +14,7 @@ import TaskDetailsModal from './TaskDetailsModal';
 
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
+import { getAuthHeaders } from '../lib/clientAuth';
 import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours } from '../lib/utils';
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
@@ -856,7 +857,7 @@ export default function ProjectSection({
           statusId: filterStatus,
           managerId: filterManager
         });
-        const res = await fetch(`/api/v1/projects?${query.toString()}`);
+        const res = await fetch(`/api/v1/projects?${query.toString()}`, { headers: getAuthHeaders() });
         const result = await res.json();
         if (result.success && isMounted) {
           setServerProjects(result.data);
@@ -873,14 +874,16 @@ export default function ProjectSection({
   }, [projectCurrentPage, projectPageSize, search, filterCategory, filterStatus, filterManager, selectedProjectId, projects, refreshTrigger]); // Re-run if 'projects' prop changes as a fallback refresh
 
   useEffect(() => {
+    let isMounted = true;
     if (!selectedProjectId) {
-      setServerSelectedProj(null);
+      Promise.resolve().then(() => {
+        if (isMounted) setServerSelectedProj(null);
+      });
       return;
     }
-    let isMounted = true;
     const fetchDetails = async () => {
       try {
-        const res = await fetch(`/api/v1/projects/${selectedProjectId}`);
+        const res = await fetch(`/api/v1/projects/${selectedProjectId}`, { headers: getAuthHeaders() });
         if (res.ok) {
           const result = await res.json();
           if (result.success && isMounted) setServerSelectedProj(result.data);
@@ -888,7 +891,7 @@ export default function ProjectSection({
       } catch (err) {}
       
       try {
-        const taskRes = await fetch(`/api/v1/tasks?projectId=${selectedProjectId}`);
+        const taskRes = await fetch(`/api/v1/tasks?projectId=${selectedProjectId}`, { headers: getAuthHeaders() });
         if (taskRes.ok) {
           const taskResult = await taskRes.json();
           if (taskResult.success && isMounted) setServerTasks(taskResult.data);
@@ -903,7 +906,9 @@ export default function ProjectSection({
   const activeProjects = serverProjects.length > 0 ? serverProjects : projects.filter(p => !p.deleted);
   const paginatedProjects = serverProjects.length > 0 ? serverProjects : projects.filter(p => !p.deleted).slice((projectCurrentPage - 1) * projectPageSize, projectCurrentPage * projectPageSize);
   const totalProjects = serverProjects.length > 0 ? totalServerProjects : projects.filter(p => !p.deleted).length;
-  const startProjectIndex = (projectCurrentPage - 1) * projectPageSize;
+  const totalProjectPages = Math.max(1, Math.ceil(totalProjects / projectPageSize));
+  const validProjectPage = Math.min(projectCurrentPage, totalProjectPages);
+  const startProjectIndex = (validProjectPage - 1) * projectPageSize;
   const endProjectIndex = startProjectIndex + paginatedProjects.length;
   
   const selectedProj = serverSelectedProj || activeProjects.find(p => p.id === selectedProjectId);
@@ -4172,7 +4177,7 @@ export default function ProjectSection({
 
           {/* Table list output */}
           <div className="overflow-x-auto w-full">
-            {filteredProjects.length === 0 ? (
+            {paginatedProjects.length === 0 ? (
               <div className="p-10 text-center text-slate-400 font-medium text-xs">Nenhum projeto encontrado para os filtros selecionados.</div>
             ) : (
               <table className="w-full min-w-[700px] text-left border-collapse">

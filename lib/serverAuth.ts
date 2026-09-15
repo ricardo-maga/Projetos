@@ -1,6 +1,14 @@
 import crypto from 'crypto';
+import { NextRequest, NextResponse } from 'next/server';
+import { hasPermission, GroupPermissions } from './permissions';
 
-const SECRET = process.env.JWT_SECRET || 'a-very-secure-fallback-secret-for-erp-portal-2026';
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('CRITICAL SECURITY ERROR: JWT_SECRET environment variable is not defined.');
+  }
+  return secret;
+}
 
 export interface SessionPayload {
   id: string;
@@ -16,6 +24,7 @@ export interface SessionPayload {
  * Signs a JSON Web Token payload with HS256 algorithm and returns the token string
  */
 export function signSession(payload: Omit<SessionPayload, 'exp'>, expiresInHours: number = 8): string {
+  const secret = getJwtSecret();
   const exp = Math.floor(Date.now() / 1000) + (expiresInHours * 3600);
   const fullPayload: SessionPayload = { ...payload, exp };
   
@@ -24,7 +33,7 @@ export function signSession(payload: Omit<SessionPayload, 'exp'>, expiresInHours
   
   const signatureInput = `${header}.${body}`;
   const signature = crypto
-    .createHmac('sha256', SECRET)
+    .createHmac('sha256', secret)
     .update(signatureInput)
     .digest('base64url');
     
@@ -34,16 +43,37 @@ export function signSession(payload: Omit<SessionPayload, 'exp'>, expiresInHours
 /**
  * Verifies and decodes a signed session token, returning payload or null if invalid/expired
  */
-export function verifySession(token: string): SessionPayload | null {
+export function verifySession(tokenOrReq: string | NextRequest | null | undefined): SessionPayload | null {
+  if (!tokenOrReq) return null;
+
+  let token: string | null = null;
+  if (typeof tokenOrReq === 'string') {
+    token = tokenOrReq;
+  } else if (tokenOrReq && typeof tokenOrReq === 'object') {
+    // 1. Try cookie first
+    const cookieToken = tokenOrReq.cookies?.get?.('erp_session')?.value;
+    if (cookieToken) {
+      token = cookieToken;
+    } else {
+      // 2. Try Authorization Bearer header
+      const authHeader = tokenOrReq.headers?.get?.('authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7).trim();
+      }
+    }
+  }
+
   if (!token) return null;
+
   try {
+    const secret = getJwtSecret();
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     
     const [header, body, signature] = parts;
     const signatureInput = `${header}.${body}`;
     const expectedSignature = crypto
-      .createHmac('sha256', SECRET)
+      .createHmac('sha256', secret)
       .update(signatureInput)
       .digest('base64url');
       
@@ -64,3 +94,33 @@ export function verifySession(token: string): SessionPayload | null {
     return null;
   }
 }
+
+/**
+ * Authorizes an incoming NextRequest for a given permission code
+ */
+export function authorizeRequest(
+  req: NextRequest,
+  requiredPermission?: keyof GroupPermissions
+): { session: SessionPayload } | { errorResponse: NextResponse } {
+  const session = verifySession(req);
+  if (!session) {
+    return {
+      errorResponse: NextResponse.json(
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Sessão inválida ou expirada. Autenticação necessária.' } },
+        { status: 401 }
+      )
+    };
+  }
+
+  if (requiredPermission && !hasPermission(session, requiredPermission)) {
+    return {
+      errorResponse: NextResponse.json(
+        { success: false, error: { code: 'FORBIDDEN', message: 'Sem permissão para realizar esta operação.' } },
+        { status: 403 }
+      )
+    };
+  }
+
+  return { session };
+}
+
