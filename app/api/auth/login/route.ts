@@ -143,33 +143,18 @@ export async function POST(req: NextRequest) {
       return forbidden('Este utilizador ainda aguarda aprovação por um administrador.', requestId);
     }
 
-    // Verify password supporting bcrypt, SHA-256, and emergency fallback
+    // Verify password supporting ONLY valid bcrypt hash during legacy migration
     let isPasswordValid = false;
     const storedPassword = (dbUser.password || '').trim();
-    const sha256Input = crypto.createHash('sha256').update(rawPassword).digest('hex');
 
-    if (storedPassword) {
-      // Check bcrypt hash
-      if (storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2y$')) {
-        try {
-          isPasswordValid = bcrypt.compareSync(rawPassword, storedPassword);
-        } catch {
-          isPasswordValid = false;
-        }
-      }
-
-      // Check SHA-256 hash (used by earlier client hash helper)
-      if (!isPasswordValid && storedPassword.length === 64) {
-        isPasswordValid = storedPassword.toLowerCase() === sha256Input.toLowerCase();
-      }
-
-      // Fallback direct match or emergency PIN (especially for ricardo.magalhaes@domino-portugal.com)
-      if (!isPasswordValid) {
-        isPasswordValid = storedPassword === rawPassword || rawPassword === '123456';
-      }
-    } else {
-      if (rawPassword === '123456' || rawPassword === '12345') {
-        isPasswordValid = true;
+    if (
+      storedPassword &&
+      (storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2y$'))
+    ) {
+      try {
+        isPasswordValid = bcrypt.compareSync(rawPassword, storedPassword);
+      } catch {
+        isPasswordValid = false;
       }
     }
 
