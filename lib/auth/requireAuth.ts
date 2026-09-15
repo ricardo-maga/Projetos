@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { GroupPermissions, getGroupPermissions } from '@/lib/permissions';
 
 export interface AuthenticatedUser {
   id: string;
@@ -16,6 +17,16 @@ export class AuthError extends Error {
   constructor(message: string = 'Sessão inválida ou expirada.', statusCode: number = 401) {
     super(message);
     this.name = 'AuthError';
+    this.statusCode = statusCode;
+  }
+}
+
+export class ForbiddenError extends Error {
+  public statusCode: number;
+
+  constructor(message: string = 'Sem permissão para realizar esta operação.', statusCode: number = 403) {
+    super(message);
+    this.name = 'ForbiddenError';
     this.statusCode = statusCode;
   }
 }
@@ -65,3 +76,28 @@ export async function requireAuth(): Promise<AuthenticatedUser> {
     type: dbUser.type || 'standard',
   };
 }
+
+/**
+ * Função central para validar autenticação e permissão via Supabase Auth e matriz de grupos.
+ */
+export async function requirePermission(
+  permissionCode: keyof GroupPermissions
+): Promise<AuthenticatedUser> {
+  const user = await requireAuth();
+
+  // 1. Administrador tem acesso irrestrito
+  if (user.is_admin === true || user.role_id === 'ug-1') {
+    return user;
+  }
+
+  // 2. Obter permissões do grupo do utilizador
+  const permissions = getGroupPermissions(user.role_id);
+
+  // 3. Verificar permissão solicitada
+  if (!permissions[permissionCode]) {
+    throw new ForbiddenError('Sem permissão para realizar esta operação.');
+  }
+
+  return user;
+}
+
