@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient as createServerClient } from '@/lib/supabase/server';
 import { unauthorized, forbidden } from '@/lib/apiErrors';
-import { GroupPermissions, hasPermission as checkPermissionLegacy, DEFAULT_PERMISSIONS } from '@/lib/permissions';
-import { verifySession as verifyLegacySession } from '@/lib/serverAuth';
-import { supabase as fallbackSupabase } from '@/lib/supabaseClient';
+import { GroupPermissions, getGroupPermissions } from '@/lib/permissions';
+import {
+  requireAuth as requireCentralAuth,
+  requirePermission as requireCentralPermission,
+  AuthError,
+  ForbiddenError,
+  AuthenticatedUser as CentralUser,
+} from './requireAuth';
 
 export interface AuthenticatedUser {
   id: string;
@@ -24,132 +28,76 @@ export type AuthResult =
 
 /**
  * Validates whether the incoming request has an authenticated and active user session.
- * Checks Supabase Auth SSR session first, with transitional migration support for legacy tokens.
+ * Delegates to central requireAuth() in lib/auth/requireAuth.ts (Supabase Auth SSR).
  */
-export async function requireAuth(req: NextRequest): Promise<AuthResult> {
-  const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
+export async function requireAuth(req?: NextRequest): Promise<AuthResult> {
+  const requestId = req?.headers?.get('x-request-id') || crypto.randomUUID();
 
   try {
-    const supabase = await createServerClient();
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    const centralUser = await requireCentralAuth();
+    const permissions = getGroupPermissions(centralUser.role_id);
 
-    if (authUser && authUser.email) {
-      // User is authenticated via Supabase Auth SSR!
-      // Fetch user profile from database
-      const { data: profile, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .or(`id.eq.${authUser.id},email.ilike.${authUser.email}`)
-        .limit(1)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error('[AUTH ERROR] Error fetching user profile:', profileError);
-      }
-
-      if (profile && profile.deleted) {
-        return {
-          success: false,
-          response: unauthorized('A sua conta foi desativada.', requestId),
-        };
-      }
-
-      if (profile && profile.approved === false) {
-        return {
-          success: false,
-          response: unauthorized('A sua conta aguarda aprovação por um administrador.', requestId),
-        };
-      }
-
-      const isAdmin = profile ? !!profile.is_admin : (authUser.app_metadata?.role === 'admin' || authUser.app_metadata?.role === 'SUPER_ADMIN');
-      const isSuperAdmin = isAdmin; // Admins have root privileges
-      const roleId = profile?.role_id || (isAdmin ? 'ug-1' : 'ug-5');
-
-      const permissions = (DEFAULT_PERMISSIONS as any)[roleId] || DEFAULT_PERMISSIONS['ug-5'];
-
-      const user: AuthenticatedUser = {
-        id: profile?.id || authUser.id,
-        email: authUser.email,
-        name: profile?.name || authUser.user_metadata?.name || authUser.email.split('@')[0],
-        roleId,
-        isAdmin,
-        isSuperAdmin,
-        approved: profile ? profile.approved : true,
-        permissions,
-      };
-
-      return { success: true, user, requestId };
-    }
-
-    // Transitional migration layer: support verifying existing verified sessions during migration
-    // without permitting hardcoded or weak credentials.
-    const legacySession = verifyLegacySession(req);
-    if (legacySession) {
-      const sb = fallbackSupabase;
-      let isStillActive = true;
-
-      if (sb) {
-        const { data: dbUser } = await sb.from('users').select('id, approved, deleted').eq('id', legacySession.id).maybeSingle();
-        if (dbUser && (dbUser.deleted || !dbUser.approved)) {
-          isStillActive = false;
-        }
-      }
-
-      if (isStillActive) {
-        const permissions = (DEFAULT_PERMISSIONS as any)[legacySession.roleId] || (legacySession.isAdmin ? DEFAULT_PERMISSIONS['ug-1'] : DEFAULT_PERMISSIONS['ug-5']);
-        const user: AuthenticatedUser = {
-          id: legacySession.id,
-          email: legacySession.email,
-          name: legacySession.name,
-          roleId: legacySession.roleId,
-          isAdmin: !!legacySession.isAdmin,
-          isSuperAdmin: !!legacySession.isAdmin,
-          approved: true,
-          permissions,
-        };
-
-        return { success: true, user, requestId };
-      }
-    }
-
-    return {
-      success: false,
-      response: unauthorized('Sessão inválida ou expirada. Faça login novamente.', requestId),
+    const user: AuthenticatedUser = {
+      id: centralUser.id,
+      email: centralUser.email,
+      name: centralUser.name,
+      type: centralUser.type,
+      roleId: centralUser.role_id,
+      isAdmin: centralUser.is_admin,
+      isSuperAdmin: centralUser.is_admin,
+      approved: true,
+      permissions,
     };
+
+    return { success: true, user, requestId };
   } catch (error: any) {
-    console.error('[AUTH EXCEPTION] Error in requireAuth:', error);
+    const message = error instanceof AuthError ? error.message : 'Sessão inválida ou expirada. Faça login novamente.';
     return {
       success: false,
-      response: unauthorized('Falha na validação de sessão.', requestId),
+      response: unauthorized(message, requestId),
     };
   }
 }
 
 /**
  * Validates that the request has an active session AND the user possesses the required permission.
+ * Uses central requireAuth() / requirePermission() from lib/auth/requireAuth.ts.
  */
+export async function requirePermission(
+  permissionCode: keyof GroupPermissions
+): Promise<CentralUser>;
 export async function requirePermission(
   req: NextRequest,
   permissionCode: keyof GroupPermissions | string
-): Promise<AuthResult> {
+): Promise<AuthResult>;
+export async function requirePermission(
+  reqOrPermissionCode: NextRequest | keyof GroupPermissions,
+  permissionCode?: keyof GroupPermissions | string
+): Promise<AuthResult | CentralUser> {
+  if (typeof reqOrPermissionCode === 'string') {
+    return requireCentralPermission(reqOrPermissionCode as keyof GroupPermissions);
+  }
+
+  const req = reqOrPermissionCode as NextRequest;
+  const permCode = permissionCode as keyof GroupPermissions;
+  const requestId = req?.headers?.get('x-request-id') || crypto.randomUUID();
+
   const authResult = await requireAuth(req);
   if (!authResult.success) {
     return authResult;
   }
 
-  const { user, requestId } = authResult;
+  const { user } = authResult;
 
-  // Admins and Super Admins bypass permission checks
-  if (user.isAdmin || user.isSuperAdmin) {
+  if (user.isAdmin || user.isSuperAdmin || user.roleId === 'ug-1') {
     return authResult;
   }
 
-  // Check specific permission
-  const userPerms = user.permissions || {};
-  if ((userPerms as any)[permissionCode] !== true) {
+  const userPerms = user.permissions || getGroupPermissions(user.roleId);
+  if (!userPerms[permCode]) {
     return {
       success: false,
-      response: forbidden(`Sem permissão para realizar esta operação (${permissionCode}).`, requestId),
+      response: forbidden('Sem permissão para realizar esta operação.', requestId),
     };
   }
 
@@ -159,7 +107,7 @@ export async function requirePermission(
 /**
  * Validates that the request has an active session AND the user has Admin or Super Admin role.
  */
-export async function requireAdmin(req: NextRequest): Promise<AuthResult> {
+export async function requireAdmin(req?: NextRequest): Promise<AuthResult> {
   const authResult = await requireAuth(req);
   if (!authResult.success) {
     return authResult;
@@ -178,11 +126,12 @@ export async function requireAdmin(req: NextRequest): Promise<AuthResult> {
 /**
  * Convenience helper to authenticate request
  */
-export async function authenticateRequest(req: NextRequest): Promise<{ authenticated: boolean; user?: AuthenticatedUser; requestId: string }> {
+export async function authenticateRequest(req?: NextRequest): Promise<{ authenticated: boolean; user?: AuthenticatedUser; requestId: string }> {
   const authResult = await requireAuth(req);
   if (!authResult.success) {
-    const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
+    const requestId = req?.headers?.get('x-request-id') || crypto.randomUUID();
     return { authenticated: false, requestId };
   }
   return { authenticated: true, user: authResult.user, requestId: authResult.requestId };
 }
+
