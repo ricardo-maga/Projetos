@@ -1,147 +1,195 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getActiveStateFromSupabase, 
-  saveActiveStateToSupabase, 
-  formatSupabaseError,
-  fetchPaginatedProjectsDirectly 
-} from '@/lib/supabaseSync';
-import { isSupabaseConfigured } from '@/lib/supabaseClient';
-import { Project } from '@/lib/types';
-import { authorizeRequest } from '@/lib/serverAuth';
+import { requirePermission } from '@/lib/auth/authorization';
+import { createProjectSchema, queryProjectSchema } from '@/lib/validations/project';
+import { validationError, badRequest, internalServerError } from '@/lib/apiErrors';
+import { logAuditEvent } from '@/lib/audit';
+import { createClient } from '@/lib/supabase/server';
+import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
 export async function GET(req: NextRequest) {
-  const auth = authorizeRequest(req, 'projects_read');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'projects_read');
+  if (!auth.success) return auth.response;
 
-  if (!isSupabaseConfigured) {
-    return NextResponse.json({ success: false, message: 'Supabase não está configurado.' }, { status: 400 });
+  const { requestId } = auth;
+  const url = new URL(req.url);
+  const rawParams = Object.fromEntries(url.searchParams.entries());
+
+  const parseResult = queryProjectSchema.safeParse(rawParams);
+  if (!parseResult.success) {
+    return validationError('Parâmetros de consulta inválidos.', requestId, parseResult.error.flatten());
   }
 
+  const { page, pageSize, search, statusId, categoryId, managerId, clientId } = parseResult.data;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
   try {
-    const { searchParams } = new URL(req.url);
-    const pageParam = searchParams.get('page');
-    const pageSizeParam = searchParams.get('pageSize') || searchParams.get('limit');
-    const search = searchParams.get('search') || '';
-    const statusId = searchParams.get('statusId') || '';
-    const categoryId = searchParams.get('categoryId') || '';
-    const managerId = searchParams.get('managerId') || '';
-
-    // If explicit pagination requested, use high performance direct SQL query
-    if (pageParam || pageSizeParam) {
-      const page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
-      const pageSize = Math.min(100, Math.max(1, parseInt(pageSizeParam || '25', 10) || 25));
-
-      const paginated = await fetchPaginatedProjectsDirectly({
-        page,
-        pageSize,
-        search,
-        statusId,
-        categoryId,
-        managerId,
-      });
-
-      return NextResponse.json({
-        success: paginated.success,
-        count: paginated.data.length,
-        total: paginated.total,
-        page: paginated.page,
-        pageSize: paginated.pageSize,
-        totalPages: paginated.totalPages,
-        data: paginated.data,
-      });
+    const sb = (await createClient()) || defaultSupabase;
+    if (!sb) {
+      return internalServerError('Base de dados Supabase não disponível.', requestId);
     }
 
-    const result = await getActiveStateFromSupabase();
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
+    let query = sb
+      .from('projects')
+      .select('*', { count: 'exact' })
+      .eq('deleted', false);
+
+    if (search && search.trim()) {
+      const q = `%${search.trim()}%`;
+      query = query.or(`project_title.ilike.${q},install_project_no.ilike.${q},description.ilike.${q}`);
+    }
+    if (statusId) query = query.eq('status_id', statusId);
+    if (categoryId) query = query.eq('category_id', categoryId);
+    if (managerId) query = query.eq('project_manager_id', managerId);
+    if (clientId) query = query.eq('client_id', clientId);
+
+    const { data: rows, count, error } = await query
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      console.error('[API PROJECTS GET ERROR]', error);
+      return internalServerError(`Erro ao consultar projetos: ${error.message}`, requestId);
     }
 
-    let projects = (result.data.projects || []).filter((p: any) => !p.deleted);
-    if (search) {
-      const q = search.toLowerCase();
-      projects = projects.filter((p: any) => 
-        (p.title && p.title.toLowerCase().includes(q)) ||
-        (p.installProjectNo && p.installProjectNo.toLowerCase().includes(q)) ||
-        (p.description && p.description.toLowerCase().includes(q))
-      );
-    }
-    if (statusId) {
-      projects = projects.filter((p: any) => p.statusId === statusId);
-    }
-    if (categoryId) {
-      projects = projects.filter((p: any) => p.categoryId === categoryId || (p.categoryIds && p.categoryIds.includes(categoryId)));
-    }
-    if (managerId) {
-      projects = projects.filter((p: any) => p.projectManagerId === managerId);
-    }
+    const total = count || 0;
+    const totalPages = Math.ceil(total / pageSize);
 
-    return NextResponse.json({ success: true, count: projects.length, data: projects });
+    // Map database snake_case to domain model
+    const mappedProjects = (rows || []).map((row: any) => ({
+      id: row.id,
+      title: row.project_title || row.title,
+      clientId: row.client_id || row.clientId,
+      installProjectNo: row.install_project_no || row.installProjectNo || '',
+      description: row.description || '',
+      statusId: row.status_id || row.statusId || 'ps-1',
+      categoryId: row.category_id || row.categoryId || 'pc-1',
+      priorityId: row.priority_id || row.priorityId || 'pp-1',
+      riskId: row.risk_id || row.riskId || 'pr-1',
+      projectManagerId: row.project_manager_id || row.projectManagerId || '',
+      startDate: row.start_date || '',
+      deliveryDate: row.delivery_date || '',
+      scheduledDate: row.scheduled_date || '',
+      completedDate: row.completed_date || '',
+      isUrgent: Boolean(row.is_urgent),
+      color: row.color || '',
+      notes: row.notes || '',
+      version: row.version || 1,
+      deleted: Boolean(row.deleted),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      createdBy: row.created_by,
+      updatedBy: row.updated_by,
+    }));
+
+    return NextResponse.json({
+      success: true,
+      count: mappedProjects.length,
+      total,
+      page,
+      pageSize,
+      totalPages,
+      data: mappedProjects,
+    });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    console.error('[API PROJECTS GET EXCEPTION]', error);
+    return internalServerError('Falha inesperada ao obter projetos.', requestId);
   }
 }
 
 export async function POST(req: NextRequest) {
-  const auth = authorizeRequest(req, 'projects_write');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'projects_write');
+  if (!auth.success) return auth.response;
 
-  if (!isSupabaseConfigured) {
-    return NextResponse.json({ success: false, message: 'Supabase não está configurado.' }, { status: 400 });
-  }
+  const { user, requestId } = auth;
 
   try {
-    const body = await req.json();
-    if (!body.title || !body.clientId) {
-      return NextResponse.json({ success: false, message: 'Os campos "title" e "clientId" são obrigatórios.' }, { status: 400 });
+    const rawBody = await req.json();
+    const parseResult = createProjectSchema.safeParse(rawBody);
+
+    if (!parseResult.success) {
+      return validationError('Dados inválidos para criação do projeto.', requestId, parseResult.error.flatten());
     }
 
-    const result = await getActiveStateFromSupabase();
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
+    const p = parseResult.data;
+    const sb = (await createClient()) || defaultSupabase;
+    if (!sb) {
+      return internalServerError('Base de dados Supabase não disponível.', requestId);
     }
 
-    const currentState = result.data;
+    const newId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    const newProject: Project = {
-      id: crypto.randomUUID(),
-      title: body.title,
-      clientId: body.clientId,
-      description: body.description || '',
-      categoryId: body.categoryId || 'pc-1',
-      categoryIds: Array.isArray(body.categoryIds) ? body.categoryIds : [],
-      statusId: body.statusId || 'ps-1',
-      projectManagerId: body.projectManagerId || '',
-      fieldManagerId: body.fieldManagerId || '',
-      salesRepId: body.salesRepId || '',
-      startDate: body.startDate || '',
-      deliveryDate: body.deliveryDate || '',
-      estimatedDate: body.estimatedDate || '',
-      scheduledDate: body.scheduledDate || '',
-      installProjectNo: body.installProjectNo || '',
-      sfOpportunityNo: body.sfOpportunityNo || '',
-      riskId: body.riskId || 'pr-1',
-      priorityId: body.priorityId || 'pp-1',
-      teamsInvolvedIds: Array.isArray(body.teamsInvolvedIds) ? body.teamsInvolvedIds : [],
-      partnersIds: Array.isArray(body.partnersIds) ? body.partnersIds : [],
-      documents: Array.isArray(body.documents) ? body.documents : [],
-      budgetValue: Number(body.budgetValue) || 0,
-      createdById: body.createdById || '',
-      demo: Boolean(body.demo),
+    const insertPayload = {
+      id: newId,
+      project_title: p.title,
+      client_id: p.clientId,
+      description: p.description || '',
+      install_project_no: p.installProjectNo || '',
+      status_id: p.statusId || 'ps-1',
+      category_id: p.categoryId || (p.categoryIds && p.categoryIds[0]) || 'pc-1',
+      priority_id: p.priorityId || 'pp-1',
+      risk_id: p.riskId || 'pr-1',
+      project_manager_id: p.projectManagerId || null,
+      start_date: p.startDate || null,
+      delivery_date: p.deliveryDate || null,
+      scheduled_date: p.scheduledDate || null,
+      completed_date: p.completedDate || null,
+      is_urgent: Boolean(p.isUrgent),
+      color: p.color || null,
+      notes: p.notes || null,
       deleted: false,
-      createdDate: now,
-      updatedDate: now
+      version: 1,
+      created_by: user.id,
+      updated_by: user.id,
+      created_at: now,
+      updated_at: now,
     };
 
-    currentState.projects = [newProject, ...(currentState.projects || [])];
-    const saveResult = await saveActiveStateToSupabase(currentState);
-
-    if (!saveResult.success) {
-      return NextResponse.json(saveResult, { status: 500 });
+    const { error: insertError } = await sb.from('projects').insert([insertPayload]);
+    if (insertError) {
+      console.error('[API PROJECT INSERT ERROR]', insertError);
+      return badRequest(`Erro ao inserir projeto na base de dados: ${insertError.message}`, requestId);
     }
 
-    return NextResponse.json({ success: true, message: 'Projeto criado com sucesso.', data: newProject }, { status: 201 });
+    // Insert relational links if provided
+    if (p.teamIds && p.teamIds.length > 0) {
+      const teamLinks = p.teamIds.map((tid) => ({ project_id: newId, team_id: tid }));
+      try {
+        await sb.from('project_teams_link').insert(teamLinks);
+      } catch {}
+    }
+    if (p.partnerIds && p.partnerIds.length > 0) {
+      const partnerLinks = p.partnerIds.map((pid) => ({ project_id: newId, partner_id: pid }));
+      try {
+        await sb.from('project_partners_link').insert(partnerLinks);
+      } catch {}
+    }
+
+    await logAuditEvent({
+      action: 'PROJECT_CREATED',
+      userId: user.id,
+      entity: 'projects',
+      entityId: newId,
+      details: { title: p.title, clientId: p.clientId },
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Projeto criado com sucesso.',
+        data: {
+          id: newId,
+          ...p,
+          version: 1,
+          createdAt: now,
+          updatedAt: now,
+        },
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    console.error('[API PROJECT POST EXCEPTION]', error);
+    return internalServerError('Erro inesperado na criação do projeto.', requestId);
   }
 }

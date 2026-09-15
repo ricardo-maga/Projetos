@@ -1,87 +1,221 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
-import { isSupabaseConfigured } from '@/lib/supabaseClient';
-import { authorizeRequest } from '@/lib/serverAuth';
+import { requirePermission } from '@/lib/auth/authorization';
+import { updateTaskSchema } from '@/lib/validations/task';
+import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
+import { logAuditEvent } from '@/lib/audit';
+import { createClient } from '@/lib/supabase/server';
+import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = authorizeRequest(req, 'tasks_write');
-  if ('errorResponse' in auth) return auth.errorResponse;
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requirePermission(req, 'tasks_read');
+  if (!auth.success) return auth.response;
 
   const { id } = await params;
-  if (!isSupabaseConfigured) {
-    return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
-  }
+  const { requestId } = auth;
 
   try {
-    const updates = await req.json();
-    const result = await getActiveStateFromSupabase();
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
+    const sb = (await createClient()) || defaultSupabase;
+    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    const currentState = result.data;
-    if (!currentState.tasks) currentState.tasks = [];
+    const { data: task, error } = await sb
+      .from('tasks')
+      .select('*')
+      .eq('id', id)
+      .eq('deleted', false)
+      .maybeSingle();
 
-    const taskIndex = currentState.tasks.findIndex((t: any) => t.id === id);
+    if (error) return internalServerError(`Erro ao consultar tarefa: ${error.message}`, requestId);
+    if (!task) return notFound('Tarefa não encontrada.', requestId);
 
-    if (taskIndex === -1) {
-      return NextResponse.json({ success: false, message: 'Tarefa não encontrada.' }, { status: 404 });
-    }
-
-    currentState.tasks[taskIndex] = {
-      ...currentState.tasks[taskIndex],
-      ...updates,
-      id
-    };
-
-    const saveResult = await saveActiveStateToSupabase(currentState);
-    if (!saveResult.success) {
-      return NextResponse.json(saveResult, { status: 500 });
-    }
+    const { data: assignees } = await sb.from('task_assignees').select('user_id').eq('task_id', id);
 
     return NextResponse.json({
       success: true,
-      message: 'Tarefa atualizada.',
-      data: currentState.tasks[taskIndex]
+      data: {
+        id: task.id,
+        projectId: task.project_id || task.projectId,
+        title: task.task_title || task.title,
+        description: task.task_description || task.description || '',
+        statusId: task.status_id || task.statusId || 'ts-1',
+        taskTypeId: task.task_type_id || task.taskTypeId || '',
+        estimatedHours: task.estimated_hours || 0,
+        actualHours: task.actual_hours || 0,
+        startDate: task.start_date || '',
+        startTime: task.start_time || '',
+        endDate: task.end_date || '',
+        endTime: task.end_time || '',
+        estimatedDate: task.estimated_date || '',
+        completedDate: task.completed_date || '',
+        notes: task.notes || '',
+        assignedUserIds: (assignees || []).map((a: any) => a.user_id),
+        version: task.version || 1,
+        deleted: Boolean(task.deleted),
+        createdAt: task.created_at,
+        updatedAt: task.updated_at,
+        createdBy: task.created_by,
+        updatedBy: task.updated_by,
+      },
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    return internalServerError('Falha inesperada ao consultar tarefa.', requestId);
+  }
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  return handleUpdate(req, params);
+}
+
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  return handleUpdate(req, params);
+}
+
+async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: string }>) {
+  const auth = await requirePermission(req, 'tasks_write');
+  if (!auth.success) return auth.response;
+
+  const { id } = await paramsPromise;
+  const { user, requestId } = auth;
+
+  try {
+    const rawBody = await req.json();
+    const parseResult = updateTaskSchema.safeParse(rawBody);
+
+    if (!parseResult.success) {
+      return validationError('Dados inválidos para atualização da tarefa.', requestId, parseResult.error.flatten());
+    }
+
+    const updates = parseResult.data;
+    const sb = (await createClient()) || defaultSupabase;
+    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
+
+    // 1. Fetch current version for optimistic concurrency check
+    const { data: current, error: fetchError } = await sb
+      .from('tasks')
+      .select('id, version, status_id, deleted')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) return internalServerError(`Erro ao ler versão atual da tarefa: ${fetchError.message}`, requestId);
+    if (!current || current.deleted) return notFound('Tarefa não encontrada.', requestId);
+
+    const currentVersion = current.version || 1;
+    if (updates.version !== currentVersion) {
+      return conflict(
+        `Conflito de concorrência. A tarefa foi alterada por outro utilizador (versão atual: ${currentVersion}, versão submetida: ${updates.version}).`,
+        requestId,
+        { currentVersion, submittedVersion: updates.version }
+      );
+    }
+
+    const now = new Date().toISOString();
+    const updatePayload: Record<string, any> = {
+      version: currentVersion + 1,
+      updated_at: now,
+      updated_by: user.id,
+    };
+
+    if (updates.title !== undefined) updatePayload.task_title = updates.title;
+    if (updates.description !== undefined) updatePayload.task_description = updates.description;
+    if (updates.statusId !== undefined) updatePayload.status_id = updates.statusId;
+    if (updates.taskTypeId !== undefined) updatePayload.task_type_id = updates.taskTypeId;
+    if (updates.estimatedHours !== undefined) updatePayload.estimated_hours = `${updates.estimatedHours} hours`;
+    if (updates.actualHours !== undefined) updatePayload.actual_hours = `${updates.actualHours} hours`;
+    if (updates.startDate !== undefined) updatePayload.start_date = updates.startDate;
+    if (updates.startTime !== undefined) updatePayload.start_time = updates.startTime;
+    if (updates.endDate !== undefined) updatePayload.end_date = updates.endDate;
+    if (updates.endTime !== undefined) updatePayload.end_time = updates.endTime;
+    if (updates.estimatedDate !== undefined) updatePayload.estimated_date = updates.estimatedDate;
+    if (updates.completedDate !== undefined) updatePayload.completed_date = updates.completedDate;
+    if (updates.notes !== undefined) updatePayload.notes = updates.notes;
+
+    const { error: updateError } = await sb
+      .from('tasks')
+      .update(updatePayload)
+      .eq('id', id)
+      .eq('version', currentVersion);
+
+    if (updateError) {
+      return badRequest(`Erro ao atualizar tarefa: ${updateError.message}`, requestId);
+    }
+
+    // Update assignees if specified
+    if (updates.assignedUserIds !== undefined) {
+      await sb.from('task_assignees').delete().eq('task_id', id);
+      if (updates.assignedUserIds.length > 0) {
+        const assigneeRows = updates.assignedUserIds.map((uid) => ({ task_id: id, user_id: uid }));
+        await sb.from('task_assignees').insert(assigneeRows);
+      }
+    }
+
+    const isStatusChange = updates.statusId && updates.statusId !== current.status_id;
+    await logAuditEvent({
+      action: isStatusChange ? 'TASK_STATUS_CHANGED' : 'TASK_UPDATED',
+      userId: user.id,
+      entity: 'tasks',
+      entityId: id,
+      details: {
+        version: currentVersion + 1,
+        ...(isStatusChange ? { oldStatus: current.status_id, newStatus: updates.statusId } : {}),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Tarefa atualizada com sucesso.',
+      data: {
+        id,
+        ...updates,
+        version: currentVersion + 1,
+        updatedAt: now,
+      },
+    });
+  } catch (error: any) {
+    return internalServerError('Falha inesperada ao atualizar tarefa.', requestId);
   }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = authorizeRequest(req, 'tasks_delete');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'tasks_delete');
+  if (!auth.success) return auth.response;
 
   const { id } = await params;
-  if (!isSupabaseConfigured) {
-    return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
-  }
+  const { user, requestId } = auth;
 
   try {
-    const result = await getActiveStateFromSupabase();
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
+    const sb = (await createClient()) || defaultSupabase;
+    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    const currentState = result.data;
-    if (!currentState.tasks) currentState.tasks = [];
+    const { data: current } = await sb.from('tasks').select('id, version, deleted').eq('id', id).maybeSingle();
+    if (!current || current.deleted) return notFound('Tarefa não encontrada.', requestId);
 
-    const taskIndex = currentState.tasks.findIndex((t: any) => t.id === id);
+    const currentVersion = current.version || 1;
+    const now = new Date().toISOString();
 
-    if (taskIndex === -1) {
-      return NextResponse.json({ success: false, message: 'Tarefa não encontrada.' }, { status: 404 });
-    }
+    const { error: deleteError } = await sb
+      .from('tasks')
+      .update({
+        deleted: true,
+        version: currentVersion + 1,
+        updated_at: now,
+        updated_by: user.id,
+      })
+      .eq('id', id);
 
-    currentState.tasks[taskIndex].deleted = true;
+    if (deleteError) return badRequest(`Erro ao eliminar tarefa: ${deleteError.message}`, requestId);
 
-    const saveResult = await saveActiveStateToSupabase(currentState);
-    if (!saveResult.success) {
-      return NextResponse.json(saveResult, { status: 500 });
-    }
+    await logAuditEvent({
+      action: 'TASK_UPDATED',
+      userId: user.id,
+      entity: 'tasks',
+      entityId: id,
+      details: { deleted: true },
+    });
 
-    return NextResponse.json({ success: true, message: 'Tarefa eliminada.' });
+    return NextResponse.json({
+      success: true,
+      message: 'Tarefa eliminada com sucesso.',
+    });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    return internalServerError('Falha inesperada ao eliminar tarefa.', requestId);
   }
 }

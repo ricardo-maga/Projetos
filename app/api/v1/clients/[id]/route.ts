@@ -1,87 +1,196 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
-import { isSupabaseConfigured } from '@/lib/supabaseClient';
-import { authorizeRequest } from '@/lib/serverAuth';
+import { requirePermission } from '@/lib/auth/authorization';
+import { updateClientSchema } from '@/lib/validations/client';
+import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
+import { logAuditEvent } from '@/lib/audit';
+import { createClient } from '@/lib/supabase/server';
+import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = authorizeRequest(req, 'clients_write');
-  if ('errorResponse' in auth) return auth.errorResponse;
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requirePermission(req, 'clients_read');
+  if (!auth.success) return auth.response;
 
   const { id } = await params;
-  if (!isSupabaseConfigured) {
-    return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
-  }
+  const { requestId } = auth;
 
   try {
-    const updates = await req.json();
-    const result = await getActiveStateFromSupabase();
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
+    const sb = (await createClient()) || defaultSupabase;
+    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    const currentState = result.data;
-    if (!currentState.clients) currentState.clients = [];
+    const { data: client, error } = await sb
+      .from('clients')
+      .select('*')
+      .eq('id', id)
+      .eq('deleted', false)
+      .maybeSingle();
 
-    const clientIndex = currentState.clients.findIndex((c: any) => c.id === id);
-
-    if (clientIndex === -1) {
-      return NextResponse.json({ success: false, message: 'Cliente não encontrado.' }, { status: 404 });
-    }
-
-    currentState.clients[clientIndex] = {
-      ...currentState.clients[clientIndex],
-      ...updates,
-      id
-    };
-
-    const saveResult = await saveActiveStateToSupabase(currentState);
-    if (!saveResult.success) {
-      return NextResponse.json(saveResult, { status: 500 });
-    }
+    if (error) return internalServerError(`Erro ao consultar cliente: ${error.message}`, requestId);
+    if (!client) return notFound('Cliente não encontrado.', requestId);
 
     return NextResponse.json({
       success: true,
-      message: 'Cliente atualizado.',
-      data: currentState.clients[clientIndex]
+      data: {
+        id: client.id,
+        name: client.name,
+        clientName: client.name,
+        code: client.code || '',
+        contactPerson: client.contact_person || '',
+        email: client.email || '',
+        phone: client.phone || '',
+        address: client.address || '',
+        city: client.city || '',
+        postalCode: client.postal_code || '',
+        country: client.country || '',
+        notes: client.notes || '',
+        color: client.color || '#3b82f6',
+        version: client.version || 1,
+        deleted: Boolean(client.deleted),
+        createdAt: client.created_at,
+        updatedAt: client.updated_at,
+      },
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    return internalServerError('Falha inesperada ao consultar cliente.', requestId);
+  }
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  return handleUpdate(req, params);
+}
+
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  return handleUpdate(req, params);
+}
+
+async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: string }>) {
+  const auth = await requirePermission(req, 'clients_write');
+  if (!auth.success) return auth.response;
+
+  const { id } = await paramsPromise;
+  const { user, requestId } = auth;
+
+  try {
+    const rawBody = await req.json();
+    const parseResult = updateClientSchema.safeParse(rawBody);
+
+    if (!parseResult.success) {
+      return validationError('Dados inválidos para atualização do cliente.', requestId, parseResult.error.flatten());
+    }
+
+    const updates = parseResult.data;
+    const sb = (await createClient()) || defaultSupabase;
+    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
+
+    const { data: current, error: fetchError } = await sb
+      .from('clients')
+      .select('id, version, deleted')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) return internalServerError(`Erro ao ler versão atual do cliente: ${fetchError.message}`, requestId);
+    if (!current || current.deleted) return notFound('Cliente não encontrado.', requestId);
+
+    const currentVersion = current.version || 1;
+    if (updates.version !== currentVersion) {
+      return conflict(
+        `Conflito de concorrência. O cliente foi alterado por outro utilizador (versão atual: ${currentVersion}, versão submetida: ${updates.version}).`,
+        requestId,
+        { currentVersion, submittedVersion: updates.version }
+      );
+    }
+
+    const now = new Date().toISOString();
+    const updatePayload: Record<string, any> = {
+      version: currentVersion + 1,
+      updated_at: now,
+      updated_by: user.id,
+    };
+
+    if (updates.name !== undefined) updatePayload.name = updates.name;
+    if (updates.code !== undefined) updatePayload.code = updates.code;
+    if (updates.contactPerson !== undefined) updatePayload.contact_person = updates.contactPerson;
+    if (updates.email !== undefined) updatePayload.email = updates.email;
+    if (updates.phone !== undefined) updatePayload.phone = updates.phone;
+    if (updates.address !== undefined) updatePayload.address = updates.address;
+    if (updates.city !== undefined) updatePayload.city = updates.city;
+    if (updates.postalCode !== undefined) updatePayload.postal_code = updates.postalCode;
+    if (updates.country !== undefined) updatePayload.country = updates.country;
+    if (updates.notes !== undefined) updatePayload.notes = updates.notes;
+    if (updates.color !== undefined) updatePayload.color = updates.color;
+
+    const { error: updateError } = await sb
+      .from('clients')
+      .update(updatePayload)
+      .eq('id', id)
+      .eq('version', currentVersion);
+
+    if (updateError) return badRequest(`Erro ao atualizar cliente: ${updateError.message}`, requestId);
+
+    await logAuditEvent({
+      action: 'CLIENT_UPDATED',
+      userId: user.id,
+      entity: 'clients',
+      entityId: id,
+      details: { version: currentVersion + 1 },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Cliente atualizado com sucesso.',
+      data: {
+        id,
+        ...updates,
+        version: currentVersion + 1,
+        updatedAt: now,
+      },
+    });
+  } catch (error: any) {
+    return internalServerError('Falha inesperada ao atualizar cliente.', requestId);
   }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = authorizeRequest(req, 'clients_delete');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'clients_delete');
+  if (!auth.success) return auth.response;
 
   const { id } = await params;
-  if (!isSupabaseConfigured) {
-    return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
-  }
+  const { user, requestId } = auth;
 
   try {
-    const result = await getActiveStateFromSupabase();
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
+    const sb = (await createClient()) || defaultSupabase;
+    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    const currentState = result.data;
-    if (!currentState.clients) currentState.clients = [];
+    const { data: current } = await sb.from('clients').select('id, version, deleted').eq('id', id).maybeSingle();
+    if (!current || current.deleted) return notFound('Cliente não encontrado.', requestId);
 
-    const clientIndex = currentState.clients.findIndex((c: any) => c.id === id);
+    const currentVersion = current.version || 1;
+    const now = new Date().toISOString();
 
-    if (clientIndex === -1) {
-      return NextResponse.json({ success: false, message: 'Cliente não encontrado.' }, { status: 404 });
-    }
+    const { error: deleteError } = await sb
+      .from('clients')
+      .update({
+        deleted: true,
+        version: currentVersion + 1,
+        updated_at: now,
+        updated_by: user.id,
+      })
+      .eq('id', id);
 
-    currentState.clients[clientIndex].deleted = true;
+    if (deleteError) return badRequest(`Erro ao eliminar cliente: ${deleteError.message}`, requestId);
 
-    const saveResult = await saveActiveStateToSupabase(currentState);
-    if (!saveResult.success) {
-      return NextResponse.json(saveResult, { status: 500 });
-    }
+    await logAuditEvent({
+      action: 'CLIENT_DELETED',
+      userId: user.id,
+      entity: 'clients',
+      entityId: id,
+      details: { deleted: true },
+    });
 
-    return NextResponse.json({ success: true, message: 'Cliente eliminado.' });
+    return NextResponse.json({
+      success: true,
+      message: 'Cliente eliminado com sucesso.',
+    });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    return internalServerError('Falha inesperada ao eliminar cliente.', requestId);
   }
 }

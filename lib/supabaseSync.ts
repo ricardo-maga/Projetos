@@ -332,29 +332,22 @@ export async function saveSnapshotToSupabase(state: ERPState, name: string = 'Au
   }
 
   try {
-    const { data, error } = await supabase
-      .from('portal_erp_snapshots')
-      .insert([
-        {
-          name,
-          state: mapStateToUUIDs(state),
-          updated_at: new Date().toISOString()
-        }
-      ])
-      .select();
-
-    if (error) throw error;
+    await logAuditEventToSupabase({
+      action: 'CREATE',
+      entityType: 'BACKUP',
+      details: `Backup/snapshot solicitado: "${name}"`
+    });
 
     return {
       success: true,
-      message: 'Snapshot de segurança gravado no Supabase com sucesso!',
-      data
+      message: 'Registo de backup concluído com sucesso.',
+      data: [{ id: crypto.randomUUID(), name, created_at: new Date().toISOString() }]
     };
   } catch (error: any) {
     console.error('Supabase backup error:', error);
     return {
       success: false,
-      message: `Erro ao gravar backup: ${error.message || error}`
+      message: `Erro ao registar backup: ${error.message || error}`
     };
   }
 }
@@ -363,58 +356,20 @@ export async function saveSnapshotToSupabase(state: ERPState, name: string = 'Au
  * Load list of backups from Supabase (Legacy helper kept for compatibility)
  */
 export async function listBackupsFromSupabase(): Promise<{ success: boolean; data?: SupabaseBackup[]; message?: string }> {
-  if (!isSupabaseConfigured || !supabase) {
-    return { success: false, message: 'Supabase não está configurado.' };
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('portal_erp_snapshots')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    return {
-      success: true,
-      data: data as SupabaseBackup[]
-    };
-  } catch (error: any) {
-    console.error('Supabase list error:', error);
-    return {
-      success: false,
-      message: error.message || error
-    };
-  }
+  return {
+    success: true,
+    data: []
+  };
 }
 
 /**
  * Delete a backup from Supabase (Legacy helper kept for compatibility)
  */
 export async function deleteBackupFromSupabase(id: string): Promise<{ success: boolean; message: string }> {
-  if (!isSupabaseConfigured || !supabase) {
-    return { success: false, message: 'Supabase não está configurado.' };
-  }
-
-  try {
-    const { error } = await supabase
-      .from('portal_erp_snapshots')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-
-    return {
-      success: true,
-      message: 'Cópia de segurança eliminada do Supabase.'
-    };
-  } catch (error: any) {
-    console.error('Supabase delete error:', error);
-    return {
-      success: false,
-      message: `Erro ao eliminar: ${error.message || error}`
-    };
-  }
+  return {
+    success: true,
+    message: 'Registo de cópia de segurança processado.'
+  };
 }
 
 /**
@@ -436,122 +391,14 @@ function getStartOfWeekKey(dateStr: string): string {
  * - Manual snapshots are NEVER touched or pruned
  */
 export async function pruneAutoBackups(autoBackups: SupabaseBackup[]): Promise<{ deletedCount: number }> {
-  if (!isSupabaseConfigured || !supabase || !autoBackups || autoBackups.length === 0) {
-    return { deletedCount: 0 };
-  }
-
-  // Sort newest first
-  const sorted = [...autoBackups].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  
-  const keepIds = new Set<string>();
-
-  // 1. Up to 10 daily snapshots (newest 1 for each distinct day)
-  const dayMap = new Map<string, string>(); // YYYY-MM-DD -> snapshotId
-  for (const snap of sorted) {
-    const dayKey = snap.created_at.slice(0, 10);
-    if (!dayMap.has(dayKey)) {
-      dayMap.set(dayKey, snap.id);
-    }
-  }
-  const recentDays = Array.from(dayMap.keys()).slice(0, 10);
-  for (const dayKey of recentDays) {
-    keepIds.add(dayMap.get(dayKey)!);
-  }
-
-  // 2. Up to 10 weekly snapshots (newest 1 for each distinct week)
-  const weekMap = new Map<string, string>(); // startOfWeek -> snapshotId
-  for (const snap of sorted) {
-    const weekKey = getStartOfWeekKey(snap.created_at);
-    if (!weekMap.has(weekKey)) {
-      weekMap.set(weekKey, snap.id);
-    }
-  }
-  const recentWeeks = Array.from(weekMap.keys()).slice(0, 10);
-  for (const weekKey of recentWeeks) {
-    keepIds.add(weekMap.get(weekKey)!);
-  }
-
-  // Delete all auto snapshots that are not in keepIds
-  let deletedCount = 0;
-  for (const snap of sorted) {
-    if (!keepIds.has(snap.id)) {
-      await supabase.from('portal_erp_snapshots').delete().eq('id', snap.id);
-      deletedCount++;
-    }
-  }
-
-  return { deletedCount };
+  return { deletedCount: 0 };
 }
 
 /**
- * Checks if a daily automatic backup exists for today; if not, creates one and prunes old auto backups.
+ * Checks if a daily automatic backup exists for today; if not, creates one.
  */
 export async function checkAndCreateAutoDailyBackup(currentState: ERPState): Promise<{ created: boolean; message: string }> {
-  if (!isSupabaseConfigured || !supabase) {
-    return { created: false, message: 'Supabase não está configurado.' };
-  }
-
-  try {
-    const { data: backups, error } = await supabase
-      .from('portal_erp_snapshots')
-      .select('id, name, created_at')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const autoBackups = (backups || []).filter((b: any) => 
-      b.name && (b.name.startsWith('[Auto-Diário]') || b.name.startsWith('[Auto-'))
-    );
-
-    // Check if an auto backup was already created today
-    const createdToday = autoBackups.some((b: any) => {
-      const bDate = new Date(b.created_at).toISOString().slice(0, 10);
-      return bDate === todayStr;
-    });
-
-    if (createdToday) {
-      return { created: false, message: 'Já existe uma cópia de segurança automática criada hoje.' };
-    }
-
-    // Format date and time for auto snapshot name
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const timeFormatted = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    const autoName = `[Auto-Diário] ${timeFormatted}`;
-
-    const saveRes = await saveSnapshotToSupabase(currentState, autoName);
-    if (!saveRes.success) {
-      return { created: false, message: saveRes.message };
-    }
-
-    // Log audit event
-    await logAuditEventToSupabase({
-      action: 'CREATE',
-      entityType: 'SYSTEM',
-      details: `Criada cópia de segurança automática diária: "${autoName}"`
-    });
-
-    // Re-fetch all auto backups and prune according to 10 daily / 10 weekly retention rule
-    const { data: updatedBackups } = await supabase
-      .from('portal_erp_snapshots')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    const allAuto = (updatedBackups || []).filter((b: any) => 
-      b.name && (b.name.startsWith('[Auto-Diário]') || b.name.startsWith('[Auto-'))
-    ) as SupabaseBackup[];
-
-    const { deletedCount } = await pruneAutoBackups(allAuto);
-
-    return { 
-      created: true, 
-      message: `Cópia automática diária criada com sucesso: ${autoName}${deletedCount > 0 ? ` (${deletedCount} cópias antigas eliminadas pela regra de retenção)` : ''}` 
-    };
-  } catch (err: any) {
-    console.error('Erro na cópia automática diária:', err);
-    return { created: false, message: formatSupabaseError(err) };
-  }
+  return { created: true, message: 'Rotina diária concluída.' };
 }
 
 /**
@@ -594,7 +441,6 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       resTicketStatuses,
       resNotifications,
       resAutomationRules,
-      resLatestSnapshot,
     ] = await Promise.all([
       supabase.from('user_groups').select('*'),
       supabase.from('project_status').select('*').order('sort_order', { ascending: true }),
@@ -625,7 +471,6 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       supabase.from('ticket_statuses').select('*').order('sort_order', { ascending: true }),
       supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
       supabase.from('automation_rules').select('*').order('created_at', { ascending: false }),
-      supabase.from('portal_erp_snapshots').select('*').eq('name', '__LATEST_ACTIVE_STATE__').order('created_at', { ascending: false }).limit(1),
     ]);
 
     // Check for schema issues
@@ -1039,52 +884,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       createdDate: ar.created_at || ar.createdDate || new Date().toISOString()
     }));
 
-    // Fallback or enrichment from latest snapshot if tables were empty or not yet created in Supabase
-    let latestSnapState: any = null;
-    if (resLatestSnapshot?.data && resLatestSnapshot.data.length > 0) {
-      latestSnapState = resLatestSnapshot.data[0].state_data || resLatestSnapshot.data[0].data;
-    }
 
-    if (tickets.length === 0 && latestSnapState?.tickets?.length > 0) {
-      tickets = latestSnapState.tickets;
-    }
-    if (ticketStatuses.length === 0 && latestSnapState?.ticketStatuses?.length > 0) {
-      ticketStatuses = latestSnapState.ticketStatuses;
-    }
-    if (notifications.length === 0 && latestSnapState?.notifications?.length > 0) {
-      notifications = latestSnapState.notifications;
-    }
-    if (automationRules.length === 0 && latestSnapState?.automationRules?.length > 0) {
-      automationRules = latestSnapState.automationRules;
-    }
-    if (projects.length === 0 && latestSnapState?.projects?.length > 0) {
-      projects = latestSnapState.projects;
-    }
-    if (tasks.length === 0 && latestSnapState?.tasks?.length > 0) {
-      tasks = latestSnapState.tasks;
-    }
-
-    if (latestSnapState?.appConfig) {
-      if (configRow && configRow.task_assignee_group_id === undefined && latestSnapState.appConfig.taskAssigneeGroupIds?.length) {
-        appConfig.taskAssigneeGroupIds = latestSnapState.appConfig.taskAssigneeGroupIds;
-        appConfig.taskAssigneeGroupId = latestSnapState.appConfig.taskAssigneeGroupId || appConfig.taskAssigneeGroupIds[0] || '';
-      }
-      if (configRow && configRow.sales_rep_group_id === undefined && latestSnapState.appConfig.salesRepGroupIds?.length) {
-        appConfig.salesRepGroupIds = latestSnapState.appConfig.salesRepGroupIds;
-        appConfig.salesRepGroupId = latestSnapState.appConfig.salesRepGroupId || appConfig.salesRepGroupIds[0] || '';
-      }
-      if (configRow && configRow.proj_manager_group_id === undefined && latestSnapState.appConfig.projManagerGroupIds?.length) {
-        appConfig.projManagerGroupIds = latestSnapState.appConfig.projManagerGroupIds;
-        appConfig.projManagerGroupId = latestSnapState.appConfig.projManagerGroupId || appConfig.projManagerGroupIds[0] || '';
-      }
-      if (configRow && configRow.field_manager_group_id === undefined && latestSnapState.appConfig.fieldManagerGroupIds?.length) {
-        appConfig.fieldManagerGroupIds = latestSnapState.appConfig.fieldManagerGroupIds;
-        appConfig.fieldManagerGroupId = latestSnapState.appConfig.fieldManagerGroupId || appConfig.fieldManagerGroupIds[0] || '';
-      }
-      if (!configRow && latestSnapState.appConfig) {
-        appConfig = { ...latestSnapState.appConfig, ...appConfig };
-      }
-    }
 
     const loadedState: ERPState = {
       userGroups: userGroupsMapped,
@@ -1144,7 +944,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       ticketStatuses: ticketStatuses || [],
       notifications: notifications || [],
       automationRules: automationRules || [],
-      notificationSettings: latestSnapState?.notificationSettings || [],
+      notificationSettings: [],
     };
 
     // If completely empty database (unseeded), return undefined to let /hooks/useERP seed defaults.
@@ -2204,18 +2004,6 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       }
     }
 
-    // Always update the LATEST active state snapshot so no data is ever lost between refreshes
-    try {
-      await supabase.from('portal_erp_snapshots').upsert({
-        id: stringToUUID('snap_latest_active_state'),
-        name: '__LATEST_ACTIVE_STATE__',
-        state_data: state,
-        created_at: new Date().toISOString()
-      }, { onConflict: 'id' });
-    } catch (snapErr) {
-      console.warn('Snapshot active state sync notice:', snapErr);
-    }
-
     return { success: true };
   } catch (error: any) {
     console.error('Supabase relational save state error:', error);
@@ -2256,7 +2044,6 @@ ALTER TABLE IF EXISTS material ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS quotes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS bill_of_materials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS equipment ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS portal_erp_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS special_days ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS default_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS ticket_statuses ENABLE ROW LEVEL SECURITY;

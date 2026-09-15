@@ -1,74 +1,159 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
-import { isSupabaseConfigured } from '@/lib/supabaseClient';
-import { Client } from '@/lib/types';
-import { authorizeRequest } from '@/lib/serverAuth';
+import { requirePermission } from '@/lib/auth/authorization';
+import { createClientSchema, queryClientSchema } from '@/lib/validations/client';
+import { validationError, badRequest, internalServerError } from '@/lib/apiErrors';
+import { logAuditEvent } from '@/lib/audit';
+import { createClient } from '@/lib/supabase/server';
+import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
 export async function GET(req: NextRequest) {
-  const auth = authorizeRequest(req, 'clients_read');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'clients_read');
+  if (!auth.success) return auth.response;
 
-  if (!isSupabaseConfigured) {
-    return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
+  const { requestId } = auth;
+  const url = new URL(req.url);
+  const rawParams = Object.fromEntries(url.searchParams.entries());
+
+  const parseResult = queryClientSchema.safeParse(rawParams);
+  if (!parseResult.success) {
+    return validationError('Parâmetros de consulta inválidos.', requestId, parseResult.error.flatten());
   }
 
+  const { page, pageSize, search } = parseResult.data;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
   try {
-    const result = await getActiveStateFromSupabase();
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
+    const sb = (await createClient()) || defaultSupabase;
+    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
+
+    let query = sb
+      .from('clients')
+      .select('*', { count: 'exact' })
+      .eq('deleted', false);
+
+    if (search && search.trim()) {
+      const q = `%${search.trim()}%`;
+      query = query.or(`name.ilike.${q},contact_person.ilike.${q},email.ilike.${q},code.ilike.${q}`);
     }
 
-    const clients = (result.data.clients || []).filter((c: any) => !c.deleted);
-    return NextResponse.json({ success: true, count: clients.length, data: clients });
+    const { data: rows, count, error } = await query
+      .order('name', { ascending: true })
+      .range(from, to);
+
+    if (error) return internalServerError(`Erro ao consultar clientes: ${error.message}`, requestId);
+
+    const total = count || 0;
+    const totalPages = Math.ceil(total / pageSize);
+
+    const mappedClients = (rows || []).map((row: any) => ({
+      id: row.id,
+      clientName: row.name,
+      name: row.name,
+      code: row.code || '',
+      shortName: row.code || row.name?.substring(0, 10),
+      contactPerson: row.contact_person || '',
+      contactEmail: row.email || '',
+      email: row.email || '',
+      contactPhone: row.phone || '',
+      phone: row.phone || '',
+      location: [row.address, row.city, row.postal_code].filter(Boolean).join(', ') || '',
+      address: row.address || '',
+      city: row.city || '',
+      postalCode: row.postal_code || '',
+      country: row.country || '',
+      notes: row.notes || '',
+      color: row.color || '#3b82f6',
+      version: row.version || 1,
+      deleted: Boolean(row.deleted),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+
+    return NextResponse.json({
+      success: true,
+      count: mappedClients.length,
+      total,
+      page,
+      pageSize,
+      totalPages,
+      data: mappedClients,
+    });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    return internalServerError('Falha inesperada ao consultar clientes.', requestId);
   }
 }
 
 export async function POST(req: NextRequest) {
-  const auth = authorizeRequest(req, 'clients_write');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'clients_write');
+  if (!auth.success) return auth.response;
 
-  if (!isSupabaseConfigured) {
-    return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
-  }
+  const { user, requestId } = auth;
 
   try {
-    const body = await req.json();
-    const clientName = body.clientName || body.name;
-    if (!clientName) {
-      return NextResponse.json({ success: false, message: 'O campo "clientName" ou "name" é obrigatório.' }, { status: 400 });
+    const rawBody = await req.json();
+    const parseResult = createClientSchema.safeParse(rawBody);
+
+    if (!parseResult.success) {
+      return validationError('Dados inválidos para criação do cliente.', requestId, parseResult.error.flatten());
     }
 
-    const result = await getActiveStateFromSupabase();
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
+    const c = parseResult.data;
+    const sb = (await createClient()) || defaultSupabase;
+    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    const currentState = result.data;
-    const newClient: Client = {
-      id: crypto.randomUUID(),
-      clientName: clientName,
-      shortName: body.shortName || clientName.substring(0, 10),
-      location: body.location || body.address || '',
-      taxId: body.taxId || body.nif || '',
-      contactPerson: body.contactPerson || '',
-      contactEmail: body.contactEmail || body.email || '',
-      contactPhone: body.contactPhone || body.phone || '',
-      notes: body.notes || '',
+    const newId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const insertPayload = {
+      id: newId,
+      name: c.name,
+      code: c.code || null,
+      contact_person: c.contactPerson || null,
+      email: c.email || null,
+      phone: c.phone || null,
+      address: c.address || null,
+      city: c.city || null,
+      postal_code: c.postalCode || null,
+      country: c.country || null,
+      notes: c.notes || null,
+      color: c.color || '#3b82f6',
       deleted: false,
-      createdDate: new Date().toISOString()
+      version: 1,
+      created_by: user.id,
+      updated_by: user.id,
+      created_at: now,
+      updated_at: now,
     };
 
-    currentState.clients = [newClient, ...(currentState.clients || [])];
-    const saveResult = await saveActiveStateToSupabase(currentState);
-
-    if (!saveResult.success) {
-      return NextResponse.json(saveResult, { status: 500 });
+    const { error: insertError } = await sb.from('clients').insert([insertPayload]);
+    if (insertError) {
+      return badRequest(`Erro ao inserir cliente: ${insertError.message}`, requestId);
     }
 
-    return NextResponse.json({ success: true, message: 'Cliente criado com sucesso.', data: newClient }, { status: 201 });
+    await logAuditEvent({
+      action: 'CLIENT_CREATED',
+      userId: user.id,
+      entity: 'clients',
+      entityId: newId,
+      details: { name: c.name },
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Cliente criado com sucesso.',
+        data: {
+          id: newId,
+          ...c,
+          version: 1,
+          createdAt: now,
+          updatedAt: now,
+        },
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    return internalServerError('Erro inesperado na criação do cliente.', requestId);
   }
 }

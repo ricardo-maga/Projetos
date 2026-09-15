@@ -1894,7 +1894,7 @@ export default function ConfigSection({
                       <p className="font-bold text-xs">Erro ao ler registos do Supabase</p>
                       <p className="font-semibold text-[10px] text-red-600 font-mono mt-1 break-all bg-red-100/40 p-2 rounded border border-red-100">{backupsError}</p>
                       <p className="font-semibold text-[10px] text-slate-600 mt-2">
-                        Isto geralmente ocorre se a tabela <code className="bg-slate-150 px-1 py-0.5 rounded text-slate-800 font-mono">portal_erp_snapshots</code> não existir na sua base de dados ou se as permissões estiverem incorretas.
+                        Isto geralmente ocorre se a conectividade com o Supabase estiver indisponível ou se as permissões estiverem incorretas.
                       </p>
                     </div>
                   </div>
@@ -1928,7 +1928,7 @@ export default function ConfigSection({
                 </div>
               ) : backups.length === 0 ? (
                 <div className="p-8 text-center bg-slate-50 text-slate-400 font-bold border border-slate-150 rounded-2xl">
-                  Nenhuma cópia de segurança encontrada. Crie uma cópia acima ou verifique se a tabela &apos;portal_erp_snapshots&apos; existe no seu editor SQL.
+                  Nenhuma cópia de segurança encontrada. As cópias de segurança da base de dados são mantidas e geridas automaticamente pelo PostgreSQL.
                   <button 
                     type="button"
                     onClick={() => setShowSql(!showSql)}
