@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 async function getAuthenticatedUserSession() {
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
+  const { data, error } = await supabase.auth.getUser();
 
-  if (error || !data?.claims || !data.claims.sub) {
+  if (error || !data?.user || !data.user.id) {
     return null;
   }
 
-  const authUserId = data.claims.sub;
+  const authUserId = data.user.id;
+  const userEmail = data.user.email || '';
 
-  let { data: dbUser } = await supabase
+  const adminClient = createAdminClient();
+  const dbClient = adminClient || supabase;
+
+  let { data: dbUser } = await dbClient
     .from('users')
     .select('*')
     .eq('auth_user_id', authUserId)
@@ -19,13 +23,25 @@ async function getAuthenticatedUserSession() {
     .maybeSingle();
 
   if (!dbUser) {
-    const { data: fallbackUser } = await supabase
+    const { data: fallbackUser } = await dbClient
       .from('users')
       .select('*')
       .eq('id', authUserId)
       .eq('deleted', false)
       .maybeSingle();
     dbUser = fallbackUser;
+  }
+
+  if (!dbUser && userEmail) {
+    const { data: emailUser } = await dbClient
+      .from('users')
+      .select('*')
+      .eq('email', userEmail)
+      .eq('deleted', false)
+      .maybeSingle();
+    if (emailUser) {
+      dbUser = emailUser;
+    }
   }
 
   if (!dbUser || dbUser.deleted) {

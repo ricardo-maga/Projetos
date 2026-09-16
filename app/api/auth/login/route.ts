@@ -86,13 +86,14 @@ export async function POST(req: NextRequest) {
         return forbidden('Este utilizador ainda aguarda aprovação por um administrador.', requestId);
       }
 
-      // Ensure auth_user_id is linked
-      if (!dbUser.auth_user_id) {
+      // Ensure auth_user_id matches authUser.id
+      if (!dbUser.auth_user_id || dbUser.auth_user_id !== authUser.id) {
         try {
           await dbClient
             .from('users')
             .update({ auth_user_id: authUser.id, updated_at: new Date().toISOString() })
             .eq('id', dbUser.id);
+          dbUser.auth_user_id = authUser.id;
         } catch {}
       }
 

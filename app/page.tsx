@@ -57,6 +57,11 @@ export default function Page() {
   // Restore session and set mounted status on mount (supports cookies and authorization token in iframes)
   React.useEffect(() => {
     const restoreSession = async () => {
+      // Safety timeout to guarantee the loading screen doesn't hang if network stalls
+      const safetyTimer = setTimeout(() => {
+        setMounted(true);
+      }, 4000);
+
       try {
         const token = getClientToken();
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -103,6 +108,7 @@ export default function Page() {
           setCurrentUser(null);
         }
       } finally {
+        clearTimeout(safetyTimer);
         setMounted(true);
       }
     };

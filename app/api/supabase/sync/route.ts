@@ -18,14 +18,21 @@ export async function GET(req: NextRequest) {
     try {
       user = await requireAuth();
       authClient = await createClient();
-    } catch {
-      user = null;
+    } catch (error: any) {
+      return NextResponse.json({ success: false, message: error?.message || 'Não autorizado' }, { status: 401 });
     }
 
-    const result = await getActiveStateFromSupabase(authClient);
+    let result;
+    try {
+      result = await getActiveStateFromSupabase(authClient);
+    } catch (error: any) {
+      console.error('Exception in getActiveStateFromSupabase:', error);
+      return NextResponse.json({ success: false, message: error?.message || 'Database error' }, { status: 500 });
+    }
 
     if (!result.success || !result.data) {
-      return NextResponse.json(result);
+      console.error('getActiveStateFromSupabase failed:', result.message);
+      return NextResponse.json({ success: false, message: result.message || 'Database sync failed' }, { status: 500 });
     }
 
     // Strip passwords for EVERYONE for maximum security

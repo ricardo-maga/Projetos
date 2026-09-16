@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { GroupPermissions, getGroupPermissions } from '@/lib/permissions';
 
 export interface AuthenticatedUser {
@@ -37,15 +37,19 @@ export class ForbiddenError extends Error {
 export async function requireAuth(req?: any): Promise<AuthenticatedUser> {
   const supabase = await createClient();
 
-  const { data, error: claimsError } = await supabase.auth.getClaims();
+  const { data, error: authError } = await supabase.auth.getUser();
 
-  if (claimsError || !data?.claims || !data.claims.sub) {
+  if (authError || !data?.user || !data.user.id) {
     throw new AuthError('Sessão inválida ou expirada.');
   }
 
-  const authUserId = data.claims.sub as string;
+  const authUserId = data.user.id;
+  const userEmail = data.user.email || '';
 
-  let { data: dbUser } = await supabase
+  const adminClient = createAdminClient();
+  const dbClient = adminClient || supabase;
+
+  let { data: dbUser } = await dbClient
     .from('users')
     .select('id, auth_user_id, name, email, role_id, is_admin, type, deleted')
     .eq('auth_user_id', authUserId)
@@ -53,13 +57,32 @@ export async function requireAuth(req?: any): Promise<AuthenticatedUser> {
     .maybeSingle();
 
   if (!dbUser) {
-    const { data: fallbackUser } = await supabase
+    const { data: fallbackUser } = await dbClient
       .from('users')
       .select('id, auth_user_id, name, email, role_id, is_admin, type, deleted')
       .eq('id', authUserId)
       .eq('deleted', false)
       .maybeSingle();
     dbUser = fallbackUser;
+  }
+
+  if (!dbUser && userEmail) {
+    const { data: emailUser } = await dbClient
+      .from('users')
+      .select('id, auth_user_id, name, email, role_id, is_admin, type, deleted')
+      .eq('email', userEmail)
+      .eq('deleted', false)
+      .maybeSingle();
+    if (emailUser) {
+      dbUser = emailUser;
+      if (!emailUser.auth_user_id && adminClient) {
+        try {
+          await adminClient.from('users').update({ auth_user_id: authUserId }).eq('id', emailUser.id);
+        } catch {
+          // ignore
+        }
+      }
+    }
   }
 
   if (!dbUser || dbUser.deleted) {
@@ -70,7 +93,7 @@ export async function requireAuth(req?: any): Promise<AuthenticatedUser> {
     id: dbUser.id,
     auth_user_id: dbUser.auth_user_id || authUserId,
     name: dbUser.name || '',
-    email: dbUser.email || (data.claims.email as string) || '',
+    email: dbUser.email || userEmail,
     role_id: dbUser.role_id || 'ug-5',
     is_admin: !!dbUser.is_admin,
     type: dbUser.type || 'standard',

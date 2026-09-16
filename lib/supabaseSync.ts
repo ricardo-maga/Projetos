@@ -153,25 +153,25 @@ export const stringToUUID = (str: string): string => {
 export function mapStateToUUIDs(state: ERPState): ERPState {
   return {
     ...state,
-    userGroups: (state.userGroups || []).map(g => ({ ...g, id: stringToUUID(g.id) })),
-    projectStatuses: (state.projectStatuses || []).map(s => ({ ...s, id: stringToUUID(s.id) })),
-    projectCategories: (state.projectCategories || []).map(c => ({ ...c, id: stringToUUID(c.id) })),
-    projectRisks: (state.projectRisks || []).map(r => ({ ...r, id: stringToUUID(r.id) })),
-    projectPriorities: (state.projectPriorities || []).map(p => ({ ...p, id: stringToUUID(p.id) })),
-    projectTeams: (state.projectTeams || []).map(t => ({ ...t, id: stringToUUID(t.id) })),
-    projectPartners: (state.projectPartners || []).map(p => ({ ...p, id: stringToUUID(p.id) })),
-    taskStatuses: (state.taskStatuses || []).map(s => ({ ...s, id: stringToUUID(s.id) })),
-    taskTypes: (state.taskTypes || []).map(tt => ({ ...tt, id: stringToUUID(tt.id) })),
-    users: (state.users || []).map(u => ({
+    userGroups: (state.userGroups || []).map((g: any) => ({ ...g, id: stringToUUID(g.id) })),
+    projectStatuses: (state.projectStatuses || []).map((s: any) => ({ ...s, id: stringToUUID(s.id) })),
+    projectCategories: (state.projectCategories || []).map((c: any) => ({ ...c, id: stringToUUID(c.id) })),
+    projectRisks: (state.projectRisks || []).map((r: any) => ({ ...r, id: stringToUUID(r.id) })),
+    projectPriorities: (state.projectPriorities || []).map((p: any) => ({ ...p, id: stringToUUID(p.id) })),
+    projectTeams: (state.projectTeams || []).map((t: any) => ({ ...t, id: stringToUUID(t.id) })),
+    projectPartners: (state.projectPartners || []).map((p: any) => ({ ...p, id: stringToUUID(p.id) })),
+    taskStatuses: (state.taskStatuses || []).map((s: any) => ({ ...s, id: stringToUUID(s.id) })),
+    taskTypes: (state.taskTypes || []).map((tt: any) => ({ ...tt, id: stringToUUID(tt.id) })),
+    users: (state.users || []).map((u: any) => ({
       ...u,
       id: stringToUUID(u.id),
       roleId: stringToUUID(u.roleId),
     })),
-    clients: (state.clients || []).map(c => ({
+    clients: (state.clients || []).map((c: any) => ({
       ...c,
       id: stringToUUID(c.id),
     })),
-    projects: (state.projects || []).map(p => ({
+    projects: (state.projects || []).map((p: any) => ({
       ...p,
       id: stringToUUID(p.id),
       clientId: stringToUUID(p.clientId),
@@ -187,7 +187,7 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
       partnersIds: (p.partnersIds || []).map(stringToUUID),
       createdById: stringToUUID(p.createdById),
     })),
-    tasks: (state.tasks || []).map(t => ({
+    tasks: (state.tasks || []).map((t: any) => ({
       ...t,
       id: stringToUUID(t.id),
       projectId: stringToUUID(t.projectId),
@@ -195,62 +195,62 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
       taskTypeId: t.taskTypeId ? stringToUUID(t.taskTypeId) : undefined,
       assigneeIds: (t.assigneeIds || []).map(stringToUUID),
     })),
-    comments: (state.comments || []).map(c => ({
+    comments: (state.comments || []).map((c: any) => ({
       ...c,
       id: stringToUUID(c.id),
       projectId: stringToUUID(c.projectId),
       authorId: stringToUUID(c.authorId),
     })),
-    userAbsences: (state.userAbsences || []).map(a => ({
+    userAbsences: (state.userAbsences || []).map((a: any) => ({
       ...a,
       id: stringToUUID(a.id),
       userId: stringToUUID(a.userId),
     })),
-    materials: (state.materials || []).map(m => ({
+    materials: (state.materials || []).map((m: any) => ({
       ...m,
       id: stringToUUID(m.id),
     })),
-    quotes: (state.quotes || []).map(q => ({
+    quotes: (state.quotes || []).map((q: any) => ({
       ...q,
       id: stringToUUID(q.id),
       projectId: stringToUUID(q.projectId),
       clientId: stringToUUID(q.clientId),
       responsibleId: stringToUUID(q.responsibleId),
     })),
-    billOfMaterials: (state.billOfMaterials || []).map(b => ({
+    billOfMaterials: (state.billOfMaterials || []).map((b: any) => ({
       ...b,
       id: stringToUUID(b.id),
       quoteId: stringToUUID(b.quoteId),
       materialId: stringToUUID(b.materialId),
     })),
-    equipmentList: (state.equipmentList || []).map(e => ({
+    equipmentList: (state.equipmentList || []).map((e: any) => ({
       ...e,
       id: stringToUUID(e.id),
       projectId: stringToUUID(e.projectId),
       clientId: stringToUUID(e.clientId),
     })),
-    specialDays: (state.specialDays || []).map(sd => ({
+    specialDays: (state.specialDays || []).map((sd: any) => ({
       ...sd,
       id: stringToUUID(sd.id),
     })),
-    defaultTasks: (state.defaultTasks || []).map(dt => ({
+    defaultTasks: (state.defaultTasks || []).map((dt: any) => ({
       ...dt,
       id: stringToUUID(dt.id),
       taskTypeId: dt.taskTypeId ? stringToUUID(dt.taskTypeId) : undefined,
     })),
-    riskCategories: (state.riskCategories || []).map(rc => ({
+    riskCategories: (state.riskCategories || []).map((rc: any) => ({
       ...rc,
       id: stringToUUID(rc.id),
     })),
-    riskStatuses: (state.riskStatuses || []).map(rs => ({
+    riskStatuses: (state.riskStatuses || []).map((rs: any) => ({
       ...rs,
       id: stringToUUID(rs.id),
     })),
-    riskPriorities: (state.riskPriorities || []).map(rp => ({
+    riskPriorities: (state.riskPriorities || []).map((rp: any) => ({
       ...rp,
       id: stringToUUID(rp.id),
     })),
-    projectRiskItems: (state.projectRiskItems || []).map(pri => ({
+    projectRiskItems: (state.projectRiskItems || []).map((pri: any) => ({
       ...pri,
       id: stringToUUID(pri.id),
       projectId: stringToUUID(pri.projectId),
@@ -259,7 +259,7 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
       statusId: stringToUUID(pri.statusId),
       priorityId: stringToUUID(pri.priorityId),
     })),
-    tickets: (state.tickets || []).map(t => ({
+    tickets: (state.tickets || []).map((t: any) => ({
       ...t,
       id: stringToUUID(t.id),
       statusId: t.statusId ? stringToUUID(t.statusId) : undefined,
@@ -271,9 +271,9 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
       convertedTaskId: t.convertedTaskId ? stringToUUID(t.convertedTaskId) : undefined,
       convertedProjectId: t.convertedProjectId ? stringToUUID(t.convertedProjectId) : undefined,
     })),
-    ticketStatuses: (state.ticketStatuses || []).map(ts => ({ ...ts, id: stringToUUID(ts.id) })),
-    notifications: (state.notifications || []).map(n => ({ ...n, id: stringToUUID(n.id) })),
-    automationRules: (state.automationRules || []).map(r => ({ ...r, id: stringToUUID(r.id) })),
+    ticketStatuses: (state.ticketStatuses || []).map((ts: any) => ({ ...ts, id: stringToUUID(ts.id) })),
+    notifications: (state.notifications || []).map((n: any) => ({ ...n, id: stringToUUID(n.id) })),
+    automationRules: (state.automationRules || []).map((r: any) => ({ ...r, id: stringToUUID(r.id) })),
   };
 }
 
@@ -507,17 +507,17 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
 
     // Build lookup maps for fast association
     const riskMap: Record<string, string> = {};
-    riskLinkRows.forEach(link => {
+    riskLinkRows.forEach((link: any) => {
       if (link.project_id && link.risk_id) riskMap[link.project_id] = link.risk_id;
     });
 
     const priorityMap: Record<string, string> = {};
-    priorityLinkRows.forEach(link => {
+    priorityLinkRows.forEach((link: any) => {
       if (link.project_id && link.priority_id) priorityMap[link.project_id] = link.priority_id;
     });
 
     const teamsMap: Record<string, string[]> = {};
-    teamLinkRows.forEach(link => {
+    teamLinkRows.forEach((link: any) => {
       if (link.project_id && link.team_id) {
         if (!teamsMap[link.project_id]) teamsMap[link.project_id] = [];
         teamsMap[link.project_id].push(link.team_id);
@@ -525,7 +525,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     });
 
     const partnersMap: Record<string, string[]> = {};
-    partnerLinkRows.forEach(link => {
+    partnerLinkRows.forEach((link: any) => {
       if (link.project_id && link.partner_id) {
         if (!partnersMap[link.project_id]) partnersMap[link.project_id] = [];
         partnersMap[link.project_id].push(link.partner_id);
@@ -533,7 +533,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     });
 
     const assigneesMap: Record<string, string[]> = {};
-    assigneeLinkRows.forEach(link => {
+    assigneeLinkRows.forEach((link: any) => {
       if (link.task_id && link.user_id) {
         if (!assigneesMap[link.task_id]) assigneesMap[link.task_id] = [];
         assigneesMap[link.task_id].push(link.user_id);
@@ -541,7 +541,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     });
 
     const categoriesMap: Record<string, string[]> = {};
-    categoryLinkRows.forEach(link => {
+    categoryLinkRows.forEach((link: any) => {
       if (link.project_id && link.category_id) {
         if (!categoriesMap[link.project_id]) categoriesMap[link.project_id] = [];
         categoriesMap[link.project_id].push(link.category_id);
@@ -585,7 +585,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     };
 
     // Map database structures to React types
-    let projects: Project[] = (resProjects.data || []).map(p => ({
+    let projects: Project[] = (resProjects.data || []).map((p: any) => ({
       id: p.id,
       demo: p.demo || false,
       clientId: p.client_id || '',
@@ -625,7 +625,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     const milestoneTaskType = (resTaskTypes?.data || []).find((tt: any) => tt.name?.toLowerCase().includes('marco'));
     const defaultTaskType = (resTaskTypes?.data || []).find((tt: any) => !tt.deleted);
 
-    let tasks: Task[] = (resTasks.data || []).map(t => {
+    let tasks: Task[] = (resTasks.data || []).map((t: any) => {
       let resolvedTaskTypeId = t.task_type_id;
       if (!resolvedTaskTypeId && t.is_milestone && milestoneTaskType) {
         resolvedTaskTypeId = milestoneTaskType.id;
@@ -652,7 +652,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       };
     });
 
-    const clients: Client[] = (resClients.data || []).map(c => ({
+    const clients: Client[] = (resClients.data || []).map((c: any) => ({
       id: c.id,
       clientName: c.client_name,
       shortName: c.short_name || '',
@@ -666,7 +666,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       createdDate: c.created_at || '',
     }));
 
-    const users: User[] = (resUsers.data || []).map(u => ({
+    const users: User[] = (resUsers.data || []).map((u: any) => ({
       id: u.id,
       type: u.type as any,
       name: u.name,
@@ -679,7 +679,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       isAdmin: u.is_admin || false,
     }));
 
-    const comments: Comment[] = (resComments.data || []).map(c => ({
+    const comments: Comment[] = (resComments.data || []).map((c: any) => ({
       id: c.id,
       projectId: c.project_id || '',
       authorId: c.author_id || '',
@@ -687,7 +687,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       createdDate: c.created_at || '',
     }));
 
-    const userAbsences: UserAbsence[] = (resUserAbsences.data || []).map(a => ({
+    const userAbsences: UserAbsence[] = (resUserAbsences.data || []).map((a: any) => ({
       id: a.id,
       userId: a.user_id || '',
       absenceStartDate: a.absence_start_date || '',
@@ -696,7 +696,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       createdDate: a.created_at || '',
     }));
 
-    const materials: Material[] = (resMaterials.data || []).map(m => ({
+    const materials: Material[] = (resMaterials.data || []).map((m: any) => ({
       id: m.id,
       name: m.name,
       reference: m.reference || '',
@@ -708,7 +708,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       createdDate: m.created_at || '',
     }));
 
-    const quotes: Quote[] = (resQuotes.data || []).map(q => ({
+    const quotes: Quote[] = (resQuotes.data || []).map((q: any) => ({
       id: q.id,
       projectId: q.project_id || '',
       clientId: '',
@@ -721,7 +721,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       createdDate: q.created_at || '',
     }));
 
-    const billOfMaterials: BillOfMaterial[] = (resBOMs.data || []).map(b => ({
+    const billOfMaterials: BillOfMaterial[] = (resBOMs.data || []).map((b: any) => ({
       id: b.id,
       quoteId: b.quote_id || '',
       materialId: b.material_id || '',
@@ -730,7 +730,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       createdDate: b.created_at || '',
     }));
 
-    const equipmentList: Equipment[] = (resEquipment.data || []).map(e => ({
+    const equipmentList: Equipment[] = (resEquipment.data || []).map((e: any) => ({
       id: e.id,
       serialNumber: e.serial_number || '',
       brand: e.brand || '',
@@ -743,20 +743,20 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       createdDate: e.created_at || '',
     }));
 
-    const specialDays: SpecialDay[] = (resSpecialDays.data || []).map(sd => ({
+    const specialDays: SpecialDay[] = (resSpecialDays.data || []).map((sd: any) => ({
       id: sd.id,
       date: sd.date || '',
       name: sd.name || '',
     }));
 
-    const defaultTasks: DefaultTask[] = (resDefaultTasks.data || []).map(dt => ({
+    const defaultTasks: DefaultTask[] = (resDefaultTasks.data || []).map((dt: any) => ({
       id: dt.id,
       title: dt.title || '',
       description: dt.description || '',
       estimatedHours: dt.estimated_hours || '',
     }));
 
-    const userGroupsMapped: UserGroup[] = (resUserGroups.data || []).map(g => ({
+    const userGroupsMapped: UserGroup[] = (resUserGroups.data || []).map((g: any) => ({
       id: g.id,
       name: g.name,
       deleted: g.deleted || false,
@@ -779,21 +779,21 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       createdDate: pm.created_at || '',
     }));
 
-    const riskCategories: RiskCategory[] = (resRiskCategories.data || []).map(rc => ({
+    const riskCategories: RiskCategory[] = (resRiskCategories.data || []).map((rc: any) => ({
       id: rc.id,
       name: rc.name,
       deleted: rc.deleted || false,
       sort_order: rc.sort_order || 0,
     }));
 
-    const riskStatuses: RiskStatus[] = (resRiskStatuses.data || []).map(rs => ({
+    const riskStatuses: RiskStatus[] = (resRiskStatuses.data || []).map((rs: any) => ({
       id: rs.id,
       name: rs.name,
       deleted: rs.deleted || false,
       sort_order: rs.sort_order || 0,
     }));
 
-    const riskPriorities: RiskPriority[] = (resRiskPriorities.data || []).map(rp => ({
+    const riskPriorities: RiskPriority[] = (resRiskPriorities.data || []).map((rp: any) => ({
       id: rp.id,
       name: rp.name,
       scale: rp.scale || 1,
@@ -801,7 +801,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       sort_order: rp.sort_order || 0,
     }));
 
-    const projectRiskItems: ProjectRiskItem[] = (resProjectRiskItems.data || []).map(pri => ({
+    const projectRiskItems: ProjectRiskItem[] = (resProjectRiskItems.data || []).map((pri: any) => ({
       id: pri.id,
       projectId: pri.project_id || '',
       title: pri.title || '',
@@ -1186,7 +1186,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
     // 1.5. Perform parallel upserts for reference tables to prevent foreign key errors in primary tables
     const refUpserts = [
-      supabase.from('user_groups').upsert((state.userGroups || []).map(g => ({
+      supabase.from('user_groups').upsert((state.userGroups || []).map((g: any) => ({
         id: g.id,
         name: g.name,
         deleted: g.deleted || false,
@@ -1194,7 +1194,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       }))).then(res => {
         if (res.error && (res.error.message.includes('permissions') || res.error.code === '42703')) {
           console.warn('user_groups permissions column is missing, falling back to basic save.');
-          return supabase!.from('user_groups').upsert((state.userGroups || []).map(g => ({
+          return supabase!.from('user_groups').upsert((state.userGroups || []).map((g: any) => ({
             id: g.id,
             name: g.name,
             deleted: g.deleted || false
@@ -1202,72 +1202,72 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         }
         return res;
       }),
-      supabase.from('project_status').upsert((state.projectStatuses || []).map(s => ({
+      supabase.from('project_status').upsert((state.projectStatuses || []).map((s: any) => ({
         id: s.id,
         name: s.name,
         scale: s.scale || 1,
         deleted: s.deleted || false,
         sort_order: s.sort_order || 0
       }))),
-      supabase.from('project_category').upsert((state.projectCategories || []).map(c => ({
+      supabase.from('project_category').upsert((state.projectCategories || []).map((c: any) => ({
         id: c.id,
         name: c.name,
         deleted: c.deleted || false,
         sort_order: c.sort_order || 0
       }))),
-      supabase.from('project_risk').upsert((state.projectRisks || []).map(r => ({
+      supabase.from('project_risk').upsert((state.projectRisks || []).map((r: any) => ({
         id: stringToUUID(r.id),
         name: r.name,
         scale: r.scale || 1,
         deleted: r.deleted || false,
         sort_order: r.sort_order || 0
       }))),
-      supabase.from('project_priority').upsert((state.projectPriorities || []).map(p => ({
+      supabase.from('project_priority').upsert((state.projectPriorities || []).map((p: any) => ({
         id: stringToUUID(p.id),
         name: p.name,
         scale: p.scale || 1,
         deleted: p.deleted || false,
         sort_order: p.sort_order || 0
       }))),
-      supabase.from('project_teams').upsert((state.projectTeams || []).map(t => ({
+      supabase.from('project_teams').upsert((state.projectTeams || []).map((t: any) => ({
         id: stringToUUID(t.id),
         name: t.name,
         deleted: t.deleted || false,
         sort_order: t.sort_order || 0
       }))),
-      supabase.from('project_partners').upsert((state.projectPartners || []).map(p => ({
+      supabase.from('project_partners').upsert((state.projectPartners || []).map((p: any) => ({
         id: stringToUUID(p.id),
         name: p.name,
         deleted: p.deleted || false,
         sort_order: p.sort_order || 0
       }))),
-      supabase.from('task_status').upsert((state.taskStatuses || []).map(s => ({
+      supabase.from('task_status').upsert((state.taskStatuses || []).map((s: any) => ({
         id: stringToUUID(s.id),
         name: s.name,
         scale: s.scale ?? 1,
         deleted: s.deleted ?? false,
         sort_order: s.sort_order ?? (s as any).sortOrder ?? s.scale ?? 0,
       }))),
-      supabase.from('task_types').upsert((state.taskTypes || []).map(tt => ({
+      supabase.from('task_types').upsert((state.taskTypes || []).map((tt: any) => ({
         id: stringToUUID(tt.id),
         name: tt.name,
         scale: tt.scale ?? 1,
         deleted: tt.deleted ?? false,
         sort_order: tt.sort_order ?? tt.scale ?? 0,
       }))),
-      supabase.from('risk_categories').upsert((state.riskCategories || []).map(rc => ({
+      supabase.from('risk_categories').upsert((state.riskCategories || []).map((rc: any) => ({
         id: stringToUUID(rc.id),
         name: rc.name,
         deleted: rc.deleted || false,
         sort_order: rc.sort_order || 0
       }))),
-      supabase.from('risk_statuses').upsert((state.riskStatuses || []).map(rs => ({
+      supabase.from('risk_statuses').upsert((state.riskStatuses || []).map((rs: any) => ({
         id: stringToUUID(rs.id),
         name: rs.name,
         deleted: rs.deleted || false,
         sort_order: rs.sort_order || 0
       }))),
-      supabase.from('risk_priorities').upsert((state.riskPriorities || []).map(rp => ({
+      supabase.from('risk_priorities').upsert((state.riskPriorities || []).map((rp: any) => ({
         id: stringToUUID(rp.id),
         name: rp.name,
         scale: rp.scale || 1,
@@ -1352,7 +1352,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       // Clients (with column compatibility fallback)
       (async () => {
         if (!state.clients || state.clients.length === 0) return { error: null };
-        const fullClients = state.clients.map(c => ({
+        const fullClients = state.clients.map((c: any) => ({
           id: c.id,
           client_name: c.clientName || 'Cliente Sem Nome',
           short_name: c.shortName || null,
@@ -1369,7 +1369,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         let res = await supabase!.from('clients').upsert(fullClients);
         if (res.error && (res.error.code === '42703' || res.error.message.includes('deleted') || res.error.message.includes('column'))) {
           console.warn('Clients table column missing, attempting basic upsert fallback:', res.error.message);
-          const basicClients = state.clients.map(c => ({
+          const basicClients = state.clients.map((c: any) => ({
             id: c.id,
             client_name: c.clientName || 'Cliente Sem Nome',
             created_at: c.createdDate || new Date().toISOString()
@@ -1380,7 +1380,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       })(),
 
       // Users
-      supabase.from('users').upsert(state.users.map(u => ({
+      supabase.from('users').upsert(state.users.map((u: any) => ({
         id: u.id,
         type: u.type,
         name: u.name,
@@ -1394,7 +1394,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       }))),
 
       // Materials (table: material)
-      supabase.from('material').upsert(state.materials.map(m => ({
+      supabase.from('material').upsert(state.materials.map((m: any) => ({
         id: m.id,
         name: m.name,
         reference: m.reference || null,
@@ -1415,14 +1415,14 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     }
 
     // 3. Save Projects (depends on Clients / Users)
-    const validClientIds = new Set((state.clients || []).filter(c => !c.deleted).map(c => stringToUUID(c.id)));
-    const validCategoryIds = new Set(state.projectCategories.map(c => stringToUUID(c.id)));
-    const validStatusIds = new Set(state.projectStatuses.map(s => stringToUUID(s.id)));
-    const validUserIds = new Set(state.users.map(u => stringToUUID(u.id)));
-    const validRiskIds = new Set(state.projectRisks.map(r => stringToUUID(r.id)));
-    const validPriorityIds = new Set(state.projectPriorities.map(p => stringToUUID(p.id)));
+    const validClientIds = new Set((state.clients || []).filter(c => !c.deleted).map((c: any) => stringToUUID(c.id)));
+    const validCategoryIds = new Set(state.projectCategories.map((c: any) => stringToUUID(c.id)));
+    const validStatusIds = new Set(state.projectStatuses.map((s: any) => stringToUUID(s.id)));
+    const validUserIds = new Set(state.users.map((u: any) => stringToUUID(u.id)));
+    const validRiskIds = new Set(state.projectRisks.map((r: any) => stringToUUID(r.id)));
+    const validPriorityIds = new Set(state.projectPriorities.map((p: any) => stringToUUID(p.id)));
 
-    const projectUpserts = state.projects.map(p => {
+    const projectUpserts = state.projects.map((p: any) => {
       const pUUID = stringToUUID(p.id);
       const clientId = p.clientId ? stringToUUID(p.clientId) : null;
       const categoryId = p.categoryId ? stringToUUID(p.categoryId) : null;
@@ -1435,10 +1435,10 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       const priorityId = p.priorityId ? stringToUUID(p.priorityId) : null;
 
       const teamsInvolvedUUIDs = p.teamsInvolvedIds && p.teamsInvolvedIds.length > 0
-        ? p.teamsInvolvedIds.map(t => stringToUUID(t)).filter(Boolean)
+        ? p.teamsInvolvedIds.map((t: any) => stringToUUID(t)).filter(Boolean)
         : [];
       const partnersUUIDs = p.partnersIds && p.partnersIds.length > 0
-        ? p.partnersIds.map(pt => stringToUUID(pt)).filter(Boolean)
+        ? p.partnersIds.map((pt: any) => stringToUUID(pt)).filter(Boolean)
         : [];
 
       return {
@@ -1485,11 +1485,11 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     }
 
     // 4. Save Tasks (depends on Projects)
-    const validProjectIds = new Set(state.projects.map(p => p.id));
-    const validTaskStatusIds = new Set(state.taskStatuses.map(s => s.id));
-    const validTaskTypeIds = new Set((state.taskTypes || []).map(tt => tt.id));
+    const validProjectIds = new Set(state.projects.map((p: any) => p.id));
+    const validTaskStatusIds = new Set(state.taskStatuses.map((s: any) => s.id));
+    const validTaskTypeIds = new Set((state.taskTypes || []).map((tt: any) => tt.id));
 
-    const taskUpserts = state.tasks.map(t => {
+    const taskUpserts = state.tasks.map((t: any) => {
       const projectId = t.projectId ? stringToUUID(t.projectId) : null;
       const statusId = t.statusId ? stringToUUID(t.statusId) : null;
       const taskTypeId = t.taskTypeId ? stringToUUID(t.taskTypeId) : null;
@@ -1526,7 +1526,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
     // Save Project Materials
     if (state.projectMaterials && state.projectMaterials.length > 0) {
-      const pmUpserts = state.projectMaterials.map(pm => ({
+      const pmUpserts = state.projectMaterials.map((pm: any) => ({
         id: stringToUUID(pm.id),
         project_id: stringToUUID(pm.projectId),
         description: pm.description,
@@ -1551,11 +1551,11 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
     // Save Project Risk Items
     if (state.projectRiskItems && state.projectRiskItems.length > 0) {
-      const validRiskCatIds = new Set((state.riskCategories || []).map(rc => stringToUUID(rc.id)));
-      const validRiskStatIds = new Set((state.riskStatuses || []).map(rs => stringToUUID(rs.id)));
-      const validRiskPrioIds = new Set((state.riskPriorities || []).map(rp => stringToUUID(rp.id)));
+      const validRiskCatIds = new Set((state.riskCategories || []).map((rc: any) => stringToUUID(rc.id)));
+      const validRiskStatIds = new Set((state.riskStatuses || []).map((rs: any) => stringToUUID(rs.id)));
+      const validRiskPrioIds = new Set((state.riskPriorities || []).map((rp: any) => stringToUUID(rp.id)));
 
-      const priUpserts = state.projectRiskItems.map(pri => {
+      const priUpserts = state.projectRiskItems.map((pri: any) => {
         const pId = pri.projectId ? stringToUUID(pri.projectId) : null;
         const ownerId = pri.ownerId ? stringToUUID(pri.ownerId) : null;
         const catId = pri.categoryId ? stringToUUID(pri.categoryId) : null;
@@ -1595,8 +1595,8 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     }
 
     // 5. Update many-to-many bridge tables in parallel
-    const projectIds = state.projects.map(p => p.id);
-    const taskIds = state.tasks.map(t => t.id);
+    const projectIds = state.projects.map((p: any) => p.id);
+    const taskIds = state.tasks.map((t: any) => t.id);
 
     // Delete existing links to recreate them
     if (projectIds.length > 0) {
@@ -1626,12 +1626,12 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     }
 
     // Prepare link insert batches
-    const validTeamIds = new Set(state.projectTeams.map(t => stringToUUID(t.id)));
-    const validPartnerIds = new Set(state.projectPartners.map(p => stringToUUID(p.id)));
+    const validTeamIds = new Set(state.projectTeams.map((t: any) => stringToUUID(t.id)));
+    const validPartnerIds = new Set(state.projectPartners.map((p: any) => stringToUUID(p.id)));
 
     const riskLinks = Array.from(new Map(state.projects
       .filter((p): p is typeof p & { riskId: string } => Boolean(p.riskId))
-      .map(p => {
+      .map((p: any) => {
         const pUUID = stringToUUID(p.id);
         const rUUID = stringToUUID(p.riskId);
         return (pUUID && rUUID && validRiskIds.has(rUUID)) ? [`${pUUID}-${rUUID}`, { project_id: pUUID, risk_id: rUUID }] : null;
@@ -1640,7 +1640,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
     const priorityLinks = Array.from(new Map(state.projects
       .filter(p => p.priorityId)
-      .map(p => {
+      .map((p: any) => {
         const pUUID = stringToUUID(p.id);
         const prUUID = stringToUUID(p.priorityId);
         return (pUUID && prUUID && validPriorityIds.has(prUUID)) ? [`${pUUID}-${prUUID}`, { project_id: pUUID, priority_id: prUUID }] : null;
@@ -1746,10 +1746,10 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     // Delete what is not in state list to match exactly (real CRUD sync)
     // Note: Clients are soft-deleted via deleted = true, not hard deleted.
 
-    const stateCommentIds = state.comments.map(c => c.id);
+    const stateCommentIds = state.comments.map((c: any) => c.id);
     const { data: dbComments } = await supabase.from('comments').select('id');
     if (dbComments && dbComments.length > 0) {
-      const commentIdsToDelete = dbComments.map(d => d.id).filter(id => !stateCommentIds.includes(id));
+      const commentIdsToDelete = dbComments.map((d: any) => d.id).filter(id => !stateCommentIds.includes(id));
       if (commentIdsToDelete.length > 0) {
         await supabase.from('comments').delete().in('id', commentIdsToDelete);
       }
@@ -1757,10 +1757,10 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       await supabase.from('comments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     }
 
-    const stateAbsenceIds = state.userAbsences.map(a => a.id);
+    const stateAbsenceIds = state.userAbsences.map((a: any) => a.id);
     const { data: dbAbsences } = await supabase.from('user_absences').select('id');
     if (dbAbsences && dbAbsences.length > 0) {
-      const absenceIdsToDelete = dbAbsences.map(d => d.id).filter(id => !stateAbsenceIds.includes(id));
+      const absenceIdsToDelete = dbAbsences.map((d: any) => d.id).filter(id => !stateAbsenceIds.includes(id));
       if (absenceIdsToDelete.length > 0) {
         await supabase.from('user_absences').delete().in('id', absenceIdsToDelete);
       }
@@ -1768,10 +1768,10 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       await supabase.from('user_absences').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     }
 
-    const stateSpecialDayIds = (state.specialDays || []).map(sd => sd.id);
+    const stateSpecialDayIds = (state.specialDays || []).map((sd: any) => sd.id);
     const { data: dbSpecialDays } = await supabase.from('special_days').select('id');
     if (dbSpecialDays && dbSpecialDays.length > 0) {
-      const specialDayIdsToDelete = dbSpecialDays.map(d => d.id).filter(id => !stateSpecialDayIds.includes(id));
+      const specialDayIdsToDelete = dbSpecialDays.map((d: any) => d.id).filter(id => !stateSpecialDayIds.includes(id));
       if (specialDayIdsToDelete.length > 0) {
         await supabase.from('special_days').delete().in('id', specialDayIdsToDelete);
       }
@@ -1779,10 +1779,10 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       await supabase.from('special_days').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     }
 
-    const stateDefaultTaskIds = (state.defaultTasks || []).map(dt => dt.id);
+    const stateDefaultTaskIds = (state.defaultTasks || []).map((dt: any) => dt.id);
     const { data: dbDefaultTasks } = await supabase.from('default_tasks').select('id');
     if (dbDefaultTasks && dbDefaultTasks.length > 0) {
-      const defaultTaskIdsToDelete = dbDefaultTasks.map(d => d.id).filter(id => !stateDefaultTaskIds.includes(id));
+      const defaultTaskIdsToDelete = dbDefaultTasks.map((d: any) => d.id).filter(id => !stateDefaultTaskIds.includes(id));
       if (defaultTaskIdsToDelete.length > 0) {
         await supabase.from('default_tasks').delete().in('id', defaultTaskIdsToDelete);
       }
@@ -1790,13 +1790,13 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       await supabase.from('default_tasks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     }
 
-    const validProjIds = new Set(state.projects.map(p => p.id));
-    const validUsrIds = new Set(state.users.map(u => u.id));
+    const validProjIds = new Set(state.projects.map((p: any) => p.id));
+    const validUsrIds = new Set(state.users.map((u: any) => u.id));
 
     const secondaryResults = await Promise.all([
       // Comments
       (state.comments && state.comments.length > 0) ? (() => {
-        const mappedComments = state.comments.filter(c => c.id).map(c => {
+        const mappedComments = state.comments.filter(c => c.id).map((c: any) => {
           const pid = c.projectId ? stringToUUID(c.projectId) : null;
           const aid = c.authorId ? stringToUUID(c.authorId) : null;
           return {
@@ -1812,7 +1812,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
       // User Absences
       (state.userAbsences && state.userAbsences.length > 0) ? (() => {
-        const mappedAbsences = state.userAbsences.map(a => {
+        const mappedAbsences = state.userAbsences.map((a: any) => {
           const uid = a.userId ? stringToUUID(a.userId) : null;
           return {
             id: a.id,
@@ -1828,7 +1828,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
       // Quotes
       (state.quotes && state.quotes.length > 0) ? (() => {
-        const mappedQuotes = state.quotes.map(q => {
+        const mappedQuotes = state.quotes.map((q: any) => {
           const pid = q.projectId ? stringToUUID(q.projectId) : null;
           const rid = q.responsibleId ? stringToUUID(q.responsibleId) : null;
           return {
@@ -1848,7 +1848,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
       // Equipment List
       (state.equipmentList && state.equipmentList.length > 0) ? (() => {
-        const mappedEquipment = state.equipmentList.map(e => {
+        const mappedEquipment = state.equipmentList.map((e: any) => {
           const pid = e.projectId ? stringToUUID(e.projectId) : null;
           return {
             id: e.id,
@@ -1866,14 +1866,14 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       })() : Promise.resolve({ error: null }),
 
       // Special Days
-      (state.specialDays && state.specialDays.length > 0) ? supabase.from('special_days').upsert(state.specialDays.map(sd => ({
+      (state.specialDays && state.specialDays.length > 0) ? supabase.from('special_days').upsert(state.specialDays.map((sd: any) => ({
         id: sd.id,
         date: formatDbDate(sd.date),
         name: sd.name
       }))).then(res => ({ ...res, table: 'special_days' })) : Promise.resolve({ error: null }),
 
       // Default Tasks
-      (state.defaultTasks && state.defaultTasks.length > 0) ? supabase.from('default_tasks').upsert(state.defaultTasks.map(dt => ({
+      (state.defaultTasks && state.defaultTasks.length > 0) ? supabase.from('default_tasks').upsert(state.defaultTasks.map((dt: any) => ({
         id: dt.id,
         title: dt.title,
         description: dt.description || null,
@@ -1889,10 +1889,10 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
     // Now that quotes are fully saved in the database, we can safely upsert Bill of Materials to avoid foreign key violations.
     if (state.billOfMaterials && state.billOfMaterials.length > 0) {
-      const validQuoteIds = new Set(state.quotes.map(q => q.id));
-      const validMaterialIds = new Set(state.materials.map(m => m.id));
+      const validQuoteIds = new Set(state.quotes.map((q: any) => q.id));
+      const validMaterialIds = new Set(state.materials.map((m: any) => m.id));
       const mappedBOMs = state.billOfMaterials
-        .map(b => {
+        .map((b: any) => {
           const qid = b.quoteId ? stringToUUID(b.quoteId) : null;
           const mid = b.materialId ? stringToUUID(b.materialId) : null;
           return {
@@ -1918,7 +1918,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     // Save Ticket Statuses
     if (state.ticketStatuses && state.ticketStatuses.length > 0) {
       try {
-        const mappedTS = state.ticketStatuses.map(ts => ({
+        const mappedTS = state.ticketStatuses.map((ts: any) => ({
           id: stringToUUID(ts.id),
           name: ts.name,
           color: ts.color || 'blue',
@@ -1934,7 +1934,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     // Save Notifications
     if (state.notifications && state.notifications.length > 0) {
       try {
-        const mappedNotifs = state.notifications.slice(0, 100).map(n => ({
+        const mappedNotifs = state.notifications.slice(0, 100).map((n: any) => ({
           id: stringToUUID(n.id),
           user_id: n.userId || 'all',
           title: n.title,
@@ -1952,7 +1952,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     // Save Automation Rules
     if (state.automationRules && state.automationRules.length > 0) {
       try {
-        const mappedRules = state.automationRules.map(r => ({
+        const mappedRules = state.automationRules.map((r: any) => ({
           id: stringToUUID(r.id),
           name: r.name,
           description: r.description || null,
@@ -1971,7 +1971,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     // Save Tickets
     if (state.tickets && state.tickets.length > 0) {
       try {
-        const mappedTickets = state.tickets.map(t => ({
+        const mappedTickets = state.tickets.map((t: any) => ({
           id: stringToUUID(t.id),
           ticket_number: t.ticketNumber,
           title: t.title,

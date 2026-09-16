@@ -77,14 +77,23 @@ export function useERP() {
       } else {
         const errJson = await syncRes.json().catch(() => ({}));
         const msg = errJson.message || `Erro do servidor ao contactar a base de dados (Status: ${syncRes.status}).`;
-        setSyncStatus('error');
-        setSyncError(msg);
+        if (syncRes.status === 401) {
+          // Sessão não autenticada ou expirada: inicializar baseline para que o ecrã de login seja exibido
+          setState(prev => prev || mapStateToUUIDs(CLEAN_BASELINE_STATE));
+          setSyncStatus('idle');
+          setSyncError(null);
+        } else {
+          setSyncStatus('error');
+          setSyncError(msg);
+          setState(prev => prev || mapStateToUUIDs(CLEAN_BASELINE_STATE));
+        }
         return false;
       }
     } catch (err: any) {
       const msg = err?.message || 'Erro de rede ao contactar a base de dados.';
       setSyncStatus('error');
       setSyncError(msg);
+      setState(prev => prev || mapStateToUUIDs(CLEAN_BASELINE_STATE));
       return false;
     }
   }, []);
@@ -110,6 +119,18 @@ export function useERP() {
           if (configData && typeof configData.isConfigured === 'boolean') {
             configured = configData.isConfigured;
           }
+          if (configData?.appConfig) {
+            setState(prev => {
+              const base = prev || mapStateToUUIDs(CLEAN_BASELINE_STATE);
+              return {
+                ...base,
+                appConfig: {
+                  ...base.appConfig,
+                  ...configData.appConfig,
+                },
+              };
+            });
+          }
         }
       } catch (configErr) {
         console.warn('Could not check Supabase config from server:', configErr);
@@ -121,11 +142,14 @@ export function useERP() {
         setSyncStatus('error');
         setSyncError('A base de dados não está configurada no servidor. Por razões de integridade, a aplicação não permite operar com dados não gravados na base de dados.');
         // Provide empty baseline with zero records so app layout can render without crashing
-        setState(mapStateToUUIDs(CLEAN_BASELINE_STATE));
+        setState(prev => prev || mapStateToUUIDs(CLEAN_BASELINE_STATE));
         return;
       }
 
-      await refreshFromDatabase();
+      const ok = await refreshFromDatabase();
+      if (!ok) {
+        setState(prev => prev || mapStateToUUIDs(CLEAN_BASELINE_STATE));
+      }
     };
 
     loadState();
