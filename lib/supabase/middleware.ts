@@ -30,8 +30,8 @@ export async function updateSession(request: NextRequest) {
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, {
             ...options,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            secure: true,
+            sameSite: 'none',
             path: '/',
           })
         );
@@ -40,7 +40,11 @@ export async function updateSession(request: NextRequest) {
   });
 
   // IMPORTANT: Do not run any logic between createServerClient and getUser().
-  await supabase.auth.getUser();
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    // Ignore missing session errors during unauthenticated requests
+  }
 
   return supabaseResponse;
 }

@@ -77,7 +77,6 @@ export async function POST(req: NextRequest) {
     const { error: insertError } = await dbClient.from('users').insert([
       {
         id: newUserId,
-        auth_user_id: authUserId,
         name: name.trim(),
         email: cleanEmail,
         role_id: '00000000-0000-0000-0000-000000000004', // Default: TECHNICIAN
@@ -86,7 +85,6 @@ export async function POST(req: NextRequest) {
         is_admin: false,
         type: 'Team',
         created_at: now,
-        updated_at: now,
       },
     ]);
 

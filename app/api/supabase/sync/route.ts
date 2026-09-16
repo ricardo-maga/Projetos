@@ -15,11 +15,150 @@ export async function GET(req: NextRequest) {
   try {
     let user = null;
     let authClient = supabase;
+    let debugInfo: any = null;
+
     try {
-      user = await requireAuth();
-      authClient = await createClient();
-    } catch (error: any) {
-      return NextResponse.json({ success: false, message: error?.message || 'Não autorizado' }, { status: 401 });
+      let token: string | undefined;
+      const authHeader = req.headers.get('authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7).trim();
+      }
+
+      user = await requireAuth(req);
+      authClient = await createClient(token);
+
+      const { data: authCheck, error: authCheckError } =
+        await authClient.auth.getUser();
+
+      debugInfo = {
+        authentication: {
+          requireAuthSuccess: !!user,
+          applicationUserId: user?.id ?? null,
+          authUserId: user?.auth_user_id ?? null,
+          email: user?.email ?? null
+        },
+        supabaseSession: {
+          hasUser: !!authCheck?.user,
+          authUserId: authCheck?.user?.id ?? null,
+          email: authCheck?.user?.email ?? null,
+          error: authCheckError
+            ? {
+                message: authCheckError.message,
+                code: authCheckError.code ?? null
+              }
+            : null
+        }
+      };
+
+      const { data: debugUsers, error: debugUsersError } =
+        await authClient
+          .from('users')
+          .select('id, auth_user_id, name, email, deleted')
+          .limit(10);
+
+      debugInfo.users = {
+        count: debugUsers?.length ?? 0,
+        rows: debugUsers ?? [],
+        error: debugUsersError
+          ? {
+              message: debugUsersError.message,
+              code: debugUsersError.code ?? null,
+              details: debugUsersError.details ?? null,
+              hint: debugUsersError.hint ?? null
+            }
+          : null
+      };
+
+      const { data: debugProjects, error: debugProjectsError } =
+        await authClient
+          .from('projects')
+          .select('id')
+          .limit(10);
+
+      debugInfo.projects = {
+        count: debugProjects?.length ?? 0,
+        error: debugProjectsError
+          ? {
+              message: debugProjectsError.message,
+              code: debugProjectsError.code ?? null,
+              details: debugProjectsError.details ?? null,
+              hint: debugProjectsError.hint ?? null
+            }
+          : null
+      };
+
+      const { data: debugClients, error: debugClientsError } =
+        await authClient
+          .from('clients')
+          .select('id')
+          .limit(10);
+
+      debugInfo.clients = {
+        count: debugClients?.length ?? 0,
+        error: debugClientsError
+          ? {
+              message: debugClientsError.message,
+              code: debugClientsError.code ?? null,
+              details: debugClientsError.details ?? null,
+              hint: debugClientsError.hint ?? null
+            }
+          : null
+      };
+
+      const { data: debugTasks, error: debugTasksError } =
+        await authClient
+          .from('tasks')
+          .select('id')
+          .limit(10);
+
+      debugInfo.tasks = {
+        count: debugTasks?.length ?? 0,
+        error: debugTasksError
+          ? {
+              message: debugTasksError.message,
+              code: debugTasksError.code ?? null,
+              details: debugTasksError.details ?? null,
+              hint: debugTasksError.hint ?? null
+            }
+          : null
+      };
+    } catch (authError: any) {
+      const authHeader = req.headers.get('authorization');
+      const hasAuthHeader = !!(authHeader && authHeader.startsWith('Bearer '));
+
+      if (hasAuthHeader) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: authError?.message || 'Não autorizado.',
+            debug: {
+              authentication: {
+                requireAuthSuccess: false,
+                error: {
+                  message: authError?.message || 'Authentication failed'
+                }
+              }
+            }
+          },
+          { status: 401 }
+        );
+      }
+
+      user = null;
+      debugInfo = {
+        authentication: {
+          requireAuthSuccess: false,
+          applicationUserId: null,
+          authUserId: null,
+          email: null
+        },
+        supabaseSession: {
+          hasUser: false,
+          authUserId: null,
+          email: null,
+          error: null
+        }
+      };
     }
 
     let result;
@@ -27,12 +166,12 @@ export async function GET(req: NextRequest) {
       result = await getActiveStateFromSupabase(authClient);
     } catch (error: any) {
       console.error('Exception in getActiveStateFromSupabase:', error);
-      return NextResponse.json({ success: false, message: error?.message || 'Database error' }, { status: 500 });
+      return NextResponse.json({ success: false, message: error?.message || 'Database error', debug: debugInfo }, { status: 500 });
     }
 
     if (!result.success || !result.data) {
       console.error('getActiveStateFromSupabase failed:', result.message);
-      return NextResponse.json({ success: false, message: result.message || 'Database sync failed' }, { status: 500 });
+      return NextResponse.json({ success: false, message: result.message || 'Database sync failed', debug: debugInfo }, { status: 500 });
     }
 
     // Strip passwords for EVERYONE for maximum security
@@ -62,11 +201,15 @@ export async function GET(req: NextRequest) {
           equipmentList: [],
           specialDays: [],
           defaultTasks: [],
-        }
+        },
+        debug: debugInfo
       });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      debug: debugInfo
+    });
   } catch (error: any) {
     return NextResponse.json({ 
       success: false, 
@@ -84,7 +227,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await requireAuth();
+    await requireAuth(req);
 
     // Extract state
     const state = await req.json();

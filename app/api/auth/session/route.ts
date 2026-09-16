@@ -1,66 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/auth/requireAuth';
 
-async function getAuthenticatedUserSession() {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
-
-  if (error || !data?.user || !data.user.id) {
+async function getAuthenticatedUserSession(req?: NextRequest) {
+  try {
+    const user = await requireAuth(req);
+    return {
+      id: user.id,
+      name: user.name,
+      type: user.type,
+      email: user.email,
+      roleId: user.role_id || 'ug-5',
+      isAdmin: !!user.is_admin,
+    };
+  } catch {
     return null;
   }
-
-  const authUserId = data.user.id;
-  const userEmail = data.user.email || '';
-
-  const adminClient = createAdminClient();
-  const dbClient = adminClient || supabase;
-
-  let { data: dbUser } = await dbClient
-    .from('users')
-    .select('*')
-    .eq('auth_user_id', authUserId)
-    .eq('deleted', false)
-    .maybeSingle();
-
-  if (!dbUser) {
-    const { data: fallbackUser } = await dbClient
-      .from('users')
-      .select('*')
-      .eq('id', authUserId)
-      .eq('deleted', false)
-      .maybeSingle();
-    dbUser = fallbackUser;
-  }
-
-  if (!dbUser && userEmail) {
-    const { data: emailUser } = await dbClient
-      .from('users')
-      .select('*')
-      .eq('email', userEmail)
-      .eq('deleted', false)
-      .maybeSingle();
-    if (emailUser) {
-      dbUser = emailUser;
-    }
-  }
-
-  if (!dbUser || dbUser.deleted) {
-    return null;
-  }
-
-  return {
-    id: dbUser.id,
-    name: dbUser.name,
-    type: dbUser.type,
-    email: dbUser.email,
-    roleId: dbUser.role_id || dbUser.roleId || 'ug-5',
-    isAdmin: !!(dbUser.is_admin ?? dbUser.isAdmin),
-  };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const user = await getAuthenticatedUserSession();
+    const user = await getAuthenticatedUserSession(req);
     if (!user) {
       return NextResponse.json({ success: false, message: 'Sessão inválida ou expirada.' }, { status: 401 });
     }
@@ -95,7 +55,7 @@ export async function POST(req: NextRequest) {
       return response;
     }
 
-    const user = await getAuthenticatedUserSession();
+    const user = await getAuthenticatedUserSession(req);
     if (!user) {
       return NextResponse.json({ success: false, message: 'Sessão inválida ou expirada.' }, { status: 401 });
     }

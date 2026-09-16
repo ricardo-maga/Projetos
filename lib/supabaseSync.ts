@@ -475,9 +475,20 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     ]);
 
     // Check for schema issues
+    let projectsData = resProjects.data || [];
     if (resProjects.error) {
-      console.warn('Could not query projects table, possibly missing schema. SQL error:', resProjects.error);
-      throw resProjects.error;
+      if (customClient && supabase && customClient !== supabase) {
+        const fallback = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+        if (!fallback.error && fallback.data) {
+          projectsData = fallback.data;
+        } else {
+          console.warn('Could not query projects table, possibly missing schema. SQL error:', resProjects.error);
+          throw resProjects.error;
+        }
+      } else {
+        console.warn('Could not query projects table, possibly missing schema. SQL error:', resProjects.error);
+        throw resProjects.error;
+      }
     }
 
     // Fetch relational link tables with safe queries
@@ -585,7 +596,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     };
 
     // Map database structures to React types
-    let projects: Project[] = (resProjects.data || []).map((p: any) => ({
+    let projects: Project[] = (projectsData || []).map((p: any) => ({
       id: p.id,
       demo: p.demo || false,
       clientId: p.client_id || '',

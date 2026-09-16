@@ -73,17 +73,15 @@ export default function Page() {
           headers,
           body: token ? JSON.stringify({ token }) : undefined,
         });
-        const contentType = res.headers.get('content-type') || '';
-        if (res.ok && contentType.includes('application/json')) {
-          const data = await res.json();
-          if (data && data.success && data.user) {
-            setCurrentUser(data.user);
-            if (token) {
-              setClientSession(token, data.user);
-            }
-          } else {
-            clearClientSession();
-            setCurrentUser(null);
+        let data: any = null;
+        try {
+          data = await res.json();
+        } catch {}
+
+        if (res.ok && data && data.success && data.user) {
+          setCurrentUser(data.user);
+          if (token) {
+            setClientSession(token, data.user);
           }
         } else {
           if (res.status === 401) {
@@ -301,16 +299,17 @@ export default function Page() {
         })
       });
 
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
         setLoginError('O servidor está a inicializar ou indisponível. Por favor, tente novamente em alguns segundos.');
         setIsLoggingIn(false);
         setLoginStatusMessage('');
         return;
       }
 
-      const data = await res.json();
-      if (data.success) {
+      if (res.ok && data?.success) {
         setLoginStatusMessage('Autenticado com sucesso! A carregar sistema...');
         if (data.token) {
           setClientSession(data.token, data.user, rememberMe);
@@ -331,7 +330,13 @@ export default function Page() {
           setLoginStatusMessage('');
         }
       } else {
-        setLoginError(data.message || 'Email ou palavra-passe incorretos.');
+        const errorMessage = 
+          data?.error?.message || 
+          data?.message || 
+          data?.error?.details?.fieldErrors?.password?.[0] || 
+          data?.error?.details?.fieldErrors?.email?.[0] || 
+          'Email ou palavra-passe incorretos.';
+        setLoginError(errorMessage);
         setIsLoggingIn(false);
         setLoginStatusMessage('');
       }

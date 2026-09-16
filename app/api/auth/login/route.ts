@@ -13,13 +13,7 @@ export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
 
-  // 1. Sliding Window Rate Limiting (5 attempts per minute)
-  const rateLimit = checkRateLimit(`login:${ip}`, { limit: 5, windowSeconds: 60 });
-  if (!rateLimit.success) {
-    return rateLimitExceeded(requestId);
-  }
-
-  // 2. Validate input schema with Zod
+  // 1. Validate input schema with Zod
   let rawBody: any;
   try {
     rawBody = await req.json();
@@ -35,6 +29,13 @@ export async function POST(req: NextRequest) {
   const { email, password, rememberMe } = parseResult.data;
   const cleanEmail = email.trim().toLowerCase();
   const rawPassword = password.trim();
+
+  // 2. Sliding Window Rate Limiting (15 attempts per minute per account/IP)
+  const rateLimitKey = `login:${ip}:${cleanEmail}`;
+  const rateLimit = checkRateLimit(rateLimitKey, { limit: 15, windowSeconds: 60 });
+  if (!rateLimit.success) {
+    return rateLimitExceeded(requestId);
+  }
 
   try {
     const supabase = await createClient();
@@ -86,17 +87,6 @@ export async function POST(req: NextRequest) {
         return forbidden('Este utilizador ainda aguarda aprovação por um administrador.', requestId);
       }
 
-      // Ensure auth_user_id matches authUser.id
-      if (!dbUser.auth_user_id || dbUser.auth_user_id !== authUser.id) {
-        try {
-          await dbClient
-            .from('users')
-            .update({ auth_user_id: authUser.id, updated_at: new Date().toISOString() })
-            .eq('id', dbUser.id);
-          dbUser.auth_user_id = authUser.id;
-        } catch {}
-      }
-
       const userPayload = {
         id: dbUser.id,
         name: dbUser.name,
@@ -116,15 +106,17 @@ export async function POST(req: NextRequest) {
         details: { method: 'supabase_auth' },
       });
 
+      const effectiveToken = authSession?.access_token || legacyToken;
+
       const response = NextResponse.json({
         success: true,
         user: userPayload,
-        token: legacyToken,
+        token: effectiveToken,
         session: authSession,
       });
 
       const maxAge = rememberMe ? 30 * 24 * 3600 : 8 * 3600;
-      response.cookies.set('erp_session', legacyToken, {
+      response.cookies.set('erp_session', effectiveToken, {
         httpOnly: true,
         secure: true,
         sameSite: 'none',
@@ -194,14 +186,6 @@ export async function POST(req: NextRequest) {
             migratedAuthId = createdAuth.user.id;
           }
         }
-
-        // Link auth_user_id in application users table
-        if (migratedAuthId) {
-          await dbClient
-            .from('users')
-            .update({ auth_user_id: migratedAuthId, updated_at: new Date().toISOString() })
-            .eq('id', dbUser.id);
-        }
       } catch (migrateErr) {
         console.warn('[LOGIN] Automatic Supabase Auth migration notice:', migrateErr);
       }
@@ -244,14 +228,15 @@ export async function POST(req: NextRequest) {
     });
 
     const maxAge = rememberMe ? 30 * 24 * 3600 : 8 * 3600;
+    const effectiveToken = authSession?.access_token || legacyToken;
     const response = NextResponse.json({
       success: true,
       user: userPayload,
-      token: legacyToken,
+      token: effectiveToken,
       session: authSession,
     });
 
-    response.cookies.set('erp_session', legacyToken, {
+    response.cookies.set('erp_session', effectiveToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
