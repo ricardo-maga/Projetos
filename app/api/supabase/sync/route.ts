@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
 import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
 import { requireAuth, AuthError } from '@/lib/auth/requireAuth';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
   if (!isSupabaseConfigured) {
@@ -13,13 +14,15 @@ export async function GET(req: NextRequest) {
 
   try {
     let user = null;
+    let authClient = supabase;
     try {
       user = await requireAuth();
+      authClient = await createClient();
     } catch {
       user = null;
     }
 
-    const result = await getActiveStateFromSupabase();
+    const result = await getActiveStateFromSupabase(authClient);
 
     if (!result.success || !result.data) {
       return NextResponse.json(result);

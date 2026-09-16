@@ -404,8 +404,9 @@ export async function checkAndCreateAutoDailyBackup(currentState: ERPState): Pro
 /**
  * Get the active real-time state from Supabase by fetching from all individual SQL tables
  */
-export async function getActiveStateFromSupabase(): Promise<{ success: boolean; data?: ERPState; message?: string }> {
-  if (!isSupabaseConfigured || !supabase) {
+export async function getActiveStateFromSupabase(customClient?: any): Promise<{ success: boolean; data?: ERPState; message?: string }> {
+  const client = customClient || supabase;
+  if (!isSupabaseConfigured || !client) {
     return { success: false, message: 'Supabase não está configurado.' };
   }
 
@@ -442,35 +443,35 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
       resNotifications,
       resAutomationRules,
     ] = await Promise.all([
-      supabase.from('user_groups').select('*'),
-      supabase.from('project_status').select('*').order('sort_order', { ascending: true }),
-      supabase.from('project_category').select('*').order('sort_order', { ascending: true }),
-      supabase.from('project_risk').select('*').order('sort_order', { ascending: true }),
-      supabase.from('project_priority').select('*').order('sort_order', { ascending: true }),
-      supabase.from('project_teams').select('*').order('sort_order', { ascending: true }),
-      supabase.from('project_partners').select('*').order('sort_order', { ascending: true }),
-      supabase.from('task_status').select('*').order('scale', { ascending: true }),
-      supabase.from('task_types').select('*').order('sort_order', { ascending: true }),
-      supabase.from('users').select('*'),
-      supabase.from('clients').select('*').order('created_at', { ascending: false }),
-      supabase.from('projects').select('*').order('created_at', { ascending: false }),
-      supabase.from('tasks').select('*').order('created_at', { ascending: false }),
-      supabase.from('comments').select('*').order('created_at', { ascending: true }),
-      supabase.from('user_absences').select('*'),
-      supabase.from('material').select('*').order('created_at', { ascending: false }),
-      supabase.from('quotes').select('*').order('created_at', { ascending: false }),
-      supabase.from('bill_of_materials').select('*'),
-      supabase.from('equipment').select('*').order('created_at', { ascending: false }),
-      supabase.from('app_configuration').select('*').limit(1),
-      supabase.from('special_days').select('*'),
-      supabase.from('default_tasks').select('*'),
-      supabase.from('risk_categories').select('*').order('sort_order', { ascending: true }),
-      supabase.from('risk_statuses').select('*').order('sort_order', { ascending: true }),
-      supabase.from('risk_priorities').select('*').order('sort_order', { ascending: true }),
-      supabase.from('project_risk_items').select('*').order('created_at', { ascending: false }),
-      supabase.from('ticket_statuses').select('*').order('sort_order', { ascending: true }),
-      supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
-      supabase.from('automation_rules').select('*').order('created_at', { ascending: false }),
+      client.from('user_groups').select('*'),
+      client.from('project_status').select('*').order('sort_order', { ascending: true }),
+      client.from('project_category').select('*').order('sort_order', { ascending: true }),
+      client.from('project_risk').select('*').order('sort_order', { ascending: true }),
+      client.from('project_priority').select('*').order('sort_order', { ascending: true }),
+      client.from('project_teams').select('*').order('sort_order', { ascending: true }),
+      client.from('project_partners').select('*').order('sort_order', { ascending: true }),
+      client.from('task_status').select('*').order('scale', { ascending: true }),
+      client.from('task_types').select('*').order('sort_order', { ascending: true }),
+      client.from('users').select('*'),
+      client.from('clients').select('*').order('created_at', { ascending: false }),
+      client.from('projects').select('*').order('created_at', { ascending: false }),
+      client.from('tasks').select('*').order('created_at', { ascending: false }),
+      client.from('comments').select('*').order('created_at', { ascending: true }),
+      client.from('user_absences').select('*'),
+      client.from('material').select('*').order('created_at', { ascending: false }),
+      client.from('quotes').select('*').order('created_at', { ascending: false }),
+      client.from('bill_of_materials').select('*'),
+      client.from('equipment').select('*').order('created_at', { ascending: false }),
+      client.from('app_configuration').select('*').limit(1),
+      client.from('special_days').select('*'),
+      client.from('default_tasks').select('*'),
+      client.from('risk_categories').select('*').order('sort_order', { ascending: true }),
+      client.from('risk_statuses').select('*').order('sort_order', { ascending: true }),
+      client.from('risk_priorities').select('*').order('sort_order', { ascending: true }),
+      client.from('project_risk_items').select('*').order('created_at', { ascending: false }),
+      client.from('ticket_statuses').select('*').order('sort_order', { ascending: true }),
+      client.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
+      client.from('automation_rules').select('*').order('created_at', { ascending: false }),
     ]);
 
     // Check for schema issues
@@ -482,7 +483,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
     // Fetch relational link tables with safe queries
     const fetchLinkData = async (tableName: string) => {
       try {
-        const res = await supabase!.from(tableName).select('*');
+        const res = await client.from(tableName).select('*');
         if (res.error) {
           console.warn(`Link table ${tableName} query notice:`, res.error.message);
           return [];
@@ -822,7 +823,7 @@ export async function getActiveStateFromSupabase(): Promise<{ success: boolean; 
 
     let tickets: any[] = [];
     try {
-      const resTickets = await supabase.from('tickets').select('*').order('created_at', { ascending: false });
+      const resTickets = await client.from('tickets').select('*').order('created_at', { ascending: false });
       if (!resTickets.error && resTickets.data) {
         tickets = resTickets.data.map((t: any) => ({
           id: t.id,
