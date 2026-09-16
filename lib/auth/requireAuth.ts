@@ -34,7 +34,7 @@ export class ForbiddenError extends Error {
 /**
  * Função central para verificar se um utilizador está autenticado através do Supabase Auth.
  */
-export async function requireAuth(): Promise<AuthenticatedUser> {
+export async function requireAuth(req?: any): Promise<AuthenticatedUser> {
   const supabase = await createClient();
 
   const { data, error: claimsError } = await supabase.auth.getClaims();
@@ -81,9 +81,11 @@ export async function requireAuth(): Promise<AuthenticatedUser> {
  * Função central para validar autenticação e permissão via Supabase Auth e matriz de grupos.
  */
 export async function requirePermission(
-  permissionCode: keyof GroupPermissions
+  reqOrPermissionCode: any,
+  permissionCode?: any
 ): Promise<AuthenticatedUser> {
-  const user = await requireAuth();
+  const code = typeof reqOrPermissionCode === 'string' ? reqOrPermissionCode : permissionCode;
+  const user = await requireAuth(typeof reqOrPermissionCode === 'string' ? undefined : reqOrPermissionCode);
 
   // 1. Administrador tem acesso irrestrito
   if (user.is_admin === true || user.role_id === 'ug-1') {
@@ -94,7 +96,7 @@ export async function requirePermission(
   const permissions = getGroupPermissions(user.role_id);
 
   // 3. Verificar permissão solicitada
-  if (!permissions[permissionCode]) {
+  if (!permissions[code as keyof GroupPermissions]) {
     throw new ForbiddenError('Sem permissão para realizar esta operação.');
   }
 

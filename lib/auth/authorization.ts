@@ -9,6 +9,8 @@ import {
   AuthenticatedUser as CentralUser,
 } from './requireAuth';
 
+export { AuthError, ForbiddenError };
+
 export interface AuthenticatedUser {
   id: string;
   email: string;
@@ -27,14 +29,14 @@ export type AuthResult =
   | { success: false; response: NextResponse };
 
 /**
- * Validates whether the incoming request has an authenticated and active user session.
- * Delegates to central requireAuth() in lib/auth/requireAuth.ts (Supabase Auth SSR).
+ * Reutiliza a função central de lib/auth/requireAuth.ts.
+ * Converte o resultado para AuthResult (compatível com a camada HTTP de v1 APIs).
  */
 export async function requireAuth(req?: NextRequest): Promise<AuthResult> {
   const requestId = req?.headers?.get('x-request-id') || crypto.randomUUID();
 
   try {
-    const centralUser = await requireCentralAuth();
+    const centralUser = await requireCentralAuth(req);
     const permissions = getGroupPermissions(centralUser.role_id);
 
     const user: AuthenticatedUser = {
@@ -51,6 +53,12 @@ export async function requireAuth(req?: NextRequest): Promise<AuthResult> {
 
     return { success: true, user, requestId };
   } catch (error: any) {
+    if (error instanceof ForbiddenError) {
+      return {
+        success: false,
+        response: forbidden(error.message, requestId),
+      };
+    }
     const message = error instanceof AuthError ? error.message : 'Sessão inválida ou expirada. Faça login novamente.';
     return {
       success: false,
@@ -60,8 +68,10 @@ export async function requireAuth(req?: NextRequest): Promise<AuthResult> {
 }
 
 /**
- * Validates that the request has an active session AND the user possesses the required permission.
- * Uses central requireAuth() / requirePermission() from lib/auth/requireAuth.ts.
+ * Reutiliza requirePermission() de lib/auth/requireAuth.ts.
+ * Suporta ambas as assinaturas:
+ *  - requirePermission('tickets_read') -> lança AuthError/ForbiddenError ou devolve CentralUser
+ *  - requirePermission(req, 'projects_read') -> devolve AuthResult (HTTP Response em caso de erro)
  */
 export async function requirePermission(
   permissionCode: keyof GroupPermissions
@@ -79,59 +89,109 @@ export async function requirePermission(
   }
 
   const req = reqOrPermissionCode as NextRequest;
-  const permCode = permissionCode as keyof GroupPermissions;
+  const permCode = (permissionCode || '') as keyof GroupPermissions;
   const requestId = req?.headers?.get('x-request-id') || crypto.randomUUID();
 
-  const authResult = await requireAuth(req);
-  if (!authResult.success) {
-    return authResult;
-  }
+  try {
+    const centralUser = await requireCentralPermission(req, permCode);
+    const permissions = getGroupPermissions(centralUser.role_id);
 
-  const { user } = authResult;
+    const user: AuthenticatedUser = {
+      id: centralUser.id,
+      email: centralUser.email,
+      name: centralUser.name,
+      type: centralUser.type,
+      roleId: centralUser.role_id,
+      isAdmin: centralUser.is_admin,
+      isSuperAdmin: centralUser.is_admin,
+      approved: true,
+      permissions,
+    };
 
-  if (user.isAdmin || user.isSuperAdmin || user.roleId === 'ug-1') {
-    return authResult;
-  }
-
-  const userPerms = user.permissions || getGroupPermissions(user.roleId);
-  if (!userPerms[permCode]) {
+    return { success: true, user, requestId };
+  } catch (error: any) {
+    if (error instanceof ForbiddenError) {
+      return {
+        success: false,
+        response: forbidden(error.message, requestId),
+      };
+    }
+    const message = error instanceof AuthError ? error.message : 'Sessão inválida ou expirada. Faça login novamente.';
     return {
       success: false,
-      response: forbidden('Sem permissão para realizar esta operação.', requestId),
+      response: unauthorized(message, requestId),
     };
   }
-
-  return authResult;
 }
 
 /**
- * Validates that the request has an active session AND the user has Admin or Super Admin role.
+ * Valida se a requisição tem sessão ativa E se o utilizador é Administrador.
+ * Reutiliza a requireAuth() central de lib/auth/requireAuth.ts.
  */
 export async function requireAdmin(req?: NextRequest): Promise<AuthResult> {
-  const authResult = await requireAuth(req);
-  if (!authResult.success) {
-    return authResult;
-  }
+  const requestId = req?.headers?.get('x-request-id') || crypto.randomUUID();
 
-  if (!authResult.user.isAdmin && !authResult.user.isSuperAdmin) {
+  try {
+    const centralUser = await requireCentralAuth(req);
+    if (!centralUser.is_admin && centralUser.role_id !== 'ug-1') {
+      return {
+        success: false,
+        response: forbidden('Operação reservada exclusivamente a Administradores.', requestId),
+      };
+    }
+
+    const permissions = getGroupPermissions(centralUser.role_id);
+    const user: AuthenticatedUser = {
+      id: centralUser.id,
+      email: centralUser.email,
+      name: centralUser.name,
+      type: centralUser.type,
+      roleId: centralUser.role_id,
+      isAdmin: centralUser.is_admin,
+      isSuperAdmin: centralUser.is_admin,
+      approved: true,
+      permissions,
+    };
+
+    return { success: true, user, requestId };
+  } catch (error: any) {
+    if (error instanceof ForbiddenError) {
+      return {
+        success: false,
+        response: forbidden(error.message, requestId),
+      };
+    }
+    const message = error instanceof AuthError ? error.message : 'Sessão inválida ou expirada. Faça login novamente.';
     return {
       success: false,
-      response: forbidden('Operação reservada exclusivamente a Administradores.', authResult.requestId),
+      response: unauthorized(message, requestId),
     };
   }
-
-  return authResult;
 }
 
 /**
- * Convenience helper to authenticate request
+ * Função utilitária para autenticar uma requisição.
+ * Reutiliza a requireAuth() central de lib/auth/requireAuth.ts.
  */
 export async function authenticateRequest(req?: NextRequest): Promise<{ authenticated: boolean; user?: AuthenticatedUser; requestId: string }> {
-  const authResult = await requireAuth(req);
-  if (!authResult.success) {
-    const requestId = req?.headers?.get('x-request-id') || crypto.randomUUID();
+  const requestId = req?.headers?.get('x-request-id') || crypto.randomUUID();
+  try {
+    const centralUser = await requireCentralAuth(req);
+    const permissions = getGroupPermissions(centralUser.role_id);
+    const user: AuthenticatedUser = {
+      id: centralUser.id,
+      email: centralUser.email,
+      name: centralUser.name,
+      type: centralUser.type,
+      roleId: centralUser.role_id,
+      isAdmin: centralUser.is_admin,
+      isSuperAdmin: centralUser.is_admin,
+      approved: true,
+      permissions,
+    };
+    return { authenticated: true, user, requestId };
+  } catch {
     return { authenticated: false, requestId };
   }
-  return { authenticated: true, user: authResult.user, requestId: authResult.requestId };
 }
 
