@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { ProjectMaterial } from '@/lib/types';
-import { authorizeRequest } from '@/lib/serverAuth';
+import { requirePermission } from '@/lib/auth/authorization';
 
 export async function GET(req: NextRequest) {
-  const auth = authorizeRequest(req, 'materials_read');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'materials_read');
+  if (!auth.success) return auth.response;
 
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = authorizeRequest(req, 'materials_write');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'materials_write');
+  if (!auth.success) return auth.response;
 
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });

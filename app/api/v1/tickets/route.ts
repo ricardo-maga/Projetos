@@ -7,11 +7,11 @@ import {
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { Ticket } from '@/lib/types';
 import { genId } from '@/lib/utils';
-import { authorizeRequest } from '@/lib/serverAuth';
+import { requirePermission } from '@/lib/auth/authorization';
 
 export async function GET(req: NextRequest) {
-  const auth = authorizeRequest(req, 'tickets_read');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'tickets_read');
+  if (!auth.success) return auth.response;
 
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
@@ -58,8 +58,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = authorizeRequest(req, 'tickets_write');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'tickets_write');
+  if (!auth.success) return auth.response;
 
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });

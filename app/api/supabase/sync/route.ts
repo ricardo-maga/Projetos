@@ -232,25 +232,8 @@ export async function POST(req: NextRequest) {
     // Extract state
     const state = await req.json();
 
-    // 3. Preserve existing password hashes from DB so we don't overwrite them with nulls/empty strings
-    if (state.users && state.users.length > 0 && supabase) {
-      try {
-        const { data: dbUsers, error: dbUsersError } = await supabase.from('users').select('id, password');
-        if (dbUsersError) {
-          console.warn('Could not query users table for password preservation:', dbUsersError);
-        } else if (dbUsers) {
-          const passwordMap = new Map(dbUsers.map((u: any) => [u.id, u.password]));
-          state.users = state.users.map((u: any) => {
-            if (!u.password && passwordMap.has(u.id)) {
-              return { ...u, password: passwordMap.get(u.id) };
-            }
-            return u;
-          });
-        }
-      } catch (e) {
-        console.warn('Network error while querying users for password preservation:', e);
-      }
-    }
+    // Passwords live exclusively in Supabase Auth and are never part of ERP state.
+    if (state.users) state.users = state.users.map(({ password, ...user }: any) => user);
 
     // 4. Save state
     const result = await saveActiveStateToSupabase(state);

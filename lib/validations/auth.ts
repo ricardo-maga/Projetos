@@ -16,7 +16,7 @@ export const bootstrapSchema = z.object({
 export const registerSchema = z.object({
   name: z.string().trim().min(2, 'O nome deve ter no mínimo 2 caracteres'),
   email: z.string().trim().email('Endereço de email inválido'),
-  password: z.string().min(6, 'A password deve ter pelo menos 6 caracteres'),
+  password: z.string().min(12, 'A password deve ter pelo menos 12 caracteres'),
 });
 
 export const passwordResetRequestSchema = z.object({
@@ -26,5 +26,5 @@ export const passwordResetRequestSchema = z.object({
 export const resetPasswordSchema = passwordResetRequestSchema;
 
 export const passwordResetConfirmSchema = z.object({
-  password: z.string().min(8, 'A nova password deve ter no mínimo 8 caracteres'),
+  password: z.string().min(12, 'A nova password deve ter no mínimo 12 caracteres'),
 });

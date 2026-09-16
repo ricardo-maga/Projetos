@@ -22,11 +22,10 @@ import AppLogo from '../components/AppLogo';
 import { 
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
   Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw,
-  Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Ticket as TicketIcon
+  Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Ticket as TicketIcon, Eye, EyeOff
 } from 'lucide-react';
 
-import { hashPassword } from '../lib/utils';
-import { getClientToken, getClientUser, setClientSession, clearClientSession } from '../lib/clientAuth';
+import { clearClientSession } from '../lib/clientAuth';
 
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
@@ -40,6 +39,7 @@ export default function Page() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -54,25 +54,18 @@ export default function Page() {
   const [changePasswordError, setChangePasswordError] = useState('');
   const [changePasswordSuccess, setChangePasswordSuccess] = useState(false);
 
-  // Restore session and set mounted status on mount (supports cookies and authorization token in iframes)
+  // Restore the server-managed session from HttpOnly cookies.
   React.useEffect(() => {
     const restoreSession = async () => {
+      // Remove tokens produced by the retired legacy authentication flow.
+      clearClientSession();
       // Safety timeout to guarantee the loading screen doesn't hang if network stalls
       const safetyTimer = setTimeout(() => {
         setMounted(true);
       }, 4000);
 
       try {
-        const token = getClientToken();
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-        const res = await fetch('/api/auth/session', {
-          method: token ? 'POST' : 'GET',
-          headers,
-          body: token ? JSON.stringify({ token }) : undefined,
-        });
+        const res = await fetch('/api/auth/session', { method: 'GET' });
         let data: any = null;
         try {
           data = await res.json();
@@ -80,31 +73,15 @@ export default function Page() {
 
         if (res.ok && data && data.success && data.user) {
           setCurrentUser(data.user);
-          if (token) {
-            setClientSession(token, data.user);
-          }
         } else {
           if (res.status === 401) {
             clearClientSession();
             setCurrentUser(null);
-          } else {
-            const cached = getClientUser();
-            if (cached && token) {
-              setCurrentUser(cached);
-            } else {
-              setCurrentUser(null);
-            }
-          }
+          } else setCurrentUser(null);
         }
       } catch (fetchErr) {
         console.warn('Erro na verificação de sessão com o servidor:', fetchErr);
-        const cached = getClientUser();
-        const token = getClientToken();
-        if (cached && token) {
-          setCurrentUser(cached);
-        } else {
-          setCurrentUser(null);
-        }
+        setCurrentUser(null);
       } finally {
         clearTimeout(safetyTimer);
         setMounted(true);
@@ -299,21 +276,24 @@ export default function Page() {
         })
       });
 
-      let data: any = null;
+      let responseText = '';
       try {
-        data = await res.json();
-      } catch {
-        setLoginError('O servidor está a inicializar ou indisponível. Por favor, tente novamente em alguns segundos.');
-        setIsLoggingIn(false);
-        setLoginStatusMessage('');
-        return;
+        responseText = await res.text();
+      } catch (readErr) {
+        console.warn('Erro ao ler resposta:', readErr);
+      }
+
+      let data: any = null;
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          console.warn('Resposta não JSON:', responseText.substring(0, 100));
+        }
       }
 
       if (res.ok && data?.success) {
         setLoginStatusMessage('Autenticado com sucesso! A carregar sistema...');
-        if (data.token) {
-          setClientSession(data.token, data.user, rememberMe);
-        }
         
         // Show loading screen immediately and activate user session
         setIsTransitioning(true);
@@ -330,12 +310,26 @@ export default function Page() {
           setLoginStatusMessage('');
         }
       } else {
-        const errorMessage = 
+        let errorMessage = 
           data?.error?.message || 
           data?.message || 
           data?.error?.details?.fieldErrors?.password?.[0] || 
-          data?.error?.details?.fieldErrors?.email?.[0] || 
-          'Email ou palavra-passe incorretos.';
+          data?.error?.details?.fieldErrors?.email?.[0];
+
+        if (!errorMessage) {
+          if (res.status === 401) {
+            errorMessage = 'Email ou palavra-passe incorretos.';
+          } else if (res.status === 403) {
+            errorMessage = 'Este utilizador ainda aguarda aprovação por um administrador.';
+          } else if (res.status === 429) {
+            errorMessage = 'Demasiadas tentativas de autenticação. Por favor, aguarde um minuto.';
+          } else if (res.status >= 500) {
+            errorMessage = 'O servidor está temporariamente indisponível. Por favor, tente novamente.';
+          } else {
+            errorMessage = 'Email ou palavra-passe incorretos.';
+          }
+        }
+
         setLoginError(errorMessage);
         setIsLoggingIn(false);
         setLoginStatusMessage('');
@@ -357,8 +351,8 @@ export default function Page() {
       setChangePasswordError('As passwords não coincidem.');
       return;
     }
-    if (newPassword && newPassword.length < 5) {
-      setChangePasswordError('A password deve ter pelo menos 5 caracteres.');
+    if (newPassword && newPassword.length < 12) {
+      setChangePasswordError('A password deve ter pelo menos 12 caracteres.');
       return;
     }
 
@@ -367,8 +361,8 @@ export default function Page() {
       updates.name = profileName;
     }
     if (newPassword) {
-      const hashedNewPassword = await hashPassword(newPassword);
-      updates.password = hashedNewPassword;
+      const response = await fetch('/api/auth/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: newPassword }) });
+      if (!response.ok) { setChangePasswordError('Não foi possível alterar a password.'); return; }
     }
 
     if (Object.keys(updates).length > 0) {
@@ -472,10 +466,14 @@ export default function Page() {
             <div className="space-y-1">
               <label className="block text-sm font-medium text-slate-700">E-mail</label>
               <input 
-                type="text" 
+                type="email" 
                 value={loginEmail}
-                onChange={e => setLoginEmail(e.target.value)}
-                placeholder="Introduza o seu email"
+                onChange={e => {
+                  setLoginEmail(e.target.value);
+                  if (loginError) setLoginError('');
+                }}
+                autoComplete="username"
+                placeholder="nome@empresa.com"
                 disabled={isLoggingIn}
                 className="w-full p-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
                 required
@@ -483,16 +481,51 @@ export default function Page() {
             </div>
             
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-slate-700">Password</label>
-              <input 
-                type="password" 
-                value={loginPassword}
-                onChange={e => setLoginPassword(e.target.value)}
-                placeholder="A sua password"
-                disabled={isLoggingIn}
-                className="w-full p-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
-                required
-              />
+              <div className="flex justify-between items-center">
+                <label className="block text-sm font-medium text-slate-700">Password</label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer focus:outline-none"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" />
+                      <span>Ocultar</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Mostrar</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="relative">
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  value={loginPassword}
+                  onChange={e => {
+                    setLoginPassword(e.target.value);
+                    if (loginError) setLoginError('');
+                  }}
+                  autoComplete="current-password"
+                  placeholder="Introduza a password"
+                  disabled={isLoggingIn}
+                  className="w-full p-3 pr-10 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                  tabIndex={-1}
+                  title={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between py-1">

@@ -59,7 +59,9 @@ export async function POST(req: NextRequest) {
       const { data: authUser, error: authError } = await adminSupabase.auth.admin.createUser({
         email: cleanEmail,
         password: password.trim(),
-        email_confirm: true,
+        // Do not mark self-registered accounts as verified until Supabase has
+        // completed its configured email-verification flow.
+        email_confirm: false,
         user_metadata: { name: name.trim() },
       });
 
@@ -74,9 +76,12 @@ export async function POST(req: NextRequest) {
     const newUserId = authUserId || crypto.randomUUID();
     const now = new Date().toISOString();
 
-    const { error: insertError } = await dbClient.from('users').insert([
+    // The auth.users trigger may have created the profile already. Upsert keeps
+    // registration idempotent while preserving the mandatory approval gate.
+    const { error: insertError } = await dbClient.from('users').upsert([
       {
         id: newUserId,
+        auth_user_id: authUserId,
         name: name.trim(),
         email: cleanEmail,
         role_id: '00000000-0000-0000-0000-000000000004', // Default: TECHNICIAN
@@ -86,7 +91,7 @@ export async function POST(req: NextRequest) {
         type: 'Team',
         created_at: now,
       },
-    ]);
+    ], { onConflict: 'id' });
 
     if (insertError) {
       console.error('[REGISTER DB ERROR]', insertError);

@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   response.cookies.set('erp_session', '', {
     httpOnly: true,
     secure: true,
-    sameSite: 'none',
+    sameSite: 'lax',
     path: '/',
     maxAge: 0,
   });

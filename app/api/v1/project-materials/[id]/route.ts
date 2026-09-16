@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
-import { authorizeRequest } from '@/lib/serverAuth';
+import { requirePermission } from '@/lib/auth/authorization';
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = authorizeRequest(req, 'materials_write');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'materials_write');
+  if (!auth.success) return auth.response;
 
   const { id } = await params;
   if (!isSupabaseConfigured) {
@@ -52,8 +52,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = authorizeRequest(req, 'materials_delete');
-  if ('errorResponse' in auth) return auth.errorResponse;
+  const auth = await requirePermission(req, 'materials_delete');
+  if (!auth.success) return auth.response;
 
   const { id } = await params;
   if (!isSupabaseConfigured) {

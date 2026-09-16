@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       response.cookies.set('erp_session', '', {
         httpOnly: true,
         secure: true,
-        sameSite: 'none',
+        sameSite: 'lax',
         path: '/',
         maxAge: 0,
       });
@@ -77,7 +77,7 @@ export async function DELETE() {
     response.cookies.set('erp_session', '', {
       httpOnly: true,
       secure: true,
-      sameSite: 'none',
+      sameSite: 'lax',
       path: '/',
       maxAge: 0,
     });
@@ -86,5 +86,4 @@ export async function DELETE() {
     return NextResponse.json({ success: false, message: error?.message || 'Erro ao encerrar sessão.' }, { status: 500 });
   }
 }
-
 

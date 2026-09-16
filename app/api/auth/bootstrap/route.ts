@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Check if bootstrap is enabled in environment
-  const bootstrapEnabled = process.env.ERP_BOOTSTRAP_ENABLED !== 'false';
+  // Bootstrap must be deliberately enabled for a short, one-time deployment window.
+  const bootstrapEnabled = process.env.ERP_BOOTSTRAP_ENABLED === 'true';
   const expectedSecret = process.env.ERP_BOOTSTRAP_SECRET;
 
   if (!bootstrapEnabled || !expectedSecret) {
