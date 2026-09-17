@@ -93,6 +93,18 @@ export default function Page() {
     restoreSession();
   }, []);
 
+  // Listen for session expiration events from write operations
+  React.useEffect(() => {
+    const handleSessionExpired = (e: any) => {
+      clearClientSession();
+      setCurrentUser(null);
+      const msg = e?.detail?.message || 'A sua sessão expirou ou é inválida. Por favor, faça login novamente.';
+      setLoginError(msg);
+    };
+    window.addEventListener('erp_auth_session_expired', handleSessionExpired);
+    return () => window.removeEventListener('erp_auth_session_expired', handleSessionExpired);
+  }, []);
+
   const {
     loading,
     state,

@@ -6,7 +6,7 @@ import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
-import { getAuthHeaders, getClientUser } from '../lib/clientAuth';
+import { getAuthHeaders, getClientUser, clearClientSession } from '../lib/clientAuth';
 
 const STORAGE_KEY = 'gestao_projetos_erp_state_v1';
 
@@ -198,6 +198,14 @@ export function useERP() {
         const errMsg = result?.message || `A base de dados rejeitou a gravação (${res.status}). A alteração foi revertida para garantir que apenas dados válidos da base de dados são mantidos.`;
         setSyncStatus('error');
         setSyncError(errMsg);
+
+        if (res.status === 401 || result?.message?.includes('Sessão') || result?.message?.includes('autentic')) {
+          clearClientSession();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message: errMsg } }));
+          }
+        }
+
         return { success: false, message: errMsg };
       }
     } catch (netErr: any) {

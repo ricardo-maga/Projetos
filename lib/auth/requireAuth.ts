@@ -9,17 +9,51 @@ export class ForbiddenError extends Error { constructor(message = 'Sem permissã
 export async function requireAuth(req?: Request): Promise<AuthenticatedUser> {
   const header = req?.headers.get('authorization');
   const token = header?.startsWith('Bearer ') ? header.slice(7).trim() : undefined;
-  const supabase = await createClient(token);
-  const { data, error } = token ? await supabase.auth.getUser(token) : await supabase.auth.getUser();
-  if (error || !data.user) throw new AuthError();
+  
+  let userAuth: any = null;
+  let authError: any = null;
+
+  if (token) {
+    try {
+      const supabase = await createClient(token);
+      const { data, error } = await supabase.auth.getUser(token);
+      if (data?.user) {
+        userAuth = data.user;
+      } else {
+        authError = error;
+      }
+    } catch (e: any) {
+      authError = e;
+    }
+  }
+
+  if (!userAuth) {
+    try {
+      const supabaseCookie = await createClient();
+      const { data, error } = await supabaseCookie.auth.getUser();
+      if (data?.user) {
+        userAuth = data.user;
+      } else {
+        if (!authError) authError = error;
+      }
+    } catch (e: any) {
+      if (!authError) authError = e;
+    }
+  }
+
+  if (!userAuth) throw new AuthError('Sessão inválida ou expirada.');
+
   const admin = createAdminClient();
   if (!admin) throw new AuthError('Serviço de autenticação não configurado.', 503);
+
   const { data: profile, error: profileError } = await admin.from('users')
     .select('id, auth_user_id, name, email, role_id, is_admin, type, approved, deleted')
-    .or(`auth_user_id.eq.${data.user.id},id.eq.${data.user.id}`).maybeSingle();
+    .or(`auth_user_id.eq.${userAuth.id},id.eq.${userAuth.id}`).maybeSingle();
+
   if (profileError || !profile || profile.deleted) throw new AuthError('Utilizador não encontrado ou inativo.');
   if (!profile.approved) throw new ForbiddenError('A conta aguarda aprovação por um administrador.');
-  return { id: profile.id, auth_user_id: data.user.id, name: profile.name || '', email: profile.email || data.user.email || '', role_id: profile.role_id, is_admin: Boolean(profile.is_admin), type: profile.type || 'Team' };
+
+  return { id: profile.id, auth_user_id: userAuth.id, name: profile.name || '', email: profile.email || userAuth.email || '', role_id: profile.role_id, is_admin: Boolean(profile.is_admin), type: profile.type || 'Team' };
 }
 export async function requirePermission(reqOrCode: Request | keyof GroupPermissions, permissionCode?: keyof GroupPermissions): Promise<AuthenticatedUser> {
   const code = typeof reqOrCode === 'string' ? reqOrCode : permissionCode;

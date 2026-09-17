@@ -181,7 +181,7 @@ export default function ProjectSection({
   const [pendingMaterialStatuses, setPendingMaterialStatuses] = useState<Record<string, string>>({});
 
   const [search, setSearch] = useState('');
-  const [showCompleted, setShowCompleted] = useState(false);
+  const [filterStatusGroup, setFilterStatusGroup] = useState<'active' | 'implementation' | 'all' | 'completed'>('active');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterManager, setFilterManager] = useState('');
@@ -193,7 +193,7 @@ export default function ProjectSection({
   // Reset pagination when any filter or page size changes
   useEffect(() => {
     setProjectCurrentPage(1);
-  }, [search, filterCategory, filterStatus, filterManager, showCompleted, projectPageSize]);
+  }, [search, filterCategory, filterStatus, filterManager, filterStatusGroup, projectPageSize]);
   
   const sortedStatuses = [...(projectStatuses || [])].sort((a, b) => (a.scale ?? 0) - (b.scale ?? 0));
   
@@ -588,8 +588,9 @@ export default function ProjectSection({
       setFormClient(proj.clientId);
       const currentClient = clients.find(c => c.id === proj.clientId);
       setClientSearchQuery(currentClient ? `${currentClient.clientName} (${currentClient.shortName})` : '');
-      setFormCategory(proj.categoryId);
-      setFormCategories(proj.categoryIds || (proj.categoryId ? [proj.categoryId] : []));
+      const existingCats = proj.categoryIds && proj.categoryIds.length > 0 ? proj.categoryIds : (proj.categoryId ? [proj.categoryId] : []);
+      setFormCategories(existingCats);
+      setFormCategory(proj.categoryId || existingCats[0] || '');
       setFormStatus(proj.statusId);
       setFormProjManager(proj.projectManagerId);
       setFormFieldManager(proj.fieldManagerId);
@@ -600,11 +601,12 @@ export default function ProjectSection({
       setFormScheduledDate(proj.scheduledDate);
       setFormInstallNo(proj.installProjectNo);
       setFormSFNo(proj.sfOpportunityNo);
-      setFormPriority(proj.priorityId);
+      const matchingPrio = projectPriorities.find(p => matchId(p.id, proj.priorityId))?.id || proj.priorityId || '';
+      setFormPriority(matchingPrio);
       setFormBudget(proj.budgetValue);
-      setFormDemo(proj.demo);
-      setFormTeams(proj.teamsInvolvedIds || []);
-      setFormPartners(proj.partnersIds || []);
+      setFormDemo(Boolean(proj.demo));
+      setFormTeams(proj.teamsInvolvedIds || (proj as any).teamIds || []);
+      setFormPartners(proj.partnersIds || (proj as any).partnerIds || []);
       setFormDocs(proj.documents || []);
       setFormClientContactName(proj.clientContactName || '');
       setFormClientContactEmail(proj.clientContactEmail || '');
@@ -615,8 +617,9 @@ export default function ProjectSection({
       setFormDesc('');
       setFormClient('');
       setClientSearchQuery('');
-      setFormCategory(projectCategories.find(c => !c.deleted)?.id || '');
-      setFormCategories([]);
+      const defaultCat = projectCategories.find(c => !c.deleted)?.id || '';
+      setFormCategory(defaultCat);
+      setFormCategories(defaultCat ? [defaultCat] : []);
       setFormStatus(projectStatuses[0]?.id || '');
       setFormProjManager('');
       setFormFieldManager('');
@@ -627,7 +630,8 @@ export default function ProjectSection({
       setFormScheduledDate('');
       setFormInstallNo('');
       setFormSFNo('');
-      setFormPriority(projectPriorities[0]?.id || '');
+      const defaultPrio = projectPriorities.find(p => !p.deleted)?.id || '';
+      setFormPriority(defaultPrio);
       setFormBudget(0);
       setFormDemo(false);
       setFormTeams([]);
@@ -691,12 +695,15 @@ export default function ProjectSection({
       finalClientId = '';
     }
 
+    const finalCategoryIds = formCategories.length > 0 ? formCategories : (formCategory ? [formCategory] : []);
+    const finalCategory = finalCategoryIds[0] || formCategory || '';
+
     const payload = {
       title: formTitle,
       description: formDesc,
       clientId: finalClientId,
-      categoryId: formCategories[0] || formCategory,
-      categoryIds: formCategories,
+      categoryId: finalCategory,
+      categoryIds: finalCategoryIds,
       statusId: formStatus,
       projectManagerId: formProjManager,
       fieldManagerId: formFieldManager,
@@ -709,7 +716,7 @@ export default function ProjectSection({
       sfOpportunityNo: formSFNo,
       priorityId: formPriority,
       budgetValue: Number(formBudget),
-      demo: formDemo,
+      demo: Boolean(formDemo),
       teamsInvolvedIds: formTeams,
       partnersIds: formPartners,
       documents: formDocs,
@@ -818,13 +825,45 @@ export default function ProjectSection({
   const getUserName = (id: string) => users.find(u => matchId(u.id, id))?.name || 'Equipa';
 
   // Helper to check if project status is level 5 (completed, suspended, cancelled, or scale >= 5)
-  const isProjectLevel5 = (statusId: string): boolean => {
+  const isProjectLevel5 = React.useCallback((statusId: string): boolean => {
     if (!statusId) return false;
     const s = projectStatuses.find(st => matchId(st.id, statusId) || st.id === statusId);
     if (!s) return false;
     if (s.scale !== undefined && s.scale >= 5) return true;
     const name = (s.name || '').toLowerCase();
     return name.includes('conclu') || name.includes('suspen') || name.includes('cancel');
+  }, [projectStatuses]);
+
+  const getProjectStatusScale = React.useCallback((statusId: string): number => {
+    if (!statusId) return 1;
+    if (isProjectLevel5(statusId)) return 5;
+    const s = projectStatuses.find(st => matchId(st.id, statusId) || st.id === statusId);
+    if (s && typeof s.scale === 'number') return s.scale;
+    return 1;
+  }, [projectStatuses, isProjectLevel5]);
+
+  const matchesStatusGroup = React.useCallback((statusId: string) => {
+    if (filterStatusGroup === 'all') return true;
+    const lvl = getProjectStatusScale(statusId);
+    if (filterStatusGroup === 'active') return lvl >= 1 && lvl <= 4;
+    if (filterStatusGroup === 'implementation') return lvl === 4;
+    if (filterStatusGroup === 'completed') return lvl >= 5;
+    return true;
+  }, [filterStatusGroup, getProjectStatusScale]);
+
+  const handleStatusGroupChange = (group: 'active' | 'implementation' | 'all' | 'completed') => {
+    setFilterStatusGroup(group);
+    if (filterStatus) {
+      const scale = getProjectStatusScale(filterStatus);
+      const matchesNewGroup = 
+        group === 'all' ? true :
+        group === 'active' ? (scale >= 1 && scale <= 4) :
+        group === 'implementation' ? (scale === 4) :
+        group === 'completed' ? (scale >= 5) : true;
+      if (!matchesNewGroup) {
+        setFilterStatus('');
+      }
+    }
   };
 
   const getProjectFlowLevel = (statusId: string): number => {
@@ -854,13 +893,14 @@ export default function ProjectSection({
           search: search,
           categoryId: filterCategory,
           statusId: filterStatus,
-          managerId: filterManager
+          managerId: filterManager,
+          statusGroup: filterStatusGroup
         });
         const res = await fetch(`/api/v1/projects?${query.toString()}`, { headers: getAuthHeaders() });
         const result = await res.json();
         if (result.success && isMounted) {
           setServerProjects(result.data);
-          setTotalServerProjects(result.total || result.count);
+          setTotalServerProjects(result.total ?? result.count ?? 0);
         }
       } catch (err) {
         console.error(err);
@@ -870,7 +910,7 @@ export default function ProjectSection({
     };
     fetchProj();
     return () => { isMounted = false; };
-  }, [projectCurrentPage, projectPageSize, search, filterCategory, filterStatus, filterManager, selectedProjectId, projects, refreshTrigger]); // Re-run if 'projects' prop changes as a fallback refresh
+  }, [projectCurrentPage, projectPageSize, search, filterCategory, filterStatus, filterManager, filterStatusGroup, selectedProjectId, projects, refreshTrigger]); // Re-run if 'projects' prop changes as a fallback refresh
 
   useEffect(() => {
     let isMounted = true;
@@ -901,10 +941,29 @@ export default function ProjectSection({
     return () => { isMounted = false; };
   }, [selectedProjectId, tasks]);
 
+  // Fallback client-side filtering matching server logic
+  const filteredLocalProjects = React.useMemo(() => {
+    return projects.filter(p => {
+      if (p.deleted) return false;
+      if (!matchesStatusGroup(p.statusId)) return false;
+      if (filterCategory && !matchId(p.categoryId, filterCategory)) return false;
+      if (filterStatus && !matchId(p.statusId, filterStatus)) return false;
+      if (filterManager && !matchId(p.projectManagerId, filterManager)) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchTitle = (p.title || '').toLowerCase().includes(q);
+        const matchNo = (p.installProjectNo || '').toLowerCase().includes(q);
+        const matchDesc = (p.description || '').toLowerCase().includes(q);
+        if (!matchTitle && !matchNo && !matchDesc) return false;
+      }
+      return true;
+    });
+  }, [projects, matchesStatusGroup, filterCategory, filterStatus, filterManager, search]);
+
   // Use server data if available, fallback to props
-  const activeProjects = serverProjects.length > 0 ? serverProjects : projects.filter(p => !p.deleted);
-  const paginatedProjects = serverProjects.length > 0 ? serverProjects : projects.filter(p => !p.deleted).slice((projectCurrentPage - 1) * projectPageSize, projectCurrentPage * projectPageSize);
-  const totalProjects = serverProjects.length > 0 ? totalServerProjects : projects.filter(p => !p.deleted).length;
+  const activeProjects = serverProjects.length > 0 ? serverProjects : filteredLocalProjects;
+  const paginatedProjects = serverProjects.length > 0 ? serverProjects : filteredLocalProjects.slice((projectCurrentPage - 1) * projectPageSize, projectCurrentPage * projectPageSize);
+  const totalProjects = serverProjects.length > 0 ? totalServerProjects : filteredLocalProjects.length;
   const totalProjectPages = Math.max(1, Math.ceil(totalProjects / projectPageSize));
   const validProjectPage = Math.min(projectCurrentPage, totalProjectPages);
   const startProjectIndex = (validProjectPage - 1) * projectPageSize;
@@ -3688,7 +3747,7 @@ export default function ProjectSection({
               <label className="block text-slate-500 font-bold">Categorias</label>
               <div className="border border-slate-200 rounded-xl p-3 max-h-[120px] overflow-y-auto bg-slate-50/50 space-y-1.5">
                 {projectCategories.filter(c => !c.deleted).map(c => {
-                  const isChecked = formCategories.includes(c.id);
+                  const isChecked = formCategories.some(catId => matchId(catId, c.id));
                   return (
                     <label key={c.id} className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
                       <input 
@@ -3696,9 +3755,17 @@ export default function ProjectSection({
                         checked={isChecked}
                         onChange={() => {
                           if (isChecked) {
-                            setFormCategories(formCategories.filter(id => id !== c.id));
+                            const next = formCategories.filter(id => !matchId(id, c.id));
+                            setFormCategories(next);
+                            if (matchId(formCategory, c.id)) {
+                              setFormCategory(next[0] || '');
+                            }
                           } else {
-                            setFormCategories([...formCategories, c.id]);
+                            const next = [...formCategories, c.id];
+                            setFormCategories(next);
+                            if (!formCategory) {
+                              setFormCategory(c.id);
+                            }
                           }
                         }}
                         className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
@@ -4128,15 +4195,55 @@ export default function ProjectSection({
                 />
               </div>
 
-              {/* Category dropdown */}
-              <select 
-                value={filterCategory}
-                onChange={e => setFilterCategory(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
-              >
-                <option value="">Todas as Categorias</option>
-                {projectCategories.filter(c => !c.deleted).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              {/* Status Level Filter Buttons (Em curso | Implementação | Todos | Concluídos) */}
+              <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => handleStatusGroupChange('active')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                    filterStatusGroup === 'active'
+                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Em curso
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStatusGroupChange('implementation')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                    filterStatusGroup === 'implementation'
+                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Implementação
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStatusGroupChange('all')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                    filterStatusGroup === 'all'
+                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStatusGroupChange('completed')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                    filterStatusGroup === 'completed'
+                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Concluídos
+                </button>
+              </div>
+
+
 
               {/* Manager dropdown */}
               <select 
@@ -4151,26 +4258,6 @@ export default function ProjectSection({
                 }
               </select>
 
-              {/* Status dropdown */}
-              <select 
-                value={filterStatus}
-                onChange={e => setFilterStatus(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
-              >
-                <option value="">Todos os Estados</option>
-                {sortedStatuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-
-              {/* Completed filter checkbox */}
-              <label className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 select-none cursor-pointer hover:bg-slate-50 transition-colors">
-                <input 
-                  type="checkbox"
-                  checked={showCompleted}
-                  onChange={e => setShowCompleted(e.target.checked)}
-                  className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 cursor-pointer"
-                />
-                <span>Mostrar concluídos</span>
-              </label>
             </div>
           </div>
 

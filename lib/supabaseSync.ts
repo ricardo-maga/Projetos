@@ -596,42 +596,52 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     };
 
     // Map database structures to React types
-    let projects: Project[] = (projectsData || []).map((p: any) => ({
-      id: p.id,
-      demo: p.demo || false,
-      clientId: p.client_id || '',
-      title: p.project_title || '',
-      description: p.project_description || '',
-      categoryId: p.category_id || '',
-      categoryIds: categoriesMap[p.id] && categoriesMap[p.id].length > 0 ? categoriesMap[p.id] : (p.category_id ? [p.category_id] : []),
-      statusId: p.status_id || '',
-      projectManagerId: p.project_manager_id || '',
-      fieldManagerId: p.field_manager_id || '',
-      salesRepId: p.sales_rep_id || '',
-      startDate: p.start_date || '',
-      deliveryDate: p.delivery_date || '',
-      estimatedDate: p.estimated_date || '',
-      scheduledDate: p.scheduled_date || '',
-      installProjectNo: p.install_project_no || '',
-      sfOpportunityNo: p.sf_opportunity_no || '',
-      riskId: riskMap[p.id] || p.risk_id || '',
-      priorityId: priorityMap[p.id] || p.priority_id || '',
-      teamsInvolvedIds: (teamsMap[p.id] && teamsMap[p.id].length > 0)
-        ? teamsMap[p.id]
-        : (p.teams_involved_ids ? (typeof p.teams_involved_ids === 'string' ? p.teams_involved_ids.split(',').filter(Boolean) : p.teams_involved_ids) : (p.teams_ids ? (typeof p.teams_ids === 'string' ? p.teams_ids.split(',').filter(Boolean) : p.teams_ids) : [])),
-      partnersIds: (partnersMap[p.id] && partnersMap[p.id].length > 0)
-        ? partnersMap[p.id]
-        : (p.partners_ids ? (typeof p.partners_ids === 'string' ? p.partners_ids.split(',').filter(Boolean) : p.partners_ids) : []),
-      documents: p.documents ? p.documents.split(',').filter(Boolean) : [],
-      budgetValue: Number(p.budget_value) || 0,
-      createdById: p.created_by || '',
-      deleted: p.deleted || false,
-      createdDate: p.created_at || '',
-      updatedDate: p.updated_at || '',
-      clientContactName: p.client_contact_name || '',
-      clientContactEmail: p.client_contact_email || '',
-      clientContactPhone: p.client_contact_phone || '',
-    }));
+    let projects: Project[] = (projectsData || []).map((p: any) => {
+      const catIdsFromLink = categoriesMap[p.id] || [];
+      const catIdsFromCol = p.category_ids ? (typeof p.category_ids === 'string' ? p.category_ids.split(',').filter(Boolean) : p.category_ids) : (p.category_id ? [p.category_id] : []);
+      const finalCatIds = Array.from(new Set([...catIdsFromLink, ...catIdsFromCol]));
+
+      const teamsFromLink = teamsMap[p.id] || [];
+      const teamsFromCol = p.teams_involved_ids ? (typeof p.teams_involved_ids === 'string' ? p.teams_involved_ids.split(',').filter(Boolean) : p.teams_involved_ids) : (p.teams_ids ? (typeof p.teams_ids === 'string' ? p.teams_ids.split(',').filter(Boolean) : p.teams_ids) : []);
+      const finalTeamIds = Array.from(new Set([...teamsFromLink, ...teamsFromCol]));
+
+      const partnersFromLink = partnersMap[p.id] || [];
+      const partnersFromCol = p.partners_ids ? (typeof p.partners_ids === 'string' ? p.partners_ids.split(',').filter(Boolean) : p.partners_ids) : [];
+      const finalPartnerIds = Array.from(new Set([...partnersFromLink, ...partnersFromCol]));
+
+      return {
+        id: p.id,
+        demo: p.demo || false,
+        clientId: p.client_id || '',
+        title: p.project_title || '',
+        description: p.project_description || '',
+        categoryId: p.category_id || finalCatIds[0] || '',
+        categoryIds: finalCatIds,
+        statusId: p.status_id || '',
+        projectManagerId: p.project_manager_id || '',
+        fieldManagerId: p.field_manager_id || '',
+        salesRepId: p.sales_rep_id || '',
+        startDate: p.start_date || '',
+        deliveryDate: p.delivery_date || '',
+        estimatedDate: p.estimated_date || '',
+        scheduledDate: p.scheduled_date || '',
+        installProjectNo: p.install_project_no || '',
+        sfOpportunityNo: p.sf_opportunity_no || '',
+        riskId: riskMap[p.id] || p.risk_id || '',
+        priorityId: priorityMap[p.id] || p.priority_id || '',
+        teamsInvolvedIds: finalTeamIds,
+        partnersIds: finalPartnerIds,
+        documents: p.documents ? p.documents.split(',').filter(Boolean) : [],
+        budgetValue: Number(p.budget_value) || 0,
+        createdById: p.created_by || '',
+        deleted: p.deleted || false,
+        createdDate: p.created_at || '',
+        updatedDate: p.updated_at || '',
+        clientContactName: p.client_contact_name || '',
+        clientContactEmail: p.client_contact_email || '',
+        clientContactPhone: p.client_contact_phone || '',
+      };
+    });
 
     const milestoneTaskType = (resTaskTypes?.data || []).find((tt: any) => tt.name?.toLowerCase().includes('marco'));
     const defaultTaskType = (resTaskTypes?.data || []).find((tt: any) => !tt.deleted);
@@ -1010,7 +1020,7 @@ export async function fetchPaginatedProjectsDirectly(params: {
 
     if (params.search && params.search.trim()) {
       const q = `%${params.search.trim()}%`;
-      query = query.or(`project_title.ilike.${q},install_project_no.ilike.${q},description.ilike.${q}`);
+      query = query.or(`project_title.ilike.${q},install_project_no.ilike.${q},project_description.ilike.${q}`);
     }
 
     if (params.statusId) {
@@ -1038,7 +1048,7 @@ export async function fetchPaginatedProjectsDirectly(params: {
       id: row.id,
       title: row.project_title || row.title || 'Sem Título',
       clientId: row.client_id || '',
-      description: row.description || '',
+      description: row.project_description || row.description || '',
       categoryId: row.category_id || '',
       categoryIds: [row.category_id].filter(Boolean),
       statusId: row.status_id || '',
@@ -1434,7 +1444,8 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     const projectUpserts = state.projects.map((p: any) => {
       const pUUID = stringToUUID(p.id);
       const clientId = p.clientId ? stringToUUID(p.clientId) : null;
-      const categoryId = p.categoryId ? stringToUUID(p.categoryId) : null;
+      const effectiveCat = p.categoryId || (p.categoryIds && p.categoryIds[0]);
+      const categoryId = effectiveCat ? stringToUUID(effectiveCat) : null;
       const statusId = p.statusId ? stringToUUID(p.statusId) : null;
       const pmId = p.projectManagerId ? stringToUUID(p.projectManagerId) : null;
       const fmId = p.fieldManagerId ? stringToUUID(p.fieldManagerId) : null;
@@ -1443,41 +1454,44 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       const riskId = p.riskId ? stringToUUID(p.riskId) : null;
       const priorityId = p.priorityId ? stringToUUID(p.priorityId) : null;
 
-      const teamsInvolvedUUIDs = p.teamsInvolvedIds && p.teamsInvolvedIds.length > 0
-        ? p.teamsInvolvedIds.map((t: any) => stringToUUID(t)).filter(Boolean)
+      const rawTeams = p.teamsInvolvedIds || p.teamIds || [];
+      const teamsInvolvedUUIDs = Array.isArray(rawTeams)
+        ? rawTeams.map((t: any) => stringToUUID(t)).filter(Boolean)
         : [];
-      const partnersUUIDs = p.partnersIds && p.partnersIds.length > 0
-        ? p.partnersIds.map((pt: any) => stringToUUID(pt)).filter(Boolean)
+
+      const rawPartners = p.partnersIds || p.partnerIds || [];
+      const partnersUUIDs = Array.isArray(rawPartners)
+        ? rawPartners.map((pt: any) => stringToUUID(pt)).filter(Boolean)
         : [];
 
       return {
         id: pUUID,
-        demo: p.demo,
+        demo: Boolean(p.demo),
         client_id: (clientId && validClientIds.has(clientId)) ? clientId : null,
         project_title: p.title,
         project_description: p.description || null,
-        category_id: (categoryId && validCategoryIds.has(categoryId)) ? categoryId : null,
-        status_id: (statusId && validStatusIds.has(statusId)) ? statusId : null,
-        project_manager_id: (pmId && validUserIds.has(pmId)) ? pmId : null,
-        field_manager_id: (fmId && validUserIds.has(fmId)) ? fmId : null,
-        sales_rep_id: (srId && validUserIds.has(srId)) ? srId : null,
+        category_id: (categoryId && (validCategoryIds.size === 0 || validCategoryIds.has(categoryId))) ? categoryId : null,
+        status_id: (statusId && (validStatusIds.size === 0 || validStatusIds.has(statusId))) ? statusId : null,
+        project_manager_id: (pmId && (validUserIds.size === 0 || validUserIds.has(pmId))) ? pmId : null,
+        field_manager_id: (fmId && (validUserIds.size === 0 || validUserIds.has(fmId))) ? fmId : null,
+        sales_rep_id: (srId && (validUserIds.size === 0 || validUserIds.has(srId))) ? srId : null,
         start_date: formatDbDate(p.startDate),
         delivery_date: formatDbDate(p.deliveryDate),
         estimated_date: formatDbDate(p.estimatedDate),
         scheduled_date: formatDbDate(p.scheduledDate),
         install_project_no: p.installProjectNo || null,
         sf_opportunity_no: p.sfOpportunityNo || null,
-        documents: p.documents ? p.documents.join(',') : '',
+        documents: Array.isArray(p.documents) ? p.documents.join(',') : (p.documents || ''),
         budget_value: p.budgetValue || 0,
-        created_by: (cbId && validUserIds.has(cbId)) ? cbId : null,
+        created_by: (cbId && (validUserIds.size === 0 || validUserIds.has(cbId))) ? cbId : null,
         deleted: p.deleted,
         created_at: p.createdDate || new Date().toISOString(),
         updated_at: p.updatedDate || new Date().toISOString(),
         client_contact_name: p.clientContactName || null,
         client_contact_email: p.clientContactEmail || null,
         client_contact_phone: p.clientContactPhone || null,
-        risk_id: (riskId && validRiskIds.has(riskId)) ? riskId : null,
-        priority_id: (priorityId && validPriorityIds.has(priorityId)) ? priorityId : null,
+        risk_id: (riskId && (validRiskIds.size === 0 || validRiskIds.has(riskId))) ? riskId : null,
+        priority_id: (priorityId && (validPriorityIds.size === 0 || validPriorityIds.has(priorityId))) ? priorityId : null,
         teams_involved_ids: teamsInvolvedUUIDs.length > 0 ? teamsInvolvedUUIDs.join(',') : null,
         partners_ids: partnersUUIDs.length > 0 ? partnersUUIDs.join(',') : null
       };
@@ -1604,14 +1618,14 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     }
 
     // 5. Update many-to-many bridge tables in parallel
-    const projectIds = state.projects.map((p: any) => p.id);
-    const taskIds = state.tasks.map((t: any) => t.id);
+    const projectUUIDs = Array.from(new Set(state.projects.map((p: any) => stringToUUID(p.id)).filter(Boolean)));
+    const taskUUIDs = Array.from(new Set(state.tasks.map((t: any) => stringToUUID(t.id)).filter(Boolean)));
 
     // Delete existing links to recreate them
-    if (projectIds.length > 0) {
+    if (projectUUIDs.length > 0) {
       const safeDeleteLink = async (table: string, col: string) => {
         try {
-          const res = await supabase!.from(table).delete().in(col, projectIds);
+          const res = await supabase!.from(table).delete().in(col, projectUUIDs);
           if (res.error) console.warn(`Could not delete from ${table}:`, res.error.message);
         } catch (e) {
           console.warn(`Exception deleting from ${table}:`, e);
@@ -1625,9 +1639,9 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         safeDeleteLink('project_category_link', 'project_id'),
       ]);
     }
-    if (taskIds.length > 0) {
+    if (taskUUIDs.length > 0) {
       try {
-        const res = await supabase!.from('task_assignees').delete().in('task_id', taskIds);
+        const res = await supabase!.from('task_assignees').delete().in('task_id', taskUUIDs);
         if (res.error) console.warn('Could not delete from task_assignees:', res.error.message);
       } catch (e) {
         console.warn('Exception deleting from task_assignees:', e);
@@ -1643,7 +1657,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       .map((p: any) => {
         const pUUID = stringToUUID(p.id);
         const rUUID = stringToUUID(p.riskId);
-        return (pUUID && rUUID && validRiskIds.has(rUUID)) ? [`${pUUID}-${rUUID}`, { project_id: pUUID, risk_id: rUUID }] : null;
+        return (pUUID && rUUID && (validRiskIds.size === 0 || validRiskIds.has(rUUID))) ? [`${pUUID}-${rUUID}`, { project_id: pUUID, risk_id: rUUID }] : null;
       })
       .filter(Boolean) as [string, any][]).values());
 
@@ -1652,18 +1666,18 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       .map((p: any) => {
         const pUUID = stringToUUID(p.id);
         const prUUID = stringToUUID(p.priorityId);
-        return (pUUID && prUUID && validPriorityIds.has(prUUID)) ? [`${pUUID}-${prUUID}`, { project_id: pUUID, priority_id: prUUID }] : null;
+        return (pUUID && prUUID && (validPriorityIds.size === 0 || validPriorityIds.has(prUUID))) ? [`${pUUID}-${prUUID}`, { project_id: pUUID, priority_id: prUUID }] : null;
       })
       .filter(Boolean) as [string, any][]).values());
     
     const teamLinks: any[] = [];
     const teamLinkKeys = new Set<string>();
-    state.projects.forEach(p => {
+    state.projects.forEach((p: any) => {
       const pUUID = stringToUUID(p.id);
-      const uniqueTeams = Array.from(new Set(p.teamsInvolvedIds || []));
+      const uniqueTeams = Array.from(new Set([...(p.teamsInvolvedIds || []), ...(p.teamIds || [])]));
       uniqueTeams.forEach(tId => {
         const tUUID = stringToUUID(tId);
-        if (pUUID && tUUID && validTeamIds.has(tUUID)) {
+        if (pUUID && tUUID && (validTeamIds.size === 0 || validTeamIds.has(tUUID))) {
           const key = `${pUUID}-${tUUID}`;
           if (!teamLinkKeys.has(key)) {
             teamLinks.push({ project_id: pUUID, team_id: tUUID });
@@ -1675,12 +1689,12 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
     const partnerLinks: any[] = [];
     const partnerLinkKeys = new Set<string>();
-    state.projects.forEach(p => {
+    state.projects.forEach((p: any) => {
       const pUUID = stringToUUID(p.id);
-      const uniquePartners = Array.from(new Set(p.partnersIds || []));
+      const uniquePartners = Array.from(new Set([...(p.partnersIds || []), ...(p.partnerIds || [])]));
       uniquePartners.forEach(ptId => {
         const ptUUID = stringToUUID(ptId);
-        if (pUUID && ptUUID && validPartnerIds.has(ptUUID)) {
+        if (pUUID && ptUUID && (validPartnerIds.size === 0 || validPartnerIds.has(ptUUID))) {
           const key = `${pUUID}-${ptUUID}`;
           if (!partnerLinkKeys.has(key)) {
             partnerLinks.push({ project_id: pUUID, partner_id: ptUUID });
@@ -1693,12 +1707,14 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     const categoryLinks: any[] = [];
     const categoryLinkKeys = new Set<string>();
     state.projects.forEach(p => {
-      const uniqueCats = Array.from(new Set(p.categoryIds || []));
+      const pUUID = stringToUUID(p.id);
+      const uniqueCats = Array.from(new Set([...(p.categoryIds || []), ...(p.categoryId ? [p.categoryId] : [])]));
       uniqueCats.forEach(catId => {
-        if (catId && validCategoryIds.has(catId)) {
-          const key = `${p.id}-${catId}`;
+        const catUUID = stringToUUID(catId);
+        if (pUUID && catUUID && (validCategoryIds.size === 0 || validCategoryIds.has(catUUID))) {
+          const key = `${pUUID}-${catUUID}`;
           if (!categoryLinkKeys.has(key)) {
-            categoryLinks.push({ project_id: p.id, category_id: catId });
+            categoryLinks.push({ project_id: pUUID, category_id: catUUID });
             categoryLinkKeys.add(key);
           }
         }
@@ -1708,12 +1724,14 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     const assigneeLinks: any[] = [];
     const assigneeLinkKeys = new Set<string>();
     state.tasks.forEach(t => {
+      const tUUID = stringToUUID(t.id);
       const uniqueAssignees = Array.from(new Set(t.assigneeIds || []));
       uniqueAssignees.forEach(uId => {
-        if (uId && validUserIds.has(uId)) {
-          const key = `${t.id}-${uId}`;
+        const uUUID = stringToUUID(uId);
+        if (tUUID && uUUID && (validUserIds.size === 0 || validUserIds.has(uUUID))) {
+          const key = `${tUUID}-${uUUID}`;
           if (!assigneeLinkKeys.has(key)) {
-            assigneeLinks.push({ task_id: t.id, user_id: uId });
+            assigneeLinks.push({ task_id: tUUID, user_id: uUUID });
             assigneeLinkKeys.add(key);
           }
         }

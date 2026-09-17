@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     return validationError('Parâmetros de consulta inválidos.', requestId, parseResult.error.flatten());
   }
 
-  const { page, pageSize, search, statusId, categoryId, managerId, clientId } = parseResult.data;
+  const { page, pageSize, search, statusId, categoryId, managerId, clientId, statusGroup } = parseResult.data;
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
@@ -36,9 +36,26 @@ export async function GET(req: NextRequest) {
 
     if (search && search.trim()) {
       const q = `%${search.trim()}%`;
-      query = query.or(`project_title.ilike.${q},install_project_no.ilike.${q},description.ilike.${q}`);
+      query = query.or(`project_title.ilike.${q},install_project_no.ilike.${q},project_description.ilike.${q}`);
     }
-    if (statusId) query = query.eq('status_id', statusId);
+    if (statusId) {
+      query = query.eq('status_id', statusId);
+    } else if (statusGroup && statusGroup !== 'all') {
+      const { data: statusRows } = await sb.from('project_status').select('id, scale');
+      if (statusRows && statusRows.length > 0) {
+        let targetIds: string[] = [];
+        if (statusGroup === 'active') {
+          targetIds = statusRows.filter((s: any) => s.scale >= 1 && s.scale <= 4).map((s: any) => s.id);
+        } else if (statusGroup === 'implementation') {
+          targetIds = statusRows.filter((s: any) => s.scale === 4).map((s: any) => s.id);
+        } else if (statusGroup === 'completed') {
+          targetIds = statusRows.filter((s: any) => s.scale >= 5).map((s: any) => s.id);
+        }
+        if (targetIds.length > 0) {
+          query = query.in('status_id', targetIds);
+        }
+      }
+    }
     if (categoryId) query = query.eq('category_id', categoryId);
     if (managerId) query = query.eq('project_manager_id', managerId);
     if (clientId) query = query.eq('client_id', clientId);
@@ -59,19 +76,32 @@ export async function GET(req: NextRequest) {
     const mappedProjects = (rows || []).map((row: any) => ({
       id: row.id,
       title: row.project_title || row.title,
-      clientId: row.client_id || row.clientId,
+      clientId: row.client_id || row.clientId || '',
       installProjectNo: row.install_project_no || row.installProjectNo || '',
-      description: row.description || '',
+      sfOpportunityNo: row.sf_opportunity_no || row.sfOpportunityNo || '',
+      description: row.project_description || row.description || '',
       statusId: row.status_id || row.statusId || 'ps-1',
       categoryId: row.category_id || row.categoryId || 'pc-1',
+      categoryIds: row.category_ids || (row.category_id ? [row.category_id] : []),
       priorityId: row.priority_id || row.priorityId || 'pp-1',
       riskId: row.risk_id || row.riskId || 'pr-1',
       projectManagerId: row.project_manager_id || row.projectManagerId || '',
+      fieldManagerId: row.field_manager_id || row.fieldManagerId || '',
+      salesRepId: row.sales_rep_id || row.salesRepId || '',
+      teamsInvolvedIds: row.teams_involved_ids || [],
+      partnersIds: row.partners_ids || [],
       startDate: row.start_date || '',
       deliveryDate: row.delivery_date || '',
+      estimatedDate: row.estimated_date || '',
       scheduledDate: row.scheduled_date || '',
       completedDate: row.completed_date || '',
+      budgetValue: Number(row.budget_value ?? row.budgetValue ?? 0),
       isUrgent: Boolean(row.is_urgent),
+      demo: Boolean(row.demo),
+      documents: row.documents || [],
+      clientContactName: row.client_contact_name || row.clientContactName || '',
+      clientContactEmail: row.client_contact_email || row.clientContactEmail || '',
+      clientContactPhone: row.client_contact_phone || row.clientContactPhone || '',
       color: row.color || '',
       notes: row.notes || '',
       version: row.version || 1,
@@ -120,22 +150,39 @@ export async function POST(req: NextRequest) {
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    const insertPayload = {
+    const effectiveTeams = Array.from(new Set([...(p.teamsInvolvedIds || []), ...(p.teamIds || [])]));
+    const effectivePartners = Array.from(new Set([...(p.partnersIds || []), ...(p.partnerIds || [])]));
+    const effectiveCategories = Array.from(new Set([...(p.categoryIds || []), ...(p.categoryId ? [p.categoryId] : [])]));
+
+    const insertPayload: Record<string, any> = {
       id: newId,
       project_title: p.title,
-      client_id: p.clientId,
-      description: p.description || '',
+      client_id: p.clientId || null,
+      project_description: p.description || '',
       install_project_no: p.installProjectNo || '',
+      sf_opportunity_no: p.sfOpportunityNo || '',
       status_id: p.statusId || 'ps-1',
-      category_id: p.categoryId || (p.categoryIds && p.categoryIds[0]) || 'pc-1',
+      category_id: p.categoryId || (effectiveCategories[0]) || 'pc-1',
+      category_ids: effectiveCategories,
       priority_id: p.priorityId || 'pp-1',
       risk_id: p.riskId || 'pr-1',
       project_manager_id: p.projectManagerId || null,
+      field_manager_id: p.fieldManagerId || null,
+      sales_rep_id: p.salesRepId || null,
+      teams_involved_ids: effectiveTeams,
+      partners_ids: effectivePartners,
       start_date: p.startDate || null,
       delivery_date: p.deliveryDate || null,
+      estimated_date: p.estimatedDate || null,
       scheduled_date: p.scheduledDate || null,
       completed_date: p.completedDate || null,
+      budget_value: Number(p.budgetValue || 0),
       is_urgent: Boolean(p.isUrgent),
+      demo: Boolean(p.demo),
+      documents: p.documents || [],
+      client_contact_name: p.clientContactName || '',
+      client_contact_email: p.clientContactEmail || '',
+      client_contact_phone: p.clientContactPhone || '',
       color: p.color || null,
       notes: p.notes || null,
       deleted: false,
@@ -153,16 +200,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Insert relational links if provided
-    if (p.teamIds && p.teamIds.length > 0) {
-      const teamLinks = p.teamIds.map((tid) => ({ project_id: newId, team_id: tid }));
+    if (effectiveTeams.length > 0) {
+      const teamLinks = effectiveTeams.map((tid) => ({ project_id: newId, team_id: tid }));
       try {
         await sb.from('project_teams_link').insert(teamLinks);
       } catch {}
     }
-    if (p.partnerIds && p.partnerIds.length > 0) {
-      const partnerLinks = p.partnerIds.map((pid) => ({ project_id: newId, partner_id: pid }));
+    if (effectivePartners.length > 0) {
+      const partnerLinks = effectivePartners.map((pid) => ({ project_id: newId, partner_id: pid }));
       try {
         await sb.from('project_partners_link').insert(partnerLinks);
+      } catch {}
+    }
+    if (effectiveCategories.length > 0) {
+      const categoryLinks = effectiveCategories.map((cid) => ({ project_id: newId, category_id: cid }));
+      try {
+        await sb.from('project_category_link').insert(categoryLinks);
       } catch {}
     }
 

@@ -6,7 +6,7 @@
     "dev": "next dev -p 3000",
     "build": "NODE_ENV=production next build",
     "start": "NODE_ENV=production next start",
-    "lint": "eslint .",
+    "lint": "next lint",
     "clean": "next clean"
   },
   "dependencies": {

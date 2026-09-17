@@ -1,29 +1,42 @@
 import { z } from 'zod';
 
 export const createProjectSchema = z.object({
-  title: z.string().trim().min(2, 'O título do projeto deve ter no mínimo 2 caracteres'),
-  clientId: z.string().uuid('ID de cliente inválido (deve ser UUID)'),
+  title: z.string().trim().min(1, 'O título do projeto é obrigatório'),
+  clientId: z.string().optional().default(''),
   description: z.string().optional().default(''),
   installProjectNo: z.string().optional().default(''),
-  statusId: z.string().optional(),
-  categoryId: z.string().optional(),
-  categoryIds: z.array(z.string()).optional(),
-  priorityId: z.string().optional(),
-  riskId: z.string().optional(),
-  projectManagerId: z.string().optional(),
-  teamIds: z.array(z.string()).optional(),
-  partnerIds: z.array(z.string()).optional(),
-  startDate: z.string().optional(),
-  deliveryDate: z.string().optional(),
-  scheduledDate: z.string().optional(),
-  completedDate: z.string().optional(),
+  sfOpportunityNo: z.string().optional().default(''),
+  statusId: z.string().optional().default('ps-1'),
+  categoryId: z.string().optional().default('pc-1'),
+  categoryIds: z.array(z.string()).optional().default([]),
+  priorityId: z.string().optional().default('pp-1'),
+  riskId: z.string().optional().default('pr-1'),
+  projectManagerId: z.string().optional().nullable().default(''),
+  fieldManagerId: z.string().optional().nullable().default(''),
+  salesRepId: z.string().optional().nullable().default(''),
+  teamIds: z.array(z.string()).optional().default([]),
+  teamsInvolvedIds: z.array(z.string()).optional().default([]),
+  partnerIds: z.array(z.string()).optional().default([]),
+  partnersIds: z.array(z.string()).optional().default([]),
+  startDate: z.string().optional().default(''),
+  deliveryDate: z.string().optional().default(''),
+  estimatedDate: z.string().optional().default(''),
+  scheduledDate: z.string().optional().default(''),
+  completedDate: z.string().optional().default(''),
+  budgetValue: z.number().optional().default(0),
   isUrgent: z.boolean().optional().default(false),
+  demo: z.boolean().optional().default(false),
+  documents: z.array(z.string()).optional().default([]),
+  clientContactName: z.string().optional().default(''),
+  clientContactEmail: z.string().optional().default(''),
+  clientContactPhone: z.string().optional().default(''),
   color: z.string().optional(),
   notes: z.string().optional(),
+  createdById: z.string().optional(),
 });
 
 export const updateProjectSchema = createProjectSchema.partial().extend({
-  version: z.number().int().min(1, 'Número de versão obrigatório para controlo de concorrência'),
+  version: z.number().int().optional().default(1),
 });
 
 export const queryProjectSchema = z.object({
@@ -34,4 +47,6 @@ export const queryProjectSchema = z.object({
   categoryId: z.string().optional(),
   managerId: z.string().optional(),
   clientId: z.string().optional(),
+  statusGroup: z.enum(['active', 'implementation', 'all', 'completed']).optional(),
 });
+
