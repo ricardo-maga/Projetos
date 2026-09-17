@@ -192,7 +192,6 @@ export default function ProjectSection({
 
   // Reset pagination when any filter or page size changes
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setProjectCurrentPage(1);
   }, [search, filterCategory, filterStatus, filterManager, showCompleted, projectPageSize]);
   

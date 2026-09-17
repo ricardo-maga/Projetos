@@ -95,7 +95,6 @@ export default function TaskSection({
 
   // Reset pagination when filter/sorting/grouping variables change
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
   }, [search, filterProject, filterStatus, filterStatusGroup, filterAssignee, pageSize, sortBy, groupByProject]);
   

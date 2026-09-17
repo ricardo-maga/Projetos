@@ -204,7 +204,6 @@ export default function Page() {
       const projectParam = params.get('project');
       
       if (tabParam) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveTab(tabParam);
       }
       if (projectParam) {
@@ -401,7 +400,6 @@ export default function Page() {
     if (mounted && state && currentUser && tabs.length > 0) {
       const allowed = tabs.some(t => t.id === activeTab);
       if (!allowed) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveTab('dashboard');
       }
     }
