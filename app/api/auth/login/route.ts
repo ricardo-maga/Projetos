@@ -28,7 +28,12 @@ export async function POST(req: NextRequest) {
     if (!profile.approved) { await supabase.auth.signOut(); return forbidden('Este utilizador ainda aguarda aprovação por um administrador.', requestId); }
     const user = { id: profile.id, name: profile.name, email: profile.email, type: profile.type || 'Team', roleId: profile.role_id, isAdmin: Boolean(profile.is_admin) };
     await logAuditEvent({ action: 'LOGIN', userId: profile.id, entity: 'users', entityId: profile.id, ip, details: { method: 'supabase_auth' } });
-    // Session stays in Supabase HttpOnly cookies; no bearer token is exposed to JavaScript.
-    return NextResponse.json({ success: true, user, requestId });
+    // Return authenticated user details and active session token for API / bearer authentication
+    return NextResponse.json({ 
+      success: true, 
+      user, 
+      token: signIn.session?.access_token || null,
+      requestId 
+    });
   } catch (error) { console.error('[LOGIN ERROR]', error); return internalServerError('Erro inesperado durante a autenticação.', requestId); }
 }

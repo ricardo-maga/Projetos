@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
 import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
 import { requireAuth, AuthError } from '@/lib/auth/requireAuth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
   if (!isSupabaseConfigured) {
@@ -163,7 +163,8 @@ export async function GET(req: NextRequest) {
 
     let result;
     try {
-      result = await getActiveStateFromSupabase(authClient);
+      const clientToUse = user ? (createAdminClient() || authClient) : authClient;
+      result = await getActiveStateFromSupabase(clientToUse);
     } catch (error: any) {
       console.error('Exception in getActiveStateFromSupabase:', error);
       return NextResponse.json({ success: false, message: error?.message || 'Database error', debug: debugInfo }, { status: 500 });

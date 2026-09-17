@@ -25,7 +25,7 @@ import {
   Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Ticket as TicketIcon, Eye, EyeOff
 } from 'lucide-react';
 
-import { clearClientSession } from '../lib/clientAuth';
+import { clearClientSession, setClientSession, getClientToken } from '../lib/clientAuth';
 
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
@@ -54,18 +54,21 @@ export default function Page() {
   const [changePasswordError, setChangePasswordError] = useState('');
   const [changePasswordSuccess, setChangePasswordSuccess] = useState(false);
 
-  // Restore the server-managed session from HttpOnly cookies.
+  // Restore session from HttpOnly cookies or active bearer token
   React.useEffect(() => {
     const restoreSession = async () => {
-      // Remove tokens produced by the retired legacy authentication flow.
-      clearClientSession();
       // Safety timeout to guarantee the loading screen doesn't hang if network stalls
       const safetyTimer = setTimeout(() => {
         setMounted(true);
       }, 4000);
 
       try {
-        const res = await fetch('/api/auth/session', { method: 'GET' });
+        const token = getClientToken();
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const res = await fetch('/api/auth/session', { method: 'GET', headers });
         let data: any = null;
         try {
           data = await res.json();
@@ -294,6 +297,11 @@ export default function Page() {
       if (res.ok && data?.success) {
         setLoginStatusMessage('Autenticado com sucesso! A carregar sistema...');
         
+        // Save bearer token for robust cross-origin, iframe and API requests
+        if (data.token) {
+          setClientSession(data.token, data.user, rememberMe);
+        }
+
         // Show loading screen immediately and activate user session
         setIsTransitioning(true);
         setCurrentUser(data.user);
