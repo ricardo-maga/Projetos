@@ -406,134 +406,333 @@ export function useERP() {
   };
 
   // ==================== PROJECTS CRUD ====================
-  const addProject = (project: Omit<Project, 'id' | 'deleted' | 'createdDate' | 'updatedDate'>) => {
-    const now = new Date().toISOString();
-    const newProj: Project = {
-      ...project,
-      id: genId('p'),
-      deleted: false,
-      createdDate: now,
-      updatedDate: now,
-    };
-    saveState(prev => {
-      let newNotifs = prev.notifications || [];
-      if (newProj.projectManagerId) {
-        newNotifs = [{
-          id: genId('notif'),
-          userId: newProj.projectManagerId,
-          title: `Gestor de Projeto Atribuído: ${newProj.title}`,
-          message: `Foi designado como Gestor do projeto "${newProj.title}".`,
-          isRead: false,
-          createdDate: now,
-          linkUrl: `/projects?project=${newProj.id}`
-        }, ...newNotifs];
-      }
-      if (newProj.fieldManagerId && newProj.fieldManagerId !== newProj.projectManagerId) {
-        newNotifs = [{
-          id: genId('notif'),
-          userId: newProj.fieldManagerId,
-          title: `Encarregado de Obra: ${newProj.title}`,
-          message: `Foi designado como Encarregado de Obra do projeto "${newProj.title}".`,
-          isRead: false,
-          createdDate: now,
-          linkUrl: `/projects?project=${newProj.id}`
-        }, ...newNotifs];
-      }
-      return {
-        ...prev,
-        projects: [newProj, ...prev.projects],
-        notifications: newNotifs
-      };
-    });
-    logAudit('CREATE', 'PROJECT', newProj.id, newProj.title, `Criado o projeto "${newProj.title}" (Cód. Instalação: ${newProj.installProjectNo || 'N/A'})`);
-    return newProj;
-  };
-
-  const updateProject = (id: string, updates: Partial<Omit<Project, 'id' | 'createdDate'>>) => {
+  const addProject = async (project: Omit<Project, 'id' | 'deleted' | 'createdDate' | 'updatedDate'>) => {
     const now = new Date().toISOString();
 
-    // Generate audit log for project change
-    const existingProj = state?.projects?.find(p => p.id === id);
-    const projName = updates.title || existingProj?.title || id;
-    let detailMsg = `Atualizado projeto "${projName}"`;
-
-    if (updates.title && existingProj && updates.title !== existingProj.title) {
-      detailMsg = `Nome do projeto alterado de "${existingProj.title}" para "${updates.title}"`;
-    } else if (updates.statusId && existingProj && updates.statusId !== existingProj.statusId) {
-      const oldStatus = state?.projectStatuses?.find(s => s.id === existingProj.statusId)?.name || existingProj.statusId;
-      const newStatus = state?.projectStatuses?.find(s => s.id === updates.statusId)?.name || updates.statusId;
-      detailMsg = `Estado do projeto "${projName}" alterado de "${oldStatus}" para "${newStatus}"`;
+    if (!isDbConfigured) {
+      const msg = 'Gravação bloqueada: A base de dados não está configurada.';
+      setSyncStatus('error');
+      setSyncError(msg);
+      throw new Error(msg);
     }
 
-    logAudit('UPDATE', 'PROJECT', id, projName, detailMsg);
+    const apiPayload = {
+      title: project.title,
+      clientId: project.clientId || undefined,
+      installProjectNo: project.installProjectNo || undefined,
+      sfOpportunityNo: (project as any).sfOpportunityNo || undefined,
+      description: project.description || '',
+      statusId: project.statusId || 'ps-1',
+      categoryId: project.categoryId || 'pc-1',
+      categoryIds: project.categoryIds || (project.categoryId ? [project.categoryId] : []),
+      priorityId: project.priorityId || 'pp-1',
+      riskId: project.riskId || 'pr-1',
+      projectManagerId: project.projectManagerId || undefined,
+      fieldManagerId: project.fieldManagerId || undefined,
+      salesRepId: project.salesRepId || undefined,
+      teamsInvolvedIds: project.teamsInvolvedIds || [],
+      partnersIds: project.partnersIds || [],
+      startDate: project.startDate || undefined,
+      deliveryDate: project.deliveryDate || undefined,
+      estimatedDate: project.estimatedDate || undefined,
+      scheduledDate: project.scheduledDate || undefined,
+      completedDate: (project as any).completedDate || undefined,
+      budgetValue: Number(project.budgetValue || 0),
+      isUrgent: Boolean((project as any).isUrgent),
+      demo: Boolean(project.demo),
+      documents: project.documents || [],
+      clientContactName: project.clientContactName || '',
+      clientContactEmail: project.clientContactEmail || '',
+      clientContactPhone: project.clientContactPhone || '',
+      color: (project as any).color || undefined,
+      notes: (project as any).notes || undefined,
+    };
 
-    saveState(prev => {
-      let newProjects = prev.projects.map(p => p.id === id ? { ...p, ...updates, updatedDate: now } as Project : p);
-      let newTasks = prev.tasks;
-      let newNotifs = prev.notifications || [];
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+      const headers = getAuthHeaders();
+      const res = await fetch('/api/v1/projects', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(apiPayload),
+      });
 
-      // Trigger automations if statusId changed
-      if (updates.statusId) {
-        const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'project_status_changed');
-        for (const rule of activeRules) {
-          if (!rule.triggerCondition?.toStatusId || rule.triggerCondition.toStatusId === updates.statusId) {
-            for (const action of rule.actions) {
-              if (action.type === 'create_default_tasks') {
-                const projectTasks = newTasks.filter(t => t.projectId === id && !t.deleted);
-                if (projectTasks.length === 0 && prev.defaultTasks && prev.defaultTasks.length > 0) {
-                  const autoTasks: Task[] = prev.defaultTasks.map(dt => ({
-                    id: genId('t'),
-                    projectId: id,
-                    title: dt.title,
-                    description: dt.description || '',
-                    estimatedHours: dt.estimatedHours || '08:00',
-                    actualHours: '00:00',
-                    startDate: now.split('T')[0],
-                    startTime: '09:00',
-                    endDate: now.split('T')[0],
-                    endTime: '18:00',
-                    estimatedDate: now.split('T')[0],
-                    notes: 'Gerada automaticamente pela regra de automação.',
-                    statusId: getDefaultTaskStatusId(prev.taskStatuses || []),
-                    assigneeIds: [],
-                    deleted: false,
-                    createdDate: now
-                  }));
-                  newTasks = [...autoTasks, ...newTasks];
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.ok && result.success && result.data) {
+        const newProj: Project = {
+          ...project,
+          id: result.data.id,
+          deleted: false,
+          createdDate: result.data.createdAt || now,
+          updatedDate: result.data.updatedAt || now,
+          version: result.data.version || 1,
+        };
+
+        logAudit('CREATE', 'PROJECT', newProj.id, newProj.title, `Criado o projeto "${newProj.title}" (Cód. Instalação: ${newProj.installProjectNo || 'N/A'})`);
+
+        setState(prev => {
+          if (!prev) return prev;
+          let newNotifs = prev.notifications || [];
+          if (newProj.projectManagerId) {
+            newNotifs = [{
+              id: genId('notif'),
+              userId: newProj.projectManagerId,
+              title: `Gestor de Projeto Atribuído: ${newProj.title}`,
+              message: `Foi designado como Gestor do projeto "${newProj.title}".`,
+              isRead: false,
+              createdDate: now,
+              linkUrl: `/projects?project=${newProj.id}`
+            }, ...newNotifs];
+          }
+          if (newProj.fieldManagerId && newProj.fieldManagerId !== newProj.projectManagerId) {
+            newNotifs = [{
+              id: genId('notif'),
+              userId: newProj.fieldManagerId,
+              title: `Encarregado de Obra: ${newProj.title}`,
+              message: `Foi designado como Encarregado de Obra do projeto "${newProj.title}".`,
+              isRead: false,
+              createdDate: now,
+              linkUrl: `/projects?project=${newProj.id}`
+            }, ...newNotifs];
+          }
+          return {
+            ...prev,
+            projects: [newProj, ...prev.projects],
+            notifications: newNotifs
+          };
+        });
+
+        setSyncStatus('synced');
+        return newProj;
+      } else {
+        const errMsg = result?.message || `A base de dados rejeitou a criação do projeto (${res.status}).`;
+        console.error('Erro na criação do projeto:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao criar projeto: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção na criação do projeto:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de projetos.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
+  };
+
+  const updateProject = async (id: string, updates: Partial<Omit<Project, 'id' | 'createdDate'>>) => {
+    const now = new Date().toISOString();
+
+    const existingProj = state?.projects?.find(p => p.id === id);
+    if (!existingProj) {
+      throw new Error(`Projeto ${id} não encontrado localmente.`);
+    }
+
+    const currentVersion = (existingProj as any).version || 1;
+    const projName = updates.title || existingProj.title || id;
+
+    const patchPayload: Record<string, any> = {
+      version: currentVersion
+    };
+
+    if (updates.title !== undefined) patchPayload.title = updates.title;
+    if (updates.clientId !== undefined) patchPayload.clientId = updates.clientId;
+    if (updates.description !== undefined) patchPayload.description = updates.description;
+    if ((updates as any).installProjectNo !== undefined) patchPayload.installProjectNo = (updates as any).installProjectNo;
+    if ((updates as any).sfOpportunityNo !== undefined) patchPayload.sfOpportunityNo = (updates as any).sfOpportunityNo;
+    if (updates.statusId !== undefined) patchPayload.statusId = updates.statusId;
+    if (updates.categoryId !== undefined) patchPayload.categoryId = updates.categoryId;
+    if (updates.categoryIds !== undefined) patchPayload.categoryIds = updates.categoryIds;
+    if (updates.priorityId !== undefined) patchPayload.priorityId = updates.priorityId;
+    if (updates.riskId !== undefined) patchPayload.riskId = updates.riskId;
+    if (updates.projectManagerId !== undefined) patchPayload.projectManagerId = updates.projectManagerId;
+    if (updates.fieldManagerId !== undefined) patchPayload.fieldManagerId = updates.fieldManagerId;
+    if (updates.salesRepId !== undefined) patchPayload.salesRepId = updates.salesRepId;
+    if (updates.teamsInvolvedIds !== undefined) patchPayload.teamsInvolvedIds = updates.teamsInvolvedIds;
+    if (updates.partnersIds !== undefined) patchPayload.partnersIds = updates.partnersIds;
+    if (updates.startDate !== undefined) patchPayload.startDate = updates.startDate;
+    if (updates.deliveryDate !== undefined) patchPayload.deliveryDate = updates.deliveryDate;
+    if (updates.estimatedDate !== undefined) patchPayload.estimatedDate = updates.estimatedDate;
+    if (updates.scheduledDate !== undefined) patchPayload.scheduledDate = updates.scheduledDate;
+    if ((updates as any).completedDate !== undefined) patchPayload.completedDate = (updates as any).completedDate;
+    if (updates.budgetValue !== undefined) patchPayload.budgetValue = Number(updates.budgetValue || 0);
+    if ((updates as any).isUrgent !== undefined) patchPayload.is_urgent = (updates as any).isUrgent;
+    if (updates.demo !== undefined) patchPayload.demo = updates.demo;
+    if (updates.documents !== undefined) patchPayload.documents = updates.documents;
+    if (updates.clientContactName !== undefined) patchPayload.clientContactName = updates.clientContactName;
+    if (updates.clientContactEmail !== undefined) patchPayload.clientContactEmail = updates.clientContactEmail;
+    if (updates.clientContactPhone !== undefined) patchPayload.clientContactPhone = updates.clientContactPhone;
+    if ((updates as any).color !== undefined) patchPayload.color = (updates as any).color;
+    if ((updates as any).notes !== undefined) patchPayload.notes = (updates as any).notes;
+
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/v1/projects/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(patchPayload),
+      });
+
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.status === 409) {
+        const errMsg = result?.message || 'Conflito de concorrência ao atualizar projeto. O projeto foi alterado por outro utilizador.';
+        alert(errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        throw new Error(errMsg);
+      }
+
+      if (res.ok && result.success && result.data) {
+        const nextVersion = result.data.version || (currentVersion + 1);
+
+        let detailMsg = `Atualizado projeto "${projName}"`;
+        if (updates.title && existingProj && updates.title !== existingProj.title) {
+          detailMsg = `Nome do projeto alterado de "${existingProj.title}" para "${updates.title}"`;
+        } else if (updates.statusId && existingProj && updates.statusId !== existingProj.statusId) {
+          const oldStatus = state?.projectStatuses?.find(s => s.id === existingProj.statusId)?.name || existingProj.statusId;
+          const newStatus = state?.projectStatuses?.find(s => s.id === updates.statusId)?.name || updates.statusId;
+          detailMsg = `Estado do projeto "${projName}" alterado de "${oldStatus}" para "${newStatus}"`;
+        }
+
+        logAudit('UPDATE', 'PROJECT', id, projName, detailMsg);
+
+        setState(prev => {
+          if (!prev) return prev;
+          let newProjects = prev.projects.map(p => {
+            if (p.id === id) {
+              return {
+                ...p,
+                ...updates,
+                version: nextVersion,
+                updatedDate: result.data.updatedAt || now,
+              } as Project;
+            }
+            return p;
+          });
+          let newTasks = prev.tasks;
+          let newNotifs = prev.notifications || [];
+
+          if (updates.statusId) {
+            const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'project_status_changed');
+            for (const rule of activeRules) {
+              if (!rule.triggerCondition?.toStatusId || rule.triggerCondition.toStatusId === updates.statusId) {
+                for (const action of rule.actions) {
+                  if (action.type === 'create_default_tasks') {
+                    const projectTasks = newTasks.filter(t => t.projectId === id && !t.deleted);
+                    if (projectTasks.length === 0 && prev.defaultTasks && prev.defaultTasks.length > 0) {
+                      const autoTasks: Task[] = prev.defaultTasks.map(dt => ({
+                        id: genId('t'),
+                        projectId: id,
+                        title: dt.title,
+                        description: dt.description || '',
+                        estimatedHours: dt.estimatedHours || '08:00',
+                        actualHours: '00:00',
+                        startDate: now.split('T')[0],
+                        startTime: '09:00',
+                        endDate: now.split('T')[0],
+                        endTime: '18:00',
+                        estimatedDate: now.split('T')[0],
+                        notes: 'Gerada automaticamente pela regra de automação.',
+                        statusId: getDefaultTaskStatusId(prev.taskStatuses || []),
+                        assigneeIds: [],
+                        deleted: false,
+                        createdDate: now
+                      }));
+                      newTasks = [...autoTasks, ...newTasks];
+                    }
+                  } else if (action.type === 'send_notification') {
+                    newNotifs = [{
+                      id: genId('notif'),
+                      userId: 'all',
+                      title: action.params?.notificationTitle || 'Projeto Atualizado',
+                      message: action.params?.notificationMessage || 'Regra de automação executada no projeto.',
+                      isRead: false,
+                      createdDate: now,
+                      linkUrl: `/projects?project=${id}`
+                    }, ...newNotifs];
+                  }
                 }
-              } else if (action.type === 'send_notification') {
-                newNotifs = [{
-                  id: genId('notif'),
-                  userId: 'all',
-                  title: action.params?.notificationTitle || 'Projeto Atualizado',
-                  message: action.params?.notificationMessage || 'Regra de automação executada no projeto.',
-                  isRead: false,
-                  createdDate: now,
-                  linkUrl: `/projects?project=${id}`
-                }, ...newNotifs];
               }
             }
           }
-        }
-      }
 
-      return {
-        ...prev,
-        projects: newProjects,
-        tasks: newTasks,
-        notifications: newNotifs
-      };
-    });
+          return {
+            ...prev,
+            projects: newProjects,
+            tasks: newTasks,
+            notifications: newNotifs
+          };
+        });
+
+        setSyncStatus('synced');
+        return true;
+      } else {
+        const errMsg = result?.message || `A base de dados rejeitou a alteração do projeto (${res.status}).`;
+        console.error('Erro na atualização do projeto:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao atualizar projeto: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção na atualização do projeto:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de projetos.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
   };
 
-  const deleteProject = (id: string) => {
-    const now = new Date().toISOString();
+  const deleteProject = async (id: string) => {
     const existingProj = state?.projects?.find(p => p.id === id);
-    logAudit('DELETE', 'PROJECT', id, existingProj?.title, `Eliminado projeto "${existingProj?.title || id}"`);
-    saveState(prev => ({
-      ...prev,
-      projects: prev.projects.map(p => p.id === id ? { ...p, deleted: true, updatedDate: now } : p)
-    }));
+    if (!existingProj) return;
+
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/v1/projects/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.ok && result.success) {
+        logAudit('DELETE', 'PROJECT', id, existingProj?.title, `Eliminado projeto "${existingProj?.title || id}"`);
+        setState(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            projects: prev.projects.map(p => p.id === id ? { ...p, deleted: true } : p)
+          };
+        });
+        setSyncStatus('synced');
+        return true;
+      } else {
+        const errMsg = result?.message || `A base de dados rejeitou a eliminação do projeto (${res.status}).`;
+        console.error('Erro ao eliminar projeto:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao eliminar projeto: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção ao eliminar projeto:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de projetos.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
   };
 
   // ==================== TASKS CRUD ====================
