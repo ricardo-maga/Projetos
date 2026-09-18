@@ -29,6 +29,7 @@ export interface Project {
   clientContactName?: string;
   clientContactEmail?: string;
   clientContactPhone?: string;
+  version?: number;
 }
 
 export interface Task {
@@ -50,6 +51,8 @@ export interface Task {
   deleted: boolean;
   createdDate: string;
   isMilestone?: boolean; // Retrocompatibilidade (substituído pelo tipo de tarefa "Marco de projeto")
+  version?: number;
+  completedDate?: string;
 }
 
 export interface TaskType {

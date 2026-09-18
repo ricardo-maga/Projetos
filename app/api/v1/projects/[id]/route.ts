@@ -6,6 +6,13 @@ import { logAuditEvent } from '@/lib/audit';
 import { createClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
+function parseCommaSeparated(val: any): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') return val.split(',').filter(Boolean);
+  return [];
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(req, 'projects_read');
   if (!auth.success) return auth.response;
@@ -31,6 +38,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return notFound('Projeto não encontrado.', requestId);
     }
 
+    const [teamsRes, partnersRes, categoriesRes] = await Promise.all([
+      sb.from('project_teams_link').select('team_id').eq('project_id', id),
+      sb.from('project_partners_link').select('partner_id').eq('project_id', id),
+      sb.from('project_category_link').select('category_id').eq('project_id', id),
+    ]);
+
+    const dbTeams = teamsRes.data ? teamsRes.data.map((r: any) => r.team_id) : [];
+    const dbPartners = partnersRes.data ? partnersRes.data.map((r: any) => r.partner_id) : [];
+    const dbCategories = categoriesRes.data ? categoriesRes.data.map((r: any) => r.category_id) : [];
+
+    const teamsInvolvedIds = Array.from(new Set([...dbTeams, ...parseCommaSeparated(project.teams_involved_ids)]));
+    const partnersIds = Array.from(new Set([...dbPartners, ...parseCommaSeparated(project.partners_ids)]));
+    const categoryIds = Array.from(new Set([...dbCategories, ...parseCommaSeparated(project.category_ids || (project.category_id ? [project.category_id] : []))]));
+
     return NextResponse.json({
       success: true,
       data: {
@@ -42,14 +63,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         description: project.project_description || project.description || '',
         statusId: project.status_id || project.statusId || 'ps-1',
         categoryId: project.category_id || project.categoryId || 'pc-1',
-        categoryIds: project.category_ids || (project.category_id ? [project.category_id] : []),
+        categoryIds,
         priorityId: project.priority_id || project.priorityId || 'pp-1',
         riskId: project.risk_id || project.riskId || 'pr-1',
         projectManagerId: project.project_manager_id || project.projectManagerId || '',
         fieldManagerId: project.field_manager_id || project.fieldManagerId || '',
         salesRepId: project.sales_rep_id || project.salesRepId || '',
-        teamsInvolvedIds: project.teams_involved_ids || [],
-        partnersIds: project.partners_ids || [],
+        teamsInvolvedIds,
+        partnersIds,
         startDate: project.start_date || '',
         deliveryDate: project.delivery_date || '',
         estimatedDate: project.estimated_date || '',
@@ -107,7 +128,7 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     // 1. Fetch current record to verify existence and validate version for optimistic concurrency
     const { data: current, error: fetchError } = await sb
       .from('projects')
-      .select('id, version, deleted')
+      .select('id, version, deleted, teams_involved_ids, partners_ids, category_ids, category_id')
       .eq('id', id)
       .maybeSingle();
 
@@ -141,18 +162,37 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     if (updates.sfOpportunityNo !== undefined) updatePayload.sf_opportunity_no = updates.sfOpportunityNo;
     if (updates.statusId !== undefined) updatePayload.status_id = updates.statusId;
     if (updates.categoryId !== undefined) updatePayload.category_id = updates.categoryId;
-    if (updates.categoryIds !== undefined) updatePayload.category_ids = updates.categoryIds;
+
+    const hasTeamsUpdate = updates.teamsInvolvedIds !== undefined || updates.teamIds !== undefined;
+    const teamsInvolved = hasTeamsUpdate
+      ? Array.from(new Set([...(updates.teamsInvolvedIds || []), ...(updates.teamIds || [])]))
+      : undefined;
+
+    const hasPartnersUpdate = updates.partnersIds !== undefined || updates.partnerIds !== undefined;
+    const partnersInvolved = hasPartnersUpdate
+      ? Array.from(new Set([...(updates.partnersIds || []), ...(updates.partnerIds || [])]))
+      : undefined;
+
+    const hasCategoriesUpdate = updates.categoryIds !== undefined || updates.categoryId !== undefined;
+    const categoriesInvolved = hasCategoriesUpdate
+      ? Array.from(new Set([...(updates.categoryIds || []), ...(updates.categoryId ? [updates.categoryId] : [])]))
+      : undefined;
+
+    if (teamsInvolved !== undefined) {
+      updatePayload.teams_involved_ids = teamsInvolved.length > 0 ? teamsInvolved.join(',') : null;
+    }
+    if (partnersInvolved !== undefined) {
+      updatePayload.partners_ids = partnersInvolved.length > 0 ? partnersInvolved.join(',') : null;
+    }
+    if (categoriesInvolved !== undefined) {
+      updatePayload.category_ids = categoriesInvolved.length > 0 ? categoriesInvolved.join(',') : null;
+    }
+
     if (updates.priorityId !== undefined) updatePayload.priority_id = updates.priorityId;
     if (updates.riskId !== undefined) updatePayload.risk_id = updates.riskId;
     if (updates.projectManagerId !== undefined) updatePayload.project_manager_id = updates.projectManagerId || null;
     if (updates.fieldManagerId !== undefined) updatePayload.field_manager_id = updates.fieldManagerId || null;
     if (updates.salesRepId !== undefined) updatePayload.sales_rep_id = updates.salesRepId || null;
-    if (updates.teamsInvolvedIds !== undefined || updates.teamIds !== undefined) {
-      updatePayload.teams_involved_ids = updates.teamsInvolvedIds || updates.teamIds || [];
-    }
-    if (updates.partnersIds !== undefined || updates.partnerIds !== undefined) {
-      updatePayload.partners_ids = updates.partnersIds || updates.partnerIds || [];
-    }
     if (updates.startDate !== undefined) updatePayload.start_date = updates.startDate || null;
     if (updates.deliveryDate !== undefined) updatePayload.delivery_date = updates.deliveryDate || null;
     if (updates.estimatedDate !== undefined) updatePayload.estimated_date = updates.estimatedDate || null;
@@ -179,35 +219,50 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       return badRequest(`Erro ao atualizar projeto: ${updateError.message}`, requestId);
     }
 
-    // Update relational links if passed
-    if (updates.teamsInvolvedIds !== undefined || updates.teamIds !== undefined) {
-      const teams = updates.teamsInvolvedIds || updates.teamIds || [];
-      try {
-        await sb.from('project_teams_link').delete().eq('project_id', id);
-        if (teams.length > 0) {
-          await sb.from('project_teams_link').insert(teams.map((t: string) => ({ project_id: id, team_id: t })));
+    // Update relational links and check for errors
+    if (teamsInvolved !== undefined) {
+      const { error: delError } = await sb.from('project_teams_link').delete().eq('project_id', id);
+      if (delError) {
+        console.error('[API PROJECT UPDATE TEAMS DELETE ERROR]', delError);
+        return badRequest(`Erro ao remover as equipas anteriores do projeto: ${delError.message}`, requestId);
+      }
+      if (teamsInvolved.length > 0) {
+        const { error: insError } = await sb.from('project_teams_link').insert(teamsInvolved.map((t: string) => ({ project_id: id, team_id: t })));
+        if (insError) {
+          console.error('[API PROJECT UPDATE TEAMS INSERT ERROR]', insError);
+          return badRequest(`Erro ao associar novas equipas ao projeto: ${insError.message}`, requestId);
         }
-      } catch {}
+      }
     }
 
-    if (updates.partnersIds !== undefined || updates.partnerIds !== undefined) {
-      const partners = updates.partnersIds || updates.partnerIds || [];
-      try {
-        await sb.from('project_partners_link').delete().eq('project_id', id);
-        if (partners.length > 0) {
-          await sb.from('project_partners_link').insert(partners.map((p: string) => ({ project_id: id, partner_id: p })));
+    if (partnersInvolved !== undefined) {
+      const { error: delError } = await sb.from('project_partners_link').delete().eq('project_id', id);
+      if (delError) {
+        console.error('[API PROJECT UPDATE PARTNERS DELETE ERROR]', delError);
+        return badRequest(`Erro ao remover os parceiros anteriores do projeto: ${delError.message}`, requestId);
+      }
+      if (partnersInvolved.length > 0) {
+        const { error: insError } = await sb.from('project_partners_link').insert(partnersInvolved.map((p: string) => ({ project_id: id, partner_id: p })));
+        if (insError) {
+          console.error('[API PROJECT UPDATE PARTNERS INSERT ERROR]', insError);
+          return badRequest(`Erro ao associar novos parceiros ao projeto: ${insError.message}`, requestId);
         }
-      } catch {}
+      }
     }
 
-    if (updates.categoryIds !== undefined || updates.categoryId !== undefined) {
-      const cats = Array.from(new Set([...(updates.categoryIds || []), ...(updates.categoryId ? [updates.categoryId] : [])]));
-      try {
-        await sb.from('project_category_link').delete().eq('project_id', id);
-        if (cats.length > 0) {
-          await sb.from('project_category_link').insert(cats.map((c: string) => ({ project_id: id, category_id: c })));
+    if (categoriesInvolved !== undefined) {
+      const { error: delError } = await sb.from('project_category_link').delete().eq('project_id', id);
+      if (delError) {
+        console.error('[API PROJECT UPDATE CATEGORIES DELETE ERROR]', delError);
+        return badRequest(`Erro ao remover as categorias anteriores do projeto: ${delError.message}`, requestId);
+      }
+      if (categoriesInvolved.length > 0) {
+        const { error: insError } = await sb.from('project_category_link').insert(categoriesInvolved.map((c: string) => ({ project_id: id, category_id: c })));
+        if (insError) {
+          console.error('[API PROJECT UPDATE CATEGORIES INSERT ERROR]', insError);
+          return badRequest(`Erro ao associar novas categorias ao projeto: ${insError.message}`, requestId);
         }
-      } catch {}
+      }
     }
 
     await logAuditEvent({
@@ -224,6 +279,9 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       data: {
         id,
         ...updates,
+        teamsInvolvedIds: teamsInvolved !== undefined ? teamsInvolved : parseCommaSeparated(current.teams_involved_ids),
+        partnersIds: partnersInvolved !== undefined ? partnersInvolved : parseCommaSeparated(current.partners_ids),
+        categoryIds: categoriesInvolved !== undefined ? categoriesInvolved : (parseCommaSeparated(current.category_ids).length > 0 ? parseCommaSeparated(current.category_ids) : (current.category_id ? [current.category_id] : [])),
         version: currentVersion + 1,
         updatedAt: now,
       },

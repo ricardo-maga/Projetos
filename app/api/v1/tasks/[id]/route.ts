@@ -140,10 +140,18 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
 
     // Update assignees if specified
     if (updates.assignedUserIds !== undefined) {
-      await sb.from('task_assignees').delete().eq('task_id', id);
+      const { error: deleteAssigneesError } = await sb.from('task_assignees').delete().eq('task_id', id);
+      if (deleteAssigneesError) {
+        console.error('[API TASK UPDATE ASSIGNEES DELETE ERROR]', deleteAssigneesError);
+        return badRequest(`Erro ao remover responsáveis anteriores da tarefa: ${deleteAssigneesError.message}`, requestId);
+      }
       if (updates.assignedUserIds.length > 0) {
         const assigneeRows = updates.assignedUserIds.map((uid) => ({ task_id: id, user_id: uid }));
-        await sb.from('task_assignees').insert(assigneeRows);
+        const { error: insertAssigneesError } = await sb.from('task_assignees').insert(assigneeRows);
+        if (insertAssigneesError) {
+          console.error('[API TASK UPDATE ASSIGNEES INSERT ERROR]', insertAssigneesError);
+          return badRequest(`Erro ao associar novos responsáveis à tarefa: ${insertAssigneesError.message}`, requestId);
+        }
       }
     }
 

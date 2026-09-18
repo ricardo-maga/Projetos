@@ -294,8 +294,8 @@ export function useERP() {
       syncError,
       isDbConfigured,
       // Empty handlers for safety before load
-      addProject: () => {}, updateProject: () => {}, deleteProject: () => {},
-      addTask: () => {}, updateTask: () => {}, deleteTask: () => {},
+      addProject: async () => ({} as any), updateProject: async () => {}, deleteProject: async () => {},
+      addTask: async () => ({} as any), updateTask: async () => {}, deleteTask: async () => {},
       addComment: () => {}, deleteComment: () => {},
       addAbsence: () => {}, deleteAbsence: () => {},
       addUser: () => {}, updateUser: () => {}, deleteUser: () => {},
@@ -537,215 +537,356 @@ export function useERP() {
   };
 
   // ==================== TASKS CRUD ====================
-  const addTask = (task: Omit<Task, 'id' | 'deleted' | 'createdDate'>) => {
+  const parseHoursToFloat = (hoursStr: any): number => {
+    if (typeof hoursStr === 'number') return hoursStr;
+    if (!hoursStr || typeof hoursStr !== 'string') return 0;
+    if (hoursStr.includes(':')) {
+      const [h, m] = hoursStr.split(':').map(Number);
+      return (isNaN(h) ? 0 : h) + (isNaN(m) ? 0 : m / 60);
+    }
+    const parsed = parseFloat(hoursStr);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  const addTask = async (task: Omit<Task, 'id' | 'deleted' | 'createdDate'>) => {
     const now = new Date().toISOString();
+
+    if (!isDbConfigured) {
+      const msg = 'Gravação bloqueada: A base de dados não está configurada.';
+      setSyncStatus('error');
+      setSyncError(msg);
+      throw new Error(msg);
+    }
+
     const resolvedStatusId = (() => {
       if (task.statusId && task.statusId !== 'ts-1') {
-        const match = (state.taskStatuses || []).find(s => s.id === task.statusId || matchTaskStatusId(s.id, task.statusId));
+        const match = (state?.taskStatuses || []).find(s => s.id === task.statusId || matchTaskStatusId(s.id, task.statusId));
         if (match) return match.id;
         return task.statusId;
       }
-      return getDefaultTaskStatusId(state.taskStatuses || []);
+      return getDefaultTaskStatusId(state?.taskStatuses || []);
     })();
 
-    const newTask: Task = {
-      ...task,
+    const estimatedHoursNum = parseHoursToFloat(task.estimatedHours);
+    const actualHoursNum = parseHoursToFloat(task.actualHours);
+
+    const apiPayload = {
+      projectId: task.projectId,
+      title: task.title,
+      description: task.description || '',
       statusId: resolvedStatusId,
-      id: genId('t'),
-      deleted: false,
-      createdDate: now
+      taskTypeId: task.taskTypeId || undefined,
+      estimatedHours: estimatedHoursNum,
+      actualHours: actualHoursNum,
+      startDate: task.startDate || undefined,
+      startTime: task.startTime || undefined,
+      endDate: task.endDate || undefined,
+      endTime: task.endTime || undefined,
+      estimatedDate: task.estimatedDate || undefined,
+      notes: task.notes || undefined,
+      assignedUserIds: task.assigneeIds || [],
     };
-    logAudit('CREATE', 'TASK', newTask.id, newTask.title, `Criada a tarefa "${newTask.title}"`);
 
-    saveState(prev => {
-      let newTasks = [newTask, ...prev.tasks];
-      let newProjects = prev.projects;
-      let newNotifs = prev.notifications || [];
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+      const headers = getAuthHeaders();
+      const res = await fetch('/api/v1/tasks', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(apiPayload),
+      });
 
-      // Notificar técnicos alocados à nova tarefa
-      if (newTask.assigneeIds && newTask.assigneeIds.length > 0) {
-        const proj = prev.projects.find(p => p.id === newTask.projectId);
-        const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
-        const taskNotifs = newTask.assigneeIds.map(uid => ({
-          id: genId('notif'),
-          userId: uid,
-          title: `Nova Tarefa Atribuída: ${newTask.title}`,
-          message: `Foi-lhe atribuída a tarefa "${newTask.title}"${projTitle}.`,
-          isRead: false,
-          createdDate: now,
-          linkUrl: `/projects?project=${newTask.projectId}`
-        }));
-        newNotifs = [...taskNotifs, ...newNotifs];
-      }
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
 
-      // Trigger 'task_created' automations
-      const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_created');
-      for (const rule of activeRules) {
-        for (const action of rule.actions) {
-          if (action.type === 'send_notification') {
-            newNotifs = [{
+      if (res.ok && result.success && result.data) {
+        const newTask: Task = {
+          ...task,
+          statusId: resolvedStatusId,
+          id: result.data.id,
+          deleted: false,
+          createdDate: result.data.createdAt || now,
+          version: result.data.version || 1,
+        };
+
+        logAudit('CREATE', 'TASK', newTask.id, newTask.title, `Criada a tarefa "${newTask.title}"`);
+
+        setState(prev => {
+          if (!prev) return prev;
+          let newTasks = [newTask, ...prev.tasks];
+          let newProjects = prev.projects;
+          let newNotifs = prev.notifications || [];
+
+          if (newTask.assigneeIds && newTask.assigneeIds.length > 0) {
+            const proj = prev.projects.find(p => p.id === newTask.projectId);
+            const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
+            const taskNotifs = newTask.assigneeIds.map(uid => ({
               id: genId('notif'),
-              userId: action.params?.targetUserId || 'all',
-              title: action.params?.notificationTitle || 'Nova Tarefa Criada',
-              message: action.params?.notificationMessage || `Nova tarefa "${newTask.title}" adicionada.`,
+              userId: uid,
+              title: `Nova Tarefa Atribuída: ${newTask.title}`,
+              message: `Foi-lhe atribuída a tarefa "${newTask.title}"${projTitle}.`,
               isRead: false,
               createdDate: now,
               linkUrl: `/projects?project=${newTask.projectId}`
-            }, ...newNotifs];
-          } else if (action.type === 'change_project_status' && action.params?.targetStatusId) {
-            newProjects = newProjects.map(p => p.id === newTask.projectId ? { ...p, statusId: action.params!.targetStatusId!, updatedDate: now } : p);
+            }));
+            newNotifs = [...taskNotifs, ...newNotifs];
           }
-        }
-      }
 
-      return {
-        ...prev,
-        tasks: newTasks,
-        projects: newProjects,
-        notifications: newNotifs
-      };
-    });
-    return newTask;
-  };
-
-  const addTasks = (tasksList: Omit<Task, 'id' | 'deleted' | 'createdDate'>[]) => {
-    const now = new Date().toISOString();
-    const defaultStatusId = getDefaultTaskStatusId(state.taskStatuses || []);
-    const newTasks: Task[] = tasksList.map(task => {
-      const resolvedStatusId = (() => {
-        if (task.statusId && task.statusId !== 'ts-1') {
-          const match = (state.taskStatuses || []).find(s => s.id === task.statusId || matchTaskStatusId(s.id, task.statusId));
-          if (match) return match.id;
-          return task.statusId;
-        }
-        return defaultStatusId;
-      })();
-      return {
-        ...task,
-        statusId: resolvedStatusId,
-        id: genId('t'),
-        deleted: false,
-        createdDate: now
-      };
-    });
-
-    logAudit('CREATE', 'TASK', newTasks[0]?.id, `${newTasks.length} Tarefas`, `Criadas ${newTasks.length} tarefas em lote`);
-
-    saveState(prev => {
-      let newNotifs = prev.notifications || [];
-      for (const t of newTasks) {
-        if (t.assigneeIds && t.assigneeIds.length > 0) {
-          const proj = prev.projects.find(p => p.id === t.projectId);
-          const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
-          const notifs = t.assigneeIds.map(uid => ({
-            id: genId('notif'),
-            userId: uid,
-            title: `Nova Tarefa Atribuída: ${t.title}`,
-            message: `Foi-lhe atribuída a tarefa "${t.title}"${projTitle}.`,
-            isRead: false,
-            createdDate: now,
-            linkUrl: `/projects?project=${t.projectId}`
-          }));
-          newNotifs = [...notifs, ...newNotifs];
-        }
-      }
-      return {
-        ...prev,
-        tasks: [...newTasks, ...prev.tasks],
-        notifications: newNotifs
-      };
-    });
-    return newTasks;
-  };
-
-  const updateTask = (id: string, updates: Partial<Omit<Task, 'id' | 'createdDate'>>) => {
-    const now = new Date().toISOString();
-
-    // Audit Log for Task Update
-    const existingTask = state?.tasks?.find(t => t.id === id);
-    const taskTitle = updates.title || existingTask?.title || id;
-    let detailMsg = `Atualizada tarefa "${taskTitle}"`;
-
-    if (updates.statusId && existingTask && updates.statusId !== existingTask.statusId) {
-      const oldStatus = state?.taskStatuses?.find(s => s.id === existingTask.statusId || matchTaskStatusId(s.id, existingTask.statusId))?.name || existingTask.statusId;
-      const newStatus = state?.taskStatuses?.find(s => s.id === updates.statusId || matchTaskStatusId(s.id, updates.statusId))?.name || updates.statusId;
-      detailMsg = `Estado da tarefa "${taskTitle}" alterado de "${oldStatus}" para "${newStatus}"`;
-    } else if (updates.title && existingTask && updates.title !== existingTask.title) {
-      detailMsg = `Título da tarefa alterado de "${existingTask.title}" para "${updates.title}"`;
-    }
-
-    logAudit('UPDATE', 'TASK', id, taskTitle, detailMsg);
-
-    saveState(prev => {
-      const targetTask = prev.tasks.find(t => t.id === id);
-      let newTasks = prev.tasks.map(t => t.id === id ? { ...t, ...updates } as Task : t);
-      let newProjects = prev.projects;
-      let newNotifs = prev.notifications || [];
-
-      // Notificar novos técnicos atribuídos à tarefa
-      if (updates.assigneeIds && targetTask) {
-        const oldAssignees = new Set(targetTask.assigneeIds || []);
-        const newlyAdded = updates.assigneeIds.filter(uid => !oldAssignees.has(uid));
-        if (newlyAdded.length > 0) {
-          const proj = prev.projects.find(p => p.id === targetTask.projectId);
-          const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
-          const assignNotifs = newlyAdded.map(uid => ({
-            id: genId('notif'),
-            userId: uid,
-            title: `Nova Tarefa Atribuída: ${updates.title || targetTask.title}`,
-            message: `Foi-lhe atribuída a tarefa "${updates.title || targetTask.title}"${projTitle}.`,
-            isRead: false,
-            createdDate: now,
-            linkUrl: `/projects?project=${targetTask.projectId}`
-          }));
-          newNotifs = [...assignNotifs, ...newNotifs];
-        }
-      }
-
-      if (targetTask && updates.statusId) {
-        const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_status_changed');
-        for (const rule of activeRules) {
-          if (!rule.triggerCondition?.toStatusId || rule.triggerCondition.toStatusId === updates.statusId) {
+          const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_created');
+          for (const rule of activeRules) {
             for (const action of rule.actions) {
-              if (action.type === 'change_project_status' && action.params?.targetStatusId) {
-                const projectTasks = newTasks.filter(t => t.projectId === targetTask.projectId && !t.deleted);
-                const completedStatusId = updates.statusId;
-                const allCompleted = projectTasks.length > 0 && projectTasks.every(t => t.statusId === completedStatusId);
-                if (allCompleted) {
-                  newProjects = newProjects.map(p => p.id === targetTask.projectId ? { ...p, statusId: action.params!.targetStatusId!, updatedDate: now } : p);
-                }
-              } else if (action.type === 'send_notification') {
+              if (action.type === 'send_notification') {
                 newNotifs = [{
                   id: genId('notif'),
-                  userId: 'all',
-                  title: action.params?.notificationTitle || 'Tarefa Concluída',
-                  message: action.params?.notificationMessage || 'Regra de automação executada.',
+                  userId: action.params?.targetUserId || 'all',
+                  title: action.params?.notificationTitle || 'Nova Tarefa Criada',
+                  message: action.params?.notificationMessage || `Nova tarefa "${newTask.title}" adicionada.`,
                   isRead: false,
                   createdDate: now,
-                  linkUrl: `/projects?project=${targetTask.projectId}`
+                  linkUrl: `/projects?project=${newTask.projectId}`
                 }, ...newNotifs];
+              } else if (action.type === 'change_project_status' && action.params?.targetStatusId) {
+                newProjects = newProjects.map(p => p.id === newTask.projectId ? { ...p, statusId: action.params!.targetStatusId!, updatedDate: now } : p);
               }
             }
           }
-        }
-      }
 
-      return {
-        ...prev,
-        tasks: newTasks,
-        projects: newProjects,
-        notifications: newNotifs
-      };
-    });
+          return {
+            ...prev,
+            tasks: newTasks,
+            projects: newProjects,
+            notifications: newNotifs
+          };
+        });
+
+        setSyncStatus('synced');
+        return newTask;
+      } else {
+        const errMsg = result?.message || `A base de dados rejeitou a criação da tarefa (${res.status}).`;
+        console.error('Erro na criação da tarefa:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao criar tarefa: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção na criação da tarefa:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de tarefas.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
   };
 
-  const deleteTask = (id: string) => {
+  const addTasks = async (tasksList: Omit<Task, 'id' | 'deleted' | 'createdDate'>[]) => {
+    const results: Task[] = [];
+    for (const t of tasksList) {
+      const created = await addTask(t);
+      results.push(created);
+    }
+    return results;
+  };
+
+  const updateTask = async (id: string, updates: Partial<Omit<Task, 'id' | 'createdDate'>>) => {
+    const now = new Date().toISOString();
+
     const existingTask = state?.tasks?.find(t => t.id === id);
-    logAudit('DELETE', 'TASK', id, existingTask?.title, `Eliminada a tarefa "${existingTask?.title || id}"`);
-    saveState(prev => ({
-      ...prev,
-      tasks: prev.tasks.map(t => t.id === id ? { ...t, deleted: true } : t)
-    }));
+    if (!existingTask) {
+      throw new Error(`Tarefa ${id} não encontrada localmente.`);
+    }
+
+    const currentVersion = (existingTask as any).version || 1;
+    const taskTitle = updates.title || existingTask.title || id;
+
+    const estimatedHoursNum = updates.estimatedHours !== undefined ? parseHoursToFloat(updates.estimatedHours) : undefined;
+    const actualHoursNum = updates.actualHours !== undefined ? parseHoursToFloat(updates.actualHours) : undefined;
+
+    const patchPayload: Record<string, any> = {
+      version: currentVersion
+    };
+
+    if (updates.title !== undefined) patchPayload.title = updates.title;
+    if (updates.description !== undefined) patchPayload.description = updates.description;
+    if (updates.statusId !== undefined) patchPayload.statusId = updates.statusId;
+    if (updates.taskTypeId !== undefined) patchPayload.taskTypeId = updates.taskTypeId;
+    if (estimatedHoursNum !== undefined) patchPayload.estimatedHours = estimatedHoursNum;
+    if (actualHoursNum !== undefined) patchPayload.actualHours = actualHoursNum;
+    if (updates.startDate !== undefined) patchPayload.startDate = updates.startDate;
+    if (updates.startTime !== undefined) patchPayload.startTime = updates.startTime;
+    if (updates.endDate !== undefined) patchPayload.endDate = updates.endDate;
+    if (updates.endTime !== undefined) patchPayload.endTime = updates.endTime;
+    if (updates.estimatedDate !== undefined) patchPayload.estimatedDate = updates.estimatedDate;
+    if (updates.completedDate !== undefined) patchPayload.completedDate = updates.completedDate;
+    if (updates.notes !== undefined) patchPayload.notes = updates.notes;
+    if (updates.assigneeIds !== undefined) patchPayload.assignedUserIds = updates.assigneeIds;
+
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/v1/tasks/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(patchPayload),
+      });
+
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.status === 409) {
+        const errMsg = result?.message || 'Conflito de concorrência ao atualizar tarefa.';
+        alert(errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        throw new Error(errMsg);
+      }
+
+      if (res.ok && result.success && result.data) {
+        const nextVersion = result.data.version || (currentVersion + 1);
+
+        let detailMsg = `Atualizada tarefa "${taskTitle}"`;
+        if (updates.statusId && updates.statusId !== existingTask.statusId) {
+          const oldStatus = state?.taskStatuses?.find(s => s.id === existingTask.statusId || matchTaskStatusId(s.id, existingTask.statusId))?.name || existingTask.statusId;
+          const newStatus = state?.taskStatuses?.find(s => s.id === updates.statusId || matchTaskStatusId(s.id, updates.statusId))?.name || updates.statusId;
+          detailMsg = `Estado da tarefa "${taskTitle}" alterado de "${oldStatus}" para "${newStatus}"`;
+        } else if (updates.title && updates.title !== existingTask.title) {
+          detailMsg = `Título da tarefa alterado de "${existingTask.title}" para "${updates.title}"`;
+        }
+        logAudit('UPDATE', 'TASK', id, taskTitle, detailMsg);
+
+        setState(prev => {
+          if (!prev) return prev;
+          const targetTask = prev.tasks.find(t => t.id === id);
+          let newTasks = prev.tasks.map(t => {
+            if (t.id === id) {
+              return {
+                ...t,
+                ...updates,
+                version: nextVersion
+              } as Task;
+            }
+            return t;
+          });
+          let newProjects = prev.projects;
+          let newNotifs = prev.notifications || [];
+
+          if (updates.assigneeIds && targetTask) {
+            const oldAssignees = new Set(targetTask.assigneeIds || []);
+            const newlyAdded = updates.assigneeIds.filter(uid => !oldAssignees.has(uid));
+            if (newlyAdded.length > 0) {
+              const proj = prev.projects.find(p => p.id === targetTask.projectId);
+              const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
+              const assignNotifs = newlyAdded.map(uid => ({
+                id: genId('notif'),
+                userId: uid,
+                title: `Nova Tarefa Atribuída: ${updates.title || targetTask.title}`,
+                message: `Foi-lhe atribuída a tarefa "${updates.title || targetTask.title}"${projTitle}.`,
+                isRead: false,
+                createdDate: now,
+                linkUrl: `/projects?project=${targetTask.projectId}`
+              }));
+              newNotifs = [...assignNotifs, ...newNotifs];
+            }
+          }
+
+          if (targetTask && updates.statusId) {
+            const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_status_changed');
+            for (const rule of activeRules) {
+              if (!rule.triggerCondition?.toStatusId || rule.triggerCondition.toStatusId === updates.statusId) {
+                for (const action of rule.actions) {
+                  if (action.type === 'change_project_status' && action.params?.targetStatusId) {
+                    const projectTasks = newTasks.filter(t => t.projectId === targetTask.projectId && !t.deleted);
+                    const completedStatusId = updates.statusId;
+                    const allCompleted = projectTasks.length > 0 && projectTasks.every(t => t.statusId === completedStatusId);
+                    if (allCompleted) {
+                      newProjects = newProjects.map(p => p.id === targetTask.projectId ? { ...p, statusId: action.params!.targetStatusId!, updatedDate: now } : p);
+                    }
+                  } else if (action.type === 'send_notification') {
+                    newNotifs = [{
+                      id: genId('notif'),
+                      userId: 'all',
+                      title: action.params?.notificationTitle || 'Tarefa Concluída',
+                      message: action.params?.notificationMessage || 'Regra de automação executada.',
+                      isRead: false,
+                      createdDate: now,
+                      linkUrl: `/projects?project=${targetTask.projectId}`
+                    }, ...newNotifs];
+                  }
+                }
+              }
+            }
+          }
+
+          return {
+            ...prev,
+            tasks: newTasks,
+            projects: newProjects,
+            notifications: newNotifs
+          };
+        });
+
+        setSyncStatus('synced');
+        return true;
+      } else {
+        const errMsg = result?.message || `A base de dados rejeitou a alteração da tarefa (${res.status}).`;
+        console.error('Erro na atualização da tarefa:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao atualizar tarefa: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção na atualização da tarefa:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de tarefas.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
+  };
+
+  const deleteTask = async (id: string) => {
+    const existingTask = state?.tasks?.find(t => t.id === id);
+    if (!existingTask) return;
+
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/v1/tasks/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.ok && result.success) {
+        logAudit('DELETE', 'TASK', id, existingTask?.title, `Eliminada a tarefa "${existingTask?.title || id}"`);
+        setState(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            tasks: prev.tasks.map(t => t.id === id ? { ...t, deleted: true } : t)
+          };
+        });
+        setSyncStatus('synced');
+        return true;
+      } else {
+        const errMsg = result?.message || `A base de dados rejeitou a eliminação da tarefa (${res.status}).`;
+        console.error('Erro ao eliminar tarefa:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao eliminar tarefa: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção ao eliminar tarefa:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de tarefas.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
   };
 
   // ==================== COMMENTS CRUD ====================

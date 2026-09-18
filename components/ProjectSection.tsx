@@ -65,7 +65,7 @@ interface ProjectSectionProps {
   addComment: (projectId: string, authorId: string, text: string) => void;
   deleteComment: (id: string) => void;
   addTask: (task: any) => any;
-  addTasks?: (tasks: any[]) => any[];
+  addTasks?: (tasks: any[]) => any;
   updateTask: (id: string, updates: any) => void;
   taskStatuses: any[];
   taskTypes?: TaskType[];

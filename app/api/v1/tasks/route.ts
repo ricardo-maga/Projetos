@@ -156,9 +156,11 @@ export async function POST(req: NextRequest) {
 
     if (t.assignedUserIds && t.assignedUserIds.length > 0) {
       const assigneeRows = t.assignedUserIds.map((uid) => ({ task_id: newId, user_id: uid }));
-      try {
-        await sb.from('task_assignees').insert(assigneeRows);
-      } catch {}
+      const { error: assigneeError } = await sb.from('task_assignees').insert(assigneeRows);
+      if (assigneeError) {
+        console.error('[API TASK INSERT ASSIGNEES ERROR]', assigneeError);
+        return badRequest(`Erro ao associar responsáveis à tarefa: ${assigneeError.message}`, requestId);
+      }
     }
 
     await logAuditEvent({

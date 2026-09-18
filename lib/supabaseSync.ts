@@ -1497,6 +1497,9 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       };
     });
 
+    // Projects are now persistent ONLY via specific /api/v1/projects API routes to prevent duplicate and out-of-order writes.
+    // Therefore, database write operations (insert, update, upsert) for projects are disabled in this global sync.
+    /*
     if (projectUpserts.length > 0) {
       let resProj = await supabase!.from('projects').upsert(projectUpserts);
       if (resProj.error && (resProj.error.code === '42703' || resProj.error.message.includes('column'))) {
@@ -1506,6 +1509,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       }
       if (resProj.error) return { success: false, message: `Erro ao gravar projetos: ${formatSupabaseError(resProj.error)}` };
     }
+    */
 
     // 4. Save Tasks (depends on Projects)
     const validProjectIds = new Set(state.projects.map((p: any) => p.id));
@@ -1538,6 +1542,9 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       };
     });
 
+    // Tasks are now persistent ONLY via specific /api/v1/tasks API routes to prevent duplicate and out-of-order writes.
+    // Therefore, database write operations (insert, update, upsert) for tasks are disabled in this global sync.
+    /*
     if (taskUpserts.length > 0) {
       let resTasks = await supabase.from('tasks').upsert(taskUpserts);
       if (resTasks.error && (resTasks.error.code === '42703' || resTasks.error.message.includes('task_type_id') || resTasks.error.message.includes('is_milestone'))) {
@@ -1546,6 +1553,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       }
       if (resTasks.error) return { success: false, message: `Erro ao gravar tarefas: ${formatSupabaseError(resTasks.error)}` };
     }
+    */
 
     // Save Project Materials
     if (state.projectMaterials && state.projectMaterials.length > 0) {
@@ -1634,19 +1642,10 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       await Promise.all([
         safeDeleteLink('project_risk_link', 'project_id'),
         safeDeleteLink('project_priority_link', 'project_id'),
-        safeDeleteLink('project_teams_link', 'project_id'),
-        safeDeleteLink('project_partners_link', 'project_id'),
-        safeDeleteLink('project_category_link', 'project_id'),
+        // 'project_teams_link', 'project_partners_link', and 'project_category_link' are handled exclusively by REST APIs
       ]);
     }
-    if (taskUUIDs.length > 0) {
-      try {
-        const res = await supabase!.from('task_assignees').delete().in('task_id', taskUUIDs);
-        if (res.error) console.warn('Could not delete from task_assignees:', res.error.message);
-      } catch (e) {
-        console.warn('Exception deleting from task_assignees:', e);
-      }
-    }
+    // 'task_assignees' is handled exclusively by REST APIs
 
     // Prepare link insert batches
     const validTeamIds = new Set(state.projectTeams.map((t: any) => stringToUUID(t.id)));
@@ -1755,10 +1754,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     const insertPromises: any[] = [
       safeUpsertLink('project_risk_link', riskLinks),
       safeUpsertLink('project_priority_link', priorityLinks),
-      safeUpsertLink('project_teams_link', teamLinks),
-      safeUpsertLink('project_partners_link', partnerLinks),
-      safeUpsertLink('task_assignees', assigneeLinks),
-      safeUpsertLink('project_category_link', categoryLinks),
+      // 'project_teams_link', 'project_partners_link', 'project_category_link', and 'task_assignees' are handled exclusively by REST APIs
     ];
 
     const results = await Promise.all(insertPromises);

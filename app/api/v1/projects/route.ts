@@ -6,6 +6,13 @@ import { logAuditEvent } from '@/lib/audit';
 import { createClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
+function parseCommaSeparated(val: any): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') return val.split(',').filter(Boolean);
+  return [];
+}
+
 export async function GET(req: NextRequest) {
   const auth = await requirePermission(req, 'projects_read');
   if (!auth.success) return auth.response;
@@ -73,44 +80,51 @@ export async function GET(req: NextRequest) {
     const totalPages = Math.ceil(total / pageSize);
 
     // Map database snake_case to domain model
-    const mappedProjects = (rows || []).map((row: any) => ({
-      id: row.id,
-      title: row.project_title || row.title,
-      clientId: row.client_id || row.clientId || '',
-      installProjectNo: row.install_project_no || row.installProjectNo || '',
-      sfOpportunityNo: row.sf_opportunity_no || row.sfOpportunityNo || '',
-      description: row.project_description || row.description || '',
-      statusId: row.status_id || row.statusId || 'ps-1',
-      categoryId: row.category_id || row.categoryId || 'pc-1',
-      categoryIds: row.category_ids || (row.category_id ? [row.category_id] : []),
-      priorityId: row.priority_id || row.priorityId || 'pp-1',
-      riskId: row.risk_id || row.riskId || 'pr-1',
-      projectManagerId: row.project_manager_id || row.projectManagerId || '',
-      fieldManagerId: row.field_manager_id || row.fieldManagerId || '',
-      salesRepId: row.sales_rep_id || row.salesRepId || '',
-      teamsInvolvedIds: row.teams_involved_ids || [],
-      partnersIds: row.partners_ids || [],
-      startDate: row.start_date || '',
-      deliveryDate: row.delivery_date || '',
-      estimatedDate: row.estimated_date || '',
-      scheduledDate: row.scheduled_date || '',
-      completedDate: row.completed_date || '',
-      budgetValue: Number(row.budget_value ?? row.budgetValue ?? 0),
-      isUrgent: Boolean(row.is_urgent),
-      demo: Boolean(row.demo),
-      documents: row.documents || [],
-      clientContactName: row.client_contact_name || row.clientContactName || '',
-      clientContactEmail: row.client_contact_email || row.clientContactEmail || '',
-      clientContactPhone: row.client_contact_phone || row.clientContactPhone || '',
-      color: row.color || '',
-      notes: row.notes || '',
-      version: row.version || 1,
-      deleted: Boolean(row.deleted),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      createdBy: row.created_by,
-      updatedBy: row.updated_by,
-    }));
+    const mappedProjects = (rows || []).map((row: any) => {
+      const pCategoryIds = parseCommaSeparated(row.category_ids);
+      const categoryIds = pCategoryIds.length > 0 ? pCategoryIds : (row.category_id ? [row.category_id] : []);
+      const teamsInvolvedIds = parseCommaSeparated(row.teams_involved_ids);
+      const partnersIds = parseCommaSeparated(row.partners_ids);
+
+      return {
+        id: row.id,
+        title: row.project_title || row.title,
+        clientId: row.client_id || row.clientId || '',
+        installProjectNo: row.install_project_no || row.installProjectNo || '',
+        sfOpportunityNo: row.sf_opportunity_no || row.sfOpportunityNo || '',
+        description: row.project_description || row.description || '',
+        statusId: row.status_id || row.statusId || 'ps-1',
+        categoryId: row.category_id || row.categoryId || 'pc-1',
+        categoryIds,
+        priorityId: row.priority_id || row.priorityId || 'pp-1',
+        riskId: row.risk_id || row.riskId || 'pr-1',
+        projectManagerId: row.project_manager_id || row.projectManagerId || '',
+        fieldManagerId: row.field_manager_id || row.fieldManagerId || '',
+        salesRepId: row.sales_rep_id || row.salesRepId || '',
+        teamsInvolvedIds,
+        partnersIds,
+        startDate: row.start_date || '',
+        deliveryDate: row.delivery_date || '',
+        estimatedDate: row.estimated_date || '',
+        scheduledDate: row.scheduled_date || '',
+        completedDate: row.completed_date || '',
+        budgetValue: Number(row.budget_value ?? row.budgetValue ?? 0),
+        isUrgent: Boolean(row.is_urgent),
+        demo: Boolean(row.demo),
+        documents: row.documents || [],
+        clientContactName: row.client_contact_name || row.clientContactName || '',
+        clientContactEmail: row.client_contact_email || row.clientContactEmail || '',
+        clientContactPhone: row.client_contact_phone || row.clientContactPhone || '',
+        color: row.color || '',
+        notes: row.notes || '',
+        version: row.version || 1,
+        deleted: Boolean(row.deleted),
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        createdBy: row.created_by,
+        updatedBy: row.updated_by,
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -163,14 +177,14 @@ export async function POST(req: NextRequest) {
       sf_opportunity_no: p.sfOpportunityNo || '',
       status_id: p.statusId || 'ps-1',
       category_id: p.categoryId || (effectiveCategories[0]) || 'pc-1',
-      category_ids: effectiveCategories,
+      category_ids: effectiveCategories.length > 0 ? effectiveCategories.join(',') : null,
       priority_id: p.priorityId || 'pp-1',
       risk_id: p.riskId || 'pr-1',
       project_manager_id: p.projectManagerId || null,
       field_manager_id: p.fieldManagerId || null,
       sales_rep_id: p.salesRepId || null,
-      teams_involved_ids: effectiveTeams,
-      partners_ids: effectivePartners,
+      teams_involved_ids: effectiveTeams.length > 0 ? effectiveTeams.join(',') : null,
+      partners_ids: effectivePartners.length > 0 ? effectivePartners.join(',') : null,
       start_date: p.startDate || null,
       delivery_date: p.deliveryDate || null,
       estimated_date: p.estimatedDate || null,
@@ -199,24 +213,30 @@ export async function POST(req: NextRequest) {
       return badRequest(`Erro ao inserir projeto na base de dados: ${insertError.message}`, requestId);
     }
 
-    // Insert relational links if provided
+    // Insert relational links if provided, and check for errors
     if (effectiveTeams.length > 0) {
       const teamLinks = effectiveTeams.map((tid) => ({ project_id: newId, team_id: tid }));
-      try {
-        await sb.from('project_teams_link').insert(teamLinks);
-      } catch {}
+      const { error: teamLinkError } = await sb.from('project_teams_link').insert(teamLinks);
+      if (teamLinkError) {
+        console.error('[API PROJECT INSERT TEAMS ERROR]', teamLinkError);
+        return badRequest(`Erro ao associar equipas ao projeto: ${teamLinkError.message}`, requestId);
+      }
     }
     if (effectivePartners.length > 0) {
       const partnerLinks = effectivePartners.map((pid) => ({ project_id: newId, partner_id: pid }));
-      try {
-        await sb.from('project_partners_link').insert(partnerLinks);
-      } catch {}
+      const { error: partnerLinkError } = await sb.from('project_partners_link').insert(partnerLinks);
+      if (partnerLinkError) {
+        console.error('[API PROJECT INSERT PARTNERS ERROR]', partnerLinkError);
+        return badRequest(`Erro ao associar parceiros ao projeto: ${partnerLinkError.message}`, requestId);
+      }
     }
     if (effectiveCategories.length > 0) {
       const categoryLinks = effectiveCategories.map((cid) => ({ project_id: newId, category_id: cid }));
-      try {
-        await sb.from('project_category_link').insert(categoryLinks);
-      } catch {}
+      const { error: categoryLinkError } = await sb.from('project_category_link').insert(categoryLinks);
+      if (categoryLinkError) {
+        console.error('[API PROJECT INSERT CATEGORIES ERROR]', categoryLinkError);
+        return badRequest(`Erro ao associar categorias ao projeto: ${categoryLinkError.message}`, requestId);
+      }
     }
 
     await logAuditEvent({
