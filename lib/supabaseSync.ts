@@ -643,7 +643,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       };
     });
 
-    const milestoneTaskType = (resTaskTypes?.data || []).find((tt: any) => tt.name?.toLowerCase().includes('marco'));
+    const milestoneTaskType = (resTaskTypes?.data || []).find((tt: any) => tt.name?.toLowerCase().includes('lembrete') || tt.name?.toLowerCase().includes('marco'));
     const defaultTaskType = (resTaskTypes?.data || []).find((tt: any) => !tt.deleted);
 
     let tasks: Task[] = (resTasks.data || []).map((t: any) => {
@@ -2251,7 +2251,7 @@ ALTER TABLE IF EXISTS default_tasks ADD COLUMN IF NOT EXISTS task_type_id UUID;
 -- Seed dos Tipos de Tarefa com Níveis
 INSERT INTO task_types (id, name, scale, sort_order)
 VALUES 
-    ('33333333-3333-3333-3333-333333333301', 'Marco de projeto', 1, 1),
+    ('33333333-3333-3333-3333-333333333301', 'Lembrete', 1, 1),
     ('33333333-3333-3333-3333-333333333302', 'Planeamento/Requisitos', 2, 2),
     ('33333333-3333-3333-3333-333333333303', 'Preparação', 3, 3),
     ('33333333-3333-3333-3333-333333333304', 'Instalação', 4, 4),
@@ -2264,11 +2264,11 @@ ON CONFLICT (id) DO NOTHING;
 DELETE FROM task_types a USING task_types b
 WHERE a.id > b.id AND lower(trim(a.name)) = lower(trim(b.name));
 
--- Migração automática de tarefas existentes: mapear tarefas marcadas como marco para o tipo 'Marco de projeto'
+-- Migração automática de tarefas existentes: mapear tarefas marcadas como lembrete ou marco para o tipo 'Lembrete'
 UPDATE tasks 
 SET task_type_id = '33333333-3333-3333-3333-333333333301'
 WHERE (task_type_id IS NULL) 
-  AND (is_milestone = true OR task_title ILIKE '%marco%');
+  AND (is_milestone = true OR task_title ILIKE '%marco%' OR task_title ILIKE '%lembrete%');
 
 -- Atribuir tipo padrão às restantes tarefas sem tipo
 UPDATE tasks 

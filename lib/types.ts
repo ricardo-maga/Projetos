@@ -50,7 +50,7 @@ export interface Task {
   notes: string;
   deleted: boolean;
   createdDate: string;
-  isMilestone?: boolean; // Retrocompatibilidade (substituído pelo tipo de tarefa "Marco de projeto")
+  isMilestone?: boolean; // Retrocompatibilidade (substituído pelo tipo de tarefa "Lembrete")
   version?: number;
   completedDate?: string;
 }

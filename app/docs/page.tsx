@@ -192,7 +192,7 @@ export default function ApiDocsPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="px-2 py-0.5 bg-purple-900/60 text-purple-300 font-bold font-mono rounded text-[10px]">GET / POST</span>
-                  <code>/api/v1/tasks</code> - Tarefas técnicas e marcos de projeto
+                  <code>/api/v1/tasks</code> - Tarefas técnicas e lembretes de projeto
                 </li>
               </ul>
             </div>

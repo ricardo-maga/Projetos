@@ -586,7 +586,7 @@ export default function CalendarSection({
                                   >
                                     {/* Task Title (Compact) */}
                                     <div className="text-[9px] font-bold text-slate-700 truncate mb-1 flex items-center gap-1">
-                                      {getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco') && <Flag className="w-2.5 h-2.5 text-purple-600 shrink-0" />}
+                                      {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Flag className="w-2.5 h-2.5 text-purple-600 shrink-0" />}
                                       <span className="truncate">{task.title}</span>
                                     </div>
 

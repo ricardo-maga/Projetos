@@ -59,7 +59,7 @@ export const CLEAN_BASELINE_STATE: ERPState = {
     { id: 'ts-4', name: 'Suspensa', scale: 4, deleted: false, sort_order: 4 },
   ],
   taskTypes: [
-    { id: '33333333-3333-3333-3333-333333333301', name: 'Marco de projeto', scale: 1, deleted: false, sort_order: 1 },
+    { id: '33333333-3333-3333-3333-333333333301', name: 'Lembrete', scale: 1, deleted: false, sort_order: 1 },
     { id: '33333333-3333-3333-3333-333333333302', name: 'Planeamento/Requisitos', scale: 2, deleted: false, sort_order: 2 },
     { id: '33333333-3333-3333-3333-333333333303', name: 'Preparação', scale: 3, deleted: false, sort_order: 3 },
     { id: '33333333-3333-3333-3333-333333333304', name: 'Instalação', scale: 4, deleted: false, sort_order: 4 },

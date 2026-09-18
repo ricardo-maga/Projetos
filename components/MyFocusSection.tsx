@@ -927,7 +927,7 @@ export default function MyFocusSection({
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-base tracking-tight">Calendário Mensal</h3>
-                  <p className="text-xs text-slate-500 font-medium">Tarefas e marcos de projetos em agenda</p>
+                  <p className="text-xs text-slate-500 font-medium">Tarefas e lembretes de projetos em agenda</p>
                 </div>
               </div>
 

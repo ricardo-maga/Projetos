@@ -71,7 +71,7 @@ export async function GET() {
             projectId: { type: "string", format: "uuid" },
             statusId: { type: "string", example: "ts-1" },
             taskTypeId: { type: "string", format: "uuid", example: "33333333-3333-3333-3333-333333333304", description: "ID do Tipo de Tarefa (configurável em Campos Auxiliares)" },
-            isMilestone: { type: "boolean", default: false, description: "Retrocompatibilidade (Indica se é um Marco de Projeto)" },
+            isMilestone: { type: "boolean", default: false, description: "Retrocompatibilidade (Indica se é um Lembrete)" },
             estimatedHours: { type: "number", example: 8 },
             estimatedDate: { type: "string", format: "date" }
           },
@@ -212,7 +212,7 @@ export async function GET() {
       "/tasks": {
         get: {
           summary: "Listar tarefas de projetos",
-          tags: ["Tarefas & Marcos"],
+          tags: ["Tarefas & Lembretes"],
           parameters: [
             { name: "projectId", in: "query", required: false, schema: { type: "string" } }
           ],
@@ -221,8 +221,8 @@ export async function GET() {
           }
         },
         post: {
-          summary: "Criar uma nova tarefa ou marco de projeto",
-          tags: ["Tarefas & Marcos"],
+          summary: "Criar uma nova tarefa ou lembrete de projeto",
+          tags: ["Tarefas & Lembretes"],
           requestBody: {
             required: true,
             content: {
@@ -230,7 +230,7 @@ export async function GET() {
             }
           },
           responses: {
-            "201": { description: "Tarefa/Marco criado com sucesso" }
+            "201": { description: "Tarefa/Lembrete criado com sucesso" }
           }
         }
       },
