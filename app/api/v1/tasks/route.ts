@@ -3,7 +3,7 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { createTaskSchema, queryTaskSchema } from '@/lib/validations/task';
 import { validationError, badRequest, internalServerError } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
-import { createClient } from '@/lib/supabase/server';
+import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
 export async function GET(req: NextRequest) {
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   const to = from + pageSize - 1;
 
   try {
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     let query = sb
@@ -118,13 +118,13 @@ export async function POST(req: NextRequest) {
     }
 
     const t = parseResult.data;
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    const insertPayload = {
+    const insertPayload: Record<string, any> = {
       id: newId,
       project_id: t.projectId,
       task_title: t.title,
@@ -155,11 +155,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (t.assignedUserIds && t.assignedUserIds.length > 0) {
-      const assigneeRows = t.assignedUserIds.map((uid) => ({ task_id: newId, user_id: uid }));
-      const { error: assigneeError } = await sb.from('task_assignees').insert(assigneeRows);
-      if (assigneeError) {
-        console.error('[API TASK INSERT ASSIGNEES ERROR]', assigneeError);
-        return badRequest(`Erro ao associar responsáveis à tarefa: ${assigneeError.message}`, requestId);
+      const validUuids = t.assignedUserIds.filter((uid) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uid)
+      );
+      if (validUuids.length > 0) {
+        const assigneeRows = validUuids.map((uid) => ({ task_id: newId, user_id: uid }));
+        const { error: assigneeError } = await sb.from('task_assignees').insert(assigneeRows);
+        if (assigneeError) {
+          console.error('[API TASK INSERT ASSIGNEES ERROR]', assigneeError);
+          return badRequest(`Erro ao associar responsáveis à tarefa: ${assigneeError.message}`, requestId);
+        }
       }
     }
 

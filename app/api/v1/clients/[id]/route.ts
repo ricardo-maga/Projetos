@@ -3,7 +3,7 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { updateClientSchema } from '@/lib/validations/client';
 import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
-import { createClient } from '@/lib/supabase/server';
+import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { requestId } = auth;
 
   try {
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const { data: client, error } = await sb
@@ -78,20 +78,21 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     }
 
     const updates = parseResult.data;
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const { data: current, error: fetchError } = await sb
       .from('clients')
-      .select('id, version, deleted')
+      .select('*')
       .eq('id', id)
       .maybeSingle();
 
     if (fetchError) return internalServerError(`Erro ao ler versão atual do cliente: ${fetchError.message}`, requestId);
     if (!current || current.deleted) return notFound('Cliente não encontrado.', requestId);
 
-    const currentVersion = current.version || 1;
-    if (updates.version !== currentVersion) {
+    const hasVersion = typeof current.version === 'number';
+    const currentVersion = hasVersion ? current.version : (updates.version || 1);
+    if (hasVersion && updates.version !== undefined && updates.version !== currentVersion) {
       return conflict(
         `Conflito de concorrência. O cliente foi alterado por outro utilizador (versão atual: ${currentVersion}, versão submetida: ${updates.version}).`,
         requestId,
@@ -101,10 +102,12 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
 
     const now = new Date().toISOString();
     const updatePayload: Record<string, any> = {
-      version: currentVersion + 1,
       updated_at: now,
       updated_by: user.id,
     };
+    if (hasVersion) {
+      updatePayload.version = currentVersion + 1;
+    }
 
     if (updates.name !== undefined) updatePayload.name = updates.name;
     if (updates.code !== undefined) updatePayload.code = updates.code;
@@ -118,11 +121,11 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     if (updates.notes !== undefined) updatePayload.notes = updates.notes;
     if (updates.color !== undefined) updatePayload.color = updates.color;
 
-    const { error: updateError } = await sb
-      .from('clients')
-      .update(updatePayload)
-      .eq('id', id)
-      .eq('version', currentVersion);
+    let updateQuery = sb.from('clients').update(updatePayload).eq('id', id);
+    if (hasVersion) {
+      updateQuery = updateQuery.eq('version', currentVersion);
+    }
+    const { error: updateError } = await updateQuery;
 
     if (updateError) return badRequest(`Erro ao atualizar cliente: ${updateError.message}`, requestId);
 
@@ -157,24 +160,34 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { user, requestId } = auth;
 
   try {
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    const { data: current } = await sb.from('clients').select('id, version, deleted').eq('id', id).maybeSingle();
+    const { data: current } = await sb.from('clients').select('*').eq('id', id).maybeSingle();
     if (!current || current.deleted) return notFound('Cliente não encontrado.', requestId);
 
-    const currentVersion = current.version || 1;
+    const hasVersion = typeof current.version === 'number';
+    const currentVersion = hasVersion ? current.version : 1;
     const now = new Date().toISOString();
 
-    const { error: deleteError } = await sb
+    const deletePayload: Record<string, any> = {
+      deleted: true,
+      updated_at: now,
+    };
+    if (hasVersion) {
+      deletePayload.version = currentVersion + 1;
+      deletePayload.updated_by = user.id;
+    }
+
+    let { error: deleteError } = await sb
       .from('clients')
-      .update({
-        deleted: true,
-        version: currentVersion + 1,
-        updated_at: now,
-        updated_by: user.id,
-      })
+      .update(deletePayload)
       .eq('id', id);
+
+    if (deleteError && (deleteError.code === '42703' || deleteError.message?.includes('column'))) {
+      const fallbackRes = await sb.from('clients').update({ deleted: true }).eq('id', id);
+      deleteError = fallbackRes.error;
+    }
 
     if (deleteError) return badRequest(`Erro ao eliminar cliente: ${deleteError.message}`, requestId);
 
@@ -194,3 +207,4 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return internalServerError('Falha inesperada ao eliminar cliente.', requestId);
   }
 }
+

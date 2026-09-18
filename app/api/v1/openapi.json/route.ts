@@ -70,7 +70,7 @@ export async function GET() {
             title: { type: "string", example: "Montagem do Quadro Elétrico" },
             projectId: { type: "string", format: "uuid" },
             statusId: { type: "string", example: "ts-1" },
-            taskTypeId: { type: "string", example: "tt-1", description: "ID do Tipo de Tarefa (configurável em Campos Auxiliares)" },
+            taskTypeId: { type: "string", format: "uuid", example: "33333333-3333-3333-3333-333333333304", description: "ID do Tipo de Tarefa (configurável em Campos Auxiliares)" },
             isMilestone: { type: "boolean", default: false, description: "Retrocompatibilidade (Indica se é um Marco de Projeto)" },
             estimatedHours: { type: "number", example: 8 },
             estimatedDate: { type: "string", format: "date" }

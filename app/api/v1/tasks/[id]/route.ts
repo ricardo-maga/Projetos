@@ -3,7 +3,7 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { updateTaskSchema } from '@/lib/validations/task';
 import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
-import { createClient } from '@/lib/supabase/server';
+import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { requestId } = auth;
 
   try {
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const { data: task, error } = await sb
@@ -85,21 +85,22 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     }
 
     const updates = parseResult.data;
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     // 1. Fetch current version for optimistic concurrency check
     const { data: current, error: fetchError } = await sb
       .from('tasks')
-      .select('id, version, status_id, deleted')
+      .select('*')
       .eq('id', id)
       .maybeSingle();
 
     if (fetchError) return internalServerError(`Erro ao ler versão atual da tarefa: ${fetchError.message}`, requestId);
     if (!current || current.deleted) return notFound('Tarefa não encontrada.', requestId);
 
-    const currentVersion = current.version || 1;
-    if (updates.version !== currentVersion) {
+    const hasVersion = typeof current.version === 'number';
+    const currentVersion = hasVersion ? current.version : (updates.version || 1);
+    if (hasVersion && updates.version !== undefined && updates.version !== currentVersion) {
       return conflict(
         `Conflito de concorrência. A tarefa foi alterada por outro utilizador (versão atual: ${currentVersion}, versão submetida: ${updates.version}).`,
         requestId,
@@ -109,10 +110,14 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
 
     const now = new Date().toISOString();
     const updatePayload: Record<string, any> = {
-      version: currentVersion + 1,
       updated_at: now,
       updated_by: user.id,
     };
+    if (hasVersion) {
+      updatePayload.version = currentVersion + 1;
+    }
+
+    const cleanDateVal = (val?: string | null) => (val && typeof val === 'string' && val.trim() ? val.trim() : null);
 
     if (updates.title !== undefined) updatePayload.task_title = updates.title;
     if (updates.description !== undefined) updatePayload.task_description = updates.description;
@@ -120,19 +125,19 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     if (updates.taskTypeId !== undefined) updatePayload.task_type_id = updates.taskTypeId;
     if (updates.estimatedHours !== undefined) updatePayload.estimated_hours = `${updates.estimatedHours} hours`;
     if (updates.actualHours !== undefined) updatePayload.actual_hours = `${updates.actualHours} hours`;
-    if (updates.startDate !== undefined) updatePayload.start_date = updates.startDate;
-    if (updates.startTime !== undefined) updatePayload.start_time = updates.startTime;
-    if (updates.endDate !== undefined) updatePayload.end_date = updates.endDate;
-    if (updates.endTime !== undefined) updatePayload.end_time = updates.endTime;
-    if (updates.estimatedDate !== undefined) updatePayload.estimated_date = updates.estimatedDate;
-    if (updates.completedDate !== undefined) updatePayload.completed_date = updates.completedDate;
+    if (updates.startDate !== undefined) updatePayload.start_date = cleanDateVal(updates.startDate);
+    if (updates.startTime !== undefined) updatePayload.start_time = cleanDateVal(updates.startTime);
+    if (updates.endDate !== undefined) updatePayload.end_date = cleanDateVal(updates.endDate);
+    if (updates.endTime !== undefined) updatePayload.end_time = cleanDateVal(updates.endTime);
+    if (updates.estimatedDate !== undefined) updatePayload.estimated_date = cleanDateVal(updates.estimatedDate);
+    if (updates.completedDate !== undefined) updatePayload.completed_date = cleanDateVal(updates.completedDate);
     if (updates.notes !== undefined) updatePayload.notes = updates.notes;
 
-    const { error: updateError } = await sb
-      .from('tasks')
-      .update(updatePayload)
-      .eq('id', id)
-      .eq('version', currentVersion);
+    let updateQuery = sb.from('tasks').update(updatePayload).eq('id', id);
+    if (hasVersion) {
+      updateQuery = updateQuery.eq('version', currentVersion);
+    }
+    const { error: updateError } = await updateQuery;
 
     if (updateError) {
       return badRequest(`Erro ao atualizar tarefa: ${updateError.message}`, requestId);
@@ -145,8 +150,11 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
         console.error('[API TASK UPDATE ASSIGNEES DELETE ERROR]', deleteAssigneesError);
         return badRequest(`Erro ao remover responsáveis anteriores da tarefa: ${deleteAssigneesError.message}`, requestId);
       }
-      if (updates.assignedUserIds.length > 0) {
-        const assigneeRows = updates.assignedUserIds.map((uid) => ({ task_id: id, user_id: uid }));
+      const validUuids = updates.assignedUserIds.filter((uid) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uid)
+      );
+      if (validUuids.length > 0) {
+        const assigneeRows = validUuids.map((uid) => ({ task_id: id, user_id: uid }));
         const { error: insertAssigneesError } = await sb.from('task_assignees').insert(assigneeRows);
         if (insertAssigneesError) {
           console.error('[API TASK UPDATE ASSIGNEES INSERT ERROR]', insertAssigneesError);
@@ -190,24 +198,34 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { user, requestId } = auth;
 
   try {
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    const { data: current } = await sb.from('tasks').select('id, version, deleted').eq('id', id).maybeSingle();
+    const { data: current } = await sb.from('tasks').select('*').eq('id', id).maybeSingle();
     if (!current || current.deleted) return notFound('Tarefa não encontrada.', requestId);
 
-    const currentVersion = current.version || 1;
+    const hasVersion = typeof current.version === 'number';
+    const currentVersion = hasVersion ? current.version : 1;
     const now = new Date().toISOString();
 
-    const { error: deleteError } = await sb
+    const deletePayload: Record<string, any> = {
+      deleted: true,
+      updated_at: now,
+    };
+    if (hasVersion) {
+      deletePayload.version = currentVersion + 1;
+      deletePayload.updated_by = user.id;
+    }
+
+    let { error: deleteError } = await sb
       .from('tasks')
-      .update({
-        deleted: true,
-        version: currentVersion + 1,
-        updated_at: now,
-        updated_by: user.id,
-      })
+      .update(deletePayload)
       .eq('id', id);
+
+    if (deleteError && (deleteError.code === '42703' || deleteError.message?.includes('column'))) {
+      const fallbackRes = await sb.from('tasks').update({ deleted: true }).eq('id', id);
+      deleteError = fallbackRes.error;
+    }
 
     if (deleteError) return badRequest(`Erro ao eliminar tarefa: ${deleteError.message}`, requestId);
 

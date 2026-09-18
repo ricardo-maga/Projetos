@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const createClientSchema = z.object({
+  id: z.string().uuid().optional(),
   name: z.string().trim().min(2, 'O nome do cliente deve ter no mínimo 2 caracteres'),
   code: z.string().optional().default(''),
   contactPerson: z.string().optional().default(''),

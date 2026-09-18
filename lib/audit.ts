@@ -22,7 +22,10 @@ export type AuditAction =
   | 'TASK_STATUS_CHANGED'
   | 'CLIENT_CREATED'
   | 'CLIENT_UPDATED'
-  | 'CLIENT_DELETED';
+  | 'CLIENT_DELETED'
+  | 'PLANNING_ALLOCATION_CREATED'
+  | 'PLANNING_ALLOCATION_UPDATED'
+  | 'PLANNING_ALLOCATION_DELETED';
 
 export interface AuditLogEntry {
   action: AuditAction;

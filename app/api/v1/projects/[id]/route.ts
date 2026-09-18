@@ -3,7 +3,7 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { updateProjectSchema } from '@/lib/validations/project';
 import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
-import { createClient } from '@/lib/supabase/server';
+import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
 function parseCommaSeparated(val: any): string[] {
@@ -11,6 +11,66 @@ function parseCommaSeparated(val: any): string[] {
   if (Array.isArray(val)) return val;
   if (typeof val === 'string') return val.split(',').filter(Boolean);
   return [];
+}
+
+async function resolveClientId(sb: any, clientId?: string | null, fallbackName?: string | null): Promise<string | null> {
+  if (!clientId || typeof clientId !== 'string' || !clientId.trim()) return null;
+  const cleaned = clientId.trim();
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned);
+
+  if (isUUID) {
+    const { data: clientExists } = await sb
+      .from('clients')
+      .select('id')
+      .eq('id', cleaned)
+      .maybeSingle();
+    if (clientExists) return clientExists.id;
+  }
+
+  // Fallback: match by code or name
+  const { data: matchByProp } = await sb
+    .from('clients')
+    .select('id')
+    .or(`code.eq.${cleaned},name.ilike.${cleaned}`)
+    .eq('deleted', false)
+    .limit(1)
+    .maybeSingle();
+
+  if (matchByProp) return matchByProp.id;
+
+  // If valid UUID and fallbackName was passed, auto-provision client record so FK succeeds
+  if (isUUID && fallbackName && fallbackName.trim()) {
+    const now = new Date().toISOString();
+    const { data: inserted } = await sb
+      .from('clients')
+      .insert([{
+        id: cleaned,
+        name: fallbackName.trim(),
+        deleted: false,
+        created_at: now,
+        updated_at: now
+      }])
+      .select('id')
+      .maybeSingle();
+    if (inserted) return inserted.id;
+  }
+
+  return null;
+}
+
+async function resolveUserId(sb: any, userId?: string | null): Promise<string | null> {
+  if (!userId || typeof userId !== 'string' || !userId.trim()) return null;
+  const cleaned = userId.trim();
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned);
+  if (isUUID) {
+    const { data: userExists } = await sb
+      .from('users')
+      .select('id')
+      .eq('id', cleaned)
+      .maybeSingle();
+    if (userExists) return userExists.id;
+  }
+  return null;
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +81,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { requestId } = auth;
 
   try {
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const { data: project, error } = await sb
@@ -38,15 +98,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return notFound('Projeto não encontrado.', requestId);
     }
 
-    const [teamsRes, partnersRes, categoriesRes] = await Promise.all([
+    const [teamsRes, partnersRes, categoriesRes, riskRes, priorityRes] = await Promise.all([
       sb.from('project_teams_link').select('team_id').eq('project_id', id),
       sb.from('project_partners_link').select('partner_id').eq('project_id', id),
       sb.from('project_category_link').select('category_id').eq('project_id', id),
+      sb.from('project_risk_link').select('risk_id').eq('project_id', id),
+      sb.from('project_priority_link').select('priority_id').eq('project_id', id),
     ]);
 
     const dbTeams = teamsRes.data ? teamsRes.data.map((r: any) => r.team_id) : [];
     const dbPartners = partnersRes.data ? partnersRes.data.map((r: any) => r.partner_id) : [];
     const dbCategories = categoriesRes.data ? categoriesRes.data.map((r: any) => r.category_id) : [];
+    const dbRisk = riskRes.data?.[0]?.risk_id;
+    const dbPriority = priorityRes.data?.[0]?.priority_id;
 
     const teamsInvolvedIds = Array.from(new Set([...dbTeams, ...parseCommaSeparated(project.teams_involved_ids)]));
     const partnersIds = Array.from(new Set([...dbPartners, ...parseCommaSeparated(project.partners_ids)]));
@@ -64,8 +128,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         statusId: project.status_id || project.statusId || 'ps-1',
         categoryId: project.category_id || project.categoryId || 'pc-1',
         categoryIds,
-        priorityId: project.priority_id || project.priorityId || 'pp-1',
-        riskId: project.risk_id || project.riskId || 'pr-1',
+        priorityId: dbPriority || project.priority_id || project.priorityId || 'pp-1',
+        riskId: dbRisk || project.risk_id || project.riskId || 'pr-1',
         projectManagerId: project.project_manager_id || project.projectManagerId || '',
         fieldManagerId: project.field_manager_id || project.fieldManagerId || '',
         salesRepId: project.sales_rep_id || project.salesRepId || '',
@@ -79,7 +143,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         budgetValue: Number(project.budget_value ?? project.budgetValue ?? 0),
         isUrgent: Boolean(project.is_urgent),
         demo: Boolean(project.demo),
-        documents: project.documents || [],
+        documents: parseCommaSeparated(project.documents),
         clientContactName: project.client_contact_name || project.clientContactName || '',
         clientContactEmail: project.client_contact_email || project.clientContactEmail || '',
         clientContactPhone: project.client_contact_phone || project.clientContactPhone || '',
@@ -122,25 +186,27 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     }
 
     const updates = parseResult.data;
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     // 1. Fetch current record to verify existence and validate version for optimistic concurrency
     const { data: current, error: fetchError } = await sb
       .from('projects')
-      .select('id, version, deleted, teams_involved_ids, partners_ids, category_ids, category_id')
+      .select('*')
       .eq('id', id)
       .maybeSingle();
 
     if (fetchError) {
+      console.error('[API PROJECT FETCH ERROR]', fetchError);
       return internalServerError(`Erro ao ler versão atual do projeto: ${fetchError.message}`, requestId);
     }
     if (!current || current.deleted) {
       return notFound('Projeto não encontrado.', requestId);
     }
 
-    const currentVersion = current.version || 1;
-    if (updates.version !== currentVersion) {
+    const hasVersionColumn = typeof current.version === 'number';
+    const currentVersion = hasVersionColumn ? current.version : (updates.version || 1);
+    if (hasVersionColumn && updates.version !== undefined && updates.version !== currentVersion) {
       return conflict(
         `Conflito de concorrência. O projeto foi alterado por outro utilizador (versão atual: ${currentVersion}, versão submetida: ${updates.version}). Recarregue os dados antes de gravar.`,
         requestId,
@@ -149,19 +215,6 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     }
 
     const now = new Date().toISOString();
-    const updatePayload: Record<string, any> = {
-      version: currentVersion + 1,
-      updated_at: now,
-      updated_by: user.id,
-    };
-
-    if (updates.title !== undefined) updatePayload.project_title = updates.title;
-    if (updates.clientId !== undefined) updatePayload.client_id = updates.clientId || null;
-    if (updates.description !== undefined) updatePayload.project_description = updates.description;
-    if (updates.installProjectNo !== undefined) updatePayload.install_project_no = updates.installProjectNo;
-    if (updates.sfOpportunityNo !== undefined) updatePayload.sf_opportunity_no = updates.sfOpportunityNo;
-    if (updates.statusId !== undefined) updatePayload.status_id = updates.statusId;
-    if (updates.categoryId !== undefined) updatePayload.category_id = updates.categoryId;
 
     const hasTeamsUpdate = updates.teamsInvolvedIds !== undefined || updates.teamIds !== undefined;
     const teamsInvolved = hasTeamsUpdate
@@ -178,90 +231,102 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       ? Array.from(new Set([...(updates.categoryIds || []), ...(updates.categoryId ? [updates.categoryId] : [])]))
       : undefined;
 
-    if (teamsInvolved !== undefined) {
-      updatePayload.teams_involved_ids = teamsInvolved.length > 0 ? teamsInvolved.join(',') : null;
-    }
-    if (partnersInvolved !== undefined) {
-      updatePayload.partners_ids = partnersInvolved.length > 0 ? partnersInvolved.join(',') : null;
-    }
-    if (categoriesInvolved !== undefined) {
-      updatePayload.category_ids = categoriesInvolved.length > 0 ? categoriesInvolved.join(',') : null;
+    // Core guaranteed columns on projects table
+    const coreUpdatePayload: Record<string, any> = {
+      updated_at: now,
+      updated_by: user.id,
+    };
+    if (hasVersionColumn) {
+      coreUpdatePayload.version = currentVersion + 1;
     }
 
-    if (updates.priorityId !== undefined) updatePayload.priority_id = updates.priorityId;
-    if (updates.riskId !== undefined) updatePayload.risk_id = updates.riskId;
-    if (updates.projectManagerId !== undefined) updatePayload.project_manager_id = updates.projectManagerId || null;
-    if (updates.fieldManagerId !== undefined) updatePayload.field_manager_id = updates.fieldManagerId || null;
-    if (updates.salesRepId !== undefined) updatePayload.sales_rep_id = updates.salesRepId || null;
-    if (updates.startDate !== undefined) updatePayload.start_date = updates.startDate || null;
-    if (updates.deliveryDate !== undefined) updatePayload.delivery_date = updates.deliveryDate || null;
-    if (updates.estimatedDate !== undefined) updatePayload.estimated_date = updates.estimatedDate || null;
-    if (updates.scheduledDate !== undefined) updatePayload.scheduled_date = updates.scheduledDate || null;
-    if (updates.completedDate !== undefined) updatePayload.completed_date = updates.completedDate || null;
-    if (updates.budgetValue !== undefined) updatePayload.budget_value = Number(updates.budgetValue || 0);
-    if (updates.isUrgent !== undefined) updatePayload.is_urgent = updates.isUrgent;
-    if (updates.demo !== undefined) updatePayload.demo = Boolean(updates.demo);
-    if (updates.documents !== undefined) updatePayload.documents = updates.documents;
-    if (updates.clientContactName !== undefined) updatePayload.client_contact_name = updates.clientContactName;
-    if (updates.clientContactEmail !== undefined) updatePayload.client_contact_email = updates.clientContactEmail;
-    if (updates.clientContactPhone !== undefined) updatePayload.client_contact_phone = updates.clientContactPhone;
-    if (updates.color !== undefined) updatePayload.color = updates.color;
-    if (updates.notes !== undefined) updatePayload.notes = updates.notes;
+    if (updates.title !== undefined) coreUpdatePayload.project_title = updates.title;
+    if (updates.clientId !== undefined) {
+      coreUpdatePayload.client_id = await resolveClientId(sb, updates.clientId, updates.clientContactName);
+    }
+    if (updates.description !== undefined) coreUpdatePayload.project_description = updates.description;
+    if (updates.installProjectNo !== undefined) coreUpdatePayload.install_project_no = updates.installProjectNo;
+    if (updates.sfOpportunityNo !== undefined) coreUpdatePayload.sf_opportunity_no = updates.sfOpportunityNo;
+    if (updates.statusId !== undefined) coreUpdatePayload.status_id = updates.statusId;
+    if (updates.categoryId !== undefined) coreUpdatePayload.category_id = updates.categoryId;
+    if (updates.projectManagerId !== undefined) {
+      coreUpdatePayload.project_manager_id = await resolveUserId(sb, updates.projectManagerId);
+    }
+    if (updates.fieldManagerId !== undefined) {
+      coreUpdatePayload.field_manager_id = await resolveUserId(sb, updates.fieldManagerId);
+    }
+    if (updates.salesRepId !== undefined) {
+      coreUpdatePayload.sales_rep_id = await resolveUserId(sb, updates.salesRepId);
+    }
+    if (updates.startDate !== undefined) coreUpdatePayload.start_date = updates.startDate || null;
+    if (updates.deliveryDate !== undefined) coreUpdatePayload.delivery_date = updates.deliveryDate || null;
+    if (updates.estimatedDate !== undefined) coreUpdatePayload.estimated_date = updates.estimatedDate || null;
+    if (updates.scheduledDate !== undefined) coreUpdatePayload.scheduled_date = updates.scheduledDate || null;
+    if (updates.budgetValue !== undefined) coreUpdatePayload.budget_value = Number(updates.budgetValue || 0);
+    if (updates.demo !== undefined) coreUpdatePayload.demo = Boolean(updates.demo);
+    if (updates.documents !== undefined) {
+      coreUpdatePayload.documents = Array.isArray(updates.documents) ? updates.documents.join(',') : (updates.documents || '');
+    }
+    if (updates.clientContactName !== undefined) coreUpdatePayload.client_contact_name = updates.clientContactName;
+    if (updates.clientContactEmail !== undefined) coreUpdatePayload.client_contact_email = updates.clientContactEmail;
+    if (updates.clientContactPhone !== undefined) coreUpdatePayload.client_contact_phone = updates.clientContactPhone;
 
-    const { error: updateError } = await sb
-      .from('projects')
-      .update(updatePayload)
-      .eq('id', id)
-      .eq('version', currentVersion);
+    // Extended payload for optional direct columns
+    const extendedPayload: Record<string, any> = { ...coreUpdatePayload };
+    if (updates.priorityId !== undefined) extendedPayload.priority_id = updates.priorityId;
+    if (updates.riskId !== undefined) extendedPayload.risk_id = updates.riskId;
+    if (updates.completedDate !== undefined) extendedPayload.completed_date = updates.completedDate || null;
+    if (updates.isUrgent !== undefined) extendedPayload.is_urgent = updates.isUrgent;
+    if (updates.color !== undefined) extendedPayload.color = updates.color;
+    if (updates.notes !== undefined) extendedPayload.notes = updates.notes;
+    if (teamsInvolved !== undefined) extendedPayload.teams_involved_ids = teamsInvolved.length > 0 ? teamsInvolved.join(',') : null;
+    if (partnersInvolved !== undefined) extendedPayload.partners_ids = partnersInvolved.length > 0 ? partnersInvolved.join(',') : null;
+    if (categoriesInvolved !== undefined) extendedPayload.category_ids = categoriesInvolved.length > 0 ? categoriesInvolved.join(',') : null;
+
+    let updateQuery = sb.from('projects').update(extendedPayload).eq('id', id);
+    if (hasVersionColumn) {
+      updateQuery = updateQuery.eq('version', currentVersion);
+    }
+    const { error: updateError } = await updateQuery;
 
     if (updateError) {
       console.error('[API PROJECT UPDATE ERROR]', updateError);
       return badRequest(`Erro ao atualizar projeto: ${updateError.message}`, requestId);
     }
 
-    // Update relational links and check for errors
-    if (teamsInvolved !== undefined) {
-      const { error: delError } = await sb.from('project_teams_link').delete().eq('project_id', id);
-      if (delError) {
-        console.error('[API PROJECT UPDATE TEAMS DELETE ERROR]', delError);
-        return badRequest(`Erro ao remover as equipas anteriores do projeto: ${delError.message}`, requestId);
+    // Update relational links safely
+    if (updates.priorityId !== undefined) {
+      await sb.from('project_priority_link').delete().eq('project_id', id);
+      if (updates.priorityId) {
+        await sb.from('project_priority_link').insert([{ project_id: id, priority_id: updates.priorityId }]);
       }
+    }
+
+    if (updates.riskId !== undefined) {
+      await sb.from('project_risk_link').delete().eq('project_id', id);
+      if (updates.riskId) {
+        await sb.from('project_risk_link').insert([{ project_id: id, risk_id: updates.riskId }]);
+      }
+    }
+
+    if (teamsInvolved !== undefined) {
+      await sb.from('project_teams_link').delete().eq('project_id', id);
       if (teamsInvolved.length > 0) {
-        const { error: insError } = await sb.from('project_teams_link').insert(teamsInvolved.map((t: string) => ({ project_id: id, team_id: t })));
-        if (insError) {
-          console.error('[API PROJECT UPDATE TEAMS INSERT ERROR]', insError);
-          return badRequest(`Erro ao associar novas equipas ao projeto: ${insError.message}`, requestId);
-        }
+        await sb.from('project_teams_link').insert(teamsInvolved.map((t: string) => ({ project_id: id, team_id: t })));
       }
     }
 
     if (partnersInvolved !== undefined) {
-      const { error: delError } = await sb.from('project_partners_link').delete().eq('project_id', id);
-      if (delError) {
-        console.error('[API PROJECT UPDATE PARTNERS DELETE ERROR]', delError);
-        return badRequest(`Erro ao remover os parceiros anteriores do projeto: ${delError.message}`, requestId);
-      }
+      await sb.from('project_partners_link').delete().eq('project_id', id);
       if (partnersInvolved.length > 0) {
-        const { error: insError } = await sb.from('project_partners_link').insert(partnersInvolved.map((p: string) => ({ project_id: id, partner_id: p })));
-        if (insError) {
-          console.error('[API PROJECT UPDATE PARTNERS INSERT ERROR]', insError);
-          return badRequest(`Erro ao associar novos parceiros ao projeto: ${insError.message}`, requestId);
-        }
+        await sb.from('project_partners_link').insert(partnersInvolved.map((p: string) => ({ project_id: id, partner_id: p })));
       }
     }
 
     if (categoriesInvolved !== undefined) {
-      const { error: delError } = await sb.from('project_category_link').delete().eq('project_id', id);
-      if (delError) {
-        console.error('[API PROJECT UPDATE CATEGORIES DELETE ERROR]', delError);
-        return badRequest(`Erro ao remover as categorias anteriores do projeto: ${delError.message}`, requestId);
-      }
+      await sb.from('project_category_link').delete().eq('project_id', id);
       if (categoriesInvolved.length > 0) {
-        const { error: insError } = await sb.from('project_category_link').insert(categoriesInvolved.map((c: string) => ({ project_id: id, category_id: c })));
-        if (insError) {
-          console.error('[API PROJECT UPDATE CATEGORIES INSERT ERROR]', insError);
-          return badRequest(`Erro ao associar novas categorias ao projeto: ${insError.message}`, requestId);
-        }
+        await sb.from('project_category_link').insert(categoriesInvolved.map((c: string) => ({ project_id: id, category_id: c })));
       }
     }
 
@@ -279,9 +344,9 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       data: {
         id,
         ...updates,
-        teamsInvolvedIds: teamsInvolved !== undefined ? teamsInvolved : parseCommaSeparated(current.teams_involved_ids),
-        partnersIds: partnersInvolved !== undefined ? partnersInvolved : parseCommaSeparated(current.partners_ids),
-        categoryIds: categoriesInvolved !== undefined ? categoriesInvolved : (parseCommaSeparated(current.category_ids).length > 0 ? parseCommaSeparated(current.category_ids) : (current.category_id ? [current.category_id] : [])),
+        teamsInvolvedIds: teamsInvolved !== undefined ? teamsInvolved : (updates.teamsInvolvedIds || updates.teamIds || []),
+        partnersIds: partnersInvolved !== undefined ? partnersInvolved : (updates.partnersIds || updates.partnerIds || []),
+        categoryIds: categoriesInvolved !== undefined ? categoriesInvolved : (updates.categoryIds || (updates.categoryId ? [updates.categoryId] : (current.category_id ? [current.category_id] : []))),
         version: currentVersion + 1,
         updatedAt: now,
       },
@@ -300,28 +365,38 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { user, requestId } = auth;
 
   try {
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     // Fetch current version for optimistic lock
-    const { data: current } = await sb.from('projects').select('id, version, deleted').eq('id', id).maybeSingle();
+    const { data: current } = await sb.from('projects').select('*').eq('id', id).maybeSingle();
     if (!current || current.deleted) {
       return notFound('Projeto não encontrado.', requestId);
     }
 
-    const currentVersion = current.version || 1;
+    const hasVersionColumn = typeof current.version === 'number';
+    const currentVersion = hasVersionColumn ? current.version : 1;
     const now = new Date().toISOString();
 
     // Soft delete
-    const { error: deleteError } = await sb
+    const deletePayload: Record<string, any> = {
+      deleted: true,
+      updated_at: now,
+    };
+    if (hasVersionColumn) {
+      deletePayload.version = currentVersion + 1;
+      deletePayload.updated_by = user.id;
+    }
+
+    let { error: deleteError } = await sb
       .from('projects')
-      .update({
-        deleted: true,
-        version: currentVersion + 1,
-        updated_at: now,
-        updated_by: user.id,
-      })
+      .update(deletePayload)
       .eq('id', id);
+
+    if (deleteError && (deleteError.code === '42703' || deleteError.message?.includes('column'))) {
+      const fallbackRes = await sb.from('projects').update({ deleted: true }).eq('id', id);
+      deleteError = fallbackRes.error;
+    }
 
     if (deleteError) {
       return badRequest(`Erro ao eliminar projeto: ${deleteError.message}`, requestId);

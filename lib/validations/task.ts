@@ -1,21 +1,35 @@
 import { z } from 'zod';
 
+const optionalDateField = z
+  .string()
+  .nullable()
+  .optional()
+  .transform((v) => (v && typeof v === 'string' && v.trim() ? v.trim() : null));
+
 export const createTaskSchema = z.object({
   projectId: z.string().uuid('ID de projeto inválido (deve ser UUID)'),
   title: z.string().trim().min(2, 'O título da tarefa deve ter no mínimo 2 caracteres'),
   description: z.string().optional().default(''),
   statusId: z.string().optional(),
-  taskTypeId: z.string().optional(),
+  taskTypeId: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => (val === '' ? null : val)),
   estimatedHours: z.number().nonnegative().optional().default(0),
   actualHours: z.number().nonnegative().optional().default(0),
-  startDate: z.string().optional(),
-  startTime: z.string().optional(),
-  endDate: z.string().optional(),
-  endTime: z.string().optional(),
-  estimatedDate: z.string().optional(),
-  completedDate: z.string().optional(),
+  startDate: optionalDateField,
+  startTime: optionalDateField,
+  endDate: optionalDateField,
+  endTime: optionalDateField,
+  estimatedDate: optionalDateField,
+  completedDate: optionalDateField,
   notes: z.string().optional(),
-  assignedUserIds: z.array(z.string()).optional().default([]),
+  assignedUserIds: z
+    .array(z.string())
+    .optional()
+    .default([])
+    .transform((ids) => ids.filter((id) => Boolean(id && id.trim()))),
 });
 
 export const updateTaskSchema = createTaskSchema.partial().extend({
@@ -31,3 +45,4 @@ export const queryTaskSchema = z.object({
   taskTypeId: z.string().optional(),
   userId: z.string().optional(),
 });
+

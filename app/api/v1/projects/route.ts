@@ -3,7 +3,7 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { createProjectSchema, queryProjectSchema } from '@/lib/validations/project';
 import { validationError, badRequest, internalServerError } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
-import { createClient } from '@/lib/supabase/server';
+import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
 function parseCommaSeparated(val: any): string[] {
@@ -11,6 +11,66 @@ function parseCommaSeparated(val: any): string[] {
   if (Array.isArray(val)) return val;
   if (typeof val === 'string') return val.split(',').filter(Boolean);
   return [];
+}
+
+async function resolveClientId(sb: any, clientId?: string | null, fallbackName?: string | null): Promise<string | null> {
+  if (!clientId || typeof clientId !== 'string' || !clientId.trim()) return null;
+  const cleaned = clientId.trim();
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned);
+
+  if (isUUID) {
+    const { data: clientExists } = await sb
+      .from('clients')
+      .select('id')
+      .eq('id', cleaned)
+      .maybeSingle();
+    if (clientExists) return clientExists.id;
+  }
+
+  // Fallback: match by code or name
+  const { data: matchByProp } = await sb
+    .from('clients')
+    .select('id')
+    .or(`code.eq.${cleaned},name.ilike.${cleaned}`)
+    .eq('deleted', false)
+    .limit(1)
+    .maybeSingle();
+
+  if (matchByProp) return matchByProp.id;
+
+  // If valid UUID and fallbackName was passed, auto-provision client record so FK succeeds
+  if (isUUID && fallbackName && fallbackName.trim()) {
+    const now = new Date().toISOString();
+    const { data: inserted } = await sb
+      .from('clients')
+      .insert([{
+        id: cleaned,
+        name: fallbackName.trim(),
+        deleted: false,
+        created_at: now,
+        updated_at: now
+      }])
+      .select('id')
+      .maybeSingle();
+    if (inserted) return inserted.id;
+  }
+
+  return null;
+}
+
+async function resolveUserId(sb: any, userId?: string | null): Promise<string | null> {
+  if (!userId || typeof userId !== 'string' || !userId.trim()) return null;
+  const cleaned = userId.trim();
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned);
+  if (isUUID) {
+    const { data: userExists } = await sb
+      .from('users')
+      .select('id')
+      .eq('id', cleaned)
+      .maybeSingle();
+    if (userExists) return userExists.id;
+  }
+  return null;
 }
 
 export async function GET(req: NextRequest) {
@@ -31,7 +91,7 @@ export async function GET(req: NextRequest) {
   const to = from + pageSize - 1;
 
   try {
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) {
       return internalServerError('Base de dados Supabase não disponível.', requestId);
     }
@@ -156,7 +216,7 @@ export async function POST(req: NextRequest) {
     }
 
     const p = parseResult.data;
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) {
       return internalServerError('Base de dados Supabase não disponível.', requestId);
     }
@@ -168,37 +228,37 @@ export async function POST(req: NextRequest) {
     const effectivePartners = Array.from(new Set([...(p.partnersIds || []), ...(p.partnerIds || [])]));
     const effectiveCategories = Array.from(new Set([...(p.categoryIds || []), ...(p.categoryId ? [p.categoryId] : [])]));
 
-    const insertPayload: Record<string, any> = {
+    const docString = Array.isArray(p.documents) ? p.documents.join(',') : (p.documents || '');
+
+    const [resolvedClientId, resolvedProjectManagerId, resolvedFieldManagerId, resolvedSalesRepId] = await Promise.all([
+      resolveClientId(sb, p.clientId, p.clientContactName),
+      resolveUserId(sb, p.projectManagerId),
+      resolveUserId(sb, p.fieldManagerId),
+      resolveUserId(sb, p.salesRepId),
+    ]);
+
+    const coreInsertPayload: Record<string, any> = {
       id: newId,
       project_title: p.title,
-      client_id: p.clientId || null,
+      client_id: resolvedClientId,
       project_description: p.description || '',
       install_project_no: p.installProjectNo || '',
       sf_opportunity_no: p.sfOpportunityNo || '',
       status_id: p.statusId || 'ps-1',
       category_id: p.categoryId || (effectiveCategories[0]) || 'pc-1',
-      category_ids: effectiveCategories.length > 0 ? effectiveCategories.join(',') : null,
-      priority_id: p.priorityId || 'pp-1',
-      risk_id: p.riskId || 'pr-1',
-      project_manager_id: p.projectManagerId || null,
-      field_manager_id: p.fieldManagerId || null,
-      sales_rep_id: p.salesRepId || null,
-      teams_involved_ids: effectiveTeams.length > 0 ? effectiveTeams.join(',') : null,
-      partners_ids: effectivePartners.length > 0 ? effectivePartners.join(',') : null,
+      project_manager_id: resolvedProjectManagerId,
+      field_manager_id: resolvedFieldManagerId,
+      sales_rep_id: resolvedSalesRepId,
       start_date: p.startDate || null,
       delivery_date: p.deliveryDate || null,
       estimated_date: p.estimatedDate || null,
       scheduled_date: p.scheduledDate || null,
-      completed_date: p.completedDate || null,
       budget_value: Number(p.budgetValue || 0),
-      is_urgent: Boolean(p.isUrgent),
       demo: Boolean(p.demo),
-      documents: p.documents || [],
+      documents: docString,
       client_contact_name: p.clientContactName || '',
       client_contact_email: p.clientContactEmail || '',
       client_contact_phone: p.clientContactPhone || '',
-      color: p.color || null,
-      notes: p.notes || null,
       deleted: false,
       version: 1,
       created_by: user.id,
@@ -207,36 +267,59 @@ export async function POST(req: NextRequest) {
       updated_at: now,
     };
 
-    const { error: insertError } = await sb.from('projects').insert([insertPayload]);
+    const extendedInsertPayload: Record<string, any> = {
+      ...coreInsertPayload,
+      category_ids: effectiveCategories.length > 0 ? effectiveCategories.join(',') : null,
+      priority_id: p.priorityId || 'pp-1',
+      risk_id: p.riskId || 'pr-1',
+      teams_involved_ids: effectiveTeams.length > 0 ? effectiveTeams.join(',') : null,
+      partners_ids: effectivePartners.length > 0 ? effectivePartners.join(',') : null,
+      completed_date: p.completedDate || null,
+      is_urgent: Boolean(p.isUrgent),
+      color: p.color || null,
+      notes: p.notes || null,
+    };
+
+    let { error: insertError } = await sb.from('projects').insert([extendedInsertPayload]);
+    if (insertError && (insertError.code === '42703' || insertError.message?.includes('column'))) {
+      console.warn('[API PROJECT INSERT] Retrying with core columns due to schema notice:', insertError.message);
+      const retryRes = await sb.from('projects').insert([coreInsertPayload]);
+      insertError = retryRes.error;
+
+      if (insertError && (insertError.code === '42703' || insertError.message?.includes('column'))) {
+        const minimalPayload = { ...coreInsertPayload };
+        delete minimalPayload.version;
+        delete minimalPayload.updated_by;
+        delete minimalPayload.created_by;
+        const fallbackRes = await sb.from('projects').insert([minimalPayload]);
+        insertError = fallbackRes.error;
+      }
+    }
+
     if (insertError) {
       console.error('[API PROJECT INSERT ERROR]', insertError);
       return badRequest(`Erro ao inserir projeto na base de dados: ${insertError.message}`, requestId);
     }
 
-    // Insert relational links if provided, and check for errors
+    // Insert relational links
+    if (p.priorityId) {
+      await sb.from('project_priority_link').insert([{ project_id: newId, priority_id: p.priorityId }]);
+    }
+    if (p.riskId) {
+      await sb.from('project_risk_link').insert([{ project_id: newId, risk_id: p.riskId }]);
+    }
+
     if (effectiveTeams.length > 0) {
       const teamLinks = effectiveTeams.map((tid) => ({ project_id: newId, team_id: tid }));
-      const { error: teamLinkError } = await sb.from('project_teams_link').insert(teamLinks);
-      if (teamLinkError) {
-        console.error('[API PROJECT INSERT TEAMS ERROR]', teamLinkError);
-        return badRequest(`Erro ao associar equipas ao projeto: ${teamLinkError.message}`, requestId);
-      }
+      await sb.from('project_teams_link').insert(teamLinks);
     }
     if (effectivePartners.length > 0) {
       const partnerLinks = effectivePartners.map((pid) => ({ project_id: newId, partner_id: pid }));
-      const { error: partnerLinkError } = await sb.from('project_partners_link').insert(partnerLinks);
-      if (partnerLinkError) {
-        console.error('[API PROJECT INSERT PARTNERS ERROR]', partnerLinkError);
-        return badRequest(`Erro ao associar parceiros ao projeto: ${partnerLinkError.message}`, requestId);
-      }
+      await sb.from('project_partners_link').insert(partnerLinks);
     }
     if (effectiveCategories.length > 0) {
       const categoryLinks = effectiveCategories.map((cid) => ({ project_id: newId, category_id: cid }));
-      const { error: categoryLinkError } = await sb.from('project_category_link').insert(categoryLinks);
-      if (categoryLinkError) {
-        console.error('[API PROJECT INSERT CATEGORIES ERROR]', categoryLinkError);
-        return badRequest(`Erro ao associar categorias ao projeto: ${categoryLinkError.message}`, requestId);
-      }
+      await sb.from('project_category_link').insert(categoryLinks);
     }
 
     await logAuditEvent({

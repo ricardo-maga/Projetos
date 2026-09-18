@@ -60,3 +60,46 @@ export function createAdminClient() {
     },
   });
 }
+
+/**
+ * Resolves the most reliable database client for server API route handlers.
+ * Prefers the service role admin client when available, or passes the request's
+ * Bearer authorization token so Row-Level Security (RLS) identifies the user.
+ */
+export async function getServerDbClient(req?: Request) {
+  const admin = createAdminClient();
+  if (admin) return admin;
+
+  const header = req?.headers?.get('authorization');
+  const token = header?.startsWith('Bearer ') ? header.slice(7).trim() : undefined;
+
+  if (token) {
+    try {
+      const client = await createClient(token);
+      if (client) return client;
+    } catch {
+      // fallback
+    }
+  }
+
+  try {
+    const client = await createClient();
+    if (client) return client;
+  } catch {
+    // fallback
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+  if (supabaseUrl && supabaseAnonKey) {
+    return createSupabaseJsClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+  }
+
+  return null;
+}

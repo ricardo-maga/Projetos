@@ -3,7 +3,7 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { createClientSchema, queryClientSchema } from '@/lib/validations/client';
 import { validationError, badRequest, internalServerError } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
-import { createClient } from '@/lib/supabase/server';
+import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
 export async function GET(req: NextRequest) {
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   const to = from + pageSize - 1;
 
   try {
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     let query = sb
@@ -99,13 +99,13 @@ export async function POST(req: NextRequest) {
     }
 
     const c = parseResult.data;
-    const sb = (await createClient()) || defaultSupabase;
+    const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    const newId = crypto.randomUUID();
+    const newId = c.id || crypto.randomUUID();
     const now = new Date().toISOString();
 
-    const insertPayload = {
+    const insertPayload: Record<string, any> = {
       id: newId,
       name: c.name,
       code: c.code || null,
@@ -126,7 +126,16 @@ export async function POST(req: NextRequest) {
       updated_at: now,
     };
 
-    const { error: insertError } = await sb.from('clients').insert([insertPayload]);
+    let { error: insertError } = await sb.from('clients').insert([insertPayload]);
+    if (insertError && (insertError.code === '42703' || insertError.message?.includes('column'))) {
+      const fallbackPayload = { ...insertPayload };
+      delete fallbackPayload.version;
+      delete fallbackPayload.updated_by;
+      delete fallbackPayload.created_by;
+      const retryRes = await sb.from('clients').insert([fallbackPayload]);
+      insertError = retryRes.error;
+    }
+
     if (insertError) {
       return badRequest(`Erro ao inserir cliente: ${insertError.message}`, requestId);
     }

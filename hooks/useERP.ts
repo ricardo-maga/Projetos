@@ -10,6 +10,24 @@ import { getAuthHeaders, getClientUser, clearClientSession } from '../lib/client
 
 const STORAGE_KEY = 'gestao_projetos_erp_state_v1';
 
+function getApiErrorMessage(result: any, fallback: string): string {
+  if (result?.error?.message) {
+    if (result.error.details?.fieldErrors) {
+      const fieldErrors = result.error.details.fieldErrors;
+      const specificMessages = Object.entries(fieldErrors)
+        .flatMap(([, msgs]: [string, any]) => (Array.isArray(msgs) ? msgs : [msgs]))
+        .filter(Boolean);
+      if (specificMessages.length > 0) {
+        return `${result.error.message}: ${specificMessages.join('; ')}`;
+      }
+    }
+    return result.error.message;
+  }
+  if (result?.message) return result.message;
+  if (typeof result?.error === 'string') return result.error;
+  return fallback;
+}
+
 // Clean baseline with zero mock entities (no mock clients, projects, tasks or materials)
 const getEmptyState = (): ERPState => ({
   ...CLEAN_BASELINE_STATE
@@ -193,9 +211,9 @@ export function useERP() {
         return { success: true };
       } else {
         // ROLLBACK! The write was not accepted by the database
-        console.error('Falha na gravação na base de dados. A reverter estado local:', result?.message);
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a gravação (${res.status}). A alteração foi revertida para garantir que apenas dados válidos da base de dados são mantidos.`);
+        console.error('Falha na gravação na base de dados. A reverter estado local:', errMsg);
         setState(prevState);
-        const errMsg = result?.message || `A base de dados rejeitou a gravação (${res.status}). A alteração foi revertida para garantir que apenas dados válidos da base de dados são mantidos.`;
         setSyncStatus('error');
         setSyncError(errMsg);
 
@@ -507,7 +525,7 @@ export function useERP() {
         setSyncStatus('synced');
         return newProj;
       } else {
-        const errMsg = result?.message || `A base de dados rejeitou a criação do projeto (${res.status}).`;
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a criação do projeto (${res.status}).`);
         console.error('Erro na criação do projeto:', errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
@@ -560,7 +578,7 @@ export function useERP() {
     if (updates.scheduledDate !== undefined) patchPayload.scheduledDate = updates.scheduledDate;
     if ((updates as any).completedDate !== undefined) patchPayload.completedDate = (updates as any).completedDate;
     if (updates.budgetValue !== undefined) patchPayload.budgetValue = Number(updates.budgetValue || 0);
-    if ((updates as any).isUrgent !== undefined) patchPayload.is_urgent = (updates as any).isUrgent;
+    if ((updates as any).isUrgent !== undefined) patchPayload.isUrgent = (updates as any).isUrgent;
     if (updates.demo !== undefined) patchPayload.demo = updates.demo;
     if (updates.documents !== undefined) patchPayload.documents = updates.documents;
     if (updates.clientContactName !== undefined) patchPayload.clientContactName = updates.clientContactName;
@@ -582,7 +600,7 @@ export function useERP() {
       const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
 
       if (res.status === 409) {
-        const errMsg = result?.message || 'Conflito de concorrência ao atualizar projeto. O projeto foi alterado por outro utilizador.';
+        const errMsg = getApiErrorMessage(result, 'Conflito de concorrência ao atualizar projeto. O projeto foi alterado por outro utilizador.');
         alert(errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
@@ -674,7 +692,7 @@ export function useERP() {
         setSyncStatus('synced');
         return true;
       } else {
-        const errMsg = result?.message || `A base de dados rejeitou a alteração do projeto (${res.status}).`;
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a alteração do projeto (${res.status}).`);
         console.error('Erro na atualização do projeto:', errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
@@ -718,7 +736,7 @@ export function useERP() {
         setSyncStatus('synced');
         return true;
       } else {
-        const errMsg = result?.message || `A base de dados rejeitou a eliminação do projeto (${res.status}).`;
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a eliminação do projeto (${res.status}).`);
         console.error('Erro ao eliminar projeto:', errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
@@ -861,7 +879,7 @@ export function useERP() {
         setSyncStatus('synced');
         return newTask;
       } else {
-        const errMsg = result?.message || `A base de dados rejeitou a criação da tarefa (${res.status}).`;
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a criação da tarefa (${res.status}).`);
         console.error('Erro na criação da tarefa:', errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
@@ -933,7 +951,7 @@ export function useERP() {
       const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
 
       if (res.status === 409) {
-        const errMsg = result?.message || 'Conflito de concorrência ao atualizar tarefa.';
+        const errMsg = getApiErrorMessage(result, 'Conflito de concorrência ao atualizar tarefa.');
         alert(errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
@@ -1027,7 +1045,7 @@ export function useERP() {
         setSyncStatus('synced');
         return true;
       } else {
-        const errMsg = result?.message || `A base de dados rejeitou a alteração da tarefa (${res.status}).`;
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a alteração da tarefa (${res.status}).`);
         console.error('Erro na atualização da tarefa:', errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
@@ -1071,7 +1089,7 @@ export function useERP() {
         setSyncStatus('synced');
         return true;
       } else {
-        const errMsg = result?.message || `A base de dados rejeitou a eliminação da tarefa (${res.status}).`;
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a eliminação da tarefa (${res.status}).`);
         console.error('Erro ao eliminar tarefa:', errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
@@ -1114,7 +1132,7 @@ export function useERP() {
   const addAbsence = (absence: Omit<UserAbsence, 'id' | 'createdDate'>) => {
     const newAbsence: UserAbsence = {
       ...absence,
-      id: genId('abs'),
+      id: crypto.randomUUID(),
       createdDate: new Date().toISOString()
     };
     saveState(prev => ({
@@ -1134,7 +1152,7 @@ export function useERP() {
   const addUser = (user: Omit<User, 'id' | 'deleted' | 'createdDate'>) => {
     const newUser: User = {
       ...user,
-      id: genId('u'),
+      id: crypto.randomUUID(),
       deleted: false,
       createdDate: new Date().toISOString()
     };
@@ -1168,7 +1186,7 @@ export function useERP() {
   const addClient = (client: Omit<Client, 'id' | 'deleted' | 'createdDate'>) => {
     const newClient: Client = {
       ...client,
-      id: genId('c'),
+      id: crypto.randomUUID(),
       deleted: false,
       createdDate: new Date().toISOString()
     };
@@ -1203,7 +1221,7 @@ export function useERP() {
   const addMaterial = (material: Omit<Material, 'id' | 'deleted' | 'createdDate'>) => {
     const newMat: Material = {
       ...material,
-      id: genId('m'),
+      id: crypto.randomUUID(),
       deleted: false,
       createdDate: new Date().toISOString()
     };
@@ -1466,8 +1484,9 @@ export function useERP() {
   type AuxTableName = 'projectStatuses' | 'projectCategories' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'userGroups' | 'taskStatuses' | 'taskTypes' | 'riskCategories' | 'riskStatuses' | 'riskPriorities' | 'ticketStatuses';
 
   const addAuxRecord = (tableName: AuxTableName, name: string, extra?: { scale?: number }) => {
+    const isUUIDTable = ['taskTypes', 'taskStatuses', 'userGroups', 'ticketStatuses', 'projectCategories', 'projectStatuses', 'projectRisks', 'projectPriorities', 'projectTeams', 'projectPartners', 'riskCategories', 'riskStatuses', 'riskPriorities'].includes(tableName);
     const prefix = tableName === 'taskTypes' ? 'tt' : tableName === 'taskStatuses' ? 'ts' : tableName === 'ticketStatuses' ? 'tks' : tableName.slice(0, 3);
-    const id = genId(prefix);
+    const id = isUUIDTable ? crypto.randomUUID() : genId(prefix);
     
     saveState(prev => {
       const newRecord = {
