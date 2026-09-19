@@ -35,7 +35,10 @@ export type ResourceOperationalFilter =
   | 'no_capacity' 
   | 'overloaded' 
   | 'no_confirmed' 
-  | 'with_draft';
+  | 'with_draft'
+  | 'has_confirmed'
+  | 'has_planned'
+  | 'has_free';
 
 export type AllocationStatusFilter = 'all' | 'CONFIRMED' | 'DRAFT';
 
@@ -463,8 +466,8 @@ export default function CalendarSection({
     return tasks.filter(t => !t.deleted && !taskIdsWithAllocations.has(t.id));
   }, [tasks, taskIdsWithAllocations]);
 
-  // FASE 23E-C2: Filtered Resources computed via local memoization (AND combination)
-  const filteredResources = React.useMemo(() => {
+  // FASE 23E-C2: Base Resources (filtered by text search, project, leader, allocation status)
+  const baseResources = React.useMemo(() => {
     const dayStrings = new Set(timelineDays.map(d => formatDateToString(d)));
 
     return activeUsers.filter(user => {
@@ -480,53 +483,6 @@ export default function CalendarSection({
       const userAllocsInWindow = planningAllocations.filter(
         a => a.resourceId === user.id && dayStrings.has(a.date) && a.status !== 'CANCELLED'
       );
-
-      // Compute operational metrics for each day in timeline
-      let totalCapacityMins = 0;
-      let hasDayWithCapacity = false;
-      let hasOverload = false;
-      let totalConfirmedCount = 0;
-      let totalDraftCount = 0;
-
-      timelineDays.forEach(day => {
-        const dStr = formatDateToString(day);
-        const capDetail = (planningCapacity || []).find(c => c.resourceId === user.id && c.date === dStr);
-        const loadDetail = (planningResourceLoad || []).find(l => l.resourceId === user.id && l.date === dStr);
-
-        const capMins = capDetail ? capDetail.operationalCapacityMinutes : 480;
-        totalCapacityMins += capMins;
-        if (capMins > 0) {
-          hasDayWithCapacity = true;
-        }
-
-        const dayAllocs = userAllocsInWindow.filter(a => a.date === dStr);
-        const confirmedMins = capDetail 
-          ? capDetail.confirmedAllocationMinutes 
-          : (loadDetail ? loadDetail.plannedMinutes : dayAllocs.filter(a => a.status === 'CONFIRMED').reduce((s, a) => s + (a.durationMinutes || 0), 0));
-        const draftMins = dayAllocs.filter(a => a.status === 'DRAFT').reduce((s, a) => s + (a.durationMinutes || 0), 0);
-        const plannedMins = confirmedMins + draftMins;
-
-        const isOver = capDetail ? capDetail.overAllocatedMinutes > 0 : (plannedMins > capMins);
-        if (isOver) {
-          hasOverload = true;
-        }
-
-        totalConfirmedCount += dayAllocs.filter(a => a.status === 'CONFIRMED').length;
-        totalDraftCount += dayAllocs.filter(a => a.status === 'DRAFT').length;
-      });
-
-      // 2. Resource / Operational Capacity Filter
-      if (resourceOperationalFilter === 'with_capacity') {
-        if (!hasDayWithCapacity) return false;
-      } else if (resourceOperationalFilter === 'no_capacity') {
-        if (totalCapacityMins > 0) return false;
-      } else if (resourceOperationalFilter === 'overloaded') {
-        if (!hasOverload) return false;
-      } else if (resourceOperationalFilter === 'no_confirmed') {
-        if (totalConfirmedCount > 0) return false;
-      } else if (resourceOperationalFilter === 'with_draft') {
-        if (totalDraftCount === 0) return false;
-      }
 
       // 3. Project Filter
       if (projectFilter !== '') {
@@ -558,10 +514,7 @@ export default function CalendarSection({
     activeUsers,
     timelineDays,
     planningAllocations,
-    planningCapacity,
-    planningResourceLoad,
     technicianSearch,
-    resourceOperationalFilter,
     projectFilter,
     leaderFilter,
     allocationStatusFilter,
@@ -569,9 +522,90 @@ export default function CalendarSection({
     isTaskInLeaderProject
   ]);
 
-  // FASE 23E-C3A: Operational Planning KPIs Aggregation Engine (useMemo)
+  // FASE 23E-C3D: Filtered Resources computed by applying ResourceOperationalFilter on baseResources
+  const filteredResources = React.useMemo(() => {
+    if (resourceOperationalFilter === 'all') return baseResources;
+
+    const dayStrings = new Set(timelineDays.map(d => formatDateToString(d)));
+
+    return baseResources.filter(user => {
+      const userAllocsInWindow = planningAllocations.filter(
+        a => a.resourceId === user.id && dayStrings.has(a.date) && a.status !== 'CANCELLED'
+      );
+
+      let totalCapacityMins = 0;
+      let hasDayWithCapacity = false;
+      let hasOverload = false;
+      let hasFreeCapacity = false;
+      let totalConfirmedCount = 0;
+      let totalDraftCount = 0;
+
+      timelineDays.forEach(day => {
+        const dStr = formatDateToString(day);
+        const capDetail = (planningCapacity || []).find(c => c.resourceId === user.id && c.date === dStr);
+        const loadDetail = (planningResourceLoad || []).find(l => l.resourceId === user.id && l.date === dStr);
+
+        const capMins = capDetail ? capDetail.operationalCapacityMinutes : 0;
+        totalCapacityMins += capMins;
+        if (capMins > 0) {
+          hasDayWithCapacity = true;
+        }
+
+        const dayAllocs = userAllocsInWindow.filter(a => a.date === dStr);
+        const confirmedMins = capDetail 
+          ? capDetail.confirmedAllocationMinutes 
+          : (loadDetail ? loadDetail.plannedMinutes : dayAllocs.filter(a => a.status === 'CONFIRMED').reduce((s, a) => s + (a.durationMinutes || 0), 0));
+        const draftMins = dayAllocs.filter(a => a.status === 'DRAFT').reduce((s, a) => s + (a.durationMinutes || 0), 0);
+        const plannedMins = confirmedMins + draftMins;
+
+        const isOver = capDetail ? capDetail.overAllocatedMinutes > 0 : (plannedMins > capMins);
+        if (isOver) {
+          hasOverload = true;
+        }
+
+        const freeMins = capDetail 
+          ? capDetail.availableMinutes 
+          : Math.max(0, capMins - confirmedMins);
+        if (freeMins > 0) {
+          hasFreeCapacity = true;
+        }
+
+        totalConfirmedCount += dayAllocs.filter(a => a.status === 'CONFIRMED').length;
+        totalDraftCount += dayAllocs.filter(a => a.status === 'DRAFT').length;
+      });
+
+      if (resourceOperationalFilter === 'with_capacity') {
+        return hasDayWithCapacity;
+      } else if (resourceOperationalFilter === 'no_capacity') {
+        return totalCapacityMins === 0;
+      } else if (resourceOperationalFilter === 'overloaded') {
+        return hasOverload;
+      } else if (resourceOperationalFilter === 'no_confirmed') {
+        return totalConfirmedCount === 0;
+      } else if (resourceOperationalFilter === 'with_draft') {
+        return totalDraftCount > 0;
+      } else if (resourceOperationalFilter === 'has_confirmed') {
+        return totalConfirmedCount > 0;
+      } else if (resourceOperationalFilter === 'has_planned') {
+        return (totalConfirmedCount + totalDraftCount) > 0;
+      } else if (resourceOperationalFilter === 'has_free') {
+        return hasFreeCapacity;
+      }
+
+      return true;
+    });
+  }, [
+    baseResources,
+    resourceOperationalFilter,
+    timelineDays,
+    planningAllocations,
+    planningCapacity,
+    planningResourceLoad
+  ]);
+
+  // FASE 23E-C3A: Operational Planning KPIs Aggregation Engine (useMemo over baseResources)
   const operationalKPIs = React.useMemo<OperationalPlanningKPIs>(() => {
-    if (filteredResources.length === 0 || timelineDays.length === 0) {
+    if (baseResources.length === 0 || timelineDays.length === 0) {
       return {
         totalCapacityMinutes: 0,
         totalConfirmedMinutes: 0,
@@ -619,7 +653,7 @@ export default function CalendarSection({
     let noConfirmedResourcesCount = 0;
     let withDraftResourcesCount = 0;
 
-    filteredResources.forEach(user => {
+    baseResources.forEach(user => {
       let resourceHasOverload = false;
       let resourceConfirmedCount = 0;
       let resourceDraftCount = 0;
@@ -691,7 +725,16 @@ export default function CalendarSection({
       totalFreeHours: Number((totalFreeMinutes / 60).toFixed(1)),
       totalExcessHours: Number((totalExcessMinutes / 60).toFixed(1)),
     };
-  }, [filteredResources, timelineDays, planningCapacity, planningAllocations]);
+  }, [baseResources, timelineDays, planningCapacity, planningAllocations]);
+
+  // FASE 23E-C3D: KPI Toggle Click Handler
+  const handleKPIClick = (filterType: ResourceOperationalFilter) => {
+    if (resourceOperationalFilter === filterType) {
+      setResourceOperationalFilter('all');
+    } else {
+      setResourceOperationalFilter(filterType);
+    }
+  };
 
   // Check if any operational filter is active
   const hasActiveResourceFilters = 
@@ -1384,7 +1427,7 @@ export default function CalendarSection({
     );
   };
 
-  // FASE 23E-C3B: Visual Bar for Operational Planning KPIs
+  // FASE 23E-C3D: Visual Bar for Operational Planning KPIs with Interactive Filters
   const renderOperationalKPIsBar = (isFullscreen = false) => {
     return (
       <div 
@@ -1397,132 +1440,250 @@ export default function CalendarSection({
       >
         <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5 text-left">
           {/* 1. Capacidade */}
-          <div 
+          <button
+            type="button"
             id={isFullscreen ? 'kpi-total-capacity-fs' : 'kpi-total-capacity'}
-            className="flex flex-col justify-center px-3 py-2 bg-slate-50/90 border border-slate-200 rounded-xl transition-all"
+            onClick={() => handleKPIClick('with_capacity')}
+            aria-pressed={resourceOperationalFilter === 'with_capacity'}
+            aria-label={`Filtrar por Capacidade: ${operationalKPIs.totalCapacityHours.toFixed(1)} horas`}
+            title={`Filtrar por Capacidade > 0 (${resourceOperationalFilter === 'with_capacity' ? 'Clique para remover filtro' : 'Clique para aplicar filtro'})`}
+            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all text-left cursor-pointer ${
+              resourceOperationalFilter === 'with_capacity'
+                ? 'bg-slate-100 border-slate-700 text-slate-950 ring-2 ring-slate-800 shadow-xs font-bold scale-[1.01]'
+                : 'bg-slate-50/90 border-slate-200 text-slate-900 hover:bg-slate-100/80'
+            }`}
           >
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-              Capacidade
-            </span>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Capacidade
+              </span>
+              {resourceOperationalFilter === 'with_capacity' && (
+                <span className="text-[9px] font-extrabold text-slate-800 bg-slate-200 px-1 py-0.2 rounded-xs">Ativo</span>
+              )}
+            </div>
             <span className="text-sm font-extrabold text-slate-900 mt-0.5">
               {operationalKPIs.totalCapacityHours.toFixed(1)}h
             </span>
-          </div>
+          </button>
 
           {/* 2. Confirmado */}
-          <div 
+          <button
+            type="button"
             id={isFullscreen ? 'kpi-total-confirmed-fs' : 'kpi-total-confirmed'}
-            className="flex flex-col justify-center px-3 py-2 bg-blue-50/70 border border-blue-200 rounded-xl transition-all"
+            onClick={() => handleKPIClick('has_confirmed')}
+            aria-pressed={resourceOperationalFilter === 'has_confirmed'}
+            aria-label={`Filtrar por Confirmado: ${operationalKPIs.totalConfirmedHours.toFixed(1)} horas`}
+            title={`Filtrar por recursos com alocações CONFIRMED (${resourceOperationalFilter === 'has_confirmed' ? 'Clique para remover filtro' : 'Clique para aplicar filtro'})`}
+            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all text-left cursor-pointer ${
+              resourceOperationalFilter === 'has_confirmed'
+                ? 'bg-blue-100 border-blue-600 text-blue-950 ring-2 ring-blue-600 shadow-xs font-bold scale-[1.01]'
+                : 'bg-blue-50/70 border-blue-200 text-blue-950 hover:bg-blue-100/70'
+            }`}
           >
-            <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
-              Confirmado
-            </span>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                Confirmado
+              </span>
+              {resourceOperationalFilter === 'has_confirmed' && (
+                <span className="text-[9px] font-extrabold text-blue-800 bg-blue-200 px-1 py-0.2 rounded-xs">Ativo</span>
+              )}
+            </div>
             <span className="text-sm font-extrabold text-blue-950 mt-0.5">
               {operationalKPIs.totalConfirmedHours.toFixed(1)}h
             </span>
-          </div>
+          </button>
 
           {/* 3. Planeado */}
-          <div 
+          <button
+            type="button"
             id={isFullscreen ? 'kpi-total-planned-fs' : 'kpi-total-planned'}
-            className="flex flex-col justify-center px-3 py-2 bg-indigo-50/70 border border-indigo-200 rounded-xl transition-all"
+            onClick={() => handleKPIClick('has_planned')}
+            aria-pressed={resourceOperationalFilter === 'has_planned'}
+            aria-label={`Filtrar por Planeado: ${operationalKPIs.totalPlannedHours.toFixed(1)} horas`}
+            title={`Filtrar por recursos com CONFIRMED ou DRAFT (${resourceOperationalFilter === 'has_planned' ? 'Clique para remover filtro' : 'Clique para aplicar filtro'})`}
+            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all text-left cursor-pointer ${
+              resourceOperationalFilter === 'has_planned'
+                ? 'bg-indigo-100 border-indigo-600 text-indigo-950 ring-2 ring-indigo-600 shadow-xs font-bold scale-[1.01]'
+                : 'bg-indigo-50/70 border-indigo-200 text-indigo-950 hover:bg-indigo-100/70'
+            }`}
           >
-            <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
-              Planeado
-            </span>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
+                Planeado
+              </span>
+              {resourceOperationalFilter === 'has_planned' && (
+                <span className="text-[9px] font-extrabold text-indigo-800 bg-indigo-200 px-1 py-0.2 rounded-xs">Ativo</span>
+              )}
+            </div>
             <span className="text-sm font-extrabold text-indigo-950 mt-0.5">
               {operationalKPIs.totalPlannedHours.toFixed(1)}h
             </span>
-          </div>
+          </button>
 
           {/* 4. Livre */}
-          <div 
+          <button
+            type="button"
             id={isFullscreen ? 'kpi-total-free-fs' : 'kpi-total-free'}
-            className="flex flex-col justify-center px-3 py-2 bg-emerald-50/70 border border-emerald-200 rounded-xl transition-all"
+            onClick={() => handleKPIClick('has_free')}
+            aria-pressed={resourceOperationalFilter === 'has_free'}
+            aria-label={`Filtrar por Livre: ${operationalKPIs.totalFreeHours.toFixed(1)} horas`}
+            title={`Filtrar por recursos com capacidade livre (${resourceOperationalFilter === 'has_free' ? 'Clique para remover filtro' : 'Clique para aplicar filtro'})`}
+            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all text-left cursor-pointer ${
+              resourceOperationalFilter === 'has_free'
+                ? 'bg-emerald-100 border-emerald-600 text-emerald-950 ring-2 ring-emerald-600 shadow-xs font-bold scale-[1.01]'
+                : 'bg-emerald-50/70 border-emerald-200 text-emerald-950 hover:bg-emerald-100/70'
+            }`}
           >
-            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-              Livre
-            </span>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                Livre
+              </span>
+              {resourceOperationalFilter === 'has_free' && (
+                <span className="text-[9px] font-extrabold text-emerald-800 bg-emerald-200 px-1 py-0.2 rounded-xs">Ativo</span>
+              )}
+            </div>
             <span className="text-sm font-extrabold text-emerald-950 mt-0.5">
               {operationalKPIs.totalFreeHours.toFixed(1)}h
             </span>
-          </div>
+          </button>
 
           {/* 5. Excesso */}
-          <div 
+          <button
+            type="button"
             id={isFullscreen ? 'kpi-total-excess-fs' : 'kpi-total-excess'}
-            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all ${
-              operationalKPIs.totalExcessHours > 0
-                ? 'bg-rose-50 border-rose-200 text-rose-950'
-                : 'bg-slate-50/90 border-slate-200 text-slate-800'
+            onClick={() => handleKPIClick('overloaded')}
+            aria-pressed={resourceOperationalFilter === 'overloaded'}
+            aria-label={`Filtrar por Excesso: ${operationalKPIs.totalExcessHours.toFixed(1)} horas`}
+            title={`Filtrar por recursos com excesso de carga (${resourceOperationalFilter === 'overloaded' ? 'Clique para remover filtro' : 'Clique para aplicar filtro'})`}
+            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all text-left cursor-pointer ${
+              resourceOperationalFilter === 'overloaded'
+                ? 'bg-rose-100 border-rose-600 text-rose-950 ring-2 ring-rose-600 shadow-xs font-bold scale-[1.01]'
+                : operationalKPIs.totalExcessHours > 0
+                  ? 'bg-rose-50 border-rose-200 text-rose-950 hover:bg-rose-100/70'
+                  : 'bg-slate-50/90 border-slate-200 text-slate-800 hover:bg-slate-100/80'
             }`}
           >
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${
-              operationalKPIs.totalExcessHours > 0 ? 'text-rose-700' : 'text-slate-500'
-            }`}>
-              Excesso
-            </span>
+            <div className="flex items-center justify-between gap-1">
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                operationalKPIs.totalExcessHours > 0 || resourceOperationalFilter === 'overloaded'
+                  ? 'text-rose-700'
+                  : 'text-slate-500'
+              }`}>
+                Excesso
+              </span>
+              {resourceOperationalFilter === 'overloaded' && (
+                <span className="text-[9px] font-extrabold text-rose-800 bg-rose-200 px-1 py-0.2 rounded-xs">Ativo</span>
+              )}
+            </div>
             <span className={`text-sm font-extrabold mt-0.5 ${
-              operationalKPIs.totalExcessHours > 0 ? 'text-rose-950' : 'text-slate-900'
+              operationalKPIs.totalExcessHours > 0 || resourceOperationalFilter === 'overloaded'
+                ? 'text-rose-950'
+                : 'text-slate-900'
             }`}>
               {operationalKPIs.totalExcessHours.toFixed(1)}h
             </span>
-          </div>
+          </button>
 
           {/* 6. Sobrecarregados */}
-          <div 
+          <button
+            type="button"
             id={isFullscreen ? 'kpi-overloaded-resources-fs' : 'kpi-overloaded-resources'}
-            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all ${
-              operationalKPIs.overloadedResourcesCount > 0
-                ? 'bg-amber-50 border-amber-200 text-amber-950'
-                : 'bg-slate-50/90 border-slate-200 text-slate-800'
+            onClick={() => handleKPIClick('overloaded')}
+            aria-pressed={resourceOperationalFilter === 'overloaded'}
+            aria-label={`Filtrar por Sobrecarregados: ${operationalKPIs.overloadedResourcesCount} recursos`}
+            title={`Filtrar por recursos sobrecarregados (${resourceOperationalFilter === 'overloaded' ? 'Clique para remover filtro' : 'Clique para aplicar filtro'})`}
+            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all text-left cursor-pointer ${
+              resourceOperationalFilter === 'overloaded'
+                ? 'bg-amber-100 border-amber-600 text-amber-950 ring-2 ring-amber-600 shadow-xs font-bold scale-[1.01]'
+                : operationalKPIs.overloadedResourcesCount > 0
+                  ? 'bg-amber-50 border-amber-200 text-amber-950 hover:bg-amber-100/70'
+                  : 'bg-slate-50/90 border-slate-200 text-slate-800 hover:bg-slate-100/80'
             }`}
           >
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${
-              operationalKPIs.overloadedResourcesCount > 0 ? 'text-amber-700' : 'text-slate-500'
-            }`}>
-              Sobrecarregados
-            </span>
+            <div className="flex items-center justify-between gap-1">
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                operationalKPIs.overloadedResourcesCount > 0 || resourceOperationalFilter === 'overloaded'
+                  ? 'text-amber-700'
+                  : 'text-slate-500'
+              }`}>
+                Sobrecarregados
+              </span>
+              {resourceOperationalFilter === 'overloaded' && (
+                <span className="text-[9px] font-extrabold text-amber-800 bg-amber-200 px-1 py-0.2 rounded-xs">Ativo</span>
+              )}
+            </div>
             <span className={`text-sm font-extrabold mt-0.5 ${
-              operationalKPIs.overloadedResourcesCount > 0 ? 'text-amber-950' : 'text-slate-900'
+              operationalKPIs.overloadedResourcesCount > 0 || resourceOperationalFilter === 'overloaded'
+                ? 'text-amber-950'
+                : 'text-slate-900'
             }`}>
               {operationalKPIs.overloadedResourcesCount}
             </span>
-          </div>
+          </button>
 
           {/* 7. Sem Confirmado */}
-          <div 
+          <button
+            type="button"
             id={isFullscreen ? 'kpi-no-confirmed-resources-fs' : 'kpi-no-confirmed-resources'}
-            className="flex flex-col justify-center px-3 py-2 bg-slate-50/90 border border-slate-200 rounded-xl transition-all"
+            onClick={() => handleKPIClick('no_confirmed')}
+            aria-pressed={resourceOperationalFilter === 'no_confirmed'}
+            aria-label={`Filtrar por Sem Confirmado: ${operationalKPIs.noConfirmedResourcesCount} recursos`}
+            title={`Filtrar por recursos sem alocações CONFIRMED (${resourceOperationalFilter === 'no_confirmed' ? 'Clique para remover filtro' : 'Clique para aplicar filtro'})`}
+            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all text-left cursor-pointer ${
+              resourceOperationalFilter === 'no_confirmed'
+                ? 'bg-slate-200 border-slate-600 text-slate-950 ring-2 ring-slate-700 shadow-xs font-bold scale-[1.01]'
+                : 'bg-slate-50/90 border-slate-200 text-slate-900 hover:bg-slate-100/80'
+            }`}
           >
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-              Sem Confirmado
-            </span>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Sem Confirmado
+              </span>
+              {resourceOperationalFilter === 'no_confirmed' && (
+                <span className="text-[9px] font-extrabold text-slate-800 bg-slate-300 px-1 py-0.2 rounded-xs">Ativo</span>
+              )}
+            </div>
             <span className="text-sm font-extrabold text-slate-900 mt-0.5">
               {operationalKPIs.noConfirmedResourcesCount}
             </span>
-          </div>
+          </button>
 
           {/* 8. Com DRAFT */}
-          <div 
+          <button
+            type="button"
             id={isFullscreen ? 'kpi-with-draft-resources-fs' : 'kpi-with-draft-resources'}
-            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all ${
-              operationalKPIs.withDraftResourcesCount > 0
-                ? 'bg-amber-50/60 border-amber-200 text-amber-950'
-                : 'bg-slate-50/90 border-slate-200 text-slate-800'
+            onClick={() => handleKPIClick('with_draft')}
+            aria-pressed={resourceOperationalFilter === 'with_draft'}
+            aria-label={`Filtrar por Com DRAFT: ${operationalKPIs.withDraftResourcesCount} recursos`}
+            title={`Filtrar por recursos com alocações DRAFT (${resourceOperationalFilter === 'with_draft' ? 'Clique para remover filtro' : 'Clique para aplicar filtro'})`}
+            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all text-left cursor-pointer ${
+              resourceOperationalFilter === 'with_draft'
+                ? 'bg-amber-100 border-amber-500 text-amber-950 ring-2 ring-amber-500 shadow-xs font-bold scale-[1.01]'
+                : operationalKPIs.withDraftResourcesCount > 0
+                  ? 'bg-amber-50/60 border-amber-200 text-amber-950 hover:bg-amber-100/70'
+                  : 'bg-slate-50/90 border-slate-200 text-slate-800 hover:bg-slate-100/80'
             }`}
           >
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${
-              operationalKPIs.withDraftResourcesCount > 0 ? 'text-amber-700' : 'text-slate-500'
-            }`}>
-              Com DRAFT
-            </span>
+            <div className="flex items-center justify-between gap-1">
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                operationalKPIs.withDraftResourcesCount > 0 || resourceOperationalFilter === 'with_draft'
+                  ? 'text-amber-700'
+                  : 'text-slate-500'
+              }`}>
+                Com DRAFT
+              </span>
+              {resourceOperationalFilter === 'with_draft' && (
+                <span className="text-[9px] font-extrabold text-amber-800 bg-amber-200 px-1 py-0.2 rounded-xs">Ativo</span>
+              )}
+            </div>
             <span className={`text-sm font-extrabold mt-0.5 ${
-              operationalKPIs.withDraftResourcesCount > 0 ? 'text-amber-950' : 'text-slate-900'
+              operationalKPIs.withDraftResourcesCount > 0 || resourceOperationalFilter === 'with_draft'
+                ? 'text-amber-950'
+                : 'text-slate-900'
             }`}>
               {operationalKPIs.withDraftResourcesCount}
             </span>
-          </div>
+          </button>
         </div>
       </div>
     );
@@ -1613,8 +1774,11 @@ export default function CalendarSection({
                 <option value="all">Todos</option>
                 <option value="with_capacity">Com capacidade</option>
                 <option value="no_capacity">Sem capacidade</option>
-                <option value="overloaded">Sobrecarregados</option>
+                <option value="overloaded">Sobrecarregados / Excesso</option>
+                <option value="has_confirmed">Com confirmado</option>
                 <option value="no_confirmed">Sem confirmado</option>
+                <option value="has_planned">Com planeado</option>
+                <option value="has_free">Com capacidade livre</option>
                 <option value="with_draft">Com DRAFT</option>
               </select>
             </div>
