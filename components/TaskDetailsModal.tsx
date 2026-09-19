@@ -1,8 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calendar, Users } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Calendar, Users, Plus, Clock, AlertTriangle, Edit2, ChevronDown, ChevronUp, User as UserIcon } from 'lucide-react';
 import { Task, Project, Client, TaskType, User } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
 import { getTaskTypeName, formatToOnlyHours } from '../lib/utils';
+import { getAuthHeaders } from '../lib/clientAuth';
+import { 
+  PlanningAllocationDTO, 
+  PlanningAllocationCreateInput, 
+  PlanningAllocationUpdateInput, 
+  PlanningAllocationFilters 
+} from '../lib/planning/types';
+import { computePlanningSummary, formatHoursDisplay } from '../lib/planning/summary';
+import PlanningAllocationModal from './PlanningAllocationModal';
 
 interface TaskDetailsModalProps {
   task: Task | null;
@@ -15,6 +24,17 @@ interface TaskDetailsModalProps {
   appConfig?: any;
   projects: Project[];
   clients: Client[];
+  // Planning Allocations (FASE 23C)
+  planningAllocations?: PlanningAllocationDTO[];
+  onCreateAllocation?: (input: PlanningAllocationCreateInput) => Promise<any>;
+  onUpdateAllocation?: (id: string, input: PlanningAllocationUpdateInput) => Promise<any>;
+  onCancelAllocation?: (id: string, version: number) => Promise<any>;
+  onDeleteAllocation?: (id: string) => Promise<any>;
+  onFetchAllocations?: (filters?: PlanningAllocationFilters) => Promise<any>;
+  createPlanningAllocation?: (input: any) => Promise<any>;
+  updatePlanningAllocation?: (id: string, updates: any) => Promise<any>;
+  cancelPlanningAllocation?: (id: string, version: number) => Promise<any>;
+  deletePlanningAllocation?: (id: string) => Promise<any>;
 }
 
 export default function TaskDetailsModal({
@@ -28,7 +48,21 @@ export default function TaskDetailsModal({
   appConfig,
   projects = [],
   clients = [],
+  planningAllocations = [],
+  onCreateAllocation,
+  onUpdateAllocation,
+  onCancelAllocation,
+  onDeleteAllocation,
+  createPlanningAllocation,
+  updatePlanningAllocation,
+  cancelPlanningAllocation,
+  deletePlanningAllocation,
+  onFetchAllocations,
 }: TaskDetailsModalProps) {
+  const effectiveCreate = onCreateAllocation || createPlanningAllocation;
+  const effectiveUpdate = onUpdateAllocation || updatePlanningAllocation;
+  const effectiveCancel = onCancelAllocation || cancelPlanningAllocation;
+  const effectiveDelete = onDeleteAllocation || deletePlanningAllocation;
   const [taskEditStatus, setTaskEditStatus] = useState('');
   const [taskEditTypeId, setTaskEditTypeId] = useState('');
   const [taskEditActualHours, setTaskEditActualHours] = useState('');
@@ -38,6 +72,60 @@ export default function TaskDetailsModal({
   const [taskEditEndDate, setTaskEditEndDate] = useState('');
   const [taskEditEndTime, setTaskEditEndTime] = useState('');
   const [taskEditAssignees, setTaskEditAssignees] = useState<string[]>([]);
+
+  // Planning State (FASE 23C)
+  const [internalAllocations, setInternalAllocations] = useState<PlanningAllocationDTO[]>([]);
+  const [isPlanningModalOpen, setIsPlanningModalOpen] = useState<boolean>(false);
+  const [selectedAllocationForEdit, setSelectedAllocationForEdit] = useState<PlanningAllocationDTO | null>(null);
+  const [showCancelledHistory, setShowCancelledHistory] = useState<boolean>(false);
+
+  // Fetch allocations for this task directly or via prop
+  const fetchTaskAllocations = useCallback(async () => {
+    if (!task?.id) return;
+    try {
+      if (onFetchAllocations) {
+        const res = await onFetchAllocations({ taskId: task.id });
+        if (res?.data) {
+          setInternalAllocations(res.data);
+          return;
+        }
+      }
+      const res = await fetch(`/api/v1/planning-allocations?taskId=${task.id}&pageSize=100`, {
+        headers: getAuthHeaders(),
+      });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success && Array.isArray(json.data)) {
+        setInternalAllocations(json.data);
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar allocations da tarefa:', err);
+    }
+  }, [task?.id, onFetchAllocations]);
+
+  useEffect(() => {
+    if (task?.id) {
+      fetchTaskAllocations();
+    }
+  }, [task?.id, fetchTaskAllocations]);
+
+  // Combine passed planningAllocations with internal allocations
+  const taskAllocations = React.useMemo(() => {
+    if (!task) return [];
+    const source = (planningAllocations && planningAllocations.length > 0)
+      ? planningAllocations.filter(a => a.taskId === task.id)
+      : internalAllocations;
+    // Sort by date ascending, then startTime
+    return [...source].sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.startTime.localeCompare(b.startTime);
+    });
+  }, [task, planningAllocations, internalAllocations]);
+
+  const activeAllocations = taskAllocations.filter(a => a.status !== 'CANCELLED');
+  const cancelledAllocations = taskAllocations.filter(a => a.status === 'CANCELLED');
+
+  // Authoritative Planning Summary
+  const planningSummary = computePlanningSummary(task?.estimatedHours, taskAllocations);
 
   useEffect(() => {
     if (task) {
@@ -245,6 +333,195 @@ export default function TaskDetailsModal({
             />
           </div>
 
+          {/* Planeamento de Capacidade (FASE 23C) */}
+          <div className="border-t border-slate-200 pt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wide flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Planeamento de Capacidade
+                </span>
+                <p className="text-[11px] text-slate-500">
+                  Alocações temporais e consumo de capacidade no motor
+                </p>
+              </div>
+              <button
+                type="button"
+                id="add-planning-allocation-btn"
+                onClick={() => {
+                  setSelectedAllocationForEdit(null);
+                  setIsPlanningModalOpen(true);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Adicionar planeamento
+              </button>
+            </div>
+
+            {/* Resumo de Capacidade (4 cards) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                <div className="text-[10px] uppercase font-bold text-slate-500">Estimado</div>
+                <div className="text-sm font-extrabold text-slate-800 mt-0.5">
+                  {formatHoursDisplay(planningSummary.estimatedHours)}
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-blue-50/60 border border-blue-200 rounded-lg">
+                <div className="text-[10px] uppercase font-bold text-blue-700">Planeado</div>
+                <div className="text-sm font-extrabold text-blue-900 mt-0.5">
+                  {formatHoursDisplay(planningSummary.plannedHours)}
+                </div>
+                <div className="text-[9px] text-blue-600 font-medium mt-0.5">DRAFT + CONFIRMED</div>
+              </div>
+
+              <div className="p-2.5 bg-emerald-50/60 border border-emerald-200 rounded-lg">
+                <div className="text-[10px] uppercase font-bold text-emerald-700">Capacidade Consumida</div>
+                <div className="text-sm font-extrabold text-emerald-900 mt-0.5">
+                  {formatHoursDisplay(planningSummary.capacityConsumedHours)}
+                </div>
+                <div className="text-[9px] text-emerald-600 font-medium mt-0.5">Apenas CONFIRMED</div>
+              </div>
+
+              <div className={`p-2.5 border rounded-lg ${
+                planningSummary.isOverAllocated
+                  ? 'bg-amber-50/70 border-amber-300'
+                  : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="text-[10px] uppercase font-bold text-slate-500">Restante</div>
+                <div className="text-sm font-extrabold text-slate-800 mt-0.5">
+                  {formatHoursDisplay(planningSummary.remainingHours)}
+                </div>
+                {planningSummary.isOverAllocated && (
+                  <div className="text-[9px] text-amber-700 font-bold mt-0.5">
+                    Excesso: {formatHoursDisplay(planningSummary.excessHours)}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Visual Warning if Planeado > Estimado */}
+            {planningSummary.isOverAllocated && (
+              <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-lg flex items-center gap-2 text-xs text-amber-900">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  <strong>Aviso de Planeamento:</strong> O tempo total planeado ({formatHoursDisplay(planningSummary.plannedHours)}) excede a estimativa da tarefa ({formatHoursDisplay(planningSummary.estimatedHours)}) em <strong>{formatHoursDisplay(planningSummary.excessHours)}</strong>.
+                </span>
+              </div>
+            )}
+
+            {/* Active Allocations List */}
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-slate-700">
+                Alocações Ativas ({activeAllocations.length})
+              </div>
+
+              {activeAllocations.length === 0 ? (
+                <div className="p-3 text-center border border-dashed border-slate-200 rounded-lg bg-slate-50 text-xs text-slate-500">
+                  Nenhum planeamento registado para esta tarefa. Clique em <strong>&quot;Adicionar planeamento&quot;</strong> para reservar capacidade técnica.
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {activeAllocations.map(alloc => (
+                    <div
+                      key={alloc.id}
+                      className={`p-2.5 rounded-lg border flex items-center justify-between text-xs transition-colors ${
+                        alloc.status === 'CONFIRMED'
+                          ? 'bg-blue-50/40 border-blue-200 hover:bg-blue-50/70'
+                          : 'bg-amber-50/30 border-dashed border-amber-300 hover:bg-amber-50/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                          alloc.status === 'CONFIRMED'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-amber-200 text-amber-900 border border-amber-300'
+                        }`}>
+                          {alloc.status === 'CONFIRMED' ? 'Confirmado' : 'Rascunho'}
+                        </span>
+
+                        <div>
+                          <div className="font-semibold text-slate-800 flex items-center gap-2">
+                            <span>{new Date(alloc.date + 'T00:00:00').toLocaleDateString('pt-PT')}</span>
+                            <span className="text-slate-400">•</span>
+                            <span>{alloc.startTime.substring(0, 5)} - {alloc.endTime.substring(0, 5)}</span>
+                            <span className="text-slate-500 font-normal">({formatHoursDisplay((alloc.durationMinutes || 0) / 60)})</span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                            <UserIcon className="w-3 h-3 text-slate-400" />
+                            <span>{getUserName(alloc.resourceId)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAllocationForEdit(alloc);
+                            setIsPlanningModalOpen(true);
+                          }}
+                          className="p-1 text-slate-500 hover:text-blue-600 hover:bg-white rounded transition-colors cursor-pointer"
+                          title="Editar Alocação"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Cancelled Allocations Accordion / Toggle */}
+            {cancelledAllocations.length > 0 && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowCancelledHistory(!showCancelledHistory)}
+                  className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 font-medium cursor-pointer"
+                >
+                  {showCancelledHistory ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  <span>{showCancelledHistory ? 'Ocultar' : 'Mostrar'} histórico de cancelados ({cancelledAllocations.length})</span>
+                </button>
+
+                {showCancelledHistory && (
+                  <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-slate-200">
+                    {cancelledAllocations.map(alloc => (
+                      <div
+                        key={alloc.id}
+                        className="p-2 rounded-lg bg-slate-100/70 border border-slate-200 flex items-center justify-between text-xs text-slate-500 opacity-75"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="line-through text-slate-600">
+                            {new Date(alloc.date + 'T00:00:00').toLocaleDateString('pt-PT')} ({alloc.startTime.substring(0, 5)} - {alloc.endTime.substring(0, 5)})
+                          </span>
+                          <span className="text-[10px] uppercase font-bold text-slate-500 px-1.5 py-0.5 bg-slate-200 rounded">
+                            Cancelado
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            {getUserName(alloc.resourceId)}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAllocationForEdit(alloc);
+                            setIsPlanningModalOpen(true);
+                          }}
+                          className="text-[11px] text-slate-500 hover:underline cursor-pointer"
+                        >
+                          Ver Detalhe
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Action Buttons */}
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100/60">
             <button 
@@ -263,6 +540,31 @@ export default function TaskDetailsModal({
           </div>
         </form>
       </div>
+
+      {/* Dedicated Planning Allocation Modal */}
+      {isPlanningModalOpen && (
+        <PlanningAllocationModal
+          isOpen={isPlanningModalOpen}
+          onClose={() => {
+            setIsPlanningModalOpen(false);
+            setSelectedAllocationForEdit(null);
+          }}
+          task={task}
+          allocation={selectedAllocationForEdit}
+          users={users}
+          projects={projects}
+          onCreateAllocation={effectiveCreate}
+          onUpdateAllocation={effectiveUpdate}
+          onCancelAllocation={effectiveCancel}
+          onDeleteAllocation={effectiveDelete}
+          onSuccess={() => {
+            fetchTaskAllocations();
+          }}
+          onRefetch={() => {
+            fetchTaskAllocations();
+          }}
+        />
+      )}
     </div>
   );
 }

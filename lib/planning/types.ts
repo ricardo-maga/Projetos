@@ -29,12 +29,42 @@ export interface PlanningAllocationDTO {
     id: string;
     title: string;
     projectId?: string;
-  };
+  } | null;
   resource?: {
     id: string;
     name: string;
     email: string;
-  };
+  } | null;
+}
+
+export interface PlanningAllocationCreateInput {
+  taskId: string;
+  resourceId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status?: 'DRAFT' | 'CONFIRMED';
+  overrideWorkSchedule?: boolean;
+}
+
+export interface PlanningAllocationUpdateInput {
+  version: number;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  status?: PlanningAllocationStatus;
+  overrideWorkSchedule?: boolean;
+}
+
+export interface PlanningAllocationFilters {
+  taskId?: string;
+  resourceId?: string;
+  date?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  status?: PlanningAllocationStatus;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface PlanningWarning {

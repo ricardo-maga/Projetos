@@ -37,6 +37,11 @@ interface TaskSectionProps {
   currentUser?: any;
   userGroups?: any[];
   appConfig?: any;
+  planningAllocations?: any[];
+  createPlanningAllocation?: (data: any) => Promise<any>;
+  updatePlanningAllocation?: (id: string, updates: any) => Promise<any>;
+  cancelPlanningAllocation?: (id: string, version: number) => Promise<any>;
+  deletePlanningAllocation?: (id: string) => Promise<any>;
 }
 
 const matchUserId = (idA: string, idB: string) => {
@@ -67,6 +72,11 @@ export default function TaskSection({
   currentUser,
   userGroups = [],
   appConfig,
+  planningAllocations = [],
+  createPlanningAllocation,
+  updatePlanningAllocation,
+  cancelPlanningAllocation,
+  deletePlanningAllocation,
 }: TaskSectionProps) {
   const canReadTasks = hasPermission(currentUser, 'tasks_read', userGroups);
   const canWriteTasks = hasPermission(currentUser, 'tasks_write', userGroups);
@@ -1521,6 +1531,11 @@ export default function TaskSection({
         appConfig={appConfig}
         projects={projects}
         clients={clients}
+        planningAllocations={planningAllocations}
+        createPlanningAllocation={createPlanningAllocation}
+        updatePlanningAllocation={updatePlanningAllocation}
+        cancelPlanningAllocation={cancelPlanningAllocation}
+        deletePlanningAllocation={deletePlanningAllocation}
       />
 
       <ConfirmModal

@@ -279,15 +279,22 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     if (updates.isUrgent !== undefined) extendedPayload.is_urgent = updates.isUrgent;
     if (updates.color !== undefined) extendedPayload.color = updates.color;
     if (updates.notes !== undefined) extendedPayload.notes = updates.notes;
-    if (teamsInvolved !== undefined) extendedPayload.teams_involved_ids = teamsInvolved.length > 0 ? teamsInvolved.join(',') : null;
-    if (partnersInvolved !== undefined) extendedPayload.partners_ids = partnersInvolved.length > 0 ? partnersInvolved.join(',') : null;
-    if (categoriesInvolved !== undefined) extendedPayload.category_ids = categoriesInvolved.length > 0 ? categoriesInvolved.join(',') : null;
 
     let updateQuery = sb.from('projects').update(extendedPayload).eq('id', id);
     if (hasVersionColumn) {
       updateQuery = updateQuery.eq('version', currentVersion);
     }
-    const { error: updateError } = await updateQuery;
+    let { error: updateError } = await updateQuery;
+
+    if (updateError && (updateError.code === '42703' || updateError.message?.includes('column') || updateError.message?.includes('schema cache'))) {
+      console.warn('[API PROJECT UPDATE] Retrying update with core payload due to missing schema column:', updateError.message);
+      let retryQuery = sb.from('projects').update(coreUpdatePayload).eq('id', id);
+      if (hasVersionColumn) {
+        retryQuery = retryQuery.eq('version', currentVersion);
+      }
+      const retryRes = await retryQuery;
+      updateError = retryRes.error;
+    }
 
     if (updateError) {
       console.error('[API PROJECT UPDATE ERROR]', updateError);

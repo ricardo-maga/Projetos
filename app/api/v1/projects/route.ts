@@ -281,12 +281,12 @@ export async function POST(req: NextRequest) {
     };
 
     let { error: insertError } = await sb.from('projects').insert([extendedInsertPayload]);
-    if (insertError && (insertError.code === '42703' || insertError.message?.includes('column'))) {
+    if (insertError && (insertError.code === '42703' || insertError.message?.includes('column') || insertError.message?.includes('schema cache'))) {
       console.warn('[API PROJECT INSERT] Retrying with core columns due to schema notice:', insertError.message);
       const retryRes = await sb.from('projects').insert([coreInsertPayload]);
       insertError = retryRes.error;
 
-      if (insertError && (insertError.code === '42703' || insertError.message?.includes('column'))) {
+      if (insertError && (insertError.code === '42703' || insertError.message?.includes('column') || insertError.message?.includes('schema cache'))) {
         const minimalPayload = { ...coreInsertPayload };
         delete minimalPayload.version;
         delete minimalPayload.updated_by;

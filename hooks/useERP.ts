@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, Ticket } from '../lib/types';
+import { 
+  PlanningAllocationDTO, 
+  PlanningAllocationCreateInput, 
+  PlanningAllocationUpdateInput, 
+  PlanningAllocationFilters,
+  PlanningWarning,
+  ResourceCapacityDetail,
+  ResourceLoadSummary
+} from '../lib/planning/types';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
@@ -39,6 +48,197 @@ export function useERP() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isDbConfigured, setIsDbConfigured] = useState<boolean>(false);
+
+  // --- Planning Allocations State & Authoritative Actions (FASE 23C) ---
+  const [planningAllocations, setPlanningAllocations] = useState<PlanningAllocationDTO[]>([]);
+  const [planningLoading, setPlanningLoading] = useState<boolean>(false);
+  const [planningCapacity, setPlanningCapacity] = useState<ResourceCapacityDetail[]>([]);
+  const [planningResourceLoad, setPlanningResourceLoad] = useState<ResourceLoadSummary[]>([]);
+  const [planningCapacityLoading, setPlanningCapacityLoading] = useState<boolean>(false);
+
+  const fetchPlanningCapacity = useCallback(async (filters?: { dateFrom?: string; dateTo?: string; resourceId?: string }) => {
+    setPlanningCapacityLoading(true);
+    try {
+      const headers = getAuthHeaders();
+      const params = new URLSearchParams();
+      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+      if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+      if (filters?.resourceId) params.append('resourceId', filters.resourceId);
+      const res = await fetch(`/api/v1/planning/capacity?${params.toString()}`, { headers });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success && Array.isArray(json.data)) {
+        setPlanningCapacity(json.data);
+      }
+    } catch (err) {
+      console.warn('Erro ao consultar capacidade:', err);
+    } finally {
+      setPlanningCapacityLoading(false);
+    }
+  }, []);
+
+  const fetchPlanningResourceLoad = useCallback(async (filters?: { dateFrom?: string; dateTo?: string; resourceId?: string }) => {
+    try {
+      const headers = getAuthHeaders();
+      const params = new URLSearchParams();
+      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+      if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+      if (filters?.resourceId) params.append('resourceId', filters.resourceId);
+      const res = await fetch(`/api/v1/planning/resource-load?${params.toString()}`, { headers });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success && Array.isArray(json.data)) {
+        setPlanningResourceLoad(json.data);
+      }
+    } catch (err) {
+      console.warn('Erro ao consultar carga de recursos:', err);
+    }
+  }, []);
+
+  const fetchPlanningAllocations = useCallback(async (filters?: PlanningAllocationFilters): Promise<{
+    success: boolean;
+    data?: PlanningAllocationDTO[];
+    pagination?: any;
+    error?: string;
+  }> => {
+    setPlanningLoading(true);
+    try {
+      const headers = getAuthHeaders();
+      const params = new URLSearchParams();
+      if (filters?.taskId) params.append('taskId', filters.taskId);
+      if (filters?.resourceId) params.append('resourceId', filters.resourceId);
+      if (filters?.date) params.append('date', filters.date);
+      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+      if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.page) params.append('page', String(filters.page));
+      if (filters?.pageSize) params.append('pageSize', String(filters.pageSize));
+      else params.append('pageSize', '100');
+
+      const res = await fetch(`/api/v1/planning-allocations?${params.toString()}`, { headers });
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.success && Array.isArray(json.data)) {
+        const fetchedList: PlanningAllocationDTO[] = json.data;
+        setPlanningAllocations(prev => {
+          const incomingMap = new Map(fetchedList.map((a: PlanningAllocationDTO) => [a.id, a]));
+          const updated = prev.map(a => incomingMap.get(a.id) || a);
+          const existingIds = new Set(prev.map(a => a.id));
+          const newItems = fetchedList.filter((a: PlanningAllocationDTO) => !existingIds.has(a.id));
+          return [...updated, ...newItems];
+        });
+        return { success: true, data: fetchedList, pagination: json.pagination };
+      } else {
+        const errMsg = getApiErrorMessage(json, 'Erro ao consultar alocações de planeamento.');
+        return { success: false, error: errMsg };
+      }
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Erro de rede ao consultar planeamento.' };
+    } finally {
+      setPlanningLoading(false);
+    }
+  }, []);
+
+  const createPlanningAllocation = useCallback(async (input: PlanningAllocationCreateInput): Promise<{
+    success: boolean;
+    data?: PlanningAllocationDTO;
+    warnings?: PlanningWarning[];
+    error?: string;
+    status?: number;
+  }> => {
+    try {
+      const headers = {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      };
+      const res = await fetch('/api/v1/planning-allocations', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(input),
+      });
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.success && json.data) {
+        const dto: PlanningAllocationDTO = json.data;
+        setPlanningAllocations(prev => {
+          const exists = prev.some(a => a.id === dto.id);
+          return exists ? prev.map(a => a.id === dto.id ? dto : a) : [...prev, dto];
+        });
+        return { success: true, data: dto, warnings: json.warnings };
+      } else {
+        const errMsg = getApiErrorMessage(json, 'Erro ao criar alocação de planeamento.');
+        return { success: false, error: errMsg, status: res.status };
+      }
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Erro inesperado ao criar alocação.' };
+    }
+  }, []);
+
+  const updatePlanningAllocation = useCallback(async (id: string, input: PlanningAllocationUpdateInput): Promise<{
+    success: boolean;
+    data?: PlanningAllocationDTO;
+    warnings?: PlanningWarning[];
+    error?: string;
+    isConflict?: boolean;
+    status?: number;
+  }> => {
+    try {
+      const headers = {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      };
+      const res = await fetch(`/api/v1/planning-allocations/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(input),
+      });
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.success && json.data) {
+        const dto: PlanningAllocationDTO = json.data;
+        setPlanningAllocations(prev => prev.map(a => a.id === id ? dto : a));
+        return { success: true, data: dto, warnings: json.warnings };
+      } else {
+        const errMsg = getApiErrorMessage(json, 'Erro ao atualizar alocação de planeamento.');
+        return { success: false, error: errMsg, isConflict: res.status === 409, status: res.status };
+      }
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Erro inesperado ao atualizar alocação.' };
+    }
+  }, []);
+
+  const cancelPlanningAllocation = useCallback(async (id: string, version: number): Promise<{
+    success: boolean;
+    data?: PlanningAllocationDTO;
+    error?: string;
+    isConflict?: boolean;
+    status?: number;
+  }> => {
+    return updatePlanningAllocation(id, { version, status: 'CANCELLED' });
+  }, [updatePlanningAllocation]);
+
+  const deletePlanningAllocation = useCallback(async (id: string): Promise<{
+    success: boolean;
+    error?: string;
+    status?: number;
+  }> => {
+    try {
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/v1/planning-allocations/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.success) {
+        setPlanningAllocations(prev => prev.filter(a => a.id !== id));
+        return { success: true };
+      } else {
+        const errMsg = getApiErrorMessage(json, 'Erro ao eliminar alocação de planeamento.');
+        return { success: false, error: errMsg, status: res.status };
+      }
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Erro inesperado ao eliminar alocação.' };
+    }
+  }, []);
 
   // Authoritative fetch directly from database (bypasses any local stale cache)
   const refreshFromDatabase = useCallback(async (): Promise<boolean> => {
@@ -298,52 +498,6 @@ export function useERP() {
       riskPriorities: [...(state.riskPriorities || [])].sort(sortByOrder),
     };
   }, [state]);
-
-  if (!state) {
-    return {
-      loading: true,
-      state: CLEAN_BASELINE_STATE,
-      resetToDefault: () => {},
-      clearAllData: () => {},
-      importState: () => false,
-      refreshFromDatabase,
-      saveState,
-      syncStatus,
-      syncError,
-      isDbConfigured,
-      // Empty handlers for safety before load
-      addProject: async () => ({} as any), updateProject: async () => {}, deleteProject: async () => {},
-      addTask: async () => ({} as any), updateTask: async () => {}, deleteTask: async () => {},
-      addComment: () => {}, deleteComment: () => {},
-      addAbsence: () => {}, deleteAbsence: () => {},
-      addUser: () => {}, updateUser: () => {}, deleteUser: () => {},
-      addClient: () => {}, updateClient: () => {}, deleteClient: () => {},
-      addMaterial: () => {}, updateMaterial: () => {}, deleteMaterial: () => {},
-      addProjectMaterial: () => {}, updateProjectMaterial: () => {}, deleteProjectMaterial: () => {},
-      addQuote: () => {}, updateQuote: () => {}, deleteQuote: () => {},
-      addBOMItem: () => {}, updateBOMItem: () => {}, deleteBOMItem: () => {},
-      addEquipment: () => {}, updateEquipment: () => {}, deleteEquipment: () => {},
-      addTicket: () => ({} as any),
-      updateTicket: () => {},
-      deleteTicket: () => {},
-      validateAndApproveTicket: () => {},
-      convertTicketToTask: () => '',
-      resolveTicketDirectly: () => {},
-      updateConfig: () => {},
-      addAuxRecord: () => {}, updateAuxRecord: () => {}, deleteAuxRecord: () => {}, reorderAuxRecords: () => {},
-      addSpecialDay: () => {}, deleteSpecialDay: () => {},
-      addDefaultTask: () => {}, updateDefaultTask: () => {}, deleteDefaultTask: () => {},
-      updateNotificationSetting: () => {},
-      markNotificationAsRead: () => {},
-      markAllNotificationsAsRead: () => {},
-      addNotification: () => {},
-      addAutomationRule: () => {},
-      updateAutomationRule: () => {},
-      deleteAutomationRule: () => {},
-      toggleAutomationRule: () => {},
-      runAutomationRule: () => {}
-    };
-  }
 
   // Helper to match IDs flexibly
   const matchId = (idA?: string | null, idB?: string | null) => {
@@ -1473,7 +1627,7 @@ export function useERP() {
   };
 
   // ==================== APP CONFIGURATION ====================
-  const updateConfig = (updates: Partial<typeof state.appConfig>) => {
+  const updateConfig = (updates: Record<string, any>) => {
     saveState(prev => ({
       ...prev,
       appConfig: { ...prev.appConfig, ...updates }
@@ -1947,7 +2101,7 @@ export function useERP() {
   };
 
   return {
-    loading: false,
+    loading: state === null,
     state: sortedState,
     resetToDefault,
     clearAllData,
@@ -2034,6 +2188,20 @@ export function useERP() {
     toggleAutomationRule,
     runAutomationRule,
     refreshFromDatabase,
-    saveState
+    saveState,
+
+    // Planning Allocations & Capacity
+    planningAllocations,
+    planningLoading,
+    fetchPlanningAllocations,
+    createPlanningAllocation,
+    updatePlanningAllocation,
+    cancelPlanningAllocation,
+    deletePlanningAllocation,
+    planningCapacity,
+    planningResourceLoad,
+    planningCapacityLoading,
+    fetchPlanningCapacity,
+    fetchPlanningResourceLoad
   };
 }

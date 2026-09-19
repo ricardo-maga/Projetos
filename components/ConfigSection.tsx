@@ -92,14 +92,39 @@ interface ConfigSectionProps {
   onRefreshFromDatabase?: () => Promise<boolean>;
 }
 
+export const PASTEL_COLORS = [
+  { id: 'vermelho', name: 'Vermelho', hex: '#fca5a5', bgClass: 'bg-red-200', textClass: 'text-red-900', borderClass: 'border-red-300' },
+  { id: 'amarelo', name: 'Amarelo', hex: '#fef08a', bgClass: 'bg-yellow-200', textClass: 'text-yellow-900', borderClass: 'border-yellow-300' },
+  { id: 'verde', name: 'Verde', hex: '#bbf7d0', bgClass: 'bg-green-200', textClass: 'text-green-900', borderClass: 'border-green-300' },
+  { id: 'azul', name: 'Azul', hex: '#bfdbfe', bgClass: 'bg-blue-200', textClass: 'text-blue-900', borderClass: 'border-blue-300' },
+  { id: 'laranja', name: 'Laranja', hex: '#fed7aa', bgClass: 'bg-orange-200', textClass: 'text-orange-900', borderClass: 'border-orange-300' },
+  { id: 'cinza', name: 'Cinza', hex: '#e2e8f0', bgClass: 'bg-slate-200', textClass: 'text-slate-800', borderClass: 'border-slate-300' },
+];
+
+export function getPastelColor(colorInput?: string) {
+  if (!colorInput) return PASTEL_COLORS[3];
+  const lower = colorInput.toLowerCase().trim();
+  if (lower.includes('vermelho') || lower === '#fca5a5' || lower.includes('red') || lower.includes('danger')) return PASTEL_COLORS[0];
+  if (lower.includes('amarelo') || lower === '#fef08a' || lower.includes('yellow') || lower.includes('warning')) return PASTEL_COLORS[1];
+  if (lower.includes('verde') || lower === '#bbf7d0' || lower.includes('green') || lower.includes('success')) return PASTEL_COLORS[2];
+  if (lower.includes('azul') || lower === '#bfdbfe' || lower.includes('blue') || lower.includes('info')) return PASTEL_COLORS[3];
+  if (lower.includes('laranja') || lower === '#fed7aa' || lower.includes('orange')) return PASTEL_COLORS[4];
+  if (lower.includes('cinza') || lower === '#e2e8f0' || lower.includes('gray') || lower.includes('slate') || lower.includes('secondary')) return PASTEL_COLORS[5];
+  const exact = PASTEL_COLORS.find(c => c.hex.toLowerCase() === lower);
+  return exact || PASTEL_COLORS[3];
+}
+
 interface SortableAuxRowProps {
   item: any;
   isEditingThis: boolean;
   activeAuxTab: string;
+  isColorAuxTab: boolean;
   editAuxName: string;
   setEditAuxName: (val: string) => void;
   editAuxScale: number;
   setEditAuxScale: (val: number) => void;
+  editAuxColor: string;
+  setEditAuxColor: (val: string) => void;
   setEditingAuxId: (id: string | null) => void;
   handleSaveEditAuxRecord: (id: string) => void;
   handleDeleteAuxRecord: (id: string) => void;
@@ -109,10 +134,13 @@ function SortableAuxRow({
   item,
   isEditingThis,
   activeAuxTab,
+  isColorAuxTab,
   editAuxName,
   setEditAuxName,
   editAuxScale,
   setEditAuxScale,
+  editAuxColor,
+  setEditAuxColor,
   setEditingAuxId,
   handleSaveEditAuxRecord,
   handleDeleteAuxRecord
@@ -181,6 +209,44 @@ function SortableAuxRow({
         </td>
       )}
 
+      {isColorAuxTab && (
+        <td className="p-3.5">
+          {isEditingThis ? (
+            <div className="flex items-center gap-1 flex-wrap">
+              {PASTEL_COLORS.map(c => {
+                const isSelected = editAuxColor === c.hex;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setEditAuxColor(c.hex)}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold border flex items-center gap-1 transition-all cursor-pointer ${
+                      isSelected 
+                        ? `${c.bgClass} ${c.textClass} ${c.borderClass} ring-2 ring-slate-400 shadow-2xs` 
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                    title={c.name}
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-full ${c.bgClass} border ${c.borderClass} inline-block`} />
+                    <span>{c.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            (() => {
+              const c = getPastelColor(item.color);
+              return (
+                <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border inline-flex items-center gap-1.5 ${c.bgClass} ${c.textClass} ${c.borderClass}`}>
+                  <span className={`w-2.5 h-2.5 rounded-full ${c.bgClass} border ${c.borderClass} inline-block`} />
+                  <span>{c.name}</span>
+                </span>
+              );
+            })()
+          )}
+        </td>
+      )}
+
       <td className="p-3.5 text-right">
         <div className="flex items-center justify-end gap-1.5">
           {isEditingThis ? (
@@ -210,6 +276,7 @@ function SortableAuxRow({
                   setEditingAuxId(item.id);
                   setEditAuxName(item.name);
                   setEditAuxScale(item.scale || 1);
+                  setEditAuxColor(item.color || '#bfdbfe');
                 }}
                 className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors flex items-center justify-center"
                 title="Editar"
@@ -476,9 +543,13 @@ export default function ConfigSection({
   const [activeAuxTab, setActiveAuxTab] = useState<'projectCategories' | 'projectStatuses' | 'taskStatuses' | 'taskTypes' | 'ticketStatuses' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'riskCategories' | 'riskStatuses' | 'riskPriorities'>('projectCategories');
   const [newAuxName, setNewAuxName] = useState('');
   const [newAuxScale, setNewAuxScale] = useState(1);
+  const [newAuxColor, setNewAuxColor] = useState('#bfdbfe');
   const [editingAuxId, setEditingAuxId] = useState<string | null>(null);
   const [editAuxName, setEditAuxName] = useState('');
   const [editAuxScale, setEditAuxScale] = useState(1);
+  const [editAuxColor, setEditAuxColor] = useState('#bfdbfe');
+
+  const isColorAuxTab = activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectRisks' || activeAuxTab === 'riskStatuses' || activeAuxTab === 'riskPriorities';
 
   // Confirmation Modal state
   const [confirmState, setConfirmState] = useState<{
@@ -514,10 +585,14 @@ export default function ConfigSection({
     if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') {
       extra.scale = Number(newAuxScale);
     }
+    if (isColorAuxTab) {
+      extra.color = newAuxColor;
+    }
     
     addAuxRecord(activeAuxTab, newAuxName.trim(), extra);
     setNewAuxName('');
     setNewAuxScale(1);
+    setNewAuxColor('#bfdbfe');
   };
 
   const handleSaveEditAuxRecord = (id: string) => {
@@ -530,6 +605,9 @@ export default function ConfigSection({
     const updates: any = { name: editAuxName.trim() };
     if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') {
       updates.scale = Number(editAuxScale);
+    }
+    if (isColorAuxTab) {
+      updates.color = editAuxColor;
     }
     
     updateAuxRecord(activeAuxTab, id, updates);
@@ -1411,6 +1489,8 @@ export default function ConfigSection({
                   setEditingAuxId(null);
                   setNewAuxName('');
                   setNewAuxScale(1);
+                  setNewAuxColor('#bfdbfe');
+                  setEditAuxColor('#bfdbfe');
                 }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all whitespace-nowrap shrink-0 ${
                   activeAuxTab === tab.id
@@ -1425,41 +1505,69 @@ export default function ConfigSection({
         </div>
 
         {/* Addition form */}
-        <form onSubmit={handleAddAuxRecord} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end bg-slate-50/50 p-4 rounded-2xl border border-slate-100 mb-6">
-          <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
-            <label className="block text-[11px] text-slate-500">Nome da Nova Opção *</label>
-            <input 
-              type="text" 
-              required
-              placeholder={`Introduza o nome...`}
-              value={newAuxName}
-              onChange={e => setNewAuxName(e.target.value)}
-              className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 bg-white font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
-            />
-          </div>
-
-          {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') && (
-            <div className="space-y-1">
-              <label className="block text-[11px] text-slate-500">Escala / Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? '1 a 10' : '1 a 3'})</label>
+        <form onSubmit={handleAddAuxRecord} className="flex flex-col gap-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
+              <label className="block text-[11px] text-slate-500 font-bold">Nome da Nova Opção *</label>
               <input 
-                type="number"
-                min={activeAuxTab === 'projectStatuses' ? 0 : 1}
-                max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? 10 : 3}
+                type="text" 
                 required
-                value={newAuxScale}
-                onChange={e => setNewAuxScale(Number(e.target.value))}
+                placeholder={`Introduza o nome...`}
+                value={newAuxName}
+                onChange={e => setNewAuxName(e.target.value)}
                 className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 bg-white font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
               />
             </div>
-          )}
 
-          <button 
-            type="submit"
-            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            Adicionar Opção
-          </button>
+            {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') && (
+              <div className="space-y-1">
+                <label className="block text-[11px] text-slate-500 font-bold">Escala / Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? '1 a 10' : '1 a 3'})</label>
+                <input 
+                  type="number"
+                  min={activeAuxTab === 'projectStatuses' ? 0 : 1}
+                  max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? 10 : 3}
+                  required
+                  value={newAuxScale}
+                  onChange={e => setNewAuxScale(Number(e.target.value))}
+                  className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 bg-white font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
+                />
+              </div>
+            )}
+
+            <button 
+              type="submit"
+              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Adicionar Opção
+            </button>
+          </div>
+
+          {isColorAuxTab && (
+            <div className="pt-2 border-t border-slate-200/60 flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Cor Pastel Associada:</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {PASTEL_COLORS.map(c => {
+                  const isSelected = newAuxColor === c.hex;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setNewAuxColor(c.hex)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+                        isSelected 
+                          ? `${c.bgClass} ${c.textClass} ${c.borderClass} ring-2 ring-slate-400 shadow-xs` 
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className={`w-3 h-3 rounded-full ${c.bgClass} border ${c.borderClass} inline-block`} />
+                      <span>{c.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </form>
 
         {/* Option List Table / Row */}
@@ -1483,6 +1591,9 @@ export default function ConfigSection({
                     {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') && (
                       <th className="p-3.5 w-32">Escala / Nível</th>
                     )}
+                    {isColorAuxTab && (
+                      <th className="p-3.5 w-48">Cor Pastel</th>
+                    )}
                     <th className="p-3.5 w-36 text-right">Ações</th>
                   </tr>
                 </thead>
@@ -1497,10 +1608,13 @@ export default function ConfigSection({
                         item={item}
                         isEditingThis={editingAuxId === item.id}
                         activeAuxTab={activeAuxTab}
+                        isColorAuxTab={isColorAuxTab}
                         editAuxName={editAuxName}
                         setEditAuxName={setEditAuxName}
                         editAuxScale={editAuxScale}
                         setEditAuxScale={setEditAuxScale}
+                        editAuxColor={editAuxColor}
+                        setEditAuxColor={setEditAuxColor}
                         setEditingAuxId={setEditingAuxId}
                         handleSaveEditAuxRecord={handleSaveEditAuxRecord}
                         handleDeleteAuxRecord={handleDeleteAuxRecord}

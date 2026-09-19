@@ -643,7 +643,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       };
     });
 
-    const milestoneTaskType = (resTaskTypes?.data || []).find((tt: any) => tt.name?.toLowerCase().includes('lembrete') || tt.name?.toLowerCase().includes('marco'));
+    const milestoneTaskType = (resTaskTypes?.data || []).find((tt: any) => tt.name?.toLowerCase().includes('marco'));
     const defaultTaskType = (resTaskTypes?.data || []).find((tt: any) => !tt.deleted);
 
     let tasks: Task[] = (resTasks.data || []).map((t: any) => {
@@ -809,6 +809,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     const riskStatuses: RiskStatus[] = (resRiskStatuses.data || []).map((rs: any) => ({
       id: rs.id,
       name: rs.name,
+      color: rs.color || '#bfdbfe',
       deleted: rs.deleted || false,
       sort_order: rs.sort_order || 0,
     }));
@@ -817,6 +818,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       id: rp.id,
       name: rp.name,
       scale: rp.scale || 1,
+      color: rp.color || '#bfdbfe',
       deleted: rp.deleted || false,
       sort_order: rp.sort_order || 0,
     }));
@@ -909,16 +911,17 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
 
     const loadedState: ERPState = {
       userGroups: userGroupsMapped,
-      projectStatuses: (resProjectStatuses.data || []).map((s: any) => ({ ...s, deleted: s.deleted === true || s.deleted === 1 || s.deleted === 'true' })),
+      projectStatuses: (resProjectStatuses.data || []).map((s: any) => ({ ...s, color: s.color || '#bfdbfe', deleted: s.deleted === true || s.deleted === 1 || s.deleted === 'true' })),
       projectCategories: (resProjectCategories.data || []).map((c: any) => ({ ...c, deleted: c.deleted === true || c.deleted === 1 || c.deleted === 'true' })),
-      projectRisks: (resProjectRisks.data || []).map((r: any) => ({ ...r, deleted: r.deleted === true || r.deleted === 1 || r.deleted === 'true' })),
-      projectPriorities: (resProjectPriorities.data || []).map((p: any) => ({ ...p, deleted: p.deleted === true || p.deleted === 1 || p.deleted === 'true' })),
+      projectRisks: (resProjectRisks.data || []).map((r: any) => ({ ...r, color: r.color || '#bfdbfe', deleted: r.deleted === true || r.deleted === 1 || r.deleted === 'true' })),
+      projectPriorities: (resProjectPriorities.data || []).map((p: any) => ({ ...p, color: p.color || '#bfdbfe', deleted: p.deleted === true || p.deleted === 1 || p.deleted === 'true' })),
       projectTeams: (resProjectTeams.data || []).map((t: any) => ({ ...t, deleted: t.deleted === true || t.deleted === 1 || t.deleted === 'true' })),
       projectPartners: (resProjectPartners.data || []).map((pt: any) => ({ ...pt, deleted: pt.deleted === true || pt.deleted === 1 || pt.deleted === 'true' })),
       taskStatuses: (resTaskStatuses.data || []).map((s: any) => ({
         id: s.id,
         name: s.name,
         scale: s.scale ?? 1,
+        color: s.color || '#bfdbfe',
         deleted: s.deleted || false,
         sort_order: s.sort_order ?? s.scale ?? 0,
       })),
@@ -1136,7 +1139,7 @@ export async function fetchPaginatedTasksDirectly(params: {
 
     if (params.search && params.search.trim()) {
       const q = `%${params.search.trim()}%`;
-      query = query.or(`title.ilike.${q},description.ilike.${q},notes.ilike.${q}`);
+      query = query.or(`task_title.ilike.${q},task_description.ilike.${q},notes.ilike.${q}`);
     }
 
     // Uses idx_tasks_project_deleted and idx_tasks_deleted_created_at
@@ -1151,12 +1154,12 @@ export async function fetchPaginatedTasksDirectly(params: {
     const tasks: Task[] = (data || []).map((row: any) => ({
       id: row.id,
       projectId: row.project_id || '',
-      title: row.title || 'Sem Título',
+      title: row.task_title || row.title || 'Sem Título',
       statusId: row.status_id || '',
       taskTypeId: row.task_type_id || '',
       assigneeIds: [],
       estimatedDate: row.estimated_date || '',
-      description: row.description || '',
+      description: row.task_description || row.description || '',
       estimatedHours: row.estimated_hours || '00:00',
       actualHours: row.actual_hours || '00:00',
       startDate: row.start_date || '',
@@ -1193,6 +1196,43 @@ export async function fetchPaginatedTasksDirectly(params: {
 }
 
 /**
+ * Safely upserts records into reference tables, falling back gracefully if extended columns (e.g., color, sort_order) do not exist in the database schema yet.
+ */
+async function safeUpsertRef(
+  client: any,
+  tableName: string,
+  fullRecords: any[],
+  fallbackFields: string[] = ['id', 'name', 'deleted']
+) {
+  if (!fullRecords || fullRecords.length === 0) {
+    return { data: null, error: null };
+  }
+
+  const res = await client.from(tableName).upsert(fullRecords);
+  if (res.error && (res.error.code === '42703' || res.error.message?.includes('column') || res.error.message?.includes('schema cache') || res.error.message?.includes('Could not find'))) {
+    console.warn(`[SYNC WARNING] Column missing in ${tableName} (${res.error.message}). Retrying upsert with fallback fields:`, fallbackFields);
+    const fallbackRecords = fullRecords.map((r: any) => {
+      const cleanRecord: any = {};
+      fallbackFields.forEach(f => {
+        if (r[f] !== undefined) cleanRecord[f] = r[f];
+      });
+      return cleanRecord;
+    });
+    const fallbackRes = await client.from(tableName).upsert(fallbackRecords);
+    if (fallbackRes.error && (fallbackRes.error.code === '42703' || fallbackRes.error.message?.includes('column') || fallbackRes.error.message?.includes('schema cache') || fallbackRes.error.message?.includes('Could not find'))) {
+      console.warn(`[SYNC WARNING] Fallback fields still failed in ${tableName}. Retrying with minimal fields (id, name):`);
+      const minimalRecords = fullRecords.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+      }));
+      return client.from(tableName).upsert(minimalRecords);
+    }
+    return fallbackRes;
+  }
+  return res;
+}
+
+/**
  * Saves/Synchronizes the full state directly and relational-wise into the corresponding SQL tables in Supabase
  */
 export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ success: boolean; message?: string }> {
@@ -1206,94 +1246,90 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
     // 1.5. Perform parallel upserts for reference tables to prevent foreign key errors in primary tables
     const refUpserts = [
-      supabase.from('user_groups').upsert((state.userGroups || []).map((g: any) => ({
+      safeUpsertRef(supabase, 'user_groups', (state.userGroups || []).map((g: any) => ({
         id: g.id,
         name: g.name,
         deleted: g.deleted || false,
         permissions: g.permissions ? (typeof g.permissions === 'object' ? JSON.stringify(g.permissions) : g.permissions) : null
-      }))).then(res => {
-        if (res.error && (res.error.message.includes('permissions') || res.error.code === '42703')) {
-          console.warn('user_groups permissions column is missing, falling back to basic save.');
-          return supabase!.from('user_groups').upsert((state.userGroups || []).map((g: any) => ({
-            id: g.id,
-            name: g.name,
-            deleted: g.deleted || false
-          })));
-        }
-        return res;
-      }),
-      supabase.from('project_status').upsert((state.projectStatuses || []).map((s: any) => ({
+      })), ['id', 'name', 'deleted']),
+      safeUpsertRef(supabase, 'project_status', (state.projectStatuses || []).map((s: any) => ({
         id: s.id,
         name: s.name,
         scale: s.scale || 1,
+        color: s.color || '#bfdbfe',
         deleted: s.deleted || false,
         sort_order: s.sort_order || 0
-      }))),
-      supabase.from('project_category').upsert((state.projectCategories || []).map((c: any) => ({
+      })), ['id', 'name', 'scale', 'deleted']),
+      safeUpsertRef(supabase, 'project_category', (state.projectCategories || []).map((c: any) => ({
         id: c.id,
         name: c.name,
         deleted: c.deleted || false,
         sort_order: c.sort_order || 0
-      }))),
-      supabase.from('project_risk').upsert((state.projectRisks || []).map((r: any) => ({
+      })), ['id', 'name', 'deleted']),
+      safeUpsertRef(supabase, 'project_risk', (state.projectRisks || []).map((r: any) => ({
         id: stringToUUID(r.id),
         name: r.name,
         scale: r.scale || 1,
+        color: r.color || '#bfdbfe',
         deleted: r.deleted || false,
         sort_order: r.sort_order || 0
-      }))),
-      supabase.from('project_priority').upsert((state.projectPriorities || []).map((p: any) => ({
+      })), ['id', 'name', 'scale', 'deleted']),
+      safeUpsertRef(supabase, 'project_priority', (state.projectPriorities || []).map((p: any) => ({
         id: stringToUUID(p.id),
         name: p.name,
         scale: p.scale || 1,
+        color: p.color || '#bfdbfe',
         deleted: p.deleted || false,
         sort_order: p.sort_order || 0
-      }))),
-      supabase.from('project_teams').upsert((state.projectTeams || []).map((t: any) => ({
+      })), ['id', 'name', 'scale', 'deleted']),
+      safeUpsertRef(supabase, 'project_teams', (state.projectTeams || []).map((t: any) => ({
         id: stringToUUID(t.id),
         name: t.name,
         deleted: t.deleted || false,
         sort_order: t.sort_order || 0
-      }))),
-      supabase.from('project_partners').upsert((state.projectPartners || []).map((p: any) => ({
+      })), ['id', 'name', 'deleted']),
+      safeUpsertRef(supabase, 'project_partners', (state.projectPartners || []).map((p: any) => ({
         id: stringToUUID(p.id),
         name: p.name,
         deleted: p.deleted || false,
         sort_order: p.sort_order || 0
-      }))),
-      supabase.from('task_status').upsert((state.taskStatuses || []).map((s: any) => ({
+      })), ['id', 'name', 'deleted']),
+      safeUpsertRef(supabase, 'task_status', (state.taskStatuses || []).map((s: any) => ({
         id: stringToUUID(s.id),
         name: s.name,
         scale: s.scale ?? 1,
+        color: s.color || '#bfdbfe',
         deleted: s.deleted ?? false,
         sort_order: s.sort_order ?? (s as any).sortOrder ?? s.scale ?? 0,
-      }))),
-      supabase.from('task_types').upsert((state.taskTypes || []).map((tt: any) => ({
+      })), ['id', 'name', 'scale', 'deleted']),
+      safeUpsertRef(supabase, 'task_types', (state.taskTypes || []).map((tt: any) => ({
         id: stringToUUID(tt.id),
         name: tt.name,
         scale: tt.scale ?? 1,
         deleted: tt.deleted ?? false,
         sort_order: tt.sort_order ?? tt.scale ?? 0,
-      }))),
-      supabase.from('risk_categories').upsert((state.riskCategories || []).map((rc: any) => ({
+      })), ['id', 'name', 'scale', 'deleted']),
+      safeUpsertRef(supabase, 'risk_categories', (state.riskCategories || []).map((rc: any) => ({
         id: stringToUUID(rc.id),
         name: rc.name,
         deleted: rc.deleted || false,
         sort_order: rc.sort_order || 0
-      }))),
-      supabase.from('risk_statuses').upsert((state.riskStatuses || []).map((rs: any) => ({
+      })), ['id', 'name', 'deleted']),
+      safeUpsertRef(supabase, 'risk_statuses', (state.riskStatuses || []).map((rs: any) => ({
         id: stringToUUID(rs.id),
         name: rs.name,
+        color: rs.color || '#bfdbfe',
         deleted: rs.deleted || false,
         sort_order: rs.sort_order || 0
-      }))),
-      supabase.from('risk_priorities').upsert((state.riskPriorities || []).map((rp: any) => ({
+      })), ['id', 'name', 'deleted']),
+      safeUpsertRef(supabase, 'risk_priorities', (state.riskPriorities || []).map((rp: any) => ({
         id: stringToUUID(rp.id),
         name: rp.name,
         scale: rp.scale || 1,
+        color: rp.color || '#bfdbfe',
         deleted: rp.deleted || false,
         sort_order: rp.sort_order || 0
-      }))),
+      })), ['id', 'name', 'scale', 'deleted']),
     ];
 
     const refResults = await Promise.all(refUpserts);
@@ -2251,7 +2287,7 @@ ALTER TABLE IF EXISTS default_tasks ADD COLUMN IF NOT EXISTS task_type_id UUID;
 -- Seed dos Tipos de Tarefa com Níveis
 INSERT INTO task_types (id, name, scale, sort_order)
 VALUES 
-    ('33333333-3333-3333-3333-333333333301', 'Lembrete', 1, 1),
+    ('33333333-3333-3333-3333-333333333301', 'Marco de projeto', 1, 1),
     ('33333333-3333-3333-3333-333333333302', 'Planeamento/Requisitos', 2, 2),
     ('33333333-3333-3333-3333-333333333303', 'Preparação', 3, 3),
     ('33333333-3333-3333-3333-333333333304', 'Instalação', 4, 4),
@@ -2264,11 +2300,11 @@ ON CONFLICT (id) DO NOTHING;
 DELETE FROM task_types a USING task_types b
 WHERE a.id > b.id AND lower(trim(a.name)) = lower(trim(b.name));
 
--- Migração automática de tarefas existentes: mapear tarefas marcadas como lembrete ou marco para o tipo 'Lembrete'
+-- Migração automática de tarefas existentes: mapear tarefas marcadas como marco para o tipo 'Marco de projeto'
 UPDATE tasks 
 SET task_type_id = '33333333-3333-3333-3333-333333333301'
 WHERE (task_type_id IS NULL) 
-  AND (is_milestone = true OR task_title ILIKE '%marco%' OR task_title ILIKE '%lembrete%');
+  AND (is_milestone = true OR task_title ILIKE '%marco%');
 
 -- Atribuir tipo padrão às restantes tarefas sem tipo
 UPDATE tasks 

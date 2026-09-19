@@ -50,7 +50,7 @@ export interface Task {
   notes: string;
   deleted: boolean;
   createdDate: string;
-  isMilestone?: boolean; // Retrocompatibilidade (substituído pelo tipo de tarefa "Lembrete")
+  isMilestone?: boolean; // Retrocompatibilidade (substituído pelo tipo de tarefa "Marco de projeto")
   version?: number;
   completedDate?: string;
 }
@@ -67,6 +67,7 @@ export interface TaskStatus {
   id: string;
   name: string;
   scale: number;
+  color?: string;
   deleted?: boolean;
   sort_order?: number;
 }
@@ -113,6 +114,7 @@ export interface ProjectStatus {
   id: string;
   name: string;
   scale: number;
+  color?: string;
   deleted: boolean;
   sort_order?: number;
 }
@@ -128,6 +130,7 @@ export interface ProjectRisk {
   id: string;
   name: string;
   scale: number;
+  color?: string;
   deleted: boolean;
   sort_order?: number;
 }
@@ -136,6 +139,7 @@ export interface ProjectPriority {
   id: string;
   name: string;
   scale: number;
+  color?: string;
   deleted: boolean;
   sort_order?: number;
 }
@@ -164,6 +168,7 @@ export interface RiskCategory {
 export interface RiskStatus {
   id: string;
   name: string;
+  color?: string;
   deleted?: boolean;
   sort_order?: number;
 }
@@ -172,6 +177,7 @@ export interface RiskPriority {
   id: string;
   name: string;
   scale?: number;
+  color?: string;
   deleted?: boolean;
   sort_order?: number;
 }
@@ -439,3 +445,6 @@ export interface ERPState {
   tickets?: Ticket[];
   ticketStatuses?: TicketStatus[];
 }
+
+export type { PlanningAllocationStatus, PlanningAllocationDTO, PlanningAllocationCreateInput, PlanningAllocationUpdateInput, PlanningAllocationFilters } from './planning/types';
+

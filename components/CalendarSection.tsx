@@ -1,16 +1,61 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, Task, UserAbsence, User, Client, SpecialDay, ProjectRiskItem, TaskType } from '../lib/types';
 import { 
   ChevronLeft, ChevronRight, Calendar, AlertTriangle, Users, 
-  Clock, Flag, AlertCircle, Info, Briefcase, Plus, X, Maximize2
+  Clock, Flag, AlertCircle, Info, Briefcase, Plus, X, Maximize2, Edit2, Layers,
+  Search, RotateCcw, Filter
 } from 'lucide-react';
 
 import { hasPermission } from '../lib/permissions';
 import { AssigneeSelector } from './AssigneeSelector';
 import TaskDetailsModal from './TaskDetailsModal';
+import PlanningAllocationModal from './PlanningAllocationModal';
+import ResourceDayDetailModal from './ResourceDayDetailModal';
 import { getTaskStatusName, getDefaultTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, stripSecondsFromHours, formatToOnlyHours } from '../lib/utils';
+import { 
+  PlanningAllocationDTO, 
+  PlanningAllocationCreateInput, 
+  PlanningAllocationUpdateInput, 
+  PlanningAllocationFilters,
+  ResourceCapacityDetail,
+  ResourceLoadSummary
+} from '../lib/planning/types';
+import { formatHoursDisplay } from '../lib/planning/summary';
+import ResourceCapacityBar from './ResourceCapacityBar';
+
+// FASE 23E-C1: Operational Period & Temporal Management
+export type OperationalPeriod = 'today' | 'tomorrow' | '7days' | '14days';
+
+// FASE 23E-C2: Operational Filters types
+export type ResourceOperationalFilter = 
+  | 'all' 
+  | 'with_capacity' 
+  | 'no_capacity' 
+  | 'overloaded' 
+  | 'no_confirmed' 
+  | 'with_draft';
+
+export type AllocationStatusFilter = 'all' | 'CONFIRMED' | 'DRAFT';
+
+// FASE 23E-C3A: Operational Planning KPIs Interface
+export interface OperationalPlanningKPIs {
+  totalCapacityMinutes: number;
+  totalConfirmedMinutes: number;
+  totalPlannedMinutes: number;
+  totalFreeMinutes: number;
+  totalExcessMinutes: number;
+  overloadedResourcesCount: number;
+  noConfirmedResourcesCount: number;
+  withDraftResourcesCount: number;
+  // Decimal hours helpers
+  totalCapacityHours: number;
+  totalConfirmedHours: number;
+  totalPlannedHours: number;
+  totalFreeHours: number;
+  totalExcessHours: number;
+}
 
 interface CalendarSectionProps {
   projects: Project[];
@@ -29,6 +74,20 @@ interface CalendarSectionProps {
   currentUser?: any;
   userGroups?: any[];
   appConfig?: any;
+  // Planning Allocations (FASE 23C)
+  planningAllocations?: PlanningAllocationDTO[];
+  planningLoading?: boolean;
+  fetchPlanningAllocations?: (filters?: PlanningAllocationFilters) => Promise<any>;
+  createPlanningAllocation?: (input: PlanningAllocationCreateInput) => Promise<any>;
+  updatePlanningAllocation?: (id: string, input: PlanningAllocationUpdateInput) => Promise<any>;
+  cancelPlanningAllocation?: (id: string, version: number) => Promise<any>;
+  deletePlanningAllocation?: (id: string) => Promise<any>;
+  // Capacity & Load (FASE 23D)
+  planningCapacity?: ResourceCapacityDetail[];
+  planningResourceLoad?: ResourceLoadSummary[];
+  planningCapacityLoading?: boolean;
+  fetchPlanningCapacity?: (filters?: { dateFrom?: string; dateTo?: string; resourceId?: string }) => Promise<any>;
+  fetchPlanningResourceLoad?: (filters?: { dateFrom?: string; dateTo?: string; resourceId?: string }) => Promise<any>;
 }
 
 export default function CalendarSection({
@@ -48,6 +107,18 @@ export default function CalendarSection({
   currentUser,
   userGroups = [],
   appConfig,
+  planningAllocations = [],
+  planningLoading = false,
+  fetchPlanningAllocations,
+  createPlanningAllocation,
+  updatePlanningAllocation,
+  cancelPlanningAllocation,
+  deletePlanningAllocation,
+  planningCapacity = [],
+  planningResourceLoad = [],
+  planningCapacityLoading = false,
+  fetchPlanningCapacity,
+  fetchPlanningResourceLoad,
 }: CalendarSectionProps) {
   const canReadCalendar = hasPermission(currentUser, 'calendar_read', userGroups);
   const canWriteCalendar = hasPermission(currentUser, 'calendar_write', userGroups);
@@ -67,6 +138,69 @@ export default function CalendarSection({
 
   // Event proximity date filter (default: 'off')
   const [filterEventDays, setFilterEventDays] = useState<number | 'off'>('off');
+
+  // Planning Allocations UI states (FASE 23C)
+  const [showCancelledAllocations, setShowCancelledAllocations] = useState<boolean>(false);
+  const [showUnplannedDrawer, setShowUnplannedDrawer] = useState<boolean>(false);
+  const [isPlanningModalOpen, setIsPlanningModalOpen] = useState<boolean>(false);
+  const [selectedAllocationForEdit, setSelectedAllocationForEdit] = useState<PlanningAllocationDTO | null>(null);
+  const [selectedTaskForPlanning, setSelectedTaskForPlanning] = useState<Task | null>(null);
+  const [calendarViewMode, setCalendarViewMode] = useState<'projects' | 'resources'>('projects');
+
+  // FASE 23E-A: Resource Daily Detail Modal state
+  const [selectedResourceDay, setSelectedResourceDay] = useState<{
+    resource: User;
+    dateStr: string;
+  } | null>(null);
+  const [planningInitialResourceId, setPlanningInitialResourceId] = useState<string>('');
+  const [planningInitialDate, setPlanningInitialDate] = useState<string>('');
+
+  const handleOpenResourceDayDetail = (resource: User, dateStr: string) => {
+    setSelectedResourceDay({ resource, dateStr });
+  };
+
+  const handleNewAllocationFromDayDetail = (resourceId: string, dateStr: string) => {
+    setPlanningInitialResourceId(resourceId);
+    setPlanningInitialDate(dateStr);
+    setSelectedAllocationForEdit(null);
+    setSelectedTaskForPlanning(null);
+    setIsPlanningModalOpen(true);
+  };
+
+  const handleEditAllocationFromDayDetail = (alloc: PlanningAllocationDTO) => {
+    setSelectedAllocationForEdit(alloc);
+    const t = tasks.find(tsk => tsk.id === alloc.taskId) || null;
+    setSelectedTaskForPlanning(t);
+    setIsPlanningModalOpen(true);
+  };
+
+  const handleViewTaskFromDayDetail = (task: Task) => {
+    openTaskDetailsModal(task);
+  };
+
+  // Compute context capacity for PlanningAllocationModal when opened for a specific resource/date (FASE 23E-B)
+  const activeDayCapacity = React.useMemo(() => {
+    const resId = planningInitialResourceId || selectedAllocationForEdit?.resourceId;
+    const dStr = planningInitialDate || selectedAllocationForEdit?.date;
+    if (!resId || !dStr) return undefined;
+
+    const cap = planningCapacity.find(c => c.resourceId === resId && c.date === dStr);
+    const dayAllocs = planningAllocations.filter(a => a.resourceId === resId && a.date === dStr);
+    const capMin = cap ? cap.operationalCapacityMinutes : 480;
+    const confirmedMin = dayAllocs.filter(a => a.status === 'CONFIRMED').reduce((acc, a) => acc + (a.durationMinutes || 0), 0);
+    const draftMin = dayAllocs.filter(a => a.status === 'DRAFT').reduce((acc, a) => acc + (a.durationMinutes || 0), 0);
+    const plannedMin = confirmedMin + draftMin;
+    const freeMin = Math.max(0, capMin - confirmedMin);
+    const excessMin = Math.max(0, plannedMin - capMin);
+
+    return {
+      capacityHours: formatHoursDisplay(capMin / 60),
+      confirmedHours: formatHoursDisplay(confirmedMin / 60),
+      plannedHours: formatHoursDisplay(plannedMin / 60),
+      freeHours: formatHoursDisplay(freeMin / 60),
+      excessHours: excessMin > 0 ? `+${formatHoursDisplay(excessMin / 60)}` : '0h',
+    };
+  }, [planningInitialResourceId, planningInitialDate, selectedAllocationForEdit, planningCapacity, planningAllocations]);
 
   // Timeline Pagination & Fullscreen state
   const [timelineItemsPerPage, setTimelineItemsPerPage] = useState<number>(25);
@@ -206,11 +340,87 @@ export default function CalendarSection({
     return `${year}-${month}-${day}`;
   };
 
+  // FASE 23E-C1: Operational Period & Temporal Management
+  const [operationalPeriod, setOperationalPeriod] = useState<OperationalPeriod>('14days');
+  const [resourceAnchorDate, setResourceAnchorDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  });
+
+  // FASE 23E-C2: Operational Filters State (Local UI State)
+  const [resourceOperationalFilter, setResourceOperationalFilter] = useState<ResourceOperationalFilter>('all');
+  const [technicianSearch, setTechnicianSearch] = useState<string>('');
+  const [projectFilter, setProjectFilter] = useState<string>('');
+  const [leaderFilter, setLeaderFilter] = useState<string>('');
+  const [allocationStatusFilter, setAllocationStatusFilter] = useState<AllocationStatusFilter>('all');
+
   // Today's date in YYYY-MM-DD format for reference
   const todayStr = formatDateToString(new Date());
 
-  // Generate 20 days of the timeline: 7 days backwards and 12 days forward
+  // Active users (excluding deleted users)
+  const activeUsers = React.useMemo(() => {
+    return users.filter(u => !u.deleted);
+  }, [users]);
+
+  // Available Project Leaders from active projects
+  const projectLeaders = React.useMemo(() => {
+    const leaderIdSet = new Set<string>();
+    projects.forEach(p => {
+      if (!p.deleted) {
+        if (p.projectManagerId) leaderIdSet.add(p.projectManagerId);
+        if (p.fieldManagerId) leaderIdSet.add(p.fieldManagerId);
+      }
+    });
+    return users
+      .filter(u => !u.deleted && leaderIdSet.has(u.id))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-PT'));
+  }, [projects, users]);
+
+  // Available Projects for filter
+  const availableProjects = React.useMemo(() => {
+    return projects
+      .filter(p => !p.deleted)
+      .sort((a, b) => a.title.localeCompare(b.title, 'pt-PT'));
+  }, [projects]);
+
+  // Helper to check if task belongs to a project
+  const isTaskInProject = React.useCallback((taskId: string, targetProjectId: string): boolean => {
+    const task = tasks.find(t => t.id === taskId);
+    return !!task && task.projectId === targetProjectId;
+  }, [tasks]);
+
+  // Helper to check if task belongs to a project managed by leader
+  const isTaskInLeaderProject = React.useCallback((taskId: string, targetLeaderId: string): boolean => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return false;
+    const project = projects.find(p => p.id === task.projectId);
+    return !!project && (project.projectManagerId === targetLeaderId || project.fieldManagerId === targetLeaderId);
+  }, [tasks, projects]);
+
+  // Generate days of the timeline based on view mode and selected operational period
   const getTimelineDays = (): Date[] => {
+    if (calendarViewMode === 'resources') {
+      const start = new Date(resourceAnchorDate);
+      start.setHours(12, 0, 0, 0);
+      let count = 14;
+      if (operationalPeriod === 'today' || operationalPeriod === 'tomorrow') {
+        count = 1;
+      } else if (operationalPeriod === '7days') {
+        count = 7;
+      } else if (operationalPeriod === '14days') {
+        count = 14;
+      }
+      const days: Date[] = [];
+      for (let i = 0; i < count; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        days.push(d);
+      }
+      return days;
+    }
+
+    // Projects mode: 20 days around pivotDate
     const start = new Date(pivotDate);
     start.setDate(pivotDate.getDate() - 7);
     
@@ -227,8 +437,296 @@ export default function CalendarSection({
   const startDateStr = formatDateToString(timelineDays[0]);
   const endDateStr = formatDateToString(timelineDays[timelineDays.length - 1]);
 
-  // Shifting date window functions (by 7 days)
+  // Fetch planning allocations for current calendar date interval (FASE 23C)
+  useEffect(() => {
+    if (fetchPlanningAllocations && startDateStr && endDateStr) {
+      fetchPlanningAllocations({ dateFrom: startDateStr, dateTo: endDateStr });
+    }
+  }, [startDateStr, endDateStr, fetchPlanningAllocations]);
+
+  // Fetch planning capacity & resource load for current calendar date interval (FASE 23D)
+  useEffect(() => {
+    if (fetchPlanningCapacity && startDateStr && endDateStr) {
+      fetchPlanningCapacity({ dateFrom: startDateStr, dateTo: endDateStr });
+    }
+    if (fetchPlanningResourceLoad && startDateStr && endDateStr) {
+      fetchPlanningResourceLoad({ dateFrom: startDateStr, dateTo: endDateStr });
+    }
+  }, [startDateStr, endDateStr, fetchPlanningCapacity, fetchPlanningResourceLoad]);
+
+  // Track which tasks have allocations vs unplanned tasks
+  const taskIdsWithAllocations = React.useMemo(() => {
+    return new Set(planningAllocations.map(a => a.taskId));
+  }, [planningAllocations]);
+
+  const unplannedTasks = React.useMemo(() => {
+    return tasks.filter(t => !t.deleted && !taskIdsWithAllocations.has(t.id));
+  }, [tasks, taskIdsWithAllocations]);
+
+  // FASE 23E-C2: Filtered Resources computed via local memoization (AND combination)
+  const filteredResources = React.useMemo(() => {
+    const dayStrings = new Set(timelineDays.map(d => formatDateToString(d)));
+
+    return activeUsers.filter(user => {
+      // 1. Text Search Filter: case-insensitive partial match on name or email
+      if (technicianSearch.trim() !== '') {
+        const term = technicianSearch.trim().toLowerCase();
+        const matchName = user.name.toLowerCase().includes(term);
+        const matchEmail = (user.email || '').toLowerCase().includes(term);
+        if (!matchName && !matchEmail) return false;
+      }
+
+      // Valid allocations of this user inside current timeline window (excluding CANCELLED)
+      const userAllocsInWindow = planningAllocations.filter(
+        a => a.resourceId === user.id && dayStrings.has(a.date) && a.status !== 'CANCELLED'
+      );
+
+      // Compute operational metrics for each day in timeline
+      let totalCapacityMins = 0;
+      let hasDayWithCapacity = false;
+      let hasOverload = false;
+      let totalConfirmedCount = 0;
+      let totalDraftCount = 0;
+
+      timelineDays.forEach(day => {
+        const dStr = formatDateToString(day);
+        const capDetail = (planningCapacity || []).find(c => c.resourceId === user.id && c.date === dStr);
+        const loadDetail = (planningResourceLoad || []).find(l => l.resourceId === user.id && l.date === dStr);
+
+        const capMins = capDetail ? capDetail.operationalCapacityMinutes : 480;
+        totalCapacityMins += capMins;
+        if (capMins > 0) {
+          hasDayWithCapacity = true;
+        }
+
+        const dayAllocs = userAllocsInWindow.filter(a => a.date === dStr);
+        const confirmedMins = capDetail 
+          ? capDetail.confirmedAllocationMinutes 
+          : (loadDetail ? loadDetail.plannedMinutes : dayAllocs.filter(a => a.status === 'CONFIRMED').reduce((s, a) => s + (a.durationMinutes || 0), 0));
+        const draftMins = dayAllocs.filter(a => a.status === 'DRAFT').reduce((s, a) => s + (a.durationMinutes || 0), 0);
+        const plannedMins = confirmedMins + draftMins;
+
+        const isOver = capDetail ? capDetail.overAllocatedMinutes > 0 : (plannedMins > capMins);
+        if (isOver) {
+          hasOverload = true;
+        }
+
+        totalConfirmedCount += dayAllocs.filter(a => a.status === 'CONFIRMED').length;
+        totalDraftCount += dayAllocs.filter(a => a.status === 'DRAFT').length;
+      });
+
+      // 2. Resource / Operational Capacity Filter
+      if (resourceOperationalFilter === 'with_capacity') {
+        if (!hasDayWithCapacity) return false;
+      } else if (resourceOperationalFilter === 'no_capacity') {
+        if (totalCapacityMins > 0) return false;
+      } else if (resourceOperationalFilter === 'overloaded') {
+        if (!hasOverload) return false;
+      } else if (resourceOperationalFilter === 'no_confirmed') {
+        if (totalConfirmedCount > 0) return false;
+      } else if (resourceOperationalFilter === 'with_draft') {
+        if (totalDraftCount === 0) return false;
+      }
+
+      // 3. Project Filter
+      if (projectFilter !== '') {
+        const hasMatchingProjectAlloc = userAllocsInWindow.some(alloc => isTaskInProject(alloc.taskId, projectFilter));
+        if (!hasMatchingProjectAlloc) return false;
+      }
+
+      // 4. Project Leader Filter
+      if (leaderFilter !== '') {
+        const hasMatchingLeaderAlloc = userAllocsInWindow.some(alloc => isTaskInLeaderProject(alloc.taskId, leaderFilter));
+        if (!hasMatchingLeaderAlloc) return false;
+      }
+
+      // 5. Allocation Status Filter
+      if (allocationStatusFilter !== 'all') {
+        const matchingStatusAllocs = userAllocsInWindow.filter(alloc => {
+          if (alloc.status !== allocationStatusFilter) return false;
+          if (projectFilter && !isTaskInProject(alloc.taskId, projectFilter)) return false;
+          if (leaderFilter && !isTaskInLeaderProject(alloc.taskId, leaderFilter)) return false;
+          return true;
+        });
+
+        if (matchingStatusAllocs.length === 0) return false;
+      }
+
+      return true;
+    });
+  }, [
+    activeUsers,
+    timelineDays,
+    planningAllocations,
+    planningCapacity,
+    planningResourceLoad,
+    technicianSearch,
+    resourceOperationalFilter,
+    projectFilter,
+    leaderFilter,
+    allocationStatusFilter,
+    isTaskInProject,
+    isTaskInLeaderProject
+  ]);
+
+  // FASE 23E-C3A: Operational Planning KPIs Aggregation Engine (useMemo)
+  const operationalKPIs = React.useMemo<OperationalPlanningKPIs>(() => {
+    if (filteredResources.length === 0 || timelineDays.length === 0) {
+      return {
+        totalCapacityMinutes: 0,
+        totalConfirmedMinutes: 0,
+        totalPlannedMinutes: 0,
+        totalFreeMinutes: 0,
+        totalExcessMinutes: 0,
+        overloadedResourcesCount: 0,
+        noConfirmedResourcesCount: 0,
+        withDraftResourcesCount: 0,
+        totalCapacityHours: 0,
+        totalConfirmedHours: 0,
+        totalPlannedHours: 0,
+        totalFreeHours: 0,
+        totalExcessHours: 0,
+      };
+    }
+
+    const dayStrings = timelineDays.map(d => formatDateToString(d));
+    const dayStringSet = new Set(dayStrings);
+
+    // O(1) Indexing maps
+    const capacityMap = new Map<string, ResourceCapacityDetail>();
+    (planningCapacity || []).forEach(c => {
+      if (dayStringSet.has(c.date)) {
+        capacityMap.set(`${c.resourceId}|${c.date}`, c);
+      }
+    });
+
+    const allocationsMap = new Map<string, PlanningAllocationDTO[]>();
+    (planningAllocations || []).forEach(a => {
+      if (a.status !== 'CANCELLED' && dayStringSet.has(a.date)) {
+        const key = `${a.resourceId}|${a.date}`;
+        const list = allocationsMap.get(key) || [];
+        list.push(a);
+        allocationsMap.set(key, list);
+      }
+    });
+
+    let totalCapacityMinutes = 0;
+    let totalConfirmedMinutes = 0;
+    let totalDraftMinutes = 0;
+    let totalFreeMinutes = 0;
+    let totalExcessMinutes = 0;
+    let overloadedResourcesCount = 0;
+    let noConfirmedResourcesCount = 0;
+    let withDraftResourcesCount = 0;
+
+    filteredResources.forEach(user => {
+      let resourceHasOverload = false;
+      let resourceConfirmedCount = 0;
+      let resourceDraftCount = 0;
+
+      dayStrings.forEach(dStr => {
+        const key = `${user.id}|${dStr}`;
+        const capDetail = capacityMap.get(key);
+        const dayAllocs = allocationsMap.get(key) || [];
+
+        // Capacity: strictly canonical, NO 480 fallback
+        const capMins = capDetail ? capDetail.operationalCapacityMinutes : 0;
+        totalCapacityMinutes += capMins;
+
+        // Confirmed: canonical from planningCapacity, or sum of CONFIRMED allocations
+        const confMins = capDetail 
+          ? capDetail.confirmedAllocationMinutes 
+          : dayAllocs.filter(a => a.status === 'CONFIRMED').reduce((s, a) => s + (a.durationMinutes || 0), 0);
+        totalConfirmedMinutes += confMins;
+
+        // Draft: sum of DRAFT allocations for this day
+        const draftMins = dayAllocs.filter(a => a.status === 'DRAFT').reduce((s, a) => s + (a.durationMinutes || 0), 0);
+        totalDraftMinutes += draftMins;
+
+        // Free: daily canonical available minutes
+        const freeMins = capDetail 
+          ? capDetail.availableMinutes 
+          : Math.max(0, capMins - confMins);
+        totalFreeMinutes += freeMins;
+
+        // Excess: daily canonical over-allocated minutes
+        const excessMins = capDetail 
+          ? capDetail.overAllocatedMinutes 
+          : Math.max(0, confMins - capMins);
+        totalExcessMinutes += excessMins;
+
+        if (excessMins > 0) {
+          resourceHasOverload = true;
+        }
+
+        resourceConfirmedCount += dayAllocs.filter(a => a.status === 'CONFIRMED').length;
+        resourceDraftCount += dayAllocs.filter(a => a.status === 'DRAFT').length;
+      });
+
+      if (resourceHasOverload) {
+        overloadedResourcesCount++;
+      }
+      if (resourceConfirmedCount === 0) {
+        noConfirmedResourcesCount++;
+      }
+      if (resourceDraftCount > 0) {
+        withDraftResourcesCount++;
+      }
+    });
+
+    const totalPlannedMinutes = totalConfirmedMinutes + totalDraftMinutes;
+
+    return {
+      totalCapacityMinutes,
+      totalConfirmedMinutes,
+      totalPlannedMinutes,
+      totalFreeMinutes,
+      totalExcessMinutes,
+      overloadedResourcesCount,
+      noConfirmedResourcesCount,
+      withDraftResourcesCount,
+      totalCapacityHours: Number((totalCapacityMinutes / 60).toFixed(1)),
+      totalConfirmedHours: Number((totalConfirmedMinutes / 60).toFixed(1)),
+      totalPlannedHours: Number((totalPlannedMinutes / 60).toFixed(1)),
+      totalFreeHours: Number((totalFreeMinutes / 60).toFixed(1)),
+      totalExcessHours: Number((totalExcessMinutes / 60).toFixed(1)),
+    };
+  }, [filteredResources, timelineDays, planningCapacity, planningAllocations]);
+
+  // Check if any operational filter is active
+  const hasActiveResourceFilters = 
+    resourceOperationalFilter !== 'all' ||
+    technicianSearch.trim() !== '' ||
+    projectFilter !== '' ||
+    leaderFilter !== '' ||
+    allocationStatusFilter !== 'all';
+
+  // Clear all operational filters
+  const handleClearResourceFilters = () => {
+    setResourceOperationalFilter('all');
+    setTechnicianSearch('');
+    setProjectFilter('');
+    setLeaderFilter('');
+    setAllocationStatusFilter('all');
+  };
+
+  // Shifting date window functions
   const shiftPrev = () => {
+    if (calendarViewMode === 'resources') {
+      setResourceAnchorDate(prev => {
+        const next = new Date(prev);
+        next.setHours(12, 0, 0, 0);
+        let delta = -14;
+        if (operationalPeriod === 'today' || operationalPeriod === 'tomorrow') {
+          delta = -1;
+        } else if (operationalPeriod === '7days') {
+          delta = -7;
+        }
+        next.setDate(prev.getDate() + delta);
+        return next;
+      });
+      return;
+    }
     setPivotDate(prev => {
       const next = new Date(prev);
       next.setDate(prev.getDate() - 7);
@@ -237,6 +735,21 @@ export default function CalendarSection({
   };
 
   const shiftNext = () => {
+    if (calendarViewMode === 'resources') {
+      setResourceAnchorDate(prev => {
+        const next = new Date(prev);
+        next.setHours(12, 0, 0, 0);
+        let delta = 14;
+        if (operationalPeriod === 'today' || operationalPeriod === 'tomorrow') {
+          delta = 1;
+        } else if (operationalPeriod === '7days') {
+          delta = 7;
+        }
+        next.setDate(prev.getDate() + delta);
+        return next;
+      });
+      return;
+    }
     setPivotDate(prev => {
       const next = new Date(prev);
       next.setDate(prev.getDate() + 7);
@@ -245,7 +758,34 @@ export default function CalendarSection({
   };
 
   const jumpToToday = () => {
+    if (calendarViewMode === 'resources') {
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
+      setResourceAnchorDate(today);
+      if (operationalPeriod === 'tomorrow') {
+        setOperationalPeriod('today');
+      }
+      return;
+    }
     setPivotDate(new Date());
+  };
+
+  const handleSelectOperationalPeriod = (mode: OperationalPeriod) => {
+    setOperationalPeriod(mode);
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+
+    if (mode === 'today') {
+      setResourceAnchorDate(today);
+    } else if (mode === 'tomorrow') {
+      const tom = new Date(today);
+      tom.setDate(today.getDate() + 1);
+      setResourceAnchorDate(tom);
+    } else if (mode === '7days') {
+      setResourceAnchorDate(today);
+    } else if (mode === '14days') {
+      setResourceAnchorDate(today);
+    }
   };
 
   // Initials generator
@@ -510,8 +1050,21 @@ export default function CalendarSection({
                       const isProjEstimated = proj.estimatedDate === dayStr;
                       const isProjScheduled = proj.scheduledDate === dayStr;
 
-                      // Check tasks active on this day
-                      const activeTasksOnDay = projTasks.filter(t => isTaskActiveOnDay(t, dayStr));
+                      // Planning Allocations for this project on this day (FASE 23C)
+                      const allProjTasks = tasks.filter(t => t.projectId === proj.id && !t.deleted);
+                      const projTaskIds = new Set(allProjTasks.map(t => t.id));
+                      const projAllocationsOnDay = planningAllocations.filter(alloc => {
+                        if (alloc.date !== dayStr) return false;
+                        if (!projTaskIds.has(alloc.taskId)) return false;
+                        if (!showCancelledAllocations && alloc.status === 'CANCELLED') return false;
+                        if (selectedAssignee && alloc.resourceId !== selectedAssignee) return false;
+                        return true;
+                      });
+
+                      // Unplanned tasks active on this day (have legacy dates but NO formal planning allocations)
+                      const unplannedTasksOnDay = projTasks.filter(t => 
+                        !taskIdsWithAllocations.has(t.id) && isTaskActiveOnDay(t, dayStr)
+                      );
 
                       return (
                         <td 
@@ -561,10 +1114,71 @@ export default function CalendarSection({
                             })()}
                           </div>
 
-                          {/* Active tasks list for this project on this day */}
-                          {activeTasksOnDay.length > 0 && (
+                          {/* 1. Formal Planning Allocations (Blocos Temporais Reais) */}
+                          {projAllocationsOnDay.length > 0 && (
                             <div className="space-y-1.5">
-                              {activeTasksOnDay.map(task => {
+                              {projAllocationsOnDay.map(alloc => {
+                                const allocTask = tasks.find(t => t.id === alloc.taskId);
+                                const resourceUser = users.find(u => u.id === alloc.resourceId);
+                                const isDraft = alloc.status === 'DRAFT';
+                                const isCancelled = alloc.status === 'CANCELLED';
+
+                                return (
+                                  <div
+                                    key={alloc.id}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedAllocationForEdit(alloc);
+                                      setSelectedTaskForPlanning(allocTask || null);
+                                      setIsPlanningModalOpen(true);
+                                    }}
+                                    className={`p-1.5 rounded-lg text-left shadow-2xs transition-all cursor-pointer ${
+                                      isCancelled
+                                        ? 'bg-slate-100 border border-slate-200 text-slate-400 opacity-60 line-through'
+                                        : isDraft
+                                        ? 'bg-amber-50/70 border border-dashed border-amber-300 hover:border-amber-400 text-slate-800'
+                                        : 'bg-blue-50/90 border border-blue-200 hover:border-blue-400 text-slate-900'
+                                    }`}
+                                    title={`Alocação: ${allocTask?.title || 'Tarefa'}\nHorário: ${alloc.startTime.substring(0, 5)} - ${alloc.endTime.substring(0, 5)} (${formatHoursDisplay((alloc.durationMinutes || 0) / 60)})\nTécnico: ${resourceUser?.name || 'Técnico'}\nEstado: ${alloc.status === 'CONFIRMED' ? 'Confirmado' : isDraft ? 'Rascunho' : 'Cancelado'}`}
+                                  >
+                                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                                      <span className={`text-[7.5px] font-black uppercase tracking-wider px-1 py-0.2 rounded ${
+                                        isCancelled
+                                          ? 'bg-slate-200 text-slate-600'
+                                          : isDraft
+                                          ? 'bg-amber-200 text-amber-900 border border-amber-300'
+                                          : 'bg-blue-600 text-white'
+                                      }`}>
+                                        {isCancelled ? 'CANC' : isDraft ? 'DRAFT' : 'CONF'}
+                                      </span>
+                                      <span className="text-[8px] font-bold text-slate-500">
+                                        {alloc.startTime.substring(0, 5)}-{alloc.endTime.substring(0, 5)}
+                                      </span>
+                                    </div>
+
+                                    <div className="text-[9px] font-bold truncate">
+                                      {allocTask?.title || 'Tarefa'}
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-[8px] text-slate-500 mt-0.5">
+                                      <span className="truncate flex items-center gap-0.5 font-medium">
+                                        <Users className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                                        {resourceUser?.name?.split(' ')[0] || 'Técnico'}
+                                      </span>
+                                      <span className="font-semibold text-slate-600 shrink-0">
+                                        {formatHoursDisplay((alloc.durationMinutes || 0) / 60)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* 2. Tasks sem Planeamento Formal (Datas Legadas) */}
+                          {unplannedTasksOnDay.length > 0 && (
+                            <div className="space-y-1.5">
+                              {unplannedTasksOnDay.map(task => {
                                 return (
                                   <div 
                                     key={task.id} 
@@ -577,53 +1191,38 @@ export default function CalendarSection({
                                       }
                                       e.dataTransfer.setData('taskId', task.id);
                                     }}
-                                    className={`p-1.5 bg-slate-50 border border-slate-200/80 rounded-lg text-left shadow-2xs hover:border-slate-300 transition-colors ${canMoveTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
-                                    title={`Tarefa: ${task.title}\nEstado: ${getTaskStatusName(task.statusId, taskStatuses)}`}
+                                    className={`p-1.5 bg-slate-50/80 border border-dashed border-slate-300 rounded-lg text-left shadow-2xs hover:border-slate-400 transition-colors ${canMoveTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+                                    title={`Tarefa sem planeamento formal: ${task.title}\nEstado: ${getTaskStatusName(task.statusId, taskStatuses)}\nClique para ver detalhes ou criar planeamento.`}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       openTaskDetailsModal(task);
                                     }}
                                   >
-                                    {/* Task Title (Compact) */}
+                                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                                      <span className="text-[7.5px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-slate-200 text-slate-600">
+                                        Não Planeada
+                                      </span>
+                                    </div>
+
                                     <div className="text-[9px] font-bold text-slate-700 truncate mb-1 flex items-center gap-1">
                                       {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Flag className="w-2.5 h-2.5 text-purple-600 shrink-0" />}
                                       <span className="truncate">{task.title}</span>
                                     </div>
 
-                                    {/* Assignees initials list with conflicts and warnings */}
+                                    {/* Assignees initials list */}
                                     <div className="flex flex-wrap gap-1">
                                       {task.assigneeIds && task.assigneeIds.length > 0 ? (
                                         task.assigneeIds.map(uid => {
                                           const user = users.find(u => u.id === uid);
                                           const name = user ? user.name : 'Técnico';
                                           const initials = getInitials(name);
-
-                                          // Determine conflicts
-                                          const isDoubleBooked = getTaskCountForUserOnDay(uid, dayStr) > 1;
-                                          const absence = getUserAbsenceOnDay(uid, dayStr);
-                                          const isAbsent = !!absence;
-
                                           return (
                                             <span 
                                               key={uid}
-                                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase border transition-colors ${
-                                                isAbsent 
-                                                  ? 'bg-red-50 text-red-600 border-red-300 shadow-xs animate-pulse'
-                                                  : isDoubleBooked
-                                                  ? 'bg-amber-50 text-red-600 border-red-300 shadow-xs'
-                                                  : 'bg-white text-slate-600 border-slate-200'
-                                              }`}
-                                              title={
-                                                isAbsent 
-                                                  ? `⚠️ CONFLITO DE AUSÊNCIA: ${name} está ausente (${absence.reason}) neste dia!`
-                                                  : isDoubleBooked
-                                                  ? `⚠️ DUPLA ALOCAÇÃO: ${name} está alocado em mais do que uma tarefa neste dia!`
-                                                  : `Alocado: ${name}`
-                                              }
+                                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase border bg-white text-slate-600 border-slate-200"
+                                              title={`Alocado legado: ${name}`}
                                             >
                                               {initials}
-                                              {isAbsent && <AlertCircle className="w-1.5 h-1.5 text-red-500 fill-red-50" />}
-                                              {!isAbsent && isDoubleBooked && <AlertTriangle className="w-1.5 h-1.5 text-red-500" />}
                                             </span>
                                           );
                                         })
@@ -637,10 +1236,141 @@ export default function CalendarSection({
                             </div>
                           )}
 
-                          {/* Empty space when no events or tasks */}
-                          {!isProjStart && !isProjDelivery && !isProjEstimated && !isProjScheduled && activeTasksOnDay.length === 0 && (
+                          {/* Empty space when no events, allocations, or tasks */}
+                          {!isProjStart && !isProjDelivery && !isProjEstimated && !isProjScheduled && projAllocationsOnDay.length === 0 && unplannedTasksOnDay.length === 0 && (
                             <div className="h-6 w-full bg-slate-50/20 rounded border border-transparent" />
                           )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const renderResourceCapacityMatrixTable = (isFullscreen = false) => {
+    return (
+      <div className={`bg-white rounded-2xl border border-slate-200 shadow-2xs relative ${
+        isFullscreen ? 'h-full max-h-none overflow-auto' : 'sticky top-[57px] z-20 max-h-[calc(100vh-70px)] overflow-auto'
+      }`}>
+        <table className="w-full min-w-[1200px] border-collapse text-left table-fixed relative">
+          <thead className="sticky top-0 z-20 bg-slate-50/90 border-b border-slate-200/80 shadow-2xs">
+            <tr>
+              <th className="w-72 p-3.5 text-[11px] uppercase tracking-wider font-bold text-slate-500 sticky top-0 left-0 z-30 bg-slate-50/95 border-r border-b border-slate-200/80 shadow-[2px_2px_5px_rgba(0,0,0,0.04)]">
+                Recurso / Técnico (Capacidade Diária)
+              </th>
+              {timelineDays.map(day => {
+                const dayStr = formatDateToString(day);
+                const isToday = dayStr === todayStr;
+                const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                const specialDay = specialDays.find(sd => sd.date === dayStr);
+                const isSpecial = !!specialDay;
+                const dayNum = day.getDate();
+                const weekday = day.toLocaleDateString('pt-PT', { weekday: 'short' }).replace('.', '');
+                const monthName = day.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '');
+
+                return (
+                  <th 
+                    key={dayStr} 
+                    className={`p-2 text-center text-[10px] font-bold border-l border-b border-slate-200/80 sticky top-0 z-20 ${
+                      isToday ? 'bg-amber-100 text-amber-900 border-x border-amber-300' : 
+                      (isWeekend || isSpecial) ? 'bg-slate-100 text-slate-600' : 'bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    <div className="uppercase tracking-wider text-[9px] text-slate-400 font-medium">{weekday}</div>
+                    <div className="text-xs font-black text-slate-800">{dayNum} {monthName}</div>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {filteredResources.length === 0 ? (
+              <tr>
+                <td 
+                  colSpan={timelineDays.length + 1} 
+                  className="p-8 text-center text-slate-500 bg-slate-50/50"
+                >
+                  <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                    <Users className="w-8 h-8 text-slate-300" />
+                    <span className="text-xs font-bold text-slate-700">Nenhum técnico encontrado</span>
+                    <span className="text-[11px] text-slate-500">
+                      Nenhum recurso corresponde aos filtros operacionais ativos.
+                    </span>
+                    {hasActiveResourceFilters && (
+                      <button
+                        type="button"
+                        onClick={handleClearResourceFilters}
+                        className="mt-1 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                      >
+                        Limpar filtros operacionais
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filteredResources.map(user => {
+                return (
+                  <tr key={user.id} className="hover:bg-slate-50/30 transition-colors">
+                    <td className="p-3 sticky left-0 bg-white z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] border-r border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs shrink-0">
+                          {getInitials(user.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-800 truncate">{user.name}</div>
+                          <div className="text-[10px] text-slate-400 truncate">{user.email || user.type}</div>
+                        </div>
+                      </div>
+                    </td>
+                    {timelineDays.map(day => {
+                      const dayStr = formatDateToString(day);
+                      const capDetail = (planningCapacity || []).find(c => c.resourceId === user.id && c.date === dayStr);
+                      const loadDetail = (planningResourceLoad || []).find(l => l.resourceId === user.id && l.date === dayStr);
+
+                      const capMins = capDetail ? capDetail.operationalCapacityMinutes : 480;
+                      const confirmedMins = capDetail ? capDetail.confirmedAllocationMinutes : (loadDetail ? loadDetail.plannedMinutes : 0);
+                      const isOver = capDetail ? capDetail.overAllocatedMinutes > 0 : confirmedMins > capMins;
+                      const isZeroCap = capMins === 0;
+
+                      const isSelectedCell = selectedResourceDay?.resource?.id === user.id && selectedResourceDay?.dateStr === dayStr;
+                      const dayAllocCount = planningAllocations.filter(a => a.resourceId === user.id && a.date === dayStr && a.status !== 'CANCELLED').length;
+
+                      return (
+                        <td key={dayStr} className="p-1.5 border-l border-slate-100 text-center align-middle">
+                          <button
+                            type="button"
+                            id={`btn-matrix-cell-${user.id}-${dayStr}`}
+                            onClick={() => handleOpenResourceDayDetail(user, dayStr)}
+                            className={`w-full p-1.5 rounded-lg border text-[10px] text-center transition-all cursor-pointer select-none hover:shadow-xs hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
+                              isSelectedCell ? 'ring-2 ring-blue-600 border-blue-500 shadow-xs' : ''
+                            } ${
+                              isZeroCap 
+                                ? 'bg-slate-100 border-slate-200 text-slate-400 hover:bg-slate-200/60' 
+                                : isOver 
+                                ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100/70 hover:border-amber-400' 
+                                : confirmedMins > 0 
+                                ? 'bg-blue-50/60 border-blue-200 text-blue-900 hover:bg-blue-100/70 hover:border-blue-300' 
+                                : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
+                            }`}
+                            title={`Ver detalhe operacional de ${user.name} em ${dayStr}`}
+                          >
+                            <div className="font-bold flex items-center justify-center gap-1">
+                              <span>{isZeroCap ? 'Indisponível' : formatHoursDisplay(confirmedMins / 60)}</span>
+                              {dayAllocCount > 0 && !isZeroCap && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block shrink-0" title={`${dayAllocCount} alocação(ões)`} />
+                              )}
+                            </div>
+                            <div className="text-[9px] text-slate-400 font-medium mt-0.5">
+                              Cap: {formatHoursDisplay(capMins / 60)}
+                            </div>
+                          </button>
                         </td>
                       );
                     })}
@@ -659,219 +1389,592 @@ export default function CalendarSection({
       
       {/* TIMELINE CONTROL HEADER */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
-        {/* Row 0: Full width Title and Subtitle */}
-        <div className="w-full">
-          <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-600" />
-            Linha de tempo
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Planeamento diário de projetos, tarefas e técnicos.
-          </p>
+        {/* Row 0: Full width Title, Subtitle and View Mode Toggles */}
+        <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+          <div>
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              Linha de tempo & Capacidade de Recursos
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Planeamento diário de projetos, tarefas, técnicos e carga operacional.
+            </p>
+          </div>
+
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setCalendarViewMode('projects')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                calendarViewMode === 'projects'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              📅 Vista de Projetos
+            </button>
+            <button
+              type="button"
+              onClick={() => setCalendarViewMode('resources')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                calendarViewMode === 'resources'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              👥 Capacidade de Recursos
+            </button>
+          </div>
         </div>
 
-        {/* Row 1: Filters (Técnicos, Datas & Concluídos) */}
-        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
-          <span className="text-xs font-bold text-slate-500">Filtros:</span>
-          <select
-            value={selectedAssignee}
-            onChange={(e) => setSelectedAssignee(e.target.value)}
-            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-750 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
-            id="filter-assignee"
-          >
-            <option value="">Todos os utilizadores</option>
-            {users.filter(u => !u.deleted).sort((a, b) => a.name.localeCompare(b.name, 'pt-PT')).map(u => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
+        {/* Row 1: Filters */}
+        {calendarViewMode === 'resources' ? (
+          <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
+            {/* Technician Text Search */}
+            <div className="relative min-w-[200px] max-w-xs">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                id="input-technician-search"
+                value={technicianSearch}
+                onChange={(e) => setTechnicianSearch(e.target.value)}
+                placeholder="Pesquisar técnico..."
+                className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                aria-label="Pesquisar técnico por nome ou email"
+              />
+              {technicianSearch && (
+                <button
+                  type="button"
+                  id="btn-clear-technician-search"
+                  onClick={() => setTechnicianSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  title="Limpar pesquisa"
+                  aria-label="Limpar pesquisa"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
 
-          {/* Filter: Events Proximity */}
-          <select
-            value={filterEventDays}
-            onChange={(e) => {
-              const val = e.target.value;
-              setFilterEventDays(val === 'off' ? 'off' : Number(val));
-              setTimelineCurrentPage(1);
-            }}
-            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
-            title="Filtrar por eventos nos próximos dias (datas de projeto, tarefas ou revisões de risco)"
-          >
-            <option value="off">Com eventos: Todos os projetos</option>
-            <option value="5">Eventos nos próximos 5 dias</option>
-            <option value="10">Eventos nos próximos 10 dias</option>
-            <option value="20">Eventos nos próximos 20 dias</option>
-            <option value="30">Eventos nos próximos 30 dias</option>
-          </select>
-
-          <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer">
-            <input 
-              type="checkbox"
-              checked={showCompleted}
-              onChange={e => {
-                setShowCompleted(e.target.checked);
-                setTimelineCurrentPage(1);
-              }}
-              className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300"
-            />
-            Mostrar concluídos
-          </label>
-
-          <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-50 transition-colors">
-            <input 
-              type="checkbox"
-              checked={showRiskReviews}
-              onChange={e => setShowRiskReviews(e.target.checked)}
-              className="w-3.5 h-3.5 text-rose-600 rounded border-slate-300 focus:ring-rose-500"
-            />
-            <span className="flex items-center gap-1">
-              <span>⚠️</span>
-              <span>Incluir revisão de riscos</span>
-            </span>
-          </label>
-        </div>
-
-        {/* Row 2: Navigation & Fullscreen */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Registos por página */}
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5">
-              <span>Mostrar:</span>
+            {/* Filter: Resource / Operational State */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-500">Recurso:</span>
               <select
-                value={timelineItemsPerPage}
-                onChange={(e) => {
-                  setTimelineItemsPerPage(Number(e.target.value));
-                  setTimelineCurrentPage(1);
-                }}
-                className="bg-transparent text-slate-800 text-xs font-bold focus:outline-hidden cursor-pointer"
+                id="select-resource-filter"
+                value={resourceOperationalFilter}
+                onChange={(e) => setResourceOperationalFilter(e.target.value as ResourceOperationalFilter)}
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+                aria-label="Filtrar por estado operacional do recurso"
               >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
+                <option value="all">Todos</option>
+                <option value="with_capacity">Com capacidade</option>
+                <option value="no_capacity">Sem capacidade</option>
+                <option value="overloaded">Sobrecarregados</option>
+                <option value="no_confirmed">Sem confirmado</option>
+                <option value="with_draft">Com DRAFT</option>
               </select>
             </div>
 
-            {/* Paginação Anterior / Seguinte */}
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
-              <button 
-                disabled={currentTimelinePage === 1}
-                onClick={() => setTimelineCurrentPage(p => Math.max(1, p - 1))}
-                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                title="Página anterior"
+            {/* Filter: Project */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-500">Projeto:</span>
+              <select
+                id="select-project-filter"
+                value={projectFilter}
+                onChange={(e) => setProjectFilter(e.target.value)}
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer max-w-[200px] truncate"
+                aria-label="Filtrar por projeto"
               >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="text-xs font-bold text-slate-700 px-2 min-w-[65px] text-center">
-                {currentTimelinePage} / {totalTimelinePages}
-              </span>
-              <button 
-                disabled={currentTimelinePage === totalTimelinePages}
-                onClick={() => setTimelineCurrentPage(p => Math.min(totalTimelinePages, p + 1))}
-                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                title="Página seguinte"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                <option value="">Todos os projetos</option>
+                {availableProjects.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Shift date buttons */}
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
-              <button 
-                onClick={shiftPrev}
-                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-                title="Retroceder 7 dias"
+            {/* Filter: Project Leader */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-500">Leader:</span>
+              <select
+                id="select-leader-filter"
+                value={leaderFilter}
+                onChange={(e) => setLeaderFilter(e.target.value)}
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer max-w-[180px] truncate"
+                aria-label="Filtrar por Project Leader"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <option value="">Todos os líderes</option>
+                {projectLeaders.map(leader => (
+                  <option key={leader.id} value={leader.id}>
+                    {leader.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter: Allocation Status */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-500">Estado:</span>
+              <select
+                id="select-allocation-status-filter"
+                value={allocationStatusFilter}
+                onChange={(e) => setAllocationStatusFilter(e.target.value as AllocationStatusFilter)}
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+                aria-label="Filtrar por estado da alocação"
+              >
+                <option value="all">Todos os estados</option>
+                <option value="CONFIRMED">CONFIRMED</option>
+                <option value="DRAFT">DRAFT</option>
+              </select>
+            </div>
+
+            {/* Clear Filters button */}
+            {hasActiveResourceFilters && (
+              <button
+                type="button"
+                id="btn-clear-resource-filters"
+                onClick={handleClearResourceFilters}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200"
+                title="Limpar todos os filtros operacionais"
+                aria-label="Limpar filtros operacionais"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Limpar filtros</span>
               </button>
-              <button 
-                onClick={jumpToToday}
-                className="px-2.5 py-1 hover:bg-slate-100 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
+            <span className="text-xs font-bold text-slate-500">Filtros:</span>
+            <select
+              value={selectedAssignee}
+              onChange={(e) => setSelectedAssignee(e.target.value)}
+              className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-750 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+              id="filter-assignee"
+            >
+              <option value="">Todos os utilizadores</option>
+              {users.filter(u => !u.deleted).sort((a, b) => a.name.localeCompare(b.name, 'pt-PT')).map(u => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Filter: Events Proximity */}
+            <select
+              value={filterEventDays}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFilterEventDays(val === 'off' ? 'off' : Number(val));
+                setTimelineCurrentPage(1);
+              }}
+              className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+              title="Filtrar por eventos nos próximos dias (datas de projeto, tarefas ou revisões de risco)"
+            >
+              <option value="off">Com eventos: Todos os projetos</option>
+              <option value="5">Eventos nos próximos 5 dias</option>
+              <option value="10">Eventos nos próximos 10 dias</option>
+              <option value="20">Eventos nos próximos 20 dias</option>
+              <option value="30">Eventos nos próximos 30 dias</option>
+            </select>
+
+            <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer">
+              <input 
+                type="checkbox"
+                checked={showCompleted}
+                onChange={e => {
+                  setShowCompleted(e.target.checked);
+                  setTimelineCurrentPage(1);
+                }}
+                className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300"
+              />
+              Mostrar concluídos
+            </label>
+
+            <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-50 transition-colors">
+              <input 
+                type="checkbox"
+                checked={showRiskReviews}
+                onChange={e => setShowRiskReviews(e.target.checked)}
+                className="w-3.5 h-3.5 text-rose-600 rounded border-slate-300 focus:ring-rose-500"
+              />
+              <span className="flex items-center gap-1">
+                <span>⚠️</span>
+                <span>Incluir revisão de riscos</span>
+              </span>
+            </label>
+
+            {/* Planning Allocations Filters (FASE 23C) */}
+            <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-50 transition-colors">
+              <input 
+                type="checkbox"
+                checked={showCancelledAllocations}
+                onChange={e => setShowCancelledAllocations(e.target.checked)}
+                className="w-3.5 h-3.5 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
+              />
+              <span>Mostrar alocações canceladas</span>
+            </label>
+
+            <button
+              type="button"
+              onClick={() => setShowUnplannedDrawer(!showUnplannedDrawer)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                showUnplannedDrawer
+                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+              title="Ver lista de tarefas que ainda não possuem blocos de planeamento no motor"
+            >
+              <Layers className="w-3.5 h-3.5 text-amber-600" />
+              <span>Não planeadas ({unplannedTasks.length})</span>
+            </button>
+          </div>
+        )}
+
+        {/* Row 2: Navigation & Fullscreen */}
+        {calendarViewMode === 'resources' ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+            {/* Quick Period Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 mr-1">Período:</span>
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  id="btn-period-today"
+                  onClick={() => handleSelectOperationalPeriod('today')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    operationalPeriod === 'today'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                  aria-pressed={operationalPeriod === 'today'}
+                  aria-label="Ver período de Hoje (1 dia)"
+                >
+                  Hoje
+                </button>
+                <button
+                  type="button"
+                  id="btn-period-tomorrow"
+                  onClick={() => handleSelectOperationalPeriod('tomorrow')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    operationalPeriod === 'tomorrow'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                  aria-pressed={operationalPeriod === 'tomorrow'}
+                  aria-label="Ver período de Amanhã (1 dia)"
+                >
+                  Amanhã
+                </button>
+                <button
+                  type="button"
+                  id="btn-period-7days"
+                  onClick={() => handleSelectOperationalPeriod('7days')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    operationalPeriod === '7days'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                  aria-pressed={operationalPeriod === '7days'}
+                  aria-label="Ver período dos Próximos 7 dias"
+                >
+                  Próximos 7 dias
+                </button>
+                <button
+                  type="button"
+                  id="btn-period-14days"
+                  onClick={() => handleSelectOperationalPeriod('14days')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    operationalPeriod === '14days'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                  aria-pressed={operationalPeriod === '14days'}
+                  aria-label="Ver período dos Próximos 14 dias"
+                >
+                  Próximos 14 dias
+                </button>
+              </div>
+            </div>
+
+            {/* Navigation & Fullscreen */}
+            <div className="flex items-center gap-3">
+              {/* Date Shifting */}
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
+                <button 
+                  type="button"
+                  id="btn-nav-prev"
+                  onClick={shiftPrev}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                  title={
+                    operationalPeriod === 'today' || operationalPeriod === 'tomorrow'
+                      ? 'Dia anterior'
+                      : operationalPeriod === '7days'
+                      ? 'Retroceder 7 dias'
+                      : 'Retroceder 14 dias'
+                  }
+                  aria-label="Período anterior"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button 
+                  type="button"
+                  id="btn-nav-today"
+                  onClick={jumpToToday}
+                  className="px-2.5 py-1 hover:bg-slate-100 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                  aria-label="Ir para a data atual"
+                >
+                  Hoje
+                </button>
+                <button 
+                  type="button"
+                  id="btn-nav-next"
+                  onClick={shiftNext}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                  title={
+                    operationalPeriod === 'today' || operationalPeriod === 'tomorrow'
+                      ? 'Dia seguinte'
+                      : operationalPeriod === '7days'
+                      ? 'Avançar 7 dias'
+                      : 'Avançar 14 dias'
+                  }
+                  aria-label="Período seguinte"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Ecrã Cheio Button */}
+              <button
+                type="button"
+                onClick={() => setIsTimelineFullscreen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
+                title="Abrir matriz de capacidade em ecrã cheio"
               >
-                Hoje
-              </button>
-              <button 
-                onClick={shiftNext}
-                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-                title="Avançar 7 dias"
-              >
-                <ChevronRight className="w-4 h-4" />
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>Ecrã cheio</span>
               </button>
             </div>
           </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Registos por página */}
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5">
+                <span>Mostrar:</span>
+                <select
+                  value={timelineItemsPerPage}
+                  onChange={(e) => {
+                    setTimelineItemsPerPage(Number(e.target.value));
+                    setTimelineCurrentPage(1);
+                  }}
+                  className="bg-transparent text-slate-800 text-xs font-bold focus:outline-hidden cursor-pointer"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
 
-          {/* Ecrã Cheio Button */}
-          <button
-            onClick={() => setIsTimelineFullscreen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
-            title="Abrir linha de tempo em ecrã cheio"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-            <span>Ecrã cheio</span>
-          </button>
-        </div>
+              {/* Paginação Anterior / Seguinte */}
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
+                <button 
+                  disabled={currentTimelinePage === 1}
+                  onClick={() => setTimelineCurrentPage(p => Math.max(1, p - 1))}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                  title="Página anterior"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs font-bold text-slate-700 px-2 min-w-[65px] text-center">
+                  {currentTimelinePage} / {totalTimelinePages}
+                </span>
+                <button 
+                  disabled={currentTimelinePage === totalTimelinePages}
+                  onClick={() => setTimelineCurrentPage(p => Math.min(totalTimelinePages, p + 1))}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                  title="Página seguinte"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Shift date buttons */}
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
+                <button 
+                  onClick={shiftPrev}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                  title="Retroceder 7 dias"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={jumpToToday}
+                  className="px-2.5 py-1 hover:bg-slate-100 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                >
+                  Hoje
+                </button>
+                <button 
+                  onClick={shiftNext}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                  title="Avançar 7 dias"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Ecrã Cheio Button */}
+            <button
+              onClick={() => setIsTimelineFullscreen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
+              title="Abrir linha de tempo em ecrã cheio"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span>Ecrã cheio</span>
+            </button>
+          </div>
+        )}
 
         {/* Date Window Info Banner */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-blue-50/50 border border-blue-100/50 rounded-xl p-3 text-xs">
           <div className="flex items-center gap-2 font-semibold text-slate-700">
-
             <span>
-              De {new Date(startDateStr + 'T00:00:00').toLocaleDateString('pt-PT')} a {new Date(endDateStr + 'T00:00:00').toLocaleDateString('pt-PT')}
+              {startDateStr === endDateStr ? (
+                `Data: ${new Date(startDateStr + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`
+              ) : (
+                `De ${new Date(startDateStr + 'T00:00:00').toLocaleDateString('pt-PT')} a ${new Date(endDateStr + 'T00:00:00').toLocaleDateString('pt-PT')} (${timelineDays.length} dias)`
+              )}
             </span>
+            {calendarViewMode === 'resources' && (
+              <span className="ml-1 px-2 py-0.5 rounded-md bg-blue-100/80 text-blue-800 font-bold text-[11px]">
+                {filteredResources.length} de {activeUsers.length} técnicos
+              </span>
+            )}
+            {(planningLoading || planningCapacityLoading) && (
+              <span className="text-[10px] text-blue-600 animate-pulse font-bold">
+                (A carregar alocações...)
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap gap-4 text-[10px] font-bold text-slate-500">
             <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 bg-blue-600 rounded-sm" />
+              Alocação Confirmada
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 bg-amber-300 border border-amber-500 border-dashed rounded-sm" />
+              Alocação Rascunho (Draft)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 bg-slate-200 border border-slate-400 border-dashed rounded-sm" />
+              Não Planeada
+            </span>
+            <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 bg-blue-500 rounded-full" />
-              Adjudicação do projeto
+              Adjudicação
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />
-              Entrega do projeto
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-slate-200 rounded-full border border-slate-300" />
-              Tarefa
-            </span>
-            <span className="flex items-center gap-1.5 text-red-600">
-              <span className="w-2.5 h-2.5 bg-red-500 rounded-full" />
-              Conflito
+              Entrega
             </span>
           </div>
         </div>
+
+        {/* Unplanned Tasks Drawer / Panel (FASE 23C) */}
+        {showUnplannedDrawer && (
+          <div className="mt-3 p-4 bg-amber-50/50 border border-amber-200 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-amber-600" />
+                <h4 className="text-xs font-bold text-amber-950">
+                  Tarefas Sem Planeamento Formal ({unplannedTasks.length})
+                </h4>
+                <span className="text-[11px] text-slate-500 hidden sm:inline">
+                  Tarefas que ainda não possuem blocos temporais alocados a recursos
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowUnplannedDrawer(false)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+
+            {unplannedTasks.length === 0 ? (
+              <p className="text-xs text-slate-500 italic">Todas as tarefas ativas possuem blocos de planeamento.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-64 overflow-y-auto pr-1">
+                {unplannedTasks.map(t => {
+                  const proj = projects.find(p => p.id === t.projectId);
+                  return (
+                    <div
+                      key={t.id}
+                      className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-2 shadow-2xs hover:border-blue-300 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-slate-800 truncate" title={t.title}>
+                          {t.title}
+                        </div>
+                        <div className="text-[10px] text-slate-500 truncate">
+                          {proj?.title || 'Sem projeto'} {t.estimatedHours ? `• Est: ${t.estimatedHours}h` : ''}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTaskForPlanning(t);
+                          setSelectedAllocationForEdit(null);
+                          setIsPlanningModalOpen(true);
+                        }}
+                        className="px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors shrink-0 cursor-pointer"
+                      >
+                        + Planear
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* TIMELINE MATRIX BOARD */}
-      {renderTimelineMatrixTable(paginatedProjects)}
+      {/* TIMELINE MATRIX BOARD OR RESOURCE CAPACITY MATRIX */}
+      {calendarViewMode === 'resources' ? renderResourceCapacityMatrixTable() : renderTimelineMatrixTable(paginatedProjects)}
 
       {/* FOOTER LEGEND INFO */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 -sm text-xs text-slate-500 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs text-xs text-slate-500 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <span className="font-semibold flex items-center gap-1.5">
           <Info className="w-4 h-4 text-blue-500 flex-shrink-0" />
-          Como ler o planeamento de equipa:
+          Como ler a linha de tempo & planeamento:
         </span>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-8 font-medium">
           <div className="flex items-start gap-2">
-            <span className="w-2.5 h-2.5 rounded bg-red-50 border border-red-300 text-red-600 inline-flex items-center justify-center text-[7px] font-black">
-              AB
+            <span className="w-3 h-3 rounded bg-blue-600 text-white inline-flex items-center justify-center text-[7px] font-black shrink-0 mt-0.5">
+              CONF
             </span>
             <span>
-              Iniciais a <strong>Vermelho</strong> indicam que o técnico está ausente ou tem dupla alocação no mesmo dia.
+              <strong>CONFIRMED:</strong> Reserva confirmada que consome capacidade na agenda do técnico.
             </span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-red-500 flex items-center">
-              <AlertCircle className="w-3.5 h-3.5" />
+            <span className="w-3 h-3 rounded bg-amber-200 border border-dashed border-amber-400 text-amber-900 inline-flex items-center justify-center text-[7px] font-black shrink-0 mt-0.5">
+              DRAFT
             </span>
             <span>
-              Passe o cursor sobre os emblemas com aviso para ler o motivo exato do conflito de escala.
+              <strong>DRAFT:</strong> Reserva em rascunho. Visível no calendário, mas <em>não</em> consome capacidade formal.
             </span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-blue-600 font-bold">
-              Adjudicação / Entrega
+            <span className="w-3 h-3 rounded bg-slate-200 border border-dashed border-slate-400 text-slate-700 inline-flex items-center justify-center text-[7px] font-bold shrink-0 mt-0.5">
+              NP
             </span>
             <span>
-              As datas contratuais do projeto aparecem como bandeiras no topo das células de cada dia.
+              <strong>Não Planeada:</strong> Tarefa com datas indicativas mas sem blocos de recurso formalizados.
             </span>
           </div>
         </div>
@@ -889,7 +1992,65 @@ export default function CalendarSection({
         appConfig={appConfig}
         projects={projects}
         clients={clients}
+        // Planning Allocations Props (FASE 23C)
+        planningAllocations={planningAllocations}
+        createPlanningAllocation={createPlanningAllocation}
+        updatePlanningAllocation={updatePlanningAllocation}
+        cancelPlanningAllocation={cancelPlanningAllocation}
+        deletePlanningAllocation={deletePlanningAllocation}
       />
+
+      {/* Resource Daily Detail Modal (FASE 23E-A & 23E-B) */}
+      {selectedResourceDay && (
+        <ResourceDayDetailModal
+          isOpen={!!selectedResourceDay}
+          onClose={() => setSelectedResourceDay(null)}
+          resource={selectedResourceDay.resource}
+          dateStr={selectedResourceDay.dateStr}
+          capacityDetail={planningCapacity.find(
+            c => c.resourceId === selectedResourceDay.resource.id && c.date === selectedResourceDay.dateStr
+          )}
+          loadDetail={planningResourceLoad.find(
+            l => l.resourceId === selectedResourceDay.resource.id && l.date === selectedResourceDay.dateStr
+          )}
+          allocations={planningAllocations}
+          tasks={tasks}
+          projects={projects}
+          onNewAllocation={handleNewAllocationFromDayDetail}
+          onEditAllocation={handleEditAllocationFromDayDetail}
+          onCancelAllocation={cancelPlanningAllocation}
+          onDeleteAllocation={deletePlanningAllocation}
+          onViewTask={handleViewTaskFromDayDetail}
+          onSelectProject={onSelectProject}
+          canWriteCalendar={canWriteCalendar}
+        />
+      )}
+
+      {/* Planning Allocation Modal (FASE 23C & 23E-A & 23E-B) */}
+      {isPlanningModalOpen && (
+        <PlanningAllocationModal
+          isOpen={isPlanningModalOpen}
+          onClose={() => {
+            setIsPlanningModalOpen(false);
+            setSelectedAllocationForEdit(null);
+            setSelectedTaskForPlanning(null);
+            setPlanningInitialResourceId('');
+            setPlanningInitialDate('');
+          }}
+          task={selectedTaskForPlanning}
+          tasks={tasks}
+          projects={projects}
+          allocation={selectedAllocationForEdit}
+          users={users}
+          initialResourceId={planningInitialResourceId}
+          initialDate={planningInitialDate}
+          contextCapacity={activeDayCapacity}
+          createPlanningAllocation={createPlanningAllocation}
+          updatePlanningAllocation={updatePlanningAllocation}
+          cancelPlanningAllocation={cancelPlanningAllocation}
+          deletePlanningAllocation={deletePlanningAllocation}
+        />
+      )}
 
       {/* Task Creation Modal for Timeline Day Click */}
       {isModalOpen && (
@@ -1037,106 +2198,193 @@ export default function CalendarSection({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3"> 
-                {/* Assignee Filter */}
-                <select
-                  value={selectedAssignee}
-                  onChange={(e) => setSelectedAssignee(e.target.value)}
-                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-750 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
-                >
-                  <option value="">Todos os utilizadores</option>
-                  {users.filter(u => !u.deleted).map(u => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
-                </select>
+              {calendarViewMode === 'resources' ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Quick Period Buttons */}
+                  <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectOperationalPeriod('today')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        operationalPeriod === 'today'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                      }`}
+                    >
+                      Hoje
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectOperationalPeriod('tomorrow')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        operationalPeriod === 'tomorrow'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                      }`}
+                    >
+                      Amanhã
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectOperationalPeriod('7days')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        operationalPeriod === '7days'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                      }`}
+                    >
+                      7 dias
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectOperationalPeriod('14days')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        operationalPeriod === '14days'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                      }`}
+                    >
+                      14 dias
+                    </button>
+                  </div>
 
-                <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-700 cursor-pointer">
-                  <input 
-                    type="checkbox"
-                    checked={showCompleted}
-                    onChange={e => {
-                      setShowCompleted(e.target.checked);
-                      setTimelineCurrentPage(1);
-                    }}
-                    className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300"
-                  />
-                  Mostrar concluídos
-                </label>
-
-                {/* Registos por página */}
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5">
-                  <span>Mostrar:</span>
-                  <select
-                    value={timelineItemsPerPage}
-                    onChange={(e) => {
-                      setTimelineItemsPerPage(Number(e.target.value));
-                      setTimelineCurrentPage(1);
-                    }}
-                    className="bg-transparent text-slate-800 text-xs font-bold focus:outline-hidden cursor-pointer"
-                  >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                  </select>
-                </div>
-
-                {/* Paginação */}
-                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
-                  <button 
-                    disabled={currentTimelinePage === 1}
-                    onClick={() => setTimelineCurrentPage(p => Math.max(1, p - 1))}
-                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 disabled:opacity-30 transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <span className="text-xs font-bold text-slate-700 px-2 min-w-[65px] text-center">
-                    {currentTimelinePage} / {totalTimelinePages}
+                  <span className="px-2 py-0.5 rounded-md bg-blue-100/80 text-blue-800 font-bold text-xs">
+                    {filteredResources.length} de {activeUsers.length} técnicos
                   </span>
-                  <button 
-                    disabled={currentTimelinePage === totalTimelinePages}
-                    onClick={() => setTimelineCurrentPage(p => Math.min(totalTimelinePages, p + 1))}
-                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 disabled:opacity-30 transition-colors cursor-pointer"
+
+                  {/* Date shift buttons */}
+                  <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
+                    <button 
+                      onClick={shiftPrev}
+                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={jumpToToday}
+                      className="px-2.5 py-1 hover:bg-slate-100 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                    >
+                      Hoje
+                    </button>
+                    <button 
+                      onClick={shiftNext}
+                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Close Fullscreen */}
+                  <button
+                    onClick={() => setIsTimelineFullscreen(false)}
+                    className="p-2 hover:bg-slate-200/80 rounded-xl text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                    title="Fechar ecrã cheio"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-3"> 
+                  {/* Assignee Filter */}
+                  <select
+                    value={selectedAssignee}
+                    onChange={(e) => setSelectedAssignee(e.target.value)}
+                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-750 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+                  >
+                    <option value="">Todos os utilizadores</option>
+                    {users.filter(u => !u.deleted).map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
 
-                {/* Date shift buttons */}
-                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
-                  <button 
-                    onClick={shiftPrev}
-                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                  <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-700 cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      checked={showCompleted}
+                      onChange={e => {
+                        setShowCompleted(e.target.checked);
+                        setTimelineCurrentPage(1);
+                      }}
+                      className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300"
+                    />
+                    Mostrar concluídos
+                  </label>
+
+                  {/* Registos por página */}
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5">
+                    <span>Mostrar:</span>
+                    <select
+                      value={timelineItemsPerPage}
+                      onChange={(e) => {
+                        setTimelineItemsPerPage(Number(e.target.value));
+                        setTimelineCurrentPage(1);
+                      }}
+                      className="bg-transparent text-slate-800 text-xs font-bold focus:outline-hidden cursor-pointer"
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+
+                  {/* Paginação */}
+                  <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
+                    <button 
+                      disabled={currentTimelinePage === 1}
+                      onClick={() => setTimelineCurrentPage(p => Math.max(1, p - 1))}
+                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 disabled:opacity-30 transition-colors cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs font-bold text-slate-700 px-2 min-w-[65px] text-center">
+                      {currentTimelinePage} / {totalTimelinePages}
+                    </span>
+                    <button 
+                      disabled={currentTimelinePage === totalTimelinePages}
+                      onClick={() => setTimelineCurrentPage(p => Math.min(totalTimelinePages, p + 1))}
+                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 disabled:opacity-30 transition-colors cursor-pointer"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Date shift buttons */}
+                  <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
+                    <button 
+                      onClick={shiftPrev}
+                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={jumpToToday}
+                      className="px-2.5 py-1 hover:bg-slate-100 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                    >
+                      Hoje
+                    </button>
+                    <button 
+                      onClick={shiftNext}
+                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Close Fullscreen */}
+                  <button
+                    onClick={() => setIsTimelineFullscreen(false)}
+                    className="p-2 hover:bg-slate-200/80 rounded-xl text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                    title="Fechar ecrã cheio"
                   >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={jumpToToday}
-                    className="px-2.5 py-1 hover:bg-slate-100 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
-                  >
-                    Hoje
-                  </button>
-                  <button 
-                    onClick={shiftNext}
-                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-                  >
-                    <ChevronRight className="w-4 h-4" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
-
-                {/* Close Fullscreen */}
-                <button
-                  onClick={() => setIsTimelineFullscreen(false)}
-                  className="p-2 hover:bg-slate-200/80 rounded-xl text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                  title="Fechar ecrã cheio"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+              )}
             </div>
 
             {/* Modal Body */}
             <div className="flex-1 p-4 overflow-hidden bg-slate-100/50">
-              {renderTimelineMatrixTable(paginatedProjects, true)}
+              {calendarViewMode === 'resources' ? renderResourceCapacityMatrixTable(true) : renderTimelineMatrixTable(paginatedProjects, true)}
             </div>
           </div>
         </div>
