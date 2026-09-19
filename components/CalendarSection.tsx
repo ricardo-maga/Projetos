@@ -1384,6 +1384,150 @@ export default function CalendarSection({
     );
   };
 
+  // FASE 23E-C3B: Visual Bar for Operational Planning KPIs
+  const renderOperationalKPIsBar = (isFullscreen = false) => {
+    return (
+      <div 
+        id={isFullscreen ? 'operational-kpis-bar-fullscreen' : 'operational-kpis-bar'}
+        role="region"
+        aria-label="Indicadores de planeamento operacional"
+        className={`bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs ${
+          isFullscreen ? 'shrink-0' : ''
+        }`}
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5 text-left">
+          {/* 1. Capacidade */}
+          <div 
+            id={isFullscreen ? 'kpi-total-capacity-fs' : 'kpi-total-capacity'}
+            className="flex flex-col justify-center px-3 py-2 bg-slate-50/90 border border-slate-200 rounded-xl transition-all"
+          >
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Capacidade
+            </span>
+            <span className="text-sm font-extrabold text-slate-900 mt-0.5">
+              {operationalKPIs.totalCapacityHours.toFixed(1)}h
+            </span>
+          </div>
+
+          {/* 2. Confirmado */}
+          <div 
+            id={isFullscreen ? 'kpi-total-confirmed-fs' : 'kpi-total-confirmed'}
+            className="flex flex-col justify-center px-3 py-2 bg-blue-50/70 border border-blue-200 rounded-xl transition-all"
+          >
+            <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+              Confirmado
+            </span>
+            <span className="text-sm font-extrabold text-blue-950 mt-0.5">
+              {operationalKPIs.totalConfirmedHours.toFixed(1)}h
+            </span>
+          </div>
+
+          {/* 3. Planeado */}
+          <div 
+            id={isFullscreen ? 'kpi-total-planned-fs' : 'kpi-total-planned'}
+            className="flex flex-col justify-center px-3 py-2 bg-indigo-50/70 border border-indigo-200 rounded-xl transition-all"
+          >
+            <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
+              Planeado
+            </span>
+            <span className="text-sm font-extrabold text-indigo-950 mt-0.5">
+              {operationalKPIs.totalPlannedHours.toFixed(1)}h
+            </span>
+          </div>
+
+          {/* 4. Livre */}
+          <div 
+            id={isFullscreen ? 'kpi-total-free-fs' : 'kpi-total-free'}
+            className="flex flex-col justify-center px-3 py-2 bg-emerald-50/70 border border-emerald-200 rounded-xl transition-all"
+          >
+            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+              Livre
+            </span>
+            <span className="text-sm font-extrabold text-emerald-950 mt-0.5">
+              {operationalKPIs.totalFreeHours.toFixed(1)}h
+            </span>
+          </div>
+
+          {/* 5. Excesso */}
+          <div 
+            id={isFullscreen ? 'kpi-total-excess-fs' : 'kpi-total-excess'}
+            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all ${
+              operationalKPIs.totalExcessHours > 0
+                ? 'bg-rose-50 border-rose-200 text-rose-950'
+                : 'bg-slate-50/90 border-slate-200 text-slate-800'
+            }`}
+          >
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${
+              operationalKPIs.totalExcessHours > 0 ? 'text-rose-700' : 'text-slate-500'
+            }`}>
+              Excesso
+            </span>
+            <span className={`text-sm font-extrabold mt-0.5 ${
+              operationalKPIs.totalExcessHours > 0 ? 'text-rose-950' : 'text-slate-900'
+            }`}>
+              {operationalKPIs.totalExcessHours.toFixed(1)}h
+            </span>
+          </div>
+
+          {/* 6. Sobrecarregados */}
+          <div 
+            id={isFullscreen ? 'kpi-overloaded-resources-fs' : 'kpi-overloaded-resources'}
+            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all ${
+              operationalKPIs.overloadedResourcesCount > 0
+                ? 'bg-amber-50 border-amber-200 text-amber-950'
+                : 'bg-slate-50/90 border-slate-200 text-slate-800'
+            }`}
+          >
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${
+              operationalKPIs.overloadedResourcesCount > 0 ? 'text-amber-700' : 'text-slate-500'
+            }`}>
+              Sobrecarregados
+            </span>
+            <span className={`text-sm font-extrabold mt-0.5 ${
+              operationalKPIs.overloadedResourcesCount > 0 ? 'text-amber-950' : 'text-slate-900'
+            }`}>
+              {operationalKPIs.overloadedResourcesCount}
+            </span>
+          </div>
+
+          {/* 7. Sem Confirmado */}
+          <div 
+            id={isFullscreen ? 'kpi-no-confirmed-resources-fs' : 'kpi-no-confirmed-resources'}
+            className="flex flex-col justify-center px-3 py-2 bg-slate-50/90 border border-slate-200 rounded-xl transition-all"
+          >
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Sem Confirmado
+            </span>
+            <span className="text-sm font-extrabold text-slate-900 mt-0.5">
+              {operationalKPIs.noConfirmedResourcesCount}
+            </span>
+          </div>
+
+          {/* 8. Com DRAFT */}
+          <div 
+            id={isFullscreen ? 'kpi-with-draft-resources-fs' : 'kpi-with-draft-resources'}
+            className={`flex flex-col justify-center px-3 py-2 border rounded-xl transition-all ${
+              operationalKPIs.withDraftResourcesCount > 0
+                ? 'bg-amber-50/60 border-amber-200 text-amber-950'
+                : 'bg-slate-50/90 border-slate-200 text-slate-800'
+            }`}
+          >
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${
+              operationalKPIs.withDraftResourcesCount > 0 ? 'text-amber-700' : 'text-slate-500'
+            }`}>
+              Com DRAFT
+            </span>
+            <span className={`text-sm font-extrabold mt-0.5 ${
+              operationalKPIs.withDraftResourcesCount > 0 ? 'text-amber-950' : 'text-slate-900'
+            }`}>
+              {operationalKPIs.withDraftResourcesCount}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       
@@ -1943,6 +2087,9 @@ export default function CalendarSection({
         )}
       </div>
 
+      {/* OPERATIONAL KPIS BAR (FASE 23E-C3B) */}
+      {calendarViewMode === 'resources' && renderOperationalKPIsBar()}
+
       {/* TIMELINE MATRIX BOARD OR RESOURCE CAPACITY MATRIX */}
       {calendarViewMode === 'resources' ? renderResourceCapacityMatrixTable() : renderTimelineMatrixTable(paginatedProjects)}
 
@@ -2383,8 +2530,11 @@ export default function CalendarSection({
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 p-4 overflow-hidden bg-slate-100/50">
-              {calendarViewMode === 'resources' ? renderResourceCapacityMatrixTable(true) : renderTimelineMatrixTable(paginatedProjects, true)}
+            <div className="flex-1 p-4 overflow-hidden bg-slate-100/50 flex flex-col gap-3">
+              {calendarViewMode === 'resources' && renderOperationalKPIsBar(true)}
+              <div className="flex-1 overflow-hidden">
+                {calendarViewMode === 'resources' ? renderResourceCapacityMatrixTable(true) : renderTimelineMatrixTable(paginatedProjects, true)}
+              </div>
             </div>
           </div>
         </div>
