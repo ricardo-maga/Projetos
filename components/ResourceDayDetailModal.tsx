@@ -104,29 +104,42 @@ export default function ResourceDayDetailModal({
     ? capacityDetail.operationalCapacityMinutes 
     : (loadDetail ? loadDetail.operationalCapacityMinutes : 0);
 
-  const confirmedMinutes = confirmedAllocations.reduce(
+  const localConfirmedMinutes = confirmedAllocations.reduce(
     (acc, a) => acc + (a.durationMinutes || 0), 
     0
   );
+
+  const confirmedMinutes = capacityDetail
+    ? capacityDetail.confirmedAllocationMinutes
+    : localConfirmedMinutes;
 
   const draftMinutes = draftAllocations.reduce(
     (acc, a) => acc + (a.durationMinutes || 0), 
     0
   );
 
-  // Planned = CONFIRMED + DRAFT
+  // Planned = CONFIRMED (canonical if available) + DRAFT
   const plannedMinutes = confirmedMinutes + draftMinutes;
 
-  // Free Capacity = Capacity - CONFIRMED
-  const freeCapacityMinutes = Math.max(0, capacityMinutes - confirmedMinutes);
+  // Free Capacity = Canonical availableMinutes if available, else max(0, Capacity - CONFIRMED)
+  const freeCapacityMinutes = capacityDetail
+    ? capacityDetail.availableMinutes
+    : (loadDetail ? loadDetail.availableMinutes : Math.max(0, capacityMinutes - confirmedMinutes));
 
-  // Excess = max(0, Planned - Capacity)
-  const excessMinutes = Math.max(0, plannedMinutes - capacityMinutes);
+  // Excess = Canonical overAllocatedMinutes if available, else max(0, CONFIRMED - Capacity)
+  // The canonical excess considers only capacity debited by CONFIRMED, DRAFT cannot create excess
+  const excessMinutes = capacityDetail
+    ? capacityDetail.overAllocatedMinutes
+    : (loadDetail ? loadDetail.overAllocatedMinutes : Math.max(0, confirmedMinutes - capacityMinutes));
 
-  // Utilization = CONFIRMED / Capacity
-  const utilizationPercent = capacityMinutes > 0
-    ? Math.round((confirmedMinutes / capacityMinutes) * 1000) / 10
-    : null;
+  // Utilization = Canonical utilizationPercent if available, else CONFIRMED / Capacity
+  const utilizationPercent = capacityDetail
+    ? capacityDetail.utilizationPercent
+    : (loadDetail 
+        ? loadDetail.utilizationPercent 
+        : (capacityMinutes > 0
+            ? Math.round((confirmedMinutes / capacityMinutes) * 1000) / 10
+            : null));
 
   const isZeroCap = capacityMinutes === 0;
   const isOverCapacity = excessMinutes > 0;
@@ -208,7 +221,7 @@ export default function ResourceDayDetailModal({
         description: 'Excesso de planeamento'
       };
     }
-    if (confirmedMinutes === 0 && draftMinutes > 0) {
+    if (draftMinutes > 0) {
       return {
         label: 'Pendente',
         colorClass: 'bg-amber-50 text-amber-800 border-amber-200',
@@ -260,7 +273,7 @@ export default function ResourceDayDetailModal({
   // Check existing warnings (Requirement 8)
   const contextWarnings: string[] = [];
   if (excessMinutes > 0) {
-    contextWarnings.push(`Excesso de planeamento: a carga planeada (${formatHoursDisplay(plannedMinutes / 60)}) excede a capacidade diária (${formatHoursDisplay(capacityMinutes / 60)}) em ${formatHoursDisplay(excessMinutes / 60)}.`);
+    contextWarnings.push(`Excesso de planeamento: a carga confirmada (${formatHoursDisplay(confirmedMinutes / 60)}) excede a capacidade diária (${formatHoursDisplay(capacityMinutes / 60)}) em ${formatHoursDisplay(excessMinutes / 60)}.`);
   }
   if (isZeroCap) {
     contextWarnings.push('O recurso encontra-se sem capacidade operacional (0h) configurada para este dia.');
