@@ -562,9 +562,21 @@ export default function ResourceDayDetailModal({
                         const allocTask = tasks.find(t => t.id === alloc.taskId) || (alloc.task ? {
                           id: alloc.task.id,
                           title: alloc.task.title,
-                          projectId: alloc.task.projectId,
+                          projectId: alloc.task.projectId || '',
                           assigneeIds: [],
-                        } as unknown as Task : null);
+                          statusId: '',
+                          estimatedDate: '',
+                          description: '',
+                          estimatedHours: '0',
+                          actualHours: '0',
+                          startDate: '',
+                          startTime: '',
+                          endDate: '',
+                          endTime: '',
+                          notes: '',
+                          deleted: false,
+                          createdDate: '',
+                        } as Task : null);
 
                         const allocProject = projects.find(p => p.id === allocTask?.projectId) || null;
                         const durationHours = (alloc.durationMinutes || 0) / 60;
@@ -680,9 +692,21 @@ export default function ResourceDayDetailModal({
                         const allocTask = tasks.find(t => t.id === alloc.taskId) || (alloc.task ? {
                           id: alloc.task.id,
                           title: alloc.task.title,
-                          projectId: alloc.task.projectId,
+                          projectId: alloc.task.projectId || '',
                           assigneeIds: [],
-                        } as unknown as Task : null);
+                          statusId: '',
+                          estimatedDate: '',
+                          description: '',
+                          estimatedHours: '0',
+                          actualHours: '0',
+                          startDate: '',
+                          startTime: '',
+                          endDate: '',
+                          endTime: '',
+                          notes: '',
+                          deleted: false,
+                          createdDate: '',
+                        } as Task : null);
 
                         const allocProject = projects.find(p => p.id === allocTask?.projectId) || null;
                         const durationHours = (alloc.durationMinutes || 0) / 60;

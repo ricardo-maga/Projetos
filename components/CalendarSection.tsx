@@ -112,16 +112,16 @@ export default function CalendarSection({
   appConfig,
   planningAllocations = [],
   planningLoading = false,
-  fetchPlanningAllocations = async () => {},
-  createPlanningAllocation = async () => ({ success: false }),
-  updatePlanningAllocation = async () => ({ success: false }),
-  cancelPlanningAllocation = async () => ({ success: false }),
-  deletePlanningAllocation = async () => ({ success: false }),
+  fetchPlanningAllocations,
+  createPlanningAllocation,
+  updatePlanningAllocation,
+  cancelPlanningAllocation,
+  deletePlanningAllocation,
   planningCapacity = [],
   planningResourceLoad = [],
   planningCapacityLoading = false,
-  fetchPlanningCapacity = async () => {},
-  fetchPlanningResourceLoad = async () => {},
+  fetchPlanningCapacity,
+  fetchPlanningResourceLoad,
 }: CalendarSectionProps) {
   const canReadCalendar = hasPermission(currentUser, 'calendar_read', userGroups);
   const canWriteCalendar = hasPermission(currentUser, 'calendar_write', userGroups);
@@ -130,6 +130,7 @@ export default function CalendarSection({
 
   const canMoveTask = canWriteCalendar && canWriteTasks;
   const canCreateTaskInCalendar = canWriteTasks || canWriteCalendar;
+  const userAbsences = absences;
   // We want to center the timeline around a pivot date, initially today
   const [pivotDate, setPivotDate] = useState<Date>(() => {
     return new Date();
@@ -2443,30 +2444,30 @@ export default function CalendarSection({
           tasks={tasks}
           projects={projects}
           users={users}
-          userAbsences={absences}
+          userAbsences={userAbsences}
           onNewAllocation={handleNewAllocationFromDayDetail}
           onEditAllocation={handleEditAllocationFromDayDetail}
           onConfirmAllocation={async (id, version) => {
-            const res = await updatePlanningAllocation(id, { status: 'CONFIRMED', version });
-            if (res.success) {
-              fetchPlanningCapacity({ dateFrom: startDateStr, dateTo: endDateStr });
-              fetchPlanningResourceLoad({ dateFrom: startDateStr, dateTo: endDateStr });
+            const res = updatePlanningAllocation ? await updatePlanningAllocation(id, { status: 'CONFIRMED', version }) : { success: false };
+            if (res && res.success) {
+              fetchPlanningCapacity?.({ dateFrom: startDateStr, dateTo: endDateStr });
+              fetchPlanningResourceLoad?.({ dateFrom: startDateStr, dateTo: endDateStr });
             }
             return res;
           }}
           onCancelAllocation={async (id, version) => {
-            const res = await cancelPlanningAllocation(id, version);
-            if (res.success) {
-              fetchPlanningCapacity({ dateFrom: startDateStr, dateTo: endDateStr });
-              fetchPlanningResourceLoad({ dateFrom: startDateStr, dateTo: endDateStr });
+            const res = cancelPlanningAllocation ? await cancelPlanningAllocation(id, version) : { success: false };
+            if (res && res.success) {
+              fetchPlanningCapacity?.({ dateFrom: startDateStr, dateTo: endDateStr });
+              fetchPlanningResourceLoad?.({ dateFrom: startDateStr, dateTo: endDateStr });
             }
             return res;
           }}
           onDeleteAllocation={async (id) => {
-            const res = await deletePlanningAllocation(id);
-            if (res.success) {
-              fetchPlanningCapacity({ dateFrom: startDateStr, dateTo: endDateStr });
-              fetchPlanningResourceLoad({ dateFrom: startDateStr, dateTo: endDateStr });
+            const res = deletePlanningAllocation ? await deletePlanningAllocation(id) : { success: false };
+            if (res && res.success) {
+              fetchPlanningCapacity?.({ dateFrom: startDateStr, dateTo: endDateStr });
+              fetchPlanningResourceLoad?.({ dateFrom: startDateStr, dateTo: endDateStr });
             }
             return res;
           }}
