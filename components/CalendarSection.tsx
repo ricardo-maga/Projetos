@@ -1483,33 +1483,51 @@ export default function CalendarSection({
 
                         return (
                           <td key={dayStr} className="p-1.5 border-l border-slate-100 text-center align-middle">
-                            <button
-                              type="button"
-                              id={`btn-matrix-cell-${user.id}-${dayStr}`}
-                              onClick={() => handleOpenResourceDayDetail(user, dayStr)}
-                              className={`w-full p-1.5 rounded-lg border text-[10px] text-center transition-all cursor-pointer select-none hover:shadow-xs hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
-                                isSelectedCell ? 'ring-2 ring-blue-600 border-blue-500 shadow-xs' : ''
-                              } ${
-                                isZeroCap 
-                                  ? 'bg-slate-100 border-slate-200 text-slate-400 hover:bg-slate-200/60' 
-                                  : isOver 
-                                  ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100/70 hover:border-amber-400' 
-                                  : confirmedMins > 0 
-                                  ? 'bg-blue-50/60 border-blue-200 text-blue-900 hover:bg-blue-100/70 hover:border-blue-300' 
-                                  : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
-                              }`}
-                              title={`Ver detalhe operacional de ${user.name} em ${dayStr}`}
-                            >
-                              <div className="font-bold flex items-center justify-center gap-1">
-                                <span>{isZeroCap ? 'Indisponível' : formatHoursDisplay(confirmedMins / 60)}</span>
-                                {dayAllocCount > 0 && !isZeroCap && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block shrink-0" title={`${dayAllocCount} alocação(ões)`} />
-                                )}
-                              </div>
-                              <div className="text-[9px] text-slate-400 font-medium mt-0.5">
-                                Cap: {formatHoursDisplay(capMins / 60)}
-                              </div>
-                            </button>
+                            <div className="relative group/cell">
+                              <button
+                                type="button"
+                                id={`btn-matrix-cell-${user.id}-${dayStr}`}
+                                onClick={() => handleOpenResourceDayDetail(user, dayStr)}
+                                className={`w-full p-1.5 rounded-lg border text-[10px] text-center transition-all cursor-pointer select-none hover:shadow-xs hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
+                                  isSelectedCell ? 'ring-2 ring-blue-600 border-blue-500 shadow-xs' : ''
+                                } ${
+                                  isZeroCap 
+                                    ? 'bg-slate-100 border-slate-200 text-slate-400 hover:bg-slate-200/60' 
+                                    : isOver 
+                                    ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100/70 hover:border-amber-400' 
+                                    : confirmedMins > 0 
+                                    ? 'bg-blue-50/60 border-blue-200 text-blue-900 hover:bg-blue-100/70 hover:border-blue-300' 
+                                    : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
+                                }`}
+                                title={`Ver detalhe operacional de ${user.name} em ${dayStr}`}
+                                aria-label={`Ver detalhe operacional de ${user.name} em ${dayStr}`}
+                              >
+                                <div className="font-bold flex items-center justify-center gap-1">
+                                  <span>{isZeroCap ? 'Indisponível' : formatHoursDisplay(confirmedMins / 60)}</span>
+                                  {dayAllocCount > 0 && !isZeroCap && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block shrink-0" title={`${dayAllocCount} alocação(ões)`} />
+                                  )}
+                                </div>
+                                <div className="text-[9px] text-slate-400 font-medium mt-0.5">
+                                  Cap: {formatHoursDisplay(capMins / 60)}
+                                </div>
+                              </button>
+                              {canWriteCalendar && !isZeroCap && (
+                                <button
+                                  type="button"
+                                  id={`btn-matrix-cell-add-${user.id}-${dayStr}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleNewAllocationFromDayDetail(user.id, dayStr);
+                                  }}
+                                  className="absolute top-1 right-1 opacity-0 group-hover/cell:opacity-100 p-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-[9px] font-bold shadow-xs transition-opacity cursor-pointer z-10"
+                                  title={`+ Nova Alocação (${user.name}, ${dayStr})`}
+                                  aria-label={`+ Nova Alocação para ${user.name} em ${dayStr}`}
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         );
                       })}
@@ -2428,9 +2446,30 @@ export default function CalendarSection({
           userAbsences={userAbsences}
           onNewAllocation={handleNewAllocationFromDayDetail}
           onEditAllocation={handleEditAllocationFromDayDetail}
-          onConfirmAllocation={async (id, version) => updatePlanningAllocation(id, { status: 'CONFIRMED', version })}
-          onCancelAllocation={cancelPlanningAllocation}
-          onDeleteAllocation={deletePlanningAllocation}
+          onConfirmAllocation={async (id, version) => {
+            const res = await updatePlanningAllocation(id, { status: 'CONFIRMED', version });
+            if (res.success) {
+              fetchPlanningCapacity(startDateStr, endDateStr);
+              fetchPlanningResourceLoad(startDateStr, endDateStr);
+            }
+            return res;
+          }}
+          onCancelAllocation={async (id, version) => {
+            const res = await cancelPlanningAllocation(id, version);
+            if (res.success) {
+              fetchPlanningCapacity(startDateStr, endDateStr);
+              fetchPlanningResourceLoad(startDateStr, endDateStr);
+            }
+            return res;
+          }}
+          onDeleteAllocation={async (id) => {
+            const res = await deletePlanningAllocation(id);
+            if (res.success) {
+              fetchPlanningCapacity(startDateStr, endDateStr);
+              fetchPlanningResourceLoad(startDateStr, endDateStr);
+            }
+            return res;
+          }}
           onViewTask={handleViewTaskFromDayDetail}
           onSelectProject={onSelectProject}
           canWriteCalendar={canWriteCalendar}

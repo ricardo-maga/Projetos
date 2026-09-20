@@ -139,7 +139,11 @@ export default function ResourceDayDetailModal({
     try {
       const res = await onConfirmAllocation(alloc.id, alloc.version);
       if (res && !res.success) {
-        setActionError(res.error || 'Erro ao confirmar a alocação.');
+        if (res.status === 409 || res.isConflict) {
+          setActionError('Conflito de concorrência: A alocação foi alterada por outro utilizador. Por favor feche e reabra o detalhe para obter os dados mais recentes.');
+        } else {
+          setActionError(res.error || 'Erro ao confirmar a alocação.');
+        }
       }
     } catch (err: any) {
       setActionError(err?.message || 'Erro inesperado ao confirmar.');
@@ -155,7 +159,11 @@ export default function ResourceDayDetailModal({
     try {
       const res = await onCancelAllocation(confirmCancelAlloc.id, confirmCancelAlloc.version);
       if (res && !res.success) {
-        setActionError(res.error || 'Erro ao cancelar a alocação.');
+        if (res.status === 409 || res.isConflict) {
+          setActionError('Conflito de concorrência: A alocação foi alterada por outro utilizador. Por favor feche e reabra o detalhe para obter os dados mais recentes.');
+        } else {
+          setActionError(res.error || 'Erro ao cancelar a alocação.');
+        }
       } else {
         setConfirmCancelAlloc(null);
       }
@@ -811,9 +819,24 @@ export default function ResourceDayDetailModal({
                               <span className="mx-2 text-slate-400">•</span>
                               <span className="text-slate-600 font-semibold">{allocProject?.title || 'Projeto'} / {allocTask?.title || 'Tarefa'}</span>
                             </div>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600 line-through">
-                              CANCELADO
-                            </span>
+                            <div className="flex items-center gap-2">
+                              {allocTask && (
+                                <button
+                                  type="button"
+                                  id={`btn-alloc-task-${alloc.id}`}
+                                  onClick={() => onViewTask(allocTask)}
+                                  className="px-2.5 py-1 text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-white border border-slate-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer shadow-2xs bg-white/80"
+                                  aria-label="Ver detalhes da tarefa associada"
+                                  title="Ver detalhes da tarefa associada"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  Ver Tarefa
+                                </button>
+                              )}
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600 line-through">
+                                CANCELADO
+                              </span>
+                            </div>
                           </div>
                         );
                       })}
