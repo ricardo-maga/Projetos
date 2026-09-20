@@ -2448,26 +2448,47 @@ export default function CalendarSection({
           onNewAllocation={handleNewAllocationFromDayDetail}
           onEditAllocation={handleEditAllocationFromDayDetail}
           onConfirmAllocation={async (id, version) => {
-            const res = updatePlanningAllocation ? await updatePlanningAllocation(id, { status: 'CONFIRMED', version }) : { success: false };
-            if (res && res.success) {
-              fetchPlanningCapacity?.({ dateFrom: startDateStr, dateTo: endDateStr });
-              fetchPlanningResourceLoad?.({ dateFrom: startDateStr, dateTo: endDateStr });
+            const res = await updatePlanningAllocation(id, {
+              status: 'CONFIRMED',
+              version
+            });
+            if (res.success) {
+              fetchPlanningCapacity({
+                dateFrom: startDateStr,
+                dateTo: endDateStr
+              });
+              fetchPlanningResourceLoad({
+                dateFrom: startDateStr,
+                dateTo: endDateStr
+              });
             }
             return res;
           }}
           onCancelAllocation={async (id, version) => {
-            const res = cancelPlanningAllocation ? await cancelPlanningAllocation(id, version) : { success: false };
-            if (res && res.success) {
-              fetchPlanningCapacity?.({ dateFrom: startDateStr, dateTo: endDateStr });
-              fetchPlanningResourceLoad?.({ dateFrom: startDateStr, dateTo: endDateStr });
+            const res = await cancelPlanningAllocation(id, version);
+            if (res.success) {
+              fetchPlanningCapacity({
+                dateFrom: startDateStr,
+                dateTo: endDateStr
+              });
+              fetchPlanningResourceLoad({
+                dateFrom: startDateStr,
+                dateTo: endDateStr
+              });
             }
             return res;
           }}
           onDeleteAllocation={async (id) => {
-            const res = deletePlanningAllocation ? await deletePlanningAllocation(id) : { success: false };
-            if (res && res.success) {
-              fetchPlanningCapacity?.({ dateFrom: startDateStr, dateTo: endDateStr });
-              fetchPlanningResourceLoad?.({ dateFrom: startDateStr, dateTo: endDateStr });
+            const res = await deletePlanningAllocation(id);
+            if (res.success) {
+              fetchPlanningCapacity({
+                dateFrom: startDateStr,
+                dateTo: endDateStr
+              });
+              fetchPlanningResourceLoad({
+                dateFrom: startDateStr,
+                dateTo: endDateStr
+              });
             }
             return res;
           }}
