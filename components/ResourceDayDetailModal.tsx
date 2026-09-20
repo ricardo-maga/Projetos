@@ -564,7 +564,7 @@ export default function ResourceDayDetailModal({
                           title: alloc.task.title,
                           projectId: alloc.task.projectId,
                           assigneeIds: [],
-                        } as Task : null);
+                        } as unknown as Task : null);
 
                         const allocProject = projects.find(p => p.id === allocTask?.projectId) || null;
                         const durationHours = (alloc.durationMinutes || 0) / 60;
@@ -682,7 +682,7 @@ export default function ResourceDayDetailModal({
                           title: alloc.task.title,
                           projectId: alloc.task.projectId,
                           assigneeIds: [],
-                        } as Task : null);
+                        } as unknown as Task : null);
 
                         const allocProject = projects.find(p => p.id === allocTask?.projectId) || null;
                         const durationHours = (alloc.durationMinutes || 0) / 60;
