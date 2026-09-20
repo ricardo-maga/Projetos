@@ -736,6 +736,21 @@ export default function CalendarSection({
     }
   };
 
+  // Helper to translate operational filter type to human-readable Portuguese label
+  const getResourceOperationalFilterLabel = (filter: ResourceOperationalFilter): string => {
+    switch (filter) {
+      case 'with_capacity': return 'Com capacidade';
+      case 'no_capacity': return 'Sem capacidade';
+      case 'overloaded': return 'Sobrecarregados / Excesso';
+      case 'has_confirmed': return 'Com Confirmado';
+      case 'no_confirmed': return 'Sem Confirmado';
+      case 'has_planned': return 'Com Planeado';
+      case 'has_free': return 'Com Capacidade Livre';
+      case 'with_draft': return 'Com DRAFT';
+      default: return 'Todos os recursos';
+    }
+  };
+
   // Check if any operational filter is active
   const hasActiveResourceFilters = 
     resourceOperationalFilter !== 'all' ||
@@ -1297,132 +1312,214 @@ export default function CalendarSection({
   };
 
   const renderResourceCapacityMatrixTable = (isFullscreen = false) => {
+    const isKPIFilterActive = resourceOperationalFilter !== 'all';
+
     return (
-      <div className={`bg-white rounded-2xl border border-slate-200 shadow-2xs relative ${
-        isFullscreen ? 'h-full max-h-none overflow-auto' : 'sticky top-[57px] z-20 max-h-[calc(100vh-70px)] overflow-auto'
-      }`}>
-        <table className="w-full min-w-[1200px] border-collapse text-left table-fixed relative">
-          <thead className="sticky top-0 z-20 bg-slate-50/90 border-b border-slate-200/80 shadow-2xs">
-            <tr>
-              <th className="w-72 p-3.5 text-[11px] uppercase tracking-wider font-bold text-slate-500 sticky top-0 left-0 z-30 bg-slate-50/95 border-r border-b border-slate-200/80 shadow-[2px_2px_5px_rgba(0,0,0,0.04)]">
-                Recurso / Técnico (Capacidade Diária)
-              </th>
-              {timelineDays.map(day => {
-                const dayStr = formatDateToString(day);
-                const isToday = dayStr === todayStr;
-                const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-                const specialDay = specialDays.find(sd => sd.date === dayStr);
-                const isSpecial = !!specialDay;
-                const dayNum = day.getDate();
-                const weekday = day.toLocaleDateString('pt-PT', { weekday: 'short' }).replace('.', '');
-                const monthName = day.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '');
-
-                return (
-                  <th 
-                    key={dayStr} 
-                    className={`p-2 text-center text-[10px] font-bold border-l border-b border-slate-200/80 sticky top-0 z-20 ${
-                      isToday ? 'bg-amber-100 text-amber-900 border-x border-amber-300' : 
-                      (isWeekend || isSpecial) ? 'bg-slate-100 text-slate-600' : 'bg-slate-50 text-slate-600'
-                    }`}
-                  >
-                    <div className="uppercase tracking-wider text-[9px] text-slate-400 font-medium">{weekday}</div>
-                    <div className="text-xs font-black text-slate-800">{dayNum} {monthName}</div>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
-            {filteredResources.length === 0 ? (
-              <tr>
-                <td 
-                  colSpan={timelineDays.length + 1} 
-                  className="p-8 text-center text-slate-500 bg-slate-50/50"
-                >
-                  <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
-                    <Users className="w-8 h-8 text-slate-300" />
-                    <span className="text-xs font-bold text-slate-700">Nenhum técnico encontrado</span>
-                    <span className="text-[11px] text-slate-500">
-                      Nenhum recurso corresponde aos filtros operacionais ativos.
-                    </span>
-                    {hasActiveResourceFilters && (
-                      <button
-                        type="button"
-                        onClick={handleClearResourceFilters}
-                        className="mt-1 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        Limpar filtros operacionais
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
+      <div className="space-y-2.5">
+        {/* FASE 23E-C3E: Compact Operational Results & Filter Indicator Banner */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold text-slate-800 uppercase text-[10px] tracking-wider">Planeamento Operacional</span>
+            <span className="text-slate-300">•</span>
+            {isKPIFilterActive ? (
+              <>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 font-bold text-[11px]">
+                  Filtro ativo: {getResourceOperationalFilterLabel(resourceOperationalFilter)}
+                </span>
+                <span className="text-slate-300">•</span>
+                <span className="font-bold text-slate-900 text-xs">
+                  {filteredResources.length} {filteredResources.length === 1 ? 'recurso' : 'recursos'}
+                </span>
+              </>
             ) : (
-              filteredResources.map(user => {
-                return (
-                  <tr key={user.id} className="hover:bg-slate-50/30 transition-colors">
-                    <td className="p-3 sticky left-0 bg-white z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] border-r border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs shrink-0">
-                          {getInitials(user.name)}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-800 truncate">{user.name}</div>
-                          <div className="text-[10px] text-slate-400 truncate">{user.email || user.type}</div>
-                        </div>
-                      </div>
-                    </td>
-                    {timelineDays.map(day => {
-                      const dayStr = formatDateToString(day);
-                      const capDetail = (planningCapacity || []).find(c => c.resourceId === user.id && c.date === dayStr);
-                      const loadDetail = (planningResourceLoad || []).find(l => l.resourceId === user.id && l.date === dayStr);
-
-                      const capMins = capDetail ? capDetail.operationalCapacityMinutes : 480;
-                      const confirmedMins = capDetail ? capDetail.confirmedAllocationMinutes : (loadDetail ? loadDetail.plannedMinutes : 0);
-                      const isOver = capDetail ? capDetail.overAllocatedMinutes > 0 : confirmedMins > capMins;
-                      const isZeroCap = capMins === 0;
-
-                      const isSelectedCell = selectedResourceDay?.resource?.id === user.id && selectedResourceDay?.dateStr === dayStr;
-                      const dayAllocCount = planningAllocations.filter(a => a.resourceId === user.id && a.date === dayStr && a.status !== 'CANCELLED').length;
-
-                      return (
-                        <td key={dayStr} className="p-1.5 border-l border-slate-100 text-center align-middle">
-                          <button
-                            type="button"
-                            id={`btn-matrix-cell-${user.id}-${dayStr}`}
-                            onClick={() => handleOpenResourceDayDetail(user, dayStr)}
-                            className={`w-full p-1.5 rounded-lg border text-[10px] text-center transition-all cursor-pointer select-none hover:shadow-xs hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
-                              isSelectedCell ? 'ring-2 ring-blue-600 border-blue-500 shadow-xs' : ''
-                            } ${
-                              isZeroCap 
-                                ? 'bg-slate-100 border-slate-200 text-slate-400 hover:bg-slate-200/60' 
-                                : isOver 
-                                ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100/70 hover:border-amber-400' 
-                                : confirmedMins > 0 
-                                ? 'bg-blue-50/60 border-blue-200 text-blue-900 hover:bg-blue-100/70 hover:border-blue-300' 
-                                : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
-                            }`}
-                            title={`Ver detalhe operacional de ${user.name} em ${dayStr}`}
-                          >
-                            <div className="font-bold flex items-center justify-center gap-1">
-                              <span>{isZeroCap ? 'Indisponível' : formatHoursDisplay(confirmedMins / 60)}</span>
-                              {dayAllocCount > 0 && !isZeroCap && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block shrink-0" title={`${dayAllocCount} alocação(ões)`} />
-                              )}
-                            </div>
-                            <div className="text-[9px] text-slate-400 font-medium mt-0.5">
-                              Cap: {formatHoursDisplay(capMins / 60)}
-                            </div>
-                          </button>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })
+              <span className="font-bold text-slate-800 text-xs">
+                {filteredResources.length} {filteredResources.length === 1 ? 'recurso' : 'recursos'}
+              </span>
             )}
-          </tbody>
-        </table>
+          </div>
+
+          {isKPIFilterActive && (
+            <button
+              type="button"
+              id="btn-remove-kpi-filter"
+              onClick={() => setResourceOperationalFilter('all')}
+              className="text-[11px] font-bold text-blue-700 hover:text-blue-900 hover:underline cursor-pointer flex items-center gap-1"
+              title="Remover filtro KPI"
+              aria-label="Remover filtro operacional de KPI"
+            >
+              <X className="w-3 h-3 text-blue-600" />
+              <span>Remover filtro KPI</span>
+            </button>
+          )}
+        </div>
+
+        <div className={`bg-white rounded-2xl border border-slate-200 shadow-2xs relative ${
+          isFullscreen ? 'h-full max-h-none overflow-auto' : 'sticky top-[57px] z-20 max-h-[calc(100vh-70px)] overflow-auto'
+        }`}>
+          <table className="w-full min-w-[1200px] border-collapse text-left table-fixed relative">
+            <thead className="sticky top-0 z-20 bg-slate-50/90 border-b border-slate-200/80 shadow-2xs">
+              <tr>
+                <th className="w-72 p-3.5 text-[11px] uppercase tracking-wider font-bold text-slate-500 sticky top-0 left-0 z-30 bg-slate-50/95 border-r border-b border-slate-200/80 shadow-[2px_2px_5px_rgba(0,0,0,0.04)]">
+                  Recurso / Técnico (Capacidade Diária)
+                </th>
+                {timelineDays.map(day => {
+                  const dayStr = formatDateToString(day);
+                  const isToday = dayStr === todayStr;
+                  const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                  const specialDay = specialDays.find(sd => sd.date === dayStr);
+                  const isSpecial = !!specialDay;
+                  const dayNum = day.getDate();
+                  const weekday = day.toLocaleDateString('pt-PT', { weekday: 'short' }).replace('.', '');
+                  const monthName = day.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '');
+
+                  return (
+                    <th 
+                      key={dayStr} 
+                      className={`p-2 text-center text-[10px] font-bold border-l border-b border-slate-200/80 sticky top-0 z-20 ${
+                        isToday ? 'bg-amber-100 text-amber-900 border-x border-amber-300' : 
+                        (isWeekend || isSpecial) ? 'bg-slate-100 text-slate-600' : 'bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      <div className="uppercase tracking-wider text-[9px] text-slate-400 font-medium">{weekday}</div>
+                      <div className="text-xs font-black text-slate-800">{dayNum} {monthName}</div>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredResources.length === 0 ? (
+                <tr>
+                  <td 
+                    colSpan={timelineDays.length + 1} 
+                    className="p-8 text-center text-slate-500 bg-slate-50/50"
+                  >
+                    <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                      <Users className="w-8 h-8 text-slate-300" />
+                      <span className="text-xs font-bold text-slate-700">Nenhum técnico encontrado</span>
+                      <span className="text-[11px] text-slate-500">
+                        Nenhum recurso corresponde aos filtros operacionais ativos.
+                      </span>
+                      {hasActiveResourceFilters && (
+                        <button
+                          type="button"
+                          onClick={handleClearResourceFilters}
+                          className="mt-1 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                        >
+                          Limpar filtros operacionais
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredResources.map(user => {
+                  const targetDateStr = timelineDays.some(d => formatDateToString(d) === todayStr)
+                    ? todayStr
+                    : formatDateToString(timelineDays[0]);
+
+                  // Compute period totals for canonical summary
+                  let periodCapMins = 0;
+                  let periodConfMins = 0;
+                  let periodDraftMins = 0;
+                  let periodConfCount = 0;
+                  let periodDraftCount = 0;
+
+                  timelineDays.forEach(day => {
+                    const dStr = formatDateToString(day);
+                    const capDetail = (planningCapacity || []).find(c => c.resourceId === user.id && c.date === dStr);
+                    periodCapMins += capDetail ? capDetail.operationalCapacityMinutes : 0;
+
+                    const dayAllocs = planningAllocations.filter(a => a.resourceId === user.id && a.date === dStr && a.status !== 'CANCELLED');
+                    dayAllocs.forEach(a => {
+                      if (a.status === 'CONFIRMED') {
+                        periodConfMins += (a.durationMinutes || 0);
+                        periodConfCount++;
+                      } else if (a.status === 'DRAFT') {
+                        periodDraftMins += (a.durationMinutes || 0);
+                        periodDraftCount++;
+                      }
+                    });
+                  });
+
+                  const periodPlanMins = periodConfMins + periodDraftMins;
+                  const periodFreeMins = Math.max(0, periodCapMins - periodConfMins);
+                  const periodExcessMins = Math.max(0, periodPlanMins - periodCapMins);
+
+                  const resourceSummaryTooltip = `Recurso: ${user.name}\nPeríodo: ${startDateStr} a ${endDateStr} (${timelineDays.length} dias)\nCapacidade: ${formatHoursDisplay(periodCapMins / 60)}\nConfirmado: ${formatHoursDisplay(periodConfMins / 60)} (${periodConfCount} alocações)\nPlaneado: ${formatHoursDisplay(periodPlanMins / 60)}\nLivre: ${formatHoursDisplay(periodFreeMins / 60)}\nExcesso: ${formatHoursDisplay(periodExcessMins / 60)}\nCONFIRMED: ${periodConfCount} | DRAFT: ${periodDraftCount}\n\nClique para abrir o detalhe do recurso.`;
+
+                  return (
+                    <tr key={user.id} className="hover:bg-slate-50/30 transition-colors">
+                      <td className="p-3 sticky left-0 bg-white z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] border-r border-slate-100">
+                        <button
+                          type="button"
+                          id={`btn-resource-drilldown-${user.id}`}
+                          onClick={() => handleOpenResourceDayDetail(user, targetDateStr)}
+                          className="flex items-center gap-2 w-full text-left p-1.5 -m-1.5 rounded-xl hover:bg-slate-100/80 transition-colors cursor-pointer group focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          title={resourceSummaryTooltip}
+                          aria-label={`Ver detalhe operacional de ${user.name}`}
+                        >
+                          <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            {getInitials(user.name)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold text-slate-800 truncate group-hover:text-blue-700 transition-colors">{user.name}</div>
+                            <div className="text-[10px] text-slate-400 truncate">{user.email || user.type}</div>
+                          </div>
+                        </button>
+                      </td>
+                      {timelineDays.map(day => {
+                        const dayStr = formatDateToString(day);
+                        const capDetail = (planningCapacity || []).find(c => c.resourceId === user.id && c.date === dayStr);
+                        const loadDetail = (planningResourceLoad || []).find(l => l.resourceId === user.id && l.date === dayStr);
+
+                        const capMins = capDetail ? capDetail.operationalCapacityMinutes : 480;
+                        const confirmedMins = capDetail ? capDetail.confirmedAllocationMinutes : (loadDetail ? loadDetail.plannedMinutes : 0);
+                        const isOver = capDetail ? capDetail.overAllocatedMinutes > 0 : confirmedMins > capMins;
+                        const isZeroCap = capMins === 0;
+
+                        const isSelectedCell = selectedResourceDay?.resource?.id === user.id && selectedResourceDay?.dateStr === dayStr;
+                        const dayAllocCount = planningAllocations.filter(a => a.resourceId === user.id && a.date === dayStr && a.status !== 'CANCELLED').length;
+
+                        return (
+                          <td key={dayStr} className="p-1.5 border-l border-slate-100 text-center align-middle">
+                            <button
+                              type="button"
+                              id={`btn-matrix-cell-${user.id}-${dayStr}`}
+                              onClick={() => handleOpenResourceDayDetail(user, dayStr)}
+                              className={`w-full p-1.5 rounded-lg border text-[10px] text-center transition-all cursor-pointer select-none hover:shadow-xs hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
+                                isSelectedCell ? 'ring-2 ring-blue-600 border-blue-500 shadow-xs' : ''
+                              } ${
+                                isZeroCap 
+                                  ? 'bg-slate-100 border-slate-200 text-slate-400 hover:bg-slate-200/60' 
+                                  : isOver 
+                                  ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100/70 hover:border-amber-400' 
+                                  : confirmedMins > 0 
+                                  ? 'bg-blue-50/60 border-blue-200 text-blue-900 hover:bg-blue-100/70 hover:border-blue-300' 
+                                  : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
+                              }`}
+                              title={`Ver detalhe operacional de ${user.name} em ${dayStr}`}
+                            >
+                              <div className="font-bold flex items-center justify-center gap-1">
+                                <span>{isZeroCap ? 'Indisponível' : formatHoursDisplay(confirmedMins / 60)}</span>
+                                {dayAllocCount > 0 && !isZeroCap && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block shrink-0" title={`${dayAllocCount} alocação(ões)`} />
+                                )}
+                              </div>
+                              <div className="text-[9px] text-slate-400 font-medium mt-0.5">
+                                Cap: {formatHoursDisplay(capMins / 60)}
+                              </div>
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   };
