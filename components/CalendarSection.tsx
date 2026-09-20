@@ -2424,8 +2424,11 @@ export default function CalendarSection({
           allocations={planningAllocations}
           tasks={tasks}
           projects={projects}
+          users={users}
+          userAbsences={userAbsences}
           onNewAllocation={handleNewAllocationFromDayDetail}
           onEditAllocation={handleEditAllocationFromDayDetail}
+          onConfirmAllocation={async (id, version) => updatePlanningAllocation(id, { status: 'CONFIRMED', version })}
           onCancelAllocation={cancelPlanningAllocation}
           onDeleteAllocation={deletePlanningAllocation}
           onViewTask={handleViewTaskFromDayDetail}
