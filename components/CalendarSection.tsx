@@ -544,7 +544,6 @@ export default function CalendarSection({
       timelineDays.forEach(day => {
         const dStr = formatDateToString(day);
         const capDetail = (planningCapacity || []).find(c => c.resourceId === user.id && c.date === dStr);
-        const loadDetail = (planningResourceLoad || []).find(l => l.resourceId === user.id && l.date === dStr);
 
         const capMins = capDetail ? capDetail.operationalCapacityMinutes : 0;
         totalCapacityMins += capMins;
@@ -553,9 +552,11 @@ export default function CalendarSection({
         }
 
         const dayAllocs = userAllocsInWindow.filter(a => a.date === dStr);
-        const confirmedMins = capDetail 
-          ? capDetail.confirmedAllocationMinutes 
-          : (loadDetail ? loadDetail.plannedMinutes : dayAllocs.filter(a => a.status === 'CONFIRMED').reduce((s, a) => s + (a.durationMinutes || 0), 0));
+        const dayLocalConfMins = dayAllocs.filter(a => a.status === 'CONFIRMED').reduce((s, a) => s + (a.durationMinutes || 0), 0);
+        const dayConf = capDetail
+          ? capDetail.confirmedAllocationMinutes
+          : dayLocalConfMins;
+        const confirmedMins = dayConf;
         const draftMins = dayAllocs.filter(a => a.status === 'DRAFT').reduce((s, a) => s + (a.durationMinutes || 0), 0);
         const plannedMins = confirmedMins + draftMins;
 
@@ -600,8 +601,7 @@ export default function CalendarSection({
     resourceOperationalFilter,
     timelineDays,
     planningAllocations,
-    planningCapacity,
-    planningResourceLoad
+    planningCapacity
   ]);
 
   // FASE 23E-C3A: Operational Planning KPIs Aggregation Engine (useMemo over baseResources)
@@ -1518,13 +1518,18 @@ export default function CalendarSection({
                         const capDetail = (planningCapacity || []).find(c => c.resourceId === user.id && c.date === dayStr);
                         const loadDetail = (planningResourceLoad || []).find(l => l.resourceId === user.id && l.date === dayStr);
 
-                        const capMins = capDetail ? capDetail.operationalCapacityMinutes : 480;
-                        const confirmedMins = capDetail ? capDetail.confirmedAllocationMinutes : (loadDetail ? loadDetail.plannedMinutes : 0);
-                        const isOver = capDetail ? capDetail.overAllocatedMinutes > 0 : confirmedMins > capMins;
+                        const capMins = capDetail 
+                          ? capDetail.operationalCapacityMinutes 
+                          : (loadDetail ? loadDetail.operationalCapacityMinutes : 0);
+                        const dayAllocs = planningAllocations.filter(a => a.resourceId === user.id && a.date === dayStr && a.status !== 'CANCELLED');
+                        const dayLocalConfMins = dayAllocs.filter(a => a.status === 'CONFIRMED').reduce((s, a) => s + (a.durationMinutes || 0), 0);
+                        const dayConf = capDetail ? capDetail.confirmedAllocationMinutes : dayLocalConfMins;
+                        const confirmedMins = dayConf;
+                        const isOver = capDetail ? capDetail.overAllocatedMinutes > 0 : (confirmedMins > capMins && capMins > 0);
                         const isZeroCap = capMins === 0;
 
                         const isSelectedCell = selectedResourceDay?.resource?.id === user.id && selectedResourceDay?.dateStr === dayStr;
-                        const dayAllocCount = planningAllocations.filter(a => a.resourceId === user.id && a.date === dayStr && a.status !== 'CANCELLED').length;
+                        const dayAllocCount = dayAllocs.length;
 
                         return (
                           <td key={dayStr} className="p-1.5 border-l border-slate-100 text-center align-middle">
