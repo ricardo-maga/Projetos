@@ -1465,7 +1465,7 @@ export default function CalendarSection({
                     // 3. Confirmed (canonical confirmedAllocationMinutes)
                     const dayConf = capDetail 
                       ? capDetail.confirmedAllocationMinutes 
-                      : (loadDetail ? loadDetail.plannedMinutes : dayLocalConfMins);
+                      : dayLocalConfMins;
                     periodConfMins += dayConf;
 
                     // 4. Free (canonical availableMinutes)
@@ -2492,16 +2492,17 @@ export default function CalendarSection({
           onNewAllocation={handleNewAllocationFromDayDetail}
           onEditAllocation={handleEditAllocationFromDayDetail}
           onConfirmAllocation={async (id, version) => {
+            if (!updatePlanningAllocation) return { success: false, error: 'Função de atualização não disponível' };
             const res = await updatePlanningAllocation(id, {
               status: 'CONFIRMED',
               version
             });
-            if (res.success) {
-              fetchPlanningCapacity({
+            if (res?.success) {
+              fetchPlanningCapacity?.({
                 dateFrom: startDateStr,
                 dateTo: endDateStr
               });
-              fetchPlanningResourceLoad({
+              fetchPlanningResourceLoad?.({
                 dateFrom: startDateStr,
                 dateTo: endDateStr
               });
@@ -2509,13 +2510,14 @@ export default function CalendarSection({
             return res;
           }}
           onCancelAllocation={async (id, version) => {
+            if (!cancelPlanningAllocation) return { success: false, error: 'Função de cancelamento não disponível' };
             const res = await cancelPlanningAllocation(id, version);
-            if (res.success) {
-              fetchPlanningCapacity({
+            if (res?.success) {
+              fetchPlanningCapacity?.({
                 dateFrom: startDateStr,
                 dateTo: endDateStr
               });
-              fetchPlanningResourceLoad({
+              fetchPlanningResourceLoad?.({
                 dateFrom: startDateStr,
                 dateTo: endDateStr
               });
@@ -2523,13 +2525,14 @@ export default function CalendarSection({
             return res;
           }}
           onDeleteAllocation={async (id) => {
+            if (!deletePlanningAllocation) return { success: false, error: 'Função de eliminação não disponível' };
             const res = await deletePlanningAllocation(id);
-            if (res.success) {
-              fetchPlanningCapacity({
+            if (res?.success) {
+              fetchPlanningCapacity?.({
                 dateFrom: startDateStr,
                 dateTo: endDateStr
               });
-              fetchPlanningResourceLoad({
+              fetchPlanningResourceLoad?.({
                 dateFrom: startDateStr,
                 dateTo: endDateStr
               });
