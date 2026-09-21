@@ -1423,31 +1423,75 @@ export default function CalendarSection({
                   let periodCapMins = 0;
                   let periodConfMins = 0;
                   let periodDraftMins = 0;
+                  let periodFreeMins = 0;
+                  let periodExcessMins = 0;
                   let periodConfCount = 0;
                   let periodDraftCount = 0;
+                  let singleCapDetail: ResourceCapacityDetail | undefined;
+                  let singleLoadDetail: ResourceLoadSummary | undefined;
 
                   timelineDays.forEach(day => {
                     const dStr = formatDateToString(day);
                     const capDetail = (planningCapacity || []).find(c => c.resourceId === user.id && c.date === dStr);
-                    periodCapMins += capDetail ? capDetail.operationalCapacityMinutes : 0;
+                    const loadDetail = (planningResourceLoad || []).find(l => l.resourceId === user.id && l.date === dStr);
 
+                    if (timelineDays.length === 1) {
+                      singleCapDetail = capDetail;
+                      singleLoadDetail = loadDetail;
+                    }
+
+                    // 1. Capacity (canonical operationalCapacityMinutes)
+                    const dayCap = capDetail 
+                      ? capDetail.operationalCapacityMinutes 
+                      : (loadDetail ? loadDetail.operationalCapacityMinutes : 0);
+                    periodCapMins += dayCap;
+
+                    // 2. Count allocations and sum DRAFT duration from planningAllocations
                     const dayAllocs = planningAllocations.filter(a => a.resourceId === user.id && a.date === dStr && a.status !== 'CANCELLED');
+                    let dayLocalConfMins = 0;
+                    let dayDraftMins = 0;
+
                     dayAllocs.forEach(a => {
                       if (a.status === 'CONFIRMED') {
-                        periodConfMins += (a.durationMinutes || 0);
+                        dayLocalConfMins += (a.durationMinutes || 0);
                         periodConfCount++;
                       } else if (a.status === 'DRAFT') {
-                        periodDraftMins += (a.durationMinutes || 0);
+                        dayDraftMins += (a.durationMinutes || 0);
                         periodDraftCount++;
                       }
                     });
+                    periodDraftMins += dayDraftMins;
+
+                    // 3. Confirmed (canonical confirmedAllocationMinutes)
+                    const dayConf = capDetail 
+                      ? capDetail.confirmedAllocationMinutes 
+                      : (loadDetail ? loadDetail.plannedMinutes : dayLocalConfMins);
+                    periodConfMins += dayConf;
+
+                    // 4. Free (canonical availableMinutes)
+                    const dayFree = capDetail 
+                      ? capDetail.availableMinutes 
+                      : (loadDetail ? loadDetail.availableMinutes : Math.max(0, dayCap - dayConf));
+                    periodFreeMins += dayFree;
+
+                    // 5. Excess (canonical overAllocatedMinutes)
+                    const dayExcess = capDetail 
+                      ? capDetail.overAllocatedMinutes 
+                      : (loadDetail ? loadDetail.overAllocatedMinutes : Math.max(0, dayConf - dayCap));
+                    periodExcessMins += dayExcess;
                   });
 
+                  // Planned = Confirmed + DRAFT
                   const periodPlanMins = periodConfMins + periodDraftMins;
-                  const periodFreeMins = Math.max(0, periodCapMins - periodConfMins);
-                  const periodExcessMins = Math.max(0, periodPlanMins - periodCapMins);
 
-                  const resourceSummaryTooltip = `Recurso: ${user.name}\nPeríodo: ${startDateStr} a ${endDateStr} (${timelineDays.length} dias)\nCapacidade: ${formatHoursDisplay(periodCapMins / 60)}\nConfirmado: ${formatHoursDisplay(periodConfMins / 60)} (${periodConfCount} alocações)\nPlaneado: ${formatHoursDisplay(periodPlanMins / 60)}\nLivre: ${formatHoursDisplay(periodFreeMins / 60)}\nExcesso: ${formatHoursDisplay(periodExcessMins / 60)}\nCONFIRMED: ${periodConfCount} | DRAFT: ${periodDraftCount}\n\nClique para abrir o detalhe do recurso.`;
+                  // Utilization = canonical utilizationPercent if available, else (confirmed / capacity)
+                  const periodUtilPercent = (timelineDays.length === 1 && singleCapDetail)
+                    ? singleCapDetail.utilizationPercent
+                    : (timelineDays.length === 1 && singleLoadDetail)
+                    ? singleLoadDetail.utilizationPercent
+                    : (periodCapMins > 0 ? Math.round((periodConfMins / periodCapMins) * 1000) / 10 : 0);
+
+                  const resourceSummaryTooltip = `Recurso: ${user.name}\nPeríodo: ${startDateStr} a ${endDateStr} (${timelineDays.length} dias)\nCapacidade: ${formatHoursDisplay(periodCapMins / 60)}\nConfirmado: ${formatHoursDisplay(periodConfMins / 60)} (${periodConfCount} alocações)\nPlaneado: ${formatHoursDisplay(periodPlanMins / 60)}\nLivre: ${formatHoursDisplay(periodFreeMins / 60)}\nExcesso: ${formatHoursDisplay(periodExcessMins / 60)}\nUtilização: ${periodUtilPercent}%\nCONFIRMED: ${periodConfCount} | DRAFT: ${periodDraftCount}\n\nClique para abrir o detalhe do recurso.`;
 
                   return (
                     <tr key={user.id} className="hover:bg-slate-50/30 transition-colors">
