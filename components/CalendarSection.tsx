@@ -633,6 +633,13 @@ export default function CalendarSection({
       }
     });
 
+    const loadMap = new Map<string, ResourceLoadSummary>();
+    (planningResourceLoad || []).forEach(l => {
+      if (dayStringSet.has(l.date)) {
+        loadMap.set(`${l.resourceId}|${l.date}`, l);
+      }
+    });
+
     const allocationsMap = new Map<string, PlanningAllocationDTO[]>();
     (planningAllocations || []).forEach(a => {
       if (a.status !== 'CANCELLED' && dayStringSet.has(a.date)) {
@@ -664,32 +671,54 @@ export default function CalendarSection({
       dayStrings.forEach(dStr => {
         const key = `${user.id}|${dStr}`;
         const capDetail = capacityMap.get(key);
+        const loadDetail = loadMap.get(key);
         const dayAllocs = allocationsMap.get(key) || [];
 
-        // Capacity: strictly canonical, NO 480 fallback
-        const capMins = capDetail ? capDetail.operationalCapacityMinutes : 0;
+        // Capacity: strictly canonical, capDetail > loadDetail > 0
+        const capMins = capDetail
+          ? capDetail.operationalCapacityMinutes
+          : (loadDetail
+              ? loadDetail.operationalCapacityMinutes
+              : 0);
         capacityMinutes += capMins;
 
-        // Confirmed: canonical from planningCapacity, or sum of CONFIRMED allocations
+        // Confirmed: canonical from planningCapacity, or fallback to CONFIRMED allocations
+        // NUNCA utilizar loadDetail.plannedMinutes para representar CONFIRMED!
         const confMins = capDetail
           ? capDetail.confirmedAllocationMinutes
-          : dayAllocs.filter(a => a.status === 'CONFIRMED').reduce((s, a) => s + (a.durationMinutes || 0), 0);
+          : (
+              (loadDetail && 'confirmedMinutes' in loadDetail && typeof (loadDetail as any).confirmedMinutes === 'number')
+                ? (loadDetail as any).confirmedMinutes
+                : dayAllocs
+                    .filter(a => a.status === 'CONFIRMED')
+                    .reduce((s, a) => s + (a.durationMinutes || 0), 0)
+            );
         confirmedMinutes += confMins;
 
         // Draft: sum of DRAFT allocations for this day
-        const dayDraftMins = dayAllocs.filter(a => a.status === 'DRAFT').reduce((s, a) => s + (a.durationMinutes || 0), 0);
+        const dayDraftMins = dayAllocs
+          .filter(a => a.status === 'DRAFT')
+          .reduce((s, a) => s + (a.durationMinutes || 0), 0);
         draftMinutes += dayDraftMins;
 
         // Free: daily canonical available minutes
         const dayFreeMins = capDetail
           ? capDetail.availableMinutes
-          : Math.max(0, capMins - confMins);
+          : (
+              loadDetail
+                ? loadDetail.availableMinutes
+                : Math.max(0, capMins - confMins)
+            );
         freeMinutes += dayFreeMins;
 
         // Excess: daily canonical over-allocated minutes
         const dayExcessMins = capDetail
           ? capDetail.overAllocatedMinutes
-          : Math.max(0, confMins - capMins);
+          : (
+              loadDetail
+                ? loadDetail.overAllocatedMinutes
+                : Math.max(0, confMins - capMins)
+            );
         excessMinutes += dayExcessMins;
       });
 
@@ -761,7 +790,8 @@ export default function CalendarSection({
     resourceOperationalSort,
     timelineDays,
     planningAllocations,
-    planningCapacity
+    planningCapacity,
+    planningResourceLoad
   ]);
 
   // FASE 23E-C3A: Operational Planning KPIs Aggregation Engine (useMemo over baseResources)
