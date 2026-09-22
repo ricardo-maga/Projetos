@@ -56,6 +56,133 @@ export interface TaskDailyPlanningGroup {
   resourceAllocations: TaskDailyResourceAllocation[];
 }
 
+export interface ResourceDayTaskGroup {
+  taskId: string;
+  task: any | null;
+  project: any | null;
+  confirmedMinutes: number;
+  draftMinutes: number;
+  plannedMinutes: number;
+  confirmedHours: number;
+  draftHours: number;
+  plannedHours: number;
+  allocations: PlanningAllocationDTO[];
+  hasConfirmed: boolean;
+  hasDraft: boolean;
+}
+
+/**
+ * Groups active (CONFIRMED + DRAFT) allocations for a specific resource on a specific date by Task (FASE 23E-C3M-C).
+ * 
+ * Rules:
+ * - Only considers allocations for the given resource and date with status CONFIRMED or DRAFT.
+ * - Excludes CANCELLED allocations from totals and operational groupings.
+ * - Aggregates CONFIRMED hours, DRAFT hours, and Total Planned hours for each task.
+ * - Resolves task and project objects using the provided lookup collections.
+ * - Sorts tasks deterministically:
+ *   1. Tasks with CONFIRMED allocations first
+ *   2. Tasks with only DRAFT allocations next
+ *   3. Tie-breaker: Project name and then Task title alphabetically
+ */
+export function groupResourceDayAllocationsByTask(
+  resourceId: string,
+  dateStr: string,
+  allocations: PlanningAllocationDTO[] = [],
+  tasks: any[] = [],
+  projects: any[] = []
+): ResourceDayTaskGroup[] {
+  const activeAllocs = allocations.filter(
+    a => a.resourceId === resourceId && a.date === dateStr && (a.status === 'CONFIRMED' || a.status === 'DRAFT')
+  );
+
+  const taskMap = new Map<string, PlanningAllocationDTO[]>();
+
+  for (const a of activeAllocs) {
+    const list = taskMap.get(a.taskId) || [];
+    list.push(a);
+    taskMap.set(a.taskId, list);
+  }
+
+  const groups: ResourceDayTaskGroup[] = [];
+
+  taskMap.forEach((allocList, taskId) => {
+    // Sort allocations within task chronologically by startTime
+    allocList.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+    let confirmedMinutes = 0;
+    let draftMinutes = 0;
+
+    for (const a of allocList) {
+      const dur = a.durationMinutes || 0;
+      if (a.status === 'CONFIRMED') {
+        confirmedMinutes += dur;
+      } else if (a.status === 'DRAFT') {
+        draftMinutes += dur;
+      }
+    }
+
+    const matchedTask = tasks.find(t => t.id === taskId) || (allocList[0]?.task ? {
+      id: allocList[0].task.id,
+      title: allocList[0].task.title,
+      projectId: allocList[0].task.projectId || '',
+      assigneeIds: [],
+      statusId: '',
+      estimatedDate: '',
+      description: '',
+      estimatedHours: '0',
+      actualHours: '0',
+      startDate: '',
+      startTime: '',
+      endDate: '',
+      endTime: '',
+      notes: '',
+      deleted: false,
+      createdDate: '',
+    } : null);
+
+    const matchedProject = projects.find(p => p.id === matchedTask?.projectId) || null;
+
+    const confirmedHours = confirmedMinutes / 60;
+    const draftHours = draftMinutes / 60;
+    const plannedHours = confirmedHours + draftHours;
+
+    groups.push({
+      taskId,
+      task: matchedTask,
+      project: matchedProject,
+      confirmedMinutes,
+      draftMinutes,
+      plannedMinutes: confirmedMinutes + draftMinutes,
+      confirmedHours,
+      draftHours,
+      plannedHours,
+      allocations: allocList,
+      hasConfirmed: confirmedMinutes > 0,
+      hasDraft: draftMinutes > 0,
+    });
+  });
+
+  // Deterministic sorting:
+  // 1. Tasks with CONFIRMED first
+  // 2. Tasks with only DRAFT next
+  // 3. Project name and Task title (localeCompare pt-PT)
+  groups.sort((a, b) => {
+    if (a.hasConfirmed && !b.hasConfirmed) return -1;
+    if (!a.hasConfirmed && b.hasConfirmed) return 1;
+
+    const projNameA = a.project?.title || '';
+    const projNameB = b.project?.title || '';
+    const projCompare = projNameA.localeCompare(projNameB, 'pt-PT');
+    if (projCompare !== 0) return projCompare;
+
+    const taskTitleA = a.task?.title || a.taskId;
+    const taskTitleB = b.task?.title || b.taskId;
+    return taskTitleA.localeCompare(taskTitleB, 'pt-PT');
+  });
+
+  return groups;
+}
+
 /**
  * Computes the authoritative planning summary for a task given its estimated hours and its allocations.
  * 

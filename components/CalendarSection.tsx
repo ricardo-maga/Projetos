@@ -3107,6 +3107,7 @@ export default function CalendarSection({
           projects={projects}
           users={users}
           userAbsences={userAbsences}
+          taskStatuses={taskStatuses}
           onNewAllocation={handleNewAllocationFromDayDetail}
           onEditAllocation={handleEditAllocationFromDayDetail}
           onConfirmAllocation={async (id, version) => {

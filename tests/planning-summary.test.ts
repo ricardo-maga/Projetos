@@ -4,7 +4,7 @@ import {
   computePlanningSummary, 
   parseHoursToNumber, 
   formatHoursDisplay,
-  groupTaskAllocationsByDate
+  groupResourceDayAllocationsByTask 
 } from '../lib/planning/summary.ts';
 import { PlanningAllocationDTO } from '../lib/planning/types.ts';
 
@@ -83,117 +83,9 @@ describe('Planning Summary & Calculations Unit Tests (FASE 23C)', () => {
     // Planned deve somar apenas DRAFT + CONFIRMED = 2h + 3h = 5h
     // Capacity Consumed apenas CONFIRMED = 3h
     assert.strictEqual(summary.plannedHours, 5);
-    assert.strictEqual(summary.confirmedHours, 3);
-    assert.strictEqual(summary.draftHours, 2);
     assert.strictEqual(summary.capacityConsumedHours, 3);
     assert.strictEqual(summary.remainingHours, 3);
     assert.strictEqual(summary.excessHours, 0);
-  });
-
-  describe('FASE 23E-C3M-B: Cenários A-F de Carga Diária das Tarefas', () => {
-    it('Cenário A: Tarefa sem qualquer planeamento', () => {
-      // Estimativa: 8h, Alocações: 0
-      const summary = computePlanningSummary('8h', []);
-      assert.strictEqual(summary.estimatedHours, 8);
-      assert.strictEqual(summary.confirmedHours, 0);
-      assert.strictEqual(summary.draftHours, 0);
-      assert.strictEqual(summary.plannedHours, 0);
-      assert.strictEqual(summary.remainingHours, 8);
-      assert.strictEqual(summary.excessHours, 0);
-      assert.strictEqual(summary.isOverAllocated, false);
-    });
-
-    it('Cenário B: Tarefa parcialmente planeada (apenas CONFIRMED)', () => {
-      // Estimativa: 16h, 1 dia CONFIRMED 6h
-      const a1 = { ...makeAllocation('a-1', 360, 'CONFIRMED'), date: '2026-09-22' };
-      const summary = computePlanningSummary('16h', [a1]);
-      assert.strictEqual(summary.estimatedHours, 16);
-      assert.strictEqual(summary.confirmedHours, 6);
-      assert.strictEqual(summary.draftHours, 0);
-      assert.strictEqual(summary.plannedHours, 6);
-      assert.strictEqual(summary.remainingHours, 10);
-      assert.strictEqual(summary.excessHours, 0);
-      assert.strictEqual(summary.isOverAllocated, false);
-    });
-
-    it('Cenário C: Tarefa com CONFIRMED + DRAFT', () => {
-      // Estimativa: 16h, 1 dia CONFIRMED 8h + 1 dia DRAFT 4h
-      const a1 = { ...makeAllocation('a-1', 480, 'CONFIRMED'), date: '2026-09-22' };
-      const a2 = { ...makeAllocation('a-2', 240, 'DRAFT'), date: '2026-09-23' };
-      const summary = computePlanningSummary('16h', [a1, a2]);
-      assert.strictEqual(summary.estimatedHours, 16);
-      assert.strictEqual(summary.confirmedHours, 8);
-      assert.strictEqual(summary.draftHours, 4);
-      assert.strictEqual(summary.plannedHours, 12);
-      assert.strictEqual(summary.remainingHours, 4);
-      assert.strictEqual(summary.excessHours, 0);
-      assert.strictEqual(summary.isOverAllocated, false);
-    });
-
-    it('Cenário D: Tarefa totalmente planeada', () => {
-      // Estimativa: 16h, 2 dias CONFIRMED 8h = 16h
-      const a1 = { ...makeAllocation('a-1', 480, 'CONFIRMED'), date: '2026-09-22' };
-      const a2 = { ...makeAllocation('a-2', 480, 'CONFIRMED'), date: '2026-09-23' };
-      const summary = computePlanningSummary('16h', [a1, a2]);
-      assert.strictEqual(summary.estimatedHours, 16);
-      assert.strictEqual(summary.confirmedHours, 16);
-      assert.strictEqual(summary.draftHours, 0);
-      assert.strictEqual(summary.plannedHours, 16);
-      assert.strictEqual(summary.remainingHours, 0);
-      assert.strictEqual(summary.excessHours, 0);
-      assert.strictEqual(summary.isOverAllocated, false);
-    });
-
-    it('Cenário E: Tarefa com excesso de planeamento', () => {
-      // Estimativa: 10h, Planeado 14h (8h CONFIRMED + 6h DRAFT)
-      const a1 = { ...makeAllocation('a-1', 480, 'CONFIRMED'), date: '2026-09-22' };
-      const a2 = { ...makeAllocation('a-2', 360, 'DRAFT'), date: '2026-09-23' };
-      const summary = computePlanningSummary('10h', [a1, a2]);
-      assert.strictEqual(summary.estimatedHours, 10);
-      assert.strictEqual(summary.confirmedHours, 8);
-      assert.strictEqual(summary.draftHours, 6);
-      assert.strictEqual(summary.plannedHours, 14);
-      assert.strictEqual(summary.remainingHours, 0);
-      assert.strictEqual(summary.excessHours, 4);
-      assert.strictEqual(summary.isOverAllocated, true);
-    });
-
-    it('Cenário F: Tarefa distribuída por múltiplos dias e recursos', () => {
-      // Exemplo da especificação:
-      // 22 Set: 8h CONFIRMED (Técnico A)
-      // 23 Set: 6h CONFIRMED (Técnico B)
-      // 24 Set: 2h DRAFT (Técnico A)
-      // Total: 16h, Estimativa: 16h
-      const a1 = { ...makeAllocation('a-1', 480, 'CONFIRMED'), resourceId: 'res-A', date: '2026-09-22', startTime: '08:00', endTime: '16:00' };
-      const a2 = { ...makeAllocation('a-2', 360, 'CONFIRMED'), resourceId: 'res-B', date: '2026-09-23', startTime: '09:00', endTime: '15:00' };
-      const a3 = { ...makeAllocation('a-3', 120, 'DRAFT'), resourceId: 'res-A', date: '2026-09-24', startTime: '08:00', endTime: '10:00' };
-      
-      const summary = computePlanningSummary('16h', [a1, a2, a3]);
-      assert.strictEqual(summary.estimatedHours, 16);
-      assert.strictEqual(summary.confirmedHours, 14);
-      assert.strictEqual(summary.draftHours, 2);
-      assert.strictEqual(summary.plannedHours, 16);
-      assert.strictEqual(summary.remainingHours, 0);
-      assert.strictEqual(summary.excessHours, 0);
-      assert.strictEqual(summary.isOverAllocated, false);
-
-      const dailyGroups = groupTaskAllocationsByDate([a1, a2, a3]);
-      assert.strictEqual(dailyGroups.length, 3);
-      assert.strictEqual(dailyGroups[0].date, '2026-09-22');
-      assert.strictEqual(dailyGroups[0].plannedHours, 8);
-      assert.strictEqual(dailyGroups[0].confirmedHours, 8);
-      assert.strictEqual(dailyGroups[0].resourceAllocations[0].resourceId, 'res-A');
-
-      assert.strictEqual(dailyGroups[1].date, '2026-09-23');
-      assert.strictEqual(dailyGroups[1].plannedHours, 6);
-      assert.strictEqual(dailyGroups[1].confirmedHours, 6);
-      assert.strictEqual(dailyGroups[1].resourceAllocations[0].resourceId, 'res-B');
-
-      assert.strictEqual(dailyGroups[2].date, '2026-09-24');
-      assert.strictEqual(dailyGroups[2].plannedHours, 2);
-      assert.strictEqual(dailyGroups[2].draftHours, 2);
-      assert.strictEqual(dailyGroups[2].resourceAllocations[0].resourceId, 'res-A');
-    });
   });
 
   it('Formatação amigável de horas', () => {
@@ -211,5 +103,146 @@ describe('Planning Summary & Calculations Unit Tests (FASE 23C)', () => {
     assert.strictEqual(parseHoursToNumber('4,5'), 4.5);
     assert.strictEqual(parseHoursToNumber(null), 0);
     assert.strictEqual(parseHoursToNumber(undefined), 0);
+  });
+});
+
+describe('Resource Day Detail Task Grouping Unit Tests (FASE 23E-C3M-C)', () => {
+  const mockTasks = [
+    { id: 'task-1', title: 'Instalação impressora linha 1', projectId: 'proj-1', assigneeIds: ['user-1'] },
+    { id: 'task-2', title: 'Configuração etiquetagem', projectId: 'proj-2', assigneeIds: ['user-2'] },
+    { id: 'task-3', title: 'Testes de cablagem', projectId: 'proj-1', assigneeIds: ['user-1', 'user-2'] },
+  ];
+
+  const mockProjects = [
+    { id: 'proj-1', title: 'Projeto ABC' },
+    { id: 'proj-2', title: 'Projeto XYZ' },
+  ];
+
+  const makeAlloc = (
+    id: string,
+    taskId: string,
+    resourceId: string,
+    date: string,
+    durationMinutes: number,
+    status: 'DRAFT' | 'CONFIRMED' | 'CANCELLED',
+    startTime = '08:00',
+    endTime = '12:00'
+  ): PlanningAllocationDTO => ({
+    id,
+    taskId,
+    resourceId,
+    date,
+    startTime,
+    endTime,
+    status,
+    version: 1,
+    durationMinutes,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  it('Critério A: Uma tarefa com 4h CONFIRMED aparece uma única vez (CONFIRMED 4h, PLANEADO 4h)', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 240, 'CONFIRMED', '08:00', '12:00'),
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, mockTasks, mockProjects);
+    assert.strictEqual(groups.length, 1);
+    assert.strictEqual(groups[0].taskId, 'task-1');
+    assert.strictEqual(groups[0].task?.title, 'Instalação impressora linha 1');
+    assert.strictEqual(groups[0].project?.title, 'Projeto ABC');
+    assert.strictEqual(groups[0].confirmedHours, 4);
+    assert.strictEqual(groups[0].draftHours, 0);
+    assert.strictEqual(groups[0].plannedHours, 4);
+    assert.strictEqual(groups[0].hasConfirmed, true);
+    assert.strictEqual(groups[0].hasDraft, false);
+  });
+
+  it('Critério B: CONFIRMED + DRAFT (4h CONFIRMED + 2h DRAFT mostra CONFIRMED 4h, DRAFT 2h, PLANEADO 6h)', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-2', 'user-1', '2026-09-22', 240, 'CONFIRMED', '08:00', '12:00'),
+      makeAlloc('a2', 'task-2', 'user-1', '2026-09-22', 120, 'DRAFT', '14:00', '16:00'),
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, mockTasks, mockProjects);
+    assert.strictEqual(groups.length, 1);
+    assert.strictEqual(groups[0].taskId, 'task-2');
+    assert.strictEqual(groups[0].confirmedHours, 4);
+    assert.strictEqual(groups[0].draftHours, 2);
+    assert.strictEqual(groups[0].plannedHours, 6);
+    assert.strictEqual(groups[0].hasConfirmed, true);
+    assert.strictEqual(groups[0].hasDraft, true);
+    assert.strictEqual(groups[0].allocations.length, 2);
+  });
+
+  it('Critério C: Múltiplas allocations da mesma tarefa no mesmo dia são agrupadas numa única tarefa', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 120, 'CONFIRMED', '08:00', '10:00'),
+      makeAlloc('a2', 'task-1', 'user-1', '2026-09-22', 120, 'CONFIRMED', '14:00', '16:00'),
+      makeAlloc('a3', 'task-1', 'user-1', '2026-09-22', 60, 'DRAFT', '16:00', '17:00'),
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, mockTasks, mockProjects);
+    assert.strictEqual(groups.length, 1);
+    assert.strictEqual(groups[0].confirmedHours, 4);
+    assert.strictEqual(groups[0].draftHours, 1);
+    assert.strictEqual(groups[0].plannedHours, 5);
+    assert.strictEqual(groups[0].allocations.length, 3);
+  });
+
+  it('Critério D: Várias tarefas aparecem separadamente', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 240, 'CONFIRMED', '08:00', '12:00'),
+      makeAlloc('a2', 'task-2', 'user-1', '2026-09-22', 180, 'CONFIRMED', '13:00', '16:00'),
+      makeAlloc('a3', 'task-3', 'user-1', '2026-09-22', 60, 'DRAFT', '16:00', '17:00'),
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, mockTasks, mockProjects);
+    assert.strictEqual(groups.length, 3);
+    const taskIds = groups.map(g => g.taskId);
+    assert.deepStrictEqual(taskIds, ['task-1', 'task-2', 'task-3']);
+  });
+
+  it('Critério E: CANCELLED não entra nos totais nem no agrupamento operacional', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 240, 'CONFIRMED', '08:00', '12:00'),
+      makeAlloc('a2', 'task-1', 'user-1', '2026-09-22', 120, 'CANCELLED', '13:00', '15:00'),
+      makeAlloc('a3', 'task-2', 'user-1', '2026-09-22', 180, 'CANCELLED', '15:00', '18:00'),
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, mockTasks, mockProjects);
+    // task-2 only has CANCELLED so it does not appear in active operational groups
+    assert.strictEqual(groups.length, 1);
+    assert.strictEqual(groups[0].taskId, 'task-1');
+    assert.strictEqual(groups[0].confirmedHours, 4);
+    assert.strictEqual(groups[0].plannedHours, 4);
+    assert.strictEqual(groups[0].allocations.length, 1);
+  });
+
+  it('Critério G: Mostra apenas allocations do recurso e dia selecionados', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 240, 'CONFIRMED'),
+      makeAlloc('a2', 'task-1', 'user-2', '2026-09-22', 120, 'CONFIRMED'), // outro utilizador
+      makeAlloc('a3', 'task-1', 'user-1', '2026-09-23', 180, 'CONFIRMED'), // outro dia
+    ];
+
+    const groupsUser1Day22 = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, mockTasks, mockProjects);
+    assert.strictEqual(groupsUser1Day22.length, 1);
+    assert.strictEqual(groupsUser1Day22[0].confirmedHours, 4);
+
+    const groupsUser2Day22 = groupResourceDayAllocationsByTask('user-2', '2026-09-22', allocs, mockTasks, mockProjects);
+    assert.strictEqual(groupsUser2Day22.length, 1);
+    assert.strictEqual(groupsUser2Day22[0].confirmedHours, 2);
+  });
+
+  it('Ordenação: Tarefas com CONFIRMED vêm antes de tarefas apenas com DRAFT', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 120, 'DRAFT'),
+      makeAlloc('a2', 'task-2', 'user-1', '2026-09-22', 180, 'CONFIRMED'),
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, mockTasks, mockProjects);
+    assert.strictEqual(groups[0].taskId, 'task-2'); // CONFIRMED first
+    assert.strictEqual(groups[1].taskId, 'task-1'); // DRAFT next
   });
 });

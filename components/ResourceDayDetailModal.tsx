@@ -17,13 +17,17 @@ import {
   FileText,
   Check
 } from 'lucide-react';
-import { User, Task, Project, UserAbsence } from '../lib/types';
+import { User, Task, Project, UserAbsence, TaskStatus } from '../lib/types';
 import { 
   PlanningAllocationDTO, 
   ResourceCapacityDetail, 
   ResourceLoadSummary 
 } from '../lib/planning/types';
-import { formatHoursDisplay } from '../lib/planning/summary';
+import { 
+  formatHoursDisplay, 
+  groupResourceDayAllocationsByTask,
+  ResourceDayTaskGroup 
+} from '../lib/planning/summary';
 
 interface ResourceDayDetailModalProps {
   isOpen: boolean;
@@ -37,6 +41,7 @@ interface ResourceDayDetailModalProps {
   projects: Project[];
   users?: User[];
   userAbsences?: UserAbsence[];
+  taskStatuses?: TaskStatus[];
   onNewAllocation: (resourceId: string, dateStr: string) => void;
   onEditAllocation: (allocation: PlanningAllocationDTO) => void;
   onConfirmAllocation?: (id: string, version: number) => Promise<any>;
@@ -59,6 +64,7 @@ export default function ResourceDayDetailModal({
   projects,
   users = [],
   userAbsences = [],
+  taskStatuses = [],
   onNewAllocation,
   onEditAllocation,
   onConfirmAllocation,
@@ -131,6 +137,17 @@ export default function ResourceDayDetailModal({
   const excessMinutes = capacityDetail
     ? capacityDetail.overAllocatedMinutes
     : (loadDetail ? loadDetail.overAllocatedMinutes : Math.max(0, confirmedMinutes - capacityMinutes));
+
+  // FASE 23E-C3M-C: Group active allocations by Task (deterministic sorting: CONFIRMED first, then DRAFT, then Project/Task name)
+  const taskGroups: ResourceDayTaskGroup[] = React.useMemo(() => {
+    return groupResourceDayAllocationsByTask(
+      resource.id,
+      dateStr,
+      allocations,
+      tasks,
+      projects
+    );
+  }, [resource.id, dateStr, allocations, tasks, projects]);
 
   // Utilization = Canonical utilizationPercent if available, else CONFIRMED / Capacity
   const utilizationPercent = capacityDetail
@@ -577,12 +594,12 @@ export default function ResourceDayDetailModal({
             </div>
           </div>
 
-          {/* Planned Work List for the Day (Trabalho do Dia - FASE 23E-C3M-A) */}
+          {/* Planned Work List for the Day (Trabalho do Dia - FASE 23E-C3M-C Agrupamento por Tarefa) */}
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
               <div className="text-xs uppercase tracking-wider font-extrabold text-slate-800 flex items-center gap-2">
                 <Briefcase className="w-4 h-4 text-blue-600" />
-                Trabalho do Dia ({activeAllocations.length} alocação(ões) ativa(s))
+                Trabalho do Dia ({taskGroups.length} tarefa{taskGroups.length === 1 ? '' : 's'} · {activeAllocations.length} alocação{activeAllocations.length === 1 ? '' : 'ões'})
               </div>
               {cancelledAllocations.length > 0 && (
                 <span className="text-xs font-semibold text-slate-400">
@@ -591,14 +608,14 @@ export default function ResourceDayDetailModal({
               )}
             </div>
 
-            {dayAllocations.length === 0 ? (
+            {taskGroups.length === 0 ? (
               <div className="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-8 text-center space-y-3">
                 <Clock className="w-8 h-8 text-slate-400 mx-auto" />
                 <div className="text-sm font-bold text-slate-800">
                   Nenhum trabalho planeado para este técnico nesta data
                 </div>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Este recurso não tem trabalho planeado nem alocações registadas para o dia selecionado.
+                  Este recurso não tem trabalho planeado nem alocações ativas registadas para o dia selecionado.
                 </p>
                 {canWriteCalendar && (
                   <button
@@ -612,345 +629,273 @@ export default function ResourceDayDetailModal({
                 )}
               </div>
             ) : (
-              <div className="space-y-6">
-                {/* 1. CONFIRMED SECTION */}
-                {sortedConfirmed.length > 0 && (
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between text-xs font-extrabold text-blue-900 bg-blue-50/80 px-3 py-1.5 rounded-xl border border-blue-200">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                        <span>Trabalho Confirmado ({sortedConfirmed.length})</span>
-                      </div>
-                      <span className="text-[11px] font-bold text-blue-700">
-                        Total: {formatHoursDisplay(localConfirmedMinutes / 60)}
-                      </span>
-                    </div>
+              <div className="space-y-4">
+                {taskGroups.map(group => {
+                  const task = group.task;
+                  const project = group.project;
+                  const taskStatus = taskStatuses?.find(s => s.id === task?.statusId);
+                  const taskAssignees = task?.assigneeIds 
+                    ? users.filter(u => task.assigneeIds.includes(u.id))
+                    : [];
+                  const isResourceAssignee = (task?.assigneeIds || []).includes(resource.id);
 
-                    <div className="space-y-2.5">
-                      {sortedConfirmed.map(alloc => {
-                        const allocTask = tasks.find(t => t.id === alloc.taskId) || (alloc.task ? {
-                          id: alloc.task.id,
-                          title: alloc.task.title,
-                          projectId: alloc.task.projectId || '',
-                          assigneeIds: [],
-                          statusId: '',
-                          estimatedDate: '',
-                          description: '',
-                          estimatedHours: '0',
-                          actualHours: '0',
-                          startDate: '',
-                          startTime: '',
-                          endDate: '',
-                          endTime: '',
-                          notes: '',
-                          deleted: false,
-                          createdDate: '',
-                        } as Task : null);
+                  return (
+                    <div
+                      key={group.taskId}
+                      className="p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 shadow-2xs transition-all space-y-3.5"
+                    >
+                      {/* Header da Tarefa: Projeto, Nome da Tarefa, Status Contextual e Botão "Ver Tarefa" */}
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          {/* Projeto e Estado da Tarefa (Contexto) */}
+                          <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500">
+                            <div className="flex items-center gap-1.5 font-extrabold text-slate-700 uppercase tracking-wide text-[11px]">
+                              <Briefcase className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                              <span>{project ? project.title : 'Projeto não associado'}</span>
+                            </div>
+                            {taskStatus && (
+                              <span 
+                                className="px-2 py-0.5 rounded-md text-[10px] font-bold border"
+                                style={{
+                                  backgroundColor: taskStatus.color ? `${taskStatus.color}15` : '#f1f5f9',
+                                  color: taskStatus.color || '#334155',
+                                  borderColor: taskStatus.color ? `${taskStatus.color}40` : '#cbd5e1'
+                                }}
+                              >
+                                {taskStatus.name}
+                              </span>
+                            )}
+                          </div>
 
-                        const allocProject = projects.find(p => p.id === allocTask?.projectId) || null;
-                        const durationHours = (alloc.durationMinutes || 0) / 60;
+                          {/* Nome / Título da Tarefa */}
+                          <h4 className="text-sm font-black text-slate-900 leading-tight">
+                            {task ? task.title : 'Tarefa não especificada'}
+                          </h4>
+                        </div>
 
-                        const taskAssignees = allocTask?.assigneeIds 
-                          ? users.filter(u => allocTask.assigneeIds.includes(u.id))
-                          : [];
-
-                        return (
-                          <div
-                            key={alloc.id}
-                            className="p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 shadow-2xs transition-all space-y-3"
+                        {/* Ação: Ver Tarefa (Fecha o modal diário e abre o TaskDetailsModal) */}
+                        {task && (
+                          <button
+                            type="button"
+                            id={`btn-view-task-${task.id}`}
+                            onClick={() => {
+                              onClose();
+                              onViewTask(task);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer shrink-0 self-start"
+                            title="Ver detalhes da tarefa"
+                            aria-label={`Ver detalhes da tarefa ${task.title}`}
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                              {/* Primary Information: Projeto, Tarefa, Duração, Estado, Recurso */}
-                              <div className="min-w-0 flex-1 space-y-1.5">
-                                {/* Projeto */}
-                                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                  <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                  <span className="font-extrabold text-slate-700 uppercase tracking-wide text-[11px]">
-                                    {allocProject ? allocProject.title : 'Projeto não associado'}
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>Ver tarefa</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Resumo de Horas do Dia para a Tarefa (Secção 4 & 12 do Caderno) */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {group.hasConfirmed && (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-xs">
+                            <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-wider">CONFIRMADO</span>
+                            <span className="font-black text-blue-900">{formatHoursDisplay(group.confirmedHours)}</span>
+                          </div>
+                        )}
+
+                        {group.hasDraft && (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-300 border-dashed text-xs">
+                            <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider">DRAFT</span>
+                            <span className="font-black text-amber-900">{formatHoursDisplay(group.draftHours)}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-xs">
+                          <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">PLANEADO</span>
+                          <span className="font-black text-slate-900">{formatHoursDisplay(group.plannedHours)}</span>
+                        </div>
+                      </div>
+
+                      {/* Contexto de Pessoas: Técnico Planeado vs Responsável da Tarefa (Secção 8 do Caderno) */}
+                      <div className="flex items-center gap-2.5 text-[11px] text-slate-600 flex-wrap bg-slate-50/80 p-2 rounded-lg border border-slate-200/70">
+                        <div className="inline-flex items-center gap-1 text-slate-800 font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Técnico: {resource.name}</span>
+                          {isResourceAssignee && (
+                            <span className="text-[9px] font-semibold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.2 rounded-md ml-0.5">
+                              Responsável
+                            </span>
+                          )}
+                        </div>
+
+                        {!isResourceAssignee && taskAssignees.length > 0 && (
+                          <>
+                            <span className="text-slate-300">•</span>
+                            <div className="inline-flex items-center gap-1 text-slate-500">
+                              <UserIcon className="w-3 h-3 text-slate-400" />
+                              <span>
+                                Responsável: <strong className="text-slate-700 font-medium">{taskAssignees.map(u => u.name).join(', ')}</strong>
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Lista de Alocações desta Tarefa no Dia (Secundário com Ações) */}
+                      <div className="space-y-1.5 pt-1">
+                        <div className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
+                          Alocações ({group.allocations.length})
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {group.allocations.map(alloc => {
+                            const isConfirmed = alloc.status === 'CONFIRMED';
+                            const isDraft = alloc.status === 'DRAFT';
+                            const durationHours = (alloc.durationMinutes || 0) / 60;
+
+                            return (
+                              <div
+                                key={alloc.id}
+                                className={`p-2.5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs transition-colors ${
+                                  isConfirmed
+                                    ? 'bg-blue-50/40 border-blue-200 hover:bg-blue-50/70'
+                                    : 'bg-amber-50/30 border-dashed border-amber-300 hover:bg-amber-50/60'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 flex-wrap">
+                                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider ${
+                                    isConfirmed
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-amber-200 text-amber-950 border border-amber-300'
+                                  }`}>
+                                    {isConfirmed ? 'CONFIRMADO' : 'DRAFT'}
                                   </span>
-                                </div>
 
-                                {/* Tarefa */}
-                                <div className="text-sm font-black text-slate-900">
-                                  {allocTask ? allocTask.title : 'Tarefa não especificada'}
-                                </div>
-
-                                {/* Duração e Estado (Primário) com horário secundário */}
-                                <div className="flex items-center gap-2 pt-0.5 flex-wrap">
-                                  <span className="text-xs font-black text-blue-900 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
+                                  <span className="font-extrabold text-slate-800">
                                     {formatHoursDisplay(durationHours)}
                                   </span>
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-800 border-emerald-200">
-                                    CONFIRMADO
-                                  </span>
-                                  {/* Horário secundário (08:00–12:00) */}
-                                  <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+
+                                  {/* Horário secundário */}
+                                  <span className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
                                     <Clock className="w-3 h-3 text-slate-400" />
                                     {alloc.startTime.substring(0, 5)}–{alloc.endTime.substring(0, 5)}
                                   </span>
                                 </div>
 
-                                {/* Contexto: Responsável e Recurso Planeado */}
-                                <div className="flex items-center gap-2.5 pt-1 text-[11px] text-slate-600 flex-wrap">
-                                  <span className="inline-flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                                    <UserIcon className="w-3 h-3 text-slate-400" />
-                                    <span><strong>Responsável:</strong> {taskAssignees.length > 0 ? taskAssignees.map(u => u.name).join(', ') : 'Não atribuído'}</span>
-                                  </span>
-                                  <span className="inline-flex items-center gap-1 bg-blue-50/60 px-2 py-0.5 rounded border border-blue-200 text-blue-900 font-bold">
-                                    <CheckCircle2 className="w-3 h-3 text-blue-600" />
-                                    <span><strong>Recurso:</strong> {resource.name}</span>
-                                  </span>
+                                {/* Ações da Alocação */}
+                                <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                                  {isDraft && canWriteCalendar && onConfirmAllocation && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleExecuteConfirm(alloc)}
+                                      disabled={actionLoadingId === alloc.id}
+                                      className="px-2.5 py-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-2xs"
+                                      aria-label="Confirmar alocação em rascunho"
+                                    >
+                                      {actionLoadingId === alloc.id ? (
+                                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                      ) : (
+                                        <Check className="w-3 h-3" />
+                                      )}
+                                      <span>Confirmar</span>
+                                    </button>
+                                  )}
+
+                                  {canWriteCalendar && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onEditAllocation(alloc)}
+                                      className="px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                                      aria-label="Editar alocação"
+                                    >
+                                      <Edit3 className="w-3 h-3" />
+                                      <span>Editar</span>
+                                    </button>
+                                  )}
+
+                                  {isConfirmed && canWriteCalendar && onCancelAllocation && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setConfirmCancelAlloc(alloc)}
+                                      disabled={actionLoadingId === alloc.id}
+                                      className="px-2.5 py-1 text-[11px] font-bold text-amber-800 bg-white hover:bg-amber-50 border border-amber-300 rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-2xs"
+                                      aria-label="Cancelar alocação confirmada"
+                                    >
+                                      <Ban className="w-3 h-3" />
+                                      <span>Cancelar</span>
+                                    </button>
+                                  )}
+
+                                  {isDraft && canWriteCalendar && onDeleteAllocation && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setConfirmDeleteAlloc(alloc)}
+                                      disabled={actionLoadingId === alloc.id}
+                                      className="px-2.5 py-1 text-[11px] font-bold text-rose-800 bg-white hover:bg-rose-50 border border-rose-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-2xs"
+                                      aria-label="Eliminar rascunho"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      <span>Eliminar</span>
+                                    </button>
+                                  )}
                                 </div>
                               </div>
-
-                              {/* Action Buttons */}
-                              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-start flex-wrap">
-                                {allocTask && (
-                                  <button
-                                    type="button"
-                                    onClick={() => onViewTask(allocTask)}
-                                    className="px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-blue-50 border border-slate-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
-                                    aria-label="Ver detalhes da tarefa"
-                                  >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                    Ver Tarefa
-                                  </button>
-                                )}
-
-                                {canWriteCalendar && (
-                                  <button
-                                    type="button"
-                                    onClick={() => onEditAllocation(alloc)}
-                                    className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
-                                    aria-label="Editar alocação"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                    Editar
-                                  </button>
-                                )}
-
-                                {canWriteCalendar && onCancelAllocation && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setConfirmCancelAlloc(alloc)}
-                                    disabled={actionLoadingId === alloc.id}
-                                    className="px-3 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-2xs"
-                                    aria-label="Cancelar alocação confirmada"
-                                  >
-                                    <Ban className="w-3.5 h-3.5" />
-                                    Cancelar
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* 2. DRAFT SECTION */}
-                {sortedDraft.length > 0 && (
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between text-xs font-extrabold text-amber-900 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-amber-600" />
-                        <span>Trabalho em Rascunho / Pendente (Draft) ({sortedDraft.length})</span>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <span className="text-[11px] font-bold text-amber-800">
-                        Total: {formatHoursDisplay(draftMinutes / 60)}
-                      </span>
                     </div>
+                  );
+                })}
+              </div>
+            )}
 
-                    <div className="space-y-2.5">
-                      {sortedDraft.map(alloc => {
-                        const allocTask = tasks.find(t => t.id === alloc.taskId) || (alloc.task ? {
-                          id: alloc.task.id,
-                          title: alloc.task.title,
-                          projectId: alloc.task.projectId || '',
-                          assigneeIds: [],
-                          statusId: '',
-                          estimatedDate: '',
-                          description: '',
-                          estimatedHours: '0',
-                          actualHours: '0',
-                          startDate: '',
-                          startTime: '',
-                          endDate: '',
-                          endTime: '',
-                          notes: '',
-                          deleted: false,
-                          createdDate: '',
-                        } as Task : null);
-
-                        const allocProject = projects.find(p => p.id === allocTask?.projectId) || null;
-                        const durationHours = (alloc.durationMinutes || 0) / 60;
-
-                        const taskAssignees = allocTask?.assigneeIds 
-                          ? users.filter(u => allocTask.assigneeIds.includes(u.id))
-                          : [];
-
-                        return (
-                          <div
-                            key={alloc.id}
-                            className="p-4 rounded-xl border border-amber-200 bg-amber-50/30 hover:border-amber-300 shadow-2xs transition-all space-y-3"
-                          >
-                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                              {/* Primary Information: Projeto, Tarefa, Duração, Estado, Recurso */}
-                              <div className="min-w-0 flex-1 space-y-1.5">
-                                {/* Projeto */}
-                                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                  <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                  <span className="font-extrabold text-slate-700 uppercase tracking-wide text-[11px]">
-                                    {allocProject ? allocProject.title : 'Projeto não associado'}
-                                  </span>
-                                </div>
-
-                                {/* Tarefa */}
-                                <div className="text-sm font-black text-slate-900">
-                                  {allocTask ? allocTask.title : 'Tarefa não especificada'}
-                                </div>
-
-                                {/* Duração e Estado (Primário) com horário secundário */}
-                                <div className="flex items-center gap-2 pt-0.5 flex-wrap">
-                                  <span className="text-xs font-black text-amber-900 bg-amber-100/80 px-2.5 py-0.5 rounded-lg border border-amber-200">
-                                    {formatHoursDisplay(durationHours)}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-amber-100 text-amber-900 border-amber-300">
-                                    DRAFT
-                                  </span>
-                                  {/* Horário secundário (08:00–12:00) */}
-                                  <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
-                                    <Clock className="w-3 h-3 text-slate-400" />
-                                    {alloc.startTime.substring(0, 5)}–{alloc.endTime.substring(0, 5)}
-                                  </span>
-                                </div>
-
-                                {/* Contexto: Responsável e Recurso Planeado */}
-                                <div className="flex items-center gap-2.5 pt-1 text-[11px] text-slate-600 flex-wrap">
-                                  <span className="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                    <UserIcon className="w-3 h-3 text-slate-400" />
-                                    <span><strong>Responsável:</strong> {taskAssignees.length > 0 ? taskAssignees.map(u => u.name).join(', ') : 'Não atribuído'}</span>
-                                  </span>
-                                  <span className="inline-flex items-center gap-1 bg-amber-100/60 px-2 py-0.5 rounded border border-amber-200 text-amber-900 font-bold">
-                                    <AlertCircle className="w-3 h-3 text-amber-600" />
-                                    <span><strong>Recurso:</strong> {resource.name}</span>
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Action Buttons */}
-                              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-start flex-wrap">
-                                {allocTask && (
-                                  <button
-                                    type="button"
-                                    onClick={() => onViewTask(allocTask)}
-                                    className="px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-blue-50 border border-slate-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer shadow-2xs bg-white"
-                                    aria-label="Ver detalhes da tarefa"
-                                  >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                    Ver Tarefa
-                                  </button>
-                                )}
-
-                                {canWriteCalendar && onConfirmAllocation && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleExecuteConfirm(alloc)}
-                                    disabled={actionLoadingId === alloc.id}
-                                    className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-2xs"
-                                    aria-label="Confirmar alocação em rascunho"
-                                  >
-                                    {actionLoadingId === alloc.id ? (
-                                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                      <Check className="w-3.5 h-3.5" />
-                                    )}
-                                    Confirmar
-                                  </button>
-                                )}
-
-                                {canWriteCalendar && (
-                                  <button
-                                    type="button"
-                                    onClick={() => onEditAllocation(alloc)}
-                                    className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
-                                    aria-label="Editar rascunho"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                    Editar
-                                  </button>
-                                )}
-
-                                {canWriteCalendar && onDeleteAllocation && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setConfirmDeleteAlloc(alloc)}
-                                    disabled={actionLoadingId === alloc.id}
-                                    className="px-3 py-1.5 text-xs font-bold text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-2xs"
-                                    aria-label="Eliminar rascunho"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    Eliminar
-                                  </button>
-                                )}
-                              </div>
-                            </div>
+            {/* 3. CANCELLED SECTION */}
+            {sortedCancelled.length > 0 && (
+              <div className="space-y-2.5 pt-2 border-t border-slate-200">
+                <div className="text-xs font-bold text-slate-500 px-1 flex items-center justify-between">
+                  <span>Histórico / Canceladas no Dia ({sortedCancelled.length})</span>
+                </div>
+                <div className="space-y-2 opacity-75">
+                  {sortedCancelled.map(alloc => {
+                    const allocTask = tasks.find(t => t.id === alloc.taskId) || null;
+                    const allocProject = projects.find(p => p.id === allocTask?.projectId) || null;
+                    const durationHours = (alloc.durationMinutes || 0) / 60;
+                    return (
+                      <div key={alloc.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-xs flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-700">
+                              {allocProject?.title || 'Projeto'} / {allocTask?.title || 'Tarefa'}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600 line-through">
+                              CANCELADO
+                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. CANCELLED SECTION */}
-                {sortedCancelled.length > 0 && (
-                  <div className="space-y-2.5 pt-2">
-                    <div className="text-xs font-bold text-slate-500 px-1">
-                      Histórico / Canceladas no Dia ({sortedCancelled.length})
-                    </div>
-                    <div className="space-y-2 opacity-75">
-                      {sortedCancelled.map(alloc => {
-                        const allocTask = tasks.find(t => t.id === alloc.taskId) || null;
-                        const allocProject = projects.find(p => p.id === allocTask?.projectId) || null;
-                        const durationHours = (alloc.durationMinutes || 0) / 60;
-                        return (
-                          <div key={alloc.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-xs flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-700">
-                                  {allocProject?.title || 'Projeto'} / {allocTask?.title || 'Tarefa'}
-                                </span>
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600 line-through">
-                                  CANCELADO
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-slate-400 mt-0.5">
-                                Duração: {formatHoursDisplay(durationHours)} • Horário: {alloc.startTime.substring(0, 5)}–{alloc.endTime.substring(0, 5)}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {allocTask && (
-                                <button
-                                  type="button"
-                                  id={`btn-alloc-task-${alloc.id}`}
-                                  onClick={() => onViewTask(allocTask)}
-                                  className="px-2.5 py-1 text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-white border border-slate-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer shadow-2xs bg-white/80"
-                                  aria-label="Ver detalhes da tarefa associada"
-                                  title="Ver detalhes da tarefa associada"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                  Ver Tarefa
-                                </button>
-                              )}
-                            </div>
+                          <div className="text-[11px] text-slate-400 mt-0.5">
+                            Duração: {formatHoursDisplay(durationHours)} • Horário: {alloc.startTime.substring(0, 5)}–{alloc.endTime.substring(0, 5)}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {allocTask && (
+                            <button
+                              type="button"
+                              id={`btn-alloc-task-${alloc.id}`}
+                              onClick={() => {
+                                onClose();
+                                onViewTask(allocTask);
+                              }}
+                              className="px-2.5 py-1 text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-white border border-slate-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer shadow-2xs bg-white/80"
+                              aria-label="Ver detalhes da tarefa associada"
+                              title="Ver detalhes da tarefa associada"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Ver Tarefa
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
