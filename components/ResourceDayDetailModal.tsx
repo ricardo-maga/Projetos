@@ -143,6 +143,31 @@ export default function ResourceDayDetailModal({
 
   const isZeroCap = capacityMinutes === 0;
   const isOverCapacity = excessMinutes > 0;
+  const hasDraft = draftMinutes > 0;
+  const hasConfirmed = confirmedMinutes > 0;
+
+  // FASE 23E-C3M-A: Canonical Operational State matching C3L
+  let cellOpState: 
+    | 'EXCESSO CONFIRMADO' 
+    | 'SEM CAPACIDADE' 
+    | 'DRAFT PENDENTE' 
+    | 'CAPACIDADE TOTALMENTE OCUPADA' 
+    | 'CAPACIDADE DISPONÍVEL' 
+    | 'SEM CAPACIDADE OPERACIONAL';
+
+  if (isOverCapacity) {
+    cellOpState = 'EXCESSO CONFIRMADO';
+  } else if (isZeroCap && (hasConfirmed || hasDraft || activeAllocations.length > 0)) {
+    cellOpState = 'SEM CAPACIDADE';
+  } else if (hasDraft) {
+    cellOpState = 'DRAFT PENDENTE';
+  } else if (!isZeroCap && confirmedMinutes === capacityMinutes) {
+    cellOpState = 'CAPACIDADE TOTALMENTE OCUPADA';
+  } else if (!isZeroCap && confirmedMinutes < capacityMinutes) {
+    cellOpState = 'CAPACIDADE DISPONÍVEL';
+  } else {
+    cellOpState = 'SEM CAPACIDADE OPERACIONAL';
+  }
 
   // Handlers for confirm, cancel and delete
   const handleExecuteConfirm = async (alloc: PlanningAllocationDTO) => {
@@ -205,41 +230,65 @@ export default function ResourceDayDetailModal({
     }
   };
 
-  // Compact operational status badge & text (Requirement 5)
-  const getOperationalStatusInfo = (): { label: string; colorClass: string; description: string } => {
-    if (isZeroCap) {
-      return { 
-        label: 'Sem capacidade', 
-        colorClass: 'bg-slate-100 text-slate-700 border-slate-300',
-        description: 'Sem capacidade operacional'
-      };
+  // Compact operational status badge & text (FASE 23E-C3M-A - Multi-sensory, zero color exclusivity)
+  const getOperationalStatusInfo = () => {
+    switch (cellOpState) {
+      case 'EXCESSO CONFIRMADO':
+        return {
+          label: 'EXCESSO',
+          badgeText: 'EXCESSO CONFIRMADO',
+          colorClass: 'bg-rose-100 text-rose-900 border-rose-300 ring-1 ring-rose-300/60',
+          bannerClass: 'bg-rose-50 border-rose-300 text-rose-950',
+          icon: AlertTriangle,
+          description: 'Excesso de planeamento confirmado (requer intervenção)',
+        };
+      case 'SEM CAPACIDADE':
+        return {
+          label: 'SEM CAPACIDADE',
+          badgeText: 'SEM CAPACIDADE',
+          colorClass: 'bg-rose-100/90 text-rose-900 border-dashed border-rose-300',
+          bannerClass: 'bg-rose-50/80 border-dashed border-rose-300 text-rose-900',
+          icon: AlertCircle,
+          description: 'Alocações registadas em dia sem capacidade operacional (0h)',
+        };
+      case 'DRAFT PENDENTE':
+        return {
+          label: 'DRAFT',
+          badgeText: 'DRAFT PENDENTE',
+          colorClass: 'bg-amber-100 text-amber-950 border-dashed border-amber-300',
+          bannerClass: 'bg-amber-50 border-dashed border-amber-300 text-amber-950',
+          icon: Clock,
+          description: 'Planeamento em rascunho pendente de confirmação',
+        };
+      case 'CAPACIDADE TOTALMENTE OCUPADA':
+        return {
+          label: '100%',
+          badgeText: 'CAPACIDADE TOTALMENTE OCUPADA',
+          colorClass: 'bg-blue-100 text-blue-900 border-blue-300',
+          bannerClass: 'bg-blue-50 border-blue-200 text-blue-950',
+          icon: CheckCircle2,
+          description: 'Capacidade diária 100% ocupada sem excesso',
+        };
+      case 'CAPACIDADE DISPONÍVEL':
+        return {
+          label: 'DISPONÍVEL',
+          badgeText: 'CAPACIDADE DISPONÍVEL',
+          colorClass: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+          bannerClass: 'bg-emerald-50 border-emerald-200 text-emerald-950',
+          icon: CheckCircle2,
+          description: 'Existe capacidade diária livre para trabalho adicional',
+        };
+      case 'SEM CAPACIDADE OPERACIONAL':
+      default:
+        return {
+          label: 'SEM CAPACIDADE',
+          badgeText: 'SEM CAPACIDADE OPERACIONAL',
+          colorClass: 'bg-slate-100 text-slate-700 border-slate-300',
+          bannerClass: 'bg-slate-50 border-slate-200 text-slate-700',
+          icon: AlertCircle,
+          description: 'Dia não útil ou sem capacidade operacional configurada',
+        };
     }
-    if (excessMinutes > 0) {
-      return { 
-        label: 'Excesso', 
-        colorClass: 'bg-amber-100 text-amber-900 border-amber-300',
-        description: 'Excesso de planeamento'
-      };
-    }
-    if (draftMinutes > 0) {
-      return {
-        label: 'Pendente',
-        colorClass: 'bg-amber-50 text-amber-800 border-amber-200',
-        description: 'Planeamento pendente de confirmação'
-      };
-    }
-    if (freeCapacityMinutes === 0) {
-      return { 
-        label: 'Ocupação Completa', 
-        colorClass: 'bg-blue-50 text-blue-800 border-blue-200',
-        description: 'Capacidade totalmente ocupada'
-      };
-    }
-    return { 
-      label: 'Disponível', 
-      colorClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-      description: 'Capacidade disponível'
-    };
   };
 
   const statusInfo = getOperationalStatusInfo();
@@ -302,7 +351,7 @@ export default function ResourceDayDetailModal({
         className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-fade-in"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header (Requirement 2) */}
+        {/* Header */}
         <div className="p-5 border-b border-slate-200 bg-slate-50/90 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
@@ -313,12 +362,13 @@ export default function ResourceDayDetailModal({
                 <h3 className="text-base font-extrabold text-slate-900 truncate">
                   {resource.name}
                 </h3>
-                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusInfo.colorClass}`}>
-                  {statusInfo.description}
+                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusInfo.colorClass}`}>
+                  {React.createElement(statusInfo.icon, { className: 'w-3 h-3 shrink-0' })}
+                  <span>{statusInfo.badgeText}</span>
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-1">
-                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+              <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-1 flex-wrap">
+                <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                 <span className="text-slate-800 font-bold capitalize">{formatDateHeader(dateStr)}</span>
                 <span className="text-slate-300">•</span>
                 <span className="text-slate-500">{resource.email || resource.type}</span>
@@ -332,8 +382,8 @@ export default function ResourceDayDetailModal({
                 id="btn-day-detail-new-allocation"
                 type="button"
                 onClick={() => onNewAllocation(resource.id, dateStr)}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                aria-label="Criar nova alocação para este recurso e dia"
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                aria-label={`Criar nova alocação para ${resource.name} em ${dateStr}`}
               >
                 <Plus className="w-4 h-4" />
                 Nova Alocação
@@ -373,7 +423,21 @@ export default function ResourceDayDetailModal({
             </div>
           )}
 
-          {/* Context Warnings (Requirement 8) */}
+          {/* Operational Status Banner */}
+          <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs ${statusInfo.bannerClass}`}>
+            <div className="flex items-center gap-2.5">
+              {React.createElement(statusInfo.icon, { className: 'w-4 h-4 shrink-0' })}
+              <div>
+                <span className="font-extrabold uppercase tracking-wide mr-1.5">[{statusInfo.badgeText}]</span>
+                <span className="font-medium">{statusInfo.description}</span>
+              </div>
+            </div>
+            <div className="text-[11px] font-mono font-bold text-slate-600 shrink-0">
+              {dateStr}
+            </div>
+          </div>
+
+          {/* Context Warnings */}
           {contextWarnings.length > 0 && (
             <div className="space-y-2">
               {contextWarnings.map((warn, idx) => (
@@ -388,15 +452,15 @@ export default function ResourceDayDetailModal({
             </div>
           )}
 
-          {/* Capacity Metrics Cards (Requirement 2 & 4) */}
+          {/* Daily Capacity & Planning Summary Cards (Canonical metrics, no artificial hour grid) */}
           <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="text-[11px] uppercase tracking-wider font-extrabold text-slate-500 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-blue-600" />
-                Resumo Operacional de Capacidade Diária
+                Resumo Diário Operacional
               </div>
-              <div className="text-xs font-bold text-slate-700">
-                Data: <span className="font-mono text-slate-900">{dateStr}</span>
+              <div className="text-xs font-bold text-slate-600">
+                Utilização: <span className="font-extrabold text-slate-900">{utilizationPercent !== null ? `${utilizationPercent}%` : 'N/A'}</span>
               </div>
             </div>
 
@@ -414,10 +478,20 @@ export default function ResourceDayDetailModal({
               {/* Confirmado */}
               <div className="bg-white border border-slate-200/90 rounded-xl p-3 text-center shadow-2xs">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Confirmado
+                  CONFIRMED
                 </span>
                 <span className="text-base font-black text-blue-700 mt-1 block">
                   {formatHoursDisplay(confirmedMinutes / 60)}
+                </span>
+              </div>
+
+              {/* DRAFT */}
+              <div className="bg-white border border-slate-200/90 rounded-xl p-3 text-center shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  DRAFT
+                </span>
+                <span className={`text-base font-black mt-1 block ${draftMinutes > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+                  {formatHoursDisplay(draftMinutes / 60)}
                 </span>
               </div>
 
@@ -429,11 +503,6 @@ export default function ResourceDayDetailModal({
                 <span className="text-base font-black text-slate-900 mt-1 block">
                   {formatHoursDisplay(plannedMinutes / 60)}
                 </span>
-                {draftMinutes > 0 && (
-                  <span className="text-[9px] text-amber-700 font-bold block mt-0.5">
-                    ({formatHoursDisplay(draftMinutes / 60)} draft)
-                  </span>
-                )}
               </div>
 
               {/* Livre */}
@@ -451,45 +520,27 @@ export default function ResourceDayDetailModal({
               {/* Excesso */}
               <div className={`rounded-xl p-3 text-center border shadow-2xs ${
                 isOverCapacity 
-                  ? 'bg-amber-50 border-amber-300 text-amber-900' 
+                  ? 'bg-rose-50 border-rose-300 text-rose-900 ring-1 ring-rose-200' 
                   : 'bg-white border-slate-200/90 text-slate-400'
               }`}>
                 <span className="text-[10px] font-bold uppercase tracking-wider block">
                   Excesso
                 </span>
                 <span className={`text-base font-black mt-1 block ${
-                  isOverCapacity ? 'text-amber-900' : 'text-slate-400'
+                  isOverCapacity ? 'text-rose-700' : 'text-slate-400'
                 }`}>
                   {isOverCapacity ? `+${formatHoursDisplay(excessMinutes / 60)}` : '0h'}
                 </span>
               </div>
-
-              {/* Utilização */}
-              <div className="bg-white border border-slate-200/90 rounded-xl p-3 text-center shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Utilização
-                </span>
-                <span className={`text-base font-black mt-1 block ${
-                  utilizationPercent === null 
-                    ? 'text-slate-400' 
-                    : utilizationPercent > 100 
-                    ? 'text-amber-900' 
-                    : utilizationPercent >= 90 
-                    ? 'text-blue-900' 
-                    : 'text-slate-900'
-                }`}>
-                  {utilizationPercent !== null ? `${utilizationPercent}%` : 'N/A'}
-                </span>
-              </div>
             </div>
 
-            {/* Visual Capacity Summary Bar (Requirement 4) */}
+            {/* Visual Capacity Summary Bar */}
             <div className="space-y-1.5 pt-1">
               <div className="flex justify-between text-[11px] font-bold text-slate-600">
-                <span>Distribuição de Carga</span>
+                <span>Distribuição da Carga Diária</span>
                 <span>Capacidade Total: {formatHoursDisplay(capacityMinutes / 60)}</span>
               </div>
-              <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden flex shadow-inner">
+              <div className="h-2.5 w-full bg-slate-200 rounded-full overflow-hidden flex shadow-inner">
                 {confirmedBarPct > 0 && (
                   <div 
                     style={{ width: `${confirmedBarPct}%` }} 
@@ -526,12 +577,12 @@ export default function ResourceDayDetailModal({
             </div>
           </div>
 
-          {/* Allocations Sections (Requirement 3 & 6 & 7) */}
-          <div className="space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-              <div className="text-xs uppercase tracking-wider font-extrabold text-slate-700 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-blue-600" />
-                Alocações do Dia ({activeAllocations.length} ativas)
+          {/* Planned Work List for the Day (Trabalho do Dia - FASE 23E-C3M-A) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+              <div className="text-xs uppercase tracking-wider font-extrabold text-slate-800 flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-blue-600" />
+                Trabalho do Dia ({activeAllocations.length} alocação(ões) ativa(s))
               </div>
               {cancelledAllocations.length > 0 && (
                 <span className="text-xs font-semibold text-slate-400">
@@ -544,10 +595,10 @@ export default function ResourceDayDetailModal({
               <div className="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-8 text-center space-y-3">
                 <Clock className="w-8 h-8 text-slate-400 mx-auto" />
                 <div className="text-sm font-bold text-slate-800">
-                  Nenhuma alocação registada para este técnico nesta data
+                  Nenhum trabalho planeado para este técnico nesta data
                 </div>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Este recurso não tem reservas de capacidade para o dia selecionado. Pode criar uma nova alocação utilizando o botão abaixo.
+                  Este recurso não tem trabalho planeado nem alocações registadas para o dia selecionado.
                 </p>
                 {canWriteCalendar && (
                   <button
@@ -556,7 +607,7 @@ export default function ResourceDayDetailModal({
                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-2xs transition-all cursor-pointer mt-1"
                   >
                     <Plus className="w-4 h-4" />
-                    Criar Alocação
+                    Nova Alocação
                   </button>
                 )}
               </div>
@@ -565,12 +616,17 @@ export default function ResourceDayDetailModal({
                 {/* 1. CONFIRMED SECTION */}
                 {sortedConfirmed.length > 0 && (
                   <div className="space-y-2.5">
-                    <div className="flex items-center gap-2 text-xs font-extrabold text-blue-900 bg-blue-50/80 px-3 py-1.5 rounded-xl border border-blue-200">
-                      <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                      <span>Alocações Confirmadas ({sortedConfirmed.length})</span>
+                    <div className="flex items-center justify-between text-xs font-extrabold text-blue-900 bg-blue-50/80 px-3 py-1.5 rounded-xl border border-blue-200">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                        <span>Trabalho Confirmado ({sortedConfirmed.length})</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-blue-700">
+                        Total: {formatHoursDisplay(localConfirmedMinutes / 60)}
+                      </span>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {sortedConfirmed.map(alloc => {
                         const allocTask = tasks.find(t => t.id === alloc.taskId) || (alloc.task ? {
                           id: alloc.task.id,
@@ -594,7 +650,6 @@ export default function ResourceDayDetailModal({
                         const allocProject = projects.find(p => p.id === allocTask?.projectId) || null;
                         const durationHours = (alloc.durationMinutes || 0) / 60;
 
-                        // Assignee lookup (Resource vs Assignee distinction - Requirement 7)
                         const taskAssignees = allocTask?.assigneeIds 
                           ? users.filter(u => allocTask.assigneeIds.includes(u.id))
                           : [];
@@ -604,49 +659,52 @@ export default function ResourceDayDetailModal({
                             key={alloc.id}
                             className="p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 shadow-2xs transition-all space-y-3"
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                              {/* Primary Information: Projeto, Tarefa, Duração, Estado, Recurso */}
                               <div className="min-w-0 flex-1 space-y-1.5">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg">
-                                    <Clock className="w-3.5 h-3.5 text-blue-600" />
-                                    {alloc.startTime.substring(0, 5)} — {alloc.endTime.substring(0, 5)}
+                                {/* Projeto */}
+                                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                  <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                  <span className="font-extrabold text-slate-700 uppercase tracking-wide text-[11px]">
+                                    {allocProject ? allocProject.title : 'Projeto não associado'}
                                   </span>
-                                  <span className="text-xs font-bold text-slate-600">
-                                    ({formatHoursDisplay(durationHours)})
+                                </div>
+
+                                {/* Tarefa */}
+                                <div className="text-sm font-black text-slate-900">
+                                  {allocTask ? allocTask.title : 'Tarefa não especificada'}
+                                </div>
+
+                                {/* Duração e Estado (Primário) com horário secundário */}
+                                <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                                  <span className="text-xs font-black text-blue-900 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
+                                    {formatHoursDisplay(durationHours)}
                                   </span>
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-800 border-emerald-200">
                                     CONFIRMADO
                                   </span>
+                                  {/* Horário secundário (08:00–12:00) */}
+                                  <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                                    <Clock className="w-3 h-3 text-slate-400" />
+                                    {alloc.startTime.substring(0, 5)}–{alloc.endTime.substring(0, 5)}
+                                  </span>
                                 </div>
 
-                                {/* Task Hierarchy: Project -> Task -> Assignee -> Planned Resource (Requirement 7) */}
-                                <div className="text-xs space-y-1">
-                                  <div className="flex items-center gap-1.5 text-slate-500">
-                                    <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                    <span className="font-bold text-slate-700">
-                                      {allocProject ? allocProject.title : 'Projeto não associado'}
-                                    </span>
-                                  </div>
-
-                                  <div className="text-sm font-black text-slate-900">
-                                    {allocTask ? allocTask.title : 'Tarefa não especificada'}
-                                  </div>
-
-                                  <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-600 flex-wrap">
-                                    <span className="inline-flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                                      <UserIcon className="w-3 h-3 text-slate-400" />
-                                      <strong>Responsável (Assignee):</strong> {taskAssignees.length > 0 ? taskAssignees.map(u => u.name).join(', ') : 'Não atribuído'}
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 bg-blue-50/60 px-2 py-0.5 rounded border border-blue-200 text-blue-900 font-bold">
-                                      <CheckCircle2 className="w-3 h-3 text-blue-600" />
-                                      <strong>Recurso Planeado:</strong> {resource.name}
-                                    </span>
-                                  </div>
+                                {/* Contexto: Responsável e Recurso Planeado */}
+                                <div className="flex items-center gap-2.5 pt-1 text-[11px] text-slate-600 flex-wrap">
+                                  <span className="inline-flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                                    <UserIcon className="w-3 h-3 text-slate-400" />
+                                    <span><strong>Responsável:</strong> {taskAssignees.length > 0 ? taskAssignees.map(u => u.name).join(', ') : 'Não atribuído'}</span>
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 bg-blue-50/60 px-2 py-0.5 rounded border border-blue-200 text-blue-900 font-bold">
+                                    <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                                    <span><strong>Recurso:</strong> {resource.name}</span>
+                                  </span>
                                 </div>
                               </div>
 
-                              {/* Action Buttons (Requirement 9) */}
-                              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center flex-wrap">
+                              {/* Action Buttons */}
+                              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-start flex-wrap">
                                 {allocTask && (
                                   <button
                                     type="button"
@@ -695,12 +753,17 @@ export default function ResourceDayDetailModal({
                 {/* 2. DRAFT SECTION */}
                 {sortedDraft.length > 0 && (
                   <div className="space-y-2.5">
-                    <div className="flex items-center gap-2 text-xs font-extrabold text-amber-900 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
-                      <AlertCircle className="w-4 h-4 text-amber-600" />
-                      <span>Alocações em Rascunho / Pendentes (Draft) ({sortedDraft.length})</span>
+                    <div className="flex items-center justify-between text-xs font-extrabold text-amber-900 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        <span>Trabalho em Rascunho / Pendente (Draft) ({sortedDraft.length})</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-amber-800">
+                        Total: {formatHoursDisplay(draftMinutes / 60)}
+                      </span>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {sortedDraft.map(alloc => {
                         const allocTask = tasks.find(t => t.id === alloc.taskId) || (alloc.task ? {
                           id: alloc.task.id,
@@ -733,48 +796,52 @@ export default function ResourceDayDetailModal({
                             key={alloc.id}
                             className="p-4 rounded-xl border border-amber-200 bg-amber-50/30 hover:border-amber-300 shadow-2xs transition-all space-y-3"
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                              {/* Primary Information: Projeto, Tarefa, Duração, Estado, Recurso */}
                               <div className="min-w-0 flex-1 space-y-1.5">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-amber-200">
-                                    <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                    {alloc.startTime.substring(0, 5)} — {alloc.endTime.substring(0, 5)}
-                                  </span>
-                                  <span className="text-xs font-bold text-slate-600">
-                                    ({formatHoursDisplay(durationHours)})
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-amber-100 text-amber-900 border-amber-300">
-                                    RASCUNHO (DRAFT)
+                                {/* Projeto */}
+                                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                  <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                  <span className="font-extrabold text-slate-700 uppercase tracking-wide text-[11px]">
+                                    {allocProject ? allocProject.title : 'Projeto não associado'}
                                   </span>
                                 </div>
 
-                                <div className="text-xs space-y-1">
-                                  <div className="flex items-center gap-1.5 text-slate-500">
-                                    <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                    <span className="font-bold text-slate-700">
-                                      {allocProject ? allocProject.title : 'Projeto não associado'}
-                                    </span>
-                                  </div>
+                                {/* Tarefa */}
+                                <div className="text-sm font-black text-slate-900">
+                                  {allocTask ? allocTask.title : 'Tarefa não especificada'}
+                                </div>
 
-                                  <div className="text-sm font-black text-slate-900">
-                                    {allocTask ? allocTask.title : 'Tarefa não especificada'}
-                                  </div>
+                                {/* Duração e Estado (Primário) com horário secundário */}
+                                <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                                  <span className="text-xs font-black text-amber-900 bg-amber-100/80 px-2.5 py-0.5 rounded-lg border border-amber-200">
+                                    {formatHoursDisplay(durationHours)}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-amber-100 text-amber-900 border-amber-300">
+                                    DRAFT
+                                  </span>
+                                  {/* Horário secundário (08:00–12:00) */}
+                                  <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                                    <Clock className="w-3 h-3 text-slate-400" />
+                                    {alloc.startTime.substring(0, 5)}–{alloc.endTime.substring(0, 5)}
+                                  </span>
+                                </div>
 
-                                  <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-600 flex-wrap">
-                                    <span className="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                      <UserIcon className="w-3 h-3 text-slate-400" />
-                                      <strong>Responsável (Assignee):</strong> {taskAssignees.length > 0 ? taskAssignees.map(u => u.name).join(', ') : 'Não atribuído'}
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 bg-amber-100/60 px-2 py-0.5 rounded border border-amber-200 text-amber-900 font-bold">
-                                      <AlertCircle className="w-3 h-3 text-amber-600" />
-                                      <strong>Recurso Planeado:</strong> {resource.name}
-                                    </span>
-                                  </div>
+                                {/* Contexto: Responsável e Recurso Planeado */}
+                                <div className="flex items-center gap-2.5 pt-1 text-[11px] text-slate-600 flex-wrap">
+                                  <span className="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                    <UserIcon className="w-3 h-3 text-slate-400" />
+                                    <span><strong>Responsável:</strong> {taskAssignees.length > 0 ? taskAssignees.map(u => u.name).join(', ') : 'Não atribuído'}</span>
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 bg-amber-100/60 px-2 py-0.5 rounded border border-amber-200 text-amber-900 font-bold">
+                                    <AlertCircle className="w-3 h-3 text-amber-600" />
+                                    <span><strong>Recurso:</strong> {resource.name}</span>
+                                  </span>
                                 </div>
                               </div>
 
-                              {/* Action Buttons (Requirement 9) */}
-                              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center flex-wrap">
+                              {/* Action Buttons */}
+                              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-start flex-wrap">
                                 {allocTask && (
                                   <button
                                     type="button"
@@ -841,22 +908,29 @@ export default function ResourceDayDetailModal({
                 {sortedCancelled.length > 0 && (
                   <div className="space-y-2.5 pt-2">
                     <div className="text-xs font-bold text-slate-500 px-1">
-                      Alocações Canceladas no Dia ({sortedCancelled.length})
+                      Histórico / Canceladas no Dia ({sortedCancelled.length})
                     </div>
                     <div className="space-y-2 opacity-75">
                       {sortedCancelled.map(alloc => {
                         const allocTask = tasks.find(t => t.id === alloc.taskId) || null;
                         const allocProject = projects.find(p => p.id === allocTask?.projectId) || null;
+                        const durationHours = (alloc.durationMinutes || 0) / 60;
                         return (
                           <div key={alloc.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-xs flex items-center justify-between gap-3">
-                            <div>
-                              <span className="font-bold text-slate-500 line-through">
-                                {alloc.startTime.substring(0, 5)} — {alloc.endTime.substring(0, 5)}
-                              </span>
-                              <span className="mx-2 text-slate-400">•</span>
-                              <span className="text-slate-600 font-semibold">{allocProject?.title || 'Projeto'} / {allocTask?.title || 'Tarefa'}</span>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-700">
+                                  {allocProject?.title || 'Projeto'} / {allocTask?.title || 'Tarefa'}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600 line-through">
+                                  CANCELADO
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-400 mt-0.5">
+                                Duração: {formatHoursDisplay(durationHours)} • Horário: {alloc.startTime.substring(0, 5)}–{alloc.endTime.substring(0, 5)}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 shrink-0">
                               {allocTask && (
                                 <button
                                   type="button"
@@ -870,9 +944,6 @@ export default function ResourceDayDetailModal({
                                   Ver Tarefa
                                 </button>
                               )}
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600 line-through">
-                                CANCELADO
-                              </span>
                             </div>
                           </div>
                         );
