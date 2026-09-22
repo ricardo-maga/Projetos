@@ -5,7 +5,7 @@ import { Project, Task, UserAbsence, User, Client, SpecialDay, ProjectRiskItem, 
 import { 
   ChevronLeft, ChevronRight, Calendar, AlertTriangle, Users, 
   Clock, Flag, AlertCircle, Info, Briefcase, Plus, X, Maximize2, Edit2, Layers,
-  Search, RotateCcw, Filter
+  Search, RotateCcw, Filter, ArrowUpDown
 } from 'lucide-react';
 
 import { hasPermission } from '../lib/permissions';
@@ -41,6 +41,16 @@ export type ResourceOperationalFilter =
   | 'has_free';
 
 export type AllocationStatusFilter = 'all' | 'CONFIRMED' | 'DRAFT';
+
+// FASE 23E-C3K: Operational Resource Sort types
+export type ResourceOperationalSort =
+  | 'default'
+  | 'excess_desc'
+  | 'free_asc'
+  | 'confirmed_desc'
+  | 'draft_desc'
+  | 'planned_desc'
+  | 'capacity_desc';
 
 // FASE 23E-C3A: Operational Planning KPIs Interface
 export interface OperationalPlanningKPIs {
@@ -358,6 +368,8 @@ export default function CalendarSection({
   const [projectFilter, setProjectFilter] = useState<string>('');
   const [leaderFilter, setLeaderFilter] = useState<string>('');
   const [allocationStatusFilter, setAllocationStatusFilter] = useState<AllocationStatusFilter>('all');
+  // FASE 23E-C3K: Operational Resource Sort State (Local UI State)
+  const [resourceOperationalSort, setResourceOperationalSort] = useState<ResourceOperationalSort>('default');
 
   // Today's date in YYYY-MM-DD format for reference
   const todayStr = formatDateToString(new Date());
@@ -604,6 +616,154 @@ export default function CalendarSection({
     planningCapacity
   ]);
 
+  // FASE 23E-C3K: Sorted Resources computed by applying ResourceOperationalSort on filteredResources
+  const sortedResources = React.useMemo(() => {
+    if (resourceOperationalSort === 'default' || filteredResources.length <= 1) {
+      return filteredResources;
+    }
+
+    const dayStrings = timelineDays.map(d => formatDateToString(d));
+    const dayStringSet = new Set(dayStrings);
+
+    // O(1) Indexing maps for the selected period
+    const capacityMap = new Map<string, ResourceCapacityDetail>();
+    (planningCapacity || []).forEach(c => {
+      if (dayStringSet.has(c.date)) {
+        capacityMap.set(`${c.resourceId}|${c.date}`, c);
+      }
+    });
+
+    const allocationsMap = new Map<string, PlanningAllocationDTO[]>();
+    (planningAllocations || []).forEach(a => {
+      if (a.status !== 'CANCELLED' && dayStringSet.has(a.date)) {
+        const key = `${a.resourceId}|${a.date}`;
+        const list = allocationsMap.get(key) || [];
+        list.push(a);
+        allocationsMap.set(key, list);
+      }
+    });
+
+    type ResourceTotals = {
+      capacityMinutes: number;
+      confirmedMinutes: number;
+      draftMinutes: number;
+      plannedMinutes: number;
+      freeMinutes: number;
+      excessMinutes: number;
+    };
+
+    const totalsMap = new Map<string, ResourceTotals>();
+
+    filteredResources.forEach(user => {
+      let capacityMinutes = 0;
+      let confirmedMinutes = 0;
+      let draftMinutes = 0;
+      let freeMinutes = 0;
+      let excessMinutes = 0;
+
+      dayStrings.forEach(dStr => {
+        const key = `${user.id}|${dStr}`;
+        const capDetail = capacityMap.get(key);
+        const dayAllocs = allocationsMap.get(key) || [];
+
+        // Capacity: strictly canonical, NO 480 fallback
+        const capMins = capDetail ? capDetail.operationalCapacityMinutes : 0;
+        capacityMinutes += capMins;
+
+        // Confirmed: canonical from planningCapacity, or sum of CONFIRMED allocations
+        const confMins = capDetail
+          ? capDetail.confirmedAllocationMinutes
+          : dayAllocs.filter(a => a.status === 'CONFIRMED').reduce((s, a) => s + (a.durationMinutes || 0), 0);
+        confirmedMinutes += confMins;
+
+        // Draft: sum of DRAFT allocations for this day
+        const dayDraftMins = dayAllocs.filter(a => a.status === 'DRAFT').reduce((s, a) => s + (a.durationMinutes || 0), 0);
+        draftMinutes += dayDraftMins;
+
+        // Free: daily canonical available minutes
+        const dayFreeMins = capDetail
+          ? capDetail.availableMinutes
+          : Math.max(0, capMins - confMins);
+        freeMinutes += dayFreeMins;
+
+        // Excess: daily canonical over-allocated minutes
+        const dayExcessMins = capDetail
+          ? capDetail.overAllocatedMinutes
+          : Math.max(0, confMins - capMins);
+        excessMinutes += dayExcessMins;
+      });
+
+      const plannedMinutes = confirmedMinutes + draftMinutes;
+
+      totalsMap.set(user.id, {
+        capacityMinutes,
+        confirmedMinutes,
+        draftMinutes,
+        plannedMinutes,
+        freeMinutes,
+        excessMinutes,
+      });
+    });
+
+    const userIndexMap = new Map<string, number>();
+    filteredResources.forEach((user, idx) => {
+      userIndexMap.set(user.id, idx);
+    });
+
+    return [...filteredResources].sort((a, b) => {
+      const totA = totalsMap.get(a.id) || {
+        capacityMinutes: 0,
+        confirmedMinutes: 0,
+        draftMinutes: 0,
+        plannedMinutes: 0,
+        freeMinutes: 0,
+        excessMinutes: 0,
+      };
+      const totB = totalsMap.get(b.id) || {
+        capacityMinutes: 0,
+        confirmedMinutes: 0,
+        draftMinutes: 0,
+        plannedMinutes: 0,
+        freeMinutes: 0,
+        excessMinutes: 0,
+      };
+
+      let diff = 0;
+      switch (resourceOperationalSort) {
+        case 'excess_desc':
+          diff = totB.excessMinutes - totA.excessMinutes;
+          break;
+        case 'free_asc':
+          diff = totA.freeMinutes - totB.freeMinutes;
+          break;
+        case 'confirmed_desc':
+          diff = totB.confirmedMinutes - totA.confirmedMinutes;
+          break;
+        case 'draft_desc':
+          diff = totB.draftMinutes - totA.draftMinutes;
+          break;
+        case 'planned_desc':
+          diff = totB.plannedMinutes - totA.plannedMinutes;
+          break;
+        case 'capacity_desc':
+          diff = totB.capacityMinutes - totA.capacityMinutes;
+          break;
+        default:
+          diff = 0;
+      }
+
+      if (diff !== 0) return diff;
+      // Deterministic tie-breaker: preserve natural order from filteredResources
+      return (userIndexMap.get(a.id) ?? 0) - (userIndexMap.get(b.id) ?? 0);
+    });
+  }, [
+    filteredResources,
+    resourceOperationalSort,
+    timelineDays,
+    planningAllocations,
+    planningCapacity
+  ]);
+
   // FASE 23E-C3A: Operational Planning KPIs Aggregation Engine (useMemo over baseResources)
   const operationalKPIs = React.useMemo<OperationalPlanningKPIs>(() => {
     if (baseResources.length === 0 || timelineDays.length === 0) {
@@ -749,6 +909,19 @@ export default function CalendarSection({
       case 'has_free': return 'Com Capacidade Livre';
       case 'with_draft': return 'Com DRAFT';
       default: return 'Todos os recursos';
+    }
+  };
+
+  // FASE 23E-C3K: Helper to translate operational sort to human-readable Portuguese label
+  const getResourceOperationalSortLabel = (sort: ResourceOperationalSort): string => {
+    switch (sort) {
+      case 'excess_desc': return 'Excesso ↓';
+      case 'free_asc': return 'Livre ↑';
+      case 'confirmed_desc': return 'CONFIRMED ↓';
+      case 'draft_desc': return 'DRAFT ↓';
+      case 'planned_desc': return 'Planeado ↓';
+      case 'capacity_desc': return 'Capacidade ↓';
+      default: return 'Ordem normal';
     }
   };
 
@@ -1389,7 +1562,7 @@ export default function CalendarSection({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {filteredResources.length === 0 ? (
+              {sortedResources.length === 0 ? (
                 <tr>
                   <td 
                     colSpan={timelineDays.length + 1} 
@@ -1414,7 +1587,7 @@ export default function CalendarSection({
                   </td>
                 </tr>
               ) : (
-                filteredResources.map(user => {
+                sortedResources.map(user => {
                   const targetDateStr = timelineDays.some(d => formatDateToString(d) === todayStr)
                     ? todayStr
                     : formatDateToString(timelineDays[0]);
@@ -2100,6 +2273,51 @@ export default function CalendarSection({
                 <option value="DRAFT">DRAFT</option>
               </select>
             </div>
+
+            {/* FASE 23E-C3K: Compact Operational Sort Selector */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-500">Ordenar:</span>
+              <select
+                id="select-resource-sort"
+                value={resourceOperationalSort}
+                onChange={(e) => setResourceOperationalSort(e.target.value as ResourceOperationalSort)}
+                className={`px-3 py-1.5 bg-white border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer transition-colors ${
+                  resourceOperationalSort !== 'default'
+                    ? 'border-blue-300 text-blue-900 bg-blue-50/50'
+                    : 'border-slate-200 text-slate-700'
+                }`}
+                aria-label="Ordenar recursos na matriz operacional"
+              >
+                <option value="default">Ordem normal</option>
+                <option value="excess_desc">Excesso ↓</option>
+                <option value="free_asc">Livre ↑</option>
+                <option value="confirmed_desc">CONFIRMED ↓</option>
+                <option value="draft_desc">DRAFT ↓</option>
+                <option value="planned_desc">Planeado ↓</option>
+                <option value="capacity_desc">Capacidade ↓</option>
+              </select>
+            </div>
+
+            {/* FASE 23E-C3K: Subtle Sort Indicator */}
+            {resourceOperationalSort !== 'default' && (
+              <span 
+                id="badge-active-sort-indicator"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-medium"
+                title={`Matriz ordenada por ${getResourceOperationalSortLabel(resourceOperationalSort)}`}
+              >
+                <span>Ordenação: <strong className="text-slate-900 font-bold">{getResourceOperationalSortLabel(resourceOperationalSort)}</strong></span>
+                <button
+                  type="button"
+                  id="btn-reset-sort"
+                  onClick={() => setResourceOperationalSort('default')}
+                  className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
+                  title="Repor ordem normal"
+                  aria-label="Repor ordem normal"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
 
             {/* Clear Filters button */}
             {hasActiveResourceFilters && (
@@ -2874,6 +3092,50 @@ export default function CalendarSection({
                   <span className="px-2 py-0.5 rounded-md bg-blue-100/80 text-blue-800 font-bold text-xs">
                     {filteredResources.length} de {activeUsers.length} técnicos
                   </span>
+
+                  {/* FASE 23E-C3K: Fullscreen Operational Sort Selector */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-500">Ordenar:</span>
+                    <select
+                      id="select-resource-sort-fs"
+                      value={resourceOperationalSort}
+                      onChange={(e) => setResourceOperationalSort(e.target.value as ResourceOperationalSort)}
+                      className={`px-2.5 py-1 bg-white border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer transition-colors ${
+                        resourceOperationalSort !== 'default'
+                          ? 'border-blue-300 text-blue-900 bg-blue-50/50'
+                          : 'border-slate-200 text-slate-700'
+                      }`}
+                      aria-label="Ordenar recursos na matriz operacional em ecrã cheio"
+                    >
+                      <option value="default">Ordem normal</option>
+                      <option value="excess_desc">Excesso ↓</option>
+                      <option value="free_asc">Livre ↑</option>
+                      <option value="confirmed_desc">CONFIRMED ↓</option>
+                      <option value="draft_desc">DRAFT ↓</option>
+                      <option value="planned_desc">Planeado ↓</option>
+                      <option value="capacity_desc">Capacidade ↓</option>
+                    </select>
+                  </div>
+
+                  {resourceOperationalSort !== 'default' && (
+                    <span 
+                      id="badge-active-sort-indicator-fs"
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-medium"
+                      title={`Matriz ordenada por ${getResourceOperationalSortLabel(resourceOperationalSort)}`}
+                    >
+                      <span>Ordenação: <strong className="text-slate-900 font-bold">{getResourceOperationalSortLabel(resourceOperationalSort)}</strong></span>
+                      <button
+                        type="button"
+                        id="btn-reset-sort-fs"
+                        onClick={() => setResourceOperationalSort('default')}
+                        className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
+                        title="Repor ordem normal"
+                        aria-label="Repor ordem normal"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
 
                   {/* Date shift buttons */}
                   <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
