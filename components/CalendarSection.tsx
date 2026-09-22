@@ -5,7 +5,7 @@ import { Project, Task, UserAbsence, User, Client, SpecialDay, ProjectRiskItem, 
 import { 
   ChevronLeft, ChevronRight, Calendar, AlertTriangle, Users, 
   Clock, Flag, AlertCircle, Info, Briefcase, Plus, X, Maximize2, Edit2, Layers,
-  Search, RotateCcw, Filter, ArrowUpDown
+  Search, RotateCcw, Filter, ArrowUpDown, CheckCircle2
 } from 'lucide-react';
 
 import { hasPermission } from '../lib/permissions';
@@ -794,6 +794,121 @@ export default function CalendarSection({
     planningResourceLoad
   ]);
 
+  // FASE 23E-C3L: Acompanhamento de Situações Operacionais no conjunto visível (sortedResources)
+  const operationalAlertsSummary = React.useMemo(() => {
+    if (sortedResources.length === 0 || timelineDays.length === 0) {
+      return {
+        excessCellsCount: 0,
+        draftCellsCount: 0,
+        noCapacityCellsCount: 0,
+        resourceAlertMap: new Map<string, 'EXCESSO' | 'SEM_CAPACIDADE' | 'DRAFT'>(),
+      };
+    }
+
+    const dayStrings = timelineDays.map(d => formatDateToString(d));
+    const dayStringSet = new Set(dayStrings);
+
+    // O(1) indexing maps
+    const capacityMap = new Map<string, ResourceCapacityDetail>();
+    (planningCapacity || []).forEach(c => {
+      if (dayStringSet.has(c.date)) {
+        capacityMap.set(`${c.resourceId}|${c.date}`, c);
+      }
+    });
+
+    const loadMap = new Map<string, ResourceLoadSummary>();
+    (planningResourceLoad || []).forEach(l => {
+      if (dayStringSet.has(l.date)) {
+        loadMap.set(`${l.resourceId}|${l.date}`, l);
+      }
+    });
+
+    const allocationsMap = new Map<string, PlanningAllocationDTO[]>();
+    (planningAllocations || []).forEach(a => {
+      if (a.status !== 'CANCELLED' && dayStringSet.has(a.date)) {
+        const key = `${a.resourceId}|${a.date}`;
+        const list = allocationsMap.get(key) || [];
+        list.push(a);
+        allocationsMap.set(key, list);
+      }
+    });
+
+    let excessCellsCount = 0;
+    let draftCellsCount = 0;
+    let noCapacityCellsCount = 0;
+    const resourceAlertMap = new Map<string, 'EXCESSO' | 'SEM_CAPACIDADE' | 'DRAFT'>();
+
+    sortedResources.forEach(user => {
+      let userHasExcess = false;
+      let userHasNoCapacityWithPlanning = false;
+      let userHasDraft = false;
+
+      dayStrings.forEach(dStr => {
+        const key = `${user.id}|${dStr}`;
+        const capDetail = capacityMap.get(key);
+        const loadDetail = loadMap.get(key);
+        const dayAllocs = allocationsMap.get(key) || [];
+
+        // 1. Capacity
+        const capMins = capDetail 
+          ? capDetail.operationalCapacityMinutes 
+          : (loadDetail ? loadDetail.operationalCapacityMinutes : 0);
+
+        // 2. Confirmed & Draft
+        const confirmedAllocs = dayAllocs.filter(a => a.status === 'CONFIRMED');
+        const draftAllocs = dayAllocs.filter(a => a.status === 'DRAFT');
+        const dayLocalConfMins = confirmedAllocs.reduce((s, a) => s + (a.durationMinutes || 0), 0);
+        const dayDraftMins = draftAllocs.reduce((s, a) => s + (a.durationMinutes || 0), 0);
+
+        const confMins = capDetail
+          ? capDetail.confirmedAllocationMinutes
+          : (
+              (loadDetail && 'confirmedMinutes' in loadDetail && typeof (loadDetail as any).confirmedMinutes === 'number')
+                ? (loadDetail as any).confirmedMinutes
+                : dayLocalConfMins
+            );
+
+        // 3. Excess
+        const excessMins = capDetail
+          ? capDetail.overAllocatedMinutes
+          : (loadDetail ? loadDetail.overAllocatedMinutes : Math.max(0, confMins - capMins));
+
+        if (excessMins > 0) {
+          excessCellsCount++;
+          userHasExcess = true;
+        } else if (capMins === 0 && (confMins > 0 || dayDraftMins > 0 || dayAllocs.length > 0)) {
+          noCapacityCellsCount++;
+          userHasNoCapacityWithPlanning = true;
+        } else if (dayDraftMins > 0) {
+          draftCellsCount++;
+          userHasDraft = true;
+        }
+      });
+
+      // Priority visual: EXCESSO -> SEM CAPACIDADE -> DRAFT
+      if (userHasExcess) {
+        resourceAlertMap.set(user.id, 'EXCESSO');
+      } else if (userHasNoCapacityWithPlanning) {
+        resourceAlertMap.set(user.id, 'SEM_CAPACIDADE');
+      } else if (userHasDraft) {
+        resourceAlertMap.set(user.id, 'DRAFT');
+      }
+    });
+
+    return {
+      excessCellsCount,
+      draftCellsCount,
+      noCapacityCellsCount,
+      resourceAlertMap,
+    };
+  }, [
+    sortedResources,
+    timelineDays,
+    planningCapacity,
+    planningResourceLoad,
+    planningAllocations
+  ]);
+
   // FASE 23E-C3A: Operational Planning KPIs Aggregation Engine (useMemo over baseResources)
   const operationalKPIs = React.useMemo<OperationalPlanningKPIs>(() => {
     if (baseResources.length === 0 || timelineDays.length === 0) {
@@ -1522,7 +1637,7 @@ export default function CalendarSection({
       <div className="space-y-2.5">
         {/* FASE 23E-C3E: Compact Operational Results & Filter Indicator Banner */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-extrabold text-slate-800 uppercase text-[10px] tracking-wider">Planeamento Operacional</span>
             <span className="text-slate-300">•</span>
             {isKPIFilterActive ? (
@@ -1540,6 +1655,36 @@ export default function CalendarSection({
                 {filteredResources.length} {filteredResources.length === 1 ? 'recurso' : 'recursos'}
               </span>
             )}
+
+            {/* FASE 23E-C3L: Acompanhamento agregado de situações no conjunto atualmente visível (sortedResources) */}
+            <span className="text-slate-300 hidden sm:inline">•</span>
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-slate-600">
+              <span className="font-bold text-slate-700">Situações a acompanhar:</span>
+              {operationalAlertsSummary.excessCellsCount > 0 && (
+                <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 border border-rose-200/80 px-1.5 py-0.5 rounded text-[10px]">
+                  <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                  {operationalAlertsSummary.excessCellsCount} excesso
+                </span>
+              )}
+              {operationalAlertsSummary.draftCellsCount > 0 && (
+                <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded text-[10px]">
+                  <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                  {operationalAlertsSummary.draftCellsCount} DRAFT
+                </span>
+              )}
+              {operationalAlertsSummary.noCapacityCellsCount > 0 && (
+                <span className="inline-flex items-center gap-1 font-bold text-rose-600 bg-rose-50/70 border border-rose-200/60 px-1.5 py-0.5 rounded text-[10px]">
+                  <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                  {operationalAlertsSummary.noCapacityCellsCount} sem capacidade
+                </span>
+              )}
+              {operationalAlertsSummary.excessCellsCount === 0 && operationalAlertsSummary.draftCellsCount === 0 && operationalAlertsSummary.noCapacityCellsCount === 0 && (
+                <span className="inline-flex items-center gap-1 font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 text-[10px]">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                  Nenhuma situação crítica
+                </span>
+              )}
+            </div>
           </div>
 
           {isKPIFilterActive && (
@@ -1694,7 +1839,17 @@ export default function CalendarSection({
                     ? singleLoadDetail.utilizationPercent
                     : (periodCapMins > 0 ? Math.round((periodConfMins / periodCapMins) * 1000) / 10 : 0);
 
-                  const resourceSummaryTooltip = `Recurso: ${user.name}\nPeríodo: ${startDateStr} a ${endDateStr} (${timelineDays.length} dias)\nCapacidade: ${formatHoursDisplay(periodCapMins / 60)}\nConfirmado: ${formatHoursDisplay(periodConfMins / 60)} (${periodConfCount} alocações)\nPlaneado: ${formatHoursDisplay(periodPlanMins / 60)}\nLivre: ${formatHoursDisplay(periodFreeMins / 60)}\nExcesso: ${formatHoursDisplay(periodExcessMins / 60)}\nUtilização: ${periodUtilPercent}%\nCONFIRMED: ${periodConfCount} | DRAFT: ${periodDraftCount}\n\nClique para abrir o detalhe do recurso.`;
+                  // FASE 23E-C3L: Indicador discreto no cabeçalho do recurso (prioridade: EXCESSO -> SEM CAPACIDADE -> DRAFT)
+                  const resourceAlert = operationalAlertsSummary.resourceAlertMap.get(user.id);
+                  const resourceAlertLabel = resourceAlert === 'EXCESSO'
+                    ? 'EXCESSO CONFIRMADO'
+                    : resourceAlert === 'SEM_CAPACIDADE'
+                    ? 'SEM CAPACIDADE COM PLANEAMENTO'
+                    : resourceAlert === 'DRAFT'
+                    ? 'DRAFT PENDENTE'
+                    : '';
+
+                  const resourceSummaryTooltip = `Recurso: ${user.name}\nPeríodo: ${startDateStr} a ${endDateStr} (${timelineDays.length} dias)${resourceAlertLabel ? `\nSituação no Período: ${resourceAlertLabel}` : ''}\nCapacidade: ${formatHoursDisplay(periodCapMins / 60)}\nConfirmado: ${formatHoursDisplay(periodConfMins / 60)} (${periodConfCount} alocações)\nPlaneado: ${formatHoursDisplay(periodPlanMins / 60)}\nLivre: ${formatHoursDisplay(periodFreeMins / 60)}\nExcesso: ${formatHoursDisplay(periodExcessMins / 60)}\nUtilização: ${periodUtilPercent}%\nCONFIRMED: ${periodConfCount} | DRAFT: ${periodDraftCount}\n\nClique para abrir o detalhe do recurso.`;
 
                   return (
                     <tr key={user.id} className="hover:bg-slate-50/30 transition-colors">
@@ -1705,13 +1860,47 @@ export default function CalendarSection({
                           onClick={() => handleOpenResourceDayDetail(user, targetDateStr)}
                           className="flex items-center gap-2 w-full text-left p-1.5 -m-1.5 rounded-xl hover:bg-slate-100/80 transition-colors cursor-pointer group focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                           title={resourceSummaryTooltip}
-                          aria-label={`Ver detalhe operacional de ${user.name}`}
+                          aria-label={`Ver detalhe operacional de ${user.name}${resourceAlertLabel ? `, situação ${resourceAlertLabel.toLowerCase()}` : ''}`}
                         >
                           <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                             {getInitials(user.name)}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-xs font-bold text-slate-800 truncate group-hover:text-blue-700 transition-colors">{user.name}</div>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-xs font-bold text-slate-800 truncate group-hover:text-blue-700 transition-colors">
+                                {user.name}
+                              </span>
+                              {resourceAlert === 'EXCESSO' && (
+                                <span 
+                                  className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-rose-100 text-rose-700 text-[8px] font-black shrink-0 border border-rose-300 uppercase tracking-tight"
+                                  title="Alerta no período: Sobrealocação confirmada"
+                                  aria-label="Alerta: excesso confirmado no período"
+                                >
+                                  <AlertTriangle className="w-2.5 h-2.5 text-rose-600" />
+                                  <span>EXCESSO</span>
+                                </span>
+                              )}
+                              {resourceAlert === 'SEM_CAPACIDADE' && (
+                                <span 
+                                  className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-rose-50 text-rose-700 text-[8px] font-extrabold shrink-0 border border-rose-200/80 uppercase tracking-tight"
+                                  title="Atenção no período: Planeamento sem capacidade"
+                                  aria-label="Atenção: sem capacidade com planeamento no período"
+                                >
+                                  <AlertCircle className="w-2.5 h-2.5 text-rose-600" />
+                                  <span>SEM CAP.</span>
+                                </span>
+                              )}
+                              {resourceAlert === 'DRAFT' && (
+                                <span 
+                                  className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-amber-100 text-amber-800 text-[8px] font-bold shrink-0 border border-amber-300 border-dashed uppercase tracking-tight"
+                                  title="Aviso no período: DRAFT pendente"
+                                  aria-label="Aviso: DRAFT pendente no período"
+                                >
+                                  <Clock className="w-2.5 h-2.5 text-amber-700" />
+                                  <span>DRAFT</span>
+                                </span>
+                              )}
+                            </div>
                             <div className="text-[10px] text-slate-400 truncate">{user.email || user.type}</div>
                           </div>
                         </button>
@@ -1757,45 +1946,66 @@ export default function CalendarSection({
 
                         const isSelectedCell = selectedResourceDay?.resource?.id === user.id && selectedResourceDay?.dateStr === dayStr;
 
-                        // Tooltip estruturado com métricas canónicas
-                        const tooltipParts: string[] = [
-                          `${user.name} • ${dayStr}`,
+                        // FASE 23E-C3L: Deteção canónica de Situações Operacionais (prioridade: EXCESSO -> SEM CAPACIDADE -> DRAFT -> 100% -> DISPONÍVEL)
+                        let cellOpState: 'EXCESSO CONFIRMADO' | 'SEM CAPACIDADE' | 'DRAFT PENDENTE' | 'CAPACIDADE TOTALMENTE OCUPADA' | 'CAPACIDADE DISPONÍVEL' | 'SEM CAPACIDADE OPERACIONAL';
+
+                        if (isOver) {
+                          cellOpState = 'EXCESSO CONFIRMADO';
+                        } else if (isZeroCap && (hasConfirmed || hasDraft || dayAllocs.length > 0)) {
+                          cellOpState = 'SEM CAPACIDADE';
+                        } else if (hasDraft) {
+                          cellOpState = 'DRAFT PENDENTE';
+                        } else if (!isZeroCap && confirmedMins === capMins) {
+                          cellOpState = 'CAPACIDADE TOTALMENTE OCUPADA';
+                        } else if (!isZeroCap && confirmedMins < capMins) {
+                          cellOpState = 'CAPACIDADE DISPONÍVEL';
+                        } else {
+                          cellOpState = 'SEM CAPACIDADE OPERACIONAL';
+                        }
+
+                        // FASE 23E-C3L: Tooltip canónico estruturado com estado operacional explícito
+                        const cellTooltip = [
+                          `Técnico: ${user.name}`,
+                          `Data: ${dayStr}`,
+                          '',
+                          `Estado: ${cellOpState === 'SEM CAPACIDADE OPERACIONAL' ? 'Sem capacidade operacional' : cellOpState}`,
+                          '',
                           `Capacidade: ${formatHoursDisplay(capMins / 60)}`,
-                          `Confirmado: ${formatHoursDisplay(confirmedMins / 60)}`,
+                          `CONFIRMED: ${formatHoursDisplay(confirmedMins / 60)}`,
+                          `DRAFT: ${formatHoursDisplay(dayDraftMins / 60)}`,
                           `Planeado: ${formatHoursDisplay(plannedMins / 60)}`,
                           `Livre: ${formatHoursDisplay(freeMins / 60)}`,
-                          `Excesso: ${formatHoursDisplay(excessMins / 60)}`
-                        ];
-                        if (confirmedAllocs.length > 0) {
-                          tooltipParts.push(`CONFIRMED: ${formatHoursDisplay(confirmedMins / 60)} (${confirmedAllocs.length} alocação(ões))`);
-                        }
-                        if (draftAllocs.length > 0) {
-                          tooltipParts.push(`DRAFT: ${formatHoursDisplay(dayDraftMins / 60)} (${draftAllocs.length} rascunho(s))`);
-                        }
-                        if (isZeroCap) {
-                          tooltipParts.push('Estado: Sem capacidade operacional');
-                        } else if (isOver) {
-                          tooltipParts.push(`Estado: Sobrealocação (+${formatHoursDisplay(excessMins / 60)} de excesso)`);
-                        }
-                        tooltipParts.push('\nClique para abrir o detalhe operacional.');
-                        const cellTooltip = tooltipParts.join('\n');
+                          `Excesso: ${formatHoursDisplay(excessMins / 60)}`,
+                          '',
+                          `CONFIRMED: ${confirmedAllocs.length} ${confirmedAllocs.length === 1 ? 'alocação' : 'alocações'}`,
+                          `DRAFT: ${draftAllocs.length} ${draftAllocs.length === 1 ? 'alocação' : 'alocações'}`,
+                          '',
+                          'Clique para abrir o detalhe operacional.'
+                        ].join('\n');
 
-                        const cellAriaLabel = `${user.name} em ${dayStr}: Capacidade ${formatHoursDisplay(capMins / 60)}, Confirmado ${formatHoursDisplay(confirmedMins / 60)}, Planeado ${formatHoursDisplay(plannedMins / 60)}, Livre ${formatHoursDisplay(freeMins / 60)}${excessMins > 0 ? `, Excesso ${formatHoursDisplay(excessMins / 60)}` : ''}${dayDraftMins > 0 ? `, DRAFT ${formatHoursDisplay(dayDraftMins / 60)}` : ''}${isZeroCap ? ', Sem capacidade' : ''}`;
+                        // FASE 23E-C3L: aria-label estruturado e não dependente de cor
+                        const formattedDatePt = new Date(dayStr + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' });
+                        const cellAriaLabel = `Técnico ${user.name}, ${formattedDatePt}, capacidade ${formatHoursDisplay(capMins / 60)}, confirmado ${formatHoursDisplay(confirmedMins / 60)}${dayDraftMins > 0 ? `, draft ${formatHoursDisplay(dayDraftMins / 60)}` : ''}, planeado ${formatHoursDisplay(plannedMins / 60)}, livre ${formatHoursDisplay(freeMins / 60)}${excessMins > 0 ? `, excesso ${formatHoursDisplay(excessMins / 60)}` : ''}, estado ${cellOpState.toLowerCase()}.`;
 
-                        // Hierarquia visual distintiva sem depender apenas de cor
+                        // FASE 23E-C3L: Hierarquia visual distintiva sem depender exclusivamente de cor
                         let cellStyleClasses = 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300';
-                        if (isZeroCap) {
-                          if (hasConfirmed || hasDraft) {
-                            cellStyleClasses = 'bg-rose-50/50 border-rose-200 text-rose-900 hover:bg-rose-100/60';
+                        if (cellOpState === 'EXCESSO CONFIRMADO') {
+                          cellStyleClasses = 'bg-rose-50 border-rose-300 text-rose-950 hover:bg-rose-100/80 hover:border-rose-400 ring-1 ring-rose-300/40';
+                        } else if (cellOpState === 'SEM CAPACIDADE') {
+                          cellStyleClasses = 'bg-rose-50/60 border-dashed border-rose-300 text-rose-900 hover:bg-rose-100/70 hover:border-rose-400';
+                        } else if (cellOpState === 'DRAFT PENDENTE') {
+                          cellStyleClasses = 'bg-amber-50/60 border-dashed border-amber-300 text-amber-950 hover:bg-amber-100/70 hover:border-amber-400';
+                        } else if (cellOpState === 'CAPACIDADE TOTALMENTE OCUPADA') {
+                          cellStyleClasses = 'bg-blue-50/80 border-blue-300 text-blue-950 hover:bg-blue-100/80 hover:border-blue-400';
+                        } else if (cellOpState === 'CAPACIDADE DISPONÍVEL') {
+                          if (hasConfirmed) {
+                            cellStyleClasses = 'bg-blue-50/40 border-blue-200 text-blue-950 hover:bg-blue-100/60 hover:border-blue-300';
                           } else {
-                            cellStyleClasses = 'bg-slate-100/80 border-slate-200 text-slate-400 hover:bg-slate-200/50';
+                            cellStyleClasses = 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300';
                           }
-                        } else if (isOver) {
-                          cellStyleClasses = 'bg-rose-50 border-rose-300 text-rose-950 hover:bg-rose-100/80 hover:border-rose-400';
-                        } else if (hasConfirmed) {
-                          cellStyleClasses = 'bg-blue-50/70 border-blue-200 text-blue-950 hover:bg-blue-100/70 hover:border-blue-300';
-                        } else if (hasDraft) {
-                          cellStyleClasses = 'bg-amber-50/50 border-dashed border-amber-300 text-amber-950 hover:bg-amber-100/60';
+                        } else {
+                          // SEM CAPACIDADE OPERACIONAL (0 cap, 0 allocs)
+                          cellStyleClasses = 'bg-slate-100/80 border-slate-200 text-slate-400 hover:bg-slate-200/50';
                         }
 
                         return (
@@ -1811,50 +2021,106 @@ export default function CalendarSection({
                                 title={cellTooltip}
                                 aria-label={cellAriaLabel}
                               >
-                                {/* Linha 1: Estado e Carga Principal */}
-                                <div className="flex items-center justify-center gap-1 font-bold text-[10px] leading-tight min-h-[16px]">
-                                  {isZeroCap ? (
-                                    hasConfirmed || hasDraft ? (
-                                      <span className="inline-flex items-center gap-0.5 text-rose-700 font-extrabold">
-                                        <AlertCircle className="w-2.5 h-2.5 shrink-0" />
-                                        <span>{formatHoursDisplay(confirmedMins / 60)}</span>
-                                      </span>
-                                    ) : (
-                                      <span className="text-slate-400 font-semibold text-[9px]">Sem Cap.</span>
-                                    )
-                                  ) : isOver ? (
-                                    <span className="inline-flex items-center gap-0.5 text-rose-700 font-black">
+                                {/* Linha 1: Indicador de Situação Operacional & Carga Principal */}
+                                {cellOpState === 'EXCESSO CONFIRMADO' ? (
+                                  <div className="flex items-center justify-between gap-1 w-full mb-0.5">
+                                    <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-rose-100 text-rose-700 font-black text-[8px] uppercase tracking-tight border border-rose-300">
                                       <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0" />
-                                      <span>{formatHoursDisplay(confirmedMins / 60)}</span>
+                                      <span>EXCESSO</span>
                                     </span>
-                                  ) : hasConfirmed ? (
-                                    <span className="inline-flex items-center gap-1 text-blue-950 font-bold">
-                                      <span className="px-1 py-0.2 rounded bg-blue-100 text-blue-800 text-[8px] font-extrabold uppercase tracking-wide">
-                                        CONF
-                                      </span>
-                                      <span>{formatHoursDisplay(confirmedMins / 60)}</span>
+                                    <span className="text-[10px] font-black text-rose-700">
+                                      {formatHoursDisplay(confirmedMins / 60)}
                                     </span>
-                                  ) : hasDraft ? (
-                                    <span className="inline-flex items-center gap-0.5 text-amber-800 font-bold bg-amber-100/60 border border-dashed border-amber-300 rounded px-1 py-0.2 text-[8px]">
-                                      <Clock className="w-2.5 h-2.5 text-amber-700 shrink-0" />
-                                      <span>{formatHoursDisplay(dayDraftMins / 60)} draft</span>
-                                    </span>
-                                  ) : (
-                                    <span className="text-emerald-700 font-semibold text-[9px]">
-                                      Livre: {formatHoursDisplay(freeMins / 60)}
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Linha 2: Excesso ou DRAFT pendente quando há CONFIRMED */}
-                                {isOver ? (
-                                  <div className="text-[8px] sm:text-[9px] font-bold text-rose-600 truncate mt-0.5">
-                                    +{formatHoursDisplay(excessMins / 60)} excesso
                                   </div>
-                                ) : hasConfirmed && hasDraft ? (
-                                  <div className="text-[8px] sm:text-[9px] font-semibold text-amber-800 flex items-center justify-center gap-0.5 truncate mt-0.5">
-                                    <Clock className="w-2 h-2 text-amber-600 shrink-0" />
-                                    <span>+{formatHoursDisplay(dayDraftMins / 60)} draft</span>
+                                ) : cellOpState === 'SEM CAPACIDADE' ? (
+                                  <div className="flex items-center justify-between gap-1 w-full mb-0.5">
+                                    <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-rose-100/80 text-rose-700 font-extrabold text-[8px] uppercase tracking-tight border border-rose-200/80">
+                                      <AlertCircle className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                                      <span>SEM CAP.</span>
+                                    </span>
+                                    <span className="text-[10px] font-extrabold text-rose-700">
+                                      {confirmedMins > 0 ? formatHoursDisplay(confirmedMins / 60) : formatHoursDisplay(dayDraftMins / 60)}
+                                    </span>
+                                  </div>
+                                ) : cellOpState === 'DRAFT PENDENTE' ? (
+                                  <div className="flex items-center justify-between gap-1 w-full mb-0.5">
+                                    <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-bold text-[8px] uppercase tracking-tight border border-dashed border-amber-300">
+                                      <Clock className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                                      <span>DRAFT</span>
+                                    </span>
+                                    <span className="text-[10px] font-bold text-slate-800">
+                                      {confirmedMins > 0 ? formatHoursDisplay(confirmedMins / 60) : formatHoursDisplay(dayDraftMins / 60)}
+                                    </span>
+                                  </div>
+                                ) : cellOpState === 'CAPACIDADE TOTALMENTE OCUPADA' ? (
+                                  <div className="flex items-center justify-between gap-1 w-full mb-0.5">
+                                    <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-blue-100 text-blue-800 font-extrabold text-[8px] uppercase tracking-tight">
+                                      <CheckCircle2 className="w-2.5 h-2.5 text-blue-600 shrink-0" />
+                                      <span>100%</span>
+                                    </span>
+                                    <span className="text-[10px] font-bold text-blue-950">
+                                      {formatHoursDisplay(confirmedMins / 60)}
+                                    </span>
+                                  </div>
+                                ) : cellOpState === 'CAPACIDADE DISPONÍVEL' ? (
+                                  <div className="flex items-center justify-between gap-1 w-full mb-0.5">
+                                    {hasConfirmed ? (
+                                      <>
+                                        <span className="px-1 py-0.2 rounded bg-blue-100 text-blue-800 text-[8px] font-extrabold uppercase tracking-wide">
+                                          CONF
+                                        </span>
+                                        <span className="text-[10px] font-bold text-blue-950">
+                                          {formatHoursDisplay(confirmedMins / 60)}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-emerald-700 font-semibold text-[9px] mx-auto">
+                                        Livre: {formatHoursDisplay(freeMins / 60)}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center font-bold text-[10px] leading-tight min-h-[16px]">
+                                    <span className="text-slate-400 font-semibold text-[9px]">Sem Cap.</span>
+                                  </div>
+                                )}
+
+                                {/* Linha 2: Detalhe Operacional (Excesso, DRAFT ou Disponibilidade) */}
+                                {cellOpState === 'EXCESSO CONFIRMADO' ? (
+                                  <div className="space-y-0.5">
+                                    <div className="text-[8px] sm:text-[9px] font-bold text-rose-600 truncate">
+                                      +{formatHoursDisplay(excessMins / 60)} excesso
+                                    </div>
+                                    {hasDraft && (
+                                      <div className="text-[8px] font-semibold text-amber-800 flex items-center justify-center gap-0.5 truncate">
+                                        <Clock className="w-2 h-2 text-amber-600 shrink-0" />
+                                        <span>+{formatHoursDisplay(dayDraftMins / 60)} draft</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : cellOpState === 'SEM CAPACIDADE' ? (
+                                  <div className="text-[8px] sm:text-[9px] font-semibold text-rose-600 truncate">
+                                    Plan: {formatHoursDisplay(plannedMins / 60)}
+                                  </div>
+                                ) : cellOpState === 'DRAFT PENDENTE' ? (
+                                  <div className="space-y-0.5">
+                                    {hasConfirmed ? (
+                                      <div className="text-[8px] sm:text-[9px] font-semibold text-amber-800 flex items-center justify-center gap-0.5 truncate">
+                                        <Clock className="w-2 h-2 text-amber-600 shrink-0" />
+                                        <span>+{formatHoursDisplay(dayDraftMins / 60)} draft</span>
+                                      </div>
+                                    ) : null}
+                                    <div className="text-[8px] font-medium text-emerald-700 truncate">
+                                      Livre: {formatHoursDisplay(freeMins / 60)}
+                                    </div>
+                                  </div>
+                                ) : cellOpState === 'CAPACIDADE TOTALMENTE OCUPADA' ? (
+                                  <div className="text-[8px] font-medium text-slate-500 truncate">
+                                    Livre: 0h
+                                  </div>
+                                ) : cellOpState === 'CAPACIDADE DISPONÍVEL' && hasConfirmed ? (
+                                  <div className="text-[8px] font-medium text-emerald-700 truncate">
+                                    Livre: {formatHoursDisplay(freeMins / 60)}
                                   </div>
                                 ) : null}
 
