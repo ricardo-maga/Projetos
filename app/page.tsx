@@ -514,24 +514,7 @@ export default function Page() {
             <div className="space-y-1">
               <div className="flex justify-between items-center">
                 <label className="block text-sm font-medium text-slate-700">Password</label>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer focus:outline-none"
-                  tabIndex={-1}
-                >
-                  {showPassword ? (
-                    <>
-                      <EyeOff className="w-3.5 h-3.5" />
-                      <span>Ocultar</span>
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Mostrar</span>
-                    </>
-                  )}
-                </button>
+
               </div>
               <div className="relative">
                 <input 
