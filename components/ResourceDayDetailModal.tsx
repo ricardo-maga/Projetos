@@ -79,6 +79,19 @@ export default function ResourceDayDetailModal({
   const [confirmDeleteAlloc, setConfirmDeleteAlloc] = useState<PlanningAllocationDTO | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // FASE 23E-C3M-C: Group active allocations by Task (deterministic sorting: CONFIRMED first, then DRAFT, then Project/Task name)
+  // Hook called unconditionally at top level
+  const taskGroups: ResourceDayTaskGroup[] = React.useMemo(() => {
+    if (!resource || !dateStr) return [];
+    return groupResourceDayAllocationsByTask(
+      resource.id,
+      dateStr,
+      allocations,
+      tasks,
+      projects
+    );
+  }, [resource?.id, dateStr, allocations, tasks, projects]);
+
   if (!isOpen || !resource || !dateStr) return null;
 
   // Filter allocations strictly for this resource and date
@@ -137,17 +150,6 @@ export default function ResourceDayDetailModal({
   const excessMinutes = capacityDetail
     ? capacityDetail.overAllocatedMinutes
     : (loadDetail ? loadDetail.overAllocatedMinutes : Math.max(0, confirmedMinutes - capacityMinutes));
-
-  // FASE 23E-C3M-C: Group active allocations by Task (deterministic sorting: CONFIRMED first, then DRAFT, then Project/Task name)
-  const taskGroups: ResourceDayTaskGroup[] = React.useMemo(() => {
-    return groupResourceDayAllocationsByTask(
-      resource.id,
-      dateStr,
-      allocations,
-      tasks,
-      projects
-    );
-  }, [resource.id, dateStr, allocations, tasks, projects]);
 
   // Utilization = Canonical utilizationPercent if available, else CONFIRMED / Capacity
   const utilizationPercent = capacityDetail
