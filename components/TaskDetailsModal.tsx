@@ -1,5 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Calendar, Users, Plus, Clock, AlertTriangle, Edit2, ChevronDown, ChevronUp, User as UserIcon } from 'lucide-react';
+import { 
+  X, 
+  Calendar, 
+  Users, 
+  Plus, 
+  Clock, 
+  AlertTriangle, 
+  Edit2, 
+  ChevronDown, 
+  ChevronUp, 
+  User as UserIcon,
+  Layers
+} from 'lucide-react';
 import { Task, Project, Client, TaskType, User } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
 import { getTaskTypeName, formatToOnlyHours } from '../lib/utils';
@@ -10,7 +22,11 @@ import {
   PlanningAllocationUpdateInput, 
   PlanningAllocationFilters 
 } from '../lib/planning/types';
-import { computePlanningSummary, formatHoursDisplay } from '../lib/planning/summary';
+import { 
+  computePlanningSummary, 
+  formatHoursDisplay,
+  groupTaskAllocationsByDate 
+} from '../lib/planning/summary';
 import PlanningAllocationModal from './PlanningAllocationModal';
 
 interface TaskDetailsModalProps {
@@ -126,6 +142,11 @@ export default function TaskDetailsModal({
 
   // Authoritative Planning Summary
   const planningSummary = computePlanningSummary(task?.estimatedHours, taskAllocations);
+
+  // Group active allocations by day (FASE 23E-C3M-B)
+  const dailyPlanningGroups = React.useMemo(() => {
+    return groupTaskAllocationsByDate(activeAllocations);
+  }, [activeAllocations]);
 
   useEffect(() => {
     if (task) {
@@ -333,16 +354,16 @@ export default function TaskDetailsModal({
             />
           </div>
 
-          {/* Planeamento de Capacidade (FASE 23C) */}
-          <div className="border-t border-slate-200 pt-4 space-y-3">
+          {/* Planeamento Diário e Carga da Tarefa (FASE 23E-C3M-B) */}
+          <div className="border-t border-slate-200 pt-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wide flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5" />
-                  Planeamento de Capacidade
+                  Planeamento Diário da Tarefa
                 </span>
                 <p className="text-[11px] text-slate-500">
-                  Alocações temporais e consumo de capacidade no motor
+                  Distribuição diária de trabalho e consumo da estimativa
                 </p>
               </div>
               <button
@@ -359,117 +380,231 @@ export default function TaskDetailsModal({
               </button>
             </div>
 
-            {/* Resumo de Capacidade (4 cards) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {/* Resumo de Carga da Tarefa (6 Métricas / Cards) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+              {/* 1. Estimativa */}
               <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
-                <div className="text-[10px] uppercase font-bold text-slate-500">Estimado</div>
+                <div className="text-[9px] uppercase font-extrabold text-slate-500 tracking-wider">Estimativa</div>
                 <div className="text-sm font-extrabold text-slate-800 mt-0.5">
                   {formatHoursDisplay(planningSummary.estimatedHours)}
                 </div>
+                <div className="text-[9px] text-slate-400 font-medium mt-0.5">Previsto</div>
               </div>
 
-              <div className="p-2.5 bg-blue-50/60 border border-blue-200 rounded-lg">
-                <div className="text-[10px] uppercase font-bold text-blue-700">Planeado</div>
+              {/* 2. CONFIRMED */}
+              <div className="p-2.5 bg-blue-50/70 border border-blue-200 rounded-lg">
+                <div className="text-[9px] uppercase font-extrabold text-blue-800 tracking-wider">Confirmado</div>
                 <div className="text-sm font-extrabold text-blue-900 mt-0.5">
+                  {formatHoursDisplay(planningSummary.confirmedHours)}
+                </div>
+                <div className="text-[9px] text-blue-600 font-medium mt-0.5">CONFIRMED</div>
+              </div>
+
+              {/* 3. DRAFT */}
+              <div className="p-2.5 bg-amber-50/70 border border-amber-200 rounded-lg">
+                <div className="text-[9px] uppercase font-extrabold text-amber-800 tracking-wider">Rascunho</div>
+                <div className="text-sm font-extrabold text-amber-900 mt-0.5">
+                  {formatHoursDisplay(planningSummary.draftHours)}
+                </div>
+                <div className="text-[9px] text-amber-700 font-medium mt-0.5">DRAFT</div>
+              </div>
+
+              {/* 4. Total Planeado */}
+              <div className="p-2.5 bg-indigo-50/60 border border-indigo-200 rounded-lg">
+                <div className="text-[9px] uppercase font-extrabold text-indigo-800 tracking-wider">Total Planeado</div>
+                <div className="text-sm font-extrabold text-indigo-950 mt-0.5">
                   {formatHoursDisplay(planningSummary.plannedHours)}
                 </div>
-                <div className="text-[9px] text-blue-600 font-medium mt-0.5">DRAFT + CONFIRMED</div>
+                <div className="text-[9px] text-indigo-600 font-medium mt-0.5">Conf + Rasc</div>
               </div>
 
-              <div className="p-2.5 bg-emerald-50/60 border border-emerald-200 rounded-lg">
-                <div className="text-[10px] uppercase font-bold text-emerald-700">Capacidade Consumida</div>
-                <div className="text-sm font-extrabold text-emerald-900 mt-0.5">
-                  {formatHoursDisplay(planningSummary.capacityConsumedHours)}
-                </div>
-                <div className="text-[9px] text-emerald-600 font-medium mt-0.5">Apenas CONFIRMED</div>
-              </div>
-
+              {/* 5. Falta Planear */}
               <div className={`p-2.5 border rounded-lg ${
-                planningSummary.isOverAllocated
-                  ? 'bg-amber-50/70 border-amber-300'
+                planningSummary.remainingHours === 0 && planningSummary.estimatedHours > 0
+                  ? 'bg-emerald-50/70 border-emerald-300'
                   : 'bg-slate-50 border-slate-200'
               }`}>
-                <div className="text-[10px] uppercase font-bold text-slate-500">Restante</div>
-                <div className="text-sm font-extrabold text-slate-800 mt-0.5">
+                <div className={`text-[9px] uppercase font-extrabold tracking-wider ${
+                  planningSummary.remainingHours === 0 && planningSummary.estimatedHours > 0
+                    ? 'text-emerald-800'
+                    : 'text-slate-500'
+                }`}>
+                  Falta Planear
+                </div>
+                <div className={`text-sm font-extrabold mt-0.5 ${
+                  planningSummary.remainingHours === 0 && planningSummary.estimatedHours > 0
+                    ? 'text-emerald-900'
+                    : 'text-slate-800'
+                }`}>
                   {formatHoursDisplay(planningSummary.remainingHours)}
                 </div>
-                {planningSummary.isOverAllocated && (
-                  <div className="text-[9px] text-amber-700 font-bold mt-0.5">
-                    Excesso: {formatHoursDisplay(planningSummary.excessHours)}
-                  </div>
-                )}
+                <div className="text-[9px] text-slate-400 font-medium mt-0.5">
+                  {planningSummary.remainingHours === 0 && planningSummary.estimatedHours > 0 ? 'Concluído' : 'Restante'}
+                </div>
+              </div>
+
+              {/* 6. Excesso */}
+              <div className={`p-2.5 border rounded-lg ${
+                planningSummary.isOverAllocated
+                  ? 'bg-rose-50 border-rose-300 ring-1 ring-rose-300/60'
+                  : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className={`text-[9px] uppercase font-extrabold tracking-wider ${
+                  planningSummary.isOverAllocated ? 'text-rose-800' : 'text-slate-400'
+                }`}>
+                  Excesso
+                </div>
+                <div className={`text-sm font-extrabold mt-0.5 ${
+                  planningSummary.isOverAllocated ? 'text-rose-900' : 'text-slate-500'
+                }`}>
+                  {planningSummary.isOverAllocated ? `+${formatHoursDisplay(planningSummary.excessHours)}` : '0h'}
+                </div>
+                <div className={`text-[9px] font-medium mt-0.5 ${
+                  planningSummary.isOverAllocated ? 'text-rose-700 font-semibold' : 'text-slate-400'
+                }`}>
+                  {planningSummary.isOverAllocated ? 'Acima estimativa' : 'Sem excesso'}
+                </div>
               </div>
             </div>
 
-            {/* Visual Warning if Planeado > Estimado */}
+            {/* Visual Warning Banner if Planeado > Estimado */}
             {planningSummary.isOverAllocated && (
-              <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-lg flex items-center gap-2 text-xs text-amber-900">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <div className="p-2.5 bg-rose-50 border border-rose-300 rounded-lg flex items-center gap-2 text-xs text-rose-950">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>
-                  <strong>Aviso de Planeamento:</strong> O tempo total planeado ({formatHoursDisplay(planningSummary.plannedHours)}) excede a estimativa da tarefa ({formatHoursDisplay(planningSummary.estimatedHours)}) em <strong>{formatHoursDisplay(planningSummary.excessHours)}</strong>.
+                  <strong>Aviso de Planeamento:</strong> O tempo total planeado ({formatHoursDisplay(planningSummary.plannedHours)}) excede a estimativa da tarefa ({formatHoursDisplay(planningSummary.estimatedHours)}) em <strong>+{formatHoursDisplay(planningSummary.excessHours)}</strong>.
                 </span>
               </div>
             )}
 
-            {/* Active Allocations List */}
+            {/* Daily Planning Distribution List (FASE 23E-C3M-B) */}
             <div className="space-y-2">
-              <div className="text-xs font-bold text-slate-700">
-                Alocações Ativas ({activeAllocations.length})
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Distribuição por Dia ({dailyPlanningGroups.length} {dailyPlanningGroups.length === 1 ? 'dia' : 'dias'})</span>
+                </div>
+                {activeAllocations.length > 0 && (
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    {activeAllocations.length} {activeAllocations.length === 1 ? 'alocação' : 'alocações'}
+                  </span>
+                )}
               </div>
 
-              {activeAllocations.length === 0 ? (
-                <div className="p-3 text-center border border-dashed border-slate-200 rounded-lg bg-slate-50 text-xs text-slate-500">
-                  Nenhum planeamento registado para esta tarefa. Clique em <strong>&quot;Adicionar planeamento&quot;</strong> para reservar capacidade técnica.
+              {dailyPlanningGroups.length === 0 ? (
+                <div className="p-4 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50 text-xs text-slate-500 space-y-1">
+                  <div className="font-semibold text-slate-700">Nenhum planeamento diário registado</div>
+                  <p className="text-[11px] text-slate-500">
+                    Clique em <strong>&quot;Adicionar planeamento&quot;</strong> para alocar trabalho a técnicos em dias específicos.
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                  {activeAllocations.map(alloc => (
-                    <div
-                      key={alloc.id}
-                      className={`p-2.5 rounded-lg border flex items-center justify-between text-xs transition-colors ${
-                        alloc.status === 'CONFIRMED'
-                          ? 'bg-blue-50/40 border-blue-200 hover:bg-blue-50/70'
-                          : 'bg-amber-50/30 border-dashed border-amber-300 hover:bg-amber-50/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                          alloc.status === 'CONFIRMED'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-amber-200 text-amber-900 border border-amber-300'
-                        }`}>
-                          {alloc.status === 'CONFIRMED' ? 'Confirmado' : 'Rascunho'}
-                        </span>
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {dailyPlanningGroups.map(dayGroup => {
+                    const dateObj = new Date(dayGroup.date + 'T00:00:00');
+                    const dayLabel = dateObj.toLocaleDateString('pt-PT', { 
+                      weekday: 'short', 
+                      day: 'numeric', 
+                      month: 'short' 
+                    });
 
-                        <div>
-                          <div className="font-semibold text-slate-800 flex items-center gap-2">
-                            <span>{new Date(alloc.date + 'T00:00:00').toLocaleDateString('pt-PT')}</span>
-                            <span className="text-slate-400">•</span>
-                            <span>{alloc.startTime.substring(0, 5)} - {alloc.endTime.substring(0, 5)}</span>
-                            <span className="text-slate-500 font-normal">({formatHoursDisplay((alloc.durationMinutes || 0) / 60)})</span>
+                    return (
+                      <div 
+                        key={dayGroup.date}
+                        className="bg-slate-50/80 border border-slate-200 rounded-xl p-2.5 space-y-2"
+                      >
+                        {/* Day Group Header */}
+                        <div className="flex items-center justify-between text-xs border-b border-slate-200/80 pb-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-slate-900 capitalize">
+                              {dayLabel}
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-mono">
+                              ({dayGroup.date})
+                            </span>
                           </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                            <UserIcon className="w-3 h-3 text-slate-400" />
-                            <span>{getUserName(alloc.resourceId)}</span>
+
+                          <div className="flex items-center gap-2 text-xs">
+                            {dayGroup.confirmedHours > 0 && (
+                              <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-900 font-bold text-[10px]">
+                                {formatHoursDisplay(dayGroup.confirmedHours)} CONF
+                              </span>
+                            )}
+                            {dayGroup.draftHours > 0 && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold text-[10px]">
+                                {formatHoursDisplay(dayGroup.draftHours)} DRAFT
+                              </span>
+                            )}
+                            <span className="font-extrabold text-slate-800 text-[11px] bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                              Total: {formatHoursDisplay(dayGroup.plannedHours)}
+                            </span>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedAllocationForEdit(alloc);
-                            setIsPlanningModalOpen(true);
-                          }}
-                          className="p-1 text-slate-500 hover:text-blue-600 hover:bg-white rounded transition-colors cursor-pointer"
-                          title="Editar Alocação"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
+                        {/* Resource Allocations for this Day */}
+                        <div className="space-y-1.5 pl-1">
+                          {dayGroup.resourceAllocations.map(({ allocation: alloc }) => {
+                            const isConfirmed = alloc.status === 'CONFIRMED';
+                            const isAssignee = (task.assigneeIds || []).includes(alloc.resourceId);
+
+                            return (
+                              <div
+                                key={alloc.id}
+                                className={`p-2 rounded-lg border flex items-center justify-between text-xs transition-colors ${
+                                  isConfirmed
+                                    ? 'bg-white border-blue-200 hover:border-blue-300 shadow-2xs'
+                                    : 'bg-white border-dashed border-amber-300 hover:border-amber-400 shadow-2xs'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${
+                                    isConfirmed
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-amber-200 text-amber-950 border border-amber-300'
+                                  }`}>
+                                    {isConfirmed ? 'Confirmado' : 'Rascunho'}
+                                  </span>
+
+                                  <div>
+                                    <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                                      <UserIcon className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <span>{getUserName(alloc.resourceId)}</span>
+                                      {isAssignee && (
+                                        <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1 py-0.2 rounded" title="Também é responsável pela tarefa">
+                                          Responsável
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                      <Clock className="w-3 h-3 text-slate-400" />
+                                      <span>{alloc.startTime.substring(0, 5)} - {alloc.endTime.substring(0, 5)}</span>
+                                      <span className="font-semibold text-slate-700">
+                                        ({formatHoursDisplay((alloc.durationMinutes || 0) / 60)})
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedAllocationForEdit(alloc);
+                                      setIsPlanningModalOpen(true);
+                                    }}
+                                    className="p-1 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                                    title="Editar Alocação"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
