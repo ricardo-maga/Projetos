@@ -78,6 +78,27 @@ export async function POST(req: NextRequest) {
     }
 
     const state = result.data;
+
+    if (body.clientId && state.clients && Array.isArray(state.clients)) {
+      const clientExists = state.clients.some((c: any) => c.id === body.clientId && !c.deleted);
+      if (!clientExists) {
+        return NextResponse.json({
+          success: false,
+          message: 'O cliente especificado não existe ou foi eliminado.'
+        }, { status: 400 });
+      }
+    }
+
+    if (body.assignedToId && state.users && Array.isArray(state.users)) {
+      const userExists = state.users.some((u: any) => u.id === body.assignedToId && !u.deleted);
+      if (!userExists) {
+        return NextResponse.json({
+          success: false,
+          message: 'O utilizador responsável especificado não existe ou está inativo.'
+        }, { status: 400 });
+      }
+    }
+
     const now = new Date().toISOString();
     const id = genId('tck');
     const count = (state.tickets || []).length + 1;

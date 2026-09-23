@@ -88,6 +88,32 @@ export async function POST(req: NextRequest) {
       if (state.users) {
         delete state.users;
       }
+      // Protect other users' absences from being modified or deleted by non-admin users (BOLA/IDOR protection)
+      if (state.userAbsences && Array.isArray(state.userAbsences)) {
+        const { data: dbOtherAbsences } = await clientToUse
+          .from('user_absences')
+          .select('*')
+          .neq('user_id', user.id);
+
+        if (dbOtherAbsences) {
+          const otherAbsencesMapped = dbOtherAbsences.map((a: any) => ({
+            id: a.id,
+            userId: a.user_id,
+            absenceStartDate: a.absence_start_date,
+            absenceEndDate: a.absence_end_date,
+            type: a.type || 'ferias',
+            reason: a.reason || '',
+            isFullDay: a.is_full_day ?? true,
+            startTime: a.start_time || '',
+            endTime: a.end_time || '',
+            status: a.status || 'aprovado',
+            createdDate: a.created_at,
+          }));
+
+          const myAbsences = state.userAbsences.filter((a: any) => a.userId === user.id || a.user_id === user.id);
+          state.userAbsences = [...otherAbsencesMapped, ...myAbsences];
+        }
+      }
     }
 
     // 4. Save state

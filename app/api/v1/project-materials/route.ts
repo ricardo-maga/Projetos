@@ -56,6 +56,18 @@ export async function POST(req: NextRequest) {
     }
 
     const currentState = result.data;
+
+    // Validate that target project exists and is not deleted
+    if (currentState.projects && Array.isArray(currentState.projects)) {
+      const projectExists = currentState.projects.some((p: any) => p.id === body.projectId && !p.deleted);
+      if (!projectExists) {
+        return NextResponse.json({
+          success: false,
+          message: 'O projeto especificado não existe ou foi eliminado.'
+        }, { status: 404 });
+      }
+    }
+
     const newMaterial: ProjectMaterial = {
       id: crypto.randomUUID(),
       projectId: body.projectId,

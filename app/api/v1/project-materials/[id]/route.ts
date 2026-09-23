@@ -30,6 +30,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ success: false, message: 'Material não encontrado.' }, { status: 404 });
     }
 
+    if (updates.projectId) {
+      if (currentState.projects && Array.isArray(currentState.projects)) {
+        const projectExists = currentState.projects.some((p: any) => p.id === updates.projectId && !p.deleted);
+        if (!projectExists) {
+          return NextResponse.json({
+            success: false,
+            message: 'O projeto especificado não existe ou foi eliminado.'
+          }, { status: 404 });
+        }
+      }
+    }
+
     currentState.projectMaterials[matIndex] = {
       ...currentState.projectMaterials[matIndex],
       ...updates,

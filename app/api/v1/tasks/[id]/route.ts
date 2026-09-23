@@ -119,6 +119,23 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
 
     const cleanDateVal = (val?: string | null) => (val && typeof val === 'string' && val.trim() ? val.trim() : null);
 
+    if (updates.projectId !== undefined && updates.projectId) {
+      const { data: targetProject, error: projError } = await sb
+        .from('projects')
+        .select('id, deleted')
+        .eq('id', updates.projectId)
+        .maybeSingle();
+
+      if (projError) {
+        return internalServerError(`Erro ao verificar projeto associado: ${projError.message}`, requestId);
+      }
+
+      if (!targetProject || targetProject.deleted) {
+        return badRequest('O projeto especificado não existe ou foi eliminado.', requestId);
+      }
+      updatePayload.project_id = updates.projectId;
+    }
+
     if (updates.title !== undefined) updatePayload.task_title = updates.title;
     if (updates.description !== undefined) updatePayload.task_description = updates.description;
     if (updates.statusId !== undefined) updatePayload.status_id = updates.statusId;

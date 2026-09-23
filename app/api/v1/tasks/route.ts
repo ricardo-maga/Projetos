@@ -121,6 +121,21 @@ export async function POST(req: NextRequest) {
     const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
+    // Validate that associated project exists and is not deleted
+    const { data: targetProject, error: projError } = await sb
+      .from('projects')
+      .select('id, deleted')
+      .eq('id', t.projectId)
+      .maybeSingle();
+
+    if (projError) {
+      return internalServerError(`Erro ao verificar projeto associado: ${projError.message}`, requestId);
+    }
+
+    if (!targetProject || targetProject.deleted) {
+      return badRequest('O projeto especificado não existe ou foi eliminado.', requestId);
+    }
+
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
 
