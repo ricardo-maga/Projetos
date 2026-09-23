@@ -14,11 +14,22 @@ function parseCommaSeparated(val: any): string[] {
   return [];
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function getIdFromParams(input: any): Promise<string> {
+  if (!input) return '';
+  const resolved = typeof input.then === 'function' ? await input : input;
+  if (typeof resolved === 'string') return resolved;
+  if (resolved?.params) {
+    const paramsResolved = typeof resolved.params.then === 'function' ? await resolved.params : resolved.params;
+    return paramsResolved?.id || '';
+  }
+  return resolved?.id || '';
+}
+
+export async function GET(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'projects_read');
   if (!auth.success) return auth.response;
 
-  const { id } = await params;
+  const id = await getIdFromParams(ctx);
   const { requestId } = auth;
 
   try {
@@ -104,19 +115,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  return handleUpdate(req, params);
+export async function PATCH(req: NextRequest, ctx: any) {
+  return handleUpdate(req, ctx);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  return handleUpdate(req, params);
+export async function PUT(req: NextRequest, ctx: any) {
+  return handleUpdate(req, ctx);
 }
 
-async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: string }>) {
+async function handleUpdate(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'projects_write');
   if (!auth.success) return auth.response;
 
-  const { id } = await paramsPromise;
+  const id = await getIdFromParams(ctx);
   const { user, requestId } = auth;
 
   try {
@@ -195,154 +206,71 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     }
 
     const now = new Date().toISOString();
-
-    // Core guaranteed columns on projects table
-    const coreUpdatePayload: Record<string, any> = {
+    const updatePayload: Record<string, any> = {
       updated_at: now,
       updated_by: user.id,
     };
+
     if (hasVersionColumn) {
-      coreUpdatePayload.version = currentVersion + 1;
+      updatePayload.version = currentVersion + 1;
     }
 
-    if (updates.title !== undefined) coreUpdatePayload.project_title = updates.title;
-    if (updates.clientId !== undefined) coreUpdatePayload.client_id = updates.clientId.trim() || null;
-    if (updates.description !== undefined) coreUpdatePayload.project_description = updates.description;
-    if (updates.installProjectNo !== undefined) coreUpdatePayload.install_project_no = updates.installProjectNo;
-    if (updates.sfOpportunityNo !== undefined) coreUpdatePayload.sf_opportunity_no = updates.sfOpportunityNo;
-    if (updates.statusId !== undefined) coreUpdatePayload.status_id = updates.statusId.trim() || null;
-    if (updates.categoryId !== undefined) coreUpdatePayload.category_id = updates.categoryId.trim() || null;
-    if (updates.projectManagerId !== undefined) coreUpdatePayload.project_manager_id = updates.projectManagerId?.trim() || null;
-    if (updates.fieldManagerId !== undefined) coreUpdatePayload.field_manager_id = updates.fieldManagerId?.trim() || null;
-    if (updates.salesRepId !== undefined) coreUpdatePayload.sales_rep_id = updates.salesRepId?.trim() || null;
-    if (updates.startDate !== undefined) coreUpdatePayload.start_date = updates.startDate || null;
-    if (updates.deliveryDate !== undefined) coreUpdatePayload.delivery_date = updates.deliveryDate || null;
-    if (updates.estimatedDate !== undefined) coreUpdatePayload.estimated_date = updates.estimatedDate || null;
-    if (updates.scheduledDate !== undefined) coreUpdatePayload.scheduled_date = updates.scheduledDate || null;
-    if (updates.budgetValue !== undefined) coreUpdatePayload.budget_value = Number(updates.budgetValue || 0);
-    if (updates.demo !== undefined) coreUpdatePayload.demo = Boolean(updates.demo);
-    if (updates.documents !== undefined) {
-      coreUpdatePayload.documents = Array.isArray(updates.documents) ? updates.documents.join(',') : (updates.documents || '');
-    }
-    if (updates.clientContactName !== undefined) coreUpdatePayload.client_contact_name = updates.clientContactName;
-    if (updates.clientContactEmail !== undefined) coreUpdatePayload.client_contact_email = updates.clientContactEmail;
-    if (updates.clientContactPhone !== undefined) coreUpdatePayload.client_contact_phone = updates.clientContactPhone;
+    if (updates.title !== undefined) updatePayload.project_title = updates.title;
+    if (updates.clientId !== undefined) updatePayload.client_id = updates.clientId ? updates.clientId.trim() : null;
+    if (updates.description !== undefined) updatePayload.project_description = updates.description;
+    if (updates.installProjectNo !== undefined) updatePayload.install_project_no = updates.installProjectNo;
+    if (updates.sfOpportunityNo !== undefined) updatePayload.sf_opportunity_no = updates.sfOpportunityNo;
+    if (updates.statusId !== undefined) updatePayload.status_id = validation.resolvedStatusId || updates.statusId;
+    if (updates.categoryId !== undefined) updatePayload.category_id = validation.resolvedCategoryId || updates.categoryId;
+    if (updates.priorityId !== undefined) updatePayload.priority_id = validation.resolvedPriorityId || updates.priorityId;
+    if (updates.riskId !== undefined) updatePayload.risk_id = updates.riskId;
+    if (updates.projectManagerId !== undefined) updatePayload.project_manager_id = updates.projectManagerId ? updates.projectManagerId.trim() : null;
+    if (updates.fieldManagerId !== undefined) updatePayload.field_manager_id = updates.fieldManagerId ? updates.fieldManagerId.trim() : null;
+    if (updates.salesRepId !== undefined) updatePayload.sales_rep_id = updates.salesRepId ? updates.salesRepId.trim() : null;
+    if (updates.startDate !== undefined) updatePayload.start_date = updates.startDate || null;
+    if (updates.deliveryDate !== undefined) updatePayload.delivery_date = updates.deliveryDate || null;
+    if (updates.estimatedDate !== undefined) updatePayload.estimated_date = updates.estimatedDate || null;
+    if (updates.scheduledDate !== undefined) updatePayload.scheduled_date = updates.scheduledDate || null;
+    if (updates.completedDate !== undefined) updatePayload.completed_date = updates.completedDate || null;
+    if (updates.budgetValue !== undefined) updatePayload.budget_value = updates.budgetValue;
+    if (updates.isUrgent !== undefined) updatePayload.is_urgent = updates.isUrgent;
+    if (updates.demo !== undefined) updatePayload.demo = updates.demo;
+    if (updates.documents !== undefined) updatePayload.documents = Array.isArray(updates.documents) ? updates.documents.join(',') : updates.documents;
+    if (updates.clientContactName !== undefined) updatePayload.client_contact_name = updates.clientContactName;
+    if (updates.clientContactEmail !== undefined) updatePayload.client_contact_email = updates.clientContactEmail;
+    if (updates.clientContactPhone !== undefined) updatePayload.client_contact_phone = updates.clientContactPhone;
+    if (updates.color !== undefined) updatePayload.color = updates.color;
+    if (updates.notes !== undefined) updatePayload.notes = updates.notes;
 
-    // Extended payload for optional direct columns
-    const extendedPayload: Record<string, any> = { ...coreUpdatePayload };
-    if (updates.priorityId !== undefined) extendedPayload.priority_id = updates.priorityId.trim() || null;
-    if (updates.riskId !== undefined) extendedPayload.risk_id = updates.riskId.trim() || null;
-    if (updates.completedDate !== undefined) extendedPayload.completed_date = updates.completedDate || null;
-    if (updates.isUrgent !== undefined) extendedPayload.is_urgent = updates.isUrgent;
-    if (updates.color !== undefined) extendedPayload.color = updates.color;
-    if (updates.notes !== undefined) extendedPayload.notes = updates.notes;
-    if (categoriesInvolved !== undefined) extendedPayload.category_ids = categoriesInvolved.length > 0 ? categoriesInvolved.join(',') : null;
-    if (teamsInvolved !== undefined) extendedPayload.teams_involved_ids = teamsInvolved.length > 0 ? teamsInvolved.join(',') : null;
-    if (partnersInvolved !== undefined) extendedPayload.partners_ids = partnersInvolved.length > 0 ? partnersInvolved.join(',') : null;
-
-    let updateQuery = sb.from('projects').update(extendedPayload).eq('id', id);
+    let updateQuery = sb.from('projects').update(updatePayload).eq('id', id);
     if (hasVersionColumn) {
       updateQuery = updateQuery.eq('version', currentVersion);
     }
-    let { data: updatedRows, error: updateError } = await updateQuery.select('id, version');
 
-    if (updateError && (updateError.code === '42703' || updateError.message?.includes('column') || updateError.message?.includes('schema cache'))) {
-      console.warn('[API PROJECT UPDATE] Retrying update with core payload due to missing schema column:', updateError.message);
-      let retryQuery = sb.from('projects').update(coreUpdatePayload).eq('id', id);
-      if (hasVersionColumn) {
-        retryQuery = retryQuery.eq('version', currentVersion);
-      }
-      const retryRes = await retryQuery.select('id, version');
-      updateError = retryRes.error;
-      updatedRows = retryRes.data;
-    }
-
+    const { error: updateError } = await updateQuery;
     if (updateError) {
       console.error('[API PROJECT UPDATE ERROR]', updateError);
       return badRequest(`Erro ao atualizar projeto: ${updateError.message}`, requestId);
     }
 
-    if (hasVersionColumn && (!updatedRows || updatedRows.length === 0)) {
-      return conflict(
-        `Conflito de concorrência. O projeto foi alterado ou eliminado por outro utilizador (versão não coincide: ${currentVersion}). Recarregue os dados antes de gravar.`,
-        requestId,
-        { currentVersion, submittedVersion: updates.version }
-      );
-    }
-
-    // Update relational links safely with strict error checking
-    if (updates.priorityId !== undefined) {
-      const { error: delPrioErr } = await sb.from('project_priority_link').delete().eq('project_id', id);
-      if (delPrioErr) {
-        console.error('[API PROJECT UPDATE PRIORITY LINK DELETE ERROR]', delPrioErr);
-        return internalServerError('Erro ao atualizar as relações de prioridade do projeto.', requestId);
-      }
-      if (updates.priorityId.trim()) {
-        const { error: insPrioErr } = await sb.from('project_priority_link').insert([{ project_id: id, priority_id: updates.priorityId.trim() }]);
-        if (insPrioErr) {
-          console.error('[API PROJECT UPDATE PRIORITY LINK INSERT ERROR]', insPrioErr);
-          return internalServerError('Erro ao atualizar as relações de prioridade do projeto.', requestId);
-        }
-      }
-    }
-
-    if (updates.riskId !== undefined) {
-      const { error: delRiskErr } = await sb.from('project_risk_link').delete().eq('project_id', id);
-      if (delRiskErr) {
-        console.error('[API PROJECT UPDATE RISK LINK DELETE ERROR]', delRiskErr);
-        return internalServerError('Erro ao atualizar as relações de risco do projeto.', requestId);
-      }
-      if (updates.riskId.trim()) {
-        const { error: insRiskErr } = await sb.from('project_risk_link').insert([{ project_id: id, risk_id: updates.riskId.trim() }]);
-        if (insRiskErr) {
-          console.error('[API PROJECT UPDATE RISK LINK INSERT ERROR]', insRiskErr);
-          return internalServerError('Erro ao atualizar as relações de risco do projeto.', requestId);
-        }
-      }
-    }
-
     if (teamsInvolved !== undefined) {
-      const { error: delTeamsErr } = await sb.from('project_teams_link').delete().eq('project_id', id);
-      if (delTeamsErr) {
-        console.error('[API PROJECT UPDATE TEAMS LINK DELETE ERROR]', delTeamsErr);
-        return internalServerError('Erro ao atualizar as relações de equipas do projeto.', requestId);
-      }
+      await sb.from('project_teams_link').delete().eq('project_id', id);
       if (teamsInvolved.length > 0) {
-        const { error: insTeamsErr } = await sb.from('project_teams_link').insert(teamsInvolved.map((t: string) => ({ project_id: id, team_id: t })));
-        if (insTeamsErr) {
-          console.error('[API PROJECT UPDATE TEAMS LINK INSERT ERROR]', insTeamsErr);
-          return internalServerError('Erro ao atualizar as relações de equipas do projeto.', requestId);
-        }
+        await sb.from('project_teams_link').insert(teamsInvolved.map((t: string) => ({ project_id: id, team_id: t })));
       }
     }
 
     if (partnersInvolved !== undefined) {
-      const { error: delPartnersErr } = await sb.from('project_partners_link').delete().eq('project_id', id);
-      if (delPartnersErr) {
-        console.error('[API PROJECT UPDATE PARTNERS LINK DELETE ERROR]', delPartnersErr);
-        return internalServerError('Erro ao atualizar as relações de parceiros do projeto.', requestId);
-      }
+      await sb.from('project_partners_link').delete().eq('project_id', id);
       if (partnersInvolved.length > 0) {
-        const { error: insPartnersErr } = await sb.from('project_partners_link').insert(partnersInvolved.map((p: string) => ({ project_id: id, partner_id: p })));
-        if (insPartnersErr) {
-          console.error('[API PROJECT UPDATE PARTNERS LINK INSERT ERROR]', insPartnersErr);
-          return internalServerError('Erro ao atualizar as relações de parceiros do projeto.', requestId);
-        }
+        await sb.from('project_partners_link').insert(partnersInvolved.map((p: string) => ({ project_id: id, partner_id: p })));
       }
     }
 
     if (categoriesInvolved !== undefined) {
-      const { error: delCategoriesErr } = await sb.from('project_category_link').delete().eq('project_id', id);
-      if (delCategoriesErr) {
-        console.error('[API PROJECT UPDATE CATEGORIES LINK DELETE ERROR]', delCategoriesErr);
-        return internalServerError('Erro ao atualizar as relações de categorias do projeto.', requestId);
-      }
+      await sb.from('project_category_link').delete().eq('project_id', id);
       if (categoriesInvolved.length > 0) {
-        const { error: insCategoriesErr } = await sb.from('project_category_link').insert(categoriesInvolved.map((c: string) => ({ project_id: id, category_id: c })));
-        if (insCategoriesErr) {
-          console.error('[API PROJECT UPDATE CATEGORIES LINK INSERT ERROR]', insCategoriesErr);
-          return internalServerError('Erro ao atualizar as relações de categorias do projeto.', requestId);
-        }
+        await sb.from('project_category_link').insert(categoriesInvolved.map((c: string) => ({ project_id: id, category_id: c })));
       }
     }
 
@@ -354,7 +282,6 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       details: { version: currentVersion + 1 },
     });
 
-    // Query refreshed server-persisted project and links for authoritative response
     const { data: refreshedProject, error: refreshError } = await sb
       .from('projects')
       .select('*')
@@ -362,7 +289,6 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       .maybeSingle();
 
     if (refreshError || !refreshedProject) {
-      console.error('[API PROJECT REFRESH ERROR]', refreshError);
       return internalServerError('Erro ao carregar os dados atualizados do projeto.', requestId);
     }
 
@@ -434,18 +360,17 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'projects_delete');
   if (!auth.success) return auth.response;
 
-  const { id } = await params;
+  const id = await getIdFromParams(ctx);
   const { user, requestId } = auth;
 
   try {
     const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    // 1. Fetch current project to verify existence
     const { data: current, error: fetchErr } = await sb.from('projects').select('*').eq('id', id).maybeSingle();
     if (fetchErr) {
       return internalServerError(`Erro ao verificar projeto: ${fetchErr.message}`, requestId);
@@ -454,7 +379,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return notFound('Projeto não encontrado ou já eliminado.', requestId);
     }
 
-    // 2. Strict dependency checks: active tasks, planning allocations, quotes, project materials
     const [tasksRes, quotesRes, materialsRes] = await Promise.all([
       sb.from('tasks').select('id, task_title, deleted').eq('project_id', id),
       sb.from('quotes').select('id, deleted').eq('project_id', id),
@@ -504,7 +428,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const currentVersion = hasVersionColumn ? current.version : 1;
     const now = new Date().toISOString();
 
-    // Soft delete safely
     const deletePayload: Record<string, any> = {
       deleted: true,
       updated_at: now,

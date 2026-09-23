@@ -7,7 +7,7 @@ const optionalDateField = z
   .transform((v) => (v && typeof v === 'string' && v.trim() ? v.trim() : null));
 
 export const createTaskSchema = z.object({
-  projectId: z.string().uuid('ID de projeto inválido (deve ser UUID)'),
+  projectId: z.string().trim().min(1, 'O ID de projeto é obrigatório'),
   title: z.string().trim().min(2, 'O título da tarefa deve ter no mínimo 2 caracteres'),
   description: z.string().optional().default(''),
   statusId: z.string().optional(),
@@ -33,7 +33,7 @@ export const createTaskSchema = z.object({
 });
 
 export const updateTaskSchema = createTaskSchema.partial().extend({
-  version: z.number().int().min(1, 'Número de versão obrigatório para controlo de concorrência'),
+  version: z.number().int().min(1, 'A versão da tarefa deve ser um número inteiro superior a 0').optional(),
 });
 
 export const queryTaskSchema = z.object({
@@ -45,4 +45,3 @@ export const queryTaskSchema = z.object({
   taskTypeId: z.string().optional(),
   userId: z.string().optional(),
 });
-

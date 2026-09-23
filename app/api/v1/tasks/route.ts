@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
     const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    // Validate that associated project exists and is not deleted
+    // 1. Validate associated project
     const { data: targetProject, error: projError } = await sb
       .from('projects')
       .select('id, deleted')
@@ -134,6 +134,25 @@ export async function POST(req: NextRequest) {
 
     if (!targetProject || targetProject.deleted) {
       return badRequest('O projeto especificado não existe ou foi eliminado.', requestId);
+    }
+
+    // 2. Validate assigned user IDs if provided
+    if (t.assignedUserIds && t.assignedUserIds.length > 0) {
+      const { data: dbUsers, error: usersError } = await sb
+        .from('users')
+        .select('id, deleted')
+        .in('id', t.assignedUserIds);
+
+      if (usersError) {
+        return internalServerError(`Erro ao verificar utilizadores responsáveis: ${usersError.message}`, requestId);
+      }
+
+      const activeUserIds = new Set((dbUsers || []).filter((u: any) => !u.deleted).map((u: any) => u.id));
+      const invalidUsers = t.assignedUserIds.filter((uid) => !activeUserIds.has(uid));
+
+      if (invalidUsers.length > 0) {
+        return badRequest(`Um ou mais utilizadores responsáveis especificados (${invalidUsers.join(', ')}) não existem ou estão inativos.`, requestId);
+      }
     }
 
     const newId = crypto.randomUUID();
@@ -170,16 +189,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (t.assignedUserIds && t.assignedUserIds.length > 0) {
-      const validUuids = t.assignedUserIds.filter((uid) =>
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uid)
-      );
-      if (validUuids.length > 0) {
-        const assigneeRows = validUuids.map((uid) => ({ task_id: newId, user_id: uid }));
-        const { error: assigneeError } = await sb.from('task_assignees').insert(assigneeRows);
-        if (assigneeError) {
-          console.error('[API TASK INSERT ASSIGNEES ERROR]', assigneeError);
-          return badRequest(`Erro ao associar responsáveis à tarefa: ${assigneeError.message}`, requestId);
-        }
+      const assigneeRows = t.assignedUserIds.map((uid) => ({ task_id: newId, user_id: uid }));
+      const { error: assigneeError } = await sb.from('task_assignees').insert(assigneeRows);
+      if (assigneeError) {
+        console.error('[API TASK INSERT ASSIGNEES ERROR]', assigneeError);
+        return badRequest(`Erro ao associar responsáveis à tarefa: ${assigneeError.message}`, requestId);
       }
     }
 

@@ -6,11 +6,22 @@ import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function getIdFromParams(input: any): Promise<string> {
+  if (!input) return '';
+  const resolved = typeof input.then === 'function' ? await input : input;
+  if (typeof resolved === 'string') return resolved;
+  if (resolved?.params) {
+    const paramsResolved = typeof resolved.params.then === 'function' ? await resolved.params : resolved.params;
+    return paramsResolved?.id || '';
+  }
+  return resolved?.id || '';
+}
+
+export async function GET(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'tasks_read');
   if (!auth.success) return auth.response;
 
-  const { id } = await params;
+  const id = await getIdFromParams(ctx);
   const { requestId } = auth;
 
   try {
@@ -61,19 +72,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  return handleUpdate(req, params);
+export async function PATCH(req: NextRequest, ctx: any) {
+  return handleUpdate(req, ctx);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  return handleUpdate(req, params);
+export async function PUT(req: NextRequest, ctx: any) {
+  return handleUpdate(req, ctx);
 }
 
-async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: string }>) {
+async function handleUpdate(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'tasks_write');
   if (!auth.success) return auth.response;
 
-  const { id } = await paramsPromise;
+  const id = await getIdFromParams(ctx);
   const { user, requestId } = auth;
 
   try {
@@ -150,6 +161,25 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     if (updates.completedDate !== undefined) updatePayload.completed_date = cleanDateVal(updates.completedDate);
     if (updates.notes !== undefined) updatePayload.notes = updates.notes;
 
+    // Validate assignees if updated
+    if (updates.assignedUserIds !== undefined && updates.assignedUserIds.length > 0) {
+      const { data: dbUsers, error: usersError } = await sb
+        .from('users')
+        .select('id, deleted')
+        .in('id', updates.assignedUserIds);
+
+      if (usersError) {
+        return internalServerError(`Erro ao verificar utilizadores responsáveis: ${usersError.message}`, requestId);
+      }
+
+      const activeUserIds = new Set((dbUsers || []).filter((u: any) => !u.deleted).map((u: any) => u.id));
+      const invalidUsers = updates.assignedUserIds.filter((uid) => !activeUserIds.has(uid));
+
+      if (invalidUsers.length > 0) {
+        return badRequest(`Um ou mais utilizadores responsáveis especificados (${invalidUsers.join(', ')}) não existem ou estão inativos.`, requestId);
+      }
+    }
+
     let updateQuery = sb.from('tasks').update(updatePayload).eq('id', id);
     if (hasVersion) {
       updateQuery = updateQuery.eq('version', currentVersion);
@@ -162,21 +192,11 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
 
     // Update assignees if specified
     if (updates.assignedUserIds !== undefined) {
-      const { error: deleteAssigneesError } = await sb.from('task_assignees').delete().eq('task_id', id);
-      if (deleteAssigneesError) {
-        console.error('[API TASK UPDATE ASSIGNEES DELETE ERROR]', deleteAssigneesError);
-        return badRequest(`Erro ao remover responsáveis anteriores da tarefa: ${deleteAssigneesError.message}`, requestId);
-      }
-      const validUuids = updates.assignedUserIds.filter((uid) =>
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uid)
-      );
-      if (validUuids.length > 0) {
-        const assigneeRows = validUuids.map((uid) => ({ task_id: id, user_id: uid }));
-        const { error: insertAssigneesError } = await sb.from('task_assignees').insert(assigneeRows);
-        if (insertAssigneesError) {
-          console.error('[API TASK UPDATE ASSIGNEES INSERT ERROR]', insertAssigneesError);
-          return badRequest(`Erro ao associar novos responsáveis à tarefa: ${insertAssigneesError.message}`, requestId);
-        }
+      await sb.from('task_assignees').delete().eq('task_id', id);
+
+      if (updates.assignedUserIds.length > 0) {
+        const assigneeRows = updates.assignedUserIds.map((uid) => ({ task_id: id, user_id: uid }));
+        await sb.from('task_assignees').insert(assigneeRows);
       }
     }
 
@@ -207,11 +227,11 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'tasks_delete');
   if (!auth.success) return auth.response;
 
-  const { id } = await params;
+  const id = await getIdFromParams(ctx);
   const { user, requestId } = auth;
 
   try {
