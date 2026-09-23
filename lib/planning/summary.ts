@@ -162,25 +162,129 @@ export function groupResourceDayAllocationsByTask(
     });
   });
 
-  // Deterministic sorting:
+  // Deterministic sorting (FASE 23E-C3G Requirement 10):
   // 1. Tasks with CONFIRMED first
-  // 2. Tasks with only DRAFT next
-  // 3. Project name and Task title (localeCompare pt-PT)
+  // 2. Tasks with DRAFT next
+  // 3. Higher PLANEADO (descending)
+  // 4. Project name (localeCompare pt-PT)
+  // 5. Task title (localeCompare pt-PT)
   groups.sort((a, b) => {
+    // 1. Tasks with CONFIRMED
     if (a.hasConfirmed && !b.hasConfirmed) return -1;
     if (!a.hasConfirmed && b.hasConfirmed) return 1;
 
+    // 2. Tasks with DRAFT
+    if (a.hasDraft && !b.hasDraft) return -1;
+    if (!a.hasDraft && b.hasDraft) return 1;
+
+    // 3. Maior PLANEADO (descending)
+    if (b.plannedMinutes !== a.plannedMinutes) {
+      return b.plannedMinutes - a.plannedMinutes;
+    }
+
+    // 4. Nome do projeto
     const projNameA = a.project?.title || '';
     const projNameB = b.project?.title || '';
     const projCompare = projNameA.localeCompare(projNameB, 'pt-PT');
     if (projCompare !== 0) return projCompare;
 
+    // 5. Nome da tarefa
     const taskTitleA = a.task?.title || a.taskId;
     const taskTitleB = b.task?.title || b.taskId;
     return taskTitleA.localeCompare(taskTitleB, 'pt-PT');
   });
 
   return groups;
+}
+
+export type TaskDailyOperationalStatus = 'NORMAL' | 'DRAFT' | 'EXCESSO_TAREFA';
+
+/**
+ * Returns the operational load status of a task on a specific resource day.
+ * 
+ * Rules (FASE 23E-C3G Section 7):
+ * - EXCESSO DA TAREFA: Only if the canonical global planning summary of the task determines excess.
+ *   (Does not confuse task excess with resource capacity excess).
+ * - DRAFT: If the allocation has draft work pending confirmation.
+ * - NORMAL: Work planned within standard boundaries.
+ */
+export function getTaskDailyOperationalStatus(
+  group: ResourceDayTaskGroup,
+  allTaskAllocations: PlanningAllocationDTO[] = []
+): {
+  status: TaskDailyOperationalStatus;
+  label: string;
+  badgeClass: string;
+  excessHours: number;
+} {
+  const taskActiveAllocations = allTaskAllocations.filter(
+    a => a.taskId === group.taskId && a.status !== 'CANCELLED'
+  );
+  const taskSummary = computePlanningSummary(group.task?.estimatedHours, taskActiveAllocations);
+
+  if (taskSummary.excessHours > 0 || taskSummary.isOverAllocated) {
+    return {
+      status: 'EXCESSO_TAREFA',
+      label: `Excesso da Tarefa (+${formatHoursDisplay(taskSummary.excessHours)})`,
+      badgeClass: 'bg-rose-50 text-rose-800 border-rose-200',
+      excessHours: taskSummary.excessHours,
+    };
+  }
+
+  if (group.hasDraft) {
+    return {
+      status: 'DRAFT',
+      label: 'Draft Pendente',
+      badgeClass: 'bg-amber-50 text-amber-900 border-amber-300 border-dashed',
+      excessHours: 0,
+    };
+  }
+
+  return {
+    status: 'NORMAL',
+    label: 'Normal',
+    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+    excessHours: 0,
+  };
+}
+
+/**
+ * Computes consistency metrics between day summary and task groups sum (FASE 23E-C3G Section 9).
+ */
+export function computeResourceDayTaskConsistency(
+  groups: ResourceDayTaskGroup[],
+  dayConfirmedMinutes: number,
+  dayDraftMinutes: number
+): {
+  tasksConfirmedMinutes: number;
+  tasksDraftMinutes: number;
+  tasksPlannedMinutes: number;
+  tasksConfirmedHours: number;
+  tasksDraftHours: number;
+  tasksPlannedHours: number;
+  isConsistent: boolean;
+} {
+  let tasksConfirmedMinutes = 0;
+  let tasksDraftMinutes = 0;
+
+  for (const g of groups) {
+    tasksConfirmedMinutes += g.confirmedMinutes;
+    tasksDraftMinutes += g.draftMinutes;
+  }
+
+  const tasksPlannedMinutes = tasksConfirmedMinutes + tasksDraftMinutes;
+
+  return {
+    tasksConfirmedMinutes,
+    tasksDraftMinutes,
+    tasksPlannedMinutes,
+    tasksConfirmedHours: tasksConfirmedMinutes / 60,
+    tasksDraftHours: tasksDraftMinutes / 60,
+    tasksPlannedHours: tasksPlannedMinutes / 60,
+    isConsistent:
+      tasksConfirmedMinutes === dayConfirmedMinutes &&
+      tasksDraftMinutes === dayDraftMinutes,
+  };
 }
 
 /**

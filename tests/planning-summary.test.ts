@@ -8,7 +8,9 @@ import {
   groupResourceDayAllocationsByTask,
   groupTaskAllocationsByResource,
   getTaskPlanningLoadStatus,
-  computeTaskPlanningImpact
+  computeTaskPlanningImpact,
+  getTaskDailyOperationalStatus,
+  computeResourceDayTaskConsistency
 } from '../lib/planning/summary.ts';
 import { PlanningAllocationDTO } from '../lib/planning/types.ts';
 
@@ -942,5 +944,207 @@ describe('FASE 23E-C3F — Impacto da Tarefa no Planeamento Diário Unit Tests',
     assert.strictEqual(summary.plannedHours, 18);
     assert.strictEqual(summary.excessHours, 2);
     assert.strictEqual(summary.isOverAllocated, true);
+  });
+});
+
+describe('FASE 23E-C3G — Visão de Carga por Recurso e Dia Unit Tests', () => {
+  const dummyProjects = [
+    { id: 'proj-1', title: 'Projeto ABC' },
+    { id: 'proj-2', title: 'Projeto XYZ' },
+  ];
+
+  const dummyTasks = [
+    { id: 'task-1', title: 'Instalação impressora linha 1', projectId: 'proj-1', estimatedHours: 8 },
+    { id: 'task-2', title: 'Configuração etiquetagem', projectId: 'proj-2', estimatedHours: 4 },
+    { id: 'task-3', title: 'Manutenção preventiva', projectId: 'proj-1', estimatedHours: 6 },
+  ];
+
+  const makeAlloc = (
+    id: string,
+    taskId: string,
+    resourceId: string,
+    date: string,
+    durationMinutes: number,
+    status: 'CONFIRMED' | 'DRAFT' | 'CANCELLED',
+    startTime: string = '08:00',
+    endTime: string = '12:00'
+  ): PlanningAllocationDTO => ({
+    id,
+    taskId,
+    resourceId,
+    date,
+    startTime,
+    endTime,
+    durationMinutes,
+    status,
+    version: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  // Teste A: Uma tarefa CONFIRMED aparece corretamente
+  it('Teste A: Uma tarefa CONFIRMED aparece corretamente (Projeto, Nome, 4h CONFIRMED, 0h DRAFT, 4h PLANEADO)', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 240, 'CONFIRMED'),
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, dummyTasks, dummyProjects);
+    assert.strictEqual(groups.length, 1);
+    assert.strictEqual(groups[0].project?.title, 'Projeto ABC');
+    assert.strictEqual(groups[0].task?.title, 'Instalação impressora linha 1');
+    assert.strictEqual(groups[0].confirmedHours, 4);
+    assert.strictEqual(groups[0].draftHours, 0);
+    assert.strictEqual(groups[0].plannedHours, 4);
+    assert.strictEqual(groups[0].hasConfirmed, true);
+    assert.strictEqual(groups[0].hasDraft, false);
+    assert.strictEqual(groups[0].allocations.length, 1);
+  });
+
+  // Teste B: CONFIRMED + DRAFT da mesma tarefa
+  it('Teste B: CONFIRMED + DRAFT da mesma tarefa (4h CONFIRMED + 2h DRAFT => CONFIRMED 4h, DRAFT 2h, PLANEADO 6h)', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 240, 'CONFIRMED', '08:00', '12:00'),
+      makeAlloc('a2', 'task-1', 'user-1', '2026-09-22', 120, 'DRAFT', '13:00', '15:00'),
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, dummyTasks, dummyProjects);
+    assert.strictEqual(groups.length, 1);
+    assert.strictEqual(groups[0].confirmedHours, 4);
+    assert.strictEqual(groups[0].draftHours, 2);
+    assert.strictEqual(groups[0].plannedHours, 6);
+    assert.strictEqual(groups[0].hasConfirmed, true);
+    assert.strictEqual(groups[0].hasDraft, true);
+    assert.strictEqual(groups[0].allocations.length, 2);
+
+    const opStatus = getTaskDailyOperationalStatus(groups[0], allocs);
+    assert.strictEqual(opStatus.status, 'DRAFT');
+    assert.strictEqual(opStatus.label, 'Draft Pendente');
+  });
+
+  // Teste C: Várias allocations da mesma tarefa agrupadas
+  it('Teste C: Múltiplas allocations da mesma tarefa no mesmo dia agrupadas numa única linha de tarefa', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 120, 'CONFIRMED', '08:00', '10:00'), // 2h
+      makeAlloc('a2', 'task-1', 'user-1', '2026-09-22', 120, 'CONFIRMED', '10:00', '12:00'), // 2h
+      makeAlloc('a3', 'task-1', 'user-1', '2026-09-22', 60, 'DRAFT', '13:00', '14:00'),       // 1h
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, dummyTasks, dummyProjects);
+    assert.strictEqual(groups.length, 1);
+    assert.strictEqual(groups[0].confirmedHours, 4);
+    assert.strictEqual(groups[0].draftHours, 1);
+    assert.strictEqual(groups[0].plannedHours, 5);
+    assert.strictEqual(groups[0].allocations.length, 3);
+  });
+
+  // Teste D: Várias tarefas no mesmo recurso/dia com ordenação determinística
+  it('Teste D: Várias tarefas no mesmo recurso/dia ordenadas deterministicamente', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-2', 'user-1', '2026-09-22', 60, 'DRAFT'),      // DRAFT 1h
+      makeAlloc('a2', 'task-1', 'user-1', '2026-09-22', 240, 'CONFIRMED'), // CONFIRMED 4h
+      makeAlloc('a3', 'task-3', 'user-1', '2026-09-22', 120, 'CONFIRMED'), // CONFIRMED 2h
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, dummyTasks, dummyProjects);
+    assert.strictEqual(groups.length, 3);
+    // 1. task-1 (CONFIRMED, 4h)
+    // 2. task-3 (CONFIRMED, 2h)
+    // 3. task-2 (DRAFT, 1h)
+    assert.strictEqual(groups[0].taskId, 'task-1');
+    assert.strictEqual(groups[1].taskId, 'task-3');
+    assert.strictEqual(groups[2].taskId, 'task-2');
+  });
+
+  // Teste E: CANCELLED excluído das allocations da tarefa e dos totais operacionais
+  it('Teste E: CANCELLED excluído da carga operacional da tarefa e dos grupos', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 180, 'CONFIRMED'), // 3h
+      makeAlloc('a2', 'task-1', 'user-1', '2026-09-22', 120, 'CANCELLED'), // 2h canceladas
+      makeAlloc('a3', 'task-2', 'user-1', '2026-09-22', 60, 'CANCELLED'),  // cancelada
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, dummyTasks, dummyProjects);
+    assert.strictEqual(groups.length, 1);
+    assert.strictEqual(groups[0].taskId, 'task-1');
+    assert.strictEqual(groups[0].confirmedHours, 3);
+    assert.strictEqual(groups[0].plannedHours, 3);
+    assert.strictEqual(groups[0].allocations.length, 1);
+  });
+
+  // Teste F: Soma das tarefas coincide com CONFIRMED/DRAFT/PLANEADO do dia
+  it('Teste F: computeResourceDayTaskConsistency valida que a soma das tarefas coincide com o dia', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 240, 'CONFIRMED'), // 4h
+      makeAlloc('a2', 'task-2', 'user-1', '2026-09-22', 120, 'CONFIRMED'), // 2h
+      makeAlloc('a3', 'task-3', 'user-1', '2026-09-22', 120, 'DRAFT'),     // 2h
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, dummyTasks, dummyProjects);
+    const dayConfirmedMinutes = 360; // 6h
+    const dayDraftMinutes = 120;     // 2h
+
+    const consistency = computeResourceDayTaskConsistency(groups, dayConfirmedMinutes, dayDraftMinutes);
+    assert.strictEqual(consistency.tasksConfirmedMinutes, 360);
+    assert.strictEqual(consistency.tasksConfirmedHours, 6);
+    assert.strictEqual(consistency.tasksDraftMinutes, 120);
+    assert.strictEqual(consistency.tasksDraftHours, 2);
+    assert.strictEqual(consistency.tasksPlannedHours, 8);
+    assert.strictEqual(consistency.isConsistent, true);
+  });
+
+  // Teste G: Excesso pertence ao recurso/dia e não é atribuído a uma tarefa
+  it('Teste G: Sobrecarga de capacidade pertence ao recurso/dia e nenhuma tarefa individual é marcada como causadora', () => {
+    // Técnico com 8h de capacidade diária, com duas tarefas de 5h confirmadas cada (total 10h)
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-1', '2026-09-22', 300, 'CONFIRMED'), // 5h (estimada 8h)
+      makeAlloc('a2', 'task-3', 'user-1', '2026-09-22', 300, 'CONFIRMED'), // 5h (estimada 6h)
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, dummyTasks, dummyProjects);
+    assert.strictEqual(groups.length, 2);
+
+    // O excesso do dia é do recurso: 10h planeadas > 8h capacidade = 2h excesso
+    const dayCapacityHours = 8;
+    const dayConfirmedHours = 10;
+    const dayExcessHours = Math.max(0, dayConfirmedHours - dayCapacityHours);
+    assert.strictEqual(dayExcessHours, 2);
+
+    // No entanto, as tarefas individualmente não excederam os seus orçamentos estimados:
+    // task-1 estimada = 8h, planeada = 5h => sem excesso de tarefa
+    const statusTask1 = getTaskDailyOperationalStatus(groups[0], allocs);
+    assert.strictEqual(statusTask1.status, 'NORMAL');
+    assert.strictEqual(statusTask1.excessHours, 0);
+
+    // task-3 estimada = 6h, planeada = 5h => sem excesso de tarefa
+    const statusTask3 = getTaskDailyOperationalStatus(groups[1], allocs);
+    assert.strictEqual(statusTask3.status, 'NORMAL');
+    assert.strictEqual(statusTask3.excessHours, 0);
+  });
+
+  // Teste H: DRAFT não cria excesso de capacidade do técnico
+  it('Teste H: DRAFT não cria excesso de capacidade do técnico', () => {
+    // 6h CONFIRMED + 4h DRAFT num dia de 8h de capacidade
+    const capacityMinutes = 480; // 8h
+    const confirmedMinutes = 360; // 6h
+    const draftMinutes = 240;    // 4h
+
+    // Apenas CONFIRMED debita capacidade e gera excesso
+    const excessMinutes = Math.max(0, confirmedMinutes - capacityMinutes);
+    assert.strictEqual(excessMinutes, 0); // Sem excesso!
+    const freeMinutes = Math.max(0, capacityMinutes - confirmedMinutes);
+    assert.strictEqual(freeMinutes, 120); // 2h livres
+  });
+
+  // Teste I: Ver tarefa utiliza o task.id correto
+  it('Teste I: O agrupamento preserva a referência exata de task.id e task.title para a ação Ver Tarefa', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-2', 'user-1', '2026-09-22', 120, 'CONFIRMED'),
+    ];
+
+    const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, dummyTasks, dummyProjects);
+    assert.strictEqual(groups.length, 1);
+    assert.strictEqual(groups[0].taskId, 'task-2');
+    assert.strictEqual(groups[0].task?.id, 'task-2');
+    assert.strictEqual(groups[0].task?.title, 'Configuração etiquetagem');
   });
 });

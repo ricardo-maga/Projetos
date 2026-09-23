@@ -26,7 +26,9 @@ import {
 import { 
   formatHoursDisplay, 
   groupResourceDayAllocationsByTask,
-  ResourceDayTaskGroup 
+  ResourceDayTaskGroup,
+  getTaskDailyOperationalStatus,
+  computeResourceDayTaskConsistency
 } from '../lib/planning/summary';
 
 interface ResourceDayDetailModalProps {
@@ -164,6 +166,14 @@ export default function ResourceDayDetailModal({
   const isOverCapacity = excessMinutes > 0;
   const hasDraft = draftMinutes > 0;
   const hasConfirmed = confirmedMinutes > 0;
+
+  // FASE 23E-C3G Consistency check (Secção 9):
+  // Verify that sum of task groups matches the day's confirmed and draft minutes
+  const taskConsistency = computeResourceDayTaskConsistency(
+    taskGroups,
+    localConfirmedMinutes,
+    draftMinutes
+  );
 
   // FASE 23E-C3M-A: Canonical Operational State matching C3L
   let cellOpState: 
@@ -596,17 +606,33 @@ export default function ResourceDayDetailModal({
             </div>
           </div>
 
-          {/* Planned Work List for the Day (Trabalho do Dia - FASE 23E-C3M-C Agrupamento por Tarefa) */}
+          {/* Planned Work List for the Day (FASE 23E-C3G — Carga do Dia: Distribuição por Tarefa) */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
-              <div className="text-xs uppercase tracking-wider font-extrabold text-slate-800 flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-blue-600" />
-                Trabalho do Dia ({taskGroups.length} tarefa{taskGroups.length === 1 ? '' : 's'} · {activeAllocations.length} alocação{activeAllocations.length === 1 ? '' : 'ões'})
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-200 pb-3">
+              <div>
+                <div className="text-xs uppercase tracking-wider font-extrabold text-slate-900 flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-blue-600" />
+                  <span>Carga do Dia — Tarefas ({taskGroups.length} {taskGroups.length === 1 ? 'tarefa' : 'tarefas'} · {activeAllocations.length} {activeAllocations.length === 1 ? 'alocação ativa' : 'alocações ativas'})</span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                  Distribuição do trabalho de <strong>{resource.name}</strong> em <strong>{formatDateHeader(dateStr)}</strong>
+                </p>
               </div>
-              {cancelledAllocations.length > 0 && (
-                <span className="text-xs font-semibold text-slate-400">
-                  {cancelledAllocations.length} cancelada(s)
-                </span>
+
+              {/* Consistency Information (Secção 9) */}
+              {taskGroups.length > 0 && (
+                <div 
+                  id="day-task-consistency-badge"
+                  className="flex items-center gap-2 bg-slate-100/90 border border-slate-200/90 px-3 py-1.5 rounded-xl text-[11px] font-semibold text-slate-700 flex-wrap"
+                  title="Consistência entre a soma das tarefas e o total do dia"
+                >
+                  <span className="text-slate-500 font-bold uppercase text-[10px]">Carga distribuída:</span>
+                  <span className="font-extrabold text-slate-900">{formatHoursDisplay(taskConsistency.tasksPlannedHours)}</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-blue-700 font-extrabold">{formatHoursDisplay(taskConsistency.tasksConfirmedHours)} CONF</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-amber-800 font-extrabold">{formatHoursDisplay(taskConsistency.tasksDraftHours)} DRAFT</span>
+                </div>
               )}
             </div>
 
@@ -640,16 +666,17 @@ export default function ResourceDayDetailModal({
                     ? users.filter(u => task.assigneeIds.includes(u.id))
                     : [];
                   const isResourceAssignee = (task?.assigneeIds || []).includes(resource.id);
+                  const opStatus = getTaskDailyOperationalStatus(group, allocations);
 
                   return (
                     <div
                       key={group.taskId}
                       className="p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 shadow-2xs transition-all space-y-3.5"
                     >
-                      {/* Header da Tarefa: Projeto, Nome da Tarefa, Status Contextual e Botão "Ver Tarefa" */}
+                      {/* Header da Tarefa: Projeto, Nome da Tarefa, Status Contextual, Estado Operacional e Botão "Ver Tarefa" */}
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-100 pb-3">
                         <div className="min-w-0 flex-1 space-y-1">
-                          {/* Projeto e Estado da Tarefa (Contexto) */}
+                          {/* Projeto, Estado da Tarefa e Estado Operacional da Carga (Secções 5, 6 e 7) */}
                           <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500">
                             <div className="flex items-center gap-1.5 font-extrabold text-slate-700 uppercase tracking-wide text-[11px]">
                               <Briefcase className="w-3.5 h-3.5 text-blue-600 shrink-0" />
@@ -667,6 +694,10 @@ export default function ResourceDayDetailModal({
                                 {taskStatus.name}
                               </span>
                             )}
+                            {/* Indicador Operacional da Carga da Tarefa (FASE 23E-C3G Secção 7) */}
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${opStatus.badgeClass}`}>
+                              {opStatus.label}
+                            </span>
                           </div>
 
                           {/* Nome / Título da Tarefa */}
@@ -694,7 +725,7 @@ export default function ResourceDayDetailModal({
                         )}
                       </div>
 
-                      {/* Resumo de Horas do Dia para a Tarefa (Secção 4 & 12 do Caderno) */}
+                      {/* Resumo de Horas do Dia para a Tarefa (Secções 5 e 14) */}
                       <div className="flex items-center gap-2 flex-wrap">
                         {group.hasConfirmed && (
                           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-xs">
@@ -714,9 +745,14 @@ export default function ResourceDayDetailModal({
                           <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">PLANEADO</span>
                           <span className="font-black text-slate-900">{formatHoursDisplay(group.plannedHours)}</span>
                         </div>
+
+                        {/* Número de alocações da tarefa no dia (Secção 5) */}
+                        <div className="text-[11px] font-semibold text-slate-500 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-md ml-auto">
+                          {group.allocations.length} {group.allocations.length === 1 ? 'alocação' : 'alocações'}
+                        </div>
                       </div>
 
-                      {/* Contexto de Pessoas: Técnico Planeado vs Responsável da Tarefa (Secção 8 do Caderno) */}
+                      {/* Contexto de Pessoas: Técnico Planeado vs Responsável da Tarefa (Secção 5 e 8) */}
                       <div className="flex items-center gap-2.5 text-[11px] text-slate-600 flex-wrap bg-slate-50/80 p-2 rounded-lg border border-slate-200/70">
                         <div className="inline-flex items-center gap-1 text-slate-800 font-bold">
                           <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
