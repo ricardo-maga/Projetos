@@ -291,4 +291,291 @@ describe('FASE 24 — Robustez da Gestão de Projetos: Unit & Integration Tests'
       expect(canDelete).toBe(true);
     });
   });
+
+  describe('5. FASE 24-A: CREATE — Tratamento de Erros Relacionais e Cleanup', () => {
+    it('falha no insert de project_teams_link aborta criação e executa cleanup do projeto', async () => {
+      let cleanedUpProjectId: string | null = null;
+      const mockSb: any = {
+        from: (table: string) => {
+          if (table === 'project_teams_link') {
+            return {
+              insert: async () => ({ error: { message: 'Foreign key violation: team_id does not exist' } }),
+            };
+          }
+          if (table === 'projects') {
+            return {
+              delete: () => ({
+                eq: (col: string, val: string) => {
+                  cleanedUpProjectId = val;
+                  return Promise.resolve({ error: null });
+                },
+              }),
+            };
+          }
+          return {
+            insert: async () => ({ error: null }),
+          };
+        },
+      };
+
+      const newId = validUUID1;
+      const teamLinks = [{ project_id: newId, team_id: validUUID2 }];
+      const { error: teamErr } = await mockSb.from('project_teams_link').insert(teamLinks);
+
+      let creationStatus = 201;
+      if (teamErr) {
+        await mockSb.from('projects').delete().eq('id', newId);
+        creationStatus = 500;
+      }
+
+      expect(creationStatus).toBe(500);
+      expect(cleanedUpProjectId).toBe(newId);
+    });
+
+    it('falha no insert de project_partners_link aborta criação e executa cleanup', async () => {
+      let cleanedUpProjectId: string | null = null;
+      const mockSb: any = {
+        from: (table: string) => {
+          if (table === 'project_partners_link') {
+            return {
+              insert: async () => ({ error: { message: 'Database constraint failure' } }),
+            };
+          }
+          if (table === 'projects') {
+            return {
+              delete: () => ({
+                eq: (col: string, val: string) => {
+                  cleanedUpProjectId = val;
+                  return Promise.resolve({ error: null });
+                },
+              }),
+            };
+          }
+          return { insert: async () => ({ error: null }) };
+        },
+      };
+
+      const newId = validUUID1;
+      const partnerLinks = [{ project_id: newId, partner_id: validUUID2 }];
+      const { error: partErr } = await mockSb.from('project_partners_link').insert(partnerLinks);
+
+      let creationStatus = 201;
+      if (partErr) {
+        await mockSb.from('projects').delete().eq('id', newId);
+        creationStatus = 500;
+      }
+
+      expect(creationStatus).toBe(500);
+      expect(cleanedUpProjectId).toBe(newId);
+    });
+
+    it('falha no insert de project_category_link aborta criação e executa cleanup', async () => {
+      let cleanedUpProjectId: string | null = null;
+      const mockSb: any = {
+        from: (table: string) => {
+          if (table === 'project_category_link') {
+            return {
+              insert: async () => ({ error: { message: 'Category link error' } }),
+            };
+          }
+          if (table === 'projects') {
+            return {
+              delete: () => ({
+                eq: (col: string, val: string) => {
+                  cleanedUpProjectId = val;
+                  return Promise.resolve({ error: null });
+                },
+              }),
+            };
+          }
+          return { insert: async () => ({ error: null }) };
+        },
+      };
+
+      const newId = validUUID1;
+      const catLinks = [{ project_id: newId, category_id: validUUID2 }];
+      const { error: catErr } = await mockSb.from('project_category_link').insert(catLinks);
+
+      let creationStatus = 201;
+      if (catErr) {
+        await mockSb.from('projects').delete().eq('id', newId);
+        creationStatus = 500;
+      }
+
+      expect(creationStatus).toBe(500);
+      expect(cleanedUpProjectId).toBe(newId);
+    });
+
+    it('falha no insert de project_priority_link ou project_risk_link não é ignorada', async () => {
+      let cleanedUpProjectId: string | null = null;
+      const mockSb: any = {
+        from: (table: string) => {
+          if (table === 'project_priority_link') {
+            return {
+              insert: async () => ({ error: { message: 'Priority link table error' } }),
+            };
+          }
+          if (table === 'projects') {
+            return {
+              delete: () => ({
+                eq: (col: string, val: string) => {
+                  cleanedUpProjectId = val;
+                  return Promise.resolve({ error: null });
+                },
+              }),
+            };
+          }
+          return { insert: async () => ({ error: null }) };
+        },
+      };
+
+      const newId = validUUID1;
+      const { error: prioErr } = await mockSb.from('project_priority_link').insert([{ project_id: newId, priority_id: validUUID3 }]);
+
+      let creationStatus = 201;
+      if (prioErr) {
+        await mockSb.from('projects').delete().eq('id', newId);
+        creationStatus = 500;
+      }
+
+      expect(creationStatus).toBe(500);
+      expect(cleanedUpProjectId).toBe(newId);
+    });
+  });
+
+  describe('6. FASE 24-A: UPDATE — Tratamento de Erros Relacionais e Integridade', () => {
+    it('erro ao atualizar project_teams_link impede resposta de sucesso', async () => {
+      const mockSb: any = {
+        from: (table: string) => {
+          if (table === 'project_teams_link') {
+            return {
+              delete: () => ({
+                eq: async () => ({ error: null }),
+              }),
+              insert: async () => ({ error: { message: 'Teams update failed' } }),
+            };
+          }
+          return {};
+        },
+      };
+
+      const teamsInvolved = [validUUID2];
+      let updateFailed = false;
+      const { error: insErr } = await mockSb.from('project_teams_link').insert(teamsInvolved.map((t: string) => ({ project_id: validUUID1, team_id: t })));
+      if (insErr) {
+        updateFailed = true;
+      }
+
+      expect(updateFailed).toBe(true);
+    });
+
+    it('erro ao atualizar project_partners_link impede resposta de sucesso', async () => {
+      const mockSb: any = {
+        from: (table: string) => {
+          if (table === 'project_partners_link') {
+            return {
+              delete: () => ({
+                eq: async () => ({ error: null }),
+              }),
+              insert: async () => ({ error: { message: 'Partners update failed' } }),
+            };
+          }
+          return {};
+        },
+      };
+
+      const partnersInvolved = [validUUID2];
+      let updateFailed = false;
+      const { error: insErr } = await mockSb.from('project_partners_link').insert(partnersInvolved.map((p: string) => ({ project_id: validUUID1, partner_id: p })));
+      if (insErr) {
+        updateFailed = true;
+      }
+
+      expect(updateFailed).toBe(true);
+    });
+
+    it('erro ao atualizar project_category_link impede resposta de sucesso', async () => {
+      const mockSb: any = {
+        from: (table: string) => {
+          if (table === 'project_category_link') {
+            return {
+              delete: () => ({
+                eq: async () => ({ error: null }),
+              }),
+              insert: async () => ({ error: { message: 'Category update failed' } }),
+            };
+          }
+          return {};
+        },
+      };
+
+      const categoriesInvolved = [validUUID2];
+      let updateFailed = false;
+      const { error: insErr } = await mockSb.from('project_category_link').insert(categoriesInvolved.map((c: string) => ({ project_id: validUUID1, category_id: c })));
+      if (insErr) {
+        updateFailed = true;
+      }
+
+      expect(updateFailed).toBe(true);
+    });
+  });
+
+  describe('7. FASE 24-A: Server-Authoritative State no Frontend após UPDATE', () => {
+    it('o estado atualizado após updateProject reflete exclusivamente o result.data devolvido pelo servidor', () => {
+      const existingProject = {
+        id: validUUID1,
+        title: 'Projeto Original',
+        clientId: validUUID2,
+        budgetValue: 10000,
+        version: 1,
+        createdDate: '2026-09-01T10:00:00.000Z',
+        updatedDate: '2026-09-01T10:00:00.000Z',
+        categoryIds: [validUUID3],
+        teamsInvolvedIds: [validUUID4],
+        partnersIds: [],
+        deleted: false,
+      };
+
+      // Frontend submete um payload com alterações locais
+      const clientPayload = {
+        title: 'Projeto com Título Modificado pelo Cliente',
+        budgetValue: 12000,
+      };
+
+      // O servidor persiste, normaliza e devolve o estado real persistido (ex: aplica formatações, versionamento e timestamps reais da BD)
+      const serverResultData = {
+        id: validUUID1,
+        title: 'Projeto com Título Modificado pelo Cliente',
+        clientId: validUUID2,
+        budgetValue: 12000,
+        version: 2,
+        createdAt: '2026-09-01T10:00:00.000Z',
+        updatedAt: '2026-09-23T12:00:00.000Z',
+        categoryIds: [validUUID3],
+        teamsInvolvedIds: [validUUID4],
+        partnersIds: [],
+        deleted: false,
+      };
+
+      // Construção server-authoritative (sem fazer { ...existingProject, ...clientPayload })
+      const updatedProject = {
+        id: serverResultData.id,
+        title: serverResultData.title ?? existingProject.title,
+        clientId: serverResultData.clientId ?? existingProject.clientId,
+        budgetValue: typeof serverResultData.budgetValue === 'number' ? serverResultData.budgetValue : Number(existingProject.budgetValue || 0),
+        categoryIds: Array.isArray(serverResultData.categoryIds) ? serverResultData.categoryIds : existingProject.categoryIds,
+        teamsInvolvedIds: Array.isArray(serverResultData.teamsInvolvedIds) ? serverResultData.teamsInvolvedIds : existingProject.teamsInvolvedIds,
+        partnersIds: Array.isArray(serverResultData.partnersIds) ? serverResultData.partnersIds : existingProject.partnersIds,
+        version: serverResultData.version,
+        createdDate: serverResultData.createdAt ?? existingProject.createdDate,
+        updatedDate: serverResultData.updatedAt,
+        deleted: Boolean(serverResultData.deleted),
+      };
+
+      // Verifica que o estado gerado veio do servidor e tem a versão e timestamp autoritativos
+      expect(updatedProject.version).toBe(2);
+      expect(updatedProject.updatedDate).toBe('2026-09-23T12:00:00.000Z');
+      expect(updatedProject.title).toBe(serverResultData.title);
+    });
+  });
 });

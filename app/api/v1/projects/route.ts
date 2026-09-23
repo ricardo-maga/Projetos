@@ -305,47 +305,59 @@ export async function POST(req: NextRequest) {
       return badRequest(`Erro ao inserir projeto na base de dados: ${insertError.message}`, requestId);
     }
 
-    // Insert relational links with error handling and atomic cleanup if link insertion fails
+    // Insert relational links with error handling and cleanup if any relation insertion fails
     try {
       if (finalPriorityId) {
         const { error: prioErr } = await sb.from('project_priority_link').insert([{ project_id: newId, priority_id: finalPriorityId }]);
-        if (prioErr && !prioErr.message?.includes('does not exist')) {
-          console.warn('[API PROJECT LINK PRIORITY ERROR]', prioErr);
+        if (prioErr) {
+          console.error('[API PROJECT LINK PRIORITY ERROR]', prioErr);
+          await sb.from('projects').delete().eq('id', newId);
+          return internalServerError('Não foi possível criar todas as relações do projeto.', requestId);
         }
       }
+
       if (finalRiskId) {
         const { error: riskErr } = await sb.from('project_risk_link').insert([{ project_id: newId, risk_id: finalRiskId }]);
-        if (riskErr && !riskErr.message?.includes('does not exist')) {
-          console.warn('[API PROJECT LINK RISK ERROR]', riskErr);
+        if (riskErr) {
+          console.error('[API PROJECT LINK RISK ERROR]', riskErr);
+          await sb.from('projects').delete().eq('id', newId);
+          return internalServerError('Não foi possível criar todas as relações do projeto.', requestId);
         }
       }
 
       if (effectiveTeams.length > 0) {
         const teamLinks = effectiveTeams.map((tid) => ({ project_id: newId, team_id: tid }));
         const { error: teamErr } = await sb.from('project_teams_link').insert(teamLinks);
-        if (teamErr && !teamErr.message?.includes('does not exist')) {
-          console.warn('[API PROJECT LINK TEAMS ERROR]', teamErr);
+        if (teamErr) {
+          console.error('[API PROJECT LINK TEAMS ERROR]', teamErr);
+          await sb.from('projects').delete().eq('id', newId);
+          return internalServerError('Não foi possível criar todas as relações do projeto.', requestId);
         }
       }
+
       if (effectivePartners.length > 0) {
         const partnerLinks = effectivePartners.map((pid) => ({ project_id: newId, partner_id: pid }));
         const { error: partErr } = await sb.from('project_partners_link').insert(partnerLinks);
-        if (partErr && !partErr.message?.includes('does not exist')) {
-          console.warn('[API PROJECT LINK PARTNERS ERROR]', partErr);
+        if (partErr) {
+          console.error('[API PROJECT LINK PARTNERS ERROR]', partErr);
+          await sb.from('projects').delete().eq('id', newId);
+          return internalServerError('Não foi possível criar todas as relações do projeto.', requestId);
         }
       }
+
       if (effectiveCategories.length > 0) {
         const categoryLinks = effectiveCategories.map((cid) => ({ project_id: newId, category_id: cid }));
         const { error: catErr } = await sb.from('project_category_link').insert(categoryLinks);
-        if (catErr && !catErr.message?.includes('does not exist')) {
-          console.warn('[API PROJECT LINK CATEGORIES ERROR]', catErr);
+        if (catErr) {
+          console.error('[API PROJECT LINK CATEGORIES ERROR]', catErr);
+          await sb.from('projects').delete().eq('id', newId);
+          return internalServerError('Não foi possível criar todas as relações do projeto.', requestId);
         }
       }
     } catch (linkErr) {
       console.error('[API PROJECT LINK INSERTION EXCEPTION]', linkErr);
-      // Clean up orphaned project record to preserve atomicity
       await sb.from('projects').delete().eq('id', newId);
-      return internalServerError('Falha ao persistir relações do projeto.', requestId);
+      return internalServerError('Não foi possível criar todas as relações do projeto.', requestId);
     }
 
     await logAuditEvent({

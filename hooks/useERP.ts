@@ -790,14 +790,44 @@ export function useERP() {
 
         setState(prev => {
           if (!prev) return prev;
+          const serverProj = result.data;
+          const updatedProj: Project = {
+            id: serverProj.id || id,
+            title: serverProj.title ?? existingProj.title,
+            clientId: serverProj.clientId ?? existingProj.clientId,
+            description: serverProj.description ?? existingProj.description,
+            installProjectNo: serverProj.installProjectNo ?? existingProj.installProjectNo,
+            sfOpportunityNo: serverProj.sfOpportunityNo ?? existingProj.sfOpportunityNo,
+            statusId: serverProj.statusId ?? existingProj.statusId,
+            categoryId: serverProj.categoryId ?? existingProj.categoryId,
+            categoryIds: Array.isArray(serverProj.categoryIds) ? serverProj.categoryIds : (existingProj.categoryIds || []),
+            priorityId: serverProj.priorityId ?? existingProj.priorityId,
+            riskId: serverProj.riskId ?? existingProj.riskId,
+            projectManagerId: serverProj.projectManagerId ?? existingProj.projectManagerId,
+            fieldManagerId: serverProj.fieldManagerId ?? existingProj.fieldManagerId,
+            salesRepId: serverProj.salesRepId ?? existingProj.salesRepId,
+            teamsInvolvedIds: Array.isArray(serverProj.teamsInvolvedIds) ? serverProj.teamsInvolvedIds : (existingProj.teamsInvolvedIds || []),
+            partnersIds: Array.isArray(serverProj.partnersIds) ? serverProj.partnersIds : (existingProj.partnersIds || []),
+            startDate: serverProj.startDate ?? existingProj.startDate,
+            deliveryDate: serverProj.deliveryDate ?? existingProj.deliveryDate,
+            estimatedDate: serverProj.estimatedDate ?? existingProj.estimatedDate,
+            scheduledDate: serverProj.scheduledDate ?? existingProj.scheduledDate,
+            budgetValue: typeof serverProj.budgetValue === 'number' ? serverProj.budgetValue : Number(existingProj.budgetValue || 0),
+            demo: typeof serverProj.demo === 'boolean' ? serverProj.demo : Boolean(existingProj.demo),
+            documents: Array.isArray(serverProj.documents) ? serverProj.documents : (existingProj.documents || []),
+            clientContactName: serverProj.clientContactName ?? existingProj.clientContactName,
+            clientContactEmail: serverProj.clientContactEmail ?? existingProj.clientContactEmail,
+            clientContactPhone: serverProj.clientContactPhone ?? existingProj.clientContactPhone,
+            createdById: serverProj.createdBy || serverProj.createdById || existingProj.createdById,
+            deleted: Boolean(serverProj.deleted),
+            createdDate: serverProj.createdAt || serverProj.createdDate || existingProj.createdDate,
+            updatedDate: serverProj.updatedAt || serverProj.updatedDate || now,
+            version: serverProj.version || nextVersion,
+          };
+
           let newProjects = prev.projects.map(p => {
             if (p.id === id) {
-              return {
-                ...p,
-                ...updates,
-                version: nextVersion,
-                updatedDate: result.data.updatedAt || now,
-              } as Project;
+              return updatedProj;
             }
             return p;
           });

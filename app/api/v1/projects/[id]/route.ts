@@ -270,39 +270,79 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       );
     }
 
-    // Update relational links safely
+    // Update relational links safely with strict error checking
     if (updates.priorityId !== undefined) {
-      await sb.from('project_priority_link').delete().eq('project_id', id);
+      const { error: delPrioErr } = await sb.from('project_priority_link').delete().eq('project_id', id);
+      if (delPrioErr) {
+        console.error('[API PROJECT UPDATE PRIORITY LINK DELETE ERROR]', delPrioErr);
+        return internalServerError('Erro ao atualizar as relações de prioridade do projeto.', requestId);
+      }
       if (updates.priorityId.trim()) {
-        await sb.from('project_priority_link').insert([{ project_id: id, priority_id: updates.priorityId.trim() }]);
+        const { error: insPrioErr } = await sb.from('project_priority_link').insert([{ project_id: id, priority_id: updates.priorityId.trim() }]);
+        if (insPrioErr) {
+          console.error('[API PROJECT UPDATE PRIORITY LINK INSERT ERROR]', insPrioErr);
+          return internalServerError('Erro ao atualizar as relações de prioridade do projeto.', requestId);
+        }
       }
     }
 
     if (updates.riskId !== undefined) {
-      await sb.from('project_risk_link').delete().eq('project_id', id);
+      const { error: delRiskErr } = await sb.from('project_risk_link').delete().eq('project_id', id);
+      if (delRiskErr) {
+        console.error('[API PROJECT UPDATE RISK LINK DELETE ERROR]', delRiskErr);
+        return internalServerError('Erro ao atualizar as relações de risco do projeto.', requestId);
+      }
       if (updates.riskId.trim()) {
-        await sb.from('project_risk_link').insert([{ project_id: id, risk_id: updates.riskId.trim() }]);
+        const { error: insRiskErr } = await sb.from('project_risk_link').insert([{ project_id: id, risk_id: updates.riskId.trim() }]);
+        if (insRiskErr) {
+          console.error('[API PROJECT UPDATE RISK LINK INSERT ERROR]', insRiskErr);
+          return internalServerError('Erro ao atualizar as relações de risco do projeto.', requestId);
+        }
       }
     }
 
     if (teamsInvolved !== undefined) {
-      await sb.from('project_teams_link').delete().eq('project_id', id);
+      const { error: delTeamsErr } = await sb.from('project_teams_link').delete().eq('project_id', id);
+      if (delTeamsErr) {
+        console.error('[API PROJECT UPDATE TEAMS LINK DELETE ERROR]', delTeamsErr);
+        return internalServerError('Erro ao atualizar as relações de equipas do projeto.', requestId);
+      }
       if (teamsInvolved.length > 0) {
-        await sb.from('project_teams_link').insert(teamsInvolved.map((t: string) => ({ project_id: id, team_id: t })));
+        const { error: insTeamsErr } = await sb.from('project_teams_link').insert(teamsInvolved.map((t: string) => ({ project_id: id, team_id: t })));
+        if (insTeamsErr) {
+          console.error('[API PROJECT UPDATE TEAMS LINK INSERT ERROR]', insTeamsErr);
+          return internalServerError('Erro ao atualizar as relações de equipas do projeto.', requestId);
+        }
       }
     }
 
     if (partnersInvolved !== undefined) {
-      await sb.from('project_partners_link').delete().eq('project_id', id);
+      const { error: delPartnersErr } = await sb.from('project_partners_link').delete().eq('project_id', id);
+      if (delPartnersErr) {
+        console.error('[API PROJECT UPDATE PARTNERS LINK DELETE ERROR]', delPartnersErr);
+        return internalServerError('Erro ao atualizar as relações de parceiros do projeto.', requestId);
+      }
       if (partnersInvolved.length > 0) {
-        await sb.from('project_partners_link').insert(partnersInvolved.map((p: string) => ({ project_id: id, partner_id: p })));
+        const { error: insPartnersErr } = await sb.from('project_partners_link').insert(partnersInvolved.map((p: string) => ({ project_id: id, partner_id: p })));
+        if (insPartnersErr) {
+          console.error('[API PROJECT UPDATE PARTNERS LINK INSERT ERROR]', insPartnersErr);
+          return internalServerError('Erro ao atualizar as relações de parceiros do projeto.', requestId);
+        }
       }
     }
 
     if (categoriesInvolved !== undefined) {
-      await sb.from('project_category_link').delete().eq('project_id', id);
+      const { error: delCategoriesErr } = await sb.from('project_category_link').delete().eq('project_id', id);
+      if (delCategoriesErr) {
+        console.error('[API PROJECT UPDATE CATEGORIES LINK DELETE ERROR]', delCategoriesErr);
+        return internalServerError('Erro ao atualizar as relações de categorias do projeto.', requestId);
+      }
       if (categoriesInvolved.length > 0) {
-        await sb.from('project_category_link').insert(categoriesInvolved.map((c: string) => ({ project_id: id, category_id: c })));
+        const { error: insCategoriesErr } = await sb.from('project_category_link').insert(categoriesInvolved.map((c: string) => ({ project_id: id, category_id: c })));
+        if (insCategoriesErr) {
+          console.error('[API PROJECT UPDATE CATEGORIES LINK INSERT ERROR]', insCategoriesErr);
+          return internalServerError('Erro ao atualizar as relações de categorias do projeto.', requestId);
+        }
       }
     }
 
@@ -314,18 +354,79 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       details: { version: currentVersion + 1 },
     });
 
+    // Query refreshed server-persisted project and links for authoritative response
+    const { data: refreshedProject, error: refreshError } = await sb
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (refreshError || !refreshedProject) {
+      console.error('[API PROJECT REFRESH ERROR]', refreshError);
+      return internalServerError('Erro ao carregar os dados atualizados do projeto.', requestId);
+    }
+
+    const [teamsRes, partnersRes, categoriesRes, riskRes, priorityRes] = await Promise.all([
+      sb.from('project_teams_link').select('team_id').eq('project_id', id),
+      sb.from('project_partners_link').select('partner_id').eq('project_id', id),
+      sb.from('project_category_link').select('category_id').eq('project_id', id),
+      sb.from('project_risk_link').select('risk_id').eq('project_id', id),
+      sb.from('project_priority_link').select('priority_id').eq('project_id', id),
+    ]);
+
+    const dbTeams = teamsRes.data ? teamsRes.data.map((r: any) => r.team_id) : [];
+    const dbPartners = partnersRes.data ? partnersRes.data.map((r: any) => r.partner_id) : [];
+    const dbCategories = categoriesRes.data ? categoriesRes.data.map((r: any) => r.category_id) : [];
+    const dbRisk = riskRes.data?.[0]?.risk_id;
+    const dbPriority = priorityRes.data?.[0]?.priority_id;
+
+    const finalTeamsInvolvedIds = Array.from(new Set([...dbTeams, ...parseCommaSeparated(refreshedProject.teams_involved_ids)]));
+    const finalPartnersIds = Array.from(new Set([...dbPartners, ...parseCommaSeparated(refreshedProject.partners_ids)]));
+    const finalCategoryIds = Array.from(new Set([...dbCategories, ...parseCommaSeparated(refreshedProject.category_ids || (refreshedProject.category_id ? [refreshedProject.category_id] : []))]));
+
+    const serverData = {
+      id: refreshedProject.id,
+      title: refreshedProject.project_title || refreshedProject.title || '',
+      clientId: refreshedProject.client_id || '',
+      installProjectNo: refreshedProject.install_project_no || '',
+      sfOpportunityNo: refreshedProject.sf_opportunity_no || '',
+      description: refreshedProject.project_description || refreshedProject.description || '',
+      statusId: refreshedProject.status_id || '',
+      categoryId: refreshedProject.category_id || finalCategoryIds[0] || '',
+      categoryIds: finalCategoryIds,
+      priorityId: dbPriority || refreshedProject.priority_id || '',
+      riskId: dbRisk || refreshedProject.risk_id || '',
+      projectManagerId: refreshedProject.project_manager_id || '',
+      fieldManagerId: refreshedProject.field_manager_id || '',
+      salesRepId: refreshedProject.sales_rep_id || '',
+      teamsInvolvedIds: finalTeamsInvolvedIds,
+      partnersIds: finalPartnersIds,
+      startDate: refreshedProject.start_date || '',
+      deliveryDate: refreshedProject.delivery_date || '',
+      estimatedDate: refreshedProject.estimated_date || '',
+      scheduledDate: refreshedProject.scheduled_date || '',
+      completedDate: refreshedProject.completed_date || '',
+      budgetValue: Number(refreshedProject.budget_value ?? 0),
+      isUrgent: Boolean(refreshedProject.is_urgent),
+      demo: Boolean(refreshedProject.demo),
+      documents: parseCommaSeparated(refreshedProject.documents),
+      clientContactName: refreshedProject.client_contact_name || '',
+      clientContactEmail: refreshedProject.client_contact_email || '',
+      clientContactPhone: refreshedProject.client_contact_phone || '',
+      color: refreshedProject.color || '',
+      notes: refreshedProject.notes || '',
+      version: typeof refreshedProject.version === 'number' ? refreshedProject.version : (currentVersion + 1),
+      deleted: Boolean(refreshedProject.deleted),
+      createdAt: refreshedProject.created_at,
+      updatedAt: refreshedProject.updated_at,
+      createdBy: refreshedProject.created_by,
+      updatedBy: refreshedProject.updated_by,
+    };
+
     return NextResponse.json({
       success: true,
       message: 'Projeto atualizado com sucesso.',
-      data: {
-        id,
-        ...updates,
-        teamsInvolvedIds: teamsInvolved !== undefined ? teamsInvolved : (updates.teamsInvolvedIds || updates.teamIds || []),
-        partnersIds: partnersInvolved !== undefined ? partnersInvolved : (updates.partnersIds || updates.partnerIds || []),
-        categoryIds: categoriesInvolved !== undefined ? categoriesInvolved : (updates.categoryIds || (updates.categoryId ? [updates.categoryId] : (current.category_id ? [current.category_id] : []))),
-        version: currentVersion + 1,
-        updatedAt: now,
-      },
+      data: serverData,
     });
   } catch (error: any) {
     console.error('[API PROJECT UPDATE EXCEPTION]', error);
