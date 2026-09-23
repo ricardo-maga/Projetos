@@ -68,8 +68,16 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    if (!body.title) {
+    if (!body.title || typeof body.title !== 'string' || !body.title.trim()) {
       return NextResponse.json({ success: false, message: 'Título do ticket é obrigatório.' }, { status: 400 });
+    }
+
+    const validStatuses = ['validacao', 'aberto', 'em_analise', 'convertido', 'resolvido', 'cancelado'];
+    if (body.status && !validStatuses.includes(body.status)) {
+      return NextResponse.json({
+        success: false,
+        message: `Estado de ticket inválido. Estados permitidos: ${validStatuses.join(', ')}.`
+      }, { status: 400 });
     }
 
     const result = await getActiveStateFromSupabase();
@@ -99,6 +107,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (body.convertedProjectId && state.projects && Array.isArray(state.projects)) {
+      const projectExists = state.projects.some((p: any) => p.id === body.convertedProjectId && !p.deleted);
+      if (!projectExists) {
+        return NextResponse.json({
+          success: false,
+          message: 'O projeto especificado não existe ou foi eliminado.'
+        }, { status: 400 });
+      }
+    }
+
     const now = new Date().toISOString();
     const id = genId('tck');
     const count = (state.tickets || []).length + 1;
@@ -111,7 +129,7 @@ export async function POST(req: NextRequest) {
     const newTicket: Ticket = {
       id,
       ticketNumber,
-      title: body.title,
+      title: body.title.trim(),
       description: body.description || '',
       source: body.source || 'manual',
       sourceDetails: body.sourceDetails || (isExternal ? `Canal externo (${body.source})` : 'Criado via API'),
@@ -123,7 +141,8 @@ export async function POST(req: NextRequest) {
       requesterEmail: body.requesterEmail,
       requesterPhone: body.requesterPhone,
       assignedToId: body.assignedToId,
-      createdById: body.createdById,
+      createdById: auth.user?.id || body.createdById || '',
+      convertedProjectId: body.convertedProjectId,
       createdDate: now,
       updatedDate: now,
       deleted: false
