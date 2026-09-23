@@ -106,8 +106,13 @@ export default function TaskDetailsModal({
   // Active task state allowing seamless switching via "Ver tarefa" (Requirement 10)
   const [activeTask, setActiveTask] = useState<Task | null>(task);
   useEffect(() => {
-    setActiveTask(task);
-  }, [task]);
+    if (task) {
+      const found = Array.isArray(tasks) ? tasks.find(t => t.id === task.id) : null;
+      setActiveTask(found || task);
+    } else {
+      setActiveTask(null);
+    }
+  }, [task, tasks]);
 
   const [taskEditStatus, setTaskEditStatus] = useState('');
   const [taskEditTypeId, setTaskEditTypeId] = useState('');
@@ -326,22 +331,28 @@ export default function TaskDetailsModal({
     return u ? u.name : userId;
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (updateTask && activeTask) {
-      updateTask(activeTask.id, {
-        statusId: taskEditStatus,
-        taskTypeId: taskEditTypeId || '',
-        actualHours: formatToOnlyHours(taskEditActualHours),
-        notes: taskEditNotes,
-        startDate: taskEditStartDate,
-        startTime: taskEditStartTime,
-        endDate: taskEditEndDate,
-        endTime: taskEditEndTime,
-        assigneeIds: taskEditAssignees,
-      });
+      try {
+        await updateTask(activeTask.id, {
+          statusId: taskEditStatus,
+          taskTypeId: taskEditTypeId || '',
+          actualHours: formatToOnlyHours(taskEditActualHours),
+          notes: taskEditNotes,
+          startDate: taskEditStartDate,
+          startTime: taskEditStartTime,
+          endDate: taskEditEndDate,
+          endTime: taskEditEndTime,
+          assigneeIds: taskEditAssignees,
+        });
+        onClose();
+      } catch (err) {
+        console.error('Erro ao gravar alterações na tarefa:', err);
+      }
+    } else {
+      onClose();
     }
-    onClose();
   };
 
   return (
@@ -357,7 +368,7 @@ export default function TaskDetailsModal({
               Cliente: <strong className="text-slate-800 font-bold">{taskClientName}</strong> | Projeto: <strong className="text-slate-800 font-bold">{taskProjTitle}</strong>
             </div>
             <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">
-              {task.title}
+              {activeTask.title}
             </h3>
           </div>
           <button 
@@ -372,24 +383,24 @@ export default function TaskDetailsModal({
 
         {/* Read-only Task Info */}
         <div className="px-5 py-4 bg-blue-50/40 border-b border-blue-50 text-xs text-slate-600 space-y-2 shrink-0">
-          {task.description && (
+          {activeTask.description && (
             <p className="font-medium text-slate-700 italic bg-white p-2.5 rounded-xl border border-slate-100">
-              &quot;{task.description}&quot;
+              &quot;{activeTask.description}&quot;
             </p>
           )}
           <div className="flex flex-wrap gap-4 text-[11px] font-semibold text-slate-500 pt-1">
             <span className="flex items-center gap-1">
               <Users className="w-3.5 h-3.5 text-slate-400" />
               Atribuído: <span className="text-slate-700 font-bold">
-                {task.assigneeIds && task.assigneeIds.length > 0
-                  ? task.assigneeIds.map(id => getUserName(id)).join(', ')
+                {activeTask.assigneeIds && activeTask.assigneeIds.length > 0
+                  ? activeTask.assigneeIds.map(id => getUserName(id)).join(', ')
                   : 'Ninguém'}
               </span>
             </span>
-            {task.estimatedDate && (
+            {activeTask.estimatedDate && (
               <span className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                Data Prevista: <span className="text-slate-700 font-bold">{new Date(task.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT')}</span>
+                Data Prevista: <span className="text-slate-700 font-bold">{new Date(activeTask.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT')}</span>
               </span>
             )}
           </div>
@@ -415,7 +426,7 @@ export default function TaskDetailsModal({
           <div className="space-y-1">
             <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
             <div className="w-full p-2.5 border border-slate-200 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 select-none">
-              {getTaskTypeName(taskEditTypeId || task.taskTypeId, taskTypes) || 'Não definido'}
+              {getTaskTypeName(taskEditTypeId || activeTask.taskTypeId, taskTypes) || 'Não definido'}
             </div>
           </div>
 
@@ -1716,7 +1727,7 @@ export default function TaskDetailsModal({
             setIsPlanningModalOpen(false);
             setSelectedAllocationForEdit(null);
           }}
-          task={task}
+          task={activeTask}
           allocation={selectedAllocationForEdit}
           users={users}
           projects={projects}

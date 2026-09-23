@@ -766,16 +766,47 @@ export function useERP() {
 
       const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
 
+      let finalRes = res;
+      let finalResult = result;
+
       if (res.status === 409) {
-        const errMsg = getApiErrorMessage(result, 'Conflito de concorrência ao atualizar projeto. O projeto foi alterado por outro utilizador.');
+        const serverVersion = (result.details?.currentVersion ?? result.error?.details?.currentVersion) ?? (
+          typeof result.error?.message === 'string' && result.error.message.match(/versão atual:\s*(\d+)/i)
+            ? parseInt(result.error.message.match(/versão atual:\s*(\d+)/i)![1], 10)
+            : undefined
+        );
+        if (typeof serverVersion === 'number') {
+          const retryRes = await fetch(`/api/v1/projects/${id}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ ...patchPayload, version: serverVersion }),
+          });
+          const retryResult = await retryRes.json().catch(() => ({ success: false }));
+          if (retryRes.ok && retryResult.success && retryResult.data) {
+            finalRes = retryRes;
+            finalResult = retryResult;
+          } else {
+            setState(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                projects: prev.projects.map(p => p.id === id ? { ...p, version: serverVersion } : p),
+              };
+            });
+          }
+        }
+      }
+
+      if (finalRes.status === 409) {
+        const errMsg = getApiErrorMessage(finalResult, 'Conflito de concorrência ao atualizar projeto. O projeto foi alterado por outro utilizador.');
         alert(errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
         throw new Error(errMsg);
       }
 
-      if (res.ok && result.success && result.data) {
-        const nextVersion = result.data.version || (currentVersion + 1);
+      if (finalRes.ok && finalResult.success && finalResult.data) {
+        const nextVersion = finalResult.data.version || (currentVersion + 1);
 
         let detailMsg = `Atualizado projeto "${projName}"`;
         if (updates.title && existingProj && updates.title !== existingProj.title) {
@@ -1147,16 +1178,47 @@ export function useERP() {
 
       const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
 
+      let finalRes = res;
+      let finalResult = result;
+
       if (res.status === 409) {
-        const errMsg = getApiErrorMessage(result, 'Conflito de concorrência ao atualizar tarefa.');
+        const serverVersion = (result.details?.currentVersion ?? result.error?.details?.currentVersion) ?? (
+          typeof result.error?.message === 'string' && result.error.message.match(/versão atual:\s*(\d+)/i)
+            ? parseInt(result.error.message.match(/versão atual:\s*(\d+)/i)![1], 10)
+            : undefined
+        );
+        if (typeof serverVersion === 'number') {
+          const retryRes = await fetch(`/api/v1/tasks/${id}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ ...patchPayload, version: serverVersion }),
+          });
+          const retryResult = await retryRes.json().catch(() => ({ success: false }));
+          if (retryRes.ok && retryResult.success && retryResult.data) {
+            finalRes = retryRes;
+            finalResult = retryResult;
+          } else {
+            setState(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                tasks: prev.tasks.map(t => t.id === id ? { ...t, version: serverVersion } : t),
+              };
+            });
+          }
+        }
+      }
+
+      if (finalRes.status === 409) {
+        const errMsg = getApiErrorMessage(finalResult, 'Conflito de concorrência ao atualizar tarefa.');
         alert(errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
         throw new Error(errMsg);
       }
 
-      if (res.ok && result.success && result.data) {
-        const nextVersion = result.data.version || (currentVersion + 1);
+      if (finalRes.ok && finalResult.success && finalResult.data) {
+        const nextVersion = finalResult.data.version || (currentVersion + 1);
 
         let detailMsg = `Atualizada tarefa "${taskTitle}"`;
         if (updates.statusId && updates.statusId !== existingTask.statusId) {
