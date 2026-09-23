@@ -453,22 +453,31 @@ export default function CalendarSection({
   const startDateStr = formatDateToString(timelineDays[0]);
   const endDateStr = formatDateToString(timelineDays[timelineDays.length - 1]);
 
-  // Fetch planning allocations for current calendar date interval (FASE 23C)
+  // Ref to track last fetched date range and prevent duplicate/infinite fetch loops
+  const lastFetchedRangeRef = React.useRef<{ from: string; to: string } | null>(null);
+
+  // Fetch planning allocations, capacity & resource load for current calendar date interval (FASE 23C/23D)
   useEffect(() => {
-    if (fetchPlanningAllocations && startDateStr && endDateStr) {
+    if (!startDateStr || !endDateStr) return;
+    if (
+      lastFetchedRangeRef.current &&
+      lastFetchedRangeRef.current.from === startDateStr &&
+      lastFetchedRangeRef.current.to === endDateStr
+    ) {
+      return;
+    }
+    lastFetchedRangeRef.current = { from: startDateStr, to: endDateStr };
+
+    if (fetchPlanningAllocations) {
       fetchPlanningAllocations({ dateFrom: startDateStr, dateTo: endDateStr });
     }
-  }, [startDateStr, endDateStr, fetchPlanningAllocations]);
-
-  // Fetch planning capacity & resource load for current calendar date interval (FASE 23D)
-  useEffect(() => {
-    if (fetchPlanningCapacity && startDateStr && endDateStr) {
+    if (fetchPlanningCapacity) {
       fetchPlanningCapacity({ dateFrom: startDateStr, dateTo: endDateStr });
     }
-    if (fetchPlanningResourceLoad && startDateStr && endDateStr) {
+    if (fetchPlanningResourceLoad) {
       fetchPlanningResourceLoad({ dateFrom: startDateStr, dateTo: endDateStr });
     }
-  }, [startDateStr, endDateStr, fetchPlanningCapacity, fetchPlanningResourceLoad]);
+  }, [startDateStr, endDateStr, fetchPlanningAllocations, fetchPlanningCapacity, fetchPlanningResourceLoad]);
 
   // Track which tasks have allocations vs unplanned tasks
   const taskIdsWithAllocations = React.useMemo(() => {

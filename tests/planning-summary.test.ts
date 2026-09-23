@@ -601,3 +601,182 @@ describe('Task Planning Load & Resource Consolidation Tests (FASE 23E-C3M-D)', (
     assert.strictEqual(status, 'PLANEAMENTO_COMPLETO');
   });
 });
+
+describe('Canonical Task Allocations Source Tests (FASE 23E-C3M-E)', () => {
+  const makeAlloc = (
+    id: string,
+    taskId: string,
+    resourceId: string,
+    date: string,
+    durationMinutes: number,
+    status: 'DRAFT' | 'CONFIRMED' | 'CANCELLED',
+    startTime = '08:00',
+    endTime = '12:00'
+  ): PlanningAllocationDTO => ({
+    id,
+    taskId,
+    resourceId,
+    date,
+    durationMinutes,
+    status,
+    startTime,
+    endTime,
+    version: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  const getCanonicalTaskAllocations = (
+    taskId: string,
+    planningAllocations: PlanningAllocationDTO[] = [],
+    internalAllocations: PlanningAllocationDTO[] = []
+  ): PlanningAllocationDTO[] => {
+    const map = new Map<string, PlanningAllocationDTO>();
+
+    if (Array.isArray(planningAllocations)) {
+      for (const alloc of planningAllocations) {
+        if (alloc && alloc.taskId === taskId) {
+          map.set(alloc.id, alloc);
+        }
+      }
+    }
+
+    if (Array.isArray(internalAllocations)) {
+      for (const alloc of internalAllocations) {
+        if (alloc && alloc.taskId === taskId) {
+          map.set(alloc.id, alloc);
+        }
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.startTime.localeCompare(b.startTime);
+    });
+  };
+
+  it('Cenário A — planningAllocations contém a tarefa (Task A → 4h CONFIRMED)', () => {
+    const planningAllocations = [
+      makeAlloc('a1', 'task-A', 'res-1', '2026-09-22', 240, 'CONFIRMED'), // 4h
+    ];
+    const allocs = getCanonicalTaskAllocations('task-A', planningAllocations, []);
+    const summary = computePlanningSummary('8h', allocs);
+
+    assert.strictEqual(allocs.length, 1);
+    assert.strictEqual(summary.confirmedHours, 4);
+    assert.strictEqual(summary.plannedHours, 4);
+  });
+
+  it('Cenário B — planningAllocations contém apenas outras tarefas (não falsifica SEM_PLANEAMENTO para Task B)', () => {
+    const planningAllocations = [
+      makeAlloc('a1', 'task-A', 'res-1', '2026-09-22', 240, 'CONFIRMED'), // Task A
+      makeAlloc('a2', 'task-C', 'res-2', '2026-09-22', 180, 'CONFIRMED'), // Task C
+    ];
+    const internalAllocationsForTaskB = [
+      makeAlloc('b1', 'task-B', 'res-3', '2026-09-23', 300, 'CONFIRMED'), // Task B (5h)
+    ];
+
+    const allocs = getCanonicalTaskAllocations('task-B', planningAllocations, internalAllocationsForTaskB);
+    const summary = computePlanningSummary('8h', allocs);
+    const status = getTaskPlanningLoadStatus(summary);
+
+    assert.strictEqual(allocs.length, 1);
+    assert.strictEqual(summary.confirmedHours, 5);
+    assert.strictEqual(summary.plannedHours, 5);
+    assert.notStrictEqual(status, 'SEM_PLANEAMENTO');
+    assert.strictEqual(status, 'PLANEAMENTO_PENDENTE');
+  });
+
+  it('Cenário C — múltiplos recursos (Resource 1 → 4h, Resource 2 → 3h => CONFIRMED = 7h e 2 recursos envolvidos)', () => {
+    const internalAllocations = [
+      makeAlloc('a1', 'task-A', 'res-1', '2026-09-22', 240, 'CONFIRMED'), // 4h
+      makeAlloc('a2', 'task-A', 'res-2', '2026-09-22', 180, 'CONFIRMED'), // 3h
+    ];
+
+    const allocs = getCanonicalTaskAllocations('task-A', [], internalAllocations);
+    const summary = computePlanningSummary('10h', allocs);
+    const mockUsers = [
+      { id: 'res-1', name: 'Recurso 1' },
+      { id: 'res-2', name: 'Recurso 2' },
+    ];
+    const resources = groupTaskAllocationsByResource(allocs, mockUsers, []);
+
+    assert.strictEqual(summary.confirmedHours, 7);
+    assert.strictEqual(summary.plannedHours, 7);
+    assert.strictEqual(resources.length, 2);
+  });
+
+  it('Cenário D — múltiplos dias (garantir agrupamento correto por data → recurso → allocation)', () => {
+    const allocsInput = [
+      makeAlloc('a1', 'task-A', 'res-1', '2026-09-22', 240, 'CONFIRMED'),
+      makeAlloc('a2', 'task-A', 'res-2', '2026-09-22', 120, 'DRAFT'),
+      makeAlloc('a3', 'task-A', 'res-1', '2026-09-23', 180, 'CONFIRMED'),
+    ];
+
+    const allocs = getCanonicalTaskAllocations('task-A', allocsInput, []);
+    const dayGroups = groupTaskAllocationsByDate(allocs);
+
+    assert.strictEqual(dayGroups.length, 2);
+    assert.strictEqual(dayGroups[0].date, '2026-09-22');
+    assert.strictEqual(dayGroups[0].resourceAllocations.length, 2);
+    assert.strictEqual(dayGroups[1].date, '2026-09-23');
+    assert.strictEqual(dayGroups[1].resourceAllocations.length, 1);
+  });
+
+  it('Cenário E — DRAFT (CONFIRMED = 6h, DRAFT = 2h => PLANEADO = 8h, CONFIRMED = 6h, DRAFT = 2h)', () => {
+    const allocsInput = [
+      makeAlloc('a1', 'task-A', 'res-1', '2026-09-22', 360, 'CONFIRMED'), // 6h
+      makeAlloc('a2', 'task-A', 'res-1', '2026-09-23', 120, 'DRAFT'),     // 2h
+    ];
+
+    const allocs = getCanonicalTaskAllocations('task-A', allocsInput, []);
+    const summary = computePlanningSummary('10h', allocs);
+
+    assert.strictEqual(summary.confirmedHours, 6);
+    assert.strictEqual(summary.draftHours, 2);
+    assert.strictEqual(summary.plannedHours, 8);
+  });
+
+  it('Cenário F — CANCELLED (CONFIRMED = 6h, CANCELLED = 4h => CONFIRMED = 6h, PLANEADO = 6h)', () => {
+    const allocsInput = [
+      makeAlloc('a1', 'task-A', 'res-1', '2026-09-22', 360, 'CONFIRMED'), // 6h
+      makeAlloc('a2', 'task-A', 'res-1', '2026-09-23', 240, 'CANCELLED'), // 4h
+    ];
+
+    const allocs = getCanonicalTaskAllocations('task-A', allocsInput, []);
+    const summary = computePlanningSummary('10h', allocs);
+
+    assert.strictEqual(summary.confirmedHours, 6);
+    assert.strictEqual(summary.draftHours, 0);
+    assert.strictEqual(summary.plannedHours, 6);
+    assert.strictEqual(summary.remainingHours, 4);
+  });
+
+  it('Cenário G — tarefa sem allocations (Resultado: SEM_PLANEAMENTO)', () => {
+    const allocs = getCanonicalTaskAllocations('task-empty', [], []);
+    const summary = computePlanningSummary('8h', allocs);
+    const status = getTaskPlanningLoadStatus(summary);
+
+    assert.strictEqual(allocs.length, 0);
+    assert.strictEqual(summary.plannedHours, 0);
+    assert.strictEqual(status, 'SEM_PLANEAMENTO');
+  });
+
+  it('Cenário H — excesso (ESTIMATIVA = 10h, CONFIRMED = 12h => EXCESSO = 2h e status EXCESSO)', () => {
+    const allocsInput = [
+      makeAlloc('a1', 'task-A', 'res-1', '2026-09-22', 480, 'CONFIRMED'), // 8h
+      makeAlloc('a2', 'task-A', 'res-1', '2026-09-23', 240, 'CONFIRMED'), // 4h
+    ];
+
+    const allocs = getCanonicalTaskAllocations('task-A', allocsInput, []);
+    const summary = computePlanningSummary('10h', allocs);
+    const status = getTaskPlanningLoadStatus(summary);
+
+    assert.strictEqual(summary.estimatedHours, 10);
+    assert.strictEqual(summary.confirmedHours, 12);
+    assert.strictEqual(summary.plannedHours, 12);
+    assert.strictEqual(summary.excessHours, 2);
+    assert.strictEqual(summary.isOverAllocated, true);
+    assert.strictEqual(status, 'EXCESSO');
+  });
+});

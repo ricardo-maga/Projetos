@@ -127,31 +127,49 @@ export default function TaskDetailsModal({
     }
   }, [task?.id, fetchTaskAllocations]);
 
-  // Combine passed planningAllocations with internal allocations
-  const taskAllocations = React.useMemo(() => {
+  // Canonical task planning allocations source (FASE 23E-C3M-E)
+  const taskPlanningAllocations = React.useMemo(() => {
     if (!task) return [];
-    const source = (planningAllocations && planningAllocations.length > 0)
-      ? planningAllocations.filter(a => a.taskId === task.id)
-      : internalAllocations;
-    // Sort by date ascending, then startTime
-    return [...source].sort((a, b) => {
+
+    const map = new Map<string, PlanningAllocationDTO>();
+
+    // 1. Add allocations for this task passed via planningAllocations prop
+    if (Array.isArray(planningAllocations)) {
+      for (const alloc of planningAllocations) {
+        if (alloc && alloc.taskId === task.id) {
+          map.set(alloc.id, alloc);
+        }
+      }
+    }
+
+    // 2. Overwrite/supplement with internalAllocations (fetched specifically for this task)
+    if (Array.isArray(internalAllocations)) {
+      for (const alloc of internalAllocations) {
+        if (alloc && alloc.taskId === task.id) {
+          map.set(alloc.id, alloc);
+        }
+      }
+    }
+
+    // Sort deterministically by date ascending, then startTime
+    return Array.from(map.values()).sort((a, b) => {
       if (a.date !== b.date) return a.date.localeCompare(b.date);
       return a.startTime.localeCompare(b.startTime);
     });
   }, [task, planningAllocations, internalAllocations]);
 
   const activeAllocations = React.useMemo(() => {
-    return taskAllocations.filter(a => a.status !== 'CANCELLED');
-  }, [taskAllocations]);
+    return taskPlanningAllocations.filter(a => a.status !== 'CANCELLED');
+  }, [taskPlanningAllocations]);
 
   const cancelledAllocations = React.useMemo(() => {
-    return taskAllocations.filter(a => a.status === 'CANCELLED');
-  }, [taskAllocations]);
+    return taskPlanningAllocations.filter(a => a.status === 'CANCELLED');
+  }, [taskPlanningAllocations]);
 
   // Authoritative Planning Summary
   const planningSummary = React.useMemo(() => {
-    return computePlanningSummary(task?.estimatedHours, taskAllocations);
-  }, [task?.estimatedHours, taskAllocations]);
+    return computePlanningSummary(task?.estimatedHours, taskPlanningAllocations);
+  }, [task?.estimatedHours, taskPlanningAllocations]);
 
   // Operational planning load status (FASE 23E-C3M-D)
   const taskLoadStatus = React.useMemo(() => {

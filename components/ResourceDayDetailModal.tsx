@@ -90,7 +90,7 @@ export default function ResourceDayDetailModal({
       tasks,
       projects
     );
-  }, [resource?.id, dateStr, allocations, tasks, projects]);
+  }, [resource, dateStr, allocations, tasks, projects]);
 
   if (!isOpen || !resource || !dateStr) return null;
 
