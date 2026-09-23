@@ -1367,10 +1367,8 @@ export default function ProjectSection({
                       `Tem a certeza que deseja eliminar o projeto "${selectedProj.title}" permanentemente? Esta ação não pode ser desfeita.`,
                       async () => {
                         try {
-                          const ok = await deleteProject(selectedProj.id);
-                          if (ok) {
-                            setSelectedProjectId(null);
-                          }
+                          await deleteProject(selectedProj.id);
+                          setSelectedProjectId(null);
                         } catch (err) {
                           // Handled in useERP (alerted and state preserved)
                         }

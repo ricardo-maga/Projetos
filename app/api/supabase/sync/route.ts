@@ -72,6 +72,15 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth(req);
 
+    let token: string | undefined;
+    const authHeader = req.headers.get('authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7).trim();
+    }
+
+    const authClient = (await createClient(token)) || supabase;
+    const clientToUse = createAdminClient() || authClient;
+
     // Extract state
     const state = await req.json();
 
