@@ -1,4 +1,4 @@
-import { PlanningAllocationDTO } from './types';
+import type { PlanningAllocationDTO } from './types.ts';
 
 /**
  * Parses a duration/hours input (e.g. '08:00', '8', '8.5', 8) into numeric decimal hours.
@@ -893,6 +893,401 @@ export function computeResourceDayProjectDistribution(
     totalConfirmedHours: totalConfirmedMinutes / 60,
     totalDraftHours: totalDraftMinutes / 60,
     totalPlannedHours: totalPlannedMinutes / 60,
+    isConsistent,
+  };
+}
+
+export interface ProjectPlanningTaskDistribution {
+  taskId: string;
+  taskTitle: string;
+  task: any | null;
+  estimatedHours?: number;
+  confirmedMinutes: number;
+  draftMinutes: number;
+  plannedMinutes: number;
+  confirmedHours: number;
+  draftHours: number;
+  plannedHours: number;
+  remainingHours?: number;
+  allocationCount: number;
+}
+
+export interface ProjectPlanningResourceDistribution {
+  resourceId: string;
+  resourceName: string;
+  resource: any | null;
+  isAssignee?: boolean;
+  confirmedMinutes: number;
+  draftMinutes: number;
+  plannedMinutes: number;
+  confirmedHours: number;
+  draftHours: number;
+  plannedHours: number;
+  taskCount: number;
+  allocationCount: number;
+  tasks: ProjectPlanningTaskDistribution[];
+}
+
+export interface ProjectPlanningDayDistribution {
+  date: string;
+  dateLabel: string;
+  confirmedMinutes: number;
+  draftMinutes: number;
+  plannedMinutes: number;
+  confirmedHours: number;
+  draftHours: number;
+  plannedHours: number;
+  resourceCount: number;
+  taskCount: number;
+  allocationCount: number;
+  resources: ProjectPlanningResourceDistribution[];
+}
+
+export type ProjectPlanningStatus = 
+  | 'SEM_PLANEAMENTO' 
+  | 'DRAFT' 
+  | 'PARCIALMENTE_CONFIRMADO' 
+  | 'CONFIRMADO';
+
+export interface ProjectPlanningSummary {
+  projectId: string;
+  projectTitle: string;
+  project: any | null;
+  status: ProjectPlanningStatus;
+  statusLabel: string;
+  
+  totalConfirmedMinutes: number;
+  totalDraftMinutes: number;
+  totalPlannedMinutes: number;
+  totalConfirmedHours: number;
+  totalDraftHours: number;
+  totalPlannedHours: number;
+  
+  daysCount: number;
+  resourcesCount: number;
+  tasksCount: number;
+  allocationsCount: number;
+  
+  firstDate: string | null;
+  lastDate: string | null;
+  periodLabel: string | null;
+  
+  days: ProjectPlanningDayDistribution[];
+  isConsistent: boolean;
+}
+
+/**
+ * Computes the consolidated daily planning impact of a Project across time (FASE 23E-C3I).
+ * Structure: Projeto -> Dia -> Recurso -> Tarefa
+ * 
+ * Rules:
+ * - Only considers CONFIRMED and DRAFT allocations for the specified project.
+ * - Excludes CANCELLED allocations from operational totals.
+ * - Deterministic sorting:
+ *   1. Date ascending
+ *   2. Resource name alphabetically ('pt-PT')
+ *   3. Task planned load descending, then confirmed descending, then task title ('pt-PT')
+ * - Resources count is unique across the whole project.
+ * - Does NOT assign or calculate resource capacity excess to the project.
+ * - Strict mathematical consistency validation.
+ */
+export function computeProjectPlanningImpact(
+  projectId: string,
+  allocations: PlanningAllocationDTO[] = [],
+  tasks: any[] = [],
+  users: any[] = [],
+  projects: any[] = []
+): ProjectPlanningSummary {
+  const projectObj = projects.find(p => p.id === projectId) || null;
+  const projectTitle = projectObj?.title || (projectId === 'unidentified' ? 'Projeto não identificado' : 'Projeto sem título');
+
+  // Filter allocations that belong to this projectId and are active (CONFIRMED or DRAFT)
+  const projectAllocations = allocations.filter(a => {
+    if (!a || (a.status !== 'CONFIRMED' && a.status !== 'DRAFT')) return false;
+
+    const matchedTask = tasks.find(t => t.id === a.taskId) || (a as any).task || null;
+    const taskProjectId = matchedTask?.projectId || (a as any).projectId || (matchedTask as any)?.project?.id || (a as any).project?.id;
+
+    if (taskProjectId === projectId) return true;
+    if (!taskProjectId && a.taskId && tasks.some(t => t.id === a.taskId && t.projectId === projectId)) return true;
+    if (projectId === 'unidentified' && !taskProjectId) return true;
+
+    return false;
+  });
+
+  let totalConfirmedMinutes = 0;
+  let totalDraftMinutes = 0;
+  const uniqueDatesSet = new Set<string>();
+  const uniqueResourcesSet = new Set<string>();
+  const uniqueTasksSet = new Set<string>();
+
+  for (const a of projectAllocations) {
+    const dur = a.durationMinutes || 0;
+    if (a.status === 'CONFIRMED') totalConfirmedMinutes += dur;
+    if (a.status === 'DRAFT') totalDraftMinutes += dur;
+
+    if (a.date) uniqueDatesSet.add(a.date);
+    if (a.resourceId) uniqueResourcesSet.add(a.resourceId);
+    if (a.taskId) uniqueTasksSet.add(a.taskId);
+    else uniqueTasksSet.add('unidentified_task');
+  }
+
+  const totalPlannedMinutes = totalConfirmedMinutes + totalDraftMinutes;
+  const totalConfirmedHours = totalConfirmedMinutes / 60;
+  const totalDraftHours = totalDraftMinutes / 60;
+  const totalPlannedHours = totalPlannedMinutes / 60;
+
+  // Status computation
+  let status: ProjectPlanningStatus = 'SEM_PLANEAMENTO';
+  let statusLabel = 'Sem planeamento';
+
+  if (totalPlannedMinutes === 0) {
+    status = 'SEM_PLANEAMENTO';
+    statusLabel = 'Sem planeamento';
+  } else if (totalConfirmedMinutes === 0 && totalDraftMinutes > 0) {
+    status = 'DRAFT';
+    statusLabel = 'Planeamento em DRAFT';
+  } else if (totalConfirmedMinutes > 0 && totalDraftMinutes > 0) {
+    status = 'PARCIALMENTE_CONFIRMADO';
+    statusLabel = 'Planeamento parcialmente confirmado';
+  } else {
+    status = 'CONFIRMADO';
+    statusLabel = 'Planeamento confirmado';
+  }
+
+  // Sorted unique dates for period calculation
+  const sortedDates = Array.from(uniqueDatesSet).sort((a, b) => a.localeCompare(b));
+  const firstDate = sortedDates.length > 0 ? sortedDates[0] : null;
+  const lastDate = sortedDates.length > 0 ? sortedDates[sortedDates.length - 1] : null;
+
+  const formatDatePT = (dStr: string) => {
+    try {
+      const [y, m, d] = dStr.split('-');
+      if (y && m && d) return `${d}/${m}/${y}`;
+      return dStr;
+    } catch {
+      return dStr;
+    }
+  };
+
+  let periodLabel: string | null = null;
+  if (sortedDates.length === 1 && firstDate) {
+    periodLabel = formatDatePT(firstDate);
+  } else if (sortedDates.length > 1 && firstDate && lastDate) {
+    periodLabel = `${formatDatePT(firstDate)} → ${formatDatePT(lastDate)}`;
+  }
+
+  // Group by Date -> Resource -> Task
+  const dateMap = new Map<string, {
+    date: string;
+    resourceMap: Map<string, {
+      resourceId: string;
+      resourceName: string;
+      resourceObj: any | null;
+      taskMap: Map<string, {
+        taskId: string;
+        taskTitle: string;
+        taskObj: any | null;
+        estimatedHours?: number;
+        confirmedMinutes: number;
+        draftMinutes: number;
+        allocationCount: number;
+      }>;
+    }>;
+  }>();
+
+  for (const a of projectAllocations) {
+    const dur = a.durationMinutes || 0;
+    const dateStr = a.date;
+    if (!dateStr) continue;
+
+    let dateEntry = dateMap.get(dateStr);
+    if (!dateEntry) {
+      dateEntry = {
+        date: dateStr,
+        resourceMap: new Map(),
+      };
+      dateMap.set(dateStr, dateEntry);
+    }
+
+    const resId = a.resourceId || 'unknown_resource';
+    const userObj = users.find(u => u.id === resId) || null;
+    const resName = userObj ? userObj.name : (resId === 'unknown_resource' || !resId || resId.startsWith('unknown') ? 'Recurso não identificado' : resId);
+
+    let resEntry = dateEntry.resourceMap.get(resId);
+    if (!resEntry) {
+      resEntry = {
+        resourceId: resId,
+        resourceName: resName,
+        resourceObj: userObj,
+        taskMap: new Map(),
+      };
+      dateEntry.resourceMap.set(resId, resEntry);
+    }
+
+    const matchedTask = tasks.find(t => t.id === a.taskId) || (a as any).task || null;
+    const taskId = a.taskId || (matchedTask ? matchedTask.id : 'unknown_task');
+    const taskTitle = matchedTask ? (matchedTask.title || 'Tarefa sem título') : 'Tarefa não identificada';
+    const estimatedHours = matchedTask?.estimatedHours ? parseHoursToNumber(matchedTask.estimatedHours) : undefined;
+
+    let taskEntry = resEntry.taskMap.get(taskId);
+    if (!taskEntry) {
+      taskEntry = {
+        taskId,
+        taskTitle,
+        taskObj: matchedTask,
+        estimatedHours,
+        confirmedMinutes: 0,
+        draftMinutes: 0,
+        allocationCount: 0,
+      };
+      resEntry.taskMap.set(taskId, taskEntry);
+    }
+
+    if (a.status === 'CONFIRMED') {
+      taskEntry.confirmedMinutes += dur;
+    } else if (a.status === 'DRAFT') {
+      taskEntry.draftMinutes += dur;
+    }
+    taskEntry.allocationCount += 1;
+  }
+
+  // Construct day distributions
+  const daysList: ProjectPlanningDayDistribution[] = [];
+  let sumDaysConfirmed = 0;
+  let sumDaysDraft = 0;
+
+  for (const dStr of sortedDates) {
+    const dateEntry = dateMap.get(dStr);
+    if (!dateEntry) continue;
+
+    let dayConfirmedMinutes = 0;
+    let dayDraftMinutes = 0;
+    let dayAllocationCount = 0;
+    const dayTasksSet = new Set<string>();
+
+    const resourcesList: ProjectPlanningResourceDistribution[] = [];
+
+    for (const rEntry of dateEntry.resourceMap.values()) {
+      let resConfirmedMinutes = 0;
+      let resDraftMinutes = 0;
+      let resAllocationCount = 0;
+
+      const tasksList: ProjectPlanningTaskDistribution[] = [];
+
+      for (const tEntry of rEntry.taskMap.values()) {
+        resConfirmedMinutes += tEntry.confirmedMinutes;
+        resDraftMinutes += tEntry.draftMinutes;
+        resAllocationCount += tEntry.allocationCount;
+        dayTasksSet.add(tEntry.taskId);
+
+        const tPlannedMinutes = tEntry.confirmedMinutes + tEntry.draftMinutes;
+        const tPlannedHours = tPlannedMinutes / 60;
+        const remainingHours = tEntry.estimatedHours !== undefined
+          ? Math.max(0, tEntry.estimatedHours - tPlannedHours)
+          : undefined;
+
+        tasksList.push({
+          taskId: tEntry.taskId,
+          taskTitle: tEntry.taskTitle,
+          task: tEntry.taskObj,
+          estimatedHours: tEntry.estimatedHours,
+          confirmedMinutes: tEntry.confirmedMinutes,
+          draftMinutes: tEntry.draftMinutes,
+          plannedMinutes: tPlannedMinutes,
+          confirmedHours: tEntry.confirmedMinutes / 60,
+          draftHours: tEntry.draftMinutes / 60,
+          plannedHours: tPlannedHours,
+          remainingHours,
+          allocationCount: tEntry.allocationCount,
+        });
+      }
+
+      // Sort tasks within resource: 1. Higher planned, 2. Higher confirmed, 3. Task title ('pt-PT')
+      tasksList.sort((a, b) => {
+        if (b.plannedMinutes !== a.plannedMinutes) return b.plannedMinutes - a.plannedMinutes;
+        if (b.confirmedMinutes !== a.confirmedMinutes) return b.confirmedMinutes - a.confirmedMinutes;
+        return a.taskTitle.localeCompare(b.taskTitle, 'pt-PT');
+      });
+
+      const resPlannedMinutes = resConfirmedMinutes + resDraftMinutes;
+      dayConfirmedMinutes += resConfirmedMinutes;
+      dayDraftMinutes += resDraftMinutes;
+      dayAllocationCount += resAllocationCount;
+
+      resourcesList.push({
+        resourceId: rEntry.resourceId,
+        resourceName: rEntry.resourceName,
+        resource: rEntry.resourceObj,
+        confirmedMinutes: resConfirmedMinutes,
+        draftMinutes: resDraftMinutes,
+        plannedMinutes: resPlannedMinutes,
+        confirmedHours: resConfirmedMinutes / 60,
+        draftHours: resDraftMinutes / 60,
+        plannedHours: resPlannedMinutes / 60,
+        taskCount: tasksList.length,
+        allocationCount: resAllocationCount,
+        tasks: tasksList,
+      });
+    }
+
+    // Sort resources within day: Resource name alphabetically ('pt-PT')
+    resourcesList.sort((a, b) => a.resourceName.localeCompare(b.resourceName, 'pt-PT'));
+
+    const dayPlannedMinutes = dayConfirmedMinutes + dayDraftMinutes;
+    sumDaysConfirmed += dayConfirmedMinutes;
+    sumDaysDraft += dayDraftMinutes;
+
+    // Date Label (e.g. "15 de setembro")
+    let dateLabel = dStr;
+    try {
+      const dt = new Date(dStr + 'T00:00:00');
+      dateLabel = dt.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' });
+    } catch {
+      dateLabel = dStr;
+    }
+
+    daysList.push({
+      date: dStr,
+      dateLabel,
+      confirmedMinutes: dayConfirmedMinutes,
+      draftMinutes: dayDraftMinutes,
+      plannedMinutes: dayPlannedMinutes,
+      confirmedHours: dayConfirmedMinutes / 60,
+      draftHours: dayDraftMinutes / 60,
+      plannedHours: dayPlannedMinutes / 60,
+      resourceCount: resourcesList.length,
+      taskCount: dayTasksSet.size,
+      allocationCount: dayAllocationCount,
+      resources: resourcesList,
+    });
+  }
+
+  const isConsistent = 
+    sumDaysConfirmed === totalConfirmedMinutes &&
+    sumDaysDraft === totalDraftMinutes &&
+    (sumDaysConfirmed + sumDaysDraft) === totalPlannedMinutes;
+
+  return {
+    projectId,
+    projectTitle,
+    project: projectObj,
+    status,
+    statusLabel,
+    totalConfirmedMinutes,
+    totalDraftMinutes,
+    totalPlannedMinutes,
+    totalConfirmedHours: totalConfirmedMinutes / 60,
+    totalDraftHours: totalDraftMinutes / 60,
+    totalPlannedHours: totalPlannedMinutes / 60,
+    daysCount: uniqueDatesSet.size,
+    resourcesCount: uniqueResourcesSet.size,
+    tasksCount: uniqueTasksSet.size,
+    allocationsCount: projectAllocations.length,
+    firstDate,
+    lastDate,
+    periodLabel,
+    days: daysList,
     isConsistent,
   };
 }

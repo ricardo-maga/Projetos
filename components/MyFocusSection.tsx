@@ -1279,6 +1279,8 @@ export default function MyFocusSection({
         appConfig={appConfig}
         projects={projects}
         clients={clients}
+        tasks={tasks}
+        onSelectTask={(t) => setSelectedTaskForDetails(t)}
       />
 
     </div>

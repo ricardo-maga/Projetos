@@ -10,7 +10,9 @@ import {
   ChevronDown, 
   ChevronUp, 
   User as UserIcon,
-  Layers
+  Layers,
+  FolderKanban,
+  ExternalLink
 } from 'lucide-react';
 import { Task, Project, Client, TaskType, User } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
@@ -29,7 +31,9 @@ import {
   groupTaskAllocationsByResource,
   computeTaskPlanningImpact,
   getTaskPlanningLoadStatus,
-  TaskPlanningLoadStatus
+  TaskPlanningLoadStatus,
+  computeProjectPlanningImpact,
+  ProjectPlanningSummary
 } from '../lib/planning/summary';
 import PlanningAllocationModal from './PlanningAllocationModal';
 
@@ -55,6 +59,10 @@ interface TaskDetailsModalProps {
   updatePlanningAllocation?: (id: string, updates: any) => Promise<any>;
   cancelPlanningAllocation?: (id: string, version: number) => Promise<any>;
   deletePlanningAllocation?: (id: string) => Promise<any>;
+  // Optional task navigation / list (FASE 23E-C3I)
+  tasks?: Task[];
+  onSelectTask?: (task: Task) => void;
+  onViewTask?: (task: Task) => void;
 }
 
 export default function TaskDetailsModal({
@@ -78,11 +86,21 @@ export default function TaskDetailsModal({
   cancelPlanningAllocation,
   deletePlanningAllocation,
   onFetchAllocations,
+  tasks = [],
+  onSelectTask,
+  onViewTask,
 }: TaskDetailsModalProps) {
   const effectiveCreate = onCreateAllocation || createPlanningAllocation;
   const effectiveUpdate = onUpdateAllocation || updatePlanningAllocation;
   const effectiveCancel = onCancelAllocation || cancelPlanningAllocation;
   const effectiveDelete = onDeleteAllocation || deletePlanningAllocation;
+
+  // Active task state allowing seamless switching via "Ver tarefa" (Requirement 10)
+  const [activeTask, setActiveTask] = useState<Task | null>(task);
+  useEffect(() => {
+    setActiveTask(task);
+  }, [task]);
+
   const [taskEditStatus, setTaskEditStatus] = useState('');
   const [taskEditTypeId, setTaskEditTypeId] = useState('');
   const [taskEditActualHours, setTaskEditActualHours] = useState('');
@@ -98,19 +116,21 @@ export default function TaskDetailsModal({
   const [isPlanningModalOpen, setIsPlanningModalOpen] = useState<boolean>(false);
   const [selectedAllocationForEdit, setSelectedAllocationForEdit] = useState<PlanningAllocationDTO | null>(null);
   const [showCancelledHistory, setShowCancelledHistory] = useState<boolean>(false);
+  const [showProjectPlanning, setShowProjectPlanning] = useState<boolean>(true);
+  const [expandedProjectDays, setExpandedProjectDays] = useState<Record<string, boolean>>({});
 
   // Fetch allocations for this task directly or via prop
   const fetchTaskAllocations = useCallback(async () => {
-    if (!task?.id) return;
+    if (!activeTask?.id) return;
     try {
       if (onFetchAllocations) {
-        const res = await onFetchAllocations({ taskId: task.id });
+        const res = await onFetchAllocations({ taskId: activeTask.id });
         if (res?.data) {
           setInternalAllocations(res.data);
           return;
         }
       }
-      const res = await fetch(`/api/v1/planning-allocations?taskId=${task.id}&pageSize=100`, {
+      const res = await fetch(`/api/v1/planning-allocations?taskId=${activeTask.id}&pageSize=100`, {
         headers: getAuthHeaders(),
       });
       const json = await res.json().catch(() => null);
@@ -120,24 +140,24 @@ export default function TaskDetailsModal({
     } catch (err) {
       console.warn('Erro ao carregar allocations da tarefa:', err);
     }
-  }, [task?.id, onFetchAllocations]);
+  }, [activeTask?.id, onFetchAllocations]);
 
   useEffect(() => {
-    if (task?.id) {
+    if (activeTask?.id) {
       fetchTaskAllocations();
     }
-  }, [task?.id, fetchTaskAllocations]);
+  }, [activeTask?.id, fetchTaskAllocations]);
 
   // Canonical task planning allocations source (FASE 23E-C3M-E)
   const taskPlanningAllocations = React.useMemo(() => {
-    if (!task) return [];
+    if (!activeTask) return [];
 
     const map = new Map<string, PlanningAllocationDTO>();
 
     // 1. Add allocations for this task passed via planningAllocations prop
     if (Array.isArray(planningAllocations)) {
       for (const alloc of planningAllocations) {
-        if (alloc && alloc.taskId === task.id) {
+        if (alloc && alloc.taskId === activeTask.id) {
           map.set(alloc.id, alloc);
         }
       }
@@ -146,7 +166,7 @@ export default function TaskDetailsModal({
     // 2. Overwrite/supplement with internalAllocations (fetched specifically for this task)
     if (Array.isArray(internalAllocations)) {
       for (const alloc of internalAllocations) {
-        if (alloc && alloc.taskId === task.id) {
+        if (alloc && alloc.taskId === activeTask.id) {
           map.set(alloc.id, alloc);
         }
       }
@@ -157,7 +177,7 @@ export default function TaskDetailsModal({
       if (a.date !== b.date) return a.date.localeCompare(b.date);
       return a.startTime.localeCompare(b.startTime);
     });
-  }, [task, planningAllocations, internalAllocations]);
+  }, [activeTask, planningAllocations, internalAllocations]);
 
   const activeAllocations = React.useMemo(() => {
     return taskPlanningAllocations.filter(a => a.status !== 'CANCELLED');
@@ -169,8 +189,8 @@ export default function TaskDetailsModal({
 
   // Authoritative Planning Summary
   const planningSummary = React.useMemo(() => {
-    return computePlanningSummary(task?.estimatedHours, taskPlanningAllocations);
-  }, [task?.estimatedHours, taskPlanningAllocations]);
+    return computePlanningSummary(activeTask?.estimatedHours, taskPlanningAllocations);
+  }, [activeTask?.estimatedHours, taskPlanningAllocations]);
 
   // Operational planning load status (FASE 23E-C3M-D)
   const taskLoadStatus = React.useMemo(() => {
@@ -187,37 +207,81 @@ export default function TaskDetailsModal({
     return groupTaskAllocationsByResource(
       activeAllocations, 
       users, 
-      task?.assigneeIds || []
+      activeTask?.assigneeIds || []
     );
-  }, [activeAllocations, users, task?.assigneeIds]);
+  }, [activeAllocations, users, activeTask?.assigneeIds]);
 
   // Task Daily Planning Impact (FASE 23E-C3F)
   const planningImpact = React.useMemo(() => {
     return computeTaskPlanningImpact(
       activeAllocations,
-      task?.estimatedHours,
+      activeTask?.estimatedHours,
       users,
-      task?.assigneeIds || []
+      activeTask?.assigneeIds || []
     );
-  }, [activeAllocations, task?.estimatedHours, users, task?.assigneeIds]);
+  }, [activeAllocations, activeTask?.estimatedHours, users, activeTask?.assigneeIds]);
+
+  // All available allocations combined for Project Planning Impact (FASE 23E-C3I)
+  const allAvailableAllocations = React.useMemo(() => {
+    const map = new Map<string, PlanningAllocationDTO>();
+    if (Array.isArray(planningAllocations)) {
+      for (const a of planningAllocations) {
+        if (a?.id) map.set(a.id, a);
+      }
+    }
+    if (Array.isArray(internalAllocations)) {
+      for (const a of internalAllocations) {
+        if (a?.id) map.set(a.id, a);
+      }
+    }
+    return Array.from(map.values());
+  }, [planningAllocations, internalAllocations]);
+
+  // Consolidated Project Planning Impact (FASE 23E-C3I)
+  const projectPlanningImpact = React.useMemo<ProjectPlanningSummary | null>(() => {
+    if (!activeTask?.projectId) return null;
+    return computeProjectPlanningImpact(
+      activeTask.projectId,
+      allAvailableAllocations,
+      tasks,
+      users,
+      projects
+    );
+  }, [activeTask?.projectId, allAvailableAllocations, tasks, users, projects]);
+
+  const toggleProjectDayExpanded = (dateStr: string) => {
+    setExpandedProjectDays(prev => ({
+      ...prev,
+      [dateStr]: !prev[dateStr],
+    }));
+  };
+
+  const handleNavigateToTask = (targetTaskId: string) => {
+    const targetTaskObj = tasks.find(t => t.id === targetTaskId) || null;
+    if (targetTaskObj) {
+      if (onSelectTask) onSelectTask(targetTaskObj);
+      if (onViewTask) onViewTask(targetTaskObj);
+      setActiveTask(targetTaskObj);
+    }
+  };
 
   useEffect(() => {
-    if (task) {
-      setTaskEditStatus(task.statusId || '');
-      setTaskEditTypeId(task.taskTypeId || '');
-      setTaskEditActualHours(formatToOnlyHours(task.actualHours));
-      setTaskEditNotes(task.notes || '');
-      setTaskEditStartDate(task.startDate || '');
-      setTaskEditStartTime(task.startTime || '');
-      setTaskEditEndDate(task.endDate || '');
-      setTaskEditEndTime(task.endTime || '');
-      setTaskEditAssignees(task.assigneeIds || []);
+    if (activeTask) {
+      setTaskEditStatus(activeTask.statusId || '');
+      setTaskEditTypeId(activeTask.taskTypeId || '');
+      setTaskEditActualHours(formatToOnlyHours(activeTask.actualHours));
+      setTaskEditNotes(activeTask.notes || '');
+      setTaskEditStartDate(activeTask.startDate || '');
+      setTaskEditStartTime(activeTask.startTime || '');
+      setTaskEditEndDate(activeTask.endDate || '');
+      setTaskEditEndTime(activeTask.endTime || '');
+      setTaskEditAssignees(activeTask.assigneeIds || []);
     }
-  }, [task]);
+  }, [activeTask]);
 
-  if (!task) return null;
+  if (!activeTask) return null;
 
-  const taskProj = projects.find(p => p.id === task.projectId);
+  const taskProj = projects.find(p => p.id === activeTask.projectId);
   const clientObj = taskProj ? clients.find(c => c.id === taskProj.clientId) : null;
   const taskClientName = clientObj ? (clientObj.clientName || clientObj.shortName || 'N/A') : 'N/A';
   const taskProjTitle = taskProj ? taskProj.title : 'N/A';
@@ -229,8 +293,8 @@ export default function TaskDetailsModal({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (updateTask) {
-      updateTask(task.id, {
+    if (updateTask && activeTask) {
+      updateTask(activeTask.id, {
         statusId: taskEditStatus,
         taskTypeId: taskEditTypeId || '',
         actualHours: formatToOnlyHours(taskEditActualHours),
@@ -841,6 +905,273 @@ export default function TaskDetailsModal({
                 )}
               </div>
             )}
+
+            {/* SECÇÃO: PLANEAMENTO DO PROJETO (FASE 23E-C3I) */}
+            {projectPlanningImpact && (
+              <div className="pt-4 border-t-2 border-slate-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-100">
+                      <FolderKanban className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <span>Planeamento do Projeto</span>
+                        <span className="text-slate-400 font-normal">({taskProjTitle})</span>
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide ${
+                      projectPlanningImpact.status === 'CONFIRMADO'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : projectPlanningImpact.status === 'PARCIALMENTE_CONFIRMADO'
+                        ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                        : projectPlanningImpact.status === 'DRAFT'
+                        ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                        : 'bg-slate-100 text-slate-600 border border-slate-200'
+                    }`}>
+                      {projectPlanningImpact.statusLabel}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowProjectPlanning(!showProjectPlanning)}
+                      className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded cursor-pointer transition-colors"
+                      aria-expanded={showProjectPlanning}
+                      aria-label={showProjectPlanning ? 'Recolher secção de planeamento do projeto' : 'Expandir secção de planeamento do projeto'}
+                    >
+                      {showProjectPlanning ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {showProjectPlanning && (
+                  <div className="space-y-3 animate-in fade-in duration-150">
+                    {/* Resumo Global do Projeto (FASE 23E-C3I Requirement 3 & 9) */}
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+                        <div className="flex flex-wrap items-center gap-2 font-medium">
+                          <span className="font-bold text-slate-800">{projectPlanningImpact.daysCount} dias planeados</span>
+                          <span className="text-slate-300">•</span>
+                          <span>{projectPlanningImpact.resourcesCount} {projectPlanningImpact.resourcesCount === 1 ? 'recurso' : 'recursos'}</span>
+                          <span className="text-slate-300">•</span>
+                          <span>{projectPlanningImpact.tasksCount} {projectPlanningImpact.tasksCount === 1 ? 'tarefa' : 'tarefas'}</span>
+                          <span className="text-slate-300">•</span>
+                          <span>{projectPlanningImpact.allocationsCount} {projectPlanningImpact.allocationsCount === 1 ? 'alocação' : 'alocações'}</span>
+                        </div>
+
+                        {projectPlanningImpact.periodLabel && (
+                          <div className="text-[11px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                            Período: {projectPlanningImpact.periodLabel}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Totais de Horas do Projeto */}
+                      <div className="flex flex-wrap items-center gap-2 text-xs pt-1 border-t border-slate-200/60">
+                        <span className="text-blue-800 font-bold text-[11px]">
+                          CONFIRMADO {formatHoursDisplay(projectPlanningImpact.totalConfirmedHours)}
+                        </span>
+                        <span className="text-slate-300">·</span>
+                        <span className="text-amber-800 font-bold text-[11px]">
+                          DRAFT {formatHoursDisplay(projectPlanningImpact.totalDraftHours)}
+                        </span>
+                        <span className="text-slate-300">·</span>
+                        <span className="font-extrabold text-slate-900 text-[11px] bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                          PLANEADO {formatHoursDisplay(projectPlanningImpact.totalPlannedHours)}
+                        </span>
+                      </div>
+
+                      {!projectPlanningImpact.isConsistent && (
+                        <div className="text-[11px] text-amber-700 bg-amber-50 p-1.5 rounded border border-amber-200 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span>Aviso: Discrepância na consolidação matemática do projeto.</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Distribuição Diária do Projeto (Dia -> Recurso -> Tarefa) */}
+                    {projectPlanningImpact.days.length === 0 ? (
+                      <div className="p-3 text-center text-xs text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                        Nenhuma carga planeada para este projeto.
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+                        {projectPlanningImpact.days.map(day => {
+                          const isExpanded = expandedProjectDays[day.date] !== false; // default expanded
+
+                          return (
+                            <div 
+                              key={day.date}
+                              className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs"
+                            >
+                              {/* Day Header */}
+                              <div 
+                                className="p-2.5 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-100/60 transition-colors"
+                                onClick={() => toggleProjectDayExpanded(day.date)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') toggleProjectDayExpanded(day.date); }}
+                                aria-expanded={isExpanded}
+                                aria-label={`Expandir ou recolher planeamento do dia ${day.dateLabel}`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-slate-900 text-xs capitalize">
+                                    {day.dateLabel}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 font-mono">
+                                    ({day.date})
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-xs">
+                                  <span className="text-[11px] text-slate-500 hidden sm:inline">
+                                    {day.resourceCount} {day.resourceCount === 1 ? 'recurso' : 'recursos'} • {day.taskCount} {day.taskCount === 1 ? 'tarefa' : 'tarefas'}
+                                  </span>
+                                  <span className="font-bold text-slate-900 text-[11px] bg-white px-2 py-0.5 rounded border border-slate-200">
+                                    {formatHoursDisplay(day.plannedHours)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="p-0.5 text-slate-400 hover:text-slate-600 rounded"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      toggleProjectDayExpanded(day.date);
+                                    }}
+                                  >
+                                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Resources within Day */}
+                              {isExpanded && (
+                                <div className="p-2.5 space-y-2.5 bg-white">
+                                  {day.resources.map(res => (
+                                    <div 
+                                      key={res.resourceId}
+                                      className="p-2 bg-slate-50/60 border border-slate-200/80 rounded-lg space-y-1.5 text-xs"
+                                    >
+                                      {/* Resource Header */}
+                                      <div className="flex items-center justify-between pb-1 border-b border-slate-200/60">
+                                        <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                                          <UserIcon className="w-3 h-3 text-slate-400 shrink-0" />
+                                          <span>{res.resourceName}</span>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 text-[11px]">
+                                          {res.confirmedHours > 0 && (
+                                            <span className="text-blue-700 font-bold">
+                                              {formatHoursDisplay(res.confirmedHours)} CONF
+                                            </span>
+                                          )}
+                                          {res.confirmedHours > 0 && res.draftHours > 0 && (
+                                            <span className="text-slate-300">·</span>
+                                          )}
+                                          {res.draftHours > 0 && (
+                                            <span className="text-amber-700 font-bold">
+                                              {formatHoursDisplay(res.draftHours)} DRAFT
+                                            </span>
+                                          )}
+                                          <span className="text-slate-300">·</span>
+                                          <span className="font-extrabold text-slate-800 bg-white px-1.5 py-0.2 rounded border border-slate-200">
+                                            {formatHoursDisplay(res.plannedHours)}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {/* Tasks List within Resource */}
+                                      <div className="space-y-1 pl-1">
+                                        {res.tasks.map(t => {
+                                          const isCurrentTask = t.taskId === activeTask.id;
+
+                                          return (
+                                            <div 
+                                              key={t.taskId}
+                                              className={`p-1.5 rounded-md border flex items-center justify-between gap-2 text-xs transition-colors ${
+                                                isCurrentTask
+                                                  ? 'bg-blue-50/50 border-blue-200'
+                                                  : 'bg-white border-slate-200'
+                                              }`}
+                                            >
+                                              <div className="min-w-0 space-y-0.5">
+                                                <div className="font-semibold text-slate-800 flex items-center gap-1.5 truncate">
+                                                  <span className="truncate">{t.taskTitle}</span>
+                                                  {isCurrentTask && (
+                                                    <span className="text-[9px] font-bold text-blue-700 bg-blue-100 px-1 py-0.2 rounded shrink-0">
+                                                      Esta tarefa
+                                                    </span>
+                                                  )}
+                                                </div>
+
+                                                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 flex-wrap">
+                                                  <span className="font-bold text-slate-700">
+                                                    {formatHoursDisplay(t.plannedHours)} planeado
+                                                  </span>
+                                                  <span className="text-slate-300">•</span>
+                                                  <span className="text-blue-700 font-medium">
+                                                    {formatHoursDisplay(t.confirmedHours)} CONF
+                                                  </span>
+                                                  {t.draftHours > 0 && (
+                                                    <>
+                                                      <span className="text-slate-300">•</span>
+                                                      <span className="text-amber-700 font-medium">
+                                                        {formatHoursDisplay(t.draftHours)} DRAFT
+                                                      </span>
+                                                    </>
+                                                  )}
+                                                  <span className="text-slate-300">•</span>
+                                                  <span>{t.allocationCount} {t.allocationCount === 1 ? 'alocação' : 'alocações'}</span>
+
+                                                  {t.estimatedHours !== undefined && t.estimatedHours > 0 && (
+                                                    <>
+                                                      <span className="text-slate-300">|</span>
+                                                      <span className="text-slate-600">
+                                                        Estimativa: {formatHoursDisplay(t.estimatedHours)}
+                                                      </span>
+                                                      {t.remainingHours !== undefined && t.remainingHours > 0 && (
+                                                        <span className="text-slate-500">
+                                                          (Falta: {formatHoursDisplay(t.remainingHours)})
+                                                        </span>
+                                                      )}
+                                                    </>
+                                                  )}
+                                                </div>
+                                              </div>
+
+                                              {/* Action: Ver Tarefa (Requirement 10) */}
+                                              {!isCurrentTask && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleNavigateToTask(t.taskId)}
+                                                  className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-[10px] font-bold flex items-center gap-1 shrink-0 cursor-pointer transition-colors"
+                                                  aria-label={`Ver detalhes da tarefa ${t.taskTitle}`}
+                                                  title="Ver detalhes da tarefa"
+                                                >
+                                                  <ExternalLink className="w-3 h-3" />
+                                                  <span>Ver tarefa</span>
+                                                </button>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
 
           {/* Action Buttons */}

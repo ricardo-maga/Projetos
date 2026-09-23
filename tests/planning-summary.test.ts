@@ -11,9 +11,10 @@ import {
   computeTaskPlanningImpact,
   getTaskDailyOperationalStatus,
   computeResourceDayTaskConsistency,
-  computeResourceDayProjectDistribution
+  computeResourceDayProjectDistribution,
+  computeProjectPlanningImpact
 } from '../lib/planning/summary.ts';
-import { PlanningAllocationDTO } from '../lib/planning/types.ts';
+import type { PlanningAllocationDTO } from '../lib/planning/types.ts';
 
 describe('Planning Summary & Calculations Unit Tests (FASE 23C)', () => {
   const makeAllocation = (id: string, durationMinutes: number, status: 'DRAFT' | 'CONFIRMED' | 'CANCELLED'): PlanningAllocationDTO => ({
@@ -1382,4 +1383,306 @@ describe('FASE 23E-C3H — Visão Consolidada do Planeamento Diário por Projeto
     assert.strictEqual(sumProjectPlanned, result.totalPlannedMinutes);
   });
 });
+
+describe('FASE 23E-C3I — Visão Consolidada do Planeamento Diário por Projeto', () => {
+  const dummyUsers = [
+    { id: 'user-ana', name: 'Ana Silva' },
+    { id: 'user-joao', name: 'João Santos' },
+    { id: 'user-maria', name: 'Maria Fernandes' },
+    { id: 'user-pedro', name: 'Pedro Costa' },
+  ];
+
+  const dummyProjects = [
+    { id: 'proj-1', title: 'Projeto Alpha' },
+    { id: 'proj-2', title: 'Projeto Beta' },
+  ];
+
+  const dummyTasks = [
+    { id: 'task-1', title: 'Instalação de Servidor', projectId: 'proj-1', estimatedHours: '10h' },
+    { id: 'task-2', title: 'Configuração de Rede', projectId: 'proj-1', estimatedHours: '6h' },
+    { id: 'task-3', title: 'Auditoria de Segurança', projectId: 'proj-1', estimatedHours: '4h' },
+    { id: 'task-other', title: 'Manutenção Beta', projectId: 'proj-2', estimatedHours: '8h' },
+  ];
+
+  const makeAlloc = (
+    id: string,
+    taskId: string,
+    resourceId: string,
+    date: string,
+    durationMinutes: number,
+    status: 'CONFIRMED' | 'DRAFT' | 'CANCELLED'
+  ): PlanningAllocationDTO => ({
+    id,
+    taskId,
+    resourceId,
+    date,
+    startTime: '09:00',
+    endTime: '13:00',
+    durationMinutes,
+    status,
+    version: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  // Cenário A: Projeto com 4h CONFIRMED num único dia
+  it('Cenário A: Projeto com 4h CONFIRMED num único dia', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 240, 'CONFIRMED'), // 4h CONF
+    ];
+
+    const result = computeProjectPlanningImpact('proj-1', allocs, dummyTasks, dummyUsers, dummyProjects);
+    assert.strictEqual(result.projectId, 'proj-1');
+    assert.strictEqual(result.projectTitle, 'Projeto Alpha');
+    assert.strictEqual(result.totalConfirmedMinutes, 240);
+    assert.strictEqual(result.totalConfirmedHours, 4);
+    assert.strictEqual(result.totalDraftMinutes, 0);
+    assert.strictEqual(result.totalPlannedMinutes, 240);
+    assert.strictEqual(result.totalPlannedHours, 4);
+    assert.strictEqual(result.daysCount, 1);
+    assert.strictEqual(result.resourcesCount, 1);
+    assert.strictEqual(result.tasksCount, 1);
+    assert.strictEqual(result.allocationsCount, 1);
+    assert.strictEqual(result.status, 'CONFIRMADO');
+    assert.strictEqual(result.firstDate, '2026-09-22');
+    assert.strictEqual(result.lastDate, '2026-09-22');
+    assert.strictEqual(result.periodLabel, '22/09/2026');
+    assert.strictEqual(result.isConsistent, true);
+  });
+
+  // Cenário B: 2h CONFIRMED + 2h DRAFT
+  it('Cenário B: 2h CONFIRMED + 2h DRAFT no mesmo projeto', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 120, 'CONFIRMED'), // 2h CONF
+      makeAlloc('a2', 'task-2', 'user-joao', '2026-09-22', 120, 'DRAFT'),     // 2h DRAFT
+    ];
+
+    const result = computeProjectPlanningImpact('proj-1', allocs, dummyTasks, dummyUsers, dummyProjects);
+    assert.strictEqual(result.totalConfirmedMinutes, 120);
+    assert.strictEqual(result.totalConfirmedHours, 2);
+    assert.strictEqual(result.totalDraftMinutes, 120);
+    assert.strictEqual(result.totalDraftHours, 2);
+    assert.strictEqual(result.totalPlannedMinutes, 240);
+    assert.strictEqual(result.totalPlannedHours, 4);
+    assert.strictEqual(result.status, 'PARCIALMENTE_CONFIRMADO');
+    assert.strictEqual(result.statusLabel, 'Planeamento parcialmente confirmado');
+    assert.strictEqual(result.isConsistent, true);
+  });
+
+  // Cenário C: Mesmo projeto em 3 dias
+  it('Cenário C: Mesmo projeto em 3 dias ordenados cronologicamente', () => {
+    const allocs = [
+      makeAlloc('a3', 'task-1', 'user-joao', '2026-09-24', 120, 'CONFIRMED'),
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 120, 'CONFIRMED'),
+      makeAlloc('a2', 'task-2', 'user-joao', '2026-09-23', 120, 'CONFIRMED'),
+    ];
+
+    const result = computeProjectPlanningImpact('proj-1', allocs, dummyTasks, dummyUsers, dummyProjects);
+    assert.strictEqual(result.daysCount, 3);
+    assert.strictEqual(result.days.length, 3);
+    assert.strictEqual(result.days[0].date, '2026-09-22');
+    assert.strictEqual(result.days[1].date, '2026-09-23');
+    assert.strictEqual(result.days[2].date, '2026-09-24');
+    assert.strictEqual(result.firstDate, '2026-09-22');
+    assert.strictEqual(result.lastDate, '2026-09-24');
+    assert.strictEqual(result.periodLabel, '22/09/2026 → 24/09/2026');
+    assert.strictEqual(result.isConsistent, true);
+  });
+
+  // Cenário D: Mesmo recurso em vários dias (contabilizado 1 única vez no total global)
+  it('Cenário D: Mesmo recurso em vários dias é contabilizado uma única vez no total global de recursos', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 180, 'CONFIRMED'),
+      makeAlloc('a2', 'task-1', 'user-joao', '2026-09-23', 180, 'CONFIRMED'),
+      makeAlloc('a3', 'task-2', 'user-joao', '2026-09-24', 180, 'CONFIRMED'),
+    ];
+
+    const result = computeProjectPlanningImpact('proj-1', allocs, dummyTasks, dummyUsers, dummyProjects);
+    assert.strictEqual(result.resourcesCount, 1); // Apenas João Santos
+    assert.strictEqual(result.daysCount, 3);
+    assert.strictEqual(result.totalPlannedHours, 9);
+    assert.strictEqual(result.isConsistent, true);
+  });
+
+  // Cenário E: Vários recursos no mesmo dia (separados e ordenados por nome)
+  it('Cenário E: Vários recursos no mesmo dia aparecem separados e ordenados alfabeticamente', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-maria', '2026-09-22', 120, 'CONFIRMED'), // Maria Fernandes
+      makeAlloc('a2', 'task-2', 'user-ana', '2026-09-22', 120, 'CONFIRMED'),   // Ana Silva
+      makeAlloc('a3', 'task-3', 'user-joao', '2026-09-22', 120, 'CONFIRMED'),  // João Santos
+    ];
+
+    const result = computeProjectPlanningImpact('proj-1', allocs, dummyTasks, dummyUsers, dummyProjects);
+    assert.strictEqual(result.daysCount, 1);
+    assert.strictEqual(result.resourcesCount, 3);
+    
+    const day = result.days[0];
+    assert.strictEqual(day.resources.length, 3);
+    assert.strictEqual(day.resources[0].resourceName, 'Ana Silva');
+    assert.strictEqual(day.resources[1].resourceName, 'João Santos');
+    assert.strictEqual(day.resources[2].resourceName, 'Maria Fernandes');
+    assert.strictEqual(result.isConsistent, true);
+  });
+
+  // Cenário F: Várias tarefas no mesmo recurso/dia (ordenadas por carga planeada descendente)
+  it('Cenário F: Várias tarefas no mesmo recurso/dia ordenadas por carga planeada descendente', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 60, 'CONFIRMED'),  // 1h
+      makeAlloc('a2', 'task-2', 'user-joao', '2026-09-22', 240, 'CONFIRMED'), // 4h
+      makeAlloc('a3', 'task-3', 'user-joao', '2026-09-22', 120, 'CONFIRMED'), // 2h
+    ];
+
+    const result = computeProjectPlanningImpact('proj-1', allocs, dummyTasks, dummyUsers, dummyProjects);
+    const res = result.days[0].resources[0];
+    assert.strictEqual(res.tasks.length, 3);
+    assert.strictEqual(res.tasks[0].taskId, 'task-2'); // 4h
+    assert.strictEqual(res.tasks[0].plannedHours, 4);
+    assert.strictEqual(res.tasks[1].taskId, 'task-3'); // 2h
+    assert.strictEqual(res.tasks[1].plannedHours, 2);
+    assert.strictEqual(res.tasks[2].taskId, 'task-1'); // 1h
+    assert.strictEqual(res.tasks[2].plannedHours, 1);
+    assert.strictEqual(result.isConsistent, true);
+  });
+
+  // Cenário G: Várias alocações da mesma tarefa no mesmo recurso/dia
+  it('Cenário G: Várias alocações da mesma tarefa no mesmo recurso/dia consolidadas numa única entrada', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 120, 'CONFIRMED'), // 2h CONF
+      makeAlloc('a2', 'task-1', 'user-joao', '2026-09-22', 60, 'DRAFT'),      // 1h DRAFT
+      makeAlloc('a3', 'task-1', 'user-joao', '2026-09-22', 60, 'CONFIRMED'),  // 1h CONF
+    ];
+
+    const result = computeProjectPlanningImpact('proj-1', allocs, dummyTasks, dummyUsers, dummyProjects);
+    const res = result.days[0].resources[0];
+    assert.strictEqual(res.tasks.length, 1);
+    assert.strictEqual(res.tasks[0].taskId, 'task-1');
+    assert.strictEqual(res.tasks[0].confirmedMinutes, 180); // 3h
+    assert.strictEqual(res.tasks[0].draftMinutes, 60);      // 1h
+    assert.strictEqual(res.tasks[0].plannedMinutes, 240);    // 4h
+    assert.strictEqual(res.tasks[0].allocationCount, 3);
+    assert.strictEqual(result.isConsistent, true);
+  });
+
+  // Cenário H: CANCELLED não entra em CONFIRMED, DRAFT ou PLANEADO
+  it('Cenário H: Alocações CANCELLED não entram nos cálculos operacionais', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 240, 'CONFIRMED'), // 4h CONF
+      makeAlloc('a2', 'task-2', 'user-pedro', '2026-09-22', 180, 'CANCELLED'), // 3h CANCELLED
+      makeAlloc('a3', 'task-3', 'user-maria', '2026-09-23', 240, 'CANCELLED'), // 4h CANCELLED
+    ];
+
+    const result = computeProjectPlanningImpact('proj-1', allocs, dummyTasks, dummyUsers, dummyProjects);
+    assert.strictEqual(result.totalConfirmedMinutes, 240);
+    assert.strictEqual(result.totalDraftMinutes, 0);
+    assert.strictEqual(result.totalPlannedMinutes, 240);
+    assert.strictEqual(result.daysCount, 1);
+    assert.strictEqual(result.resourcesCount, 1); // Pedro e Maria não entram pois estão cancelados
+    assert.strictEqual(result.tasksCount, 1);
+    assert.strictEqual(result.allocationsCount, 1);
+    assert.strictEqual(result.isConsistent, true);
+  });
+
+  // Cenário I: Excesso do recurso não é atribuído ao projeto
+  it('Cenário I: Excesso de capacidade do recurso pertence ao técnico e não é atribuído ao projeto', () => {
+    // João tem 10h planeadas no total no dia (6h no Proj 1, 4h no Proj 2)
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 360, 'CONFIRMED'),     // 6h Proj 1
+      makeAlloc('a2', 'task-other', 'user-joao', '2026-09-22', 240, 'CONFIRMED'), // 4h Proj 2
+    ];
+
+    const result = computeProjectPlanningImpact('proj-1', allocs, dummyTasks, dummyUsers, dummyProjects);
+    assert.strictEqual(result.totalPlannedHours, 6);
+    assert.strictEqual(result.totalConfirmedHours, 6);
+    // Não há métricas de capacidade nem de excesso atribuídas ao projeto
+    assert.strictEqual((result as any).excessMinutes, undefined);
+    assert.strictEqual(result.isConsistent, true);
+  });
+
+  // Cenário J: Consistência matemática (Σ dias = Σ recursos = Σ tarefas = totais do projeto)
+  it('Cenário J: Consistência matemática estrita entre todos os níveis de agregação', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 180, 'CONFIRMED'),
+      makeAlloc('a2', 'task-2', 'user-joao', '2026-09-22', 60, 'DRAFT'),
+      makeAlloc('a3', 'task-1', 'user-ana', '2026-09-22', 120, 'CONFIRMED'),
+      makeAlloc('a4', 'task-3', 'user-maria', '2026-09-23', 240, 'CONFIRMED'),
+      makeAlloc('a5', 'task-2', 'user-joao', '2026-09-23', 60, 'DRAFT'),
+    ];
+
+    const result = computeProjectPlanningImpact('proj-1', allocs, dummyTasks, dummyUsers, dummyProjects);
+    assert.strictEqual(result.isConsistent, true);
+    assert.strictEqual(result.totalConfirmedMinutes, 540); // 3h + 2h + 4h = 9h (540m)
+    assert.strictEqual(result.totalDraftMinutes, 120);     // 1h + 1h = 2h (120m)
+    assert.strictEqual(result.totalPlannedMinutes, 660);   // 11h (660m)
+
+    const sumDaysConfirmed = result.days.reduce((acc, d) => acc + d.confirmedMinutes, 0);
+    const sumDaysDraft = result.days.reduce((acc, d) => acc + d.draftMinutes, 0);
+    const sumDaysPlanned = result.days.reduce((acc, d) => acc + d.plannedMinutes, 0);
+
+    assert.strictEqual(sumDaysConfirmed, result.totalConfirmedMinutes);
+    assert.strictEqual(sumDaysDraft, result.totalDraftMinutes);
+    assert.strictEqual(sumDaysPlanned, result.totalPlannedMinutes);
+
+    for (const d of result.days) {
+      const sumResConfirmed = d.resources.reduce((acc, r) => acc + r.confirmedMinutes, 0);
+      const sumResDraft = d.resources.reduce((acc, r) => acc + r.draftMinutes, 0);
+      assert.strictEqual(sumResConfirmed, d.confirmedMinutes);
+      assert.strictEqual(sumResDraft, d.draftMinutes);
+
+      for (const r of d.resources) {
+        const sumTaskConfirmed = r.tasks.reduce((acc, t) => acc + t.confirmedMinutes, 0);
+        const sumTaskDraft = r.tasks.reduce((acc, t) => acc + t.draftMinutes, 0);
+        assert.strictEqual(sumTaskConfirmed, r.confirmedMinutes);
+        assert.strictEqual(sumTaskDraft, r.draftMinutes);
+      }
+    }
+  });
+
+  // Cenário K: Tarefa ou recurso não identificado
+  it('Cenário K: Tarefa não identificada não é descartada e é contabilizada de forma segura', () => {
+    const allocs = [
+      makeAlloc('a1', 'unknown-task-999', 'unknown-user-888', '2026-09-22', 180, 'CONFIRMED'),
+    ];
+
+    const result = computeProjectPlanningImpact('unidentified', allocs, dummyTasks, dummyUsers, dummyProjects);
+    assert.strictEqual(result.projectId, 'unidentified');
+    assert.strictEqual(result.projectTitle, 'Projeto não identificado');
+    assert.strictEqual(result.totalPlannedHours, 3);
+    assert.strictEqual(result.daysCount, 1);
+    assert.strictEqual(result.resourcesCount, 1);
+    assert.strictEqual(result.days[0].resources[0].resourceName, 'Recurso não identificado');
+    assert.strictEqual(result.days[0].resources[0].tasks[0].taskTitle, 'Tarefa não identificada');
+    assert.strictEqual(result.isConsistent, true);
+  });
+
+  // Cenário L: Ordenação determinística completa (Dias asc, Recursos alf, Tarefas carga desc)
+  it('Cenário L: Ordenação determinística completa em cascata', () => {
+    const allocs = [
+      // Dia 2026-09-25
+      makeAlloc('d2-1', 'task-1', 'user-joao', '2026-09-25', 120, 'CONFIRMED'),
+      // Dia 2026-09-22
+      makeAlloc('d1-m-t1', 'task-1', 'user-maria', '2026-09-22', 60, 'CONFIRMED'),  // 1h
+      makeAlloc('d1-m-t2', 'task-2', 'user-maria', '2026-09-22', 180, 'CONFIRMED'), // 3h
+      makeAlloc('d1-a-t1', 'task-1', 'user-ana', '2026-09-22', 120, 'CONFIRMED'),
+    ];
+
+    const result = computeProjectPlanningImpact('proj-1', allocs, dummyTasks, dummyUsers, dummyProjects);
+    
+    // 1. Dias ordenados ascendentemente
+    assert.strictEqual(result.days[0].date, '2026-09-22');
+    assert.strictEqual(result.days[1].date, '2026-09-25');
+
+    // 2. Recursos no dia 2026-09-22 ordenados alfabeticamente (Ana Silva antes de Maria Fernandes)
+    const day1 = result.days[0];
+    assert.strictEqual(day1.resources[0].resourceName, 'Ana Silva');
+    assert.strictEqual(day1.resources[1].resourceName, 'Maria Fernandes');
+
+    // 3. Tarefas de Maria Fernandes ordenadas por carga desc (task-2 de 3h antes de task-1 de 1h)
+    const maria = day1.resources[1];
+    assert.strictEqual(maria.tasks[0].taskId, 'task-2');
+    assert.strictEqual(maria.tasks[0].plannedHours, 3);
+    assert.strictEqual(maria.tasks[1].taskId, 'task-1');
+    assert.strictEqual(maria.tasks[1].plannedHours, 1);
+  });
+});
+
 
