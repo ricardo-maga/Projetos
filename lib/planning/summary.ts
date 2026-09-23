@@ -1636,3 +1636,136 @@ export function computeProjectPlanningVsEstimate(
   };
 }
 
+/**
+ * FASE 23E-C3K: INDICADORES DE RISCO DO PLANEAMENTO DO PROJETO
+ */
+
+export interface ProjectPlanningIndicators {
+  totalTasks: number;
+
+  withoutEstimateCount: number;
+  withoutPlanningCount: number;
+  draftOnlyCount: number;
+  partialCount: number;
+  plannedCount: number;
+  excessCount: number;
+
+  totalRemainingHours: number | null;
+  totalExcessHours: number | null;
+
+  tasksWithPlanningCount: number;
+  tasksWithConfirmedCount: number;
+  tasksWithDraftCount: number;
+
+  isConsistent: boolean;
+}
+
+/**
+ * Computes factual operational planning indicators for a project (FASE 23E-C3K).
+ * Pure and deterministic function without scoring, rankings, or automatic risk predictions.
+ */
+export function computeProjectPlanningIndicators(
+  summaryOrProjectId: ProjectPlanningVsEstimateSummary | string,
+  allocations: PlanningAllocationDTO[] = [],
+  tasks: any[] = [],
+  projects: any[] = []
+): ProjectPlanningIndicators {
+  const vsEstimate: ProjectPlanningVsEstimateSummary = typeof summaryOrProjectId === 'string'
+    ? computeProjectPlanningVsEstimate(summaryOrProjectId, allocations, tasks, projects)
+    : summaryOrProjectId;
+
+  const taskItems = vsEstimate?.tasks || [];
+  const totalTasks = taskItems.length;
+
+  let withoutEstimateCount = 0;
+  let withoutPlanningCount = 0;
+  let draftOnlyCount = 0;
+  let partialCount = 0;
+  let plannedCount = 0;
+  let excessCount = 0;
+
+  let tasksWithPlanningCount = 0;
+  let tasksWithConfirmedCount = 0;
+  let tasksWithDraftCount = 0;
+
+  let hasValidEstimate = false;
+  let sumRemainingHours = 0;
+  let sumExcessHours = 0;
+
+  for (const t of taskItems) {
+    switch (t.status) {
+      case 'SEM_ESTIMATIVA':
+        withoutEstimateCount++;
+        break;
+      case 'SEM_PLANEAMENTO':
+        withoutPlanningCount++;
+        break;
+      case 'DRAFT':
+        draftOnlyCount++;
+        break;
+      case 'PARCIAL':
+        partialCount++;
+        break;
+      case 'PLANEADA':
+        plannedCount++;
+        break;
+      case 'EXCESSO':
+        excessCount++;
+        break;
+    }
+
+    if (t.plannedMinutes > 0) {
+      tasksWithPlanningCount++;
+    }
+    if (t.confirmedMinutes > 0) {
+      tasksWithConfirmedCount++;
+    }
+    if (t.draftMinutes > 0) {
+      tasksWithDraftCount++;
+    }
+
+    if (t.estimatedHours !== null && t.estimatedHours > 0) {
+      hasValidEstimate = true;
+      if (t.remainingHours !== null) {
+        sumRemainingHours += t.remainingHours;
+      }
+      if (t.excessHours !== null) {
+        sumExcessHours += t.excessHours;
+      }
+    }
+  }
+
+  const totalRemainingHours = hasValidEstimate ? sumRemainingHours : null;
+  const totalExcessHours = hasValidEstimate ? sumExcessHours : null;
+
+  const sumCategorized = 
+    withoutEstimateCount +
+    withoutPlanningCount +
+    draftOnlyCount +
+    partialCount +
+    plannedCount +
+    excessCount;
+
+  const isConsistent =
+    totalTasks === sumCategorized &&
+    tasksWithPlanningCount <= totalTasks &&
+    tasksWithConfirmedCount <= totalTasks &&
+    tasksWithDraftCount <= totalTasks;
+
+  return {
+    totalTasks,
+    withoutEstimateCount,
+    withoutPlanningCount,
+    draftOnlyCount,
+    partialCount,
+    plannedCount,
+    excessCount,
+    totalRemainingHours,
+    totalExcessHours,
+    tasksWithPlanningCount,
+    tasksWithConfirmedCount,
+    tasksWithDraftCount,
+    isConsistent,
+  };
+}
+

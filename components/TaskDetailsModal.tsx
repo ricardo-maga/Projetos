@@ -13,7 +13,8 @@ import {
   Layers,
   FolderKanban,
   ExternalLink,
-  Target
+  Target,
+  BarChart3
 } from 'lucide-react';
 import { Task, Project, Client, TaskType, User } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
@@ -37,7 +38,10 @@ import {
   ProjectPlanningSummary,
   computeProjectPlanningVsEstimate,
   ProjectPlanningVsEstimateSummary,
-  getTaskPlanningEstimateStatusMeta
+  getTaskPlanningEstimateStatusMeta,
+  computeProjectPlanningIndicators,
+  ProjectPlanningIndicators,
+  TaskPlanningEstimateStatus
 } from '../lib/planning/summary';
 import PlanningAllocationModal from './PlanningAllocationModal';
 
@@ -122,6 +126,8 @@ export default function TaskDetailsModal({
   const [showCancelledHistory, setShowCancelledHistory] = useState<boolean>(false);
   const [showProjectPlanning, setShowProjectPlanning] = useState<boolean>(true);
   const [showProjectEstimateControl, setShowProjectEstimateControl] = useState<boolean>(true);
+  const [showProjectIndicators, setShowProjectIndicators] = useState<boolean>(true);
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<TaskPlanningEstimateStatus | 'ALL'>('ALL');
   const [expandedProjectDays, setExpandedProjectDays] = useState<Record<string, boolean>>({});
 
   // Fetch allocations for this task directly or via prop
@@ -264,6 +270,19 @@ export default function TaskDetailsModal({
       projects
     );
   }, [activeTask?.projectId, allAvailableAllocations, tasks, projects]);
+
+  // Consolidated Project Planning Indicators (FASE 23E-C3K)
+  const projectPlanningIndicators = React.useMemo<ProjectPlanningIndicators | null>(() => {
+    if (!projectPlanningVsEstimate) return null;
+    return computeProjectPlanningIndicators(projectPlanningVsEstimate);
+  }, [projectPlanningVsEstimate]);
+
+  // Filtered Tasks for C3J list based on C3K status filter
+  const filteredProjectVsEstimateTasks = React.useMemo(() => {
+    if (!projectPlanningVsEstimate) return [];
+    if (selectedStatusFilter === 'ALL') return projectPlanningVsEstimate.tasks;
+    return projectPlanningVsEstimate.tasks.filter(t => t.status === selectedStatusFilter);
+  }, [projectPlanningVsEstimate, selectedStatusFilter]);
 
   const toggleProjectDayExpanded = (dateStr: string) => {
     setExpandedProjectDays(prev => ({
@@ -1308,123 +1327,357 @@ export default function TaskDetailsModal({
                           </div>
                         </div>
 
+                        {/* Indicadores do Planeamento (FASE 23E-C3K) */}
+                        {projectPlanningIndicators && (
+                          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                              <div className="flex items-center gap-1.5">
+                                <BarChart3 className="w-3.5 h-3.5 text-slate-700" />
+                                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                  Indicadores do Planeamento
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                {!projectPlanningIndicators.isConsistent && (
+                                  <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                    Aviso de consistência
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setShowProjectIndicators(!showProjectIndicators)}
+                                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 rounded cursor-pointer transition-colors"
+                                  aria-expanded={showProjectIndicators}
+                                  aria-label={showProjectIndicators ? 'Recolher indicadores do planeamento' : 'Expandir indicadores do planeamento'}
+                                >
+                                  {showProjectIndicators ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
+                            </div>
+
+                            {showProjectIndicators && (
+                              <div className="space-y-3">
+                                {/* Estado das Tarefas */}
+                                <div>
+                                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                                    <span>Estado das Tarefas</span>
+                                    {selectedStatusFilter !== 'ALL' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedStatusFilter('ALL')}
+                                        className="text-[10px] text-blue-600 hover:underline cursor-pointer"
+                                      >
+                                        Limpar filtro
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5 text-xs">
+                                    {/* Total */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedStatusFilter('ALL')}
+                                      className={`px-2 py-1 rounded-lg border font-medium text-[11px] flex items-center gap-1.5 cursor-pointer transition-colors ${
+                                        selectedStatusFilter === 'ALL'
+                                          ? 'bg-slate-800 text-white border-slate-900 shadow-2xs'
+                                          : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                                      }`}
+                                      title="Mostrar todas as tarefas"
+                                    >
+                                      <span className="text-slate-400 font-bold">Total:</span>
+                                      <span className="font-extrabold">{projectPlanningIndicators.totalTasks}</span>
+                                    </button>
+
+                                    {/* Sem planeamento */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedStatusFilter(f => f === 'SEM_PLANEAMENTO' ? 'ALL' : 'SEM_PLANEAMENTO')}
+                                      className={`px-2 py-1 rounded-lg border font-medium text-[11px] flex items-center gap-1.5 cursor-pointer transition-colors ${
+                                        selectedStatusFilter === 'SEM_PLANEAMENTO'
+                                          ? 'bg-slate-700 text-white border-slate-800 shadow-2xs'
+                                          : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                                      }`}
+                                      title="Filtrar por tarefas sem planeamento"
+                                    >
+                                      <span className="font-mono text-slate-400">—</span>
+                                      <span>Sem planeamento:</span>
+                                      <span className="font-bold">{projectPlanningIndicators.withoutPlanningCount}</span>
+                                    </button>
+
+                                    {/* DRAFT */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedStatusFilter(f => f === 'DRAFT' ? 'ALL' : 'DRAFT')}
+                                      className={`px-2 py-1 rounded-lg border font-medium text-[11px] flex items-center gap-1.5 cursor-pointer transition-colors ${
+                                        selectedStatusFilter === 'DRAFT'
+                                          ? 'bg-amber-600 text-white border-amber-700 shadow-2xs'
+                                          : 'bg-white text-amber-800 border-amber-200 hover:bg-amber-50'
+                                      }`}
+                                      title="Filtrar por tarefas apenas DRAFT"
+                                    >
+                                      <span className="font-mono text-amber-600">◷</span>
+                                      <span>DRAFT:</span>
+                                      <span className="font-bold">{projectPlanningIndicators.draftOnlyCount}</span>
+                                    </button>
+
+                                    {/* Parcial */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedStatusFilter(f => f === 'PARCIAL' ? 'ALL' : 'PARCIAL')}
+                                      className={`px-2 py-1 rounded-lg border font-medium text-[11px] flex items-center gap-1.5 cursor-pointer transition-colors ${
+                                        selectedStatusFilter === 'PARCIAL'
+                                          ? 'bg-blue-600 text-white border-blue-700 shadow-2xs'
+                                          : 'bg-white text-blue-800 border-blue-200 hover:bg-blue-50'
+                                      }`}
+                                      title="Filtrar por tarefas parcialmente planeadas"
+                                    >
+                                      <span className="font-mono text-blue-600">◔</span>
+                                      <span>Parcial:</span>
+                                      <span className="font-bold">{projectPlanningIndicators.partialCount}</span>
+                                    </button>
+
+                                    {/* Planeada */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedStatusFilter(f => f === 'PLANEADA' ? 'ALL' : 'PLANEADA')}
+                                      className={`px-2 py-1 rounded-lg border font-medium text-[11px] flex items-center gap-1.5 cursor-pointer transition-colors ${
+                                        selectedStatusFilter === 'PLANEADA'
+                                          ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                                          : 'bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50'
+                                      }`}
+                                      title="Filtrar por tarefas totalmente planeadas"
+                                    >
+                                      <span className="font-mono text-emerald-600">✓</span>
+                                      <span>Planeada:</span>
+                                      <span className="font-bold">{projectPlanningIndicators.plannedCount}</span>
+                                    </button>
+
+                                    {/* Excesso */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedStatusFilter(f => f === 'EXCESSO' ? 'ALL' : 'EXCESSO')}
+                                      className={`px-2 py-1 rounded-lg border font-medium text-[11px] flex items-center gap-1.5 cursor-pointer transition-colors ${
+                                        selectedStatusFilter === 'EXCESSO'
+                                          ? 'bg-rose-600 text-white border-rose-700 shadow-2xs'
+                                          : 'bg-white text-rose-800 border-rose-200 hover:bg-rose-50'
+                                      }`}
+                                      title="Filtrar por tarefas com excesso de planeamento"
+                                    >
+                                      <span className="font-mono text-rose-600">!</span>
+                                      <span>Excesso:</span>
+                                      <span className="font-bold">{projectPlanningIndicators.excessCount}</span>
+                                    </button>
+
+                                    {/* Sem estimativa */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedStatusFilter(f => f === 'SEM_ESTIMATIVA' ? 'ALL' : 'SEM_ESTIMATIVA')}
+                                      className={`px-2 py-1 rounded-lg border font-medium text-[11px] flex items-center gap-1.5 cursor-pointer transition-colors ${
+                                        selectedStatusFilter === 'SEM_ESTIMATIVA'
+                                          ? 'bg-slate-600 text-white border-slate-700 shadow-2xs'
+                                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                                      }`}
+                                      title="Filtrar por tarefas sem estimativa"
+                                    >
+                                      <span className="font-mono text-slate-400">?</span>
+                                      <span>Sem estimativa:</span>
+                                      <span className="font-bold">{projectPlanningIndicators.withoutEstimateCount}</span>
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Esforço & Cobertura */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-200/60 text-xs">
+                                  {/* Esforço */}
+                                  <div className="bg-white p-2.5 rounded-lg border border-slate-200/80 space-y-1.5">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                      Esforço
+                                    </span>
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-slate-600">Falta planear:</span>
+                                      <span className={`font-bold ${
+                                        projectPlanningIndicators.totalRemainingHours !== null && projectPlanningIndicators.totalRemainingHours > 0
+                                          ? 'text-amber-700'
+                                          : 'text-slate-700'
+                                      }`}>
+                                        {projectPlanningIndicators.totalRemainingHours !== null
+                                          ? formatHoursDisplay(projectPlanningIndicators.totalRemainingHours)
+                                          : 'N/A'}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-slate-600">Excesso planeado:</span>
+                                      <span className={`font-bold ${
+                                        projectPlanningIndicators.totalExcessHours !== null && projectPlanningIndicators.totalExcessHours > 0
+                                          ? 'text-rose-700 font-extrabold'
+                                          : 'text-slate-700'
+                                      }`}>
+                                        {projectPlanningIndicators.totalExcessHours !== null
+                                          ? (projectPlanningIndicators.totalExcessHours > 0 ? formatHoursDisplay(projectPlanningIndicators.totalExcessHours) : '0h')
+                                          : 'N/A'}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Cobertura */}
+                                  <div className="bg-white p-2.5 rounded-lg border border-slate-200/80 space-y-1.5">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                      Cobertura
+                                    </span>
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-slate-600">Com planeamento:</span>
+                                      <span className="font-bold text-slate-800">
+                                        {projectPlanningIndicators.tasksWithPlanningCount} / {projectPlanningIndicators.totalTasks}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-blue-700 font-medium">Com CONFIRMED:</span>
+                                      <span className="font-bold text-blue-800">
+                                        {projectPlanningIndicators.tasksWithConfirmedCount} / {projectPlanningIndicators.totalTasks}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-amber-700 font-medium">Com DRAFT:</span>
+                                      <span className="font-bold text-amber-800">
+                                        {projectPlanningIndicators.tasksWithDraftCount} / {projectPlanningIndicators.totalTasks}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Lista de Tarefas do Projeto */}
                         <div className="space-y-2">
-                          <div className="text-[11px] font-bold text-slate-600 px-1">
-                            Tarefas ({projectPlanningVsEstimate.tasks.length})
+                          <div className="text-[11px] font-bold text-slate-600 px-1 flex items-center justify-between">
+                            <span>
+                              Tarefas ({filteredProjectVsEstimateTasks.length} {selectedStatusFilter !== 'ALL' ? `de ${projectPlanningVsEstimate.tasks.length}` : ''})
+                            </span>
+                            {selectedStatusFilter !== 'ALL' && (
+                              <span className="text-[10px] font-normal text-slate-500">
+                                A filtrar por: <strong className="text-slate-800">{getTaskPlanningEstimateStatusMeta(selectedStatusFilter).label}</strong>
+                              </span>
+                            )}
                           </div>
 
                           <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                            {projectPlanningVsEstimate.tasks.map(t => {
-                              const meta = getTaskPlanningEstimateStatusMeta(t.status);
-                              const isCurrentTask = t.taskId === activeTask.id;
+                            {filteredProjectVsEstimateTasks.length === 0 ? (
+                              <div className="p-3 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                Nenhuma tarefa corresponde ao filtro selecionado.
+                              </div>
+                            ) : (
+                              filteredProjectVsEstimateTasks.map(t => {
+                                const meta = getTaskPlanningEstimateStatusMeta(t.status);
+                                const isCurrentTask = t.taskId === activeTask.id;
 
-                              return (
-                                <div 
-                                  key={t.taskId}
-                                  className={`p-2.5 rounded-xl border transition-colors ${
-                                    isCurrentTask 
-                                      ? 'bg-blue-50/40 border-blue-200 shadow-2xs' 
-                                      : 'bg-white border-slate-200 hover:border-slate-300'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100">
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <span className="font-semibold text-slate-800 text-xs truncate">
-                                        {t.taskTitle}
-                                      </span>
-                                      {isCurrentTask && (
-                                        <span className="text-[9px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded shrink-0">
-                                          Esta tarefa
+                                return (
+                                  <div 
+                                    key={t.taskId}
+                                    className={`p-2.5 rounded-xl border transition-colors ${
+                                      isCurrentTask 
+                                        ? 'bg-blue-50/40 border-blue-200 shadow-2xs' 
+                                        : 'bg-white border-slate-200 hover:border-slate-300'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100">
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <span className="font-semibold text-slate-800 text-xs truncate">
+                                          {t.taskTitle}
                                         </span>
-                                      )}
+                                        {isCurrentTask && (
+                                          <span className="text-[9px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded shrink-0">
+                                            Esta tarefa
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${meta.badgeClass}`}>
+                                          <span className="font-mono text-xs">{meta.symbol}</span>
+                                          <span>{meta.label}</span>
+                                        </span>
+
+                                        {!isCurrentTask && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleNavigateToTask(t.taskId)}
+                                            className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                                            aria-label={`Ver detalhes da tarefa ${t.taskTitle}`}
+                                            title="Ver detalhes da tarefa"
+                                          >
+                                            <ExternalLink className="w-3 h-3" />
+                                            <span>Ver tarefa</span>
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${meta.badgeClass}`}>
-                                        <span className="font-mono text-xs">{meta.symbol}</span>
-                                        <span>{meta.label}</span>
-                                      </span>
+                                    <div className="pt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600">
+                                      <div>
+                                        <span className="text-slate-400">Estimativa: </span>
+                                        <span className="font-bold text-slate-800">
+                                          {t.estimatedHours !== null ? formatHoursDisplay(t.estimatedHours) : 'N/A'}
+                                        </span>
+                                      </div>
 
-                                      {!isCurrentTask && (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleNavigateToTask(t.taskId)}
-                                          className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                                          aria-label={`Ver detalhes da tarefa ${t.taskTitle}`}
-                                          title="Ver detalhes da tarefa"
-                                        >
-                                          <ExternalLink className="w-3 h-3" />
-                                          <span>Ver tarefa</span>
-                                        </button>
+                                      <span className="text-slate-200">•</span>
+
+                                      <div>
+                                        <span className="text-blue-700 font-semibold">CONF: </span>
+                                        <span className="font-bold text-blue-800">{formatHoursDisplay(t.confirmedHours)}</span>
+                                      </div>
+
+                                      {t.draftHours > 0 && (
+                                        <>
+                                          <span className="text-slate-200">•</span>
+                                          <div>
+                                            <span className="text-amber-700 font-semibold">DRAFT: </span>
+                                            <span className="font-bold text-amber-800">{formatHoursDisplay(t.draftHours)}</span>
+                                          </div>
+                                        </>
+                                      )}
+
+                                      <span className="text-slate-200">•</span>
+
+                                      <div>
+                                        <span className="text-slate-700 font-bold">Planeado: </span>
+                                        <span className="font-extrabold text-slate-900">{formatHoursDisplay(t.plannedHours)}</span>
+                                      </div>
+
+                                      {t.remainingHours !== null && t.remainingHours > 0 && (
+                                        <>
+                                          <span className="text-slate-200">•</span>
+                                          <div>
+                                            <span className="text-amber-700 font-semibold">Falta: </span>
+                                            <span className="font-bold text-amber-800">{formatHoursDisplay(t.remainingHours)}</span>
+                                          </div>
+                                        </>
+                                      )}
+
+                                      {t.excessHours !== null && t.excessHours > 0 && (
+                                        <>
+                                          <span className="text-slate-200">•</span>
+                                          <div>
+                                            <span className="text-rose-700 font-bold">Excesso: </span>
+                                            <span className="font-extrabold text-rose-800">{formatHoursDisplay(t.excessHours)}</span>
+                                          </div>
+                                        </>
+                                      )}
+
+                                      {t.plannedPercentage !== null && (
+                                        <>
+                                          <span className="text-slate-200">•</span>
+                                          <span className="text-slate-500 font-medium">
+                                            ({Math.round(t.plannedPercentage)}%)
+                                          </span>
+                                        </>
                                       )}
                                     </div>
                                   </div>
-
-                                  <div className="pt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600">
-                                    <div>
-                                      <span className="text-slate-400">Estimativa: </span>
-                                      <span className="font-bold text-slate-800">
-                                        {t.estimatedHours !== null ? formatHoursDisplay(t.estimatedHours) : 'N/A'}
-                                      </span>
-                                    </div>
-
-                                    <span className="text-slate-200">•</span>
-
-                                    <div>
-                                      <span className="text-blue-700 font-semibold">CONF: </span>
-                                      <span className="font-bold text-blue-800">{formatHoursDisplay(t.confirmedHours)}</span>
-                                    </div>
-
-                                    {t.draftHours > 0 && (
-                                      <>
-                                        <span className="text-slate-200">•</span>
-                                        <div>
-                                          <span className="text-amber-700 font-semibold">DRAFT: </span>
-                                          <span className="font-bold text-amber-800">{formatHoursDisplay(t.draftHours)}</span>
-                                        </div>
-                                      </>
-                                    )}
-
-                                    <span className="text-slate-200">•</span>
-
-                                    <div>
-                                      <span className="text-slate-700 font-bold">Planeado: </span>
-                                      <span className="font-extrabold text-slate-900">{formatHoursDisplay(t.plannedHours)}</span>
-                                    </div>
-
-                                    {t.remainingHours !== null && t.remainingHours > 0 && (
-                                      <>
-                                        <span className="text-slate-200">•</span>
-                                        <div>
-                                          <span className="text-amber-700 font-semibold">Falta: </span>
-                                          <span className="font-bold text-amber-800">{formatHoursDisplay(t.remainingHours)}</span>
-                                        </div>
-                                      </>
-                                    )}
-
-                                    {t.excessHours !== null && t.excessHours > 0 && (
-                                      <>
-                                        <span className="text-slate-200">•</span>
-                                        <div>
-                                          <span className="text-rose-700 font-bold">Excesso: </span>
-                                          <span className="font-extrabold text-rose-800">{formatHoursDisplay(t.excessHours)}</span>
-                                        </div>
-                                      </>
-                                    )}
-
-                                    {t.plannedPercentage !== null && (
-                                      <>
-                                        <span className="text-slate-200">•</span>
-                                        <span className="text-slate-500 font-medium">
-                                          ({Math.round(t.plannedPercentage)}%)
-                                        </span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })
+                            )}
                           </div>
                         </div>
                       </>
