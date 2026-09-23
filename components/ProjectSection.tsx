@@ -726,45 +726,50 @@ export default function ProjectSection({
       createdById: currentUser?.id || '11111111-1111-1111-1111-111111111111', 
     };
 
-    if (editingId) {
-      await updateProject(editingId, payload);
-    } else {
-      const newProj = await addProject(payload);
-      if (newProj && newProj.id) {
-        const tasksToCreate: any[] = [];
-        selectedDefaultTaskIds.forEach(dtId => {
-          const dt = defaultTasks.find(item => item.id === dtId);
-          if (dt) {
-            tasksToCreate.push({
-              projectId: newProj.id,
-              title: dt.title,
-              statusId: getDefaultTaskStatusId(taskStatuses),
-              taskTypeId: dt.taskTypeId || getDefaultTaskTypeId(taskTypes),
-              assigneeIds: [],
-              estimatedDate: '',
-              description: dt.description || '',
-              estimatedHours: dt.estimatedHours || '08:00',
-              actualHours: '00:00',
-              startDate: '',
-              startTime: '',
-              endDate: '',
-              endTime: '',
-              notes: 'Criado automaticamente a partir do modelo de tarefas por defeito.'
-            });
-          }
-        });
+    try {
+      if (editingId) {
+        await updateProject(editingId, payload);
+      } else {
+        const newProj = await addProject(payload);
+        if (newProj && newProj.id) {
+          const tasksToCreate: any[] = [];
+          selectedDefaultTaskIds.forEach(dtId => {
+            const dt = defaultTasks.find(item => item.id === dtId);
+            if (dt) {
+              tasksToCreate.push({
+                projectId: newProj.id,
+                title: dt.title,
+                statusId: getDefaultTaskStatusId(taskStatuses),
+                taskTypeId: dt.taskTypeId || getDefaultTaskTypeId(taskTypes),
+                assigneeIds: [],
+                estimatedDate: '',
+                description: dt.description || '',
+                estimatedHours: dt.estimatedHours || '08:00',
+                actualHours: '00:00',
+                startDate: '',
+                startTime: '',
+                endDate: '',
+                endTime: '',
+                notes: 'Criado automaticamente a partir do modelo de tarefas por defeito.'
+              });
+            }
+          });
 
-        if (tasksToCreate.length > 0) {
-          if (addTasks) {
-            addTasks(tasksToCreate);
-          } else {
-            tasksToCreate.forEach(t => addTask(t));
+          if (tasksToCreate.length > 0) {
+            if (addTasks) {
+              addTasks(tasksToCreate);
+            } else {
+              tasksToCreate.forEach(t => addTask(t));
+            }
           }
+          setSelectedProjectId(newProj.id);
         }
-        setSelectedProjectId(newProj.id);
       }
+      setIsEditing(false);
+    } catch (err) {
+      console.error('[PROJECT FORM ERROR]', err);
+      // Keep form open for correction on failure
     }
-    setIsEditing(false);
   };
 
   const handleToggleTeam = (id: string) => {
@@ -1347,16 +1352,28 @@ export default function ProjectSection({
               {canDeleteProjects && (
                 <button 
                   onClick={() => {
+                    if (!canDeleteProjects) {
+                      alert('Não tem permissão para eliminar projetos.');
+                      return;
+                    }
+                    const projTasks = (tasks || []).filter(t => t.projectId === selectedProj.id && !t.deleted);
+                    if (projTasks.length > 0) {
+                      alert(`Não é possível eliminar o projeto "${selectedProj.title}" porque tem ${projTasks.length} tarefa(s) associada(s). Conclua ou remova primeiro as tarefas.`);
+                      return;
+                    }
+
                     askConfirmation(
                       'Confirmar Eliminação de Projeto',
-                      'Tem a certeza que deseja eliminar este projeto permanentemente? Esta ação não pode ser desfeita.',
-                      () => {
-                        if (!canDeleteProjects) {
-                          alert('Não tem permissão para eliminar projetos.');
-                          return;
+                      `Tem a certeza que deseja eliminar o projeto "${selectedProj.title}" permanentemente? Esta ação não pode ser desfeita.`,
+                      async () => {
+                        try {
+                          const ok = await deleteProject(selectedProj.id);
+                          if (ok) {
+                            setSelectedProjectId(null);
+                          }
+                        } catch (err) {
+                          // Handled in useERP (alerted and state preserved)
                         }
-                        deleteProject(selectedProj.id);
-                        setSelectedProjectId(null);
                       }
                     );
                   }}

@@ -640,6 +640,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
         clientContactName: p.client_contact_name || '',
         clientContactEmail: p.client_contact_email || '',
         clientContactPhone: p.client_contact_phone || '',
+        version: typeof p.version === 'number' ? p.version : 1,
       };
     });
 

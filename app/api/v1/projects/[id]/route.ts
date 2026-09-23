@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
 import { updateProjectSchema } from '@/lib/validations/project';
+import { validateProjectRelations } from '@/lib/validations/projectRelations';
 import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
@@ -11,66 +12,6 @@ function parseCommaSeparated(val: any): string[] {
   if (Array.isArray(val)) return val;
   if (typeof val === 'string') return val.split(',').filter(Boolean);
   return [];
-}
-
-async function resolveClientId(sb: any, clientId?: string | null, fallbackName?: string | null): Promise<string | null> {
-  if (!clientId || typeof clientId !== 'string' || !clientId.trim()) return null;
-  const cleaned = clientId.trim();
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned);
-
-  if (isUUID) {
-    const { data: clientExists } = await sb
-      .from('clients')
-      .select('id')
-      .eq('id', cleaned)
-      .maybeSingle();
-    if (clientExists) return clientExists.id;
-  }
-
-  // Fallback: match by code or name
-  const { data: matchByProp } = await sb
-    .from('clients')
-    .select('id')
-    .or(`code.eq.${cleaned},name.ilike.${cleaned}`)
-    .eq('deleted', false)
-    .limit(1)
-    .maybeSingle();
-
-  if (matchByProp) return matchByProp.id;
-
-  // If valid UUID and fallbackName was passed, auto-provision client record so FK succeeds
-  if (isUUID && fallbackName && fallbackName.trim()) {
-    const now = new Date().toISOString();
-    const { data: inserted } = await sb
-      .from('clients')
-      .insert([{
-        id: cleaned,
-        name: fallbackName.trim(),
-        deleted: false,
-        created_at: now,
-        updated_at: now
-      }])
-      .select('id')
-      .maybeSingle();
-    if (inserted) return inserted.id;
-  }
-
-  return null;
-}
-
-async function resolveUserId(sb: any, userId?: string | null): Promise<string | null> {
-  if (!userId || typeof userId !== 'string' || !userId.trim()) return null;
-  const cleaned = userId.trim();
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned);
-  if (isUUID) {
-    const { data: userExists } = await sb
-      .from('users')
-      .select('id')
-      .eq('id', cleaned)
-      .maybeSingle();
-    if (userExists) return userExists.id;
-  }
-  return null;
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -120,16 +61,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       success: true,
       data: {
         id: project.id,
-        title: project.project_title || project.title,
+        title: project.project_title || project.title || '',
         clientId: project.client_id || project.clientId || '',
         installProjectNo: project.install_project_no || project.installProjectNo || '',
         sfOpportunityNo: project.sf_opportunity_no || project.sfOpportunityNo || '',
         description: project.project_description || project.description || '',
-        statusId: project.status_id || project.statusId || 'ps-1',
-        categoryId: project.category_id || project.categoryId || 'pc-1',
+        statusId: project.status_id || project.statusId || '',
+        categoryId: project.category_id || project.categoryId || categoryIds[0] || '',
         categoryIds,
-        priorityId: dbPriority || project.priority_id || project.priorityId || 'pp-1',
-        riskId: dbRisk || project.risk_id || project.riskId || 'pr-1',
+        priorityId: dbPriority || project.priority_id || project.priorityId || '',
+        riskId: dbRisk || project.risk_id || project.riskId || '',
         projectManagerId: project.project_manager_id || project.projectManagerId || '',
         fieldManagerId: project.field_manager_id || project.fieldManagerId || '',
         salesRepId: project.sales_rep_id || project.salesRepId || '',
@@ -149,7 +90,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         clientContactPhone: project.client_contact_phone || project.clientContactPhone || '',
         color: project.color || '',
         notes: project.notes || '',
-        version: project.version || 1,
+        version: typeof project.version === 'number' ? project.version : 1,
         deleted: Boolean(project.deleted),
         createdAt: project.created_at,
         updatedAt: project.updated_at,
@@ -158,6 +99,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
     });
   } catch (error: any) {
+    console.error('[API PROJECT GET ID EXCEPTION]', error);
     return internalServerError('Falha inesperada ao consultar projeto.', requestId);
   }
 }
@@ -201,7 +143,7 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       return internalServerError(`Erro ao ler versão atual do projeto: ${fetchError.message}`, requestId);
     }
     if (!current || current.deleted) {
-      return notFound('Projeto não encontrado.', requestId);
+      return notFound('Projeto não encontrado ou já eliminado.', requestId);
     }
 
     const hasVersionColumn = typeof current.version === 'number';
@@ -213,8 +155,6 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
         { currentVersion, submittedVersion: updates.version }
       );
     }
-
-    const now = new Date().toISOString();
 
     const hasTeamsUpdate = updates.teamsInvolvedIds !== undefined || updates.teamIds !== undefined;
     const teamsInvolved = hasTeamsUpdate
@@ -231,6 +171,31 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       ? Array.from(new Set([...(updates.categoryIds || []), ...(updates.categoryId ? [updates.categoryId] : [])]))
       : undefined;
 
+    // 2. Validate any updated relational IDs
+    const validation = await validateProjectRelations(
+      sb,
+      {
+        clientId: updates.clientId,
+        statusId: updates.statusId,
+        categoryId: updates.categoryId,
+        categoryIds: categoriesInvolved,
+        projectManagerId: updates.projectManagerId,
+        fieldManagerId: updates.fieldManagerId,
+        salesRepId: updates.salesRepId,
+        teamsInvolvedIds: teamsInvolved,
+        partnersIds: partnersInvolved,
+        priorityId: updates.priorityId,
+        riskId: updates.riskId,
+      },
+      false
+    );
+
+    if (!validation.valid) {
+      return badRequest(validation.message || 'Dados relacionais de projeto inválidos.', requestId);
+    }
+
+    const now = new Date().toISOString();
+
     // Core guaranteed columns on projects table
     const coreUpdatePayload: Record<string, any> = {
       updated_at: now,
@@ -241,23 +206,15 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     }
 
     if (updates.title !== undefined) coreUpdatePayload.project_title = updates.title;
-    if (updates.clientId !== undefined) {
-      coreUpdatePayload.client_id = await resolveClientId(sb, updates.clientId, updates.clientContactName);
-    }
+    if (updates.clientId !== undefined) coreUpdatePayload.client_id = updates.clientId.trim() || null;
     if (updates.description !== undefined) coreUpdatePayload.project_description = updates.description;
     if (updates.installProjectNo !== undefined) coreUpdatePayload.install_project_no = updates.installProjectNo;
     if (updates.sfOpportunityNo !== undefined) coreUpdatePayload.sf_opportunity_no = updates.sfOpportunityNo;
-    if (updates.statusId !== undefined) coreUpdatePayload.status_id = updates.statusId;
-    if (updates.categoryId !== undefined) coreUpdatePayload.category_id = updates.categoryId;
-    if (updates.projectManagerId !== undefined) {
-      coreUpdatePayload.project_manager_id = await resolveUserId(sb, updates.projectManagerId);
-    }
-    if (updates.fieldManagerId !== undefined) {
-      coreUpdatePayload.field_manager_id = await resolveUserId(sb, updates.fieldManagerId);
-    }
-    if (updates.salesRepId !== undefined) {
-      coreUpdatePayload.sales_rep_id = await resolveUserId(sb, updates.salesRepId);
-    }
+    if (updates.statusId !== undefined) coreUpdatePayload.status_id = updates.statusId.trim() || null;
+    if (updates.categoryId !== undefined) coreUpdatePayload.category_id = updates.categoryId.trim() || null;
+    if (updates.projectManagerId !== undefined) coreUpdatePayload.project_manager_id = updates.projectManagerId?.trim() || null;
+    if (updates.fieldManagerId !== undefined) coreUpdatePayload.field_manager_id = updates.fieldManagerId?.trim() || null;
+    if (updates.salesRepId !== undefined) coreUpdatePayload.sales_rep_id = updates.salesRepId?.trim() || null;
     if (updates.startDate !== undefined) coreUpdatePayload.start_date = updates.startDate || null;
     if (updates.deliveryDate !== undefined) coreUpdatePayload.delivery_date = updates.deliveryDate || null;
     if (updates.estimatedDate !== undefined) coreUpdatePayload.estimated_date = updates.estimatedDate || null;
@@ -273,18 +230,21 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
 
     // Extended payload for optional direct columns
     const extendedPayload: Record<string, any> = { ...coreUpdatePayload };
-    if (updates.priorityId !== undefined) extendedPayload.priority_id = updates.priorityId;
-    if (updates.riskId !== undefined) extendedPayload.risk_id = updates.riskId;
+    if (updates.priorityId !== undefined) extendedPayload.priority_id = updates.priorityId.trim() || null;
+    if (updates.riskId !== undefined) extendedPayload.risk_id = updates.riskId.trim() || null;
     if (updates.completedDate !== undefined) extendedPayload.completed_date = updates.completedDate || null;
     if (updates.isUrgent !== undefined) extendedPayload.is_urgent = updates.isUrgent;
     if (updates.color !== undefined) extendedPayload.color = updates.color;
     if (updates.notes !== undefined) extendedPayload.notes = updates.notes;
+    if (categoriesInvolved !== undefined) extendedPayload.category_ids = categoriesInvolved.length > 0 ? categoriesInvolved.join(',') : null;
+    if (teamsInvolved !== undefined) extendedPayload.teams_involved_ids = teamsInvolved.length > 0 ? teamsInvolved.join(',') : null;
+    if (partnersInvolved !== undefined) extendedPayload.partners_ids = partnersInvolved.length > 0 ? partnersInvolved.join(',') : null;
 
     let updateQuery = sb.from('projects').update(extendedPayload).eq('id', id);
     if (hasVersionColumn) {
       updateQuery = updateQuery.eq('version', currentVersion);
     }
-    let { error: updateError } = await updateQuery;
+    let { data: updatedRows, error: updateError } = await updateQuery.select('id, version');
 
     if (updateError && (updateError.code === '42703' || updateError.message?.includes('column') || updateError.message?.includes('schema cache'))) {
       console.warn('[API PROJECT UPDATE] Retrying update with core payload due to missing schema column:', updateError.message);
@@ -292,8 +252,9 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       if (hasVersionColumn) {
         retryQuery = retryQuery.eq('version', currentVersion);
       }
-      const retryRes = await retryQuery;
+      const retryRes = await retryQuery.select('id, version');
       updateError = retryRes.error;
+      updatedRows = retryRes.data;
     }
 
     if (updateError) {
@@ -301,18 +262,26 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       return badRequest(`Erro ao atualizar projeto: ${updateError.message}`, requestId);
     }
 
+    if (hasVersionColumn && (!updatedRows || updatedRows.length === 0)) {
+      return conflict(
+        `Conflito de concorrência. O projeto foi alterado ou eliminado por outro utilizador (versão não coincide: ${currentVersion}). Recarregue os dados antes de gravar.`,
+        requestId,
+        { currentVersion, submittedVersion: updates.version }
+      );
+    }
+
     // Update relational links safely
     if (updates.priorityId !== undefined) {
       await sb.from('project_priority_link').delete().eq('project_id', id);
-      if (updates.priorityId) {
-        await sb.from('project_priority_link').insert([{ project_id: id, priority_id: updates.priorityId }]);
+      if (updates.priorityId.trim()) {
+        await sb.from('project_priority_link').insert([{ project_id: id, priority_id: updates.priorityId.trim() }]);
       }
     }
 
     if (updates.riskId !== undefined) {
       await sb.from('project_risk_link').delete().eq('project_id', id);
-      if (updates.riskId) {
-        await sb.from('project_risk_link').insert([{ project_id: id, risk_id: updates.riskId }]);
+      if (updates.riskId.trim()) {
+        await sb.from('project_risk_link').insert([{ project_id: id, risk_id: updates.riskId.trim() }]);
       }
     }
 
@@ -375,17 +344,66 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    // Fetch current version for optimistic lock
-    const { data: current } = await sb.from('projects').select('*').eq('id', id).maybeSingle();
+    // 1. Fetch current project to verify existence
+    const { data: current, error: fetchErr } = await sb.from('projects').select('*').eq('id', id).maybeSingle();
+    if (fetchErr) {
+      return internalServerError(`Erro ao verificar projeto: ${fetchErr.message}`, requestId);
+    }
     if (!current || current.deleted) {
-      return notFound('Projeto não encontrado.', requestId);
+      return notFound('Projeto não encontrado ou já eliminado.', requestId);
+    }
+
+    // 2. Strict dependency checks: active tasks, planning allocations, quotes, project materials
+    const [tasksRes, quotesRes, materialsRes] = await Promise.all([
+      sb.from('tasks').select('id, task_title, deleted').eq('project_id', id),
+      sb.from('quotes').select('id, deleted').eq('project_id', id),
+      sb.from('project_materials').select('id, deleted').eq('project_id', id),
+    ]);
+
+    const allProjectTasks = tasksRes.data || [];
+    const activeTasks = allProjectTasks.filter((t: any) => !t.deleted);
+    const activeTasksCount = activeTasks.length;
+    const taskIds = allProjectTasks.map((t: any) => t.id);
+
+    let activeAllocationsCount = 0;
+    if (taskIds.length > 0) {
+      const { data: allocations } = await sb
+        .from('planning_allocations')
+        .select('id, status')
+        .in('task_id', taskIds);
+
+      if (allocations && allocations.length > 0) {
+        activeAllocationsCount = allocations.filter((a: any) => a.status !== 'CANCELLED').length;
+      }
+    }
+
+    const activeQuotesCount = (quotesRes.data || []).filter((q: any) => !q.deleted).length;
+    const activeMaterialsCount = (materialsRes.data || []).filter((m: any) => !m.deleted).length;
+
+    const dependencies: string[] = [];
+    if (activeTasksCount > 0) dependencies.push(`${activeTasksCount} tarefa(s) ativa(s)`);
+    if (activeAllocationsCount > 0) dependencies.push(`${activeAllocationsCount} alocação(ões) de planeamento ativa(s)`);
+    if (activeQuotesCount > 0) dependencies.push(`${activeQuotesCount} orçamento(s)`);
+    if (activeMaterialsCount > 0) dependencies.push(`${activeMaterialsCount} material(ais) associado(s)`);
+
+    if (dependencies.length > 0) {
+      return conflict(
+        `Não é possível eliminar o projeto "${current.project_title || current.title || id}" porque existem dados dependentes: ${dependencies.join(', ')}. Conclua ou remova primeiro as dependências associadas.`,
+        requestId,
+        {
+          activeTasksCount,
+          activeAllocationsCount,
+          activeQuotesCount,
+          activeMaterialsCount,
+        }
+      );
     }
 
     const hasVersionColumn = typeof current.version === 'number';
     const currentVersion = hasVersionColumn ? current.version : 1;
     const now = new Date().toISOString();
 
-    // Soft delete
+    // Soft delete safely
     const deletePayload: Record<string, any> = {
       deleted: true,
       updated_at: now,
@@ -414,7 +432,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       userId: user.id,
       entity: 'projects',
       entityId: id,
-      details: { softDelete: true },
+      details: { softDelete: true, title: current.project_title || current.title },
     });
 
     return NextResponse.json({
@@ -422,6 +440,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       message: 'Projeto eliminado com sucesso.',
     });
   } catch (error: any) {
+    console.error('[API PROJECT DELETE EXCEPTION]', error);
     return internalServerError('Falha inesperada ao eliminar projeto.', requestId);
   }
 }
