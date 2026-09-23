@@ -1292,3 +1292,347 @@ export function computeProjectPlanningImpact(
   };
 }
 
+/**
+ * FASE 23E-C3J: CONTROLO DO PLANEAMENTO DO PROJETO VS ESTIMATIVA
+ */
+
+export type TaskPlanningEstimateStatus = 
+  | 'SEM_ESTIMATIVA'
+  | 'SEM_PLANEAMENTO'
+  | 'DRAFT'
+  | 'PARCIAL'
+  | 'PLANEADA'
+  | 'EXCESSO';
+
+export interface TaskPlanningEstimateItem {
+  taskId: string;
+  taskTitle: string;
+  task: any | null;
+  estimatedHours: number | null;
+  confirmedMinutes: number;
+  draftMinutes: number;
+  plannedMinutes: number;
+  confirmedHours: number;
+  draftHours: number;
+  plannedHours: number;
+  remainingHours: number | null;
+  excessHours: number | null;
+  plannedPercentage: number | null;
+  status: TaskPlanningEstimateStatus;
+  allocationCount: number;
+}
+
+export interface ProjectPlanningVsEstimateSummary {
+  projectId: string;
+  projectTitle: string;
+  project: any | null;
+  hasTasks: boolean;
+  totalEstimatedHours: number | null;
+  totalConfirmedMinutes: number;
+  totalDraftMinutes: number;
+  totalPlannedMinutes: number;
+  totalConfirmedHours: number;
+  totalDraftHours: number;
+  totalPlannedHours: number;
+  totalRemainingHours: number | null;
+  totalExcessHours: number | null;
+  plannedPercentage: number | null;
+  tasks: TaskPlanningEstimateItem[];
+  isConsistent: boolean;
+}
+
+/**
+ * Returns the operational planning status of a task compared to its estimate (FASE 23E-C3J).
+ * 
+ * Ordem determinística de avaliação:
+ * 1. SEM_ESTIMATIVA: Não existe estimativa válida (null, <= 0 ou NaN).
+ * 2. SEM_PLANEAMENTO: Estimativa > 0 e Planeado = 0.
+ * 3. EXCESSO: Planeado > Estimativa.
+ * 4. PLANEADA: Planeado >= Estimativa e Excesso = 0 (ou seja, Planeado == Estimativa).
+ * 5. DRAFT: Existe DRAFT e não existe CONFIRMED (0 < Planeado < Estimativa).
+ * 6. PARCIAL: Existe planeamento (com CONFIRMED > 0) e 0 < Planeado < Estimativa.
+ */
+export function getTaskPlanningEstimateStatus(
+  estimatedHours: number | null | undefined,
+  confirmedMinutes: number,
+  draftMinutes: number
+): TaskPlanningEstimateStatus {
+  if (estimatedHours == null || isNaN(estimatedHours) || estimatedHours <= 0) {
+    return 'SEM_ESTIMATIVA';
+  }
+
+  const plannedMinutes = (confirmedMinutes || 0) + (draftMinutes || 0);
+  const estimatedMinutes = Math.round(estimatedHours * 60);
+
+  if (plannedMinutes === 0) {
+    return 'SEM_PLANEAMENTO';
+  }
+
+  if (plannedMinutes > estimatedMinutes) {
+    return 'EXCESSO';
+  }
+
+  if (plannedMinutes === estimatedMinutes) {
+    return 'PLANEADA';
+  }
+
+  // 0 < plannedMinutes < estimatedMinutes
+  if ((confirmedMinutes || 0) === 0 && (draftMinutes || 0) > 0) {
+    return 'DRAFT';
+  }
+
+  return 'PARCIAL';
+}
+
+/**
+ * Returns user-facing label and visual symbol/badge for TaskPlanningEstimateStatus.
+ */
+export function getTaskPlanningEstimateStatusMeta(status: TaskPlanningEstimateStatus): {
+  label: string;
+  symbol: string;
+  badgeClass: string;
+} {
+  switch (status) {
+    case 'PLANEADA':
+      return {
+        label: 'Planeada',
+        symbol: '✓',
+        badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200'
+      };
+    case 'DRAFT':
+      return {
+        label: 'DRAFT',
+        symbol: '◷',
+        badgeClass: 'bg-amber-50 text-amber-800 border-amber-200'
+      };
+    case 'PARCIAL':
+      return {
+        label: 'Parcial',
+        symbol: '◔',
+        badgeClass: 'bg-blue-50 text-blue-800 border-blue-200'
+      };
+    case 'EXCESSO':
+      return {
+        label: 'Excesso',
+        symbol: '!',
+        badgeClass: 'bg-rose-50 text-rose-800 border-rose-200'
+      };
+    case 'SEM_PLANEAMENTO':
+      return {
+        label: 'Sem planeamento',
+        symbol: '—',
+        badgeClass: 'bg-slate-100 text-slate-700 border-slate-200'
+      };
+    case 'SEM_ESTIMATIVA':
+      return {
+        label: 'Sem estimativa',
+        symbol: '?',
+        badgeClass: 'bg-slate-50 text-slate-500 border-slate-200'
+      };
+  }
+}
+
+/**
+ * Computes project planning vs estimate comparison (FASE 23E-C3J).
+ * Pure and deterministic function.
+ */
+export function computeProjectPlanningVsEstimate(
+  projectId: string,
+  allocations: PlanningAllocationDTO[] = [],
+  tasks: any[] = [],
+  projects: any[] = []
+): ProjectPlanningVsEstimateSummary {
+  const projectObj = projects.find(p => p.id === projectId) || null;
+  const projectTitle = projectObj?.title || projectObj?.name || (projectId === 'unidentified' ? 'Projeto não identificado' : projectId);
+
+  // Filter valid allocations for this project (exclude CANCELLED)
+  const projectAllocations = allocations.filter(a => {
+    if (a.status === 'CANCELLED') return false;
+    if ((a as any).projectId === projectId) return true;
+    const t = tasks.find(task => task.id === a.taskId);
+    if (t && t.projectId === projectId) return true;
+    if (!t && !(a as any).projectId && projectId === 'unidentified') return true;
+    return false;
+  });
+
+  // Calculate project-level totals directly from allocations
+  let totalConfirmedMinutes = 0;
+  let totalDraftMinutes = 0;
+  for (const a of projectAllocations) {
+    const dur = a.durationMinutes || 0;
+    if (a.status === 'CONFIRMED') {
+      totalConfirmedMinutes += dur;
+    } else if (a.status === 'DRAFT') {
+      totalDraftMinutes += dur;
+    }
+  }
+  const totalPlannedMinutes = totalConfirmedMinutes + totalDraftMinutes;
+
+  // Gather tasks for this project
+  const projectTasks = tasks.filter(t => t.projectId === projectId);
+  const taskMap = new Map<string, TaskPlanningEstimateItem>();
+
+  // Initialize known project tasks (including those with 0 allocations)
+  for (const t of projectTasks) {
+    const rawEst = t.estimatedHours ? parseHoursToNumber(t.estimatedHours) : null;
+    const validEst = rawEst !== null && rawEst > 0 ? rawEst : null;
+
+    taskMap.set(t.id, {
+      taskId: t.id,
+      taskTitle: t.title || 'Tarefa sem título',
+      task: t,
+      estimatedHours: validEst,
+      confirmedMinutes: 0,
+      draftMinutes: 0,
+      plannedMinutes: 0,
+      confirmedHours: 0,
+      draftHours: 0,
+      plannedHours: 0,
+      remainingHours: validEst !== null ? validEst : null,
+      excessHours: validEst !== null ? 0 : null,
+      plannedPercentage: null,
+      status: validEst !== null ? 'SEM_PLANEAMENTO' : 'SEM_ESTIMATIVA',
+      allocationCount: 0,
+    });
+  }
+
+  // Distribute project allocations into tasks
+  for (const a of projectAllocations) {
+    const matchedTask = tasks.find(t => t.id === a.taskId) || (a as any).task || null;
+    const taskId = a.taskId || (matchedTask ? matchedTask.id : 'unknown_task');
+
+    let item = taskMap.get(taskId);
+    if (!item) {
+      const rawEst = matchedTask?.estimatedHours ? parseHoursToNumber(matchedTask.estimatedHours) : null;
+      const validEst = rawEst !== null && rawEst > 0 ? rawEst : null;
+      const taskTitle = matchedTask ? (matchedTask.title || 'Tarefa sem título') : 'Tarefa não identificada';
+
+      item = {
+        taskId,
+        taskTitle,
+        task: matchedTask,
+        estimatedHours: validEst,
+        confirmedMinutes: 0,
+        draftMinutes: 0,
+        plannedMinutes: 0,
+        confirmedHours: 0,
+        draftHours: 0,
+        plannedHours: 0,
+        remainingHours: validEst !== null ? validEst : null,
+        excessHours: validEst !== null ? 0 : null,
+        plannedPercentage: null,
+        status: validEst !== null ? 'SEM_PLANEAMENTO' : 'SEM_ESTIMATIVA',
+        allocationCount: 0,
+      };
+      taskMap.set(taskId, item);
+    }
+
+    const dur = a.durationMinutes || 0;
+    if (a.status === 'CONFIRMED') {
+      item.confirmedMinutes += dur;
+    } else if (a.status === 'DRAFT') {
+      item.draftMinutes += dur;
+    }
+    item.allocationCount += 1;
+  }
+
+  // Calculate final task metrics and statuses
+  const tasksList: TaskPlanningEstimateItem[] = [];
+  let sumTasksConfirmed = 0;
+  let sumTasksDraft = 0;
+  let sumTasksPlanned = 0;
+
+  let totalEstimatedHoursAccumulator = 0;
+  let hasValidProjectEstimate = false;
+
+  for (const item of taskMap.values()) {
+    item.plannedMinutes = item.confirmedMinutes + item.draftMinutes;
+    item.confirmedHours = item.confirmedMinutes / 60;
+    item.draftHours = item.draftMinutes / 60;
+    item.plannedHours = item.plannedMinutes / 60;
+
+    sumTasksConfirmed += item.confirmedMinutes;
+    sumTasksDraft += item.draftMinutes;
+    sumTasksPlanned += item.plannedMinutes;
+
+    if (item.estimatedHours !== null && item.estimatedHours > 0) {
+      hasValidProjectEstimate = true;
+      totalEstimatedHoursAccumulator += item.estimatedHours;
+
+      item.remainingHours = Math.max(0, item.estimatedHours - item.plannedHours);
+      item.excessHours = Math.max(0, item.plannedHours - item.estimatedHours);
+      item.plannedPercentage = (item.plannedHours / item.estimatedHours) * 100;
+    } else {
+      item.estimatedHours = null;
+      item.remainingHours = null;
+      item.excessHours = null;
+      item.plannedPercentage = null;
+    }
+
+    item.status = getTaskPlanningEstimateStatus(item.estimatedHours, item.confirmedMinutes, item.draftMinutes);
+    tasksList.push(item);
+  }
+
+  // Deterministic ordering (Requirement 16):
+  // 1. Excesso > 0 primeiro (maior excesso primeiro);
+  // 2. Depois maior Falta planear;
+  // 3. Depois maior Planeado;
+  // 4. Depois nome da tarefa (desempate determinístico por nome).
+  tasksList.sort((a, b) => {
+    const aExcess = a.excessHours || 0;
+    const bExcess = b.excessHours || 0;
+    if (aExcess > 0 && bExcess <= 0) return -1;
+    if (bExcess > 0 && aExcess <= 0) return 1;
+    if (aExcess > 0 && bExcess > 0) {
+      if (bExcess !== aExcess) {
+        return bExcess - aExcess; // Higher excess first
+      }
+      return a.taskTitle.localeCompare(b.taskTitle, 'pt-PT');
+    }
+
+    const aRemaining = a.remainingHours || 0;
+    const bRemaining = b.remainingHours || 0;
+    if (bRemaining !== aRemaining) {
+      return bRemaining - aRemaining; // Higher remaining/falta planear first
+    }
+
+    if (b.plannedMinutes !== a.plannedMinutes) {
+      return b.plannedMinutes - a.plannedMinutes; // Higher planned first
+    }
+
+    return a.taskTitle.localeCompare(b.taskTitle, 'pt-PT');
+  });
+
+  const totalEstimatedHours = hasValidProjectEstimate ? totalEstimatedHoursAccumulator : null;
+  const totalPlannedHours = totalPlannedMinutes / 60;
+
+  const totalRemainingHours = totalEstimatedHours !== null ? Math.max(0, totalEstimatedHours - totalPlannedHours) : null;
+  const totalExcessHours = totalEstimatedHours !== null ? Math.max(0, totalPlannedHours - totalEstimatedHours) : null;
+  const plannedPercentage = totalEstimatedHours !== null && totalEstimatedHours > 0 ? (totalPlannedHours / totalEstimatedHours) * 100 : null;
+
+  const isConsistent = 
+    sumTasksConfirmed === totalConfirmedMinutes &&
+    sumTasksDraft === totalDraftMinutes &&
+    sumTasksPlanned === totalPlannedMinutes &&
+    totalPlannedMinutes === (totalConfirmedMinutes + totalDraftMinutes);
+
+  return {
+    projectId,
+    projectTitle,
+    project: projectObj,
+    hasTasks: tasksList.length > 0,
+    totalEstimatedHours,
+    totalConfirmedMinutes,
+    totalDraftMinutes,
+    totalPlannedMinutes,
+    totalConfirmedHours: totalConfirmedMinutes / 60,
+    totalDraftHours: totalDraftMinutes / 60,
+    totalPlannedHours,
+    totalRemainingHours,
+    totalExcessHours,
+    plannedPercentage,
+    tasks: tasksList,
+    isConsistent,
+  };
+}
+

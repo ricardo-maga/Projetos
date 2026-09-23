@@ -12,7 +12,8 @@ import {
   User as UserIcon,
   Layers,
   FolderKanban,
-  ExternalLink
+  ExternalLink,
+  Target
 } from 'lucide-react';
 import { Task, Project, Client, TaskType, User } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
@@ -33,7 +34,10 @@ import {
   getTaskPlanningLoadStatus,
   TaskPlanningLoadStatus,
   computeProjectPlanningImpact,
-  ProjectPlanningSummary
+  ProjectPlanningSummary,
+  computeProjectPlanningVsEstimate,
+  ProjectPlanningVsEstimateSummary,
+  getTaskPlanningEstimateStatusMeta
 } from '../lib/planning/summary';
 import PlanningAllocationModal from './PlanningAllocationModal';
 
@@ -117,6 +121,7 @@ export default function TaskDetailsModal({
   const [selectedAllocationForEdit, setSelectedAllocationForEdit] = useState<PlanningAllocationDTO | null>(null);
   const [showCancelledHistory, setShowCancelledHistory] = useState<boolean>(false);
   const [showProjectPlanning, setShowProjectPlanning] = useState<boolean>(true);
+  const [showProjectEstimateControl, setShowProjectEstimateControl] = useState<boolean>(true);
   const [expandedProjectDays, setExpandedProjectDays] = useState<Record<string, boolean>>({});
 
   // Fetch allocations for this task directly or via prop
@@ -248,6 +253,17 @@ export default function TaskDetailsModal({
       projects
     );
   }, [activeTask?.projectId, allAvailableAllocations, tasks, users, projects]);
+
+  // Consolidated Project Planning vs Estimate (FASE 23E-C3J)
+  const projectPlanningVsEstimate = React.useMemo<ProjectPlanningVsEstimateSummary | null>(() => {
+    if (!activeTask?.projectId) return null;
+    return computeProjectPlanningVsEstimate(
+      activeTask.projectId,
+      allAvailableAllocations,
+      tasks,
+      projects
+    );
+  }, [activeTask?.projectId, allAvailableAllocations, tasks, projects]);
 
   const toggleProjectDayExpanded = (dateStr: string) => {
     setExpandedProjectDays(prev => ({
@@ -1166,6 +1182,252 @@ export default function TaskDetailsModal({
                           );
                         })}
                       </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SECÇÃO: PLANEAMENTO VS ESTIMATIVA (FASE 23E-C3J) */}
+            {projectPlanningVsEstimate && (
+              <div className="pt-4 border-t-2 border-slate-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-100">
+                      <Target className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <span>Planeamento vs Estimativa</span>
+                        <span className="text-slate-400 font-normal">({taskProjTitle})</span>
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {projectPlanningVsEstimate.plannedPercentage !== null ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide bg-blue-100 text-blue-800 border border-blue-200">
+                        Planeado: {Math.round(projectPlanningVsEstimate.plannedPercentage)}%
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-medium text-slate-500 bg-slate-100 border border-slate-200">
+                        Estimativa: N/A
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setShowProjectEstimateControl(!showProjectEstimateControl)}
+                      className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded cursor-pointer transition-colors"
+                      aria-expanded={showProjectEstimateControl}
+                      aria-label={showProjectEstimateControl ? 'Recolher secção planeamento vs estimativa' : 'Expandir secção planeamento vs estimativa'}
+                    >
+                      {showProjectEstimateControl ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {showProjectEstimateControl && (
+                  <div className="space-y-3 animate-in fade-in duration-150">
+                    {!projectPlanningVsEstimate.hasTasks ? (
+                      <div className="p-3 text-center text-xs text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                        Sem tarefas para analisar.
+                      </div>
+                    ) : (
+                      <>
+                        {/* Resumo Global do Projeto vs Estimativa */}
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
+                            <div className="bg-white p-2 rounded-lg border border-slate-200/80">
+                              <span className="text-[10px] text-slate-400 font-semibold block uppercase">Estimativa</span>
+                              <span className="font-bold text-slate-800 text-xs">
+                                {projectPlanningVsEstimate.totalEstimatedHours !== null 
+                                  ? formatHoursDisplay(projectPlanningVsEstimate.totalEstimatedHours) 
+                                  : 'N/A'}
+                              </span>
+                            </div>
+
+                            <div className="bg-white p-2 rounded-lg border border-slate-200/80">
+                              <span className="text-[10px] text-blue-600 font-semibold block uppercase">Confirmado</span>
+                              <span className="font-bold text-blue-800 text-xs">
+                                {formatHoursDisplay(projectPlanningVsEstimate.totalConfirmedHours)}
+                              </span>
+                            </div>
+
+                            <div className="bg-white p-2 rounded-lg border border-slate-200/80">
+                              <span className="text-[10px] text-amber-600 font-semibold block uppercase">DRAFT</span>
+                              <span className="font-bold text-amber-800 text-xs">
+                                {formatHoursDisplay(projectPlanningVsEstimate.totalDraftHours)}
+                              </span>
+                            </div>
+
+                            <div className="bg-white p-2 rounded-lg border border-slate-200/80">
+                              <span className="text-[10px] text-slate-700 font-bold block uppercase">Planeado</span>
+                              <span className="font-extrabold text-slate-900 text-xs">
+                                {formatHoursDisplay(projectPlanningVsEstimate.totalPlannedHours)}
+                              </span>
+                            </div>
+
+                            <div className="bg-white p-2 rounded-lg border border-slate-200/80">
+                              <span className="text-[10px] text-slate-500 font-semibold block uppercase">Falta planear</span>
+                              <span className={`font-bold text-xs ${
+                                projectPlanningVsEstimate.totalRemainingHours !== null && projectPlanningVsEstimate.totalRemainingHours > 0
+                                  ? 'text-amber-700'
+                                  : 'text-slate-600'
+                              }`}>
+                                {projectPlanningVsEstimate.totalRemainingHours !== null 
+                                  ? formatHoursDisplay(projectPlanningVsEstimate.totalRemainingHours) 
+                                  : 'N/A'}
+                              </span>
+                            </div>
+
+                            <div className="bg-white p-2 rounded-lg border border-slate-200/80">
+                              <span className="text-[10px] text-rose-600 font-semibold block uppercase">Excesso</span>
+                              <span className={`font-bold text-xs ${
+                                projectPlanningVsEstimate.totalExcessHours !== null && projectPlanningVsEstimate.totalExcessHours > 0
+                                  ? 'text-rose-700 font-extrabold'
+                                  : 'text-slate-600'
+                              }`}>
+                                {projectPlanningVsEstimate.totalExcessHours !== null 
+                                  ? formatHoursDisplay(projectPlanningVsEstimate.totalExcessHours) 
+                                  : '0h'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-[11px] text-slate-500">
+                            <span>
+                              Percentagem Planeada: {projectPlanningVsEstimate.plannedPercentage !== null ? `${Math.round(projectPlanningVsEstimate.plannedPercentage)}%` : 'N/A'}
+                            </span>
+                            {!projectPlanningVsEstimate.isConsistent && (
+                              <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center gap-1 text-[10px]">
+                                <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                <span>Aviso de consistência</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Lista de Tarefas do Projeto */}
+                        <div className="space-y-2">
+                          <div className="text-[11px] font-bold text-slate-600 px-1">
+                            Tarefas ({projectPlanningVsEstimate.tasks.length})
+                          </div>
+
+                          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                            {projectPlanningVsEstimate.tasks.map(t => {
+                              const meta = getTaskPlanningEstimateStatusMeta(t.status);
+                              const isCurrentTask = t.taskId === activeTask.id;
+
+                              return (
+                                <div 
+                                  key={t.taskId}
+                                  className={`p-2.5 rounded-xl border transition-colors ${
+                                    isCurrentTask 
+                                      ? 'bg-blue-50/40 border-blue-200 shadow-2xs' 
+                                      : 'bg-white border-slate-200 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="font-semibold text-slate-800 text-xs truncate">
+                                        {t.taskTitle}
+                                      </span>
+                                      {isCurrentTask && (
+                                        <span className="text-[9px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded shrink-0">
+                                          Esta tarefa
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${meta.badgeClass}`}>
+                                        <span className="font-mono text-xs">{meta.symbol}</span>
+                                        <span>{meta.label}</span>
+                                      </span>
+
+                                      {!isCurrentTask && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleNavigateToTask(t.taskId)}
+                                          className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                                          aria-label={`Ver detalhes da tarefa ${t.taskTitle}`}
+                                          title="Ver detalhes da tarefa"
+                                        >
+                                          <ExternalLink className="w-3 h-3" />
+                                          <span>Ver tarefa</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="pt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600">
+                                    <div>
+                                      <span className="text-slate-400">Estimativa: </span>
+                                      <span className="font-bold text-slate-800">
+                                        {t.estimatedHours !== null ? formatHoursDisplay(t.estimatedHours) : 'N/A'}
+                                      </span>
+                                    </div>
+
+                                    <span className="text-slate-200">•</span>
+
+                                    <div>
+                                      <span className="text-blue-700 font-semibold">CONF: </span>
+                                      <span className="font-bold text-blue-800">{formatHoursDisplay(t.confirmedHours)}</span>
+                                    </div>
+
+                                    {t.draftHours > 0 && (
+                                      <>
+                                        <span className="text-slate-200">•</span>
+                                        <div>
+                                          <span className="text-amber-700 font-semibold">DRAFT: </span>
+                                          <span className="font-bold text-amber-800">{formatHoursDisplay(t.draftHours)}</span>
+                                        </div>
+                                      </>
+                                    )}
+
+                                    <span className="text-slate-200">•</span>
+
+                                    <div>
+                                      <span className="text-slate-700 font-bold">Planeado: </span>
+                                      <span className="font-extrabold text-slate-900">{formatHoursDisplay(t.plannedHours)}</span>
+                                    </div>
+
+                                    {t.remainingHours !== null && t.remainingHours > 0 && (
+                                      <>
+                                        <span className="text-slate-200">•</span>
+                                        <div>
+                                          <span className="text-amber-700 font-semibold">Falta: </span>
+                                          <span className="font-bold text-amber-800">{formatHoursDisplay(t.remainingHours)}</span>
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {t.excessHours !== null && t.excessHours > 0 && (
+                                      <>
+                                        <span className="text-slate-200">•</span>
+                                        <div>
+                                          <span className="text-rose-700 font-bold">Excesso: </span>
+                                          <span className="font-extrabold text-rose-800">{formatHoursDisplay(t.excessHours)}</span>
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {t.plannedPercentage !== null && (
+                                      <>
+                                        <span className="text-slate-200">•</span>
+                                        <span className="text-slate-500 font-medium">
+                                          ({Math.round(t.plannedPercentage)}%)
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}

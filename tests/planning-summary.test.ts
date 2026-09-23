@@ -12,7 +12,10 @@ import {
   getTaskDailyOperationalStatus,
   computeResourceDayTaskConsistency,
   computeResourceDayProjectDistribution,
-  computeProjectPlanningImpact
+  computeProjectPlanningImpact,
+  computeProjectPlanningVsEstimate,
+  getTaskPlanningEstimateStatus,
+  getTaskPlanningEstimateStatusMeta
 } from '../lib/planning/summary.ts';
 import type { PlanningAllocationDTO } from '../lib/planning/types.ts';
 
@@ -1682,6 +1685,311 @@ describe('FASE 23E-C3I — Visão Consolidada do Planeamento Diário por Projeto
     assert.strictEqual(maria.tasks[0].plannedHours, 3);
     assert.strictEqual(maria.tasks[1].taskId, 'task-1');
     assert.strictEqual(maria.tasks[1].plannedHours, 1);
+  });
+});
+
+describe('FASE 23E-C3J — Controlo do Planeamento do Projeto vs Estimativa Unit Tests', () => {
+  const dummyProjects = [
+    { id: 'proj-1', title: 'Projeto Linha Alpha' },
+  ];
+
+  const makeAlloc = (
+    id: string,
+    taskId: string,
+    resourceId: string,
+    date: string,
+    durationMinutes: number,
+    status: 'CONFIRMED' | 'DRAFT' | 'CANCELLED' = 'CONFIRMED'
+  ): PlanningAllocationDTO => ({
+    id,
+    taskId,
+    resourceId,
+    date,
+    startTime: '08:00',
+    endTime: '12:00',
+    status,
+    version: 1,
+    durationMinutes,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  // Cenário A: Estimativa 8h, CONFIRMED 8h.
+  // Esperado: Planeado = 8h, Falta = 0h, Excesso = 0h, Estado = PLANEADA
+  it('Cenário A: Estimativa 8h, CONFIRMED 8h -> Planeado = 8h, Falta = 0h, Excesso = 0h, Estado = PLANEADA', () => {
+    const tasks = [
+      { id: 't-1', projectId: 'proj-1', title: 'Tarefa A', estimatedHours: '8h' }
+    ];
+    const allocs = [
+      makeAlloc('a1', 't-1', 'res-1', '2026-09-22', 480, 'CONFIRMED')
+    ];
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    assert.strictEqual(result.totalEstimatedHours, 8);
+    assert.strictEqual(result.totalConfirmedHours, 8);
+    assert.strictEqual(result.totalPlannedHours, 8);
+    assert.strictEqual(result.totalRemainingHours, 0);
+    assert.strictEqual(result.totalExcessHours, 0);
+    assert.strictEqual(result.plannedPercentage, 100);
+
+    const taskItem = result.tasks[0];
+    assert.strictEqual(taskItem.plannedHours, 8);
+    assert.strictEqual(taskItem.remainingHours, 0);
+    assert.strictEqual(taskItem.excessHours, 0);
+    assert.strictEqual(taskItem.status, 'PLANEADA');
+  });
+
+  // Cenário B: Estimativa 8h, CONFIRMED 4h.
+  // Esperado: Planeado = 4h, Falta = 4h, Excesso = 0h, Estado = PARCIAL
+  it('Cenário B: Estimativa 8h, CONFIRMED 4h -> Planeado = 4h, Falta = 4h, Excesso = 0h, Estado = PARCIAL', () => {
+    const tasks = [
+      { id: 't-1', projectId: 'proj-1', title: 'Tarefa B', estimatedHours: '8h' }
+    ];
+    const allocs = [
+      makeAlloc('a1', 't-1', 'res-1', '2026-09-22', 240, 'CONFIRMED')
+    ];
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    assert.strictEqual(result.totalPlannedHours, 4);
+    assert.strictEqual(result.totalRemainingHours, 4);
+    assert.strictEqual(result.totalExcessHours, 0);
+
+    const taskItem = result.tasks[0];
+    assert.strictEqual(taskItem.plannedHours, 4);
+    assert.strictEqual(taskItem.remainingHours, 4);
+    assert.strictEqual(taskItem.excessHours, 0);
+    assert.strictEqual(taskItem.status, 'PARCIAL');
+  });
+
+  // Cenário C: Estimativa 8h, CONFIRMED 4h, DRAFT 2h.
+  // Esperado: Planeado = 6h, Falta = 2h, Excesso = 0h
+  it('Cenário C: Estimativa 8h, CONFIRMED 4h, DRAFT 2h -> Planeado = 6h, Falta = 2h, Excesso = 0h', () => {
+    const tasks = [
+      { id: 't-1', projectId: 'proj-1', title: 'Tarefa C', estimatedHours: '8h' }
+    ];
+    const allocs = [
+      makeAlloc('a1', 't-1', 'res-1', '2026-09-22', 240, 'CONFIRMED'),
+      makeAlloc('a2', 't-1', 'res-1', '2026-09-23', 120, 'DRAFT'),
+    ];
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    assert.strictEqual(result.totalConfirmedHours, 4);
+    assert.strictEqual(result.totalDraftHours, 2);
+    assert.strictEqual(result.totalPlannedHours, 6);
+    assert.strictEqual(result.totalRemainingHours, 2);
+    assert.strictEqual(result.totalExcessHours, 0);
+
+    const taskItem = result.tasks[0];
+    assert.strictEqual(taskItem.confirmedHours, 4);
+    assert.strictEqual(taskItem.draftHours, 2);
+    assert.strictEqual(taskItem.plannedHours, 6);
+    assert.strictEqual(taskItem.remainingHours, 2);
+    assert.strictEqual(taskItem.excessHours, 0);
+    assert.strictEqual(taskItem.status, 'PARCIAL');
+  });
+
+  // Cenário D: Estimativa 8h, CONFIRMED 8h, DRAFT 2h.
+  // Esperado: Planeado = 10h, Falta = 0h, Excesso = 2h, Estado = EXCESSO
+  it('Cenário D: Estimativa 8h, CONFIRMED 8h, DRAFT 2h -> Planeado = 10h, Falta = 0h, Excesso = 2h, Estado = EXCESSO', () => {
+    const tasks = [
+      { id: 't-1', projectId: 'proj-1', title: 'Tarefa D', estimatedHours: '8h' }
+    ];
+    const allocs = [
+      makeAlloc('a1', 't-1', 'res-1', '2026-09-22', 480, 'CONFIRMED'),
+      makeAlloc('a2', 't-1', 'res-1', '2026-09-23', 120, 'DRAFT'),
+    ];
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    assert.strictEqual(result.totalPlannedHours, 10);
+    assert.strictEqual(result.totalRemainingHours, 0);
+    assert.strictEqual(result.totalExcessHours, 2);
+
+    const taskItem = result.tasks[0];
+    assert.strictEqual(taskItem.plannedHours, 10);
+    assert.strictEqual(taskItem.remainingHours, 0);
+    assert.strictEqual(taskItem.excessHours, 2);
+    assert.strictEqual(taskItem.status, 'EXCESSO');
+  });
+
+  // Cenário E: Apenas DRAFT 4h numa estimativa de 8h.
+  // Esperado: CONFIRMED = 0h, DRAFT = 4h, Planeado = 4h, Falta = 4h, Excesso = 0h, Estado = DRAFT
+  it('Cenário E: Apenas DRAFT 4h numa estimativa de 8h -> CONFIRMED = 0h, DRAFT = 4h, Planeado = 4h, Falta = 4h, Excesso = 0h, Estado = DRAFT', () => {
+    const tasks = [
+      { id: 't-1', projectId: 'proj-1', title: 'Tarefa E', estimatedHours: '8h' }
+    ];
+    const allocs = [
+      makeAlloc('a1', 't-1', 'res-1', '2026-09-22', 240, 'DRAFT'),
+    ];
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    assert.strictEqual(result.totalConfirmedHours, 0);
+    assert.strictEqual(result.totalDraftHours, 4);
+    assert.strictEqual(result.totalPlannedHours, 4);
+    assert.strictEqual(result.totalRemainingHours, 4);
+    assert.strictEqual(result.totalExcessHours, 0);
+
+    const taskItem = result.tasks[0];
+    assert.strictEqual(taskItem.confirmedHours, 0);
+    assert.strictEqual(taskItem.draftHours, 4);
+    assert.strictEqual(taskItem.plannedHours, 4);
+    assert.strictEqual(taskItem.remainingHours, 4);
+    assert.strictEqual(taskItem.excessHours, 0);
+    assert.strictEqual(taskItem.status, 'DRAFT');
+  });
+
+  // Cenário F: CANCELLED 5h + CONFIRMED 3h.
+  // Esperado: Planeado = 3h (CANCELLED excluído)
+  it('Cenário F: CANCELLED 5h + CONFIRMED 3h -> Planeado = 3h', () => {
+    const tasks = [
+      { id: 't-1', projectId: 'proj-1', title: 'Tarefa F', estimatedHours: '8h' }
+    ];
+    const allocs = [
+      makeAlloc('a1', 't-1', 'res-1', '2026-09-22', 180, 'CONFIRMED'),
+      makeAlloc('a2', 't-1', 'res-1', '2026-09-23', 300, 'CANCELLED'),
+    ];
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    assert.strictEqual(result.totalConfirmedHours, 3);
+    assert.strictEqual(result.totalPlannedHours, 3);
+    assert.strictEqual(result.tasks[0].plannedHours, 3);
+    assert.strictEqual(result.tasks[0].remainingHours, 5);
+  });
+
+  // Cenário G: Sem estimativa.
+  // Esperado: Estimativa = N/A, Falta = N/A, Excesso = N/A, mas CONFIRMED/DRAFT/PLANEADO continuam corretos
+  it('Cenário G: Sem estimativa -> Estimativa = N/A, Falta = N/A, Excesso = N/A, CONF/DRAFT/PLANEADO corretos', () => {
+    const tasks = [
+      { id: 't-1', projectId: 'proj-1', title: 'Tarefa G', estimatedHours: null }
+    ];
+    const allocs = [
+      makeAlloc('a1', 't-1', 'res-1', '2026-09-22', 180, 'CONFIRMED'), // 3h
+      makeAlloc('a2', 't-1', 'res-1', '2026-09-23', 60, 'DRAFT'),      // 1h
+    ];
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    assert.strictEqual(result.totalEstimatedHours, null);
+    assert.strictEqual(result.totalConfirmedHours, 3);
+    assert.strictEqual(result.totalDraftHours, 1);
+    assert.strictEqual(result.totalPlannedHours, 4);
+    assert.strictEqual(result.totalRemainingHours, null);
+    assert.strictEqual(result.totalExcessHours, null);
+    assert.strictEqual(result.plannedPercentage, null);
+
+    const taskItem = result.tasks[0];
+    assert.strictEqual(taskItem.estimatedHours, null);
+    assert.strictEqual(taskItem.confirmedHours, 3);
+    assert.strictEqual(taskItem.draftHours, 1);
+    assert.strictEqual(taskItem.plannedHours, 4);
+    assert.strictEqual(taskItem.remainingHours, null);
+    assert.strictEqual(taskItem.excessHours, null);
+    assert.strictEqual(taskItem.status, 'SEM_ESTIMATIVA');
+  });
+
+  // Cenário H: Várias alocações da mesma tarefa.
+  // Esperado: as durações são consolidadas corretamente
+  it('Cenário H: Várias alocações da mesma tarefa consolidadas corretamente', () => {
+    const tasks = [
+      { id: 't-1', projectId: 'proj-1', title: 'Tarefa H', estimatedHours: '10h' }
+    ];
+    const allocs = [
+      makeAlloc('a1', 't-1', 'res-1', '2026-09-22', 120, 'CONFIRMED'), // 2h
+      makeAlloc('a2', 't-1', 'res-2', '2026-09-22', 180, 'CONFIRMED'), // 3h
+      makeAlloc('a3', 't-1', 'res-1', '2026-09-23', 60, 'DRAFT'),      // 1h
+    ];
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    assert.strictEqual(result.tasks.length, 1);
+    const taskItem = result.tasks[0];
+    assert.strictEqual(taskItem.allocationCount, 3);
+    assert.strictEqual(taskItem.confirmedHours, 5);
+    assert.strictEqual(taskItem.draftHours, 1);
+    assert.strictEqual(taskItem.plannedHours, 6);
+    assert.strictEqual(taskItem.remainingHours, 4);
+  });
+
+  // Cenário I: Várias tarefas.
+  // Esperado: os totais das tarefas coincidem com o total do projeto
+  it('Cenário I: Várias tarefas -> os totais das tarefas coincidem com o total do projeto', () => {
+    const tasks = [
+      { id: 't-1', projectId: 'proj-1', title: 'Tarefa 1', estimatedHours: '8h' },
+      { id: 't-2', projectId: 'proj-1', title: 'Tarefa 2', estimatedHours: '6h' },
+    ];
+    const allocs = [
+      makeAlloc('a1', 't-1', 'res-1', '2026-09-22', 240, 'CONFIRMED'), // 4h
+      makeAlloc('a2', 't-1', 'res-2', '2026-09-22', 120, 'DRAFT'),     // 2h
+      makeAlloc('a3', 't-2', 'res-1', '2026-09-23', 180, 'CONFIRMED'), // 3h
+    ];
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    const sumConfirmed = result.tasks.reduce((sum, t) => sum + t.confirmedMinutes, 0);
+    const sumDraft = result.tasks.reduce((sum, t) => sum + t.draftMinutes, 0);
+    const sumPlanned = result.tasks.reduce((sum, t) => sum + t.plannedMinutes, 0);
+
+    assert.strictEqual(sumConfirmed, result.totalConfirmedMinutes);
+    assert.strictEqual(sumDraft, result.totalDraftMinutes);
+    assert.strictEqual(sumPlanned, result.totalPlannedMinutes);
+    assert.strictEqual(result.isConsistent, true);
+  });
+
+  // Cenário J: Uma tarefa sem planeamento.
+  // Esperado: Planeado = 0, Falta = Estimativa, Estado = SEM_PLANEAMENTO
+  it('Cenário J: Uma tarefa sem planeamento -> Planeado = 0, Falta = Estimativa, Estado = SEM_PLANEAMENTO', () => {
+    const tasks = [
+      { id: 't-empty', projectId: 'proj-1', title: 'Tarefa Sem Allocations', estimatedHours: '5h' }
+    ];
+    const allocs: PlanningAllocationDTO[] = [];
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    assert.strictEqual(result.totalPlannedHours, 0);
+    assert.strictEqual(result.totalRemainingHours, 5);
+
+    const taskItem = result.tasks[0];
+    assert.strictEqual(taskItem.plannedHours, 0);
+    assert.strictEqual(taskItem.remainingHours, 5);
+    assert.strictEqual(taskItem.excessHours, 0);
+    assert.strictEqual(taskItem.status, 'SEM_PLANEAMENTO');
+  });
+
+  // Cenário K: Alocação com tarefa não encontrada.
+  // Esperado: a duração continua presente nos totais globais
+  it('Cenário K: Alocação com tarefa não encontrada -> duração continua presente nos totais globais', () => {
+    const tasks = [
+      { id: 't-1', projectId: 'proj-1', title: 'Tarefa 1', estimatedHours: '4h' }
+    ];
+    const allocs = [
+      makeAlloc('a1', 't-1', 'res-1', '2026-09-22', 120, 'CONFIRMED'), // 2h
+      makeAlloc('a2', 'unknown-t-999', 'res-1', '2026-09-22', 180, 'CONFIRMED'), // 3h
+    ];
+    // Attach project explicitly on the allocation
+    (allocs[1] as any).projectId = 'proj-1';
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    assert.strictEqual(result.totalPlannedHours, 5);
+    assert.strictEqual(result.isConsistent, true);
+
+    const unknownItem = result.tasks.find(t => t.taskId === 'unknown-t-999');
+    assert.ok(unknownItem);
+    assert.strictEqual(unknownItem.taskTitle, 'Tarefa não identificada');
+    assert.strictEqual(unknownItem.plannedHours, 3);
+    assert.strictEqual(unknownItem.status, 'SEM_ESTIMATIVA');
+  });
+
+  // Cenário L: Verificação de que excesso de capacidade do recurso não é atribuído à tarefa/projeto
+  it('Cenário L: Excesso de capacidade do recurso não é atribuído à tarefa/projeto', () => {
+    const tasks = [
+      { id: 't-1', projectId: 'proj-1', title: 'Tarefa Normal', estimatedHours: '8h' }
+    ];
+    const allocs = [
+      makeAlloc('a1', 't-1', 'overloaded-technician', '2026-09-22', 240, 'CONFIRMED'), // 4h
+    ];
+
+    const result = computeProjectPlanningVsEstimate('proj-1', allocs, tasks, dummyProjects);
+    const taskItem = result.tasks[0];
+    assert.strictEqual(taskItem.plannedHours, 4);
+    assert.strictEqual(taskItem.remainingHours, 4);
+    assert.strictEqual(taskItem.excessHours, 0);
+    assert.strictEqual(taskItem.status, 'PARCIAL');
+    assert.strictEqual(result.totalExcessHours, 0);
   });
 });
 
