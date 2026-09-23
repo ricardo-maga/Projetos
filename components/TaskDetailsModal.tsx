@@ -25,7 +25,10 @@ import {
 import { 
   computePlanningSummary, 
   formatHoursDisplay,
-  groupTaskAllocationsByDate 
+  groupTaskAllocationsByDate,
+  groupTaskAllocationsByResource,
+  getTaskPlanningLoadStatus,
+  TaskPlanningLoadStatus
 } from '../lib/planning/summary';
 import PlanningAllocationModal from './PlanningAllocationModal';
 
@@ -137,16 +140,37 @@ export default function TaskDetailsModal({
     });
   }, [task, planningAllocations, internalAllocations]);
 
-  const activeAllocations = taskAllocations.filter(a => a.status !== 'CANCELLED');
-  const cancelledAllocations = taskAllocations.filter(a => a.status === 'CANCELLED');
+  const activeAllocations = React.useMemo(() => {
+    return taskAllocations.filter(a => a.status !== 'CANCELLED');
+  }, [taskAllocations]);
+
+  const cancelledAllocations = React.useMemo(() => {
+    return taskAllocations.filter(a => a.status === 'CANCELLED');
+  }, [taskAllocations]);
 
   // Authoritative Planning Summary
-  const planningSummary = computePlanningSummary(task?.estimatedHours, taskAllocations);
+  const planningSummary = React.useMemo(() => {
+    return computePlanningSummary(task?.estimatedHours, taskAllocations);
+  }, [task?.estimatedHours, taskAllocations]);
+
+  // Operational planning load status (FASE 23E-C3M-D)
+  const taskLoadStatus = React.useMemo(() => {
+    return getTaskPlanningLoadStatus(planningSummary);
+  }, [planningSummary]);
 
   // Group active allocations by day (FASE 23E-C3M-B)
   const dailyPlanningGroups = React.useMemo(() => {
     return groupTaskAllocationsByDate(activeAllocations);
   }, [activeAllocations]);
+
+  // Consolidated resources involved in task (FASE 23E-C3M-D)
+  const involvedResources = React.useMemo(() => {
+    return groupTaskAllocationsByResource(
+      activeAllocations, 
+      users, 
+      task?.assigneeIds || []
+    );
+  }, [activeAllocations, users, task?.assigneeIds]);
 
   useEffect(() => {
     if (task) {
@@ -354,16 +378,39 @@ export default function TaskDetailsModal({
             />
           </div>
 
-          {/* Planeamento Diário e Carga da Tarefa (FASE 23E-C3M-B) */}
+          {/* Planeamento Diário e Carga da Tarefa (FASE 23E-C3M-D) */}
           <div className="border-t border-slate-200 pt-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wide flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" />
-                  Planeamento Diário da Tarefa
-                </span>
-                <p className="text-[11px] text-slate-500">
-                  Distribuição diária de trabalho e consumo da estimativa
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                    Carga Planeada
+                  </span>
+                  {/* Operational Status of the Task Planning */}
+                  {taskLoadStatus === 'EXCESSO' && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-rose-100 text-rose-800 border border-rose-200">
+                      EXCESSO
+                    </span>
+                  )}
+                  {taskLoadStatus === 'PLANEAMENTO_PENDENTE' && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 border border-amber-200">
+                      PLANEAMENTO PENDENTE
+                    </span>
+                  )}
+                  {taskLoadStatus === 'PLANEAMENTO_COMPLETO' && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      PLANEAMENTO COMPLETO
+                    </span>
+                  )}
+                  {taskLoadStatus === 'SEM_PLANEAMENTO' && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-slate-100 text-slate-600 border border-slate-200">
+                      SEM PLANEAMENTO
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Distribuição diária de trabalho por recurso e consumo da estimativa
                 </p>
               </div>
               <button
@@ -477,7 +524,7 @@ export default function TaskDetailsModal({
               </div>
             )}
 
-            {/* Daily Planning Distribution List (FASE 23E-C3M-B) */}
+            {/* Daily Planning Distribution List (FASE 23E-C3M-D) */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
@@ -499,7 +546,7 @@ export default function TaskDetailsModal({
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
                   {dailyPlanningGroups.map(dayGroup => {
                     const dateObj = new Date(dayGroup.date + 'T00:00:00');
                     const dayLabel = dateObj.toLocaleDateString('pt-PT', { 
@@ -508,10 +555,43 @@ export default function TaskDetailsModal({
                       month: 'short' 
                     });
 
+                    // Subgroup allocations of this day by Resource
+                    const resMapInDay = new Map<string, {
+                      resourceId: string;
+                      resourceName: string;
+                      confirmedHours: number;
+                      draftHours: number;
+                      plannedHours: number;
+                      allocs: PlanningAllocationDTO[];
+                    }>();
+
+                    for (const ra of dayGroup.resourceAllocations) {
+                      const resId = ra.resourceId;
+                      const existing = resMapInDay.get(resId) || {
+                        resourceId: resId,
+                        resourceName: getUserName(resId),
+                        confirmedHours: 0,
+                        draftHours: 0,
+                        plannedHours: 0,
+                        allocs: [],
+                      };
+                      existing.confirmedHours += ra.confirmedHours;
+                      existing.draftHours += ra.draftHours;
+                      existing.plannedHours += ra.plannedHours;
+                      existing.allocs.push(ra.allocation);
+                      resMapInDay.set(resId, existing);
+                    }
+
+                    const dayResources = Array.from(resMapInDay.values()).sort((a, b) => {
+                      if (b.confirmedHours !== a.confirmedHours) return b.confirmedHours - a.confirmedHours;
+                      if (b.draftHours !== a.draftHours) return b.draftHours - a.draftHours;
+                      return a.resourceName.localeCompare(b.resourceName, 'pt-PT');
+                    });
+
                     return (
                       <div 
                         key={dayGroup.date}
-                        className="bg-slate-50/80 border border-slate-200 rounded-xl p-2.5 space-y-2"
+                        className="bg-slate-50/80 border border-slate-200 rounded-xl p-2.5 space-y-2.5"
                       >
                         {/* Day Group Header */}
                         <div className="flex items-center justify-between text-xs border-b border-slate-200/80 pb-1.5">
@@ -541,62 +621,95 @@ export default function TaskDetailsModal({
                           </div>
                         </div>
 
-                        {/* Resource Allocations for this Day */}
-                        <div className="space-y-1.5 pl-1">
-                          {dayGroup.resourceAllocations.map(({ allocation: alloc }) => {
-                            const isConfirmed = alloc.status === 'CONFIRMED';
-                            const isAssignee = (task.assigneeIds || []).includes(alloc.resourceId);
+                        {/* Resources involved on this Day */}
+                        <div className="space-y-2 pl-1">
+                          {dayResources.map(res => {
+                            const isAssignee = (task.assigneeIds || []).includes(res.resourceId);
 
                             return (
-                              <div
-                                key={alloc.id}
-                                className={`p-2 rounded-lg border flex items-center justify-between text-xs transition-colors ${
-                                  isConfirmed
-                                    ? 'bg-white border-blue-200 hover:border-blue-300 shadow-2xs'
-                                    : 'bg-white border-dashed border-amber-300 hover:border-amber-400 shadow-2xs'
-                                }`}
+                              <div 
+                                key={res.resourceId}
+                                className="bg-white rounded-lg border border-slate-200/90 p-2 space-y-1.5 shadow-2xs"
                               >
-                                <div className="flex items-center gap-2.5">
-                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${
-                                    isConfirmed
-                                      ? 'bg-blue-600 text-white'
-                                      : 'bg-amber-200 text-amber-950 border border-amber-300'
-                                  }`}>
-                                    {isConfirmed ? 'Confirmado' : 'Rascunho'}
-                                  </span>
-
-                                  <div>
-                                    <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                                      <UserIcon className="w-3 h-3 text-slate-400 shrink-0" />
-                                      <span>{getUserName(alloc.resourceId)}</span>
-                                      {isAssignee && (
-                                        <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1 py-0.2 rounded" title="Também é responsável pela tarefa">
-                                          Responsável
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
-                                      <Clock className="w-3 h-3 text-slate-400" />
-                                      <span>{alloc.startTime.substring(0, 5)} - {alloc.endTime.substring(0, 5)}</span>
-                                      <span className="font-semibold text-slate-700">
-                                        ({formatHoursDisplay((alloc.durationMinutes || 0) / 60)})
+                                {/* Resource Header within Day */}
+                                <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-100">
+                                  <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                    <UserIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <span>{res.resourceName}</span>
+                                    {isAssignee && (
+                                      <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1 py-0.2 rounded" title="Responsável atribuído à tarefa">
+                                        Responsável
                                       </span>
-                                    </div>
+                                    )}
+                                  </div>
+
+                                  {/* Resource Day Totals */}
+                                  <div className="flex items-center gap-1.5 text-[11px]">
+                                    {res.confirmedHours > 0 && (
+                                      <span className="text-blue-700 font-semibold">
+                                        {formatHoursDisplay(res.confirmedHours)} conf
+                                      </span>
+                                    )}
+                                    {res.draftHours > 0 && (
+                                      <span className="text-amber-700 font-semibold">
+                                        {formatHoursDisplay(res.draftHours)} draft
+                                      </span>
+                                    )}
+                                    <span className="font-extrabold text-slate-800 bg-slate-100 px-1.5 py-0.2 rounded">
+                                      {formatHoursDisplay(res.plannedHours)}
+                                    </span>
                                   </div>
                                 </div>
 
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedAllocationForEdit(alloc);
-                                      setIsPlanningModalOpen(true);
-                                    }}
-                                    className="p-1 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors cursor-pointer"
-                                    title="Editar Alocação"
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                  </button>
+                                {/* Resource Allocation Items on this Day */}
+                                <div className="space-y-1">
+                                  {res.allocs.map(alloc => {
+                                    const isConfirmed = alloc.status === 'CONFIRMED';
+                                    const durationHours = (alloc.durationMinutes || 0) / 60;
+
+                                    return (
+                                      <div
+                                        key={alloc.id}
+                                        className={`p-1.5 rounded-md flex items-center justify-between text-xs transition-colors ${
+                                          isConfirmed
+                                            ? 'bg-blue-50/40 border border-blue-100'
+                                            : 'bg-amber-50/30 border border-dashed border-amber-200'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase tracking-wider ${
+                                            isConfirmed
+                                              ? 'bg-blue-600 text-white'
+                                              : 'bg-amber-200 text-amber-950 border border-amber-300'
+                                          }`}>
+                                            {isConfirmed ? 'Confirmado' : 'Rascunho'}
+                                          </span>
+
+                                          <div className="text-[11px] text-slate-600 flex items-center gap-1">
+                                            <Clock className="w-3 h-3 text-slate-400" />
+                                            <span>{alloc.startTime.substring(0, 5)} - {alloc.endTime.substring(0, 5)}</span>
+                                            <span className="font-bold text-slate-800 ml-0.5">
+                                              ({formatHoursDisplay(durationHours)})
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSelectedAllocationForEdit(alloc);
+                                              setIsPlanningModalOpen(true);
+                                            }}
+                                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                                            title="Editar Alocação"
+                                          >
+                                            <Edit2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             );
@@ -608,6 +721,53 @@ export default function TaskDetailsModal({
                 </div>
               )}
             </div>
+
+            {/* Resumo Global de Recursos Envolvidos (FASE 23E-C3M-D) */}
+            {involvedResources.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Recursos Envolvidos ({involvedResources.length})</span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Totais da Tarefa
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {involvedResources.map(res => (
+                    <div 
+                      key={res.resourceId}
+                      className="p-2.5 bg-slate-50/90 border border-slate-200 rounded-xl flex items-center justify-between text-xs"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="font-bold text-slate-800 flex items-center gap-1.5 truncate">
+                          <UserIcon className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate">{res.resourceName}</span>
+                          {res.isAssignee && (
+                            <span className="text-[9px] font-semibold text-slate-500 bg-white border border-slate-200 px-1 py-0.2 rounded shrink-0" title="Responsável pela tarefa">
+                              Responsável
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap items-center gap-1.5">
+                          <span className="text-blue-700 font-semibold">{formatHoursDisplay(res.confirmedHours)} confirmado</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-amber-700 font-semibold">{formatHoursDisplay(res.draftHours)} draft</span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-xs font-extrabold text-slate-900 bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                          {formatHoursDisplay(res.plannedHours)}
+                        </div>
+                        <div className="text-[9px] text-slate-400 mt-0.5">planeado</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Cancelled Allocations Accordion / Toggle */}
             {cancelledAllocations.length > 0 && (

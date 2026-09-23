@@ -232,6 +232,105 @@ export function computePlanningSummary(
   };
 }
 
+export interface TaskInvolvedResourceSummary {
+  resourceId: string;
+  resourceName: string;
+  confirmedMinutes: number;
+  draftMinutes: number;
+  plannedMinutes: number;
+  confirmedHours: number;
+  draftHours: number;
+  plannedHours: number;
+  isAssignee: boolean;
+}
+
+export type TaskPlanningLoadStatus = 
+  | 'SEM_PLANEAMENTO' 
+  | 'PLANEAMENTO_PENDENTE' 
+  | 'PLANEAMENTO_COMPLETO' 
+  | 'EXCESSO';
+
+/**
+ * Returns the authoritative operational planning status of a task.
+ * 
+ * Priority:
+ * 1. EXCESSO: if excessHours > 0
+ * 2. SEM_PLANEAMENTO: if plannedHours === 0
+ * 3. PLANEAMENTO_PENDENTE: if draftHours > 0 or plannedHours < estimatedHours
+ * 4. PLANEAMENTO_COMPLETO: if plannedHours >= estimatedHours and excessHours === 0
+ */
+export function getTaskPlanningLoadStatus(summary: PlanningSummary): TaskPlanningLoadStatus {
+  if (summary.excessHours > 0 || summary.isOverAllocated) {
+    return 'EXCESSO';
+  }
+  if (summary.plannedHours === 0) {
+    return 'SEM_PLANEAMENTO';
+  }
+  if (summary.draftHours > 0 || summary.remainingHours > 0) {
+    return 'PLANEAMENTO_PENDENTE';
+  }
+  return 'PLANEAMENTO_COMPLETO';
+}
+
+/**
+ * Consolidates all distinct resources involved in active (CONFIRMED + DRAFT) allocations for a task.
+ * Excludes CANCELLED allocations.
+ * 
+ * Deterministic sorting:
+ * 1. Higher CONFIRMED hours (descending)
+ * 2. Higher DRAFT hours (descending)
+ * 3. Resource Name (alphabetical pt-PT)
+ */
+export function groupTaskAllocationsByResource(
+  allocations: PlanningAllocationDTO[] = [],
+  users: any[] = [],
+  assigneeIds: string[] = []
+): TaskInvolvedResourceSummary[] {
+  const activeAllocs = allocations.filter(a => a.status === 'CONFIRMED' || a.status === 'DRAFT');
+  const resourceMap = new Map<string, { confirmedMinutes: number; draftMinutes: number }>();
+
+  for (const a of activeAllocs) {
+    const existing = resourceMap.get(a.resourceId) || { confirmedMinutes: 0, draftMinutes: 0 };
+    const dur = a.durationMinutes || 0;
+    if (a.status === 'CONFIRMED') {
+      existing.confirmedMinutes += dur;
+    } else if (a.status === 'DRAFT') {
+      existing.draftMinutes += dur;
+    }
+    resourceMap.set(a.resourceId, existing);
+  }
+
+  const result: TaskInvolvedResourceSummary[] = [];
+
+  resourceMap.forEach((totals, resId) => {
+    const userObj = users.find(u => u.id === resId);
+    const resourceName = userObj ? userObj.name : resId;
+    const confirmedHours = totals.confirmedMinutes / 60;
+    const draftHours = totals.draftMinutes / 60;
+    const plannedHours = confirmedHours + draftHours;
+
+    result.push({
+      resourceId: resId,
+      resourceName,
+      confirmedMinutes: totals.confirmedMinutes,
+      draftMinutes: totals.draftMinutes,
+      plannedMinutes: totals.confirmedMinutes + totals.draftMinutes,
+      confirmedHours,
+      draftHours,
+      plannedHours,
+      isAssignee: assigneeIds.includes(resId),
+    });
+  });
+
+  result.sort((a, b) => {
+    if (b.confirmedHours !== a.confirmedHours) return b.confirmedHours - a.confirmedHours;
+    if (b.draftHours !== a.draftHours) return b.draftHours - a.draftHours;
+    return a.resourceName.localeCompare(b.resourceName, 'pt-PT');
+  });
+
+  return result;
+}
+
 /**
  * Groups active (CONFIRMED + DRAFT) allocations for a task by Date and then by Resource.
  * Returns sorted chronologically by date ascending, with sub-allocations by start time.

@@ -5,7 +5,9 @@ import {
   parseHoursToNumber, 
   formatHoursDisplay,
   groupTaskAllocationsByDate,
-  groupResourceDayAllocationsByTask 
+  groupResourceDayAllocationsByTask,
+  groupTaskAllocationsByResource,
+  getTaskPlanningLoadStatus 
 } from '../lib/planning/summary.ts';
 import { PlanningAllocationDTO } from '../lib/planning/types.ts';
 
@@ -418,5 +420,184 @@ describe('Resource Day Detail Task Grouping Unit Tests (FASE 23E-C3M-C)', () => 
     const groups = groupResourceDayAllocationsByTask('user-1', '2026-09-22', allocs, mockTasks, mockProjects);
     assert.strictEqual(groups[0].taskId, 'task-2'); // CONFIRMED first
     assert.strictEqual(groups[1].taskId, 'task-1'); // DRAFT next
+  });
+});
+
+describe('Task Planning Load & Resource Consolidation Tests (FASE 23E-C3M-D)', () => {
+  const makeAlloc = (
+    id: string,
+    taskId: string,
+    resourceId: string,
+    date: string,
+    durationMinutes: number,
+    status: 'DRAFT' | 'CONFIRMED' | 'CANCELLED',
+    startTime = '08:00',
+    endTime = '12:00'
+  ): PlanningAllocationDTO => ({
+    id,
+    taskId,
+    resourceId,
+    date,
+    durationMinutes,
+    status,
+    startTime,
+    endTime,
+    version: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  const mockUsers = [
+    { id: 'user-joao', name: 'João Silva' },
+    { id: 'user-pedro', name: 'Pedro Silva' },
+    { id: 'user-ana', name: 'Ana Costa' },
+  ];
+
+  it('Cenário A: Sem allocations (16h estimativa, 0h confirmado, 0h draft, 0h planeado, 16h restante, 0h excesso)', () => {
+    const summary = computePlanningSummary('16h', []);
+    const status = getTaskPlanningLoadStatus(summary);
+
+    assert.strictEqual(summary.estimatedHours, 16);
+    assert.strictEqual(summary.confirmedHours, 0);
+    assert.strictEqual(summary.draftHours, 0);
+    assert.strictEqual(summary.plannedHours, 0);
+    assert.strictEqual(summary.remainingHours, 16);
+    assert.strictEqual(summary.excessHours, 0);
+    assert.strictEqual(status, 'SEM_PLANEAMENTO');
+  });
+
+  it('Cenário B: Apenas CONFIRMED (16h estimativa, 12h confirmed, 0h draft, 12h planeado, 4h restante)', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 480, 'CONFIRMED'), // 8h
+      makeAlloc('a2', 'task-1', 'user-joao', '2026-09-23', 240, 'CONFIRMED'), // 4h
+    ];
+    const summary = computePlanningSummary('16h', allocs);
+    const status = getTaskPlanningLoadStatus(summary);
+
+    assert.strictEqual(summary.estimatedHours, 16);
+    assert.strictEqual(summary.confirmedHours, 12);
+    assert.strictEqual(summary.draftHours, 0);
+    assert.strictEqual(summary.plannedHours, 12);
+    assert.strictEqual(summary.remainingHours, 4);
+    assert.strictEqual(summary.excessHours, 0);
+    assert.strictEqual(status, 'PLANEAMENTO_PENDENTE');
+  });
+
+  it('Cenário C: CONFIRMED + DRAFT (16h estimativa, 12h confirmed, 2h draft, 14h planeado, 2h restante)', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 480, 'CONFIRMED'), // 8h João
+      makeAlloc('a2', 'task-1', 'user-joao', '2026-09-23', 240, 'CONFIRMED'), // 4h João
+      makeAlloc('a3', 'task-1', 'user-pedro', '2026-09-24', 120, 'DRAFT'),    // 2h Pedro
+    ];
+    const summary = computePlanningSummary('16h', allocs);
+    const status = getTaskPlanningLoadStatus(summary);
+
+    assert.strictEqual(summary.estimatedHours, 16);
+    assert.strictEqual(summary.confirmedHours, 12);
+    assert.strictEqual(summary.draftHours, 2);
+    assert.strictEqual(summary.plannedHours, 14);
+    assert.strictEqual(summary.remainingHours, 2);
+    assert.strictEqual(summary.excessHours, 0);
+    assert.strictEqual(status, 'PLANEAMENTO_PENDENTE');
+  });
+
+  it('Cenário D: Excesso (10h estimativa, 12h confirmed, 12h planeado, 2h excesso)', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 480, 'CONFIRMED'), // 8h
+      makeAlloc('a2', 'task-1', 'user-joao', '2026-09-23', 240, 'CONFIRMED'), // 4h
+    ];
+    const summary = computePlanningSummary('10h', allocs);
+    const status = getTaskPlanningLoadStatus(summary);
+
+    assert.strictEqual(summary.estimatedHours, 10);
+    assert.strictEqual(summary.confirmedHours, 12);
+    assert.strictEqual(summary.draftHours, 0);
+    assert.strictEqual(summary.plannedHours, 12);
+    assert.strictEqual(summary.remainingHours, 0);
+    assert.strictEqual(summary.excessHours, 2);
+    assert.strictEqual(summary.isOverAllocated, true);
+    assert.strictEqual(status, 'EXCESSO');
+  });
+
+  it('Cenário E: Múltiplos dias (confirmar agrupamento correto por data)', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 480, 'CONFIRMED'),
+      makeAlloc('a2', 'task-1', 'user-pedro', '2026-09-22', 120, 'CONFIRMED'),
+      makeAlloc('a3', 'task-1', 'user-joao', '2026-09-23', 240, 'CONFIRMED'),
+      makeAlloc('a4', 'task-1', 'user-pedro', '2026-09-24', 120, 'DRAFT'),
+    ];
+
+    const dayGroups = groupTaskAllocationsByDate(allocs);
+    assert.strictEqual(dayGroups.length, 3);
+    assert.strictEqual(dayGroups[0].date, '2026-09-22');
+    assert.strictEqual(dayGroups[0].plannedHours, 10); // 8h + 2h
+    assert.strictEqual(dayGroups[1].date, '2026-09-23');
+    assert.strictEqual(dayGroups[1].plannedHours, 4);  // 4h
+    assert.strictEqual(dayGroups[2].date, '2026-09-24');
+    assert.strictEqual(dayGroups[2].plannedHours, 2);  // 2h draft
+  });
+
+  it('Cenário F: Múltiplos recursos (totais por recurso consolidados e independentes)', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 480, 'CONFIRMED'), // João: 8h
+      makeAlloc('a2', 'task-1', 'user-joao', '2026-09-23', 240, 'CONFIRMED'), // João: 4h
+      makeAlloc('a3', 'task-1', 'user-pedro', '2026-09-24', 120, 'DRAFT'),    // Pedro: 2h
+    ];
+
+    const resources = groupTaskAllocationsByResource(allocs, mockUsers, ['user-joao']);
+    assert.strictEqual(resources.length, 2);
+
+    // João: 12h confirmed, 0h draft, 12h planned, isAssignee = true
+    const joao = resources.find(r => r.resourceId === 'user-joao');
+    assert.ok(joao);
+    assert.strictEqual(joao.resourceName, 'João Silva');
+    assert.strictEqual(joao.confirmedHours, 12);
+    assert.strictEqual(joao.draftHours, 0);
+    assert.strictEqual(joao.plannedHours, 12);
+    assert.strictEqual(joao.isAssignee, true);
+
+    // Pedro: 0h confirmed, 2h draft, 2h planned, isAssignee = false
+    const pedro = resources.find(r => r.resourceId === 'user-pedro');
+    assert.ok(pedro);
+    assert.strictEqual(pedro.resourceName, 'Pedro Silva');
+    assert.strictEqual(pedro.confirmedHours, 0);
+    assert.strictEqual(pedro.draftHours, 2);
+    assert.strictEqual(pedro.plannedHours, 2);
+    assert.strictEqual(pedro.isAssignee, false);
+  });
+
+  it('Cenário G: CANCELLED não aparece na carga operacional nem nos recursos envolvidos', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 480, 'CONFIRMED'),
+      makeAlloc('a2', 'task-1', 'user-pedro', '2026-09-23', 240, 'CANCELLED'), // cancelado
+      makeAlloc('a3', 'task-1', 'user-ana', '2026-09-24', 180, 'CANCELLED'),   // cancelado
+    ];
+
+    const summary = computePlanningSummary('16h', allocs);
+    assert.strictEqual(summary.confirmedHours, 8);
+    assert.strictEqual(summary.plannedHours, 8);
+
+    const dayGroups = groupTaskAllocationsByDate(allocs);
+    assert.strictEqual(dayGroups.length, 1);
+    assert.strictEqual(dayGroups[0].date, '2026-09-22');
+
+    const resources = groupTaskAllocationsByResource(allocs, mockUsers, []);
+    assert.strictEqual(resources.length, 1);
+    assert.strictEqual(resources[0].resourceId, 'user-joao');
+  });
+
+  it('Planeamento Completo: quando PLANEADO >= ESTIMATIVA sem excesso', () => {
+    const allocs = [
+      makeAlloc('a1', 'task-1', 'user-joao', '2026-09-22', 480, 'CONFIRMED'), // 8h
+      makeAlloc('a2', 'task-1', 'user-joao', '2026-09-23', 480, 'CONFIRMED'), // 8h
+    ];
+    const summary = computePlanningSummary('16h', allocs);
+    const status = getTaskPlanningLoadStatus(summary);
+
+    assert.strictEqual(summary.estimatedHours, 16);
+    assert.strictEqual(summary.plannedHours, 16);
+    assert.strictEqual(summary.remainingHours, 0);
+    assert.strictEqual(summary.excessHours, 0);
+    assert.strictEqual(status, 'PLANEAMENTO_COMPLETO');
   });
 });
