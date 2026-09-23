@@ -7,7 +7,8 @@ import {
   groupTaskAllocationsByDate,
   groupResourceDayAllocationsByTask,
   groupTaskAllocationsByResource,
-  getTaskPlanningLoadStatus 
+  getTaskPlanningLoadStatus,
+  computeTaskPlanningImpact
 } from '../lib/planning/summary.ts';
 import { PlanningAllocationDTO } from '../lib/planning/types.ts';
 
@@ -778,5 +779,168 @@ describe('Canonical Task Allocations Source Tests (FASE 23E-C3M-E)', () => {
     assert.strictEqual(summary.excessHours, 2);
     assert.strictEqual(summary.isOverAllocated, true);
     assert.strictEqual(status, 'EXCESSO');
+  });
+});
+
+describe('FASE 23E-C3F — Impacto da Tarefa no Planeamento Diário Unit Tests', () => {
+  const dummyUsers = [
+    { id: 'user-1', name: 'João Silva', email: 'joao@example.com' },
+    { id: 'user-2', name: 'Pedro Santos', email: 'pedro@example.com' },
+    { id: 'user-3', name: 'Ana Costa', email: 'ana@example.com' },
+  ];
+
+  const createAlloc = (
+    id: string,
+    resourceId: string,
+    date: string,
+    startTime: string,
+    durationMinutes: number,
+    status: 'CONFIRMED' | 'DRAFT' | 'CANCELLED'
+  ): PlanningAllocationDTO => ({
+    id,
+    taskId: 'task-main',
+    resourceId,
+    date,
+    startTime,
+    endTime: '18:00',
+    status,
+    version: 1,
+    durationMinutes,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  it('Cenário A — Sem planeamento (0 allocations ativas)', () => {
+    const impact = computeTaskPlanningImpact([], '16h', dummyUsers, ['user-1']);
+    assert.strictEqual(impact.totalPlannedDays, 0);
+    assert.strictEqual(impact.totalInvolvedResources, 0);
+    assert.strictEqual(impact.firstDate, null);
+    assert.strictEqual(impact.firstDateLabel, null);
+    assert.strictEqual(impact.lastDate, null);
+    assert.strictEqual(impact.lastDateLabel, null);
+    assert.strictEqual(impact.dailyGroups.length, 0);
+  });
+
+  it('Cenário B — Um único dia com 1 recurso', () => {
+    const allocs = [
+      createAlloc('a1', 'user-1', '2026-09-22', '08:00', 480, 'CONFIRMED'), // 8h
+    ];
+    const impact = computeTaskPlanningImpact(allocs, '16h', dummyUsers, ['user-1']);
+    assert.strictEqual(impact.totalPlannedDays, 1);
+    assert.strictEqual(impact.totalInvolvedResources, 1);
+    assert.strictEqual(impact.firstDate, '2026-09-22');
+    assert.strictEqual(impact.lastDate, '2026-09-22');
+    assert.strictEqual(impact.dailyGroups.length, 1);
+
+    const day = impact.dailyGroups[0];
+    assert.strictEqual(day.date, '2026-09-22');
+    assert.strictEqual(day.confirmedHours, 8);
+    assert.strictEqual(day.draftHours, 0);
+    assert.strictEqual(day.plannedHours, 8);
+    assert.strictEqual(day.percentageOfEstimate, 50); // 8h / 16h = 50%
+    assert.strictEqual(day.resources.length, 1);
+    assert.strictEqual(day.resources[0].resourceName, 'João Silva');
+    assert.strictEqual(day.resources[0].confirmedHours, 8);
+  });
+
+  it('Cenário C — Vários dias ordenados cronologicamente', () => {
+    const allocs = [
+      createAlloc('a3', 'user-1', '2026-09-24', '08:00', 120, 'CONFIRMED'), // 2h em 24/09
+      createAlloc('a1', 'user-1', '2026-09-22', '08:00', 480, 'CONFIRMED'), // 8h em 22/09
+      createAlloc('a2', 'user-1', '2026-09-23', '08:00', 360, 'CONFIRMED'), // 6h em 23/09
+    ];
+    const impact = computeTaskPlanningImpact(allocs, '16h', dummyUsers, ['user-1']);
+    assert.strictEqual(impact.totalPlannedDays, 3);
+    assert.strictEqual(impact.firstDate, '2026-09-22');
+    assert.strictEqual(impact.lastDate, '2026-09-24');
+    assert.strictEqual(impact.dailyGroups.length, 3);
+    assert.strictEqual(impact.dailyGroups[0].date, '2026-09-22');
+    assert.strictEqual(impact.dailyGroups[0].plannedHours, 8);
+    assert.strictEqual(impact.dailyGroups[1].date, '2026-09-23');
+    assert.strictEqual(impact.dailyGroups[1].plannedHours, 6);
+    assert.strictEqual(impact.dailyGroups[2].date, '2026-09-24');
+    assert.strictEqual(impact.dailyGroups[2].plannedHours, 2);
+  });
+
+  it('Cenário D — Vários recursos no mesmo dia', () => {
+    const allocs = [
+      createAlloc('a1', 'user-1', '2026-09-22', '08:00', 360, 'CONFIRMED'), // João 6h
+      createAlloc('a2', 'user-2', '2026-09-22', '09:00', 120, 'CONFIRMED'), // Pedro 2h
+    ];
+    const impact = computeTaskPlanningImpact(allocs, '16h', dummyUsers, ['user-1']);
+    assert.strictEqual(impact.totalPlannedDays, 1);
+    assert.strictEqual(impact.totalInvolvedResources, 2);
+
+    const day = impact.dailyGroups[0];
+    assert.strictEqual(day.confirmedHours, 8);
+    assert.strictEqual(day.plannedHours, 8);
+    assert.strictEqual(day.resources.length, 2);
+    assert.strictEqual(day.resources[0].resourceName, 'João Silva');
+    assert.strictEqual(day.resources[0].confirmedHours, 6);
+    assert.strictEqual(day.resources[1].resourceName, 'Pedro Santos');
+    assert.strictEqual(day.resources[1].confirmedHours, 2);
+  });
+
+  it('Cenário E — CONFIRMED + DRAFT no mesmo dia e no mesmo recurso', () => {
+    const allocs = [
+      createAlloc('a1', 'user-1', '2026-09-22', '08:00', 360, 'CONFIRMED'), // 6h
+      createAlloc('a2', 'user-1', '2026-09-22', '15:00', 120, 'DRAFT'),     // 2h
+    ];
+    const impact = computeTaskPlanningImpact(allocs, '16h', dummyUsers, ['user-1']);
+    const day = impact.dailyGroups[0];
+    assert.strictEqual(day.confirmedHours, 6);
+    assert.strictEqual(day.draftHours, 2);
+    assert.strictEqual(day.plannedHours, 8);
+
+    const res = day.resources[0];
+    assert.strictEqual(res.confirmedHours, 6);
+    assert.strictEqual(res.draftHours, 2);
+    assert.strictEqual(res.plannedHours, 8);
+  });
+
+  it('Cenário F — Várias allocations do mesmo recurso no mesmo dia são consolidadas', () => {
+    const allocs = [
+      createAlloc('a1', 'user-1', '2026-09-22', '08:00', 120, 'CONFIRMED'), // 2h
+      createAlloc('a2', 'user-1', '2026-09-22', '14:00', 120, 'CONFIRMED'), // 2h
+      createAlloc('a3', 'user-1', '2026-09-22', '16:00', 60, 'DRAFT'),      // 1h
+    ];
+    const impact = computeTaskPlanningImpact(allocs, '10h', dummyUsers, ['user-1']);
+    const day = impact.dailyGroups[0];
+    assert.strictEqual(day.resources.length, 1);
+    const res = day.resources[0];
+    assert.strictEqual(res.confirmedHours, 4);
+    assert.strictEqual(res.draftHours, 1);
+    assert.strictEqual(res.plannedHours, 5);
+    assert.strictEqual(res.allocations.length, 3);
+  });
+
+  it('Cenário G — CANCELLED allocations são excluídas dos cálculos operacionais de impacto', () => {
+    const allocs = [
+      createAlloc('a1', 'user-1', '2026-09-22', '08:00', 240, 'CONFIRMED'), // 4h
+      createAlloc('a2', 'user-2', '2026-09-23', '08:00', 240, 'CANCELLED'), // 4h cancelado
+    ];
+    const impact = computeTaskPlanningImpact(allocs, '10h', dummyUsers, ['user-1']);
+    assert.strictEqual(impact.totalPlannedDays, 1);
+    assert.strictEqual(impact.totalInvolvedResources, 1);
+    assert.strictEqual(impact.firstDate, '2026-09-22');
+    assert.strictEqual(impact.lastDate, '2026-09-22');
+    assert.strictEqual(impact.dailyGroups.length, 1);
+  });
+
+  it('Cenário H — Excesso de planeamento com distribuição diária correta', () => {
+    const allocs = [
+      createAlloc('a1', 'user-1', '2026-09-22', '08:00', 600, 'CONFIRMED'), // 10h
+      createAlloc('a2', 'user-2', '2026-09-23', '08:00', 480, 'CONFIRMED'), // 8h
+    ];
+    const impact = computeTaskPlanningImpact(allocs, '16h', dummyUsers, ['user-1']);
+    assert.strictEqual(impact.totalPlannedDays, 2);
+    assert.strictEqual(impact.totalInvolvedResources, 2);
+    assert.strictEqual(impact.dailyGroups[0].plannedHours, 10);
+    assert.strictEqual(impact.dailyGroups[1].plannedHours, 8);
+    // Global planned = 18h > 16h
+    const summary = computePlanningSummary('16h', allocs);
+    assert.strictEqual(summary.plannedHours, 18);
+    assert.strictEqual(summary.excessHours, 2);
+    assert.strictEqual(summary.isOverAllocated, true);
   });
 });

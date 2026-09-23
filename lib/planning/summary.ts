@@ -385,3 +385,182 @@ export function groupTaskAllocationsByDate(
     };
   });
 }
+
+export interface TaskDailyResourceImpact {
+  resourceId: string;
+  resourceName: string;
+  isAssignee: boolean;
+  confirmedMinutes: number;
+  draftMinutes: number;
+  plannedMinutes: number;
+  confirmedHours: number;
+  draftHours: number;
+  plannedHours: number;
+  allocations: PlanningAllocationDTO[];
+}
+
+export interface TaskDailyImpactGroup {
+  date: string;
+  dateLabel: string;
+  confirmedHours: number;
+  draftHours: number;
+  plannedHours: number;
+  percentageOfEstimate: number;
+  resources: TaskDailyResourceImpact[];
+}
+
+export interface TaskPlanningImpact {
+  totalPlannedDays: number;
+  totalInvolvedResources: number;
+  firstDate: string | null;
+  firstDateLabel: string | null;
+  lastDate: string | null;
+  lastDateLabel: string | null;
+  dailyGroups: TaskDailyImpactGroup[];
+}
+
+/**
+ * Computes the daily planning impact of a task (FASE 23E-C3F).
+ * 
+ * Rules:
+ * - Operates strictly on active allocations (CONFIRMED + DRAFT), excluding CANCELLED.
+ * - Groups chronologically by date ascending.
+ * - For each date, groups allocations by resource and aggregates confirmed, draft, and planned hours.
+ * - Computes comparative metrics: total planned days, total involved resources, first and last planned date.
+ * - Planning unit remains strictly RECURSO + DIA.
+ */
+export function computeTaskPlanningImpact(
+  allocations: PlanningAllocationDTO[] = [],
+  estimatedHoursInput?: string | number | null,
+  users: any[] = [],
+  assigneeIds: string[] = []
+): TaskPlanningImpact {
+  const activeAllocs = allocations.filter(a => a.status === 'CONFIRMED' || a.status === 'DRAFT');
+  const estimatedHours = parseHoursToNumber(estimatedHoursInput);
+
+  if (activeAllocs.length === 0) {
+    return {
+      totalPlannedDays: 0,
+      totalInvolvedResources: 0,
+      firstDate: null,
+      firstDateLabel: null,
+      lastDate: null,
+      lastDateLabel: null,
+      dailyGroups: [],
+    };
+  }
+
+  const dateMap = new Map<string, PlanningAllocationDTO[]>();
+  const resourceSet = new Set<string>();
+
+  for (const a of activeAllocs) {
+    const list = dateMap.get(a.date) || [];
+    list.push(a);
+    dateMap.set(a.date, list);
+    resourceSet.add(a.resourceId);
+  }
+
+  const sortedDates = Array.from(dateMap.keys()).sort((a, b) => a.localeCompare(b));
+  const firstDate = sortedDates[0] || null;
+  const lastDate = sortedDates[sortedDates.length - 1] || null;
+
+  const formatDateLabel = (dStr: string) => {
+    try {
+      const parts = dStr.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        return d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' });
+      }
+      return dStr;
+    } catch {
+      return dStr;
+    }
+  };
+
+  const dailyGroups: TaskDailyImpactGroup[] = sortedDates.map(date => {
+    const dayAllocs = dateMap.get(date) || [];
+    let dayConfirmedMinutes = 0;
+    let dayDraftMinutes = 0;
+
+    const resMap = new Map<string, {
+      confirmedMinutes: number;
+      draftMinutes: number;
+      allocs: PlanningAllocationDTO[];
+    }>();
+
+    for (const a of dayAllocs) {
+      const dur = a.durationMinutes || 0;
+      if (a.status === 'CONFIRMED') dayConfirmedMinutes += dur;
+      if (a.status === 'DRAFT') dayDraftMinutes += dur;
+
+      const existing = resMap.get(a.resourceId) || {
+        confirmedMinutes: 0,
+        draftMinutes: 0,
+        allocs: [],
+      };
+      if (a.status === 'CONFIRMED') existing.confirmedMinutes += dur;
+      if (a.status === 'DRAFT') existing.draftMinutes += dur;
+      existing.allocs.push(a);
+      resMap.set(a.resourceId, existing);
+    }
+
+    const dayConfirmedHours = dayConfirmedMinutes / 60;
+    const dayDraftHours = dayDraftMinutes / 60;
+    const dayPlannedHours = dayConfirmedHours + dayDraftHours;
+    const percentage = estimatedHours > 0 ? Math.min(100, Math.round((dayPlannedHours / estimatedHours) * 100)) : 0;
+
+    const resources: TaskDailyResourceImpact[] = Array.from(resMap.entries()).map(([resId, data]) => {
+      const userObj = users.find(u => u.id === resId);
+      const resourceName = userObj ? userObj.name : resId;
+      const confH = data.confirmedMinutes / 60;
+      const drfH = data.draftMinutes / 60;
+
+      // Sort allocations chronologically by startTime
+      data.allocs.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+      return {
+        resourceId: resId,
+        resourceName,
+        isAssignee: assigneeIds.includes(resId),
+        confirmedMinutes: data.confirmedMinutes,
+        draftMinutes: data.draftMinutes,
+        plannedMinutes: data.confirmedMinutes + data.draftMinutes,
+        confirmedHours: confH,
+        draftHours: drfH,
+        plannedHours: confH + drfH,
+        allocations: data.allocs,
+      };
+    });
+
+    // Sort resources within day:
+    // 1. Higher confirmed hours descending
+    // 2. Higher draft hours descending
+    // 3. Resource name alphabetical
+    resources.sort((a, b) => {
+      if (b.confirmedHours !== a.confirmedHours) return b.confirmedHours - a.confirmedHours;
+      if (b.draftHours !== a.draftHours) return b.draftHours - a.draftHours;
+      return a.resourceName.localeCompare(b.resourceName, 'pt-PT');
+    });
+
+    return {
+      date,
+      dateLabel: formatDateLabel(date),
+      confirmedHours: dayConfirmedHours,
+      draftHours: dayDraftHours,
+      plannedHours: dayPlannedHours,
+      percentageOfEstimate: percentage,
+      resources,
+    };
+  });
+
+  return {
+    totalPlannedDays: sortedDates.length,
+    totalInvolvedResources: resourceSet.size,
+    firstDate,
+    firstDateLabel: firstDate ? formatDateLabel(firstDate) : null,
+    lastDate,
+    lastDateLabel: lastDate ? formatDateLabel(lastDate) : null,
+    dailyGroups,
+  };
+}
+
