@@ -10,11 +10,22 @@ import { requirePermission } from '@/lib/auth/authorization';
 
 const VALID_STATUSES = ['validacao', 'aberto', 'em_analise', 'convertido', 'resolvido', 'cancelado'];
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function getIdFromParams(input: any): Promise<string> {
+  if (!input) return '';
+  const resolved = typeof input.then === 'function' ? await input : input;
+  if (typeof resolved === 'string') return resolved;
+  if (resolved?.params) {
+    const paramsResolved = typeof resolved.params.then === 'function' ? await resolved.params : resolved.params;
+    return paramsResolved?.id || '';
+  }
+  return resolved?.id || '';
+}
+
+export async function GET(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'tickets_read');
   if (!auth.success) return auth.response;
 
-  const { id } = await params;
+  const id = await getIdFromParams(ctx);
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
   }
@@ -42,19 +53,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  return handleUpdate(req, params);
+export async function PATCH(req: NextRequest, ctx: any) {
+  return handleUpdate(req, ctx);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  return handleUpdate(req, params);
+export async function PUT(req: NextRequest, ctx: any) {
+  return handleUpdate(req, ctx);
 }
 
-async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: string }>) {
+async function handleUpdate(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'tickets_write');
   if (!auth.success) return auth.response;
 
-  const { id } = await paramsPromise;
+  const id = await getIdFromParams(ctx);
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
   }
@@ -141,11 +152,11 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'tickets_delete');
   if (!auth.success) return auth.response;
 
-  const { id } = await params;
+  const id = await getIdFromParams(ctx);
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
   }

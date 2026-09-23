@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
       requesterEmail: body.requesterEmail,
       requesterPhone: body.requesterPhone,
       assignedToId: body.assignedToId,
-      createdById: auth.user?.id || body.createdById || '',
+      createdById: auth.user ? auth.user.id : (body.createdById || ''),
       convertedProjectId: body.convertedProjectId,
       createdDate: now,
       updatedDate: now,
