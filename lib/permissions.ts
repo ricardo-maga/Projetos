@@ -188,14 +188,27 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
   }
 };
 
+export const ROLE_UUID_MAP: Record<string, string> = {
+  '00000000-0000-0000-0000-000000000001': 'ug-1',
+  '00000000-0000-0000-0000-000000000002': 'ug-2',
+  '00000000-0000-0000-0000-000000000003': 'ug-3',
+  '00000000-0000-0000-0000-000000000004': 'ug-4',
+};
+
+export function normalizeRoleId(roleId: string): string {
+  if (!roleId) return 'ug-4';
+  return ROLE_UUID_MAP[roleId] || roleId;
+}
+
 /**
  * Returns the resolved GroupPermissions object for a given roleId, merging customized settings if available
  */
 export function getGroupPermissions(roleId: string, customGroups?: UserGroup[]): GroupPermissions {
-  const fallback = DEFAULT_PERMISSIONS[roleId] || DEFAULT_PERMISSIONS['ug-4'];
+  const normalizedRole = normalizeRoleId(roleId);
+  const fallback = DEFAULT_PERMISSIONS[normalizedRole] || DEFAULT_PERMISSIONS[roleId] || DEFAULT_PERMISSIONS['ug-4'];
   
   if (customGroups) {
-    const group = customGroups.find(g => g.id === roleId);
+    const group = customGroups.find(g => g.id === roleId || g.id === normalizedRole);
     if (group && (group as any).permissions) {
       let parsedPerms = (group as any).permissions;
       if (typeof parsedPerms === 'string') {
@@ -227,12 +240,12 @@ export function hasPermission(
   
   if (typeof userOrRoleId === 'string') {
     roleId = userOrRoleId;
-    if (roleId === 'ug-1' || roleId === 'admin') {
+    if (roleId === 'ug-1' || roleId === '00000000-0000-0000-0000-000000000001' || roleId === 'admin') {
       isAdminUser = true;
     }
   } else if (typeof userOrRoleId === 'object') {
     roleId = userOrRoleId.roleId || userOrRoleId.role_id || userOrRoleId.type || '';
-    isAdminUser = !!(userOrRoleId.isAdmin || userOrRoleId.is_admin || roleId === 'ug-1' || roleId === 'admin');
+    isAdminUser = !!(userOrRoleId.isAdmin || userOrRoleId.is_admin || roleId === 'ug-1' || roleId === '00000000-0000-0000-0000-000000000001' || roleId === 'admin');
   }
   
   if (isAdminUser) return true;

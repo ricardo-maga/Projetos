@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
 import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
-import { requireAuth, AuthError } from '@/lib/auth/requireAuth';
+import { requireAuth, AuthError, ForbiddenError } from '@/lib/auth/requireAuth';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
@@ -228,13 +228,25 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await requireAuth(req);
+    const user = await requireAuth(req);
 
     // Extract state
     const state = await req.json();
 
     // Passwords live exclusively in Supabase Auth and are never part of ERP state.
-    if (state.users) state.users = state.users.map(({ password, ...user }: any) => user);
+    if (state.users) state.users = state.users.map(({ password, ...u }: any) => u);
+
+    const isAdmin = user.is_admin || user.role_id === 'ug-1' || user.role_id === '00000000-0000-0000-0000-000000000001';
+
+    // Non-admin users cannot alter userGroups, appConfiguration, or modify administrative user attributes
+    if (!isAdmin) {
+      delete state.userGroups;
+      delete state.appConfig;
+      // Protect users list from non-admin privilege escalation
+      if (state.users) {
+        delete state.users;
+      }
+    }
 
     // 4. Save state
     const result = await saveActiveStateToSupabase(state);
@@ -243,6 +255,12 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json(result);
   } catch (error: any) {
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({
+        success: false,
+        message: error.message || 'Sem permissão para realizar esta operação.',
+      }, { status: 403 });
+    }
     if (error instanceof AuthError) {
       return NextResponse.json({ 
         success: false, 

@@ -133,7 +133,7 @@ export async function requireAdmin(req?: NextRequest): Promise<AuthResult> {
 
   try {
     const centralUser = await requireCentralAuth(req);
-    if (!centralUser.is_admin && centralUser.role_id !== 'ug-1') {
+    if (!centralUser.is_admin && centralUser.role_id !== 'ug-1' && centralUser.role_id !== '00000000-0000-0000-0000-000000000001') {
       return {
         success: false,
         response: forbidden('Operação reservada exclusivamente a Administradores.', requestId),
