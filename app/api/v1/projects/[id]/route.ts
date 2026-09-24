@@ -247,30 +247,64 @@ async function handleUpdate(req: NextRequest, ctx: any) {
       updateQuery = updateQuery.eq('version', currentVersion);
     }
 
-    const { error: updateError } = await updateQuery;
+    const { data: updatedRows, error: updateError } = await updateQuery.select('id');
     if (updateError) {
       console.error('[API PROJECT UPDATE ERROR]', updateError);
       return badRequest(`Erro ao atualizar projeto: ${updateError.message}`, requestId);
     }
 
+    // OCC Check: Verify that the UPDATE actually affected the row
+    if (hasVersionColumn && (!updatedRows || updatedRows.length === 0)) {
+      return conflict(
+        `Conflito de concorrência. O projeto foi alterado por outro utilizador (versão esperada: ${currentVersion}). Recarregue os dados antes de gravar.`,
+        requestId,
+        { currentVersion, submittedVersion: updates.version }
+      );
+    }
+
+    // 3. Update relations and strictly verify errors
     if (teamsInvolved !== undefined) {
-      await sb.from('project_teams_link').delete().eq('project_id', id);
+      const { error: delTeamsErr } = await sb.from('project_teams_link').delete().eq('project_id', id);
+      if (delTeamsErr) {
+        console.error('[API PROJECT UPDATE TEAMS DELETE ERROR]', delTeamsErr);
+        return badRequest(`Erro ao atualizar equipas do projeto: ${delTeamsErr.message}`, requestId);
+      }
       if (teamsInvolved.length > 0) {
-        await sb.from('project_teams_link').insert(teamsInvolved.map((t: string) => ({ project_id: id, team_id: t })));
+        const { error: insTeamsErr } = await sb.from('project_teams_link').insert(teamsInvolved.map((t: string) => ({ project_id: id, team_id: t })));
+        if (insTeamsErr) {
+          console.error('[API PROJECT UPDATE TEAMS INSERT ERROR]', insTeamsErr);
+          return badRequest(`Erro ao associar equipas ao projeto: ${insTeamsErr.message}`, requestId);
+        }
       }
     }
 
     if (partnersInvolved !== undefined) {
-      await sb.from('project_partners_link').delete().eq('project_id', id);
+      const { error: delPartnersErr } = await sb.from('project_partners_link').delete().eq('project_id', id);
+      if (delPartnersErr) {
+        console.error('[API PROJECT UPDATE PARTNERS DELETE ERROR]', delPartnersErr);
+        return badRequest(`Erro ao atualizar parceiros do projeto: ${delPartnersErr.message}`, requestId);
+      }
       if (partnersInvolved.length > 0) {
-        await sb.from('project_partners_link').insert(partnersInvolved.map((p: string) => ({ project_id: id, partner_id: p })));
+        const { error: insPartnersErr } = await sb.from('project_partners_link').insert(partnersInvolved.map((p: string) => ({ project_id: id, partner_id: p })));
+        if (insPartnersErr) {
+          console.error('[API PROJECT UPDATE PARTNERS INSERT ERROR]', insPartnersErr);
+          return badRequest(`Erro ao associar parceiros ao projeto: ${insPartnersErr.message}`, requestId);
+        }
       }
     }
 
     if (categoriesInvolved !== undefined) {
-      await sb.from('project_category_link').delete().eq('project_id', id);
+      const { error: delCatsErr } = await sb.from('project_category_link').delete().eq('project_id', id);
+      if (delCatsErr) {
+        console.error('[API PROJECT UPDATE CATEGORIES DELETE ERROR]', delCatsErr);
+        return badRequest(`Erro ao atualizar categorias do projeto: ${delCatsErr.message}`, requestId);
+      }
       if (categoriesInvolved.length > 0) {
-        await sb.from('project_category_link').insert(categoriesInvolved.map((c: string) => ({ project_id: id, category_id: c })));
+        const { error: insCatsErr } = await sb.from('project_category_link').insert(categoriesInvolved.map((c: string) => ({ project_id: id, category_id: c })));
+        if (insCatsErr) {
+          console.error('[API PROJECT UPDATE CATEGORIES INSERT ERROR]', insCatsErr);
+          return badRequest(`Erro ao associar categorias ao projeto: ${insCatsErr.message}`, requestId);
+        }
       }
     }
 

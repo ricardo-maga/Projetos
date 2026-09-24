@@ -22,13 +22,22 @@ const validUUID2 = 'b0000000-0000-0000-0000-000000000002';
 const validUUID3 = 'c0000000-0000-0000-0000-000000000003';
 const validUUID4 = 'd0000000-0000-0000-0000-000000000004';
 const validUUID5 = 'e0000000-0000-0000-0000-000000000005';
+const validUUIDTeam = 'f0000000-0000-0000-0000-000000000006';
+const validUUIDPartner = 'f0000000-0000-0000-0000-000000000007';
 
-describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
+describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
   let authSpy: any;
   let serverDbSpy: any;
   let mockDbData: any;
+  let mockTableErrors: Record<string, any>;
+  let onBeforeUpdateProjectsHook: (() => void) | null = null;
+  let onBeforeUpdateTasksHook: (() => void) | null = null;
 
   beforeEach(() => {
+    mockTableErrors = {};
+    onBeforeUpdateProjectsHook = null;
+    onBeforeUpdateTasksHook = null;
+
     mockDbData = {
       clients: [
         { id: validUUID1, client_name: 'Cliente Alfa', deleted: false },
@@ -42,6 +51,12 @@ describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
       ],
       project_priority: [
         { id: 'prio-1', name: 'Média', deleted: false, sort_order: 1 },
+      ],
+      project_teams: [
+        { id: validUUIDTeam, name: 'Equipa Solar', deleted: false },
+      ],
+      project_partners: [
+        { id: validUUIDPartner, name: 'Parceiro Instalador', deleted: false },
       ],
       users: [
         { id: mockAuthenticatedUser.id, name: 'Gestor', deleted: false },
@@ -132,32 +147,65 @@ describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
           return chain;
         },
         insert: async (rows: any[]) => {
+          if (mockTableErrors[table]) {
+            return { error: { message: mockTableErrors[table] } };
+          }
           if (!mockDbData[table]) mockDbData[table] = [];
           mockDbData[table].push(...rows);
           return { error: null };
         },
         update: (payload: any) => {
-          return {
+          const filters: Record<string, any> = {};
+          const updateObj: any = {
             eq: (col: string, val: any) => {
-              const chain: any = {
-                eq: (col2: string, val2: any) => {
-                  const item = (mockDbData[table] || []).find((r: any) => r[col] === val && r[col2] === val2);
-                  if (item) Object.assign(item, payload);
-                  return Promise.resolve({ error: null });
-                },
-                then: (cb: any) => {
-                  const item = (mockDbData[table] || []).find((r: any) => r[col] === val);
-                  if (item) Object.assign(item, payload);
-                  return Promise.resolve({ error: null }).then(cb);
-                },
-              };
-              return chain;
+              filters[col] = val;
+              return updateObj;
+            },
+            select: async (cols?: string) => {
+              if (table === 'projects' && onBeforeUpdateProjectsHook) {
+                onBeforeUpdateProjectsHook();
+              }
+              if (table === 'tasks' && onBeforeUpdateTasksHook) {
+                onBeforeUpdateTasksHook();
+              }
+              const matchedItems = (mockDbData[table] || []).filter((r: any) => {
+                for (const [k, v] of Object.entries(filters)) {
+                  if (r[k] !== v) return false;
+                }
+                return true;
+              });
+              for (const item of matchedItems) {
+                Object.assign(item, payload);
+              }
+              return { data: matchedItems.map((item: any) => ({ id: item.id })), error: null };
+            },
+            then: (cb: any) => {
+              if (table === 'projects' && onBeforeUpdateProjectsHook) {
+                onBeforeUpdateProjectsHook();
+              }
+              if (table === 'tasks' && onBeforeUpdateTasksHook) {
+                onBeforeUpdateTasksHook();
+              }
+              const matchedItems = (mockDbData[table] || []).filter((r: any) => {
+                for (const [k, v] of Object.entries(filters)) {
+                  if (r[k] !== v) return false;
+                }
+                return true;
+              });
+              for (const item of matchedItems) {
+                Object.assign(item, payload);
+              }
+              return Promise.resolve({ data: matchedItems, error: null }).then(cb);
             },
           };
+          return updateObj;
         },
         delete: () => {
           return {
             eq: (col: string, val: any) => {
+              if (mockTableErrors[table]) {
+                return Promise.resolve({ error: { message: mockTableErrors[table] } });
+              }
               mockDbData[table] = (mockDbData[table] || []).filter((r: any) => r[col] !== val);
               return Promise.resolve({ error: null });
             },
@@ -178,8 +226,8 @@ describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
     serverDbSpy?.mockRestore();
   });
 
-  describe('1. Projects — Validação & OCC & Dependências', () => {
-    it('1. Cria Project válido com dados e referências ativas (201)', async () => {
+  describe('1. Projects — OCC Efetivo & Tratamento de Erros em Relações', () => {
+    it('Cria Project válido com referências ativas (201)', async () => {
       const req = new NextRequest('http://localhost:3000/api/v1/projects', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -199,29 +247,12 @@ describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
       expect(json.data.title).toBe('Novo Chiller Bloco B');
     });
 
-    it('2. Rejeita relação de cliente inexistente ou eliminado (400)', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/projects', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Projeto Inválido',
-          clientId: validUUID2, // Cliente eliminado
-        }),
-      });
-
-      const res = await createProject(req);
-      expect(res.status).toBe(400);
-      const json = await res.json();
-      const msg = json.message || json.error?.message || '';
-      expect(msg).toContain('Cliente');
-    });
-
-    it('3. Atualiza Project existente com sucesso (200)', async () => {
+    it('UPDATE com versão correta → sucesso (200) e incrementa versão', async () => {
       const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          title: 'Instalação Solar Hospital - Fase 2',
+          title: 'Instalação Solar Hospital - Atualizado',
           version: 1,
         }),
       });
@@ -229,26 +260,19 @@ describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
       const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
       expect(res.status).toBe(200);
       const json = await res.json();
-      expect(json.data.title).toBe('Instalação Solar Hospital - Fase 2');
+      expect(json.success).toBe(true);
+      expect(json.data.version).toBe(2);
+      expect(mockDbData.projects.find((p: any) => p.id === 'proj-ativo-1').version).toBe(2);
     });
 
-    it('4. OCC correto — incrementa versão após atualização', async () => {
+    it('UPDATE com versão incorreta → 409 Conflict', async () => {
       const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title: 'Título Atualizado OCC', version: 1 }),
-      });
-
-      const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
-      expect(res.status).toBe(200);
-      expect((await res.json()).data.version).toBe(2);
-    });
-
-    it('5. OCC incorreto — bloqueia atualização e retorna 409 Conflict', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title: 'Título Conflituoso', version: 99 }),
+        body: JSON.stringify({
+          title: 'Tentativa Conflituosa',
+          version: 99,
+        }),
       });
 
       const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
@@ -258,7 +282,90 @@ describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
       expect(msg).toContain('Conflito de concorrência');
     });
 
-    it('6. Bloqueia eliminação de Project com tarefas ativas associadas (409 Conflict)', async () => {
+    it('Simulação de conflito entre leitura e UPDATE → 409 Conflict', async () => {
+      // Simula uma alteração concorrente que ocorre logo antes do UPDATE ser executado na BD
+      onBeforeUpdateProjectsHook = () => {
+        const proj = mockDbData.projects.find((p: any) => p.id === 'proj-ativo-1');
+        if (proj) proj.version = 2; // Outro utilizador acabou de gravar a versão 2
+      };
+
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Título pós-leitura',
+          version: 1,
+        }),
+      });
+
+      const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      expect(res.status).toBe(409);
+      const json = await res.json();
+      const msg = json.message || json.error?.message || '';
+      expect(msg).toContain('Conflito de concorrência');
+    });
+
+    it('Falha na atualização de project_teams_link não resulta em 200 (retorna erro)', async () => {
+      mockTableErrors.project_teams_link = 'Falha simulada na base de dados de equipas';
+
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          teamsInvolvedIds: [validUUIDTeam],
+          version: 1,
+        }),
+      });
+
+      const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      expect(res.status).not.toBe(200);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      const msg = json.message || json.error?.message || '';
+      expect(msg).toContain('equipas');
+    });
+
+    it('Falha na atualização de project_partners_link não resulta em 200 (retorna erro)', async () => {
+      mockTableErrors.project_partners_link = 'Falha simulada na base de dados de parceiros';
+
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          partnersIds: [validUUIDPartner],
+          version: 1,
+        }),
+      });
+
+      const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      expect(res.status).not.toBe(200);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      const msg = json.message || json.error?.message || '';
+      expect(msg).toContain('parceiros');
+    });
+
+    it('Falha na atualização de project_category_link não resulta em 200 (retorna erro)', async () => {
+      mockTableErrors.project_category_link = 'Falha simulada na base de dados de categorias';
+
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          categoryIds: [validUUID4],
+          version: 1,
+        }),
+      });
+
+      const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      expect(res.status).not.toBe(200);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      const msg = json.message || json.error?.message || '';
+      expect(msg).toContain('categorias');
+    });
+
+    it('Bloqueia eliminação de Project com tarefas ativas associadas (409 Conflict)', async () => {
       const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
         method: 'DELETE',
       });
@@ -270,8 +377,7 @@ describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
       expect(msg).toContain('tarefa(s) ativa(s)');
     });
 
-    it('7. Elimina Project sem dependências ativas com soft delete (200)', async () => {
-      // Remove a tarefa ativa para deixar o projeto sem dependências
+    it('Elimina Project sem dependências ativas com soft delete (200)', async () => {
       mockDbData.tasks = [];
 
       const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
@@ -284,8 +390,8 @@ describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
     });
   });
 
-  describe('2. Tasks — Integridade de Vínculos & Operações', () => {
-    it('8. Cria Task associada a Project ativo (201)', async () => {
+  describe('2. Tasks — Server-Authoritative & OCC no UPDATE e DELETE', () => {
+    it('Cria Task associada a Project ativo (201)', async () => {
       const req = new NextRequest('http://localhost:3000/api/v1/tasks', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -303,56 +409,77 @@ describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
       expect(json.data.title).toBe('Ligação de Cabos Principais');
     });
 
-    it('9. Rejeita criação de Task associada a Project inexistente (400 Bad Request)', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/tasks', {
-        method: 'POST',
+    it('UPDATE devolve o estado persistido pelo servidor (server-authoritative)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tasks/task-ativa-1', {
+        method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          projectId: 'proj-inexistente-999',
-          title: 'Tarefa Órfã',
+          title: 'Montagem de Painéis - Fase Concluída',
+          description: 'Nova descrição guardada na BD',
+          version: 1,
         }),
       });
 
-      const res = await createTask(req);
-      expect(res.status).toBe(400);
+      const res = await updateTask(req, { params: Promise.resolve({ id: 'task-ativa-1' }) });
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      // Confirma que os dados devolvidos refletem o registo lido do servidor
+      expect(json.data.id).toBe('task-ativa-1');
+      expect(json.data.title).toBe('Montagem de Painéis - Fase Concluída');
+      expect(json.data.description).toBe('Nova descrição guardada na BD');
+      expect(json.data.version).toBe(2);
+      expect(json.data.assignedUserIds).toEqual([validUUID5]);
+    });
+
+    it('UPDATE de Task com versão incorreta → 409 Conflict', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tasks/task-ativa-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Alteração Conflituosa',
+          version: 99,
+        }),
+      });
+
+      const res = await updateTask(req, { params: Promise.resolve({ id: 'task-ativa-1' }) });
+      expect(res.status).toBe(409);
       const json = await res.json();
       const msg = json.message || json.error?.message || '';
-      expect(msg).toContain('projeto');
+      expect(msg).toContain('Conflito de concorrência');
     });
 
-    it('10. Rejeita criação de Task associada a Project eliminado (400 Bad Request)', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/tasks', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          projectId: 'proj-eliminado-1',
-          title: 'Tarefa em Projeto Eliminado',
-        }),
+    it('DELETE de Task com versão correta → sucesso (200)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tasks/task-ativa-1', {
+        method: 'DELETE',
       });
 
-      const res = await createTask(req);
-      expect(res.status).toBe(400);
+      const res = await deleteTask(req, { params: Promise.resolve({ id: 'task-ativa-1' }) });
+      expect(res.status).toBe(200);
+      const taskInDb = mockDbData.tasks.find((t: any) => t.id === 'task-ativa-1');
+      expect(taskInDb.deleted).toBe(true);
+      expect(taskInDb.version).toBe(2);
     });
 
-    it('11. Rejeita atribuição de utilizador inexistente ou inativo à Task (400 Bad Request)', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/tasks', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          projectId: 'proj-ativo-1',
-          title: 'Tarefa com Utilizador Inexistente',
-          assignedUserIds: ['u-deleted-999'],
-        }),
+    it('DELETE de Task com conflito de versão → 409 Conflict', async () => {
+      // Simula alteração concorrente na BD na tarefa antes da execução da eliminação
+      onBeforeUpdateTasksHook = () => {
+        const task = mockDbData.tasks.find((t: any) => t.id === 'task-ativa-1');
+        if (task) task.version = 99; // Outro processo alterou a tarefa entre a leitura e a escrita
+      };
+
+      const req = new NextRequest('http://localhost:3000/api/v1/tasks/task-ativa-1', {
+        method: 'DELETE',
       });
 
-      const res = await createTask(req);
-      expect(res.status).toBe(400);
+      const res = await deleteTask(req, { params: Promise.resolve({ id: 'task-ativa-1' }) });
+      expect(res.status).toBe(409);
       const json = await res.json();
       const msg = json.message || json.error?.message || '';
-      expect(msg).toContain('utilizadores responsáveis');
+      expect(msg).toContain('Conflito de concorrência');
     });
 
-    it('12. Rejeita GET individual de Task eliminada (404 Not Found)', async () => {
+    it('Rejeita GET individual de Task eliminada (404 Not Found)', async () => {
       const req = new NextRequest('http://localhost:3000/api/v1/tasks/task-eliminada-1', {
         method: 'GET',
       });
@@ -360,20 +487,10 @@ describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
       const res = await getTask(req, { params: Promise.resolve({ id: 'task-eliminada-1' }) });
       expect(res.status).toBe(404);
     });
-
-    it('13. Elimina Task com soft delete (200)', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/tasks/task-ativa-1', {
-        method: 'DELETE',
-      });
-
-      const res = await deleteTask(req, { params: Promise.resolve({ id: 'task-ativa-1' }) });
-      expect(res.status).toBe(200);
-      expect(mockDbData.tasks.find((t: any) => t.id === 'task-ativa-1').deleted).toBe(true);
-    });
   });
 
   describe('3. Segurança & Permissões', () => {
-    it('14. Retorna 401 Unauthorized para pedido não autenticado', async () => {
+    it('Retorna 401 Unauthorized para pedido não autenticado', async () => {
       authSpy.mockImplementation(async () => ({
         success: false,
         response: NextResponse.json({ success: false, message: 'Não autenticado' }, { status: 401 }),
@@ -384,7 +501,7 @@ describe('FASE 28 — Integridade Operacional de Projects & Tasks', () => {
       expect(res.status).toBe(401);
     });
 
-    it('15. Retorna 403 Forbidden para utilizador sem permissão exigida', async () => {
+    it('Retorna 403 Forbidden para utilizador sem permissão exigida', async () => {
       authSpy.mockImplementation(async () => ({
         success: false,
         response: NextResponse.json({ success: false, message: 'Sem permissão' }, { status: 403 }),

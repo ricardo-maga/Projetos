@@ -162,7 +162,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     if (updates.notes !== undefined) updatePayload.notes = updates.notes;
 
     // Validate assignees if updated
-    if (updates.assignedUserIds !== undefined && updates.assignedUserIds.length > 0) {
+    if (rawBody.assignedUserIds !== undefined && Array.isArray(updates.assignedUserIds) && updates.assignedUserIds.length > 0) {
       const { data: dbUsers, error: usersError } = await sb
         .from('users')
         .select('id, deleted')
@@ -184,19 +184,37 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     if (hasVersion) {
       updateQuery = updateQuery.eq('version', currentVersion);
     }
-    const { error: updateError } = await updateQuery;
+    const { data: updatedRows, error: updateError } = await updateQuery.select('id');
 
     if (updateError) {
       return badRequest(`Erro ao atualizar tarefa: ${updateError.message}`, requestId);
     }
 
-    // Update assignees if specified
-    if (updates.assignedUserIds !== undefined) {
-      await sb.from('task_assignees').delete().eq('task_id', id);
+    // Verify row actually updated
+    if (hasVersion && (!updatedRows || updatedRows.length === 0)) {
+      return conflict(
+        `Conflito de concorrência. A tarefa foi alterada por outro utilizador (versão esperada: ${currentVersion}).`,
+        requestId,
+        { currentVersion, submittedVersion: updates.version }
+      );
+    }
 
-      if (updates.assignedUserIds.length > 0) {
-        const assigneeRows = updates.assignedUserIds.map((uid) => ({ task_id: id, user_id: uid }));
-        await sb.from('task_assignees').insert(assigneeRows);
+    // Update assignees if specified
+    if (rawBody.assignedUserIds !== undefined) {
+      const { error: delAssigneesErr } = await sb.from('task_assignees').delete().eq('task_id', id);
+      if (delAssigneesErr) {
+        console.error('[API TASK ASSIGNEES DELETE ERROR]', delAssigneesErr);
+        return badRequest(`Erro ao atualizar responsáveis da tarefa: ${delAssigneesErr.message}`, requestId);
+      }
+
+      const assignedUserIds = updates.assignedUserIds || [];
+      if (assignedUserIds.length > 0) {
+        const assigneeRows = assignedUserIds.map((uid: string) => ({ task_id: id, user_id: uid }));
+        const { error: insAssigneesErr } = await sb.from('task_assignees').insert(assigneeRows);
+        if (insAssigneesErr) {
+          console.error('[API TASK ASSIGNEES INSERT ERROR]', insAssigneesErr);
+          return badRequest(`Erro ao associar responsáveis à tarefa: ${insAssigneesErr.message}`, requestId);
+        }
       }
     }
 
@@ -212,15 +230,51 @@ async function handleUpdate(req: NextRequest, ctx: any) {
       },
     });
 
+    // Server-authoritative: reload updated task and assignees from DB
+    const { data: refreshedTask, error: refreshError } = await sb
+      .from('tasks')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (refreshError || !refreshedTask) {
+      return internalServerError('Erro ao recarregar a tarefa atualizada a partir do servidor.', requestId);
+    }
+
+    const { data: assignees } = await sb
+      .from('task_assignees')
+      .select('user_id')
+      .eq('task_id', id);
+
+    const serverData = {
+      id: refreshedTask.id,
+      projectId: refreshedTask.project_id || refreshedTask.projectId,
+      title: refreshedTask.task_title || refreshedTask.title,
+      description: refreshedTask.task_description || refreshedTask.description || '',
+      statusId: refreshedTask.status_id || refreshedTask.statusId || 'ts-1',
+      taskTypeId: refreshedTask.task_type_id || refreshedTask.taskTypeId || '',
+      estimatedHours: refreshedTask.estimated_hours || 0,
+      actualHours: refreshedTask.actual_hours || 0,
+      startDate: refreshedTask.start_date || '',
+      startTime: refreshedTask.start_time || '',
+      endDate: refreshedTask.end_date || '',
+      endTime: refreshedTask.end_time || '',
+      estimatedDate: refreshedTask.estimated_date || '',
+      completedDate: refreshedTask.completed_date || '',
+      notes: refreshedTask.notes || '',
+      assignedUserIds: (assignees || []).map((a: any) => a.user_id),
+      version: typeof refreshedTask.version === 'number' ? refreshedTask.version : (currentVersion + 1),
+      deleted: Boolean(refreshedTask.deleted),
+      createdAt: refreshedTask.created_at,
+      updatedAt: refreshedTask.updated_at,
+      createdBy: refreshedTask.created_by,
+      updatedBy: refreshedTask.updated_by,
+    };
+
     return NextResponse.json({
       success: true,
       message: 'Tarefa atualizada com sucesso.',
-      data: {
-        id,
-        ...updates,
-        version: currentVersion + 1,
-        updatedAt: now,
-      },
+      data: serverData,
     });
   } catch (error: any) {
     return internalServerError('Falha inesperada ao atualizar tarefa.', requestId);
@@ -238,7 +292,8 @@ export async function DELETE(req: NextRequest, ctx: any) {
     const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    const { data: current } = await sb.from('tasks').select('*').eq('id', id).maybeSingle();
+    const { data: current, error: fetchErr } = await sb.from('tasks').select('*').eq('id', id).maybeSingle();
+    if (fetchErr) return internalServerError(`Erro ao ler tarefa: ${fetchErr.message}`, requestId);
     if (!current || current.deleted) return notFound('Tarefa não encontrada.', requestId);
 
     const hasVersion = typeof current.version === 'number';
@@ -254,17 +309,25 @@ export async function DELETE(req: NextRequest, ctx: any) {
       deletePayload.updated_by = user.id;
     }
 
-    let { error: deleteError } = await sb
-      .from('tasks')
-      .update(deletePayload)
-      .eq('id', id);
-
-    if (deleteError && (deleteError.code === '42703' || deleteError.message?.includes('column'))) {
-      const fallbackRes = await sb.from('tasks').update({ deleted: true }).eq('id', id);
-      deleteError = fallbackRes.error;
+    let deleteQuery = sb.from('tasks').update(deletePayload).eq('id', id);
+    if (hasVersion) {
+      deleteQuery = deleteQuery.eq('version', currentVersion);
     }
 
-    if (deleteError) return badRequest(`Erro ao eliminar tarefa: ${deleteError.message}`, requestId);
+    const { data: updatedRows, error: deleteError } = await deleteQuery.select('id');
+
+    if (deleteError) {
+      return badRequest(`Erro ao eliminar tarefa: ${deleteError.message}`, requestId);
+    }
+
+    // Verify row was affected
+    if (hasVersion && (!updatedRows || updatedRows.length === 0)) {
+      return conflict(
+        `Conflito de concorrência ao eliminar tarefa. A tarefa foi alterada por outro utilizador (versão esperada: ${currentVersion}).`,
+        requestId,
+        { currentVersion }
+      );
+    }
 
     await logAuditEvent({
       action: 'TASK_UPDATED',
