@@ -1966,155 +1966,221 @@ export function useERP() {
     });
   };
 
-  // ==================== TICKETS & SUPORTE ====================
-  const addTicket = (
+  // ==================== TICKETS & SUPORTE (FASE 32: DEDICATED API) ====================
+  const addTicket = async (
     ticketData: Omit<Ticket, 'id' | 'ticketNumber' | 'createdDate' | 'updatedDate'>
   ) => {
-    const id = genId('tck');
-    const existingCount = (state?.tickets || []).length + 1;
-    const year = new Date().getFullYear();
-    const ticketNumber = `TCK-${year}-${String(existingCount).padStart(3, '0')}`;
-    const now = new Date().toISOString();
+    if (!isDbConfigured) {
+      const msg = 'Gravação bloqueada: A base de dados não está configurada.';
+      setSyncStatus('error');
+      setSyncError(msg);
+      throw new Error(msg);
+    }
 
-    const isExternal = ticketData.source === 'email' || ticketData.source === 'teams' || ticketData.source === 'portal';
-    // Se criado por canal externo, entra em fase de 'validacao'
-    const status = isExternal ? 'validacao' : (ticketData.status || 'aberto');
-
-    const newTicket: Ticket = {
-      ...ticketData,
-      id,
-      ticketNumber,
-      status,
-      createdDate: now,
-      updatedDate: now,
-      deleted: false
-    };
-
-    saveState(prev => {
-      let newNotifs = prev.notifications || [];
-      // Se for criado manualmente com atribuição a técnico, notificar imediatamente o técnico
-      if (newTicket.assignedToId && !isExternal) {
-        const notif = {
-          id: genId('notif'),
-          userId: newTicket.assignedToId,
-          title: `Novo Ticket Atribuído: ${ticketNumber}`,
-          message: `Foi-lhe atribuído o ticket ${ticketNumber}: "${newTicket.title}".`,
-          isRead: false,
-          createdDate: now,
-          linkUrl: `?tab=tickets&ticketId=${id}`
-        };
-        newNotifs = [notif, ...newNotifs];
-      }
-
-      return {
-        ...prev,
-        tickets: [newTicket, ...(prev.tickets || [])],
-        notifications: newNotifs
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+      const headers = {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
       };
-    });
-
-    return newTicket;
-  };
-
-  const updateTicket = (id: string, updates: Partial<Ticket>) => {
-    const now = new Date().toISOString();
-    saveState(prev => {
-      const existing = (prev.tickets || []).find(t => t.id === id);
-      let newNotifs = prev.notifications || [];
-
-      // Se o técnico responsável mudou ou foi atribuído agora
-      if (updates.assignedToId && existing && updates.assignedToId !== existing.assignedToId) {
-        const notif = {
-          id: genId('notif'),
-          userId: updates.assignedToId,
-          title: `Ticket Atribuído: ${existing.ticketNumber || id}`,
-          message: `Foi-lhe atribuído o ticket ${existing.ticketNumber || id}: "${updates.title || existing.title}".`,
-          isRead: false,
-          createdDate: now,
-          linkUrl: `?tab=tickets&ticketId=${id}`
-        };
-        newNotifs = [notif, ...newNotifs];
-      }
-
-      const newTickets = (prev.tickets || []).map(t => {
-        if (t.id !== id) return t;
-        return {
-          ...t,
-          ...updates,
-          updatedDate: now
-        };
+      const res = await fetch('/api/v1/tickets', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(ticketData),
       });
 
-      return {
-        ...prev,
-        tickets: newTickets,
-        notifications: newNotifs
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.ok && result.success && result.data) {
+        const newTicket: Ticket = result.data;
+        logAudit('CREATE', 'TICKET', newTicket.id, newTicket.title, `Criado o ticket "${newTicket.ticketNumber || newTicket.title}"`);
+
+        setState(prev => {
+          if (!prev) return prev;
+          let newNotifs = prev.notifications || [];
+          if (newTicket.assignedToId && newTicket.source !== 'email' && newTicket.source !== 'teams' && newTicket.source !== 'portal') {
+            newNotifs = [{
+              id: genId('notif'),
+              userId: newTicket.assignedToId,
+              title: `Novo Ticket Atribuído: ${newTicket.ticketNumber}`,
+              message: `Foi-lhe atribuído o ticket ${newTicket.ticketNumber}: "${newTicket.title}".`,
+              isRead: false,
+              createdDate: new Date().toISOString(),
+              linkUrl: `?tab=tickets&ticketId=${newTicket.id}`
+            }, ...newNotifs];
+          }
+          return {
+            ...prev,
+            tickets: [newTicket, ...(prev.tickets || [])],
+            notifications: newNotifs
+          };
+        });
+
+        setSyncStatus('synced');
+        return newTicket;
+      } else {
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a criação do ticket (${res.status}).`);
+        console.error('Erro na criação do ticket:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao criar ticket: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção na criação do ticket:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de tickets.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
+  };
+
+  const updateTicket = async (id: string, updates: Partial<Ticket>) => {
+    if (!isDbConfigured) {
+      const msg = 'Gravação bloqueada: A base de dados não está configurada.';
+      setSyncStatus('error');
+      setSyncError(msg);
+      throw new Error(msg);
+    }
+
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+      const headers = {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
       };
-    });
+      const res = await fetch(`/api/v1/tickets/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(updates),
+      });
+
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.ok && result.success && result.data) {
+        const updatedTicket: Ticket = result.data;
+        const ticketName = updatedTicket.ticketNumber || updatedTicket.title || id;
+        logAudit('UPDATE', 'TICKET', id, ticketName, `Atualizado o ticket "${ticketName}"`);
+
+        setState(prev => {
+          if (!prev) return prev;
+          let newNotifs = prev.notifications || [];
+          const existing = (prev.tickets || []).find(t => t.id === id);
+
+          if (updates.assignedToId && existing && updates.assignedToId !== existing.assignedToId) {
+            newNotifs = [{
+              id: genId('notif'),
+              userId: updates.assignedToId,
+              title: `Ticket Atribuído: ${updatedTicket.ticketNumber || id}`,
+              message: `Foi-lhe atribuído o ticket ${updatedTicket.ticketNumber || id}: "${updatedTicket.title}".`,
+              isRead: false,
+              createdDate: new Date().toISOString(),
+              linkUrl: `?tab=tickets&ticketId=${id}`
+            }, ...newNotifs];
+          }
+
+          return {
+            ...prev,
+            tickets: (prev.tickets || []).map(t => t.id === id ? updatedTicket : t),
+            notifications: newNotifs
+          };
+        });
+
+        setSyncStatus('synced');
+        return updatedTicket;
+      } else {
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a alteração do ticket (${res.status}).`);
+        console.error('Erro na atualização do ticket:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao atualizar ticket: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção na atualização do ticket:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de tickets.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
   };
 
-  const deleteTicket = (id: string) => {
-    saveState(prev => ({
-      ...prev,
-      tickets: (prev.tickets || []).map(t => t.id === id ? { ...t, deleted: true } : t)
-    }));
+  const deleteTicket = async (id: string) => {
+    if (!isDbConfigured) {
+      const msg = 'Gravação bloqueada: A base de dados não está configurada.';
+      setSyncStatus('error');
+      setSyncError(msg);
+      throw new Error(msg);
+    }
+
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/v1/tickets/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.ok && result.success) {
+        logAudit('DELETE', 'TICKET', id, id, `Eliminado o ticket "${id}"`);
+        setState(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            tickets: (prev.tickets || []).filter(t => t.id !== id)
+          };
+        });
+
+        setSyncStatus('synced');
+        return true;
+      } else {
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a eliminação do ticket (${res.status}).`);
+        console.error('Erro ao eliminar ticket:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao eliminar ticket: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção ao eliminar ticket:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de tickets.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
   };
 
-  const validateAndApproveTicket = (
+  const validateAndApproveTicket = async (
     ticketId: string, 
     validation: { 
       clientId?: string; 
       assignedToId?: string; 
       priority?: string; 
       category?: string; 
-      taskTypeId?: string;
+      taskTypeId?: string; 
       validationNotes?: string; 
     }
   ) => {
-    const now = new Date().toISOString();
-    saveState(prev => {
-      const existing = (prev.tickets || []).find(t => t.id === ticketId);
-      if (!existing) return prev;
-
-      let newNotifs = prev.notifications || [];
-      const assignedUser = validation.assignedToId || existing.assignedToId;
-      if (assignedUser) {
-        const notif = {
-          id: genId('notif'),
-          userId: assignedUser,
-          title: `Ticket Validado & Atribuído: ${existing.ticketNumber}`,
-          message: `O ticket ${existing.ticketNumber} ("${existing.title}") foi validado e atribuído a si.`,
-          isRead: false,
-          createdDate: now,
-          linkUrl: `?tab=tickets&ticketId=${ticketId}`
-        };
-        newNotifs = [notif, ...newNotifs];
-      }
-
-      const updated = (prev.tickets || []).map(t => {
-        if (t.id !== ticketId) return t;
-        return {
-          ...t,
-          status: 'aberto',
-          clientId: validation.clientId || t.clientId,
-          assignedToId: validation.assignedToId || t.assignedToId,
-          priority: validation.priority || t.priority,
-          category: validation.category || t.category,
-          taskTypeId: validation.taskTypeId || t.taskTypeId,
-          validationNotes: validation.validationNotes || t.validationNotes,
-          updatedDate: now
-        };
-      });
-
-      return {
-        ...prev,
-        tickets: updated,
-        notifications: newNotifs
-      };
+    return updateTicket(ticketId, {
+      status: 'aberto',
+      clientId: validation.clientId,
+      assignedToId: validation.assignedToId,
+      priority: validation.priority,
+      category: validation.category,
+      taskTypeId: validation.taskTypeId,
+      validationNotes: validation.validationNotes,
     });
   };
 
-  const convertTicketToTask = (
+  const convertTicketToTask = async (
     ticketId: string,
     taskData: {
       projectId: string;
@@ -2128,12 +2194,9 @@ export function useERP() {
       notes?: string;
     }
   ) => {
-    const taskId = genId('tsk');
-    const now = new Date().toISOString();
-    const defaultStatus = state?.taskStatuses.find(s => !s.deleted)?.id || 'ts-1';
-
-    const newTask: Task = {
-      id: taskId,
+    const defaultStatus = state?.taskStatuses?.find(s => !s.deleted)?.id || 'ts-1';
+    // 1. Create task using authoritative addTask (/api/v1/tasks)
+    const createdTask = await addTask({
       projectId: taskData.projectId,
       title: taskData.title,
       description: taskData.description || '',
@@ -2148,65 +2211,24 @@ export function useERP() {
       endTime: '',
       notes: taskData.notes || '',
       taskTypeId: taskData.taskTypeId,
-      deleted: false,
-      createdDate: now
-    };
-
-    saveState(prev => {
-      const ticket = (prev.tickets || []).find(t => t.id === ticketId);
-      let newNotifs = prev.notifications || [];
-
-      // Notificar técnicos alocados à nova tarefa
-      if (newTask.assigneeIds.length > 0) {
-        const notifs = newTask.assigneeIds.map(uid => ({
-          id: genId('notif'),
-          userId: uid,
-          title: `Nova Tarefa (Origem Ticket ${ticket?.ticketNumber || ''})`,
-          message: `Foi alocado à tarefa "${newTask.title}" convertida a partir do ticket.`,
-          isRead: false,
-          createdDate: now,
-          linkUrl: `?tab=tasks&taskId=${taskId}`
-        }));
-        newNotifs = [...notifs, ...newNotifs];
-      }
-
-      const updatedTickets = (prev.tickets || []).map(t => {
-        if (t.id !== ticketId) return t;
-        return {
-          ...t,
-          status: 'convertido',
-          convertedTaskId: taskId,
-          convertedProjectId: taskData.projectId,
-          updatedDate: now
-        };
-      });
-
-      return {
-        ...prev,
-        tasks: [newTask, ...prev.tasks],
-        tickets: updatedTickets,
-        notifications: newNotifs
-      };
     });
 
-    return taskId;
+    // 2. Update ticket using authoritative updateTicket (/api/v1/tickets/:id)
+    await updateTicket(ticketId, {
+      status: 'convertido',
+      convertedTaskId: createdTask.id,
+      convertedProjectId: taskData.projectId,
+    });
+
+    return createdTask.id;
   };
 
-  const resolveTicketDirectly = (ticketId: string, resolutionNotes: string) => {
-    const now = new Date().toISOString();
-    saveState(prev => ({
-      ...prev,
-      tickets: (prev.tickets || []).map(t => {
-        if (t.id !== ticketId) return t;
-        return {
-          ...t,
-          status: 'resolvido',
-          resolutionNotes,
-          resolvedDate: now,
-          updatedDate: now
-        };
-      })
-    }));
+  const resolveTicketDirectly = async (ticketId: string, resolutionNotes: string) => {
+    return updateTicket(ticketId, {
+      status: 'resolvido',
+      resolutionNotes,
+      resolvedDate: new Date().toISOString(),
+    });
   };
 
   return {
