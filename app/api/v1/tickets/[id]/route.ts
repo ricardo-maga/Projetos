@@ -92,30 +92,43 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     }
 
     // Validate status if updated
-    if (updates.status !== undefined && !VALID_STATUSES.includes(updates.status)) {
+    const validStatuses = [...VALID_STATUSES];
+    if (Array.isArray(state.ticketStatuses)) {
+      state.ticketStatuses.forEach((ts: any) => {
+        if (ts && !ts.deleted) {
+          if (ts.id && !validStatuses.includes(ts.id)) validStatuses.push(ts.id);
+          if (ts.name && !validStatuses.includes(ts.name)) validStatuses.push(ts.name);
+        }
+      });
+    }
+
+    if (updates.status !== undefined && !validStatuses.includes(updates.status)) {
       return NextResponse.json({
         success: false,
         message: `Estado de ticket inválido. Estados permitidos: ${VALID_STATUSES.join(', ')}.`
       }, { status: 400 });
     }
 
-    // Validate relations if updated
-    if (updates.clientId && state.clients && Array.isArray(state.clients)) {
-      const clientExists = state.clients.some((c: any) => c.id === updates.clientId && !c.deleted);
+    // Validate client relation if updated
+    if (updates.clientId !== undefined && updates.clientId !== null && updates.clientId !== '') {
+      const clientExists = Array.isArray(state.clients) && state.clients.some((c: any) => c.id === updates.clientId && !c.deleted);
       if (!clientExists) {
         return NextResponse.json({ success: false, message: 'O cliente especificado não existe ou foi eliminado.' }, { status: 400 });
       }
     }
 
-    if (updates.assignedToId && state.users && Array.isArray(state.users)) {
-      const userExists = state.users.some((u: any) => u.id === updates.assignedToId && !u.deleted);
+    // Validate assignee relation if updated
+    if (updates.assignedToId !== undefined && updates.assignedToId !== null && updates.assignedToId !== '') {
+      const userExists = Array.isArray(state.users) && state.users.some((u: any) => u.id === updates.assignedToId && !u.deleted && u.approved !== false);
       if (!userExists) {
         return NextResponse.json({ success: false, message: 'O utilizador responsável especificado não existe ou está inativo.' }, { status: 400 });
       }
     }
 
-    if (updates.convertedProjectId && state.projects && Array.isArray(state.projects)) {
-      const projectExists = state.projects.some((p: any) => p.id === updates.convertedProjectId && !p.deleted);
+    // Validate project relation if updated
+    const projectUpdateToCheck = updates.convertedProjectId !== undefined ? updates.convertedProjectId : updates.projectId;
+    if (projectUpdateToCheck !== undefined && projectUpdateToCheck !== null && projectUpdateToCheck !== '') {
+      const projectExists = Array.isArray(state.projects) && state.projects.some((p: any) => p.id === projectUpdateToCheck && !p.deleted);
       if (!projectExists) {
         return NextResponse.json({ success: false, message: 'O projeto especificado não existe ou foi eliminado.' }, { status: 400 });
       }
@@ -124,11 +137,32 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     const existingTicket = tickets[index];
     const updatedTicket: Ticket = {
       ...existingTicket,
-      ...updates,
-      id, // Preserve ID
-      ticketNumber: existingTicket.ticketNumber, // Preserve ticket number
-      createdDate: existingTicket.createdDate, // Preserve creation date
-      createdById: existingTicket.createdById, // Preserve creator ID
+      ...(updates.title !== undefined ? { title: updates.title.trim() } : {}),
+      ...(updates.description !== undefined ? { description: updates.description } : {}),
+      ...(updates.source !== undefined ? { source: updates.source } : {}),
+      ...(updates.sourceDetails !== undefined ? { sourceDetails: updates.sourceDetails } : {}),
+      ...(updates.status !== undefined ? { status: updates.status } : {}),
+      ...(updates.statusId !== undefined ? { statusId: updates.statusId } : {}),
+      ...(updates.priority !== undefined ? { priority: updates.priority } : {}),
+      ...(updates.priorityId !== undefined ? { priorityId: updates.priorityId } : {}),
+      ...(updates.taskTypeId !== undefined ? { taskTypeId: updates.taskTypeId } : {}),
+      ...(updates.category !== undefined ? { category: updates.category } : {}),
+      ...(updates.clientId !== undefined ? { clientId: updates.clientId || undefined } : {}),
+      ...(updates.requesterName !== undefined ? { requesterName: updates.requesterName } : {}),
+      ...(updates.requesterEmail !== undefined ? { requesterEmail: updates.requesterEmail } : {}),
+      ...(updates.requesterPhone !== undefined ? { requesterPhone: updates.requesterPhone } : {}),
+      ...(updates.assignedToId !== undefined ? { assignedToId: updates.assignedToId || undefined } : {}),
+      ...(projectUpdateToCheck !== undefined ? { convertedProjectId: projectUpdateToCheck || undefined } : {}),
+      ...(updates.convertedTaskId !== undefined ? { convertedTaskId: updates.convertedTaskId || undefined } : {}),
+      ...(updates.resolutionNotes !== undefined ? { resolutionNotes: updates.resolutionNotes } : {}),
+      ...(updates.validationNotes !== undefined ? { validationNotes: updates.validationNotes } : {}),
+      ...(updates.resolvedDate !== undefined ? { resolvedDate: updates.resolvedDate } : {}),
+      // Server-authoritative protected fields (MUST NOT be altered by client payload)
+      id: existingTicket.id,
+      ticketNumber: existingTicket.ticketNumber,
+      createdDate: existingTicket.createdDate,
+      createdById: existingTicket.createdById,
+      deleted: false,
       updatedDate: new Date().toISOString()
     };
 
@@ -142,7 +176,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     return NextResponse.json({
       success: true,
       message: 'Ticket atualizado com sucesso.',
-      data: updatedTicket
+      data: state.tickets[index]
     });
   } catch (err: any) {
     return NextResponse.json(

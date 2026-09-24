@@ -87,8 +87,9 @@ export async function POST(req: NextRequest) {
 
     const state = result.data;
 
-    if (body.clientId && state.clients && Array.isArray(state.clients)) {
-      const clientExists = state.clients.some((c: any) => c.id === body.clientId && !c.deleted);
+    // Validate client relation if specified
+    if (body.clientId !== undefined && body.clientId !== null && body.clientId !== '') {
+      const clientExists = Array.isArray(state.clients) && state.clients.some((c: any) => c.id === body.clientId && !c.deleted);
       if (!clientExists) {
         return NextResponse.json({
           success: false,
@@ -97,8 +98,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (body.assignedToId && state.users && Array.isArray(state.users)) {
-      const userExists = state.users.some((u: any) => u.id === body.assignedToId && !u.deleted);
+    // Validate assignee relation if specified
+    if (body.assignedToId !== undefined && body.assignedToId !== null && body.assignedToId !== '') {
+      const userExists = Array.isArray(state.users) && state.users.some((u: any) => u.id === body.assignedToId && !u.deleted && u.approved !== false);
       if (!userExists) {
         return NextResponse.json({
           success: false,
@@ -107,8 +109,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (body.convertedProjectId && state.projects && Array.isArray(state.projects)) {
-      const projectExists = state.projects.some((p: any) => p.id === body.convertedProjectId && !p.deleted);
+    // Validate project relation if specified
+    const targetProjectId = body.convertedProjectId || body.projectId;
+    if (targetProjectId !== undefined && targetProjectId !== null && targetProjectId !== '') {
+      const projectExists = Array.isArray(state.projects) && state.projects.some((p: any) => p.id === targetProjectId && !p.deleted);
       if (!projectExists) {
         return NextResponse.json({
           success: false,
@@ -136,13 +140,13 @@ export async function POST(req: NextRequest) {
       status,
       priority: body.priority || 'media',
       category: body.category || 'Geral',
-      clientId: body.clientId,
+      clientId: body.clientId || undefined,
       requesterName: body.requesterName,
       requesterEmail: body.requesterEmail,
       requesterPhone: body.requesterPhone,
-      assignedToId: body.assignedToId,
-      createdById: auth.user ? auth.user.id : (body.createdById || ''),
-      convertedProjectId: body.convertedProjectId,
+      assignedToId: body.assignedToId || undefined,
+      createdById: auth.user.id,
+      convertedProjectId: targetProjectId || undefined,
       createdDate: now,
       updatedDate: now,
       deleted: false

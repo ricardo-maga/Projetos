@@ -337,6 +337,121 @@ describe('Fase 26-A — Validação do Módulo de Tickets (Comportamento Autenti
       });
       const res = await updateTicket(req, Promise.resolve({ id: 'tck-ativo-1' }));
       expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.message).toContain('cliente');
+    });
+
+    it('Rejeita cliente eliminado no PATCH (400)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tickets/tck-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ clientId: 'client-eliminado-1' }),
+      });
+      const res = await updateTicket(req, Promise.resolve({ id: 'tck-ativo-1' }));
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.message).toContain('cliente');
+    });
+
+    it('Rejeita responsável inexistente no PATCH (400)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tickets/tck-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ assignedToId: 'user-inexistente-999' }),
+      });
+      const res = await updateTicket(req, Promise.resolve({ id: 'tck-ativo-1' }));
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.message).toContain('utilizador responsável');
+    });
+
+    it('Rejeita responsável eliminado/inativo no PATCH (400)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tickets/tck-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ assignedToId: 'user-eliminado-1' }),
+      });
+      const res = await updateTicket(req, Promise.resolve({ id: 'tck-ativo-1' }));
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.message).toContain('utilizador responsável');
+    });
+
+    it('Rejeita projeto associado inexistente no PATCH (400)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tickets/tck-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ convertedProjectId: 'proj-inexistente-999' }),
+      });
+      const res = await updateTicket(req, Promise.resolve({ id: 'tck-ativo-1' }));
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.message).toContain('projeto');
+    });
+
+    it('Rejeita projeto associado eliminado no PATCH (400)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tickets/tck-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ convertedProjectId: 'proj-eliminado-1' }),
+      });
+      const res = await updateTicket(req, Promise.resolve({ id: 'tck-ativo-1' }));
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.message).toContain('projeto');
+    });
+
+    it('Rejeita estado inválido no PATCH (400)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tickets/tck-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status: 'estado_invalido_123' }),
+      });
+      const res = await updateTicket(req, Promise.resolve({ id: 'tck-ativo-1' }));
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.message).toContain('Estado de ticket inválido');
+    });
+
+    it('Atualiza ticket com relações válidas (cliente, responsável e projeto ativos) com sucesso (200)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tickets/tck-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Ticket com Relações Válidas',
+          clientId: 'client-ativo-1',
+          assignedToId: 'user-ativo-1',
+          convertedProjectId: 'proj-ativo-1',
+          status: 'em_analise',
+        }),
+      });
+      const res = await updateTicket(req, Promise.resolve({ id: 'tck-ativo-1' }));
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.data.clientId).toBe('client-ativo-1');
+      expect(json.data.assignedToId).toBe('user-ativo-1');
+      expect(json.data.convertedProjectId).toBe('proj-ativo-1');
+      expect(json.data.status).toBe('em_analise');
+    });
+
+    it('Devolve estado persistido pelo servidor após UPDATE (server-authoritative)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tickets/tck-ativo-1', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Título Server Authoritative',
+          description: 'Nova descrição autoritativa',
+          unwantedField: 'malicious-data',
+        }),
+      });
+      const res = await updateTicket(req, Promise.resolve({ id: 'tck-ativo-1' }));
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.data.title).toBe('Título Server Authoritative');
+      expect(json.data.description).toBe('Nova descrição autoritativa');
+      expect((json.data as any).unwantedField).toBeUndefined();
+      expect(json.data.updatedDate).toBeDefined();
     });
   });
 
@@ -347,7 +462,13 @@ describe('Fase 26-A — Validação do Módulo de Tickets (Comportamento Autenti
       });
     });
 
-    it('Elimina ticket existente com soft-delete (200)', async () => {
+    it('Elimina ticket existente com soft-delete (200) e mantém o registo com deleted: true', async () => {
+      let savedState: any = null;
+      saveSyncSpy.mockImplementation(async (newState: any) => {
+        savedState = newState;
+        return { success: true, data: newState };
+      });
+
       const req = new NextRequest('http://localhost:3000/api/v1/tickets/tck-ativo-1', {
         method: 'DELETE',
       });
@@ -355,6 +476,11 @@ describe('Fase 26-A — Validação do Módulo de Tickets (Comportamento Autenti
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.success).toBe(true);
+
+      // Confirma que não foi removido fisicamente e ficou com deleted: true
+      const deletedTicketInDb = savedState.tickets.find((t: any) => t.id === 'tck-ativo-1');
+      expect(deletedTicketInDb).toBeDefined();
+      expect(deletedTicketInDb.deleted).toBe(true);
     });
 
     it('Retorna 404 ao tentar eliminar ticket inexistente', async () => {
@@ -371,6 +497,52 @@ describe('Fase 26-A — Validação do Módulo de Tickets (Comportamento Autenti
       });
       const res = await deleteTicket(req, Promise.resolve({ id: 'tck-eliminado-1' }));
       expect(res.status).toBe(404);
+    });
+  });
+
+  describe('5. GET e Listagem (Filtro de eliminados & Integridade)', () => {
+    beforeEach(() => {
+      authSpy = spyOn(authModule, 'requirePermission').mockImplementation(async () => {
+        return { success: true, user: mockAuthenticatedUser, requestId: 'req-test' };
+      });
+    });
+
+    it('GET individual de ticket eliminado devolve 404', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tickets/tck-eliminado-1', {
+        method: 'GET',
+      });
+      const res = await getTicket(req, Promise.resolve({ id: 'tck-eliminado-1' }));
+      expect(res.status).toBe(404);
+      const json = await res.json();
+      expect(json.success).toBe(false);
+      expect(json.message).toContain('Ticket não encontrado ou eliminado');
+    });
+
+    it('GET individual de ticket ativo devolve 200 com os dados corretos', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tickets/tck-ativo-1', {
+        method: 'GET',
+      });
+      const res = await getTicket(req, Promise.resolve({ id: 'tck-ativo-1' }));
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.data.id).toBe('tck-ativo-1');
+      expect(json.data.deleted).toBe(false);
+    });
+
+    it('Listagem (GET /api/v1/tickets) não apresenta tickets eliminados', async () => {
+      const req = new NextRequest('http://localhost:3000/api/v1/tickets', {
+        method: 'GET',
+      });
+      const res = await getTickets(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.count).toBe(1);
+      expect(json.data.length).toBe(1);
+      expect(json.data[0].id).toBe('tck-ativo-1');
+      expect(json.data.some((t: any) => t.id === 'tck-eliminado-1')).toBe(false);
+      expect(json.data.every((t: any) => !t.deleted)).toBe(true);
     });
   });
 });
