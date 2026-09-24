@@ -1458,28 +1458,24 @@ export function useERP() {
       setSyncStatus('syncing');
       setSyncError(null);
 
-      const clientName = (clientData.name || clientData.clientName || '').trim();
-      const code = (clientData.code || clientData.shortName || '').trim();
+      const clientName = (clientData.clientName || clientData.name || '').trim();
+      const shortName = (clientData.shortName || clientData.code || '').trim();
+      const location = (clientData.location || clientData.address || '').trim();
+      const taxId = (clientData.taxId || '').trim();
       const contactPerson = (clientData.contactPerson || '').trim();
-      const email = (clientData.email || clientData.contactEmail || '').trim();
-      const phone = (clientData.phone || clientData.contactPhone || '').trim();
-      const address = (clientData.address || clientData.location || '').trim();
-      const city = (clientData.city || '').trim();
-      const postalCode = (clientData.postalCode || '').trim();
-      const country = (clientData.country || '').trim();
+      const contactEmail = (clientData.contactEmail || clientData.email || '').trim();
+      const contactPhone = (clientData.contactPhone || clientData.phone || '').trim();
       const notes = (clientData.notes || '').trim();
       const color = clientData.color || '#3b82f6';
 
       const payload: Record<string, any> = {
-        name: clientName,
-        code,
+        clientName,
+        shortName,
+        location,
+        taxId,
         contactPerson,
-        email: email || undefined,
-        phone,
-        address,
-        city,
-        postalCode,
-        country,
+        contactEmail,
+        contactPhone,
         notes,
         color,
       };
@@ -1500,16 +1496,16 @@ export function useERP() {
         const s = result.data;
         const newClient: Client = {
           id: s.id,
-          clientName: s.name || s.clientName || clientName,
-          shortName: s.code || s.shortName || code || (clientName.substring(0, 10)),
-          location: s.location || [s.address || address, s.city || city, s.postalCode || postalCode].filter(Boolean).join(', ') || address || '',
-          taxId: s.taxId || clientData.taxId || '',
-          contactPerson: s.contactPerson || s.contact_person || contactPerson || '',
-          contactEmail: s.email || s.contactEmail || email || '',
-          contactPhone: s.phone || s.contactPhone || phone || '',
-          notes: s.notes || notes || '',
-          deleted: false,
-          createdDate: s.createdAt || s.createdDate || new Date().toISOString(),
+          clientName: s.clientName || '',
+          shortName: s.shortName || '',
+          location: s.location || '',
+          taxId: s.taxId || '',
+          contactPerson: s.contactPerson || '',
+          contactEmail: s.contactEmail || '',
+          contactPhone: s.contactPhone || '',
+          notes: s.notes || '',
+          deleted: Boolean(s.deleted),
+          createdDate: s.createdDate || s.createdAt || '',
           version: s.version || 1,
         };
 
@@ -1562,30 +1558,33 @@ export function useERP() {
         version: currentVersion,
       };
 
-      if (updates.name !== undefined || updates.clientName !== undefined) {
-        payload.name = (updates.name || updates.clientName || '').trim();
+      if (updates.clientName !== undefined || updates.name !== undefined) {
+        payload.clientName = (updates.clientName || updates.name || '').trim();
       }
-      if (updates.code !== undefined || updates.shortName !== undefined) {
-        payload.code = (updates.code || updates.shortName || '').trim();
+      if (updates.shortName !== undefined || updates.code !== undefined) {
+        payload.shortName = (updates.shortName || updates.code || '').trim();
+      }
+      if (updates.location !== undefined || updates.address !== undefined) {
+        payload.location = (updates.location || updates.address || '').trim();
+      }
+      if (updates.taxId !== undefined) {
+        payload.taxId = (updates.taxId || '').trim();
       }
       if (updates.contactPerson !== undefined) {
         payload.contactPerson = (updates.contactPerson || '').trim();
       }
-      if (updates.email !== undefined || updates.contactEmail !== undefined) {
-        const e = (updates.email || updates.contactEmail || '').trim();
-        payload.email = e || '';
+      if (updates.contactEmail !== undefined || updates.email !== undefined) {
+        payload.contactEmail = (updates.contactEmail || updates.email || '').trim();
       }
-      if (updates.phone !== undefined || updates.contactPhone !== undefined) {
-        payload.phone = (updates.phone || updates.contactPhone || '').trim();
+      if (updates.contactPhone !== undefined || updates.phone !== undefined) {
+        payload.contactPhone = (updates.contactPhone || updates.phone || '').trim();
       }
-      if (updates.address !== undefined || updates.location !== undefined) {
-        payload.address = (updates.address || updates.location || '').trim();
+      if (updates.notes !== undefined) {
+        payload.notes = (updates.notes || '').trim();
       }
-      if (updates.city !== undefined) payload.city = (updates.city || '').trim();
-      if (updates.postalCode !== undefined) payload.postalCode = (updates.postalCode || '').trim();
-      if (updates.country !== undefined) payload.country = (updates.country || '').trim();
-      if (updates.notes !== undefined) payload.notes = (updates.notes || '').trim();
-      if (updates.color !== undefined) payload.color = updates.color;
+      if (updates.color !== undefined) {
+        payload.color = updates.color;
+      }
 
       const headers = {
         ...getAuthHeaders(),
@@ -1603,13 +1602,13 @@ export function useERP() {
         const s = result.data;
         const updatedClient: Client = {
           id: s.id,
-          clientName: s.clientName || s.name || '',
-          shortName: s.shortName || s.code || '',
-          location: s.location || [s.address, s.city, s.postalCode, s.country].filter(Boolean).join(', ') || s.address || '',
+          clientName: s.clientName || '',
+          shortName: s.shortName || '',
+          location: s.location || '',
           taxId: s.taxId || '',
-          contactPerson: s.contactPerson || s.contact_person || '',
-          contactEmail: s.contactEmail || s.email || '',
-          contactPhone: s.contactPhone || s.phone || '',
+          contactPerson: s.contactPerson || '',
+          contactEmail: s.contactEmail || '',
+          contactPhone: s.contactPhone || '',
           notes: s.notes || '',
           deleted: Boolean(s.deleted),
           createdDate: s.createdDate || s.createdAt || '',

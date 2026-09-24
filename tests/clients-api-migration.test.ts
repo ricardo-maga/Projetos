@@ -129,35 +129,106 @@ describe('FASE 33-C1 — Verificação Estática de Contrato da API de Clients c
     });
   });
 
-  describe('5. Conformidade Estrita — Campos antigos não são usados como fonte de verdade', () => {
-    const routeContent = readFileSync(join(process.cwd(), 'app', 'api', 'v1', 'clients', 'route.ts'), 'utf-8');
-    const idRouteContent = readFileSync(join(process.cwd(), 'app', 'api', 'v1', 'clients', '[id]', 'route.ts'), 'utf-8');
+  describe('6. Static Code Analysis / Contract Checks — hooks/useERP.ts', () => {
+    const useERPContent = readFileSync(join(process.cwd(), 'hooks', 'useERP.ts'), 'utf-8');
 
-    it('17. name não é usado pela API', () => {
-      expect(routeContent.includes('row.name')).toBe(false);
-      expect(idRouteContent.includes('client.name')).toBe(false);
-      expect(idRouteContent.includes('reRead.name')).toBe(false);
+    it('1-6. addClient envia apenas campos canónicos (clientName, shortName, location, taxId, contactEmail) e não envia name/code/email/phone/address', () => {
+      const addStart = useERPContent.indexOf('const addClient =');
+      const addEnd = useERPContent.indexOf('const updateClient =');
+      const addBlock = useERPContent.substring(addStart, addEnd);
+
+      expect(addBlock.includes('clientName,')).toBe(true);
+      expect(addBlock.includes('shortName,')).toBe(true);
+      expect(addBlock.includes('location,')).toBe(true);
+      expect(addBlock.includes('taxId,')).toBe(true);
+      expect(addBlock.includes('contactEmail,')).toBe(true);
+
+      // Payload enviado não contém as chaves legadas
+      const payloadStart = addBlock.indexOf('const payload: Record<string, any> = {');
+      const payloadEnd = addBlock.indexOf('};', payloadStart);
+      const payloadBlock = addBlock.substring(payloadStart, payloadEnd);
+
+      expect(payloadBlock.includes('name:')).toBe(false);
+      expect(payloadBlock.includes('code:')).toBe(false);
+      expect(payloadBlock.includes('email:')).toBe(false);
+      expect(payloadBlock.includes('phone:')).toBe(false);
+      expect(payloadBlock.includes('address:')).toBe(false);
     });
 
-    it('18. code não é usado como fonte de shortName', () => {
-      expect(routeContent.includes('row.code')).toBe(false);
-      expect(idRouteContent.includes('client.code')).toBe(false);
-      expect(idRouteContent.includes('reRead.code')).toBe(false);
+    it('7-8. addClient constrói newClient exclusivamente com result.data (s.*) sem usar input como fallback', () => {
+      const addStart = useERPContent.indexOf('const addClient =');
+      const addEnd = useERPContent.indexOf('const updateClient =');
+      const addBlock = useERPContent.substring(addStart, addEnd);
+
+      const newClientStart = addBlock.indexOf('const newClient: Client = {');
+      const newClientEnd = addBlock.indexOf('};', newClientStart);
+      const newClientBlock = addBlock.substring(newClientStart, newClientEnd);
+
+      expect(newClientBlock.includes('clientName: s.clientName')).toBe(true);
+      expect(newClientBlock.includes('shortName: s.shortName')).toBe(true);
+      expect(newClientBlock.includes('location: s.location')).toBe(true);
+      expect(newClientBlock.includes('taxId: s.taxId')).toBe(true);
+
+      // Não usa variáveis locais de input como fallback
+      expect(newClientBlock.includes('|| clientName')).toBe(false);
+      expect(newClientBlock.includes('|| code')).toBe(false);
+      expect(newClientBlock.includes('|| address')).toBe(false);
+      expect(newClientBlock.includes('|| clientData.taxId')).toBe(false);
     });
 
-    it('19. address não é usado como fonte de location', () => {
-      expect(routeContent.includes('row.address')).toBe(false);
-      expect(idRouteContent.includes('client.address')).toBe(false);
-      expect(idRouteContent.includes('reRead.address')).toBe(false);
+    it('9-11. updateClient envia campos canónicos (incluindo version) e não envia campos antigos', () => {
+      const updateStart = useERPContent.indexOf('const updateClient =');
+      const updateEnd = useERPContent.indexOf('const deleteClient =');
+      const updateBlock = useERPContent.substring(updateStart, updateEnd);
+
+      const payloadStart = updateBlock.indexOf('const payload: Record<string, any> = {');
+      const payloadEnd = updateBlock.indexOf('};', payloadStart);
+      const payloadBlock = updateBlock.substring(payloadStart, payloadEnd);
+
+      expect(payloadBlock.includes('version: currentVersion')).toBe(true);
+      expect(updateBlock.includes('payload.clientName =')).toBe(true);
+      expect(updateBlock.includes('payload.shortName =')).toBe(true);
+      expect(updateBlock.includes('payload.location =')).toBe(true);
+      expect(updateBlock.includes('payload.taxId =')).toBe(true);
+
+      expect(updateBlock.includes('payload.name =')).toBe(false);
+      expect(updateBlock.includes('payload.code =')).toBe(false);
+      expect(updateBlock.includes('payload.address =')).toBe(false);
     });
 
-    it('20. email não é usado como fonte de contactEmail e 21. phone não é usado como fonte de contactPhone', () => {
-      expect(routeContent.includes('contactEmail: row.email')).toBe(false);
-      expect(routeContent.includes('contactPhone: row.phone')).toBe(false);
-      expect(idRouteContent.includes('contactEmail: client.email')).toBe(false);
-      expect(idRouteContent.includes('contactPhone: client.phone')).toBe(false);
+    it('12-14. updateClient usa exclusivamente result.data (s.*) sem usar updates ou existingClient como fallback', () => {
+      const updateStart = useERPContent.indexOf('const updateClient =');
+      const updateEnd = useERPContent.indexOf('const deleteClient =');
+      const updateBlock = useERPContent.substring(updateStart, updateEnd);
+
+      const updatedClientStart = updateBlock.indexOf('const updatedClient: Client = {');
+      const updatedClientEnd = updateBlock.indexOf('};', updatedClientStart);
+      const updatedClientBlock = updateBlock.substring(updatedClientStart, updatedClientEnd);
+
+      expect(updatedClientBlock.includes('updates.')).toBe(false);
+      expect(updatedClientBlock.includes('existingClient?.')).toBe(false);
+      expect(updatedClientBlock.includes('clientName: s.clientName')).toBe(true);
+      expect(updatedClientBlock.includes('shortName: s.shortName')).toBe(true);
+    });
+
+    it('15. addClient, updateClient e deleteClient não usam saveState', () => {
+      const clientSectionStart = useERPContent.indexOf('// ==================== CLIENTS CRUD');
+      const nextSectionStart = useERPContent.indexOf('// ==================== MATERIALS CRUD', clientSectionStart);
+      const clientSectionBlock = useERPContent.substring(clientSectionStart, nextSectionStart);
+
+      expect(clientSectionBlock.includes('saveState(')).toBe(false);
+    });
+
+    it('16. deleteClient só altera o estado após sucesso da API', () => {
+      const deleteStart = useERPContent.indexOf('const deleteClient =');
+      const deleteEnd = useERPContent.indexOf('// ==================== MATERIALS CRUD');
+      const deleteBlock = useERPContent.substring(deleteStart, deleteEnd);
+
+      expect(deleteBlock.includes('if (res.ok && result.success)')).toBe(true);
+      expect(deleteBlock.includes("method: 'DELETE'")).toBe(true);
     });
   });
 
 });
+
 
