@@ -651,7 +651,7 @@ export default function Page() {
     <div className="min-h-screen flex flex-col bg-slate-50/50 text-slate-800" id="main-root" data-theme={appConfig.theme || 'default'}>
       
       {/* HEADER BAR */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 h-14 sm:h-16 px-2.5 sm:px-4 shadow-2xs flex items-center justify-between shrink-0 overflow-x-hidden" id="app-header">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 h-14 sm:h-16 px-2.5 sm:px-4 shadow-2xs flex items-center justify-between shrink-0" id="app-header">
         <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}

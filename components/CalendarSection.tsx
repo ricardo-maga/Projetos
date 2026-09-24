@@ -374,10 +374,24 @@ export default function CalendarSection({
   // Today's date in YYYY-MM-DD format for reference
   const todayStr = formatDateToString(new Date());
 
-  // Active users (excluding deleted users)
+  // Active users (excluding deleted users) restricted to groups in "Grupos Associados Tarefas (Técnicos Alocados - Escolha Múltipla)" and sorted alphabetically
   const activeUsers = React.useMemo(() => {
-    return users.filter(u => !u.deleted);
-  }, [users]);
+    const allowedGroupIds = Array.isArray(appConfig?.taskAssigneeGroupIds) && appConfig.taskAssigneeGroupIds.length > 0
+      ? appConfig.taskAssigneeGroupIds
+      : (typeof appConfig?.taskAssigneeGroupId === 'string' && appConfig.taskAssigneeGroupId.trim() !== ''
+          ? appConfig.taskAssigneeGroupId.split(',').map((s: string) => s.trim()).filter(Boolean)
+          : []);
+
+    return users
+      .filter(u => !u.deleted)
+      .filter(u => {
+        if (allowedGroupIds.length > 0) {
+          return u.roleId && allowedGroupIds.includes(u.roleId);
+        }
+        return true;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-PT'));
+  }, [users, appConfig?.taskAssigneeGroupIds, appConfig?.taskAssigneeGroupId]);
 
   // Available Project Leaders from active projects
   const projectLeaders = React.useMemo(() => {
@@ -2649,7 +2663,7 @@ export default function CalendarSection({
               id="filter-assignee"
             >
               <option value="">Todos os utilizadores</option>
-              {users.filter(u => !u.deleted).sort((a, b) => a.name.localeCompare(b.name, 'pt-PT')).map(u => (
+              {activeUsers.map(u => (
                 <option key={u.id} value={u.id}>
                   {u.name}
                 </option>
@@ -3114,7 +3128,7 @@ export default function CalendarSection({
           allocations={planningAllocations}
           tasks={tasks}
           projects={projects}
-          users={users}
+          users={activeUsers}
           userAbsences={userAbsences}
           taskStatuses={taskStatuses}
           onNewAllocation={handleNewAllocationFromDayDetail}
@@ -3188,7 +3202,7 @@ export default function CalendarSection({
           tasks={tasks}
           projects={projects}
           allocation={selectedAllocationForEdit}
-          users={users}
+          users={activeUsers}
           initialResourceId={planningInitialResourceId}
           initialDate={planningInitialDate}
           contextCapacity={activeDayCapacity}
@@ -3300,7 +3314,7 @@ export default function CalendarSection({
 
               {/* Assignees */}
               <AssigneeSelector 
-                users={users} 
+                users={activeUsers} 
                 userGroups={userGroups}
                 allowedGroupIds={appConfig?.taskAssigneeGroupIds}
                 selectedIds={taskAssigneeIds} 
@@ -3483,7 +3497,7 @@ export default function CalendarSection({
                     className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-750 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
                   >
                     <option value="">Todos os utilizadores</option>
-                    {users.filter(u => !u.deleted).map(u => (
+                    {activeUsers.map(u => (
                       <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
