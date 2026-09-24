@@ -31,21 +31,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       success: true,
       data: {
         id: client.id,
-        name: client.name,
-        clientName: client.name,
-        code: client.code || '',
+        clientName: client.client_name || '',
+        shortName: client.short_name || '',
+        location: client.location || '',
+        taxId: client.tax_id || '',
         contactPerson: client.contact_person || '',
-        email: client.email || '',
-        phone: client.phone || '',
-        address: client.address || '',
-        city: client.city || '',
-        postalCode: client.postal_code || '',
-        country: client.country || '',
+        contactEmail: client.contact_email || '',
+        contactPhone: client.contact_phone || '',
         notes: client.notes || '',
         color: client.color || '#3b82f6',
         version: client.version || 1,
         deleted: Boolean(client.deleted),
         createdAt: client.created_at,
+        createdDate: client.created_at,
         updatedAt: client.updated_at,
       },
     });
@@ -109,16 +107,14 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       updatePayload.version = currentVersion + 1;
     }
 
-    if (updates.name !== undefined) updatePayload.name = updates.name;
-    if (updates.code !== undefined) updatePayload.code = updates.code;
-    if (updates.contactPerson !== undefined) updatePayload.contact_person = updates.contactPerson;
-    if (updates.email !== undefined) updatePayload.email = updates.email;
-    if (updates.phone !== undefined) updatePayload.phone = updates.phone;
-    if (updates.address !== undefined) updatePayload.address = updates.address;
-    if (updates.city !== undefined) updatePayload.city = updates.city;
-    if (updates.postalCode !== undefined) updatePayload.postal_code = updates.postalCode;
-    if (updates.country !== undefined) updatePayload.country = updates.country;
-    if (updates.notes !== undefined) updatePayload.notes = updates.notes;
+    if (updates.clientName !== undefined) updatePayload.client_name = updates.clientName.trim();
+    if (updates.shortName !== undefined) updatePayload.short_name = updates.shortName.trim();
+    if (updates.location !== undefined) updatePayload.location = updates.location.trim();
+    if (updates.taxId !== undefined) updatePayload.tax_id = updates.taxId.trim();
+    if (updates.contactPerson !== undefined) updatePayload.contact_person = updates.contactPerson.trim();
+    if (updates.contactEmail !== undefined) updatePayload.contact_email = updates.contactEmail.trim();
+    if (updates.contactPhone !== undefined) updatePayload.contact_phone = updates.contactPhone.trim();
+    if (updates.notes !== undefined) updatePayload.notes = updates.notes.trim();
     if (updates.color !== undefined) updatePayload.color = updates.color;
 
     let updateQuery = sb.from('clients').update(updatePayload).eq('id', id);
@@ -142,21 +138,13 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
 
     const updatedClientData = {
       id: reRead.id,
-      name: reRead.name,
-      clientName: reRead.name,
-      code: reRead.code || '',
-      shortName: reRead.code || (reRead.name ? reRead.name.substring(0, 10) : ''),
+      clientName: reRead.client_name || '',
+      shortName: reRead.short_name || '',
+      location: reRead.location || '',
+      taxId: reRead.tax_id || '',
       contactPerson: reRead.contact_person || '',
-      contactEmail: reRead.email || '',
-      email: reRead.email || '',
-      contactPhone: reRead.phone || '',
-      phone: reRead.phone || '',
-      location: [reRead.address, reRead.city, reRead.postal_code, reRead.country].filter(Boolean).join(', ') || reRead.address || '',
-      address: reRead.address || '',
-      city: reRead.city || '',
-      postalCode: reRead.postal_code || '',
-      country: reRead.country || '',
-      taxId: reRead.tax_id || reRead.taxId || '',
+      contactEmail: reRead.contact_email || '',
+      contactPhone: reRead.contact_phone || '',
       notes: reRead.notes || '',
       color: reRead.color || '#3b82f6',
       version: reRead.version ?? (currentVersion + 1),

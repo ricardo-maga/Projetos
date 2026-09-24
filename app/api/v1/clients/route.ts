@@ -34,11 +34,11 @@ export async function GET(req: NextRequest) {
 
     if (search && search.trim()) {
       const q = `%${search.trim()}%`;
-      query = query.or(`name.ilike.${q},contact_person.ilike.${q},email.ilike.${q},code.ilike.${q}`);
+      query = query.or(`client_name.ilike.${q},short_name.ilike.${q},contact_person.ilike.${q},contact_email.ilike.${q},contact_phone.ilike.${q},tax_id.ilike.${q},location.ilike.${q}`);
     }
 
     const { data: rows, count, error } = await query
-      .order('name', { ascending: true })
+      .order('client_name', { ascending: true })
       .range(from, to);
 
     if (error) return internalServerError(`Erro ao consultar clientes: ${error.message}`, requestId);
@@ -48,25 +48,19 @@ export async function GET(req: NextRequest) {
 
     const mappedClients = (rows || []).map((row: any) => ({
       id: row.id,
-      clientName: row.name,
-      name: row.name,
-      code: row.code || '',
-      shortName: row.code || row.name?.substring(0, 10),
+      clientName: row.client_name || '',
+      shortName: row.short_name || '',
+      location: row.location || '',
+      taxId: row.tax_id || '',
       contactPerson: row.contact_person || '',
-      contactEmail: row.email || '',
-      email: row.email || '',
-      contactPhone: row.phone || '',
-      phone: row.phone || '',
-      location: [row.address, row.city, row.postal_code].filter(Boolean).join(', ') || '',
-      address: row.address || '',
-      city: row.city || '',
-      postalCode: row.postal_code || '',
-      country: row.country || '',
+      contactEmail: row.contact_email || '',
+      contactPhone: row.contact_phone || '',
       notes: row.notes || '',
       color: row.color || '#3b82f6',
       version: row.version || 1,
       deleted: Boolean(row.deleted),
       createdAt: row.created_at,
+      createdDate: row.created_at,
       updatedAt: row.updated_at,
     }));
 
@@ -107,15 +101,13 @@ export async function POST(req: NextRequest) {
 
     const insertPayload: Record<string, any> = {
       id: newId,
-      name: c.name,
-      code: c.code || null,
+      client_name: c.clientName,
+      short_name: c.shortName || null,
+      location: c.location || null,
+      tax_id: c.taxId || null,
       contact_person: c.contactPerson || null,
-      email: c.email || null,
-      phone: c.phone || null,
-      address: c.address || null,
-      city: c.city || null,
-      postal_code: c.postalCode || null,
-      country: c.country || null,
+      contact_email: c.contactEmail || null,
+      contact_phone: c.contactPhone || null,
       notes: c.notes || null,
       color: c.color || '#3b82f6',
       deleted: false,
@@ -140,12 +132,23 @@ export async function POST(req: NextRequest) {
       return badRequest(`Erro ao inserir cliente: ${insertError.message}`, requestId);
     }
 
+    // Re-leitura autoritativa diretamente da base de dados após INSERT
+    const { data: createdRow, error: readError } = await sb
+      .from('clients')
+      .select('*')
+      .eq('id', newId)
+      .maybeSingle();
+
+    if (readError || !createdRow) {
+      return internalServerError(`Erro ao ler registo persistido do cliente criado: ${readError?.message || 'Registo não encontrado.'}`, requestId);
+    }
+
     await logAuditEvent({
       action: 'CLIENT_CREATED',
       userId: user.id,
       entity: 'clients',
       entityId: newId,
-      details: { name: c.name },
+      details: { clientName: createdRow.client_name },
     });
 
     return NextResponse.json(
@@ -153,11 +156,21 @@ export async function POST(req: NextRequest) {
         success: true,
         message: 'Cliente criado com sucesso.',
         data: {
-          id: newId,
-          ...c,
-          version: 1,
-          createdAt: now,
-          updatedAt: now,
+          id: createdRow.id,
+          clientName: createdRow.client_name || '',
+          shortName: createdRow.short_name || '',
+          location: createdRow.location || '',
+          taxId: createdRow.tax_id || '',
+          contactPerson: createdRow.contact_person || '',
+          contactEmail: createdRow.contact_email || '',
+          contactPhone: createdRow.contact_phone || '',
+          notes: createdRow.notes || '',
+          color: createdRow.color || '#3b82f6',
+          version: createdRow.version || 1,
+          deleted: Boolean(createdRow.deleted),
+          createdAt: createdRow.created_at,
+          createdDate: createdRow.created_at,
+          updatedAt: createdRow.updated_at,
         },
       },
       { status: 201 }
