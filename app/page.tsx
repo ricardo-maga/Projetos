@@ -22,7 +22,7 @@ import AppLogo from '../components/AppLogo';
 import { 
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
   Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw,
-  Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Ticket as TicketIcon, Eye, EyeOff
+  Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Ticket as TicketIcon, Eye, EyeOff, AlertCircle
 } from 'lucide-react';
 
 import { clearClientSession, setClientSession, getClientToken } from '../lib/clientAuth';
@@ -57,11 +57,6 @@ export default function Page() {
   // Restore session from HttpOnly cookies or active bearer token
   React.useEffect(() => {
     const restoreSession = async () => {
-      // Safety timeout to guarantee the loading screen doesn't hang if network stalls
-      const safetyTimer = setTimeout(() => {
-        setMounted(true);
-      }, 4000);
-
       try {
         const token = getClientToken();
         const headers: Record<string, string> = {};
@@ -86,7 +81,6 @@ export default function Page() {
         console.warn('Erro na verificação de sessão com o servidor:', fetchErr);
         setCurrentUser(null);
       } finally {
-        clearTimeout(safetyTimer);
         setMounted(true);
       }
     };
@@ -106,6 +100,7 @@ export default function Page() {
   }, []);
 
   const {
+    isInitialDataLoaded,
     loading,
     state,
     resetToDefault,
@@ -438,10 +433,10 @@ export default function Page() {
     }
   }, [activeTab, tabs, mounted, state, currentUser]);
 
-  if (!mounted || isTransitioning || loading) {
+  if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="loading-screen">
-        <div className="w-full max-w-sm bg-white rounded-2xl -xl border border-slate-100 p-8 text-center space-y-6 animate-fade-in">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="session-check-screen">
+        <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-100 p-8 text-center space-y-6 animate-fade-in">
           <AppLogo 
             logoUrl={state?.appConfig?.logoImagePath || state?.appConfig?.logo} 
             appName={state?.appConfig?.appName || ''}
@@ -450,12 +445,10 @@ export default function Page() {
           />
           <div>
             <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">
-              {isTransitioning ? 'A preparar a sua sessão...' : 'A carregar o sistema...'}
+              A carregar dados...
             </h1>
             <p className="text-slate-400 text-xs mt-1.5 font-medium">
-              {isTransitioning 
-                ? 'A sincronizar dados e permissões com a base de dados...' 
-                : 'Por favor, aguarde enquanto ligamos à base de dados.'}
+              A aguardar dados da base de dados.
             </p>
           </div>
           <div className="flex justify-center items-center gap-1.5">
@@ -594,7 +587,65 @@ export default function Page() {
     );
   }
 
-  const { appConfig } = state;
+  // 3. Authenticated user: DB error on initial authoritative load
+  if (syncStatus === 'error' && !isInitialDataLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="db-error-screen">
+        <div className="w-full max-w-md bg-white rounded-2xl border border-rose-100 p-8 text-center space-y-6 shadow-sm animate-fade-in">
+          <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">
+              Erro ao carregar os dados
+            </h1>
+            <p className="text-slate-500 text-xs font-medium leading-relaxed">
+              {syncError || 'Não foi possível obter os dados autoritativos da base de dados.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => refreshFromDatabase()}
+            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Tentar novamente</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. Authenticated user: Authoritative data not yet loaded or transition in progress
+  if (!isInitialDataLoaded || isTransitioning) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="loading-screen">
+        <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-100 p-8 text-center space-y-6 animate-fade-in">
+          <AppLogo 
+            logoUrl={state?.appConfig?.logoImagePath || state?.appConfig?.logo} 
+            appName={state?.appConfig?.appName || ''}
+            className="w-72 max-w-full h-16 rounded-2xl bg-white p-2.5 flex items-center justify-center mx-auto shadow-sm border border-slate-100 animate-pulse"
+            fallbackIconClassName="w-8 h-8 text-blue-600"
+          />
+          <div>
+            <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">
+              A carregar dados...
+            </h1>
+            <p className="text-slate-400 text-xs mt-1.5 font-medium">
+              A aguardar dados da base de dados.
+            </p>
+          </div>
+          <div className="flex justify-center items-center gap-1.5">
+            <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+            <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+            <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce"></span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const appConfig = state?.appConfig || {};
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/50 text-slate-800" id="main-root" data-theme={appConfig.theme || 'default'}>

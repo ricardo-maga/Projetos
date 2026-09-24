@@ -45,6 +45,7 @@ const getEmptyState = (): ERPState => ({
 export function useERP() {
   // Start with null so that only authoritative data from the database is rendered
   const [state, setState] = useState<ERPState | null>(null);
+  const [isInitialDataLoaded, setIsInitialDataLoaded] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isDbConfigured, setIsDbConfigured] = useState<boolean>(false);
@@ -265,12 +266,12 @@ export function useERP() {
             setState(mapped);
             setSyncStatus('synced');
             setSyncError(null);
+            setIsInitialDataLoaded(true);
             console.log('Authoritative data loaded from Supabase SQL database');
             return true;
           } else {
             // Database is connected but empty/unseeded. Initialize with clean baseline
             const freshState = mapStateToUUIDs(CLEAN_BASELINE_STATE);
-            setState(freshState);
             const initRes = await fetch('/api/supabase/sync', {
               method: 'POST',
               headers,
@@ -278,32 +279,36 @@ export function useERP() {
             });
             const initJson = await initRes.json().catch(() => ({}));
             if (initRes.ok && initJson.success) {
+              setState(freshState);
               setSyncStatus('synced');
               setSyncError(null);
+              setIsInitialDataLoaded(true);
               return true;
             } else {
               setSyncStatus('error');
               setSyncError(initJson.message || 'Erro ao inicializar tabelas na base de dados.');
+              setIsInitialDataLoaded(false);
               return false;
             }
           }
         } else {
           setSyncStatus('error');
           setSyncError(syncResult.message || 'Erro retornado pela base de dados.');
+          setIsInitialDataLoaded(false);
           return false;
         }
       } else {
         const errJson = await syncRes.json().catch(() => ({}));
         const msg = errJson.message || `Erro do servidor ao contactar a base de dados (Status: ${syncRes.status}).`;
         if (syncRes.status === 401) {
-          // Sessão não autenticada ou expirada: inicializar baseline para que o ecrã de login seja exibido
-          setState(prev => prev || mapStateToUUIDs(CLEAN_BASELINE_STATE));
+          // Sessão não autenticada ou expirada: manter não carregado para que o ecrã de login seja exibido
           setSyncStatus('idle');
           setSyncError(null);
+          setIsInitialDataLoaded(false);
         } else {
           setSyncStatus('error');
           setSyncError(msg);
-          setState(prev => prev || mapStateToUUIDs(CLEAN_BASELINE_STATE));
+          setIsInitialDataLoaded(false);
         }
         return false;
       }
@@ -311,7 +316,7 @@ export function useERP() {
       const msg = err?.message || 'Erro de rede ao contactar a base de dados.';
       setSyncStatus('error');
       setSyncError(msg);
-      setState(prev => prev || mapStateToUUIDs(CLEAN_BASELINE_STATE));
+      setIsInitialDataLoaded(false);
       return false;
     }
   }, []);
@@ -339,11 +344,11 @@ export function useERP() {
           }
           if (configData?.appConfig) {
             setState(prev => {
-              const base = prev || mapStateToUUIDs(CLEAN_BASELINE_STATE);
+              if (!prev) return null; // Never use CLEAN_BASELINE_STATE during boot
               return {
-                ...base,
+                ...prev,
                 appConfig: {
-                  ...base.appConfig,
+                  ...prev.appConfig,
                   ...configData.appConfig,
                 },
               };
@@ -359,14 +364,13 @@ export function useERP() {
       if (!configured) {
         setSyncStatus('error');
         setSyncError('A base de dados não está configurada no servidor. Por razões de integridade, a aplicação não permite operar com dados não gravados na base de dados.');
-        // Provide empty baseline with zero records so app layout can render without crashing
-        setState(prev => prev || mapStateToUUIDs(CLEAN_BASELINE_STATE));
+        setIsInitialDataLoaded(false);
         return;
       }
 
       const ok = await refreshFromDatabase();
       if (!ok) {
-        setState(prev => prev || mapStateToUUIDs(CLEAN_BASELINE_STATE));
+        setIsInitialDataLoaded(false);
       }
     };
 
@@ -2206,7 +2210,8 @@ export function useERP() {
   };
 
   return {
-    loading: state === null,
+    isInitialDataLoaded,
+    loading: !isInitialDataLoaded,
     state: sortedState,
     resetToDefault,
     clearAllData,
