@@ -149,7 +149,7 @@ export default function ClientSection({
     setIsEditing(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canWriteClients) {
       alert('Não tem permissão para criar ou editar clientes.');
@@ -166,12 +166,16 @@ export default function ClientSection({
       notes: formNotes,
     };
 
-    if (editingId) {
-      updateClient(editingId, payload);
-    } else {
-      addClient(payload);
+    try {
+      if (editingId) {
+        await updateClient(editingId, payload);
+      } else {
+        await addClient(payload);
+      }
+      setIsEditing(false);
+    } catch (err) {
+      // Error handled in useERP
     }
-    setIsEditing(false);
   };
 
   return (

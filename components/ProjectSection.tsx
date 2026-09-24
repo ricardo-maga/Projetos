@@ -677,7 +677,7 @@ export default function ProjectSection({
         let clientNameInput = trimmedQuery;
         let shortNameInput = trimmedQuery; // Use the inserted name for both clientName and shortName
 
-        const newClient = addClient({
+        const newClient = await addClient({
           clientName: clientNameInput,
           shortName: shortNameInput,
           location: '',

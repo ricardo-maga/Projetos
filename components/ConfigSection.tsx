@@ -767,12 +767,13 @@ export default function ConfigSection({
     Papa.parse(csvText.trim(), {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: async (results) => {
         let successCount = 0;
         let failedCount = 0;
         let errors: string[] = [];
 
-        results.data.forEach((row: any, index: number) => {
+        for (let index = 0; index < results.data.length; index++) {
+          const row: any = results.data[index];
           try {
             const getCol = (possibleNames: string[]) => {
               const key = Object.keys(row).find(k => 
@@ -792,7 +793,7 @@ export default function ConfigSection({
             if (!title) {
               failedCount++;
               errors.push(`Linha ${index + 2}: Título do projeto é obrigatório.`);
-              return;
+              continue;
             }
 
             let clientId = '';
@@ -801,28 +802,28 @@ export default function ConfigSection({
               if (existingClient) {
                 clientId = existingClient.id;
               } else if (addClient) {
-                const newClient = addClient({
+                const newClient = await addClient({
                   clientName: clientName,
                   shortName: clientName.split(' ')[0] || clientName,
                   location: '',
-                  nif: '',
                   notes: '',
-                  deleted: false
                 });
-                clientId = newClient.id;
+                if (newClient && newClient.id) {
+                  clientId = newClient.id;
+                }
               }
             } else {
                if (addClient) {
                  failedCount++;
                  errors.push(`Linha ${index + 2}: Cliente é obrigatório.`);
-                 return;
+                 continue;
                }
             }
 
             const budget = parseFloat(budgetStr.replace(/[^0-9.-]+/g, '')) || 0;
 
             if (addProject) {
-              addProject({
+              await addProject({
                 demo: false,
                 title: title,
                 clientId: clientId,
@@ -853,7 +854,7 @@ export default function ConfigSection({
             failedCount++;
             errors.push(`Linha ${index + 2}: Erro inesperado - ${e.message}`);
           }
-        });
+        }
 
         setCsvResult({ success: successCount, failed: failedCount, errors });
         setImportingCsv(false);

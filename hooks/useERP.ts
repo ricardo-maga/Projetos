@@ -1445,39 +1445,257 @@ export function useERP() {
     }));
   };
 
-  // ==================== CLIENTS CRUD ====================
-  const addClient = (client: Omit<Client, 'id' | 'deleted' | 'createdDate'>) => {
-    const newClient: Client = {
-      ...client,
-      id: crypto.randomUUID(),
-      deleted: false,
-      createdDate: new Date().toISOString()
-    };
-    logAudit('CREATE', 'CLIENT', newClient.id, newClient.clientName, `Criado cliente "${newClient.clientName}"`);
-    saveState(prev => ({
-      ...prev,
-      clients: [newClient, ...prev.clients]
-    }));
-    return newClient;
+  // ==================== CLIENTS CRUD (FASE 33: DEDICATED API) ====================
+  const addClient = async (clientData: Omit<Client, 'id' | 'deleted' | 'createdDate'> | any) => {
+    if (!isDbConfigured) {
+      const msg = 'Gravação bloqueada: A base de dados não está configurada.';
+      setSyncStatus('error');
+      setSyncError(msg);
+      throw new Error(msg);
+    }
+
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+
+      const clientName = (clientData.name || clientData.clientName || '').trim();
+      const code = (clientData.code || clientData.shortName || '').trim();
+      const contactPerson = (clientData.contactPerson || '').trim();
+      const email = (clientData.email || clientData.contactEmail || '').trim();
+      const phone = (clientData.phone || clientData.contactPhone || '').trim();
+      const address = (clientData.address || clientData.location || '').trim();
+      const city = (clientData.city || '').trim();
+      const postalCode = (clientData.postalCode || '').trim();
+      const country = (clientData.country || '').trim();
+      const notes = (clientData.notes || '').trim();
+      const color = clientData.color || '#3b82f6';
+
+      const payload: Record<string, any> = {
+        name: clientName,
+        code,
+        contactPerson,
+        email: email || undefined,
+        phone,
+        address,
+        city,
+        postalCode,
+        country,
+        notes,
+        color,
+      };
+
+      const headers = {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      };
+      const res = await fetch('/api/v1/clients', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.ok && result.success && result.data) {
+        const s = result.data;
+        const newClient: Client = {
+          id: s.id,
+          clientName: s.name || s.clientName || clientName,
+          shortName: s.code || s.shortName || code || (clientName.substring(0, 10)),
+          location: s.location || [s.address || address, s.city || city, s.postalCode || postalCode].filter(Boolean).join(', ') || address || '',
+          taxId: s.taxId || clientData.taxId || '',
+          contactPerson: s.contactPerson || s.contact_person || contactPerson || '',
+          contactEmail: s.email || s.contactEmail || email || '',
+          contactPhone: s.phone || s.contactPhone || phone || '',
+          notes: s.notes || notes || '',
+          deleted: false,
+          createdDate: s.createdAt || s.createdDate || new Date().toISOString(),
+          version: s.version || 1,
+        };
+
+        logAudit('CREATE', 'CLIENT', newClient.id, newClient.clientName, `Criado cliente "${newClient.clientName}"`);
+
+        setState(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            clients: [newClient, ...(prev.clients || [])]
+          };
+        });
+
+        setSyncStatus('synced');
+        return newClient;
+      } else {
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a criação do cliente (${res.status}).`);
+        console.error('Erro na criação do cliente:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao criar cliente: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção na criação do cliente:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de clientes.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
   };
 
-  const updateClient = (id: string, updates: Partial<Omit<Client, 'id' | 'createdDate'>>) => {
-    const existingClient = state?.clients?.find(c => matchId(c.id, id));
-    const clientName = updates.clientName || existingClient?.clientName || id;
-    logAudit('UPDATE', 'CLIENT', id, clientName, `Atualizado cliente "${clientName}"`);
-    saveState(prev => ({
-      ...prev,
-      clients: (prev.clients || []).map(c => matchId(c.id, id) ? { ...c, ...updates } as Client : c)
-    }));
+  const updateClient = async (id: string, updates: Partial<Omit<Client, 'id' | 'createdDate'>> | any) => {
+    if (!isDbConfigured) {
+      const msg = 'Gravação bloqueada: A base de dados não está configurada.';
+      setSyncStatus('error');
+      setSyncError(msg);
+      throw new Error(msg);
+    }
+
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+
+      const existingClient = state?.clients?.find(c => matchId(c.id, id));
+      const currentVersion = existingClient?.version || 1;
+
+      const payload: Record<string, any> = {
+        version: currentVersion,
+      };
+
+      if (updates.name !== undefined || updates.clientName !== undefined) {
+        payload.name = (updates.name || updates.clientName || '').trim();
+      }
+      if (updates.code !== undefined || updates.shortName !== undefined) {
+        payload.code = (updates.code || updates.shortName || '').trim();
+      }
+      if (updates.contactPerson !== undefined) {
+        payload.contactPerson = (updates.contactPerson || '').trim();
+      }
+      if (updates.email !== undefined || updates.contactEmail !== undefined) {
+        const e = (updates.email || updates.contactEmail || '').trim();
+        payload.email = e || '';
+      }
+      if (updates.phone !== undefined || updates.contactPhone !== undefined) {
+        payload.phone = (updates.phone || updates.contactPhone || '').trim();
+      }
+      if (updates.address !== undefined || updates.location !== undefined) {
+        payload.address = (updates.address || updates.location || '').trim();
+      }
+      if (updates.city !== undefined) payload.city = (updates.city || '').trim();
+      if (updates.postalCode !== undefined) payload.postalCode = (updates.postalCode || '').trim();
+      if (updates.country !== undefined) payload.country = (updates.country || '').trim();
+      if (updates.notes !== undefined) payload.notes = (updates.notes || '').trim();
+      if (updates.color !== undefined) payload.color = updates.color;
+
+      const headers = {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      };
+      const res = await fetch(`/api/v1/clients/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.ok && result.success && result.data) {
+        const s = result.data;
+        const updatedClient: Client = {
+          id,
+          clientName: s.name || s.clientName || updates.clientName || existingClient?.clientName || '',
+          shortName: s.code || s.shortName || updates.shortName || existingClient?.shortName || '',
+          location: s.address || s.location || updates.location || existingClient?.location || '',
+          taxId: updates.taxId !== undefined ? updates.taxId : (existingClient?.taxId || ''),
+          contactPerson: s.contactPerson !== undefined ? s.contactPerson : (updates.contactPerson ?? existingClient?.contactPerson ?? ''),
+          contactEmail: s.email !== undefined ? s.email : (updates.contactEmail ?? existingClient?.contactEmail ?? ''),
+          contactPhone: s.phone !== undefined ? s.phone : (updates.contactPhone ?? existingClient?.contactPhone ?? ''),
+          notes: s.notes !== undefined ? s.notes : (updates.notes ?? existingClient?.notes ?? ''),
+          deleted: false,
+          createdDate: existingClient?.createdDate || new Date().toISOString(),
+          version: s.version || (currentVersion + 1),
+        };
+
+        logAudit('UPDATE', 'CLIENT', id, updatedClient.clientName, `Atualizado cliente "${updatedClient.clientName}"`);
+
+        setState(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            clients: (prev.clients || []).map(c => matchId(c.id, id) ? updatedClient : c)
+          };
+        });
+
+        setSyncStatus('synced');
+        return updatedClient;
+      } else {
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a alteração do cliente (${res.status}).`);
+        console.error('Erro na atualização do cliente:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao atualizar cliente: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção na atualização do cliente:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de clientes.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
   };
 
-  const deleteClient = (id: string) => {
-    const existingClient = state?.clients?.find(c => matchId(c.id, id));
-    logAudit('DELETE', 'CLIENT', id, existingClient?.clientName, `Eliminado cliente "${existingClient?.clientName || id}"`);
-    saveState(prev => ({
-      ...prev,
-      clients: (prev.clients || []).map(c => matchId(c.id, id) ? { ...c, deleted: true } : c)
-    }));
+  const deleteClient = async (id: string) => {
+    if (!isDbConfigured) {
+      const msg = 'Gravação bloqueada: A base de dados não está configurada.';
+      setSyncStatus('error');
+      setSyncError(msg);
+      throw new Error(msg);
+    }
+
+    try {
+      setSyncStatus('syncing');
+      setSyncError(null);
+
+      const existingClient = state?.clients?.find(c => matchId(c.id, id));
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/v1/clients/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+
+      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+
+      if (res.ok && result.success) {
+        logAudit('DELETE', 'CLIENT', id, existingClient?.clientName, `Eliminado cliente "${existingClient?.clientName || id}"`);
+
+        setState(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            clients: (prev.clients || []).filter(c => !matchId(c.id, id))
+          };
+        });
+
+        setSyncStatus('synced');
+        return true;
+      } else {
+        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a eliminação do cliente (${res.status}).`);
+        console.error('Erro ao eliminar cliente:', errMsg);
+        setSyncStatus('error');
+        setSyncError(errMsg);
+        alert(`Erro ao eliminar cliente: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.error('Exceção ao eliminar cliente:', err);
+      const errMsg = err?.message || 'Falha de comunicação com a API de clientes.';
+      setSyncStatus('error');
+      setSyncError(errMsg);
+      alert(`Erro de comunicação: ${errMsg}`);
+      throw err;
+    }
   };
 
   // ==================== MATERIALS CRUD ====================

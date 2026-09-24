@@ -233,6 +233,7 @@ export interface Client {
   notes?: string;
   deleted: boolean;
   createdDate: string;
+  version?: number;
 }
 
 export interface Material {
