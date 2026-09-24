@@ -129,23 +129,55 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
 
     if (updateError) return badRequest(`Erro ao atualizar cliente: ${updateError.message}`, requestId);
 
+    // Re-leitura autoritativa diretamente da base de dados
+    const { data: reRead, error: readError } = await sb
+      .from('clients')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (readError || !reRead) {
+      return internalServerError(`Erro ao ler registo do cliente atualizado: ${readError?.message || 'Registo não encontrado.'}`, requestId);
+    }
+
+    const updatedClientData = {
+      id: reRead.id,
+      name: reRead.name,
+      clientName: reRead.name,
+      code: reRead.code || '',
+      shortName: reRead.code || (reRead.name ? reRead.name.substring(0, 10) : ''),
+      contactPerson: reRead.contact_person || '',
+      contactEmail: reRead.email || '',
+      email: reRead.email || '',
+      contactPhone: reRead.phone || '',
+      phone: reRead.phone || '',
+      location: [reRead.address, reRead.city, reRead.postal_code, reRead.country].filter(Boolean).join(', ') || reRead.address || '',
+      address: reRead.address || '',
+      city: reRead.city || '',
+      postalCode: reRead.postal_code || '',
+      country: reRead.country || '',
+      taxId: reRead.tax_id || reRead.taxId || '',
+      notes: reRead.notes || '',
+      color: reRead.color || '#3b82f6',
+      version: reRead.version ?? (currentVersion + 1),
+      deleted: Boolean(reRead.deleted),
+      createdAt: reRead.created_at,
+      createdDate: reRead.created_at,
+      updatedAt: reRead.updated_at,
+    };
+
     await logAuditEvent({
       action: 'CLIENT_UPDATED',
       userId: user.id,
       entity: 'clients',
       entityId: id,
-      details: { version: currentVersion + 1 },
+      details: { version: updatedClientData.version },
     });
 
     return NextResponse.json({
       success: true,
       message: 'Cliente atualizado com sucesso.',
-      data: {
-        id,
-        ...updates,
-        version: currentVersion + 1,
-        updatedAt: now,
-      },
+      data: updatedClientData,
     });
   } catch (error: any) {
     return internalServerError('Falha inesperada ao atualizar cliente.', requestId);

@@ -1602,18 +1602,18 @@ export function useERP() {
       if (res.ok && result.success && result.data) {
         const s = result.data;
         const updatedClient: Client = {
-          id,
-          clientName: s.name || s.clientName || updates.clientName || existingClient?.clientName || '',
-          shortName: s.code || s.shortName || updates.shortName || existingClient?.shortName || '',
-          location: s.address || s.location || updates.location || existingClient?.location || '',
-          taxId: updates.taxId !== undefined ? updates.taxId : (existingClient?.taxId || ''),
-          contactPerson: s.contactPerson !== undefined ? s.contactPerson : (updates.contactPerson ?? existingClient?.contactPerson ?? ''),
-          contactEmail: s.email !== undefined ? s.email : (updates.contactEmail ?? existingClient?.contactEmail ?? ''),
-          contactPhone: s.phone !== undefined ? s.phone : (updates.contactPhone ?? existingClient?.contactPhone ?? ''),
-          notes: s.notes !== undefined ? s.notes : (updates.notes ?? existingClient?.notes ?? ''),
-          deleted: false,
-          createdDate: existingClient?.createdDate || new Date().toISOString(),
-          version: s.version || (currentVersion + 1),
+          id: s.id,
+          clientName: s.clientName || s.name || '',
+          shortName: s.shortName || s.code || '',
+          location: s.location || [s.address, s.city, s.postalCode, s.country].filter(Boolean).join(', ') || s.address || '',
+          taxId: s.taxId || '',
+          contactPerson: s.contactPerson || s.contact_person || '',
+          contactEmail: s.contactEmail || s.email || '',
+          contactPhone: s.contactPhone || s.phone || '',
+          notes: s.notes || '',
+          deleted: Boolean(s.deleted),
+          createdDate: s.createdDate || s.createdAt || '',
+          version: s.version,
         };
 
         logAudit('UPDATE', 'CLIENT', id, updatedClient.clientName, `Atualizado cliente "${updatedClient.clientName}"`);
