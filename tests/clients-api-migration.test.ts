@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { createClientSchema, updateClientSchema } from '../lib/validations/client';
 
-describe('FASE 33-C — Alinhar API de Clients com o Schema Real da BD', () => {
+describe('FASE 33-C1 — Verificação Estática de Contrato da API de Clients com o Schema Real da BD', () => {
 
   describe('1. Validações — lib/validations/client.ts', () => {
     it('Schema de CREATE aceita clientName, shortName, location, taxId e rejeita name/code/address como substitutos', () => {

@@ -118,15 +118,7 @@ export async function POST(req: NextRequest) {
       updated_at: now,
     };
 
-    let { error: insertError } = await sb.from('clients').insert([insertPayload]);
-    if (insertError && (insertError.code === '42703' || insertError.message?.includes('column'))) {
-      const fallbackPayload = { ...insertPayload };
-      delete fallbackPayload.version;
-      delete fallbackPayload.updated_by;
-      delete fallbackPayload.created_by;
-      const retryRes = await sb.from('clients').insert([fallbackPayload]);
-      insertError = retryRes.error;
-    }
+    const { error: insertError } = await sb.from('clients').insert([insertPayload]);
 
     if (insertError) {
       return badRequest(`Erro ao inserir cliente: ${insertError.message}`, requestId);
