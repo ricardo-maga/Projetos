@@ -26,8 +26,20 @@ export function formatSupabaseError(error: any): string {
   ) {
     return 'Erro de Ligação: Não foi possível ligar ao servidor do Supabase (Tempo de espera esgotado / Timeout). Verifique se o URL do projeto e a chave Anon nas definições estão corretos e se o servidor tem ligação à internet.';
   }
+
+  // FASE 26: Prevenir fuga de detalhes internos de PostgreSQL, esquemas ou tabelas
+  if (
+    msg.includes('syntax error') ||
+    msg.includes('relation') ||
+    msg.includes('column') ||
+    msg.includes('violates') ||
+    msg.includes('foreign key') ||
+    msg.includes('duplicate key')
+  ) {
+    return 'Erro na persistência dos dados. Verifique a integridade dos dados enviados ou tente novamente.';
+  }
   
-  return error.message || JSON.stringify(error);
+  return error.message || 'Erro ao comunicar com a base de dados.';
 }
 
 /**
@@ -1406,7 +1418,9 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         return res;
       }),
 
-      // Clients (with column compatibility fallback)
+      // 3. Clients (FASE 26: Clients are persistent ONLY via dedicated /api/v1/clients REST APIs)
+      // Therefore, database write operations (insert, update, upsert) for clients are disabled in this global sync.
+      /*
       (async () => {
         if (!state.clients || state.clients.length === 0) return { error: null };
         const fullClients = state.clients.map((c: any) => ({
@@ -1435,6 +1449,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         }
         return res;
       })(),
+      */
 
       // Users
       supabase.from('users').upsert(state.users.map((u: any) => ({
@@ -1667,6 +1682,11 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     const taskUUIDs = Array.from(new Set(state.tasks.map((t: any) => stringToUUID(t.id)).filter(Boolean)));
 
     // Delete existing links to recreate them
+    // FASE 26: All project link tables ('project_risk_link', 'project_priority_link', 'project_teams_link',
+    // 'project_partners_link', 'project_category_link') and 'task_assignees' are handled exclusively
+    // by dedicated REST APIs (/api/v1/projects and /api/v1/tasks).
+    // Disabling residual delete and upsert in Global Sync to prevent wiping links.
+    /*
     if (projectUUIDs.length > 0) {
       const safeDeleteLink = async (table: string, col: string) => {
         try {
@@ -1682,6 +1702,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         // 'project_teams_link', 'project_partners_link', and 'project_category_link' are handled exclusively by REST APIs
       ]);
     }
+    */
     // 'task_assignees' is handled exclusively by REST APIs
 
     // Prepare link insert batches
@@ -1788,6 +1809,8 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       }
     };
 
+    // FASE 26: Project link upserts disabled in global sync; handled by /api/v1/projects
+    /*
     const insertPromises: any[] = [
       safeUpsertLink('project_risk_link', riskLinks),
       safeUpsertLink('project_priority_link', priorityLinks),
@@ -1801,6 +1824,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         return { success: false, message: `Erro ao gravar ligações: ${formatSupabaseError(res.error)}` };
       }
     }
+    */
 
     // 6. Comments, User Absences, Quotes, BOMs, Equipment List, Special Days, Default Tasks
     // Delete what is not in state list to match exactly (real CRUD sync)
