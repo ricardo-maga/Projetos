@@ -102,7 +102,7 @@ export default function PlanningAllocationModal({
   const doDelete = onDeleteAllocation || deletePlanningAllocation;
 
   // Active users only, excluding deleted users (respecting global project rule)
-  const activeUsers = users.filter(u => !u.deleted);
+  const activeUsers = React.useMemo(() => users.filter(u => !u.deleted), [users]);
 
   // Form State
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
@@ -166,8 +166,8 @@ export default function PlanningAllocationModal({
       setSelectedTaskId(allocation.taskId);
       setSelectedResourceId(allocation.resourceId);
       setDate(allocation.date);
-      setStartTime(allocation.startTime.substring(0, 5));
-      setEndTime(allocation.endTime.substring(0, 5));
+      setStartTime(allocation.startTime ? allocation.startTime.substring(0, 5) : '09:00');
+      setEndTime(allocation.endTime ? allocation.endTime.substring(0, 5) : '17:00');
       setStatus(allocation.status === 'CANCELLED' ? 'DRAFT' : allocation.status);
       setErrorMessage(null);
       setServerWarnings([]);
@@ -195,7 +195,8 @@ export default function PlanningAllocationModal({
       setErrorMessage(null);
       setServerWarnings([]);
     }
-  }, [isOpen, allocation, task, tasks, activeUsers, initialResourceId, initialDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, allocation?.id, task?.id, initialResourceId, initialDate]);
 
   if (!isOpen) return null;
 

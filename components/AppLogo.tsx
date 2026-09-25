@@ -32,21 +32,17 @@ export default function AppLogo({
     }
   }
 
-  const [lastLogo, setLastLogo] = useState(cleanLogo);
   const [imageError, setImageError] = useState(false);
   const [svgContent, setSvgContent] = useState<string | null>(null);
-
-  if (lastLogo !== cleanLogo) {
-    setLastLogo(cleanLogo);
-    setImageError(false);
-    setSvgContent(null);
-  }
 
   const isInlineSvg = cleanLogo.startsWith('<svg') || cleanLogo.startsWith('<?xml') || cleanLogo.toLowerCase().includes('<svg');
   const isSvgUrl = !isInlineSvg && (cleanLogo.toLowerCase().endsWith('.svg') || cleanLogo.toLowerCase().includes('.svg?'));
 
-  // Fetch SVG text if it's an SVG URL
+  // Reset error and fetch SVG text if it's an SVG URL
   useEffect(() => {
+    setImageError(false);
+    setSvgContent(null);
+
     // If it's an SVG URL, try to fetch the raw SVG text so it renders seamlessly without img/cross-origin restrictions
     if (isSvgUrl && (cleanLogo.startsWith('http://') || cleanLogo.startsWith('https://') || cleanLogo.startsWith('/'))) {
       let active = true;

@@ -112,7 +112,8 @@ export default function TaskDetailsModal({
     } else {
       setActiveTask(null);
     }
-  }, [task, tasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.id]);
 
   const [taskEditStatus, setTaskEditStatus] = useState('');
   const [taskEditTypeId, setTaskEditTypeId] = useState('');
@@ -317,7 +318,8 @@ export default function TaskDetailsModal({
       setTaskEditEndTime(activeTask.endTime || '');
       setTaskEditAssignees(activeTask.assigneeIds || []);
     }
-  }, [activeTask]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTask?.id]);
 
   if (!activeTask) return null;
 
