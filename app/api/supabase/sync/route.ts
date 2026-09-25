@@ -146,6 +146,10 @@ export async function POST(req: NextRequest) {
 
       // Protect other users' absences from being modified or deleted by non-admin users (BOLA/IDOR protection)
       if (state.userAbsences && Array.isArray(state.userAbsences)) {
+        if (!clientToUse) {
+          throw new Error('Database client unavailable');
+        }
+
         const { data: dbOtherAbsences } = await clientToUse
           .from('user_absences')
           .select('*')
