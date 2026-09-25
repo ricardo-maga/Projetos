@@ -308,6 +308,37 @@ async function handleUpdate(req: NextRequest, ctx: any) {
       }
     }
 
+    if (updates.priorityId !== undefined) {
+      const { error: delPrioErr } = await sb.from('project_priority_link').delete().eq('project_id', id);
+      if (delPrioErr) {
+        console.error('[API PROJECT UPDATE PRIORITY DELETE ERROR]', delPrioErr);
+        return badRequest(`Erro ao atualizar prioridade do projeto: ${delPrioErr.message}`, requestId);
+      }
+      const finalPriorityId = validation.resolvedPriorityId || updates.priorityId;
+      if (finalPriorityId) {
+        const { error: insPrioErr } = await sb.from('project_priority_link').insert([{ project_id: id, priority_id: finalPriorityId }]);
+        if (insPrioErr) {
+          console.error('[API PROJECT UPDATE PRIORITY INSERT ERROR]', insPrioErr);
+          return badRequest(`Erro ao associar prioridade ao projeto: ${insPrioErr.message}`, requestId);
+        }
+      }
+    }
+
+    if (updates.riskId !== undefined) {
+      const { error: delRiskErr } = await sb.from('project_risk_link').delete().eq('project_id', id);
+      if (delRiskErr) {
+        console.error('[API PROJECT UPDATE RISK DELETE ERROR]', delRiskErr);
+        return badRequest(`Erro ao atualizar risco do projeto: ${delRiskErr.message}`, requestId);
+      }
+      if (updates.riskId) {
+        const { error: insRiskErr } = await sb.from('project_risk_link').insert([{ project_id: id, risk_id: updates.riskId }]);
+        if (insRiskErr) {
+          console.error('[API PROJECT UPDATE RISK INSERT ERROR]', insRiskErr);
+          return badRequest(`Erro ao associar risco ao projeto: ${insRiskErr.message}`, requestId);
+        }
+      }
+    }
+
     await logAuditEvent({
       action: 'PROJECT_UPDATED',
       userId: user.id,

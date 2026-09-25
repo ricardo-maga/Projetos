@@ -825,7 +825,7 @@ export function useERP() {
 
         setState(prev => {
           if (!prev) return prev;
-          const serverProj = result.data;
+          const serverProj = finalResult.data;
           const updatedProj: Project = {
             id: serverProj.id || id,
             title: serverProj.title || '',
