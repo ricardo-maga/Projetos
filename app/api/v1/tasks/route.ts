@@ -189,11 +189,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (t.assignedUserIds && t.assignedUserIds.length > 0) {
-      const assigneeRows = t.assignedUserIds.map((uid) => ({ task_id: newId, user_id: uid }));
-      const { error: assigneeError } = await sb.from('task_assignees').insert(assigneeRows);
-      if (assigneeError) {
-        console.error('[API TASK INSERT ASSIGNEES ERROR]', assigneeError);
-        return badRequest(`Erro ao associar responsáveis à tarefa: ${assigneeError.message}`, requestId);
+      try {
+        const assigneeRows = t.assignedUserIds.map((uid) => ({ task_id: newId, user_id: uid }));
+        const { error: assigneeError } = await sb.from('task_assignees').insert(assigneeRows);
+        if (assigneeError) {
+          console.error('[API TASK INSERT ASSIGNEES ERROR]', assigneeError);
+          await sb.from('tasks').delete().eq('id', newId);
+          return internalServerError(`Erro ao associar responsáveis à tarefa: ${assigneeError.message}`, requestId);
+        }
+      } catch (assigneeEx) {
+        console.error('[API TASK INSERT ASSIGNEES EXCEPTION]', assigneeEx);
+        await sb.from('tasks').delete().eq('id', newId);
+        return internalServerError('Não foi possível associar os responsáveis à tarefa criada.', requestId);
       }
     }
 

@@ -296,6 +296,27 @@ export async function DELETE(req: NextRequest, ctx: any) {
     if (fetchErr) return internalServerError(`Erro ao ler tarefa: ${fetchErr.message}`, requestId);
     if (!current || current.deleted) return notFound('Tarefa não encontrada.', requestId);
 
+    // Check for active planning allocations dependent on this task
+    const { data: allocations, error: allocErr } = await sb
+      .from('planning_allocations')
+      .select('id, status')
+      .eq('task_id', id);
+
+    if (allocErr) {
+      return internalServerError(`Erro ao verificar alocações associadas à tarefa: ${allocErr.message}`, requestId);
+    }
+
+    if (allocations && allocations.length > 0) {
+      const activeAllocations = allocations.filter((a: any) => a.status !== 'CANCELLED');
+      if (activeAllocations.length > 0) {
+        return conflict(
+          `Não é possível eliminar a tarefa "${current.task_title || current.title || id}" porque existem ${activeAllocations.length} alocação(ões) de planeamento ativa(s) associada(s). Cancele ou remova primeiro as alocações.`,
+          requestId,
+          { activeAllocationsCount: activeAllocations.length }
+        );
+      }
+    }
+
     const hasVersion = typeof current.version === 'number';
     const currentVersion = hasVersion ? current.version : 1;
     const now = new Date().toISOString();

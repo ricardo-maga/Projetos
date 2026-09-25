@@ -183,8 +183,28 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const sb = (await getServerDbClient(req)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
-    const { data: current } = await sb.from('clients').select('*').eq('id', id).maybeSingle();
+    const { data: current, error: fetchErr } = await sb.from('clients').select('*').eq('id', id).maybeSingle();
+    if (fetchErr) return internalServerError(`Erro ao ler cliente: ${fetchErr.message}`, requestId);
     if (!current || current.deleted) return notFound('Cliente não encontrado.', requestId);
+
+    // Check for active projects associated with this client
+    const { data: activeProjects, error: projErr } = await sb
+      .from('projects')
+      .select('id, project_title, deleted')
+      .eq('client_id', id)
+      .eq('deleted', false);
+
+    if (projErr) {
+      return internalServerError(`Erro ao verificar projetos associados ao cliente: ${projErr.message}`, requestId);
+    }
+
+    if (activeProjects && activeProjects.length > 0) {
+      return conflict(
+        `Não é possível eliminar o cliente "${current.client_name || id}" porque existem ${activeProjects.length} projeto(s) ativo(s) associado(s). Conclua ou desassocie primeiro os projetos.`,
+        requestId,
+        { activeProjectsCount: activeProjects.length }
+      );
+    }
 
     const hasVersion = typeof current.version === 'number';
     const currentVersion = hasVersion ? current.version : 1;
