@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
       authClient = supabase;
     }
     const clientToUse = createAdminClient() || authClient || supabase;
+    const result = await getActiveStateFromSupabase(clientToUse);
 
     if (!result.success || !result.data) {
       return NextResponse.json({ 
@@ -144,7 +145,7 @@ export async function POST(req: NextRequest) {
       delete state.automationRules;
 
       // Protect other users' absences from being modified or deleted by non-admin users (BOLA/IDOR protection)
-      if (state.userAbsences && Array.isArray(state.userAbsences)) {
+      if (clientToUse && state.userAbsences && Array.isArray(state.userAbsences)) {
         const { data: dbOtherAbsences } = await clientToUse
           .from('user_absences')
           .select('*')

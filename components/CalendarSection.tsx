@@ -388,7 +388,7 @@ export default function CalendarSection({
         if (allowedGroupIds.length > 0) {
           const userRoleId = u.roleId || '';
           const normalizedUserRole = normalizeRoleId(userRoleId);
-          return allowedGroupIds.some(gid => {
+          return allowedGroupIds.some((gid: string) => {
             const normalizedGid = normalizeRoleId(gid);
             return gid === userRoleId || normalizedGid === normalizedUserRole || gid === normalizedUserRole;
           });
