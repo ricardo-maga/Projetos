@@ -37,7 +37,7 @@ export default function NotificationDropdown({ notifications, markAsRead, markAl
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-slate-200 z-[100] overflow-hidden flex flex-col max-h-96">
+        <div className="fixed right-3 sm:right-6 top-14 sm:top-16 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-slate-200 z-[9999] overflow-hidden flex flex-col max-h-96">
           <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
             <h3 className="font-bold text-sm text-slate-800">Notificações</h3>
             {unreadCount > 0 && (

@@ -8,7 +8,7 @@ import {
   Search, RotateCcw, Filter, ArrowUpDown, CheckCircle2
 } from 'lucide-react';
 
-import { hasPermission } from '../lib/permissions';
+import { hasPermission, normalizeRoleId } from '../lib/permissions';
 import { AssigneeSelector } from './AssigneeSelector';
 import TaskDetailsModal from './TaskDetailsModal';
 import PlanningAllocationModal from './PlanningAllocationModal';
@@ -386,11 +386,16 @@ export default function CalendarSection({
       .filter(u => !u.deleted)
       .filter(u => {
         if (allowedGroupIds.length > 0) {
-          return u.roleId && allowedGroupIds.includes(u.roleId);
+          const userRoleId = u.roleId || '';
+          const normalizedUserRole = normalizeRoleId(userRoleId);
+          return allowedGroupIds.some(gid => {
+            const normalizedGid = normalizeRoleId(gid);
+            return gid === userRoleId || normalizedGid === normalizedUserRole || gid === normalizedUserRole;
+          });
         }
-        return true;
+        return u.type === 'Team';
       })
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-PT'));
+      .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-PT', { sensitivity: 'base' }));
   }, [users, appConfig?.taskAssigneeGroupIds, appConfig?.taskAssigneeGroupId]);
 
   // Available Project Leaders from active projects

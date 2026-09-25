@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { User, UserGroup } from '../lib/types';
+import { normalizeRoleId } from '../lib/permissions';
 
 interface AssigneeSelectorProps {
   users: User[];
@@ -30,15 +31,20 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
       .filter(u => !u.deleted)
       .filter(u => {
         if (allowedGroupIds && allowedGroupIds.length > 0) {
-          return u.roleId && allowedGroupIds.includes(u.roleId);
+          const userRoleId = u.roleId || '';
+          const normalizedUserRole = normalizeRoleId(userRoleId);
+          return allowedGroupIds.some(gid => {
+            const normalizedGid = normalizeRoleId(gid);
+            return gid === userRoleId || normalizedGid === normalizedUserRole || gid === normalizedUserRole;
+          });
         }
         if (filterTeamOnly) {
           return u.type === 'Team';
         }
         return true;
       })
-      .filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase().trim()))
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-PT'));
+      .filter(u => (u.name || '').toLowerCase().includes(searchTerm.toLowerCase().trim()))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-PT', { sensitivity: 'base' }));
   }, [users, allowedGroupIds, filterTeamOnly, searchTerm]);
 
   const handleToggle = (id: string) => {
