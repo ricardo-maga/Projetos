@@ -112,6 +112,7 @@ export default function ProjectSection({
   addTask,
   addTasks,
   updateTask,
+  deleteTask,
   taskStatuses,
   taskTypes = [],
   specialDays = [],
