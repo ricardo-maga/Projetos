@@ -858,12 +858,20 @@ export default function ProjectSection({
         const q = search.toLowerCase();
         const matchTitle = (p.title || '').toLowerCase().includes(q);
         const matchNo = (p.installProjectNo || '').toLowerCase().includes(q);
+        const matchSf = (p.sfOpportunityNo || '').toLowerCase().includes(q);
         const matchDesc = (p.description || '').toLowerCase().includes(q);
-        if (!matchTitle && !matchNo && !matchDesc) return false;
+        
+        const client = clients.find(c => matchId(c.id, p.clientId));
+        const matchClient = client ? (client.clientName || '').toLowerCase().includes(q) || (client.shortName || '').toLowerCase().includes(q) : false;
+
+        const manager = users.find(u => matchId(u.id, p.projectManagerId));
+        const matchManager = manager ? (manager.name || '').toLowerCase().includes(q) : false;
+
+        if (!matchTitle && !matchNo && !matchSf && !matchDesc && !matchClient && !matchManager) return false;
       }
       return true;
     });
-  }, [projects, matchesStatusGroup, filterCategory, filterStatus, filterManager, search]);
+  }, [projects, matchesStatusGroup, filterCategory, filterStatus, filterManager, search, clients, users]);
 
   // Use server data if available, fallback to props
   const activeProjects = serverProjects.length > 0 ? serverProjects : filteredLocalProjects;

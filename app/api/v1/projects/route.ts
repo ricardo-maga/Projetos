@@ -47,7 +47,43 @@ export async function GET(req: NextRequest) {
 
     if (search && search.trim()) {
       const q = `%${search.trim()}%`;
-      query = query.or(`project_title.ilike.${q},project_description.ilike.${q},install_project_no.ilike.${q},sf_opportunity_no.ilike.${q}`);
+      const { data: matchedClients } = await sb.from('clients').select('id').or(`client_name.ilike.${q},short_name.ilike.${q}`);
+      const clientIds = (matchedClients || []).map((c: any) => c.id);
+
+      const { data: matchedUsers } = await sb.from('users').select('id').ilike('name', q);
+      const userIds = (matchedUsers || []).map((u: any) => u.id);
+
+      let orClauses = [`project_title.ilike.${q}`, `project_description.ilike.${q}`, `install_project_no.ilike.${q}`, `sf_opportunity_no.ilike.${q}`];
+      if (clientIds.length > 0) {
+        clientIds.forEach(cid => orClauses.push(`client_id.eq.${cid}`));
+      }
+      if (userIds.length > 0) {
+        userIds.forEach(uid => orClauses.push(`project_manager_id.eq.${uid}`));
+      }
+      query = query.or(orClauses.join(','));
+    }
+
+    if (statusGroup && statusGroup !== 'all') {
+      const { data: statusesData } = await sb.from('project_statuses').select('id, scale, name');
+      if (statusesData) {
+        const matchingStatusIds = statusesData.filter((st: any) => {
+          const scale = st.scale !== undefined ? Number(st.scale) : 1;
+          const name = (st.name || '').toLowerCase();
+          const isLvl5 = scale >= 5 || name.includes('conclu') || name.includes('suspen') || name.includes('cancel');
+          const lvl = isLvl5 ? 5 : scale;
+
+          if (statusGroup === 'active') return lvl >= 1 && lvl <= 4;
+          if (statusGroup === 'implementation') return lvl === 4;
+          if (statusGroup === 'completed') return lvl >= 5;
+          return true;
+        }).map((st: any) => st.id);
+
+        if (matchingStatusIds.length > 0) {
+          query = query.in('status_id', matchingStatusIds);
+        } else {
+          query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+        }
+      }
     }
 
     if (statusId) {
