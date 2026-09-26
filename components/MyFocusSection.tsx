@@ -1269,6 +1269,7 @@ export default function MyFocusSection({
 
       {/* TASK EDIT/FILL DETAILS MODAL (SHARED FORM) */}
       <TaskDetailsModal
+        isOpen={Boolean(selectedTaskForDetails)}
         task={selectedTaskForDetails}
         onClose={() => setSelectedTaskForDetails(null)}
         updateTask={updateTask}

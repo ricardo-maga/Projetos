@@ -4427,6 +4427,7 @@ export default function ProjectSection({
 
       {/* Task Single View / Edit Modal */}
       <TaskDetailsModal
+        isOpen={Boolean(selectedTaskForDetails)}
         task={selectedTaskForDetails}
         onClose={() => setSelectedTaskForDetails(null)}
         updateTask={updateTask}
@@ -4437,6 +4438,7 @@ export default function ProjectSection({
         appConfig={appConfig}
         projects={projects}
         clients={clients}
+        canWrite={canWriteTasks}
       />
 
       {/* Modal do Cronograma em Ecrã Cheio */}

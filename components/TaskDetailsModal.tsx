@@ -48,6 +48,7 @@ export interface TaskDetailsModalProps {
 
 export default function TaskDetailsModal({
   task = null,
+  isOpen,
   mode: initialMode,
   initialDate = '',
   initialAssigneeId,
@@ -69,7 +70,13 @@ export default function TaskDetailsModal({
   absences = [],
   tasks = [],
   canWrite = true,
+  onSelectTask,
 }: TaskDetailsModalProps) {
+  // Modal visibility guard:
+  // If isOpen is explicitly provided, use it.
+  // Otherwise, only open if a task is provided.
+  const isModalOpen = isOpen !== undefined ? isOpen : Boolean(task);
+
   // Determine mode
   const effectiveMode: TaskModalMode = initialMode || (task ? 'edit' : 'create');
 
@@ -266,6 +273,10 @@ export default function TaskDetailsModal({
   };
 
   const isReadOnly = effectiveMode === 'view' || !canWrite;
+
+  if (!isModalOpen) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-all duration-300">
