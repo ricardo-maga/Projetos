@@ -2,6 +2,57 @@ import { Task } from './types';
 import { getAuthHeaders, getApiErrorMessage } from './clientAuth';
 import { getTaskConflictWarnings, TaskConflictParams } from './taskConflicts';
 
+export { getTaskConflictWarnings, type TaskConflictParams };
+
+export interface TaskConflictCheckParams {
+  taskId?: string;
+  date?: string | null;
+  hours?: number | string;
+  assigneeIds?: string[];
+}
+
+/**
+ * Checks if assigning a task with given hours and date causes an assignee to exceed 8h on that day
+ */
+export function checkTaskConflicts(
+  params: TaskConflictCheckParams,
+  existingTasks: Task[] = []
+): { hasConflict: boolean; warnings: string[] } {
+  const { taskId, date, hours = 0, assigneeIds = [] } = params;
+  if (!date || !assigneeIds || assigneeIds.length === 0) {
+    return { hasConflict: false, warnings: [] };
+  }
+
+  const newHours = parseTaskHoursToFloat(hours);
+  const warnings: string[] = [];
+
+  for (const userId of assigneeIds) {
+    const dayTasks = existingTasks.filter(t => {
+      if (t.deleted) return false;
+      if (taskId && t.id === taskId) return false;
+      if (t.estimatedDate !== date) return false;
+      const ids: string[] = t.assigneeIds && t.assigneeIds.length > 0
+        ? t.assigneeIds
+        : ((t as any).assignedTo ? [(t as any).assignedTo] : []);
+      return ids.includes(userId);
+    });
+
+    const currentTotalHours = dayTasks.reduce((acc, t) => {
+      return acc + parseTaskHoursToFloat(t.estimatedHours);
+    }, 0);
+
+    const totalWithNew = currentTotalHours + newHours;
+    if (totalWithNew > 8) {
+      warnings.push(`Utilizador ultrapassa 8h no dia ${date} (Total: ${totalWithNew}h)`);
+    }
+  }
+
+  return {
+    hasConflict: warnings.length > 0,
+    warnings,
+  };
+}
+
 export interface TaskCreateInput {
   projectId: string;
   title: string;
@@ -53,7 +104,7 @@ export interface TaskOperationResult<T = Task> {
 export function parseTaskHoursToFloat(hoursStr: string | number | undefined | null): number {
   if (hoursStr === undefined || hoursStr === null || hoursStr === '') return 0;
   if (typeof hoursStr === 'number') return Math.max(0, hoursStr);
-  const trimmed = hoursStr.trim();
+  const trimmed = String(hoursStr).trim();
   if (trimmed.includes(':')) {
     const [h, m] = trimmed.split(':').map(Number);
     const val = (isNaN(h) ? 0 : h) + (isNaN(m) ? 0 : m / 60);
@@ -64,23 +115,125 @@ export function parseTaskHoursToFloat(hoursStr: string | number | undefined | nu
 }
 
 /**
- * Validates execution times: if both startTime and endTime are present, endTime must be strictly after startTime
+ * Alias for parseTaskHoursToFloat
+ */
+export const parseTaskHours = parseTaskHoursToFloat;
+
+/**
+ * Normalizes task hours for display (e.g. "08:00" -> "8" or "8.5")
+ */
+export function formatTaskHoursToString(hours: number | string | undefined | null): string {
+  const num = parseTaskHoursToFloat(hours);
+  return num === 0 ? '0' : String(num);
+}
+
+/**
+ * Centralized API call to fetch a task via /api/v1/tasks/:id
+ */
+export async function apiGetTask(id: string): Promise<TaskOperationResult<Task>> {
+  try {
+    const headers = getAuthHeaders();
+    const res = await fetch(`/api/v1/tasks/${id}`, {
+      method: 'GET',
+      headers,
+    });
+
+    const result = await res.json().catch(() => ({
+      success: false,
+      message: 'Resposta inválida do servidor.',
+    }));
+
+    if (res.ok && result.success && result.data) {
+      const task: Task = {
+        id: result.data.id,
+        projectId: result.data.projectId,
+        title: result.data.title,
+        description: result.data.description || '',
+        statusId: result.data.statusId,
+        taskTypeId: result.data.taskTypeId || undefined,
+        estimatedHours: result.data.estimatedHours !== undefined ? String(result.data.estimatedHours) : '0',
+        actualHours: result.data.actualHours !== undefined ? String(result.data.actualHours) : '0',
+        startDate: result.data.startDate || undefined,
+        startTime: result.data.startTime || undefined,
+        endDate: result.data.endDate || undefined,
+        endTime: result.data.endTime || undefined,
+        estimatedDate: result.data.estimatedDate || undefined,
+        completedDate: result.data.completedDate || undefined,
+        notes: result.data.notes || undefined,
+        assigneeIds: result.data.assignedUserIds || [],
+        deleted: false,
+        version: result.data.version || 1,
+        createdDate: result.data.createdAt || '',
+      };
+      return { success: true, data: task, status: res.status };
+    }
+
+    const errMsg = getApiErrorMessage(result, `Erro ao obter tarefa (${res.status}).`);
+    return { success: false, error: errMsg, status: res.status };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || 'Falha de comunicação com a API de tarefas.',
+      status: 500,
+    };
+  }
+}
+
+export interface TaskExecutionTimesInput {
+  startDate?: string | null;
+  startTime?: string | null;
+  endDate?: string | null;
+  endTime?: string | null;
+}
+
+/**
+ * Validates execution dates and times:
+ * - If both startDate and endDate are present, endDate cannot be before startDate
+ * - If on the same date and both startTime and endTime are present, endTime must be strictly after startTime
  */
 export function validateTaskExecutionTimes(
-  startTime?: string | null,
+  inputOrStartTime?: TaskExecutionTimesInput | string | null,
   endTime?: string | null
-): { valid: boolean; error?: string } {
-  const s = startTime?.trim();
-  const e = endTime?.trim();
-  if (s && e) {
-    if (e <= s) {
+): { valid: boolean; isValid: boolean; error?: string } {
+  let startDate: string | undefined;
+  let startTime: string | undefined;
+  let endDate: string | undefined;
+  let endT: string | undefined;
+
+  if (typeof inputOrStartTime === 'object' && inputOrStartTime !== null) {
+    startDate = inputOrStartTime.startDate?.trim() || undefined;
+    startTime = inputOrStartTime.startTime?.trim() || undefined;
+    endDate = inputOrStartTime.endDate?.trim() || undefined;
+    endT = inputOrStartTime.endTime?.trim() || undefined;
+  } else {
+    startTime = typeof inputOrStartTime === 'string' ? inputOrStartTime.trim() : undefined;
+    endT = typeof endTime === 'string' ? endTime.trim() : undefined;
+  }
+
+  // 1. Date comparison
+  if (startDate && endDate) {
+    if (endDate < startDate) {
       return {
         valid: false,
+        isValid: false,
+        error: 'A data de fim não pode ser anterior à data de início.',
+      };
+    }
+  }
+
+  // 2. Time comparison
+  if (startTime && endT) {
+    const isSameDay = !startDate || !endDate || startDate === endDate;
+    if (isSameDay && endT <= startTime) {
+      return {
+        valid: false,
+        isValid: false,
         error: 'A hora de fim deve ser estritamente posterior à hora de início.',
       };
     }
   }
-  return { valid: true };
+
+  return { valid: true, isValid: true };
 }
 
 /**
@@ -282,9 +435,3 @@ export async function apiDeleteTask(id: string): Promise<TaskOperationResult<voi
   }
 }
 
-/**
- * Centralized forwarder for conflict detection warnings
- */
-export function checkTaskConflicts(params: TaskConflictParams): string[] {
-  return getTaskConflictWarnings(params);
-}

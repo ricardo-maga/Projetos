@@ -16,6 +16,7 @@ import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
 import { getAuthHeaders, getClientUser, clearClientSession } from '../lib/clientAuth';
+import { apiGetTask, apiCreateTask, apiUpdateTask, apiDeleteTask, parseTaskHoursToFloat } from '../lib/taskOperations';
 
 const STORAGE_KEY = 'gestao_projetos_erp_state_v1';
 
@@ -1016,47 +1017,29 @@ export function useERP() {
       return getDefaultTaskStatusId(state?.taskStatuses || []);
     })();
 
-    const estimatedHoursNum = parseHoursToFloat(task.estimatedHours);
-    const actualHoursNum = parseHoursToFloat(task.actualHours);
-
-    const apiPayload = {
-      projectId: task.projectId,
-      title: task.title,
-      description: task.description || '',
-      statusId: resolvedStatusId,
-      taskTypeId: task.taskTypeId || undefined,
-      estimatedHours: estimatedHoursNum,
-      actualHours: actualHoursNum,
-      startDate: task.startDate || undefined,
-      startTime: task.startTime || undefined,
-      endDate: task.endDate || undefined,
-      endTime: task.endTime || undefined,
-      estimatedDate: task.estimatedDate || undefined,
-      notes: task.notes || undefined,
-      assignedUserIds: task.assigneeIds || [],
-    };
-
     try {
       setSyncStatus('syncing');
       setSyncError(null);
-      const headers = getAuthHeaders();
-      const res = await fetch('/api/v1/tasks', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(apiPayload),
+
+      const opResult = await apiCreateTask({
+        projectId: task.projectId,
+        title: task.title,
+        description: task.description || '',
+        statusId: resolvedStatusId,
+        taskTypeId: task.taskTypeId || undefined,
+        estimatedHours: task.estimatedHours,
+        actualHours: task.actualHours,
+        startDate: task.startDate || undefined,
+        startTime: task.startTime || undefined,
+        endDate: task.endDate || undefined,
+        endTime: task.endTime || undefined,
+        estimatedDate: task.estimatedDate || undefined,
+        notes: task.notes || undefined,
+        assigneeIds: task.assigneeIds || [],
       });
 
-      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
-
-      if (res.ok && result.success && result.data) {
-        const newTask: Task = {
-          ...task,
-          statusId: resolvedStatusId,
-          id: result.data.id,
-          deleted: false,
-          createdDate: result.data.createdAt || now,
-          version: result.data.version || 1,
-        };
+      if (opResult.success && opResult.data) {
+        const newTask: Task = opResult.data;
 
         logAudit('CREATE', 'TASK', newTask.id, newTask.title, `Criada a tarefa "${newTask.title}"`);
 
@@ -1111,7 +1094,7 @@ export function useERP() {
         setSyncStatus('synced');
         return newTask;
       } else {
-        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a criação da tarefa (${res.status}).`);
+        const errMsg = opResult.error || `A base de dados rejeitou a criação da tarefa.`;
         console.error('Erro na criação da tarefa:', errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
@@ -1148,60 +1131,54 @@ export function useERP() {
     const currentVersion = (existingTask as any).version || 1;
     const taskTitle = updates.title || existingTask.title || id;
 
-    const estimatedHoursNum = updates.estimatedHours !== undefined ? parseHoursToFloat(updates.estimatedHours) : undefined;
-    const actualHoursNum = updates.actualHours !== undefined ? parseHoursToFloat(updates.actualHours) : undefined;
-
-    const patchPayload: Record<string, any> = {
-      version: currentVersion
-    };
-
-    if (updates.title !== undefined) patchPayload.title = updates.title;
-    if (updates.description !== undefined) patchPayload.description = updates.description;
-    if (updates.statusId !== undefined) patchPayload.statusId = updates.statusId;
-    if (updates.taskTypeId !== undefined) patchPayload.taskTypeId = updates.taskTypeId;
-    if (estimatedHoursNum !== undefined) patchPayload.estimatedHours = estimatedHoursNum;
-    if (actualHoursNum !== undefined) patchPayload.actualHours = actualHoursNum;
-    if (updates.startDate !== undefined) patchPayload.startDate = updates.startDate;
-    if (updates.startTime !== undefined) patchPayload.startTime = updates.startTime;
-    if (updates.endDate !== undefined) patchPayload.endDate = updates.endDate;
-    if (updates.endTime !== undefined) patchPayload.endTime = updates.endTime;
-    if (updates.estimatedDate !== undefined) patchPayload.estimatedDate = updates.estimatedDate;
-    if (updates.completedDate !== undefined) patchPayload.completedDate = updates.completedDate;
-    if (updates.notes !== undefined) patchPayload.notes = updates.notes;
-    if (updates.assigneeIds !== undefined) patchPayload.assignedUserIds = updates.assigneeIds;
-
     try {
       setSyncStatus('syncing');
       setSyncError(null);
-      const headers = getAuthHeaders();
-      const res = await fetch(`/api/v1/tasks/${id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify(patchPayload),
+
+      let opResult = await apiUpdateTask(id, {
+        version: currentVersion,
+        projectId: updates.projectId,
+        title: updates.title,
+        description: updates.description,
+        statusId: updates.statusId,
+        taskTypeId: updates.taskTypeId,
+        estimatedHours: updates.estimatedHours,
+        actualHours: updates.actualHours,
+        startDate: updates.startDate,
+        startTime: updates.startTime,
+        endDate: updates.endDate,
+        endTime: updates.endTime,
+        estimatedDate: updates.estimatedDate,
+        completedDate: updates.completedDate,
+        notes: updates.notes,
+        assigneeIds: updates.assigneeIds,
       });
 
-      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
-
-      let finalRes = res;
-      let finalResult = result;
-
-      if (res.status === 409) {
-        const serverVersion = (result.details?.currentVersion ?? result.error?.details?.currentVersion) ?? (
-          typeof result.error?.message === 'string' && result.error.message.match(/versão atual:\s*(\d+)/i)
-            ? parseInt(result.error.message.match(/versão atual:\s*(\d+)/i)![1], 10)
-            : undefined
-        );
-        if (typeof serverVersion === 'number') {
-          const retryRes = await fetch(`/api/v1/tasks/${id}`, {
-            method: 'PATCH',
-            headers,
-            body: JSON.stringify({ ...patchPayload, version: serverVersion }),
+      // Handle OCC 409 retry with updated version from server if available
+      if (opResult.status === 409) {
+        const getRes = await apiGetTask(id);
+        if (getRes.success && getRes.data?.version) {
+          const serverVersion = getRes.data.version;
+          opResult = await apiUpdateTask(id, {
+            version: serverVersion,
+            projectId: updates.projectId,
+            title: updates.title,
+            description: updates.description,
+            statusId: updates.statusId,
+            taskTypeId: updates.taskTypeId,
+            estimatedHours: updates.estimatedHours,
+            actualHours: updates.actualHours,
+            startDate: updates.startDate,
+            startTime: updates.startTime,
+            endDate: updates.endDate,
+            endTime: updates.endTime,
+            estimatedDate: updates.estimatedDate,
+            completedDate: updates.completedDate,
+            notes: updates.notes,
+            assigneeIds: updates.assigneeIds,
           });
-          const retryResult = await retryRes.json().catch(() => ({ success: false }));
-          if (retryRes.ok && retryResult.success && retryResult.data) {
-            finalRes = retryRes;
-            finalResult = retryResult;
-          } else {
+
+          if (!opResult.success) {
             setState(prev => {
               if (!prev) return prev;
               return {
@@ -1213,108 +1190,96 @@ export function useERP() {
         }
       }
 
-      if (finalRes.status === 409) {
-        const errMsg = getApiErrorMessage(finalResult, 'Conflito de concorrência ao atualizar tarefa.');
+      if (opResult.status === 409 || !opResult.success || !opResult.data) {
+        const errMsg = opResult.error || 'Conflito de concorrência ou erro ao atualizar tarefa.';
         alert(errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
         throw new Error(errMsg);
       }
 
-      if (finalRes.ok && finalResult.success && finalResult.data) {
-        const nextVersion = finalResult.data.version || (currentVersion + 1);
+      const updatedTask = opResult.data;
+      const nextVersion = updatedTask.version || (currentVersion + 1);
 
-        let detailMsg = `Atualizada tarefa "${taskTitle}"`;
-        if (updates.statusId && updates.statusId !== existingTask.statusId) {
-          const oldStatus = state?.taskStatuses?.find(s => s.id === existingTask.statusId || matchTaskStatusId(s.id, existingTask.statusId))?.name || existingTask.statusId;
-          const newStatus = state?.taskStatuses?.find(s => s.id === updates.statusId || matchTaskStatusId(s.id, updates.statusId))?.name || updates.statusId;
-          detailMsg = `Estado da tarefa "${taskTitle}" alterado de "${oldStatus}" para "${newStatus}"`;
-        } else if (updates.title && updates.title !== existingTask.title) {
-          detailMsg = `Título da tarefa alterado de "${existingTask.title}" para "${updates.title}"`;
-        }
-        logAudit('UPDATE', 'TASK', id, taskTitle, detailMsg);
+      let detailMsg = `Atualizada tarefa "${taskTitle}"`;
+      if (updates.statusId && updates.statusId !== existingTask.statusId) {
+        const oldStatus = state?.taskStatuses?.find(s => s.id === existingTask.statusId || matchTaskStatusId(s.id, existingTask.statusId))?.name || existingTask.statusId;
+        const newStatus = state?.taskStatuses?.find(s => s.id === updates.statusId || matchTaskStatusId(s.id, updates.statusId))?.name || updates.statusId;
+        detailMsg = `Estado da tarefa "${taskTitle}" alterado de "${oldStatus}" para "${newStatus}"`;
+      } else if (updates.title && updates.title !== existingTask.title) {
+        detailMsg = `Título da tarefa alterado de "${existingTask.title}" para "${updates.title}"`;
+      }
+      logAudit('UPDATE', 'TASK', id, taskTitle, detailMsg);
 
-        setState(prev => {
-          if (!prev) return prev;
-          const targetTask = prev.tasks.find(t => t.id === id);
-          let newTasks = prev.tasks.map(t => {
-            if (t.id === id) {
-              return {
-                ...t,
-                ...updates,
-                version: nextVersion
-              } as Task;
-            }
-            return t;
-          });
-          let newProjects = prev.projects;
-          let newNotifs = prev.notifications || [];
-
-          if (updates.assigneeIds && targetTask) {
-            const oldAssignees = new Set(targetTask.assigneeIds || []);
-            const newlyAdded = updates.assigneeIds.filter(uid => !oldAssignees.has(uid));
-            if (newlyAdded.length > 0) {
-              const proj = prev.projects.find(p => p.id === targetTask.projectId);
-              const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
-              const assignNotifs = newlyAdded.map(uid => ({
-                id: genId('notif'),
-                userId: uid,
-                title: `Nova Tarefa Atribuída: ${updates.title || targetTask.title}`,
-                message: `Foi-lhe atribuída a tarefa "${updates.title || targetTask.title}"${projTitle}.`,
-                isRead: false,
-                createdDate: now,
-                linkUrl: `/projects?project=${targetTask.projectId}`
-              }));
-              newNotifs = [...assignNotifs, ...newNotifs];
-            }
+      setState(prev => {
+        if (!prev) return prev;
+        const targetTask = prev.tasks.find(t => t.id === id);
+        let newTasks = prev.tasks.map(t => {
+          if (t.id === id) {
+            return updatedTask;
           }
+          return t;
+        });
+        let newProjects = prev.projects;
+        let newNotifs = prev.notifications || [];
 
-          if (targetTask && updates.statusId) {
-            const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_status_changed');
-            for (const rule of activeRules) {
-              if (!rule.triggerCondition?.toStatusId || rule.triggerCondition.toStatusId === updates.statusId) {
-                for (const action of rule.actions) {
-                  if (action.type === 'change_project_status' && action.params?.targetStatusId) {
-                    const projectTasks = newTasks.filter(t => t.projectId === targetTask.projectId && !t.deleted);
-                    const completedStatusId = updates.statusId;
-                    const allCompleted = projectTasks.length > 0 && projectTasks.every(t => t.statusId === completedStatusId);
-                    if (allCompleted) {
-                      newProjects = newProjects.map(p => p.id === targetTask.projectId ? { ...p, statusId: action.params!.targetStatusId!, updatedDate: now } : p);
-                    }
-                  } else if (action.type === 'send_notification') {
-                    newNotifs = [{
-                      id: genId('notif'),
-                      userId: 'all',
-                      title: action.params?.notificationTitle || 'Tarefa Concluída',
-                      message: action.params?.notificationMessage || 'Regra de automação executada.',
-                      isRead: false,
-                      createdDate: now,
-                      linkUrl: `/projects?project=${targetTask.projectId}`
-                    }, ...newNotifs];
+        if (updates.assigneeIds && targetTask) {
+          const oldAssignees = new Set(targetTask.assigneeIds || []);
+          const newlyAdded = updates.assigneeIds.filter(uid => !oldAssignees.has(uid));
+          if (newlyAdded.length > 0) {
+            const proj = prev.projects.find(p => p.id === targetTask.projectId);
+            const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
+            const assignNotifs = newlyAdded.map(uid => ({
+              id: genId('notif'),
+              userId: uid,
+              title: `Nova Tarefa Atribuída: ${updates.title || targetTask.title}`,
+              message: `Foi-lhe atribuída a tarefa "${updates.title || targetTask.title}"${projTitle}.`,
+              isRead: false,
+              createdDate: now,
+              linkUrl: `/projects?project=${targetTask.projectId}`
+            }));
+            newNotifs = [...assignNotifs, ...newNotifs];
+          }
+        }
+
+        if (targetTask && updates.statusId) {
+          const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_status_changed');
+          for (const rule of activeRules) {
+            if (!rule.triggerCondition?.toStatusId || rule.triggerCondition.toStatusId === updates.statusId) {
+              for (const action of rule.actions) {
+                if (action.type === 'change_project_status' && action.params?.targetStatusId) {
+                  const projectTasks = newTasks.filter(t => t.projectId === targetTask.projectId && !t.deleted);
+                  const completedStatusId = updates.statusId;
+                  const allCompleted = projectTasks.length > 0 && projectTasks.every(t => t.statusId === completedStatusId);
+                  if (allCompleted) {
+                    newProjects = newProjects.map(p => p.id === targetTask.projectId ? { ...p, statusId: action.params!.targetStatusId!, updatedDate: now } : p);
                   }
+                } else if (action.type === 'send_notification') {
+                  newNotifs = [{
+                    id: genId('notif'),
+                    userId: 'all',
+                    title: action.params?.notificationTitle || 'Tarefa Concluída',
+                    message: action.params?.notificationMessage || 'Regra de automação executada.',
+                    isRead: false,
+                    createdDate: now,
+                    linkUrl: `/projects?project=${targetTask.projectId}`
+                  }, ...newNotifs];
                 }
               }
             }
           }
+        }
 
-          return {
-            ...prev,
-            tasks: newTasks,
-            projects: newProjects,
-            notifications: newNotifs
-          };
-        });
+        return {
+          ...prev,
+          tasks: newTasks,
+          projects: newProjects,
+          notifications: newNotifs
+        };
+      });
 
-        setSyncStatus('synced');
-        return true;
-      } else {
-        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a alteração da tarefa (${res.status}).`);
-        console.error('Erro na atualização da tarefa:', errMsg);
-        setSyncStatus('error');
-        setSyncError(errMsg);
-        alert(`Erro ao atualizar tarefa: ${errMsg}`);
-        throw new Error(errMsg);
-      }
+      setSyncStatus('synced');
+      return true;
     } catch (err: any) {
       console.error('Exceção na atualização da tarefa:', err);
       const errMsg = err?.message || 'Falha de comunicação com a API de tarefas.';
@@ -1332,15 +1297,10 @@ export function useERP() {
     try {
       setSyncStatus('syncing');
       setSyncError(null);
-      const headers = getAuthHeaders();
-      const res = await fetch(`/api/v1/tasks/${id}`, {
-        method: 'DELETE',
-        headers,
-      });
 
-      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
+      const opResult = await apiDeleteTask(id);
 
-      if (res.ok && result.success) {
+      if (opResult.success) {
         logAudit('DELETE', 'TASK', id, existingTask?.title, `Eliminada a tarefa "${existingTask?.title || id}"`);
         setState(prev => {
           if (!prev) return prev;
@@ -1352,7 +1312,7 @@ export function useERP() {
         setSyncStatus('synced');
         return true;
       } else {
-        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a eliminação da tarefa (${res.status}).`);
+        const errMsg = opResult.error || `A base de dados rejeitou a eliminação da tarefa.`;
         console.error('Erro ao eliminar tarefa:', errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);

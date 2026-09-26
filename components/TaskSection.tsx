@@ -126,37 +126,28 @@ export default function TaskSection({
     });
   };
 
-  // Modal / Form state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // Unified Task Modal State (FASE 30)
+  const [taskModalState, setTaskModalState] = useState<{
+    isOpen: boolean;
+    task: Task | null;
+    mode: 'create' | 'edit' | 'view';
+  }>({
+    isOpen: false,
+    task: null,
+    mode: 'edit',
+  });
 
-  const [formTitle, setFormTitle] = useState('');
-  const [formDesc, setFormDesc] = useState('');
-  const [formProj, setFormProj] = useState('');
-  const [projectSearchInput, setProjectSearchInput] = useState('');
-  const [isAutocompleteOpen, setIsAutocompleteOpen] = useState(false);
-  const [formStatus, setFormStatus] = useState('');
-  const [formTaskType, setFormTaskType] = useState('');
-  const [formAssignees, setFormAssignees] = useState<string[]>([]);
-  const [formEstDate, setFormEstDate] = useState('');
-  const [formEstHours, setFormEstHours] = useState('08:00');
-  const [formActHours, setFormActHours] = useState('00:00');
-  const [formStartDate, setFormStartDate] = useState('');
-  const [formStartTime, setFormStartTime] = useState('');
-  const [formEndDate, setFormEndDate] = useState('');
-  const [formEndTime, setFormEndTime] = useState('');
-  const [formNotes, setFormNotes] = useState('');
-
-  const selectedProjectExistingTasks = useMemo(() => {
-    if (!formProj) return [];
-    return tasks
-      .filter(t => t.projectId === formProj && !t.deleted && (!isEditing || t.id !== editingId))
-      .sort((a, b) => {
-        const dateA = a.estimatedDate || a.startDate || a.createdDate || '';
-        const dateB = b.estimatedDate || b.startDate || b.createdDate || '';
-        return dateA.localeCompare(dateB);
-      });
-  }, [formProj, tasks, isEditing, editingId]);
+  const openTaskModal = (task: Task | null, mode: 'create' | 'edit' | 'view' = 'edit') => {
+    if (mode === 'create' && !canWriteTasks) {
+      alert('Não tem permissão para criar novas tarefas.');
+      return;
+    }
+    setTaskModalState({
+      isOpen: true,
+      task,
+      mode,
+    });
+  };
 
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
 
@@ -166,47 +157,6 @@ export default function TaskSection({
     navigator.clipboard.writeText(url);
     setCopiedLinkId(taskId);
     setTimeout(() => setCopiedLinkId(null), 2000);
-  };
-
-  // View/Edit Single Task Modal State
-  const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
-  const [taskEditStatus, setTaskEditStatus] = useState('');
-  const [taskEditType, setTaskEditType] = useState('');
-  const [taskEditActualHours, setTaskEditActualHours] = useState('');
-  const [taskEditNotes, setTaskEditNotes] = useState('');
-  const [taskEditStartDate, setTaskEditStartDate] = useState('');
-  const [taskEditStartTime, setTaskEditStartTime] = useState('');
-  const [taskEditEndDate, setTaskEditEndDate] = useState('');
-  const [taskEditEndTime, setTaskEditEndTime] = useState('');
-
-  const openTaskDetailsModal = (task: Task) => {
-    setSelectedTaskForDetails(task);
-    setTaskEditStatus(task.statusId);
-    setTaskEditType(task.taskTypeId || '');
-    setTaskEditActualHours(formatToOnlyHours(task.actualHours));
-    setTaskEditNotes(task.notes || '');
-    setTaskEditStartDate(task.startDate || '');
-    setTaskEditStartTime(task.startTime || '');
-    setTaskEditEndDate(task.endDate || '');
-    setTaskEditEndTime(task.endTime || '');
-  };
-
-  const handleSaveTaskDetails = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTaskForDetails) return;
-
-    updateTask(selectedTaskForDetails.id, {
-      statusId: taskEditStatus,
-      taskTypeId: taskEditType || '',
-      actualHours: formatToOnlyHours(taskEditActualHours),
-      notes: taskEditNotes,
-      startDate: taskEditStartDate,
-      startTime: taskEditStartTime,
-      endDate: taskEditEndDate,
-      endTime: taskEditEndTime,
-    });
-
-    setSelectedTaskForDetails(null);
   };
 
   // Pre-build O(1) Map lookups for projects and clients
@@ -340,110 +290,6 @@ export default function TaskSection({
   const endIndex = Math.min(startIndex + pageSize, totalTasks);
   const paginatedTasks = processedTasks.slice(startIndex, endIndex);
 
-  const openForm = (task: Task | null) => {
-    if (task) {
-      if (!canWriteTasks) {
-        alert('Não tem permissão para editar tarefas.');
-        return;
-      }
-      setEditingId(task.id);
-      setFormTitle(task.title);
-      setFormDesc(task.description);
-      setFormProj(task.projectId);
-      setFormStatus(task.statusId);
-      setFormTaskType(task.taskTypeId || '');
-      setFormAssignees(task.assigneeIds || []);
-      setFormEstDate(task.estimatedDate);
-      setFormEstHours(task.estimatedHours);
-      setFormActHours(formatToOnlyHours(task.actualHours));
-      setFormStartDate(task.startDate || '');
-      setFormStartTime(task.startTime || '');
-      setFormEndDate(task.endDate || '');
-      setFormEndTime(task.endTime || '');
-      setFormNotes(task.notes || '');
-      
-      const initialSearch = getProjectWithClientLabel(task.projectId);
-      setProjectSearchInput(initialSearch);
-    } else {
-      if (!canWriteTasks) {
-        alert('Não tem permissão para criar novas tarefas.');
-        return;
-      }
-      setEditingId(null);
-      setFormTitle('');
-      setFormDesc('');
-      setFormProj('');
-      setFormStatus(getDefaultTaskStatusId(taskStatuses));
-      setFormTaskType('');
-      setFormAssignees([]);
-      setFormEstDate('');
-      setFormEstHours('08:00');
-      setFormActHours('0');
-      setFormStartDate('');
-      setFormStartTime('');
-      setFormEndDate('');
-      setFormEndTime('');
-      setFormNotes('');
-      
-      setProjectSearchInput('');
-    }
-    setIsEditing(true);
-  };
-
-  const formConflictWarnings = useMemo(() => {
-    const targetDate = formEstDate || formStartDate;
-    return getTaskConflictWarnings({
-      date: targetDate,
-      assigneeIds: formAssignees,
-      currentTaskId: editingId,
-      tasks,
-      users,
-      absences,
-      projects,
-    });
-  }, [formEstDate, formStartDate, formAssignees, editingId, tasks, users, absences, projects]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canWriteTasks) {
-      alert('Não tem permissão para criar ou editar tarefas.');
-      return;
-    }
-
-    if (formStartTime && formEndTime && formEndTime <= formStartTime) {
-      alert('A hora de fim deve ser posterior à hora de início.');
-      return;
-    }
-
-    const payload = {
-      title: formTitle,
-      description: formDesc,
-      projectId: formProj,
-      statusId: formStatus,
-      taskTypeId: formTaskType || '',
-      assigneeIds: formAssignees,
-      estimatedDate: formEstDate,
-      estimatedHours: formEstHours,
-      actualHours: formatToOnlyHours(formActHours),
-      startDate: formStartDate,
-      startTime: formStartTime,
-      endDate: formEndDate,
-      endTime: formEndTime,
-      notes: formNotes,
-    };
-
-    if (editingId) {
-      updateTask(editingId, payload);
-    } else {
-      addTask(payload);
-    }
-    setIsEditing(false);
-  };
-
-  const handleToggleAssignee = (id: string) => {
-    setFormAssignees(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
-  };
-
   const getProjectTitle = (projId: string) => {
     const proj = projects.find(p => p.id === projId);
     if (!proj) return 'Projeto';
@@ -469,344 +315,31 @@ export default function TaskSection({
 
   return (
     <div className="space-y-6">
-      
-      {isEditing ? (
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 -sm animate-fade-in">
-          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-            <div className="flex flex-col">
-              <h2 className="text-base font-bold text-slate-800">
-                {editingId ? 'Editar Tarefa' : 'Adicionar Nova Tarefa ao Projeto'}
-              </h2>
-              {(() => {
-                const selProj = projectMap.get(formProj) || projects.find(p => p.id === formProj);
-                if (!selProj) return null;
-                const selClient = clientMap.get(selProj.clientId) || clients.find(c => c.id === selProj.clientId);
-                const cName = selClient ? selClient.clientName : 'N/A';
-                return (
-                  <span className="text-xs font-medium text-slate-500 mt-0.5">
-                    Cliente: <strong className="text-slate-700 font-bold">{cName}</strong> | Projeto: <strong className="text-slate-700 font-bold">{selProj.title}</strong>
-                  </span>
-                );
-              })()}
-            </div>
-            <button 
-              type="button" 
-              onClick={() => setIsEditing(false)}
-              className="text-xs font-semibold text-slate-500 hover:text-slate-800 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl"
-            >
-              Cancelar
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs font-bold text-slate-700">
-            <div className="space-y-1 md:col-span-2">
-              <label className="block text-slate-500">Título da Tarefa *</label>
-              <input 
-                type="text" 
-                required
-                value={formTitle}
-                onChange={e => setFormTitle(e.target.value)}
-                placeholder="Ex: Cablagem do quadro elétrico principal"
-                className="w-full p-2.5 border border-slate-200 rounded-xl text-sm"
-              />
-            </div>
-
-            <div className="space-y-1 md:col-span-2">
-              <label className="block text-slate-500">Descrição / Instruções Técnicas</label>
-              <textarea 
-                value={formDesc}
-                onChange={e => setFormDesc(e.target.value)}
-                rows={3}
-                placeholder="Indique as especificações, perigos ou procedimentos técnicos..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-medium"
-              />
-            </div>
-
-            <div className="space-y-1 relative md:col-span-2" id="project-autocomplete-container">
-              <div className="flex items-center justify-between">
-                <label className="block text-slate-500">Projeto Associado *</label>
-                {formProj && (
-                  <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                    Projeto Selecionado
-                  </span>
-                )}
-              </div>
-              <div className="relative flex items-center">
-                <input 
-                  type="text"
-                  required
-                  value={projectSearchInput}
-                  onChange={e => {
-                    setProjectSearchInput(e.target.value);
-                    setIsAutocompleteOpen(true);
-                    if (!e.target.value) {
-                      setFormProj('');
-                    }
-                  }}
-                  onFocus={() => setIsAutocompleteOpen(true)}
-                  onBlur={() => {
-                    setTimeout(() => {
-                      setIsAutocompleteOpen(false);
-                      if (!projectSearchInput.trim()) {
-                        setFormProj('');
-                      } else if (!formProj) {
-                        const activeProjects = projects.filter(p => !p.deleted);
-                        const match = activeProjects.find(p => getProjectWithClientLabel(p.id).toLowerCase() === projectSearchInput.trim().toLowerCase());
-                        if (match) {
-                          setFormProj(match.id);
-                          setProjectSearchInput(getProjectWithClientLabel(match.id));
-                        }
-                      }
-                    }, 200);
-                  }}
-                  placeholder="Escreva para pesquisar projetos, clientes ou IP..."
-                  className="w-full p-2.5 pr-8 border border-slate-200 rounded-xl bg-white font-semibold text-slate-800"
-                />
-                {projectSearchInput && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormProj('');
-                      setProjectSearchInput('');
-                      setIsAutocompleteOpen(false);
-                    }}
-                    className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 cursor-pointer"
-                    title="Limpar seleção"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-              {isAutocompleteOpen && (
-                <div className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg divide-y divide-slate-100">
-                  {(() => {
-                    const activeProjects = projects.filter(p => !p.deleted);
-                    const filtered = activeProjects.map(p => {
-                      const label = getProjectWithClientLabel(p.id);
-                      return { id: p.id, label };
-                    }).filter(item => {
-                      if (!projectSearchInput) return true;
-                      return item.label.toLowerCase().includes(projectSearchInput.toLowerCase());
-                    });
-
-                    if (filtered.length === 0) {
-                      return <div className="p-3 text-slate-400 text-center text-xs font-semibold">Nenhum projeto ou cliente encontrado</div>;
-                    }
-
-                    return filtered.map(item => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault(); // Prevents blur event, allowing immediate 1-click selection!
-                          setFormProj(item.id);
-                          setProjectSearchInput(item.label);
-                          setIsAutocompleteOpen(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 hover:bg-blue-50/70 transition-colors text-xs flex flex-col font-semibold cursor-pointer ${
-                          formProj === item.id ? 'bg-blue-50 text-blue-900 font-bold' : 'text-slate-800'
-                        }`}
-                      >
-                        <span>{item.label}</span>
-                      </button>
-                    ));
-                  })()}
-                </div>
-              )}
-
-              {/* Display existing tasks for selected project */}
-              {formProj && (
-                <div className="mt-3 p-3.5 bg-slate-50/90 border border-slate-200 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <CheckSquare className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs font-bold text-slate-800">
-                        Tarefas Existentes no Projeto ({selectedProjectExistingTasks.length})
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-medium italic">
-                      Informativo (não clicável)
-                    </span>
-                  </div>
-
-                  {selectedProjectExistingTasks.length === 0 ? (
-                    <p className="text-xs text-slate-400 italic py-1">
-                      Este projeto ainda não tem tarefas associadas.
-                    </p>
-                  ) : (
-                    <div className="border border-slate-200 rounded-lg overflow-hidden bg-white max-h-48 overflow-y-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-slate-100/90 border-b border-slate-200 text-[10px] uppercase font-bold text-slate-500 tracking-wider">
-                            <th className="py-2 px-3">Data</th>
-                            <th className="py-2 px-3">Nome da Tarefa</th>
-                            <th className="py-2 px-3 text-right">Estado</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 select-none pointer-events-none">
-                          {selectedProjectExistingTasks.map(t => {
-                            const statusName = getTaskStatusName(t.statusId, taskStatuses);
-                            const dateDisplay = t.estimatedDate 
-                              ? new Date(t.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT')
-                              : (t.startDate ? new Date(t.startDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Sem data');
-                            return (
-                              <tr key={t.id} className="text-slate-700 font-medium">
-                                <td className="py-2 px-3 text-slate-500 whitespace-nowrap text-[11px]">
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                                    <span>{dateDisplay}</span>
-                                  </div>
-                                </td>
-                                <td className="py-2 px-3 font-semibold text-slate-800">
-                                  {t.title}
-                                </td>
-                                <td className="py-2 px-3 text-right whitespace-nowrap">
-                                  <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                                    {statusName}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-slate-500">Estado da Tarefa *</label>
-              <select 
-                value={formStatus}
-                onChange={e => setFormStatus(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold"
-              >
-                {taskStatuses.filter(s => !s.deleted).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-slate-500">Tipo de Tarefa</label>
-              <select 
-                value={formTaskType}
-                onChange={e => setFormTaskType(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold cursor-pointer text-slate-800"
-              >
-                <option value="">Selecione o tipo de tarefa...</option>
-                {taskTypes.filter(tt => !tt.deleted).map(tt => (
-                  <option key={tt.id} value={tt.id}>
-                    {getTaskTypeName(tt.id, taskTypes)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Hours */}
-            <div className="space-y-1">
-              <label className="block text-slate-500">Horas Estimadas (HH:MM) *</label>
-              <input 
-                type="text" 
-                required
-                value={formEstHours}
-                onChange={e => setFormEstHours(e.target.value)}
-                placeholder="Ex: 08:00"
-                className="w-full p-2.5 border border-slate-200 rounded-xl text-slate-800"
-              />
-            </div>
-
-            {/* Dates */}
-            <div className="space-y-1">
-              <label className="block text-slate-500">Data Prevista</label>
-              <input 
-                type="date" 
-                value={formEstDate}
-                onChange={e => setFormEstDate(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-slate-500">Notas Adicionais</label>
-              <input 
-                type="text" 
-                value={formNotes}
-                onChange={e => setFormNotes(e.target.value)}
-                placeholder="Alguma nota de campo..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-medium"
-              />
-            </div>
-
-            {/* Multiple Assignees */}
-            <div className="md:col-span-2">
-              <AssigneeSelector
-                users={users}
-                userGroups={userGroups}
-                allowedGroupIds={appConfig?.taskAssigneeGroupIds}
-                selectedIds={formAssignees}
-                onChange={setFormAssignees}
-                filterTeamOnly
-              />
-            </div>
-
-            {/* Conflict Warnings Banner */}
-            {formConflictWarnings.length > 0 && (
-              <div className="md:col-span-2 p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-xs text-amber-900 font-medium whitespace-pre-line">
-                <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                  Conflitos Detectados
-                </div>
-                {formConflictWarnings.map((warn, i) => (
-                  <p key={i} className="text-xs leading-relaxed">{warn}</p>
-                ))}
-              </div>
-            )}
-
-          </div>
-
-          <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
-            <button 
-              type="button" 
-              onClick={() => setIsEditing(false)}
-              className="px-5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200"
-            >
-              Cancelar
-            </button>
-            <button 
-              type="submit"
-              className="px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 -sm"
-            >
-              Gravar Tarefa
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className="space-y-6">
-          {/* View Selection Tabs */}
-          <div className="flex border-b border-slate-200 gap-6 mb-2">
-            <button
-              onClick={() => setActiveTaskViewTab('lista')}
-              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-                activeTaskViewTab === 'lista'
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Lista de Tarefas
-            </button>
-            <button
-              onClick={() => setActiveTaskViewTab('analise')}
-              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-                activeTaskViewTab === 'analise'
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <BarChart2 className="w-4 h-4" />
-              Análise de Tarefas
-            </button>
-          </div>
+      <div className="space-y-6">
+        {/* View Selection Tabs */}
+        <div className="flex border-b border-slate-200 gap-6 mb-2">
+          <button
+            onClick={() => setActiveTaskViewTab('lista')}
+            className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+              activeTaskViewTab === 'lista'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Lista de Tarefas
+          </button>
+          <button
+            onClick={() => setActiveTaskViewTab('analise')}
+            className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+              activeTaskViewTab === 'analise'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <BarChart2 className="w-4 h-4" />
+            Análise de Tarefas
+          </button>
+        </div>
 
           {/* Shared Filters Bar (Only for Lista and Kanban views) */}
           {activeTaskViewTab !== 'analise' && (
@@ -900,7 +433,7 @@ export default function TaskSection({
                 {canWriteTasks && (
                   <button 
                     type="button"
-                    onClick={() => openForm(null)}
+                    onClick={() => openTaskModal(null, 'create')}
                     className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
                   >
                     <Plus className="w-4 h-4" /> Criar Tarefa
@@ -979,7 +512,7 @@ export default function TaskSection({
                     {paginatedTasks.map(t => (
                       <tr 
                         key={t.id} 
-                        onClick={() => openTaskDetailsModal(t)}
+                        onClick={() => openTaskModal(t, canWriteTasks ? 'edit' : 'view')}
                         className="hover:bg-slate-50/80 transition-colors cursor-pointer"
                       >
                         <td className="px-5 py-4">
@@ -1034,7 +567,7 @@ export default function TaskSection({
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openForm(t);
+                                  openTaskModal(t, 'edit');
                                 }}
                                 className="p-1.5 hover:bg-blue-50 hover:text-blue-700 rounded-md text-slate-500"
                                 title="Editar"
@@ -1155,13 +688,16 @@ export default function TaskSection({
             />
           )}
         </div>
-      )}
 
-      {/* Task Single View / Edit Modal */}
+      {/* Unified Task Modal (FASE 30) */}
       <TaskDetailsModal
-        task={selectedTaskForDetails}
-        onClose={() => setSelectedTaskForDetails(null)}
+        isOpen={taskModalState.isOpen}
+        task={taskModalState.task}
+        mode={taskModalState.mode}
+        onClose={() => setTaskModalState(prev => ({ ...prev, isOpen: false, task: null }))}
+        createTask={addTask}
         updateTask={updateTask}
+        deleteTask={deleteTask}
         taskStatuses={taskStatuses}
         taskTypes={taskTypes}
         users={users}
@@ -1171,6 +707,7 @@ export default function TaskSection({
         clients={clients}
         absences={absences}
         tasks={tasks}
+        canWrite={canWriteTasks}
       />
 
       <ConfirmModal

@@ -60,3 +60,14 @@ export function getAuthHeaders(extraHeaders?: Record<string, string>): Record<st
   }
   return headers;
 }
+
+export function getApiErrorMessage(result: any, fallback: string = 'Ocorreu um erro na operação.'): string {
+  if (!result) return fallback;
+  if (typeof result === 'string') return result;
+  if (result.message && typeof result.message === 'string') return result.message;
+  if (result.error && typeof result.error === 'string') return result.error;
+  if (Array.isArray(result.errors) && result.errors.length > 0) {
+    return result.errors.map((e: any) => e.message || e).join('; ');
+  }
+  return fallback;
+}

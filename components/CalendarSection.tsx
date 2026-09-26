@@ -82,6 +82,7 @@ interface CalendarSectionProps {
   onSelectProject?: (id: string) => void;
   addTask?: (task: any) => void;
   updateTask?: (id: string, updates: any) => void;
+  deleteTask?: (id: string) => void;
   taskStatuses: any[];
   taskTypes?: TaskType[];
   projectStatuses?: any[];
@@ -115,6 +116,7 @@ export default function CalendarSection({
   onSelectProject = () => {},
   addTask,
   updateTask,
+  deleteTask,
   taskStatuses = [],
   taskTypes = [],
   projectStatuses = [],
@@ -223,100 +225,40 @@ export default function CalendarSection({
   const [timelineCurrentPage, setTimelineCurrentPage] = useState<number>(1);
   const [isTimelineFullscreen, setIsTimelineFullscreen] = useState<boolean>(false);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
-  const [taskEditStatus, setTaskEditStatus] = useState('');
-  const [taskEditType, setTaskEditType] = useState('');
-  const [taskEditActualHours, setTaskEditActualHours] = useState('');
-  const [taskEditNotes, setTaskEditNotes] = useState('');
-  const [taskEditStartDate, setTaskEditStartDate] = useState('');
-  const [taskEditStartTime, setTaskEditStartTime] = useState('');
-  const [taskEditEndDate, setTaskEditEndDate] = useState('');
-  const [taskEditEndTime, setTaskEditEndTime] = useState('');
+  // Unified Task Modal state (FASE 30)
+  const [taskModalState, setTaskModalState] = useState<{
+    isOpen: boolean;
+    task: Task | null;
+    mode: 'create' | 'edit' | 'view';
+    initialDate?: string;
+    initialAssigneeId?: string;
+    initialProjectId?: string;
+  }>({
+    isOpen: false,
+    task: null,
+    mode: 'edit',
+  });
 
   const openTaskDetailsModal = (task: Task) => {
-    setSelectedTaskForDetails(task);
-    setTaskEditStatus(task.statusId);
-    setTaskEditType(task.taskTypeId || '');
-    setTaskEditActualHours(formatToOnlyHours(task.actualHours));
-    setTaskEditNotes(task.notes || '');
-    setTaskEditStartDate(task.startDate || '');
-    setTaskEditStartTime(task.startTime || '');
-    setTaskEditEndDate(task.endDate || '');
-    setTaskEditEndTime(task.endTime || '');
-  };
-
-  const handleSaveTaskDetails = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canMoveTask) {
-      alert('Não tem permissão para alterar o agendamento de tarefas.');
-      return;
-    }
-    if (!selectedTaskForDetails || !updateTask) return;
-
-    updateTask(selectedTaskForDetails.id, {
-      statusId: taskEditStatus,
-      taskTypeId: taskEditType || '',
-      actualHours: formatToOnlyHours(taskEditActualHours),
-      notes: taskEditNotes,
-      startDate: taskEditStartDate,
-      startTime: taskEditStartTime,
-      endDate: taskEditEndDate,
-      endTime: taskEditEndTime,
+    setTaskModalState({
+      isOpen: true,
+      task,
+      mode: 'edit',
     });
-
-    setSelectedTaskForDetails(null);
   };
-  const [modalProjectId, setModalProjectId] = useState<string>('');
-  const [modalDateStr, setModalDateStr] = useState<string>('');
-  const [taskTitle, setTaskTitle] = useState('');
-  const [taskDescription, setTaskDescription] = useState('');
-  const [taskAssigneeIds, setTaskAssigneeIds] = useState<string[]>([]);
-  const [taskStatusId, setTaskStatusId] = useState<string>('ts-1');
-  const [taskTypeId, setTaskTypeId] = useState<string>('');
-  const [taskEstimatedHours, setTaskEstimatedHours] = useState<string>('08:00');
 
   const handleDayClick = (projectId: string, dateStr: string) => {
     if (!canCreateTaskInCalendar) {
       alert('Não tem permissão para criar ou agendar tarefas.');
       return;
     }
-    setModalProjectId(projectId);
-    setModalDateStr(dateStr);
-    setTaskTitle('');
-    setTaskDescription('');
-    setTaskAssigneeIds([]);
-    setTaskStatusId(getDefaultTaskStatusId(taskStatuses));
-    setTaskTypeId('');
-    setTaskEstimatedHours('08:00');
-    setIsModalOpen(true);
-  };
-
-  const handleCreateTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canCreateTaskInCalendar) {
-      alert('Não tem permissão para criar agendamentos de tarefas.');
-      return;
-    }
-    if (!taskTitle.trim() || !modalProjectId || !addTask) return;
-
-    addTask({
-      title: taskTitle.trim(),
-      description: taskDescription.trim() || 'Criado via linha de tempo',
-      projectId: modalProjectId,
-      statusId: taskStatusId || getDefaultTaskStatusId(taskStatuses),
-      taskTypeId: taskTypeId || '',
-      estimatedDate: modalDateStr,
-      startDate: modalDateStr,
-      endDate: modalDateStr,
-      assigneeIds: taskAssigneeIds,
-      estimatedHours: taskEstimatedHours || '08:00',
-      actualHours: '00:00',
-      startTime: '09:00',
-      endTime: '18:00',
-      notes: ''
+    setTaskModalState({
+      isOpen: true,
+      task: null,
+      mode: 'create',
+      initialProjectId: projectId,
+      initialDate: dateStr,
     });
-    setIsModalOpen(false);
   };
 
   const handleDrop = (e: React.DragEvent, targetDateStr: string, targetProjectId: string) => {
@@ -427,16 +369,15 @@ export default function CalendarSection({
       return;
     }
     const defaultProjId = availableProjects.length > 0 ? availableProjects[0].id : '';
-    setModalProjectId(defaultProjId);
-    setModalDateStr(dateStr);
-    setTaskTitle('');
-    setTaskDescription('');
-    setTaskAssigneeIds([userId]);
-    setTaskStatusId(getDefaultTaskStatusId(taskStatuses));
-    setTaskTypeId('');
-    setTaskEstimatedHours('08:00');
-    setIsModalOpen(true);
-  }, [canCreateTaskInCalendar, availableProjects, taskStatuses]);
+    setTaskModalState({
+      isOpen: true,
+      task: null,
+      mode: 'create',
+      initialProjectId: defaultProjId,
+      initialDate: dateStr,
+      initialAssigneeId: userId,
+    });
+  }, [canCreateTaskInCalendar, availableProjects]);
 
   // Helper to check if task belongs to a project
   const isTaskInProject = React.useCallback((taskId: string, targetProjectId: string): boolean => {
@@ -3143,255 +3084,29 @@ export default function CalendarSection({
         </div>
       )}
 
-      {/* Task Single View / Edit Modal */}
-      <TaskDetailsModal
-        task={selectedTaskForDetails}
-        onClose={() => setSelectedTaskForDetails(null)}
-        updateTask={updateTask}
-        taskStatuses={taskStatuses}
-        taskTypes={taskTypes}
-        users={users}
-        userGroups={userGroups}
-        appConfig={appConfig}
-        projects={projects}
-        clients={clients}
-        // Planning Allocations Props (FASE 23C)
-        planningAllocations={planningAllocations}
-        createPlanningAllocation={createPlanningAllocation}
-        updatePlanningAllocation={updatePlanningAllocation}
-        cancelPlanningAllocation={cancelPlanningAllocation}
-        deletePlanningAllocation={deletePlanningAllocation}
-      />
-
-      {/* Resource Daily Detail Modal (FASE 23E-A & 23E-B) */}
-      {selectedResourceDay && (
-        <ResourceDayDetailModal
-          isOpen={!!selectedResourceDay}
-          onClose={() => setSelectedResourceDay(null)}
-          resource={selectedResourceDay.resource}
-          dateStr={selectedResourceDay.dateStr}
-          capacityDetail={planningCapacity.find(
-            c => c.resourceId === selectedResourceDay.resource.id && c.date === selectedResourceDay.dateStr
-          )}
-          loadDetail={planningResourceLoad.find(
-            l => l.resourceId === selectedResourceDay.resource.id && l.date === selectedResourceDay.dateStr
-          )}
-          allocations={planningAllocations}
-          tasks={tasks}
-          projects={projects}
-          users={activeUsers}
-          userAbsences={userAbsences}
+      {/* Unified Task Modal (FASE 30) */}
+      {taskModalState.isOpen && (
+        <TaskDetailsModal
+          task={taskModalState.task}
+          mode={taskModalState.mode}
+          initialDate={taskModalState.initialDate}
+          initialAssigneeId={taskModalState.initialAssigneeId}
+          initialProjectId={taskModalState.initialProjectId}
+          onClose={() => setTaskModalState({ isOpen: false, task: null, mode: 'edit' })}
+          createTask={addTask}
+          updateTask={updateTask}
+          deleteTask={deleteTask}
           taskStatuses={taskStatuses}
-          onNewAllocation={handleNewAllocationFromDayDetail}
-          onEditAllocation={handleEditAllocationFromDayDetail}
-          onConfirmAllocation={async (id, version) => {
-            if (!updatePlanningAllocation) return { success: false, error: 'Função de atualização não disponível' };
-            const res = await updatePlanningAllocation(id, {
-              status: 'CONFIRMED',
-              version
-            });
-            if (res?.success) {
-              fetchPlanningCapacity?.({
-                dateFrom: startDateStr,
-                dateTo: endDateStr
-              });
-              fetchPlanningResourceLoad?.({
-                dateFrom: startDateStr,
-                dateTo: endDateStr
-              });
-            }
-            return res;
-          }}
-          onCancelAllocation={async (id, version) => {
-            if (!cancelPlanningAllocation) return { success: false, error: 'Função de cancelamento não disponível' };
-            const res = await cancelPlanningAllocation(id, version);
-            if (res?.success) {
-              fetchPlanningCapacity?.({
-                dateFrom: startDateStr,
-                dateTo: endDateStr
-              });
-              fetchPlanningResourceLoad?.({
-                dateFrom: startDateStr,
-                dateTo: endDateStr
-              });
-            }
-            return res;
-          }}
-          onDeleteAllocation={async (id) => {
-            if (!deletePlanningAllocation) return { success: false, error: 'Função de eliminação não disponível' };
-            const res = await deletePlanningAllocation(id);
-            if (res?.success) {
-              fetchPlanningCapacity?.({
-                dateFrom: startDateStr,
-                dateTo: endDateStr
-              });
-              fetchPlanningResourceLoad?.({
-                dateFrom: startDateStr,
-                dateTo: endDateStr
-              });
-            }
-            return res;
-          }}
-          onViewTask={handleViewTaskFromDayDetail}
-          onSelectProject={onSelectProject}
-          canWriteCalendar={canWriteCalendar}
-        />
-      )}
-
-      {/* Planning Allocation Modal (FASE 23C & 23E-A & 23E-B) */}
-      {isPlanningModalOpen && (
-        <PlanningAllocationModal
-          isOpen={isPlanningModalOpen}
-          onClose={() => {
-            setIsPlanningModalOpen(false);
-            setSelectedAllocationForEdit(null);
-            setSelectedTaskForPlanning(null);
-            setPlanningInitialResourceId('');
-            setPlanningInitialDate('');
-          }}
-          task={selectedTaskForPlanning}
-          tasks={tasks}
+          taskTypes={taskTypes}
+          users={users}
+          userGroups={userGroups}
+          appConfig={appConfig}
           projects={projects}
-          allocation={selectedAllocationForEdit}
-          users={activeUsers}
-          initialResourceId={planningInitialResourceId}
-          initialDate={planningInitialDate}
-          contextCapacity={activeDayCapacity}
-          createPlanningAllocation={createPlanningAllocation}
-          updatePlanningAllocation={updatePlanningAllocation}
-          cancelPlanningAllocation={cancelPlanningAllocation}
-          deletePlanningAllocation={deletePlanningAllocation}
+          clients={clients}
+          absences={userAbsences}
+          tasks={tasks}
+          canWrite={canCreateTaskInCalendar || canMoveTask}
         />
-      )}
-
-      {/* Task Creation Modal for Timeline Day Click */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
-            {/* Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              {(() => {
-                const modalProj = projects.find(p => p.id === modalProjectId);
-                const modalClient = modalProj ? clients.find(c => c.id === modalProj.clientId) : null;
-                const cName = modalClient ? modalClient.clientName : 'N/A';
-                const pTitle = modalProj ? modalProj.title : 'Criar Tarefa';
-                return (
-                  <div>
-                    <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider block">Nova Tarefa no Calendário</span>
-                    <div className="text-xs font-medium text-slate-500 mt-0.5">
-                      Cliente: <strong className="text-slate-800 font-bold">{cName}</strong> | Projeto: <strong className="text-slate-800 font-bold">{pTitle}</strong>
-                    </div>
-                    <p className="text-xs text-slate-500 font-medium mt-0.5">
-                      Data selecionada: {modalDateStr ? new Date(modalDateStr + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : ''}
-                    </p>
-                  </div>
-                );
-              })()}
-              <button 
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateTask} className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
-              {/* Title */}
-              <div className="space-y-1">
-                <label className="block font-bold text-slate-700">Título da Tarefa <span className="text-red-500">*</span></label>
-                <input 
-                  type="text"
-                  required
-                  value={taskTitle}
-                  onChange={e => setTaskTitle(e.target.value)}
-                  placeholder="Ex: Instalação de equipamentos, Visita técnica..."
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none"
-                />
-              </div>
-
-              {/* Description */}
-              <div className="space-y-1">
-                <label className="block font-bold text-slate-700">Descrição / Instruções</label>
-                <textarea 
-                  rows={3}
-                  value={taskDescription}
-                  onChange={e => setTaskDescription(e.target.value)}
-                  placeholder="Detalhes ou observações sobre a tarefa..."
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none"
-                />
-              </div>
-
-              {/* Status & Estimated Hours Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Estado</label>
-                  <select
-                    value={taskStatusId}
-                    onChange={e => setTaskStatusId(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
-                  >
-                    {taskStatuses.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Tipo de Tarefa</label>
-                  <select
-                    value={taskTypeId}
-                    onChange={e => setTaskTypeId(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
-                  >
-                    <option value="">Selecione o tipo de tarefa...</option>
-                    {taskTypes.filter(s => !s.deleted).map(s => (
-                      <option key={s.id} value={s.id}>{getTaskTypeName(s.id, taskTypes)}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block font-bold text-slate-700">Horas Previstas (HH:MM)</label>
-                <input 
-                  type="text"
-                  value={taskEstimatedHours}
-                  onChange={e => setTaskEstimatedHours(e.target.value)}
-                  placeholder="08:00"
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:outline-none"
-                />
-              </div>
-
-              {/* Assignees */}
-              <AssigneeSelector 
-                users={activeUsers} 
-                userGroups={userGroups}
-                allowedGroupIds={appConfig?.taskAssigneeGroupIds}
-                selectedIds={taskAssigneeIds} 
-                onChange={setTaskAssigneeIds} 
-                filterTeamOnly
-              />
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors cursor-pointer text-xs"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors cursor-pointer text-xs shadow-sm"
-                >
-                  Criar Tarefa
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
 
       {/* FULLSCREEN TIMELINE MODAL */}
