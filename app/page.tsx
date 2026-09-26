@@ -987,6 +987,8 @@ export default function Page() {
                   markNotificationAsRead={markNotificationAsRead}
                   markAllNotificationsAsRead={markAllNotificationsAsRead}
                   updateTask={updateTask}
+                  addTask={addTask}
+                  deleteTask={deleteTask}
                   onSelectProject={handleSelectProject}
                   onNavigateTab={handleTabChange}
                   appConfig={state.appConfig}

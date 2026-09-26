@@ -6,7 +6,8 @@ import {
 } from '../lib/types';
 import { TASK_STATUS_ID_MAPPINGS, getTaskTypeName, formatToOnlyHours } from '../lib/utils';
 import { AssigneeSelector } from './AssigneeSelector';
-import TaskDetailsModal from './TaskDetailsModal';
+import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
+import { hasPermission } from '../lib/permissions';
 import { 
   CheckSquare, Briefcase, Bell, Calendar as CalendarIcon, ChevronLeft, 
   ChevronRight, Check, Sparkles, Clock, AlertCircle, ArrowRight, 
@@ -28,7 +29,9 @@ interface MyFocusSectionProps {
   projectStatuses: ProjectStatus[];
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: (userId: string) => void;
+  addTask?: (t: any) => void;
   updateTask: (id: string, updates: any) => void;
+  deleteTask?: (id: string) => void;
   onSelectProject: (id: string) => void;
   onNavigateTab: (tabId: string) => void;
   appConfig?: any;
@@ -49,7 +52,9 @@ export default function MyFocusSection({
   projectStatuses = [],
   markNotificationAsRead,
   markAllNotificationsAsRead,
+  addTask,
   updateTask,
+  deleteTask,
   onSelectProject,
   onNavigateTab,
   appConfig
@@ -60,48 +65,24 @@ export default function MyFocusSection({
   // Project filter state ('active' | 'all' | 'completed')
   const [projectFilter, setProjectFilter] = useState<'active' | 'all' | 'completed'>('active');
 
-  // Task details modal state
-  const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
-  const [taskEditStatus, setTaskEditStatus] = useState('');
-  const [taskEditType, setTaskEditType] = useState('');
-  const [taskEditActualHours, setTaskEditActualHours] = useState('');
-  const [taskEditNotes, setTaskEditNotes] = useState('');
-  const [taskEditStartDate, setTaskEditStartDate] = useState('');
-  const [taskEditStartTime, setTaskEditStartTime] = useState('');
-  const [taskEditEndDate, setTaskEditEndDate] = useState('');
-  const [taskEditEndTime, setTaskEditEndTime] = useState('');
-  const [taskEditAssignees, setTaskEditAssignees] = useState<string[]>([]);
+  // Task details modal state (Unified Task Modal FASE 30 / 30-A.2)
+  const [taskModalState, setTaskModalState] = useState<{
+    isOpen: boolean;
+    task: Task | null;
+    mode: TaskModalMode;
+    initialDate?: string;
+  }>({
+    isOpen: false,
+    task: null,
+    mode: 'edit',
+  });
 
-  const openTaskDetailsModal = (task: Task) => {
-    setSelectedTaskForDetails(task);
-    setTaskEditStatus(task.statusId || '');
-    setTaskEditType(task.taskTypeId || '');
-    setTaskEditActualHours(formatToOnlyHours(task.actualHours));
-    setTaskEditNotes(task.notes || '');
-    setTaskEditStartDate(task.startDate || '');
-    setTaskEditStartTime(task.startTime || '');
-    setTaskEditEndDate(task.endDate || '');
-    setTaskEditEndTime(task.endTime || '');
-    setTaskEditAssignees(task.assigneeIds || []);
-  };
-
-  const handleSaveTaskDetails = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTaskForDetails || !updateTask) return;
-
-    updateTask(selectedTaskForDetails.id, {
-      statusId: taskEditStatus,
-      taskTypeId: taskEditType || '',
-      actualHours: formatToOnlyHours(taskEditActualHours),
-      notes: taskEditNotes,
-      startDate: taskEditStartDate,
-      startTime: taskEditStartTime,
-      endDate: taskEditEndDate,
-      endTime: taskEditEndTime,
-      assigneeIds: taskEditAssignees,
+  const openTaskDetailsModal = (task: Task, mode: TaskModalMode = 'edit') => {
+    setTaskModalState({
+      isOpen: true,
+      task,
+      mode,
     });
-
-    setSelectedTaskForDetails(null);
   };
 
   // Notification filter state
@@ -302,7 +283,6 @@ export default function MyFocusSection({
   }, [projectStatusMap]);
 
   const getProjectEffectiveDeliveryDate = useCallback((proj: Project) => {
-    // Priority: scheduledDate (data agendada com cliente) -> estimatedDate (data estimada real) -> deliveryDate (prazo de entrega)
     return proj.scheduledDate || proj.estimatedDate || proj.deliveryDate || '';
   }, []);
 
@@ -371,7 +351,6 @@ export default function MyFocusSection({
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   // Day of week for 1st day (0=Sun, 1=Mon, ..., 6=Sat)
-  // We want Monday-first (0=Mon, 6=Sun)
   let startDayOfWeek = firstDayOfMonth.getDay() - 1;
   if (startDayOfWeek < 0) startDayOfWeek = 6;
 
@@ -428,7 +407,6 @@ export default function MyFocusSection({
     myManagedProjects.forEach(p => {
       const addedDates = new Set<string>();
 
-      // 1. Scheduled / Installation date
       if (p.scheduledDate) {
         const list = map.get(p.scheduledDate) || [];
         list.push({ project: p, milestoneLabel: 'Agendamento / Instalação' });
@@ -436,7 +414,6 @@ export default function MyFocusSection({
         addedDates.add(p.scheduledDate);
       }
 
-      // 2. Delivery date
       if (p.deliveryDate && !addedDates.has(p.deliveryDate)) {
         const list = map.get(p.deliveryDate) || [];
         list.push({ project: p, milestoneLabel: 'Data de Entrega' });
@@ -444,7 +421,6 @@ export default function MyFocusSection({
         addedDates.add(p.deliveryDate);
       }
 
-      // 3. Estimated completion date
       if (p.estimatedDate && !addedDates.has(p.estimatedDate)) {
         const list = map.get(p.estimatedDate) || [];
         list.push({ project: p, milestoneLabel: 'Previsão de Conclusão' });
@@ -452,7 +428,6 @@ export default function MyFocusSection({
         addedDates.add(p.estimatedDate);
       }
 
-      // 4. Effective delivery date if not already included
       const effDelivery = getProjectEffectiveDeliveryDate(p);
       const effType = getProjectDeliveryDateType(p);
       if (effDelivery && !addedDates.has(effDelivery)) {
@@ -462,7 +437,6 @@ export default function MyFocusSection({
         addedDates.add(effDelivery);
       }
 
-      // 5. Start date
       if (p.startDate && !addedDates.has(p.startDate)) {
         const list = map.get(p.startDate) || [];
         list.push({ project: p, milestoneLabel: 'Início de Projeto' });
@@ -473,7 +447,6 @@ export default function MyFocusSection({
     return map;
   }, [myManagedProjects, getProjectEffectiveDeliveryDate, getProjectDeliveryDateType]);
 
-  // Items for selected date
   const selectedDateTasks = tasksByDate.get(selectedDateStr) || [];
   const selectedDateProjects = projectsByDate.get(selectedDateStr) || [];
   const selectedDateUserNotes = userNotes[selectedDateStr] || [];
@@ -492,7 +465,6 @@ export default function MyFocusSection({
     setSelectedDateStr(todayStr);
   };
 
-  // Quick stats
   const pendingTasksCount = useMemo(() => {
     return myAssignedTasks.filter(t => {
       const scaleInfo = getTaskScaleInfo(t.statusId);
@@ -564,7 +536,7 @@ export default function MyFocusSection({
                     taskFilter === 'pending' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Pendentes ({myAssignedTasks.length - (myAssignedTasks.length - pendingTasksCount)})
+                  Pendentes ({pendingTasksCount})
                 </button>
                 <button
                   onClick={() => setTaskFilter('all')}
@@ -763,7 +735,6 @@ export default function MyFocusSection({
                   const client = clientsMap.get(proj.clientId);
                   const pStatus = projectStatusMap.get(proj.statusId);
                   
-                  // Calculate tasks progress for this project (ignoring suspended/cancelled/level 0 tasks)
                   const projTasks = tasks.filter(t => {
                     if (t.projectId !== proj.id || t.deleted) return false;
                     const st = taskStatusMap.get(t.statusId) || (TASK_STATUS_ID_MAPPINGS[t.statusId] ? taskStatusMap.get(TASK_STATUS_ID_MAPPINGS[t.statusId]) : undefined);
@@ -1267,12 +1238,16 @@ export default function MyFocusSection({
 
       </div>
 
-      {/* TASK EDIT/FILL DETAILS MODAL (SHARED FORM) */}
+      {/* TASK DETAILS MODAL (FASE 30 / 30-A.2) */}
       <TaskDetailsModal
-        isOpen={Boolean(selectedTaskForDetails)}
-        task={selectedTaskForDetails}
-        onClose={() => setSelectedTaskForDetails(null)}
+        isOpen={taskModalState.isOpen}
+        task={taskModalState.task}
+        mode={taskModalState.mode}
+        initialDate={taskModalState.initialDate}
+        onClose={() => setTaskModalState(prev => ({ ...prev, isOpen: false, task: null }))}
+        createTask={addTask}
         updateTask={updateTask}
+        deleteTask={deleteTask}
         taskStatuses={taskStatuses}
         taskTypes={taskTypes}
         users={users}
@@ -1280,8 +1255,9 @@ export default function MyFocusSection({
         appConfig={appConfig}
         projects={projects}
         clients={clients}
+        absences={userAbsences}
         tasks={tasks}
-        onSelectTask={(t) => setSelectedTaskForDetails(t)}
+        canWrite={hasPermission(currentUser, 'tasks_write', userGroups)}
       />
 
     </div>
