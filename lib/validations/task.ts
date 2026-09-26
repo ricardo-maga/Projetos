@@ -30,11 +30,55 @@ export const createTaskSchema = z.object({
     .optional()
     .default([])
     .transform((ids) => ids.filter((id) => Boolean(id && id.trim()))),
-});
+}).refine(
+  (data) => {
+    if (data.startTime && data.endTime) {
+      return data.endTime > data.startTime;
+    }
+    return true;
+  },
+  {
+    message: 'A hora de fim deve ser posterior à hora de início.',
+    path: ['endTime'],
+  }
+);
 
-export const updateTaskSchema = createTaskSchema.partial().extend({
+export const updateTaskSchema = z.object({
+  projectId: z.string().trim().min(1, 'O ID de projeto é obrigatório').optional(),
+  title: z.string().trim().min(2, 'O título da tarefa deve ter no mínimo 2 caracteres').optional(),
+  description: z.string().optional(),
+  statusId: z.string().optional(),
+  taskTypeId: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((val) => (val === '' ? null : val)),
+  estimatedHours: z.number().nonnegative().optional(),
+  actualHours: z.number().nonnegative().optional(),
+  startDate: optionalDateField,
+  startTime: optionalDateField,
+  endDate: optionalDateField,
+  endTime: optionalDateField,
+  estimatedDate: optionalDateField,
+  completedDate: optionalDateField,
+  notes: z.string().optional(),
+  assignedUserIds: z
+    .array(z.string())
+    .optional()
+    .transform((ids) => (ids ? ids.filter((id) => Boolean(id && id.trim())) : undefined)),
   version: z.number().int().min(1, 'A versão da tarefa deve ser um número inteiro superior a 0').optional(),
-});
+}).refine(
+  (data) => {
+    if (data.startTime && data.endTime) {
+      return data.endTime > data.startTime;
+    }
+    return true;
+  },
+  {
+    message: 'A hora de fim deve ser posterior à hora de início.',
+    path: ['endTime'],
+  }
+);
 
 export const queryTaskSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

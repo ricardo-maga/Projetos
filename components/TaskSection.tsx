@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Task, Project, Client, TaskType } from '../lib/types';
-import { Plus, Search, Trash2, Edit2, Clock, Calendar, CheckSquare, PlusCircle, X, Users, Link2, Maximize2, Minimize2, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, Clock, Calendar, CheckSquare, PlusCircle, X, Users, Link2, Maximize2, Minimize2, ChevronLeft, ChevronRight, BarChart2, AlertTriangle } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
 import TaskDetailsModal from './TaskDetailsModal';
@@ -10,6 +10,7 @@ import { TaskAnalytics } from './TaskAnalytics';
 
 import { hasPermission } from '../lib/permissions';
 import { getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, formatToOnlyHours } from '../lib/utils';
+import { getTaskConflictWarnings } from '../lib/taskConflicts';
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
   if (total <= 7) {
@@ -29,6 +30,7 @@ interface TaskSectionProps {
   projects: Project[];
   clients: Client[];
   users: any[];
+  absences?: any[];
   taskStatuses: any[];
   taskTypes?: TaskType[];
   addTask: (t: any) => void;
@@ -64,6 +66,7 @@ export default function TaskSection({
   projects,
   clients = [],
   users,
+  absences = [],
   taskStatuses,
   taskTypes = [],
   addTask,
@@ -94,14 +97,7 @@ export default function TaskSection({
   const [sortBy, setSortBy] = useState<'estimatedDate' | 'status'>('estimatedDate');
   const [groupByProject, setGroupByProject] = useState<boolean>(false);
 
-  // Kanban-specific state
-  const [kanbanGroupByProject, setKanbanGroupByProject] = useState<boolean>(false);
-  const [kanbanCollapseAllTasks, setKanbanCollapseAllTasks] = useState<boolean>(false);
-  const [collapsedColumns, setCollapsedColumns] = useState<Record<string, boolean>>({});
-  const [draggingOverColumnId, setDraggingOverColumnId] = useState<string | null>(null);
-  const [isDraggingTaskId, setIsDraggingTaskId] = useState<string | null>(null);
-  const [activeTaskViewTab, setActiveTaskViewTab] = useState<'lista' | 'kanban' | 'analise'>('lista');
-  const [isKanbanFullscreen, setIsKanbanFullscreen] = useState<boolean>(false);
+  const [activeTaskViewTab, setActiveTaskViewTab] = useState<'lista' | 'analise'>('lista');
 
   // Reset pagination when filter/sorting/grouping variables change
   useEffect(() => {
@@ -394,12 +390,31 @@ export default function TaskSection({
     setIsEditing(true);
   };
 
+  const formConflictWarnings = useMemo(() => {
+    const targetDate = formEstDate || formStartDate;
+    return getTaskConflictWarnings({
+      date: targetDate,
+      assigneeIds: formAssignees,
+      currentTaskId: editingId,
+      tasks,
+      users,
+      absences,
+      projects,
+    });
+  }, [formEstDate, formStartDate, formAssignees, editingId, tasks, users, absences, projects]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canWriteTasks) {
       alert('Não tem permissão para criar ou editar tarefas.');
       return;
     }
+
+    if (formStartTime && formEndTime && formEndTime <= formStartTime) {
+      alert('A hora de fim deve ser posterior à hora de início.');
+      return;
+    }
+
     const payload = {
       title: formTitle,
       description: formDesc,
@@ -450,274 +465,6 @@ export default function TaskSection({
     const firstInitial = parts[0][0].toUpperCase();
     const lastInitial = parts[parts.length - 1][0].toUpperCase();
     return `${firstInitial}${lastInitial}`;
-  };
-
-  // Drag and Drop handlers for Kanban
-  const handleDragStart = (e: React.DragEvent, taskId: string) => {
-    e.dataTransfer.setData('text/plain', taskId);
-    setIsDraggingTaskId(taskId);
-  };
-
-  const handleDragOver = (e: React.DragEvent, columnId: string) => {
-    e.preventDefault();
-    setDraggingOverColumnId(columnId);
-  };
-
-  const handleDragLeave = () => {
-    setDraggingOverColumnId(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetStatusId: string) => {
-    e.preventDefault();
-    const taskId = e.dataTransfer.getData('text/plain') || isDraggingTaskId;
-    setDraggingOverColumnId(null);
-    setIsDraggingTaskId(null);
-    if (taskId) {
-      const existingTask = tasks.find(t => t.id === taskId);
-      if (existingTask && existingTask.statusId === targetStatusId) {
-        return;
-      }
-      updateTask(taskId, { statusId: targetStatusId });
-    }
-  };
-
-  const renderKanbanTaskCard = (task: Task) => {
-    return (
-      <div
-        key={task.id}
-        draggable
-        onDragStart={(e) => handleDragStart(e, task.id)}
-        onDragEnd={() => {
-          setIsDraggingTaskId(null);
-          setDraggingOverColumnId(null);
-        }}
-        onClick={() => openTaskDetailsModal(task)}
-        className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs hover:shadow-md cursor-grab active:cursor-grabbing hover:border-slate-300 transition-all duration-200 select-none group text-left"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <div className="font-extrabold text-slate-800 text-xs group-hover:text-blue-600 transition-colors">
-              {task.title}
-            </div>
-            {task.taskTypeId && (
-              <span className="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[9px] font-bold mt-1">
-                {getTaskTypeName(task.taskTypeId, taskTypes)}
-              </span>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-            <button
-              onClick={() => openForm(task)}
-              className="p-1 hover:bg-slate-100 rounded-md text-slate-400 hover:text-slate-600"
-              title="Editar"
-            >
-              <Edit2 className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => askConfirmation(
-                'Confirmar Eliminação de Tarefa',
-                'Tem a certeza que deseja eliminar esta tarefa? Esta ação é irreversível.',
-                () => deleteTask(task.id)
-              )}
-              className="p-1 hover:bg-red-50 rounded-md text-slate-400 hover:text-red-600"
-              title="Eliminar"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
-
-        {!kanbanCollapseAllTasks && (
-          <div className="mt-2 space-y-1.5 border-t border-slate-100 pt-2">
-            {!kanbanGroupByProject && (
-              <div className="text-[9px] text-blue-600 font-bold line-clamp-1">
-                📁 {getProjectTitle(task.projectId)}
-              </div>
-            )}
-            
-            {task.description && (
-              <p className="text-[10px] text-slate-500 font-medium line-clamp-2 italic">
-                {task.description}
-              </p>
-            )}
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <div className="flex items-center gap-1 text-[9px] font-bold font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                <Calendar className="w-3 h-3 text-slate-400" />
-                {task.estimatedDate || 'Sem data'}
-              </div>
-
-              {task.assigneeIds && task.assigneeIds.length > 0 && (
-                <div className="flex -space-x-1.5 overflow-hidden" title={task.assigneeIds.map(uid => getUserName(uid)).join(', ')}>
-                  {task.assigneeIds.map(uid => (
-                    <div
-                      key={uid}
-                      className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] font-extrabold text-slate-700 shadow-2xs shrink-0"
-                      title={getUserName(uid)}
-                    >
-                      {getUserInitials(getUserName(uid))}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {kanbanCollapseAllTasks && (
-          <div className="mt-2 flex items-center justify-between gap-2 text-[9px] text-slate-400 border-t border-slate-100 pt-1.5">
-            <div className="flex items-center gap-1.5 min-w-0">
-              {!kanbanGroupByProject && (
-                <span className="font-bold text-blue-600 line-clamp-1 max-w-[100px]">
-                  {getProjectTitle(task.projectId)}
-                </span>
-              )}
-              <span className="font-mono font-bold bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
-                {task.estimatedDate || 'Sem data'}
-              </span>
-            </div>
-
-            {task.assigneeIds && task.assigneeIds.length > 0 && (
-              <div className="flex -space-x-1.5 overflow-hidden shrink-0" title={task.assigneeIds.map(uid => getUserName(uid)).join(', ')}>
-                {task.assigneeIds.map(uid => (
-                  <div
-                    key={uid}
-                    className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] font-extrabold text-slate-700 shadow-2xs"
-                    title={getUserName(uid)}
-                  >
-                    {getUserInitials(getUserName(uid))}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderKanbanColumns = () => {
-    return taskStatuses.filter(s => !s.deleted).map(status => {
-      const isColumnCollapsed = collapsedColumns[status.id] || false;
-      const columnTasks = activeTasks.filter(t => t.statusId === status.id || matchTaskStatusId(t.statusId, status.id));
-      
-      const filteredColumnTasks = columnTasks.filter(t => {
-        const proj = projects.find(p => p.id === t.projectId);
-        const client = proj ? clients.find(c => c.id === proj.clientId) : null;
-        const clientName = client ? client.clientName.toLowerCase() : '';
-
-        const matchesSearch = search ? (
-          t.title.toLowerCase().includes(search.toLowerCase()) ||
-          (t.description || '').toLowerCase().includes(search.toLowerCase()) ||
-          clientName.includes(search.toLowerCase())
-        ) : true;
-        const matchesProject = filterProject ? t.projectId === filterProject : true;
-        const matchesAssignee = filterAssignee ? t.assigneeIds.some(id => matchUserId(id, filterAssignee)) : true;
-        return matchesSearch && matchesProject && matchesAssignee;
-      });
-
-      if (isColumnCollapsed) {
-        return (
-          <div
-            key={status.id}
-            onClick={() => setCollapsedColumns(prev => ({ ...prev, [status.id]: false }))}
-            onDragOver={(e) => handleDragOver(e, status.id)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, status.id)}
-            className={`w-12 flex-shrink-0 bg-slate-50 border border-slate-200 rounded-xl flex flex-col items-center py-4 cursor-pointer hover:bg-slate-100 transition-all duration-200 ${
-              draggingOverColumnId === status.id ? 'ring-2 ring-blue-500 bg-blue-50/50' : ''
-            }`}
-            title={`Clique para expandir "${status.name}"`}
-          >
-            <div className="text-[10px] font-extrabold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded-full mb-3">
-              {filteredColumnTasks.length}
-            </div>
-            <div 
-              className="text-slate-700 font-extrabold text-xs tracking-wider whitespace-nowrap"
-              style={{ writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}
-            >
-              {status.name}
-            </div>
-          </div>
-        );
-      }
-
-      let renderContent;
-      if (kanbanGroupByProject) {
-        const grouped: Record<string, Task[]> = {};
-        filteredColumnTasks.forEach(t => {
-          if (!grouped[t.projectId]) grouped[t.projectId] = [];
-          grouped[t.projectId].push(t);
-        });
-
-        renderContent = Object.keys(grouped).map(projId => {
-          const projTitle = getProjectWithClientLabel(projId) || 'Sem Projeto';
-          const sortedProjTasks = sortTasks(grouped[projId]);
-          return (
-            <div key={projId} className="space-y-2 pt-1">
-              <div className="text-[10px] font-extrabold text-blue-600 bg-blue-50/50 px-2 py-1 rounded-lg border border-blue-100/50 line-clamp-1">
-                📁 {projTitle}
-              </div>
-              {sortedProjTasks.map(task => renderKanbanTaskCard(task))}
-            </div>
-          );
-        });
-      } else {
-        const sortedColumnTasks = sortTasks(filteredColumnTasks);
-        renderContent = (
-          <div className="space-y-2">
-            {sortedColumnTasks.map(task => renderKanbanTaskCard(task))}
-          </div>
-        );
-      }
-
-      return (
-        <div
-          key={status.id}
-          onDragOver={(e) => handleDragOver(e, status.id)}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDrop(e, status.id)}
-          className={`flex-1 min-w-[280px] max-w-[350px] bg-slate-50/60 border border-slate-200/80 rounded-2xl p-3 flex flex-col h-[550px] transition-all duration-200 ${
-            draggingOverColumnId === status.id ? 'ring-2 ring-blue-500 bg-blue-50/50' : ''
-          }`}
-        >
-          <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-200">
-            <div className="flex items-center gap-2">
-              <span className={`w-2.5 h-2.5 rounded-full ${
-                status.id === 'ts-3' ? 'bg-emerald-500' :
-                status.id === 'ts-2' ? 'bg-blue-500' :
-                status.id === 'ts-4' ? 'bg-amber-500' :
-                'bg-slate-400'
-              }`} />
-              <span className="font-extrabold text-xs text-slate-800">{status.name}</span>
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-200/60 px-1.5 py-0.5 rounded-md">
-                {filteredColumnTasks.length}
-              </span>
-            </div>
-            
-            <button
-              type="button"
-              onClick={() => setCollapsedColumns(prev => ({ ...prev, [status.id]: true }))}
-              className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-md transition-colors"
-              title="Contrair Coluna"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-slate-200">
-            {filteredColumnTasks.length === 0 ? (
-              <div className="h-24 flex items-center justify-center border border-dashed border-slate-200 rounded-xl text-slate-400 text-[10px] font-medium italic text-center p-2">
-                Nenhuma tarefa aqui
-              </div>
-            ) : (
-              renderContent
-            )}
-          </div>
-        </div>
-      );
-    });
   };
 
   return (
@@ -1003,6 +750,19 @@ export default function TaskSection({
               />
             </div>
 
+            {/* Conflict Warnings Banner */}
+            {formConflictWarnings.length > 0 && (
+              <div className="md:col-span-2 p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-xs text-amber-900 font-medium whitespace-pre-line">
+                <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  Conflitos Detectados
+                </div>
+                {formConflictWarnings.map((warn, i) => (
+                  <p key={i} className="text-xs leading-relaxed">{warn}</p>
+                ))}
+              </div>
+            )}
+
           </div>
 
           <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
@@ -1034,16 +794,6 @@ export default function TaskSection({
               }`}
             >
               Lista de Tarefas
-            </button>
-            <button
-              onClick={() => setActiveTaskViewTab('kanban')}
-              className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-                activeTaskViewTab === 'kanban'
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Quadro Kanban
             </button>
             <button
               onClick={() => setActiveTaskViewTab('analise')}
@@ -1394,118 +1144,6 @@ export default function TaskSection({
           </div>
           )}
 
-          {activeTaskViewTab === 'kanban' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4 animate-fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-              <div>
-                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                  <CheckSquare className="w-5 h-5 text-blue-600" />
-                  Quadro Kanban de Tarefas
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Arraste e solte as tarefas entre colunas para atualizar instantaneamente o seu estado.</p>
-              </div>
-
-              {/* Kanban specific controls */}
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setKanbanCollapseAllTasks(prev => !prev)}
-                  className={`px-3 py-1.5 border rounded-xl text-xs font-bold transition-colors ${
-                    kanbanCollapseAllTasks 
-                      ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {kanbanCollapseAllTasks ? 'Expandir Detalhes' : 'Contrair Todas as Tarefas'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setKanbanGroupByProject(prev => !prev)}
-                  className={`px-3 py-1.5 border rounded-xl text-xs font-bold transition-colors ${
-                    kanbanGroupByProject 
-                      ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {kanbanGroupByProject ? 'Sem Agrupamento por Projeto' : 'Agrupar por Projeto'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsKanbanFullscreen(true)}
-                  className="px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
-                  title="Abrir em Ecrã Cheio"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  Ecrã Cheio
-                </button>
-              </div>
-            </div>
-
-            {/* Columns grid */}
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200">
-              {renderKanbanColumns()}
-            </div>
-          </div>
-          )}
-
-          {/* Kanban Fullscreen Modal */}
-          {isKanbanFullscreen && (
-            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl w-full h-[95vh] flex flex-col overflow-hidden animate-fade-in shadow-2xl border border-slate-200">
-                <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 shrink-0">
-                  <div>
-                    <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                      <CheckSquare className="w-5 h-5 text-blue-600" />
-                      Quadro Kanban de Tarefas <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Ecrã Cheio</span>
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Arraste e solte as tarefas entre colunas para atualizar instantaneamente o seu estado.</p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setKanbanCollapseAllTasks(prev => !prev)}
-                      className={`px-3 py-1.5 border rounded-xl text-xs font-bold transition-colors ${
-                        kanbanCollapseAllTasks 
-                          ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      {kanbanCollapseAllTasks ? 'Expandir Detalhes' : 'Contrair Todas as Tarefas'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setKanbanGroupByProject(prev => !prev)}
-                      className={`px-3 py-1.5 border rounded-xl text-xs font-bold transition-colors ${
-                        kanbanGroupByProject 
-                          ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      {kanbanGroupByProject ? 'Sem Agrupamento por Projeto' : 'Agrupar por Projeto'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsKanbanFullscreen(false)}
-                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
-                    >
-                      <Minimize2 className="w-3.5 h-3.5" />
-                      Sair do Ecrã Cheio
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-auto p-5 bg-slate-50/30 flex gap-4">
-                  {renderKanbanColumns()}
-                </div>
-              </div>
-            </div>
-          )}
-
           {activeTaskViewTab === 'analise' && (
             <TaskAnalytics 
               tasks={tasks}
@@ -1531,11 +1169,8 @@ export default function TaskSection({
         appConfig={appConfig}
         projects={projects}
         clients={clients}
-        planningAllocations={planningAllocations}
-        createPlanningAllocation={createPlanningAllocation}
-        updatePlanningAllocation={updatePlanningAllocation}
-        cancelPlanningAllocation={cancelPlanningAllocation}
-        deletePlanningAllocation={deletePlanningAllocation}
+        absences={absences}
+        tasks={tasks}
       />
 
       <ConfirmModal

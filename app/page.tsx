@@ -1067,6 +1067,7 @@ export default function Page() {
                   projects={state.projects}
                   clients={state.clients}
                   users={state.users}
+                  absences={state.userAbsences || []}
                   taskStatuses={state.taskStatuses}
                   taskTypes={state.taskTypes || []}
                   addTask={addTask}
