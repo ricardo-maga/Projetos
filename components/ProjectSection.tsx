@@ -729,23 +729,39 @@ export default function ProjectSection({
   const getPriorityName = (id: string) => projectPriorities.find(p => matchId(p.id, id))?.name || 'N/A';
   const getUserName = (id: string) => users.find(u => matchId(u.id, id))?.name || 'Equipa';
 
-  // Helper to check if project status is level 5 (completed, suspended, cancelled, or scale >= 5)
-  const isProjectLevel5 = React.useCallback((statusId: string): boolean => {
-    if (!statusId) return false;
-    const s = projectStatuses.find(st => matchId(st.id, statusId) || st.id === statusId);
-    if (!s) return false;
-    if (s.scale !== undefined && s.scale >= 5) return true;
-    const name = (s.name || '').toLowerCase();
-    return name.includes('conclu') || name.includes('suspen') || name.includes('cancel');
-  }, [projectStatuses]);
-
   const getProjectStatusScale = React.useCallback((statusId: string): number => {
     if (!statusId) return 1;
-    if (isProjectLevel5(statusId)) return 5;
     const s = projectStatuses.find(st => matchId(st.id, statusId) || st.id === statusId);
-    if (s && typeof s.scale === 'number') return s.scale;
+    if (!s) return 1;
+    const name = (s.name || '').toLowerCase();
+    if (name.includes('concl') || name.includes('finaliz') || name.includes('fechad') || name.includes('cancel') || name.includes('suspen')) {
+      return 5;
+    }
+    if (name.includes('implement')) {
+      return 4;
+    }
+    if (name.includes('ensaios')) {
+      return 4;
+    }
+    if (name.includes('prepara')) {
+      return 3;
+    }
+    if (name.includes('iniciad')) {
+      return 2;
+    }
+    if (name.includes('por iniciar')) {
+      return 1;
+    }
+    if (s.scale !== undefined) {
+      if (s.scale >= 5) return 5;
+      return s.scale;
+    }
     return 1;
-  }, [projectStatuses, isProjectLevel5]);
+  }, [projectStatuses]);
+
+  const isProjectLevel5 = React.useCallback((statusId: string): boolean => {
+    return getProjectStatusScale(statusId) === 5;
+  }, [getProjectStatusScale]);
 
   const matchesStatusGroup = React.useCallback((statusId: string) => {
     if (filterStatusGroup === 'all') return true;
@@ -873,10 +889,38 @@ export default function ProjectSection({
     });
   }, [projects, matchesStatusGroup, filterCategory, filterStatus, filterManager, search, clients, users]);
 
+  const baseProjects = serverProjects.length > 0 ? serverProjects : projects;
+
+  const filteredProjects = React.useMemo(() => {
+    return baseProjects.filter(p => {
+      if (p.deleted) return false;
+      if (!matchesStatusGroup(p.statusId)) return false;
+      if (filterCategory && !matchId(p.categoryId, filterCategory)) return false;
+      if (filterStatus && !matchId(p.statusId, filterStatus)) return false;
+      if (filterManager && !matchId(p.projectManagerId, filterManager)) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchTitle = (p.title || '').toLowerCase().includes(q);
+        const matchNo = (p.installProjectNo || '').toLowerCase().includes(q);
+        const matchSf = (p.sfOpportunityNo || '').toLowerCase().includes(q);
+        const matchDesc = (p.description || '').toLowerCase().includes(q);
+        
+        const client = clients.find(c => matchId(c.id, p.clientId));
+        const matchClient = client ? (client.clientName || '').toLowerCase().includes(q) || (client.shortName || '').toLowerCase().includes(q) : false;
+
+        const manager = users.find(u => matchId(u.id, p.projectManagerId));
+        const matchManager = manager ? (manager.name || '').toLowerCase().includes(q) : false;
+
+        if (!matchTitle && !matchNo && !matchSf && !matchDesc && !matchClient && !matchManager) return false;
+      }
+      return true;
+    });
+  }, [baseProjects, matchesStatusGroup, filterCategory, filterStatus, filterManager, search, clients, users]);
+
   // Use server data if available, fallback to props
-  const activeProjects = serverProjects.length > 0 ? serverProjects : filteredLocalProjects;
-  const paginatedProjects = serverProjects.length > 0 ? serverProjects : filteredLocalProjects.slice((projectCurrentPage - 1) * projectPageSize, projectCurrentPage * projectPageSize);
-  const totalProjects = serverProjects.length > 0 ? totalServerProjects : filteredLocalProjects.length;
+  const activeProjects = filteredProjects;
+  const paginatedProjects = filteredProjects.slice((projectCurrentPage - 1) * projectPageSize, projectCurrentPage * projectPageSize);
+  const totalProjects = filteredProjects.length;
   const totalProjectPages = Math.max(1, Math.ceil(totalProjects / projectPageSize));
   const validProjectPage = Math.min(projectCurrentPage, totalProjectPages);
   const startProjectIndex = (validProjectPage - 1) * projectPageSize;
