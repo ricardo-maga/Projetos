@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
-import TaskDetailsModal from './TaskDetailsModal';
+import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
@@ -67,6 +67,7 @@ interface ProjectSectionProps {
   addTask: (task: any) => any;
   addTasks?: (tasks: any[]) => any;
   updateTask: (id: string, updates: any) => void;
+  deleteTask?: (id: string) => void;
   taskStatuses: any[];
   taskTypes?: TaskType[];
   specialDays?: any[];
@@ -267,18 +268,9 @@ export default function ProjectSection({
   // Comment Form
   const [newCommentText, setNewCommentText] = useState('');
 
-  // Manual Task Form State in Project Details
-  const [showAddTaskForm, setShowAddTaskForm] = useState(false);
+  // Task Import Form State in Project Details
   const [showImportTaskForm, setShowImportTaskForm] = useState(false);
   const [selectedImportModelTaskIds, setSelectedImportModelTaskIds] = useState<string[]>([]);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDesc, setNewTaskDesc] = useState('');
-  const [newTaskEstHours, setNewTaskEstHours] = useState('08:00');
-  const [newTaskAssignees, setNewTaskAssignees] = useState<string[]>([]);
-  const [newTaskEstDate, setNewTaskEstDate] = useState('');
-  const [newTaskTypeId, setNewTaskTypeId] = useState('');
-  const [taskEditAssignees, setTaskEditAssignees] = useState<string[]>([]);
-  const [taskEditTypeId, setTaskEditTypeId] = useState('');
 
   // Monthly Calendar Offset
   const [calMonthOffset, setCalMonthOffset] = useState(0);
@@ -441,130 +433,37 @@ export default function ProjectSection({
     return unique;
   };
 
-  const handleCreateTask = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Unified Task Modal State in ProjectSection (FASE 30-A)
+  const [taskModalState, setTaskModalState] = useState<{
+    isOpen: boolean;
+    task: Task | null;
+    mode: TaskModalMode;
+    initialDate?: string;
+  }>({
+    isOpen: false,
+    task: null,
+    mode: 'edit',
+  });
+
+  const openTaskDetailsModal = (task: Task, mode: TaskModalMode = 'edit') => {
+    setTaskModalState({
+      isOpen: true,
+      task,
+      mode,
+    });
+  };
+
+  const openCreateTaskModal = (initialDate?: string) => {
     if (!canWriteTasks) {
       alert('Não tem permissão para criar tarefas.');
       return;
     }
-    if (!newTaskTitle.trim() || !selectedProj) return;
-
-    const executeCreate = () => {
-      addTask({
-        projectId: selectedProj.id,
-        title: newTaskTitle.trim(),
-        statusId: getDefaultTaskStatusId(taskStatuses),
-        taskTypeId: newTaskTypeId || '',
-        assigneeIds: newTaskAssignees,
-        estimatedDate: newTaskEstDate,
-        description: newTaskDesc.trim(),
-        estimatedHours: newTaskEstHours,
-        actualHours: '0',
-        startDate: '',
-        startTime: '',
-        endDate: '',
-        endTime: '',
-        notes: '',
-      });
-
-      // Reset task form
-      setNewTaskTitle('');
-      setNewTaskDesc('');
-      setNewTaskEstHours('08:00');
-      setNewTaskAssignees([]);
-      setNewTaskEstDate('');
-      setNewTaskTypeId('');
-      setShowAddTaskForm(false);
-    };
-
-    const conflicts = checkTaskSchedulingConflicts({
-      estimatedDate: newTaskEstDate,
-      assigneeIds: newTaskAssignees,
-      users,
-      tasks,
-      userAbsences: absences || []
+    setTaskModalState({
+      isOpen: true,
+      task: null,
+      mode: 'create',
+      initialDate,
     });
-
-    if (conflicts.length > 0) {
-      const conflictList = conflicts.map(c => `• ${c.userName}: ${c.detail}`).join('\n');
-      askConfirmation(
-        'Aviso de Conflito de Agendamento',
-        `Atenção: Foram detetados os seguintes conflitos de ausência ou dupla alocação:\n\n${conflictList}\n\nQuer mesmo continuar e gravar a tarefa?`,
-        executeCreate
-      );
-    } else {
-      executeCreate();
-    }
-  };
-
-  // View/Edit Single Task Modal State
-  const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
-  const [taskEditStatus, setTaskEditStatus] = useState('');
-  const [taskEditActualHours, setTaskEditActualHours] = useState('');
-  const [taskEditNotes, setTaskEditNotes] = useState('');
-  const [taskEditStartDate, setTaskEditStartDate] = useState('');
-  const [taskEditStartTime, setTaskEditStartTime] = useState('');
-  const [taskEditEndDate, setTaskEditEndDate] = useState('');
-  const [taskEditEndTime, setTaskEditEndTime] = useState('');
-
-  const openTaskDetailsModal = (task: Task) => {
-    setSelectedTaskForDetails(task);
-    setTaskEditStatus(task.statusId);
-    setTaskEditTypeId(task.taskTypeId || '');
-    setTaskEditActualHours(formatToOnlyHours(task.actualHours));
-    setTaskEditNotes(task.notes || '');
-    setTaskEditStartDate(task.startDate || '');
-    setTaskEditStartTime(task.startTime || '');
-    setTaskEditEndDate(task.endDate || '');
-    setTaskEditEndTime(task.endTime || '');
-    setTaskEditAssignees(task.assigneeIds || []);
-  };
-
-  const handleSaveTaskDetails = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canWriteTasks) {
-      alert('Não tem permissão para alterar tarefas.');
-      return;
-    }
-    if (!selectedTaskForDetails) return;
-
-    const executeSave = () => {
-      updateTask(selectedTaskForDetails.id, {
-        statusId: taskEditStatus,
-        taskTypeId: taskEditTypeId || '',
-        actualHours: formatToOnlyHours(taskEditActualHours),
-        notes: taskEditNotes,
-        startDate: taskEditStartDate,
-        startTime: taskEditStartTime,
-        endDate: taskEditEndDate,
-        endTime: taskEditEndTime,
-        assigneeIds: taskEditAssignees,
-      });
-
-      setSelectedTaskForDetails(null);
-    };
-
-    const conflicts = checkTaskSchedulingConflicts({
-      taskId: selectedTaskForDetails.id,
-      startDate: taskEditStartDate,
-      endDate: taskEditEndDate,
-      estimatedDate: selectedTaskForDetails.estimatedDate,
-      assigneeIds: taskEditAssignees,
-      users,
-      tasks,
-      userAbsences: absences || []
-    });
-
-    if (conflicts.length > 0) {
-      const conflictList = conflicts.map(c => `• ${c.userName}: ${c.detail}`).join('\n');
-      askConfirmation(
-        'Aviso de Conflito de Agendamento',
-        `Atenção: Foram detetados os seguintes conflitos de ausência ou dupla alocação:\n\n${conflictList}\n\nQuer mesmo continuar e gravar as alterações?`,
-        executeSave
-      );
-    } else {
-      executeSave();
-    }
   };
 
   // Open Form
@@ -1749,12 +1648,8 @@ export default function ProjectSection({
                                   }
                                 }}
                                 onClick={() => {
-                                  setShowAddTaskForm(true);
-                                  setNewTaskEstDate(dateStr);
+                                  openCreateTaskModal(dateStr);
                                   setShowImportTaskForm(false);
-                                  setTimeout(() => {
-                                    document.getElementById('add-task-form-panel')?.scrollIntoView({ behavior: 'smooth' });
-                                  }, 50);
                                 }}
                                 className={`min-h-[110px] p-1.5 border-b border-r border-slate-100 last:border-r-0 relative group transition-colors hover:bg-slate-100/50 cursor-pointer flex flex-col justify-start ${
                                   isWeekend || isSpecial ? 'bg-slate-100/60' : 'bg-white'
@@ -1989,12 +1884,8 @@ export default function ProjectSection({
                                     <th 
                                       key={dayStr} 
                                       onClick={() => {
-                                        setShowAddTaskForm(true);
-                                        setNewTaskEstDate(dayStr);
+                                        openCreateTaskModal(dayStr);
                                         setShowImportTaskForm(false);
-                                        setTimeout(() => {
-                                          document.getElementById('add-task-form-panel')?.scrollIntoView({ behavior: 'smooth' });
-                                        }, 50);
                                       }}
                                       className={`p-2 border-r border-slate-200/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-slate-200/50 transition-colors ${
                                         isToday ? 'bg-amber-100/60 text-amber-950 border-x border-amber-300' :
@@ -2489,7 +2380,7 @@ export default function ProjectSection({
                       <button
                         type="button"
                         onClick={() => {
-                          setShowAddTaskForm(!showAddTaskForm);
+                          openCreateTaskModal();
                           setShowImportTaskForm(false);
                         }}
                         className="flex items-center gap-1.5 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-xl transition-colors cursor-pointer shadow-xs"
@@ -2619,115 +2510,7 @@ export default function ProjectSection({
                 </div>
               )}
 
-              {/* Inline Add Task / Milestone Form */}
-              {showAddTaskForm && (
-                <form id="add-task-form-panel" onSubmit={handleCreateTask} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-xs font-bold text-slate-700 animate-fade-in shadow-xs">
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                    <div>
-                      <span className="text-slate-800 font-extrabold text-sm block">Nova Tarefa / Lembrete para o Projeto</span>
-                      <span className="text-xs font-medium text-slate-500 block mt-0.5">
-                        Cliente: <strong className="text-slate-700 font-bold">{getClientName(selectedProj.clientId)}</strong> | Projeto: <strong className="text-slate-700 font-bold">{selectedProj.title}</strong>
-                      </span>
-                    </div>
-                    <button 
-                      type="button" 
-                      onClick={() => setShowAddTaskForm(false)}
-                      className="text-slate-400 hover:text-slate-600 text-base font-normal px-1 cursor-pointer"
-                    >
-                      ×
-                    </button>
-                  </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-slate-700 font-bold">Título da Tarefa ou Lembrete *</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={newTaskTitle}
-                      onChange={e => setNewTaskTitle(e.target.value)}
-                      placeholder="Ex: Instalação física dos sensores / Lembrete de verificação de requisitos"
-                      className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 focus:ring-2 focus:ring-blue-100 outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-slate-700 font-bold">Descrição / Instruções Técnicas</label>
-                    <textarea 
-                      value={newTaskDesc}
-                      onChange={e => setNewTaskDesc(e.target.value)}
-                      rows={2}
-                      placeholder="Instruções para o técnico no terreno ou detalhes do lembrete..."
-                      className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 focus:ring-2 focus:ring-blue-100 outline-none"
-                    />
-                  </div>
-
-                  {/* Task Type Dropdown */}
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
-                    <select
-                      value={newTaskTypeId}
-                      onChange={e => setNewTaskTypeId(e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 outline-none cursor-pointer"
-                    >
-                      <option value="">Selecione o tipo de tarefa...</option>
-                      {taskTypes.filter(tt => !tt.deleted).map(tt => (
-                        <option key={tt.id} value={tt.id}>
-                          {getTaskTypeName(tt.id, taskTypes)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <label className="block text-slate-700 font-bold">Horas Estimadas (HH:MM)</label>
-                      <input 
-                        type="text" 
-                        required
-                        value={newTaskEstHours}
-                        onChange={e => setNewTaskEstHours(e.target.value)}
-                        placeholder="08:00"
-                        className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800"
-                      />
-                    </div>
-
-                    <AssigneeSelector
-                      users={users}
-                      userGroups={userGroups}
-                      allowedGroupIds={appConfig?.taskAssigneeGroupIds}
-                      selectedIds={newTaskAssignees}
-                      onChange={setNewTaskAssignees}
-                      filterTeamOnly
-                    />
-
-                    <div className="space-y-1">
-                      <label className="block text-slate-700 font-bold">Data Prevista</label>
-                      <input 
-                        type="date" 
-                        value={newTaskEstDate}
-                        onChange={e => setNewTaskEstDate(e.target.value)}
-                        className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 mt-2">
-                    <button 
-                      type="button" 
-                      onClick={() => setShowAddTaskForm(false)}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors cursor-pointer"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      type="submit" 
-                      className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-colors cursor-pointer shadow-xs"
-                    >
-                      Guardar
-                    </button>
-                  </div>
-                </form>
-              )}
 
               {/* Tasks List */}
               {projTasks.length === 0 ? (
@@ -4533,12 +4316,8 @@ export default function ProjectSection({
                                 key={`modal-th-${dayStr}`} 
                                 onClick={() => {
                                   setIsFullTimelineModalOpen(false);
-                                  setShowAddTaskForm(true);
-                                  setNewTaskEstDate(dayStr);
+                                  openCreateTaskModal(dayStr);
                                   setShowImportTaskForm(false);
-                                  setTimeout(() => {
-                                    document.getElementById('add-task-form-panel')?.scrollIntoView({ behavior: 'smooth' });
-                                  }, 150);
                                 }}
                                 className={`p-2 border-r border-slate-200/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-slate-200/50 transition-colors ${
                                   isToday ? 'bg-amber-100/60 text-amber-950 border-x border-amber-300' :
@@ -5044,6 +4823,29 @@ export default function ProjectSection({
           </div>
         </div>
       )}
+
+      {/* Unified Task Modal (FASE 30 / 30-A) */}
+      <TaskDetailsModal
+        isOpen={taskModalState.isOpen}
+        task={taskModalState.task}
+        mode={taskModalState.mode}
+        initialProjectId={selectedProj?.id}
+        initialDate={taskModalState.initialDate}
+        onClose={() => setTaskModalState(prev => ({ ...prev, isOpen: false, task: null }))}
+        createTask={addTask}
+        updateTask={updateTask}
+        deleteTask={deleteTask}
+        taskStatuses={taskStatuses}
+        taskTypes={taskTypes}
+        users={users}
+        userGroups={userGroups}
+        appConfig={appConfig}
+        projects={projects}
+        clients={clients}
+        absences={absences}
+        tasks={tasks}
+        canWrite={canWriteTasks}
+      />
 
       <ConfirmModal
         isOpen={confirmState.isOpen}
