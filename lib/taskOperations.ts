@@ -128,6 +128,42 @@ export function formatTaskHoursToString(hours: number | string | undefined | nul
 }
 
 /**
+ * Deterministically normalizes the server task API response into a Task object.
+ * Strictly uses server-returned properties and avoids creating synthetic timestamps, versions or fallback values.
+ */
+export function normalizeTaskFromApiResponse(data: any): Task {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Dados inválidos retornados pela API de tarefas.');
+  }
+
+  const assigneeIds: string[] = Array.isArray(data.assignedUserIds)
+    ? data.assignedUserIds
+    : (Array.isArray(data.assigneeIds) ? data.assigneeIds : []);
+
+  return {
+    id: data.id,
+    projectId: data.projectId || data.project_id || '',
+    title: data.title || data.task_title || '',
+    description: data.description !== undefined ? data.description : (data.task_description || ''),
+    statusId: data.statusId || data.status_id || '',
+    taskTypeId: data.taskTypeId || data.task_type_id || undefined,
+    estimatedHours: data.estimatedHours !== undefined ? String(data.estimatedHours) : (data.estimated_hours !== undefined ? String(data.estimated_hours) : '0'),
+    actualHours: data.actualHours !== undefined ? String(data.actualHours) : (data.actual_hours !== undefined ? String(data.actual_hours) : '0'),
+    startDate: data.startDate || data.start_date || undefined,
+    startTime: data.startTime || data.start_time || undefined,
+    endDate: data.endDate || data.end_date || undefined,
+    endTime: data.endTime || data.end_time || undefined,
+    estimatedDate: data.estimatedDate || data.estimated_date || undefined,
+    completedDate: data.completedDate || data.completed_date || undefined,
+    notes: data.notes !== undefined ? data.notes : undefined,
+    assigneeIds,
+    deleted: Boolean(data.deleted),
+    version: typeof data.version === 'number' ? data.version : (Number(data.version) || 1),
+    createdDate: data.createdAt || data.created_at || data.createdDate || '',
+  };
+}
+
+/**
  * Centralized API call to fetch a task via /api/v1/tasks/:id
  */
 export async function apiGetTask(id: string): Promise<TaskOperationResult<Task>> {
@@ -144,27 +180,7 @@ export async function apiGetTask(id: string): Promise<TaskOperationResult<Task>>
     }));
 
     if (res.ok && result.success && result.data) {
-      const task: Task = {
-        id: result.data.id,
-        projectId: result.data.projectId,
-        title: result.data.title,
-        description: result.data.description || '',
-        statusId: result.data.statusId,
-        taskTypeId: result.data.taskTypeId || undefined,
-        estimatedHours: result.data.estimatedHours !== undefined ? String(result.data.estimatedHours) : '0',
-        actualHours: result.data.actualHours !== undefined ? String(result.data.actualHours) : '0',
-        startDate: result.data.startDate || undefined,
-        startTime: result.data.startTime || undefined,
-        endDate: result.data.endDate || undefined,
-        endTime: result.data.endTime || undefined,
-        estimatedDate: result.data.estimatedDate || undefined,
-        completedDate: result.data.completedDate || undefined,
-        notes: result.data.notes || undefined,
-        assigneeIds: result.data.assignedUserIds || [],
-        deleted: false,
-        version: result.data.version || 1,
-        createdDate: result.data.createdAt || '',
-      };
+      const task = normalizeTaskFromApiResponse(result.data);
       return { success: true, data: task, status: res.status };
     }
 
@@ -281,27 +297,7 @@ export async function apiCreateTask(input: TaskCreateInput): Promise<TaskOperati
     }));
 
     if (res.ok && result.success && result.data) {
-      const createdTask: Task = {
-        id: result.data.id,
-        projectId: result.data.projectId,
-        title: result.data.title,
-        description: result.data.description || '',
-        statusId: result.data.statusId,
-        taskTypeId: result.data.taskTypeId || undefined,
-        estimatedHours: result.data.estimatedHours !== undefined ? String(result.data.estimatedHours) : '0',
-        actualHours: result.data.actualHours !== undefined ? String(result.data.actualHours) : '0',
-        startDate: result.data.startDate || undefined,
-        startTime: result.data.startTime || undefined,
-        endDate: result.data.endDate || undefined,
-        endTime: result.data.endTime || undefined,
-        estimatedDate: result.data.estimatedDate || undefined,
-        completedDate: result.data.completedDate || undefined,
-        notes: result.data.notes || undefined,
-        assigneeIds: result.data.assignedUserIds || input.assigneeIds || [],
-        deleted: false,
-        version: result.data.version || 1,
-        createdDate: result.data.createdAt || new Date().toISOString(),
-      };
+      const createdTask = normalizeTaskFromApiResponse(result.data);
       return { success: true, data: createdTask, status: res.status };
     }
 
@@ -369,27 +365,7 @@ export async function apiUpdateTask(
     }
 
     if (res.ok && result.success && result.data) {
-      const updatedTask: Task = {
-        id: result.data.id,
-        projectId: result.data.projectId,
-        title: result.data.title,
-        description: result.data.description || '',
-        statusId: result.data.statusId,
-        taskTypeId: result.data.taskTypeId || undefined,
-        estimatedHours: result.data.estimatedHours !== undefined ? String(result.data.estimatedHours) : '0',
-        actualHours: result.data.actualHours !== undefined ? String(result.data.actualHours) : '0',
-        startDate: result.data.startDate || undefined,
-        startTime: result.data.startTime || undefined,
-        endDate: result.data.endDate || undefined,
-        endTime: result.data.endTime || undefined,
-        estimatedDate: result.data.estimatedDate || undefined,
-        completedDate: result.data.completedDate || undefined,
-        notes: result.data.notes || undefined,
-        assigneeIds: result.data.assignedUserIds || updates.assigneeIds || [],
-        deleted: false,
-        version: result.data.version || ((updates.version || 1) + 1),
-        createdDate: result.data.createdAt || new Date().toISOString(),
-      };
+      const updatedTask = normalizeTaskFromApiResponse(result.data);
       return { success: true, data: updatedTask, status: res.status };
     }
 

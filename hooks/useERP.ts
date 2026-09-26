@@ -16,7 +16,7 @@ import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
 import { getAuthHeaders, getClientUser, clearClientSession } from '../lib/clientAuth';
-import { apiGetTask, apiCreateTask, apiUpdateTask, apiDeleteTask, parseTaskHoursToFloat } from '../lib/taskOperations';
+import { apiCreateTask, apiUpdateTask, apiDeleteTask, parseTaskHoursToFloat } from '../lib/taskOperations';
 
 const STORAGE_KEY = 'gestao_projetos_erp_state_v1';
 
@@ -1135,7 +1135,7 @@ export function useERP() {
       setSyncStatus('syncing');
       setSyncError(null);
 
-      let opResult = await apiUpdateTask(id, {
+      const opResult = await apiUpdateTask(id, {
         version: currentVersion,
         projectId: updates.projectId,
         title: updates.title,
@@ -1153,42 +1153,6 @@ export function useERP() {
         notes: updates.notes,
         assigneeIds: updates.assigneeIds,
       });
-
-      // Handle OCC 409 retry with updated version from server if available
-      if (opResult.status === 409) {
-        const getRes = await apiGetTask(id);
-        if (getRes.success && getRes.data?.version) {
-          const serverVersion = getRes.data.version;
-          opResult = await apiUpdateTask(id, {
-            version: serverVersion,
-            projectId: updates.projectId,
-            title: updates.title,
-            description: updates.description,
-            statusId: updates.statusId,
-            taskTypeId: updates.taskTypeId,
-            estimatedHours: updates.estimatedHours,
-            actualHours: updates.actualHours,
-            startDate: updates.startDate,
-            startTime: updates.startTime,
-            endDate: updates.endDate,
-            endTime: updates.endTime,
-            estimatedDate: updates.estimatedDate,
-            completedDate: updates.completedDate,
-            notes: updates.notes,
-            assigneeIds: updates.assigneeIds,
-          });
-
-          if (!opResult.success) {
-            setState(prev => {
-              if (!prev) return prev;
-              return {
-                ...prev,
-                tasks: prev.tasks.map(t => t.id === id ? { ...t, version: serverVersion } : t),
-              };
-            });
-          }
-        }
-      }
 
       if (opResult.status === 409 || !opResult.success || !opResult.data) {
         const errMsg = opResult.error || 'Conflito de concorrência ou erro ao atualizar tarefa.';
