@@ -13,22 +13,22 @@ import {
   X, 
   Briefcase, 
   Filter, 
-  CalendarDays
+  CalendarDays,
+  CheckCircle2,
+  PlayCircle
 } from 'lucide-react';
 import { Task, Project, Client, User, UserAbsence, SpecialDay, TaskType } from '../lib/types';
 import { 
   CalendarDayItem, 
   getOperationalCalendarDays, 
   formatOperationalDateRange, 
-  getUserDayTasks, 
   getUserDayAbsence, 
   getOperationalDayConflicts,
   formatDateToYYYYMMDD,
-  matchUserId,
   isUserAssignedToTask,
   isTaskOnDate
 } from '../lib/operationalCalendar';
-import { getTaskStatusName, formatToOnlyHours, getTaskTypeName } from '../lib/utils';
+import { getTaskStatusName, matchTaskStatusId, formatToOnlyHours, getTaskTypeName } from '../lib/utils';
 import { normalizeRoleId } from '../lib/permissions';
 
 interface OperationalUserCalendarProps {
@@ -41,7 +41,7 @@ interface OperationalUserCalendarProps {
   taskTypes?: TaskType[];
   specialDays?: SpecialDay[];
   onSelectTask: (task: Task) => void;
-  onQuickCreateTask?: (userId: string, dateStr: string) => void;
+  onQuickCreateTask?: (userId: string, dateStr: string, projectId?: string) => void;
   canCreateTask?: boolean;
   appConfig?: any;
 }
@@ -72,7 +72,18 @@ export default function OperationalUserCalendar({
   const [userSearchTerm, setUserSearchTerm] = useState<string>('');
   const [showOnlyWithTasks, setShowOnlyWithTasks] = useState<boolean>(false);
 
-  // 4. Active eligible users (team members, non-deleted, excluding deleted users like ricardo75@gmail.com)
+  // Helper to resolve scale for task status (1: Planeada, 2: Em Execução, 3: Concluída, 4: Bloqueada)
+  const getTaskScale = React.useCallback((statusId: string) => {
+    const status = taskStatuses.find(s => s.id === statusId || matchTaskStatusId(s.id, statusId));
+    if (status && typeof status.scale === 'number') return status.scale;
+    if (statusId === 'ts-1' || statusId === '99999999-9999-9999-9999-999999999901') return 1;
+    if (statusId === 'ts-2' || statusId === '99999999-9999-9999-9999-999999999902') return 2;
+    if (statusId === 'ts-3' || statusId === '99999999-9999-9999-9999-999999999903') return 3;
+    if (statusId === 'ts-4' || statusId === '99999999-9999-9999-9999-999999999904') return 4;
+    return 1;
+  }, [taskStatuses]);
+
+  // 4. Active eligible users
   const activeEligibleUsers = useMemo(() => {
     const allowedGroupIds = Array.isArray(appConfig?.taskAssigneeGroupIds) && appConfig.taskAssigneeGroupIds.length > 0
       ? appConfig.taskAssigneeGroupIds
@@ -96,14 +107,13 @@ export default function OperationalUserCalendar({
       .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-PT', { sensitivity: 'base' }));
   }, [users, appConfig?.taskAssigneeGroupIds, appConfig?.taskAssigneeGroupId]);
 
-  // 5. Selected User IDs for the calendar display (initialized with all eligible users)
+  // 5. Selected User IDs for the calendar display
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>(() => {
     return activeEligibleUsers.map(u => u.id);
   });
 
   const hasInitializedRef = React.useRef(false);
 
-  // Initialize selectedUserIds once activeEligibleUsers are loaded
   React.useEffect(() => {
     if (!hasInitializedRef.current && activeEligibleUsers.length > 0) {
       setSelectedUserIds(activeEligibleUsers.map(u => u.id));
@@ -141,7 +151,7 @@ export default function OperationalUserCalendar({
     return formatOperationalDateRange(calendarDays);
   }, [calendarDays]);
 
-  // Pre-indexed lookup maps for high-performance rendering (Requirement 11)
+  // Pre-indexed lookup maps for high-performance rendering
   const { userDayTasksMap, userDayAbsenceMap, userTaskCountMap } = useMemo(() => {
     const tasksMap = new Map<string, Task[]>();
     const countMap = new Map<string, number>();
@@ -245,7 +255,7 @@ export default function OperationalUserCalendar({
 
   return (
     <div className="space-y-4">
-      {/* 1. TOP CONTROL BAR */}
+      {/* TOP CONTROL BAR */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-4">
         {/* Title, Period & Navigation */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -256,10 +266,10 @@ export default function OperationalUserCalendar({
               </span>
               <div>
                 <h3 className="text-base font-extrabold text-slate-900 leading-tight">
-                  Calendário Operacional Semanal
+                  Calendário Operacional das Tarefas
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Visão operacional de tarefas atribuídas por técnico e por dia.
+                  Visão e gestão semanal direta por técnico e por dia. Clique nas tarefas para editar ou registar execução.
                 </p>
               </div>
             </div>
@@ -329,16 +339,16 @@ export default function OperationalUserCalendar({
               {dateRangeLabel}
             </div>
 
-            {/* Quick Create Task button in Header (Requirement 8) */}
+            {/* Quick Create Task button in Header */}
             {canCreateTask && onQuickCreateTask && (
               <button
                 type="button"
                 onClick={() => {
                   const defaultUser = displayedUsers[0]?.id || activeEligibleUsers[0]?.id || '';
                   const defaultDate = calendarDays[0]?.dateStr || formatDateToYYYYMMDD(new Date());
-                  onQuickCreateTask(defaultUser, defaultDate);
+                  onQuickCreateTask(defaultUser, defaultDate, projectFilter || undefined);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer ml-auto"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer ml-auto"
                 title="Criar nova tarefa no calendário"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -431,7 +441,7 @@ export default function OperationalUserCalendar({
           )}
         </div>
 
-        {/* 2. USER SELECTION PILLS BAR */}
+        {/* USER SELECTION PILLS BAR */}
         <div className="pt-3 border-t border-slate-100 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -485,7 +495,7 @@ export default function OperationalUserCalendar({
         </div>
       </div>
 
-      {/* 3. OPERATIONAL CALENDAR TABLE */}
+      {/* OPERATIONAL CALENDAR TABLE */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] border-collapse text-left table-fixed">
@@ -631,12 +641,12 @@ export default function OperationalUserCalendar({
                             }`}
                           >
                             <div className="min-h-[70px] space-y-1.5 flex flex-col justify-start">
-                              {/* 1. Quick Add button on top corner */}
+                              {/* Quick Add button on top corner */}
                               {canCreateTask && onQuickCreateTask && (
                                 <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button
                                     type="button"
-                                    onClick={() => onQuickCreateTask(user.id, day.dateStr)}
+                                    onClick={() => onQuickCreateTask(user.id, day.dateStr, projectFilter || undefined)}
                                     className="p-1 hover:bg-blue-100 text-blue-600 rounded-md transition-colors cursor-pointer"
                                     title={`Adicionar nova tarefa para ${user.name} em ${day.dateStr}`}
                                   >
@@ -645,7 +655,7 @@ export default function OperationalUserCalendar({
                                 </div>
                               )}
 
-                              {/* 2. Absence Banner */}
+                              {/* Absence Banner */}
                               {conflictInfo.isAbsent && (
                                 <div 
                                   className={`p-1.5 rounded-lg text-center font-extrabold text-[10px] border shadow-2xs ${
@@ -667,7 +677,7 @@ export default function OperationalUserCalendar({
                                 </div>
                               )}
 
-                              {/* 3. Multiple Tasks Conflict Banner (if not absent) */}
+                              {/* Multiple Tasks Conflict Banner (if not absent) */}
                               {!conflictInfo.isAbsent && conflictInfo.hasMultipleTasks && (
                                 <div
                                   className="px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-[9px] font-extrabold flex items-center gap-1 shadow-2xs"
@@ -678,18 +688,37 @@ export default function OperationalUserCalendar({
                                 </div>
                               )}
 
-                              {/* 4. Task Cards */}
+                              {/* Task Cards */}
                               {dayTasks.map(task => {
                                 const project = getProject(task.projectId);
                                 const clientName = project ? getClientName(project.clientId) : '';
                                 const statusName = getTaskStatusName(task.statusId, taskStatuses);
+                                const scale = getTaskScale(task.statusId);
                                 const hours = formatToOnlyHours(task.estimatedHours) || '0';
+
+                                // Color styling based on status scale
+                                let cardStyle = 'border-l-4 border-l-blue-500 bg-blue-50/20 border-slate-200 hover:border-blue-400';
+                                let badgeStyle = 'bg-blue-100 text-blue-800';
+
+                                if (scale === 2) {
+                                  // Em Execução
+                                  cardStyle = 'border-l-4 border-l-amber-500 bg-amber-50/30 border-amber-200 hover:border-amber-400';
+                                  badgeStyle = 'bg-amber-100 text-amber-900 font-extrabold';
+                                } else if (scale === 3) {
+                                  // Concluída
+                                  cardStyle = 'border-l-4 border-l-emerald-500 bg-emerald-50/20 border-emerald-200 hover:border-emerald-400 opacity-90';
+                                  badgeStyle = 'bg-emerald-100 text-emerald-800 font-bold';
+                                } else if (scale === 4) {
+                                  // Bloqueada
+                                  cardStyle = 'border-l-4 border-l-rose-500 bg-rose-50/30 border-rose-200 hover:border-rose-400';
+                                  badgeStyle = 'bg-rose-100 text-rose-800 font-bold';
+                                }
 
                                 return (
                                   <div
                                     key={task.id}
                                     onClick={() => onSelectTask(task)}
-                                    className="p-2 bg-white border border-slate-200 hover:border-blue-400 rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer group/card space-y-1 text-left"
+                                    className={`p-2 bg-white rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer group/card space-y-1 text-left ${cardStyle}`}
                                     title={`Abrir tarefa: ${task.title}\nProjeto: ${project?.title || 'N/A'}\nHoras previstas: ${hours} h\nEstado: ${statusName}`}
                                   >
                                     {/* Project / Client label */}
@@ -718,7 +747,7 @@ export default function OperationalUserCalendar({
                                             {getTaskTypeName(task.taskTypeId, taskTypes)}
                                           </span>
                                         )}
-                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-md truncate max-w-[80px]">
+                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md truncate max-w-[80px] ${badgeStyle}`}>
                                           {statusName}
                                         </span>
                                       </div>
@@ -727,7 +756,7 @@ export default function OperationalUserCalendar({
                                 );
                               })}
 
-                              {/* 5. Empty placeholder when no tasks & no absence */}
+                              {/* Empty placeholder when no tasks & no absence */}
                               {dayTasks.length === 0 && !conflictInfo.isAbsent && (
                                 <div className="h-full flex items-center justify-center text-slate-300 text-[10px] italic py-3 select-none">
                                   —
@@ -746,30 +775,34 @@ export default function OperationalUserCalendar({
         </div>
       </div>
 
-      {/* 4. FOOTER LEGEND */}
+      {/* FOOTER LEGEND */}
       <div className="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-2xs text-xs text-slate-500 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 font-bold text-slate-700">
           <span>Legenda Operacional:</span>
         </div>
         <div className="flex flex-wrap items-center gap-4 text-[11px]">
           <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded bg-blue-500" />
+            <span>Planeada</span>
+          </span>
+          <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded bg-amber-500" />
-            <span>Dia Atual (Hoje)</span>
+            <span>Em Execução</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-400" />
-            <span>Ausência de Utilizador</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded bg-amber-400" />
-            <span>⚠️ Múltiplas tarefas no mesmo dia</span>
+            <span className="w-2.5 h-2.5 rounded bg-emerald-500" />
+            <span>Concluída</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded bg-rose-500" />
-            <span>⚠️ Ausente com tarefas planeadas</span>
+            <span>Bloqueada</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-400" />
+            <span>Ausência do Técnico</span>
           </span>
           <span className="text-slate-400">
-            • As horas apresentadas são as horas previstas da tarefa.
+            • Clique em qualquer tarefa para ver detalhes, editar ou registar a execução.
           </span>
         </div>
       </div>

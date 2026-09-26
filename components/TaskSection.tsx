@@ -2,15 +2,35 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Task, Project, Client, TaskType } from '../lib/types';
-import { Plus, Search, Trash2, Edit2, Clock, Calendar, CheckSquare, PlusCircle, X, Users, Link2, Maximize2, Minimize2, ChevronLeft, ChevronRight, BarChart2, AlertTriangle } from 'lucide-react';
+import { 
+  Plus, 
+  Search, 
+  Trash2, 
+  Edit2, 
+  Clock, 
+  Calendar, 
+  CheckSquare, 
+  X, 
+  Users, 
+  Link2, 
+  ChevronLeft, 
+  ChevronRight, 
+  BarChart2, 
+  AlertTriangle,
+  PlayCircle,
+  Briefcase,
+  Filter,
+  CheckCircle2,
+  CalendarDays,
+  ListTodo
+} from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
-import { AssigneeSelector } from './AssigneeSelector';
-import TaskDetailsModal from './TaskDetailsModal';
+import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { TaskAnalytics } from './TaskAnalytics';
 
 import { hasPermission } from '../lib/permissions';
-import { getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, formatToOnlyHours } from '../lib/utils';
-import { getTaskConflictWarnings } from '../lib/taskConflicts';
+import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours } from '../lib/utils';
+import { parseTaskHoursToFloat } from '../lib/taskOperations';
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
   if (total <= 7) {
@@ -75,21 +95,17 @@ export default function TaskSection({
   currentUser,
   userGroups = [],
   appConfig,
-  planningAllocations = [],
-  createPlanningAllocation,
-  updatePlanningAllocation,
-  cancelPlanningAllocation,
-  deletePlanningAllocation,
 }: TaskSectionProps) {
   const canReadTasks = hasPermission(currentUser, 'tasks_read', userGroups);
   const canWriteTasks = hasPermission(currentUser, 'tasks_write', userGroups);
   const canDeleteTasks = hasPermission(currentUser, 'tasks_delete', userGroups);
+
+  // Filters state
   const [search, setSearch] = useState('');
   const [filterProject, setFilterProject] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [filterStatusGroup, setFilterStatusGroup] = useState<'pending' | 'completed' | 'all'>('pending');
   const [filterAssignee, setFilterAssignee] = useState('');
+  const [datePreset, setFilterDatePreset] = useState<'all' | 'today' | 'tomorrow' | 'this_week' | 'overdue' | 'completed'>('all');
 
   // Pagination & Sorting state
   const [pageSize, setPageSize] = useState<number>(25);
@@ -102,8 +118,34 @@ export default function TaskSection({
   // Reset pagination when filter/sorting/grouping variables change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterProject, filterStatus, filterStatusGroup, filterAssignee, pageSize, sortBy, groupByProject]);
-  
+  }, [search, filterProject, filterType, filterAssignee, datePreset, pageSize, sortBy, groupByProject]);
+
+  // Dates computation
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  const tomorrowStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  const weekRange = useMemo(() => {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+    const monday = new Date(d);
+    monday.setDate(diff);
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6);
+    return {
+      start: monday.toISOString().split('T')[0],
+      end: sunday.toISOString().split('T')[0],
+    };
+  }, []);
+
   // Confirmation Modal state
   const [confirmState, setConfirmState] = useState<{
     isOpen: boolean;
@@ -126,18 +168,18 @@ export default function TaskSection({
     });
   };
 
-  // Unified Task Modal State (FASE 30)
+  // Unified Task Modal State
   const [taskModalState, setTaskModalState] = useState<{
     isOpen: boolean;
     task: Task | null;
-    mode: 'create' | 'edit' | 'view';
+    mode: TaskModalMode;
   }>({
     isOpen: false,
     task: null,
     mode: 'edit',
   });
 
-  const openTaskModal = (task: Task | null, mode: 'create' | 'edit' | 'view' = 'edit') => {
+  const openTaskModal = (task: Task | null, mode: TaskModalMode = 'edit') => {
     if (mode === 'create' && !canWriteTasks) {
       alert('Não tem permissão para criar novas tarefas.');
       return;
@@ -172,7 +214,7 @@ export default function TaskSection({
     return `${clientName} - ${proj.title}${ipPart}`;
   };
 
-  // Filter tasks (only include tasks for active projects with deleted === false)
+  // Filter active tasks (active projects & not deleted)
   const activeTasks = useMemo(() => {
     return tasks.filter(t => {
       if (t.deleted) return false;
@@ -193,13 +235,42 @@ export default function TaskSection({
     return 1;
   }, [taskStatuses]);
 
-  const matchesStatusGroup = React.useCallback((statusId: string) => {
-    if (filterStatusGroup === 'all') return true;
-    const scale = getTaskScale(statusId);
-    if (filterStatusGroup === 'pending') return scale === 1 || scale === 2;
-    if (filterStatusGroup === 'completed') return scale === 3;
-    return true;
-  }, [filterStatusGroup, getTaskScale]);
+  // Operational KPIs
+  const operationalStats = useMemo(() => {
+    let todayCount = 0;
+    let overdueCount = 0;
+    let inExecutionCount = 0;
+    let completedCount = 0;
+    let totalActualHours = 0;
+
+    activeTasks.forEach(t => {
+      const scale = getTaskScale(t.statusId);
+      const targetDate = t.estimatedDate || t.startDate;
+      const actH = parseTaskHoursToFloat(t.actualHours);
+      totalActualHours += actH;
+
+      if (scale === 3) {
+        completedCount++;
+      } else {
+        if (scale === 2) {
+          inExecutionCount++;
+        }
+        if (targetDate === todayStr) {
+          todayCount++;
+        } else if (targetDate && targetDate < todayStr) {
+          overdueCount++;
+        }
+      }
+    });
+
+    return {
+      todayCount,
+      overdueCount,
+      inExecutionCount,
+      completedCount,
+      totalActualHours: Math.round(totalActualHours * 10) / 10,
+    };
+  }, [activeTasks, getTaskScale, todayStr]);
 
   // Users with at least 1 defined task assigned to them
   const usersWithTasks = useMemo(() => {
@@ -214,6 +285,7 @@ export default function TaskSection({
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-PT'));
   }, [activeTasks, users]);
 
+  // Filtered tasks logic
   const filteredTasks = useMemo(() => {
     const q = search.toLowerCase().trim();
     return activeTasks.filter(t => {
@@ -233,17 +305,34 @@ export default function TaskSection({
                             projTitle.includes(q);
       const matchesProject = filterProject ? t.projectId === filterProject : true;
       const matchesType = filterType ? t.taskTypeId === filterType : true;
-      const matchesStatus = matchesStatusGroup(t.statusId);
       const matchesAssignee = filterAssignee ? t.assigneeIds.some(id => matchUserId(id, filterAssignee)) : true;
-      return matchesSearch && matchesProject && matchesType && matchesStatus && matchesAssignee;
+
+      // Date Preset Filter
+      let matchesPreset = true;
+      const targetDate = t.estimatedDate || t.startDate;
+      const scale = getTaskScale(t.statusId);
+
+      if (datePreset === 'today') {
+        matchesPreset = targetDate === todayStr && scale !== 3;
+      } else if (datePreset === 'tomorrow') {
+        matchesPreset = targetDate === tomorrowStr && scale !== 3;
+      } else if (datePreset === 'this_week') {
+        matchesPreset = Boolean(targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end);
+      } else if (datePreset === 'overdue') {
+        matchesPreset = Boolean(targetDate && targetDate < todayStr && scale !== 3);
+      } else if (datePreset === 'completed') {
+        matchesPreset = scale === 3;
+      }
+
+      return matchesSearch && matchesProject && matchesType && matchesAssignee && matchesPreset;
     });
-  }, [activeTasks, search, filterProject, filterType, matchesStatusGroup, filterAssignee, projectMap, clientMap]);
+  }, [activeTasks, search, filterProject, filterType, filterAssignee, datePreset, projectMap, clientMap, getTaskScale, todayStr, tomorrowStr, weekRange]);
 
   const sortTasks = (taskList: Task[]) => {
     return [...taskList].sort((a, b) => {
       if (sortBy === 'estimatedDate') {
-        const dateA = a.estimatedDate || '';
-        const dateB = b.estimatedDate || '';
+        const dateA = a.estimatedDate || a.startDate || '';
+        const dateB = b.estimatedDate || b.startDate || '';
         if (!dateA && !dateB) return 0;
         if (!dateA) return 1;
         if (!dateB) return -1;
@@ -294,24 +383,13 @@ export default function TaskSection({
     const proj = projects.find(p => p.id === projId);
     if (!proj) return 'Projeto';
     const client = clients.find(c => c.id === proj.clientId);
-    const clientName = client ? client.clientName : 'Desconhecido';
-    return `${clientName} - ${proj.title}`;
+    const clientName = client ? (client.clientName || client.shortName) : 'Desconhecido';
+    return `${clientName} • ${proj.title}`;
   };
+
   const getStatusName = (id: string) => getTaskStatusName(id, taskStatuses);
 
   const getUserName = (id: string) => users.find(u => matchUserId(u.id, id))?.name || 'N/A';
-
-  const getUserInitials = (fullName: string) => {
-    if (!fullName || fullName === 'N/A') return 'N/A';
-    const parts = fullName.trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return '';
-    if (parts.length === 1) {
-      return parts[0][0].toUpperCase();
-    }
-    const firstInitial = parts[0][0].toUpperCase();
-    const lastInitial = parts[parts.length - 1][0].toUpperCase();
-    return `${firstInitial}${lastInitial}`;
-  };
 
   return (
     <div className="space-y-6">
@@ -320,13 +398,14 @@ export default function TaskSection({
         <div className="flex border-b border-slate-200 gap-6 mb-2">
           <button
             onClick={() => setActiveTaskViewTab('lista')}
-            className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
               activeTaskViewTab === 'lista'
                 ? 'border-blue-600 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            Lista de Tarefas
+            <ListTodo className="w-4 h-4" />
+            <span>Lista Operacional de Tarefas</span>
           </button>
           <button
             onClick={() => setActiveTaskViewTab('analise')}
@@ -337,98 +416,214 @@ export default function TaskSection({
             }`}
           >
             <BarChart2 className="w-4 h-4" />
-            Análise de Tarefas
+            <span>Análise de Tarefas</span>
           </button>
         </div>
 
-          {/* Shared Filters Bar (Only for Lista and Kanban views) */}
-          {activeTaskViewTab !== 'analise' && (
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            {/* Search Input */}
-            <div className="flex-1 min-w-[220px] relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
-              <input 
-                type="text" 
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Pesquisar..."
-                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
-              />
+        {/* OPERATIONAL KPI CARDS */}
+        {activeTaskViewTab === 'lista' && (
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Para Hoje</div>
+              <div className="text-xl font-black text-slate-900 mt-1 flex items-center gap-2">
+                <span>{operationalStats.todayCount}</span>
+                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">tarefas</span>
+              </div>
             </div>
 
-            {/* Task Status Filter Buttons (Only in Lista view) */}
-            {activeTaskViewTab === 'lista' && (
-              <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200/80">
-                <button
-                  type="button"
-                  onClick={() => setFilterStatusGroup('pending')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    filterStatusGroup === 'pending'
-                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Pendente
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterStatusGroup('completed')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    filterStatusGroup === 'completed'
-                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Concluídas
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterStatusGroup('all')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    filterStatusGroup === 'all'
-                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Todas
-                </button>
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Atrasadas</div>
+              <div className="text-xl font-black text-rose-700 mt-1 flex items-center gap-2">
+                <span>{operationalStats.overdueCount}</span>
+                {operationalStats.overdueCount > 0 && (
+                  <span className="text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Atenção
+                  </span>
+                )}
               </div>
-            )}
+            </div>
 
-            {/* Task Type Filter */}
-            <select 
-              value={filterType}
-              onChange={e => setFilterType(e.target.value)}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
-            >
-              <option value="">Todos os Tipos</option>
-              {taskTypes.filter(tt => !tt.deleted).map(tt => (
-                <option key={tt.id} value={tt.id}>{tt.name}</option>
-              ))}
-            </select>
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Em Execução</div>
+              <div className="text-xl font-black text-amber-700 mt-1 flex items-center gap-2">
+                <span>{operationalStats.inExecutionCount}</span>
+                <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">ativas</span>
+              </div>
+            </div>
 
-            {/* Assignee Filter (Only users with assigned tasks) */}
-            <select 
-              value={filterAssignee}
-              onChange={e => setFilterAssignee(e.target.value)}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
-            >
-              <option value="">Qualquer Responsável</option>
-              {usersWithTasks.map(u => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </select>
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Concluídas</div>
+              <div className="text-xl font-black text-emerald-700 mt-1 flex items-center gap-2">
+                <span>{operationalStats.completedCount}</span>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">concluídas</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Horas Reais Gastas</div>
+              <div className="text-xl font-black text-slate-900 mt-1 flex items-center gap-1">
+                <span>{operationalStats.totalActualHours}</span>
+                <span className="text-xs font-bold text-slate-500">h</span>
+              </div>
+            </div>
           </div>
-          )}
+        )}
 
-          {activeTaskViewTab === 'lista' && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden animate-fade-in">
-            
+        {/* Shared Filters Bar */}
+        {activeTaskViewTab === 'lista' && (
+          <div className="space-y-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+            {/* Quick Date Presets Row */}
+            <div className="flex flex-wrap items-center gap-1.5 pb-3 border-b border-slate-100">
+              <span className="text-xs font-extrabold text-slate-500 mr-1">Filtros Rápidos:</span>
+
+              <button
+                type="button"
+                onClick={() => setFilterDatePreset('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'all'
+                    ? 'bg-slate-900 text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Todas
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterDatePreset('today')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'today'
+                    ? 'bg-blue-600 text-white shadow-2xs'
+                    : 'bg-blue-50 text-blue-800 hover:bg-blue-100'
+                }`}
+              >
+                Hoje
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterDatePreset('tomorrow')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'tomorrow'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
+                }`}
+              >
+                Amanhã
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterDatePreset('this_week')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'this_week'
+                    ? 'bg-purple-600 text-white shadow-2xs'
+                    : 'bg-purple-50 text-purple-800 hover:bg-purple-100'
+                }`}
+              >
+                Esta Semana
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterDatePreset('overdue')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  datePreset === 'overdue'
+                    ? 'bg-rose-600 text-white shadow-2xs'
+                    : 'bg-rose-50 text-rose-800 hover:bg-rose-100'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Atrasadas</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterDatePreset('completed')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'completed'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                }`}
+              >
+                Concluídas
+              </button>
+
+              {datePreset !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => setFilterDatePreset('all')}
+                  className="ml-auto text-xs font-bold text-slate-400 hover:text-slate-600 flex items-center gap-1 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Limpar preset</span>
+                </button>
+              )}
+            </div>
+
+            {/* Detailed Filters Row */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {/* Search Input */}
+              <div className="flex-1 min-w-[200px] relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+                <input 
+                  type="text" 
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Pesquisar por título, cliente ou projeto..."
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                />
+              </div>
+
+              {/* Project Filter */}
+              <select 
+                value={filterProject}
+                onChange={e => setFilterProject(e.target.value)}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all max-w-[200px] truncate"
+              >
+                <option value="">Todos os Projetos</option>
+                {projects.filter(p => !p.deleted).map(p => (
+                  <option key={p.id} value={p.id}>{p.title}</option>
+                ))}
+              </select>
+
+              {/* Task Type Filter */}
+              <select 
+                value={filterType}
+                onChange={e => setFilterType(e.target.value)}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+              >
+                <option value="">Todos os Tipos</option>
+                {taskTypes.filter(tt => !tt.deleted).map(tt => (
+                  <option key={tt.id} value={tt.id}>{tt.name}</option>
+                ))}
+              </select>
+
+              {/* Assignee Filter */}
+              <select 
+                value={filterAssignee}
+                onChange={e => setFilterAssignee(e.target.value)}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+              >
+                <option value="">Qualquer Responsável</option>
+                {usersWithTasks.map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* LISTA DE TAREFAS */}
+        {activeTaskViewTab === 'lista' && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
             <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 space-y-3.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-bold text-slate-800">Lista de tarefas</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Monitorize o estado de cada tarefa, horas estimadas e horas reais consumidas.</p>
+                  <h2 className="text-base font-extrabold text-slate-900">Lista Operacional de Tarefas</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Visualização rápida e direta das tarefas com controlo de datas, estado, horas previstas e horas reais consumidas.
+                  </p>
                 </div>
                 {canWriteTasks && (
                   <button 
@@ -441,10 +636,9 @@ export default function TaskSection({
                 )}
               </div>
 
-              {/* Pagination, Sorting and Grouping controls */}
+              {/* Controls: Page size, Sort & Group */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200/60">
                 <div className="flex flex-wrap items-center gap-3 text-xs">
-                  {/* Registos por página */}
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-medium">Mostrar:</span>
                     <select
@@ -462,7 +656,6 @@ export default function TaskSection({
                     </select>
                   </div>
 
-                  {/* Ordenar por */}
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-medium">Ordenar por:</span>
                     <select
@@ -475,7 +668,6 @@ export default function TaskSection({
                     </select>
                   </div>
 
-                  {/* Agrupar por projeto */}
                   <label className="flex items-center gap-2 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer select-none hover:bg-slate-50 transition-colors">
                     <input
                       type="checkbox"
@@ -496,109 +688,188 @@ export default function TaskSection({
             {/* Table List Output */}
             <div className="overflow-x-auto w-full">
               {paginatedTasks.length === 0 ? (
-                <div className="p-10 text-center text-slate-400 font-medium text-xs">Nenhuma tarefa encontrada.</div>
+                <div className="p-12 text-center text-slate-400 font-medium text-xs space-y-2">
+                  <ListTodo className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="font-bold text-slate-700">Nenhuma tarefa encontrada.</p>
+                  <p className="text-slate-500 text-[11px]">Tente ajustar a pesquisa ou limpar os filtros operacionais selecionados.</p>
+                </div>
               ) : (
-                <table className="w-full min-w-[750px] text-left border-collapse">
+                <table className="w-full min-w-[850px] text-left border-collapse">
                   <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                     <tr>
-                      <th className="px-5 py-3.5 text-left">Tarefa / Projeto</th>
-                      <th className="px-5 py-3.5 text-left">Responsáveis</th>
-                      <th className="px-5 py-3.5 text-left">Data prevista</th>
-                      <th className="px-5 py-3.5 text-left w-[200px] whitespace-nowrap">Estado</th>
-                      <th className="px-5 py-3.5 text-right">Ações</th>
+                      <th className="px-4 py-3 text-left">Data</th>
+                      <th className="px-4 py-3 text-left">Estado</th>
+                      <th className="px-4 py-3 text-left">Título da Tarefa</th>
+                      <th className="px-4 py-3 text-left">Projeto / Cliente</th>
+                      <th className="px-4 py-3 text-left">Responsáveis</th>
+                      <th className="px-4 py-3 text-center">Horas Prev.</th>
+                      <th className="px-4 py-3 text-center">Horas Reais</th>
+                      <th className="px-4 py-3 text-left">Tipo</th>
+                      <th className="px-4 py-3 text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="text-xs divide-y divide-slate-100">
-                    {paginatedTasks.map(t => (
-                      <tr 
-                        key={t.id} 
-                        onClick={() => openTaskModal(t, canWriteTasks ? 'edit' : 'view')}
-                        className="hover:bg-slate-50/80 transition-colors cursor-pointer"
-                      >
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-extrabold text-slate-800 text-sm">{t.title}</span>
-                            {t.taskTypeId && (
-                              <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[9px] font-bold">
+                    {paginatedTasks.map(t => {
+                      const scale = getTaskScale(t.statusId);
+                      const statusName = getStatusName(t.statusId);
+                      const estHours = formatToOnlyHours(t.estimatedHours) || '0';
+                      const actHours = formatToOnlyHours(t.actualHours) || '0';
+                      const targetDate = t.estimatedDate || t.startDate;
+                      const isOverdue = Boolean(targetDate && targetDate < todayStr && scale !== 3);
+
+                      // Status Badge Styling
+                      let statusBadgeStyle = 'bg-slate-100 text-slate-600 border-slate-200';
+                      if (scale === 1) statusBadgeStyle = 'bg-blue-50 text-blue-700 border-blue-200';
+                      if (scale === 2) statusBadgeStyle = 'bg-amber-50 text-amber-800 border-amber-300 font-extrabold';
+                      if (scale === 3) statusBadgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+                      if (scale === 4) statusBadgeStyle = 'bg-rose-50 text-rose-800 border-rose-200';
+
+                      return (
+                        <tr 
+                          key={t.id} 
+                          onClick={() => openTaskModal(t, canWriteTasks ? 'edit' : 'view')}
+                          className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                        >
+                          {/* Data */}
+                          <td className="px-4 py-3.5 font-bold font-mono text-slate-700 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <span>{targetDate ? targetDate.split('-').reverse().join('/') : 'N/A'}</span>
+                              {isOverdue && (
+                                <span className="p-0.5 rounded text-rose-600 bg-rose-50" title="Tarefa atrasada">
+                                  <AlertTriangle className="w-3 h-3" />
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Estado */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider border ${statusBadgeStyle}`}>
+                              {statusName}
+                            </span>
+                          </td>
+
+                          {/* Título */}
+                          <td className="px-4 py-3.5">
+                            <div className="font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
+                              {t.title}
+                            </div>
+                            {t.description && (
+                              <div className="text-[10px] text-slate-400 italic line-clamp-1 mt-0.5">
+                                {t.description}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Projeto */}
+                          <td className="px-4 py-3.5 text-blue-700 font-bold text-[11px]">
+                            {getProjectTitle(t.projectId)}
+                          </td>
+
+                          {/* Responsáveis */}
+                          <td className="px-4 py-3.5">
+                            <div className="flex flex-wrap gap-1 max-w-[160px]">
+                              {t.assigneeIds && t.assigneeIds.length > 0 ? (
+                                t.assigneeIds.map(uid => (
+                                  <span key={uid} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-bold rounded-md text-[10px]">
+                                    {getUserName(uid)}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-slate-400 italic text-[10px]">Sem atribuição</span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Horas Previstas */}
+                          <td className="px-4 py-3.5 text-center font-bold text-slate-800 whitespace-nowrap">
+                            {estHours} h
+                          </td>
+
+                          {/* Horas Reais */}
+                          <td className="px-4 py-3.5 text-center font-bold whitespace-nowrap">
+                            <span className={parseTaskHoursToFloat(actHours) > 0 ? 'text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded' : 'text-slate-400'}>
+                              {actHours} h
+                            </span>
+                          </td>
+
+                          {/* Tipo */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            {t.taskTypeId ? (
+                              <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px] font-semibold">
                                 {getTaskTypeName(t.taskTypeId, taskTypes)}
                               </span>
+                            ) : (
+                              <span className="text-slate-400 text-[10px]">—</span>
                             )}
-                          </div>
-                          <div className="text-blue-600 font-medium mt-0.5 line-clamp-1">{getProjectTitle(t.projectId)}</div>
-                          <div className="text-[10px] text-slate-400 mt-1 line-clamp-1 italic">{t.description}</div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex flex-wrap gap-1 max-w-[150px]">
-                            {t.assigneeIds && t.assigneeIds.length > 0 ? (
-                              t.assigneeIds.map(uid => (
-                                <span key={uid} className="px-1.5 py-0.5 bg-slate-200 text-slate-700 font-bold rounded-md text-[9px]">
-                                  {getUserName(uid)}
-                                </span>
-                              ))
-                            ) : <span className="text-slate-400 italic">Não alocado</span>}
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-slate-500 font-medium font-mono">
-                          {t.estimatedDate || 'N/A'}
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                            getTaskScale(t.statusId) === 3 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                            getTaskScale(t.statusId) === 2 ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                            getTaskScale(t.statusId) === 4 ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                            'bg-slate-100 text-slate-500'
-                          }`}>
-                            {getStatusName(t.statusId)}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-right">
-                          <div className="flex gap-2 justify-end" onClick={e => e.stopPropagation()}>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCopyTaskLink(t.id);
-                              }}
-                              className={`p-1.5 rounded-md ${copiedLinkId === t.id ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'}`}
-                              title="Copiar Link"
-                            >
-                              <Link2 className="w-3.5 h-3.5" />
-                            </button>
-                            {canWriteTasks && (
+                          </td>
+
+                          {/* Ações */}
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <div className="flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
+                              {/* Quick Action: Registar Execução */}
+                              {canWriteTasks && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openTaskModal(t, 'execute');
+                                  }}
+                                  className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1"
+                                  title="Registar horas e execução da tarefa"
+                                >
+                                  <PlayCircle className="w-3 h-3 text-amber-600" />
+                                  <span>Execução</span>
+                                </button>
+                              )}
+
+                              {/* Link Copy */}
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openTaskModal(t, 'edit');
+                                  handleCopyTaskLink(t.id);
                                 }}
-                                className="p-1.5 hover:bg-blue-50 hover:text-blue-700 rounded-md text-slate-500"
-                                title="Editar"
+                                className={`p-1.5 rounded-lg ${copiedLinkId === t.id ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'}`}
+                                title="Copiar Link da Tarefa"
                               >
-                                <Edit2 className="w-3.5 h-3.5" />
+                                <Link2 className="w-3.5 h-3.5" />
                               </button>
-                            )}
-                            {canDeleteTasks && (
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!canDeleteTasks) {
-                                    alert('Não tem permissão para eliminar tarefas.');
-                                    return;
-                                  }
-                                  askConfirmation(
-                                    'Confirmar Eliminação de Tarefa',
-                                    'Tem a certeza que deseja eliminar esta tarefa do projeto? Esta ação terá um efeito permanente.',
-                                    () => deleteTask(t.id)
-                                  );
-                                }}
-                                className="p-1.5 hover:bg-red-50 hover:text-red-700 rounded-md text-slate-500"
-                                title="Eliminar"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+
+                              {/* Edit */}
+                              {canWriteTasks && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openTaskModal(t, 'edit');
+                                  }}
+                                  className="p-1.5 hover:bg-blue-50 hover:text-blue-700 rounded-lg text-slate-400"
+                                  title="Editar Tarefa"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* Delete */}
+                              {canDeleteTasks && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    askConfirmation(
+                                      'Confirmar Eliminação de Tarefa',
+                                      'Tem a certeza que deseja eliminar esta tarefa? Esta ação não pode ser anulada.',
+                                      () => deleteTask(t.id)
+                                    );
+                                  }}
+                                  className="p-1.5 hover:bg-rose-50 hover:text-rose-700 rounded-lg text-slate-400"
+                                  title="Eliminar Tarefa"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
@@ -613,22 +884,6 @@ export default function TaskSection({
                     <span className="font-bold text-slate-700">{endIndex}</span> de{' '}
                     <span className="font-bold text-slate-700">{totalTasks}</span> tarefas
                   </span>
-                  <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
-                    <span className="text-slate-400">Por página:</span>
-                    <select
-                      value={pageSize}
-                      onChange={e => {
-                        setPageSize(Number(e.target.value));
-                        setCurrentPage(1);
-                      }}
-                      className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value={15}>15</option>
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                    </select>
-                  </div>
                 </div>
 
                 {totalPages > 1 && (
@@ -675,21 +930,22 @@ export default function TaskSection({
               </div>
             )}
           </div>
-          )}
+        )}
 
-          {activeTaskViewTab === 'analise' && (
-            <TaskAnalytics 
-              tasks={tasks}
-              projects={projects}
-              taskTypes={taskTypes || []}
-              taskStatuses={taskStatuses}
-              users={users}
-              clients={clients}
-            />
-          )}
-        </div>
+        {/* ANÁLISE DE TAREFAS */}
+        {activeTaskViewTab === 'analise' && (
+          <TaskAnalytics 
+            tasks={tasks}
+            projects={projects}
+            taskTypes={taskTypes || []}
+            taskStatuses={taskStatuses}
+            users={users}
+            clients={clients}
+          />
+        )}
+      </div>
 
-      {/* Unified Task Modal (FASE 30) */}
+      {/* Unified Task Modal */}
       <TaskDetailsModal
         isOpen={taskModalState.isOpen}
         task={taskModalState.task}

@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@source "../app";
+@source "../components";
+@source "../lib";
+@source "../hooks";
 
 @theme {
   --color-blue-50: var(--primary-50);

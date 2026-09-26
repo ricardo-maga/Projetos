@@ -5,12 +5,14 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 
+const isBrowser = typeof window !== 'undefined';
+
 // Lazy initialization pattern to prevent crashes if credentials are missing
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        persistSession: true,
-        autoRefreshToken: true,
+        persistSession: isBrowser,
+        autoRefreshToken: isBrowser,
       }
     })
   : null;

@@ -363,12 +363,12 @@ export default function CalendarSection({
       .sort((a, b) => a.title.localeCompare(b.title, 'pt-PT'));
   }, [projects]);
 
-  const handleQuickCreateForUser = React.useCallback((userId: string, dateStr: string) => {
+  const handleQuickCreateForUser = React.useCallback((userId: string, dateStr: string, projectId?: string) => {
     if (!canCreateTaskInCalendar) {
       alert('Não tem permissão para criar ou agendar tarefas.');
       return;
     }
-    const defaultProjId = availableProjects.length > 0 ? availableProjects[0].id : '';
+    const defaultProjId = projectId || (availableProjects.length > 0 ? availableProjects[0].id : '');
     setTaskModalState({
       isOpen: true,
       task: null,

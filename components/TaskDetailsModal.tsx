@@ -9,7 +9,10 @@ import {
   Trash2,
   Briefcase,
   PlusCircle,
-  FileText
+  FileText,
+  PlayCircle,
+  CheckCircle2,
+  ListTodo
 } from 'lucide-react';
 import { Task, Project, Client, TaskType, User } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
@@ -73,8 +76,6 @@ export default function TaskDetailsModal({
   onSelectTask,
 }: TaskDetailsModalProps) {
   // Modal visibility guard:
-  // If isOpen is explicitly provided, use it.
-  // Otherwise, only open if a task is provided.
   const isModalOpen = isOpen !== undefined ? isOpen : Boolean(task);
 
   // Determine mode
@@ -147,10 +148,19 @@ export default function TaskDetailsModal({
       setFormNotes(activeTask.notes || '');
       setFormAssignees(activeTask.assigneeIds || []);
       setFormError(null);
+
+      // If in execute mode, suggest completed status if currently pending and set default actual hours if 0
+      if (effectiveMode === 'execute') {
+        const estH = formatToOnlyHours(activeTask.estimatedHours) || '0';
+        const actH = formatToOnlyHours(activeTask.actualHours) || '0';
+        if (actH === '0' && estH !== '0') {
+          setFormActualHours(estH);
+        }
+      }
     }
   }, [effectiveMode, activeTask, initialProjectId, initialDate, initialAssigneeId, initialAssigneeIds, projects, taskStatuses]);
 
-  // Conflict warnings calculation
+  // Conflict warnings calculation via lib/taskConflicts.ts
   const conflictWarnings = useMemo(() => {
     const targetDate = formStartDate || formEstimatedDate || activeTask?.estimatedDate || activeTask?.startDate;
     return getTaskConflictWarnings({
@@ -193,8 +203,14 @@ export default function TaskDetailsModal({
       return;
     }
 
-    // Validate execution times
-    const timeVal = validateTaskExecutionTimes(formStartTime, formEndTime);
+    // Validate execution times using centralized helper
+    const timeVal = validateTaskExecutionTimes({
+      startDate: formStartDate,
+      startTime: formStartTime,
+      endDate: formEndDate,
+      endTime: formEndTime,
+    });
+
     if (!timeVal.valid) {
       setFormError(timeVal.error || 'A hora de fim deve ser estritamente posterior à hora de início.');
       return;
@@ -283,35 +299,39 @@ export default function TaskDetailsModal({
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
         
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-start justify-between shrink-0">
+        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-start justify-between shrink-0">
           <div>
-            <span className="text-[10px] uppercase font-extrabold text-blue-600 tracking-wider flex items-center gap-1">
-              {effectiveMode === 'create' ? (
-                <>
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  Criar Nova Tarefa
-                </>
-              ) : effectiveMode === 'view' ? (
-                <>
-                  <FileText className="w-3.5 h-3.5" />
-                  Detalhes da Tarefa
-                </>
-              ) : (
-                <>
-                  <CheckSquare className="w-3.5 h-3.5" />
-                  Planeamento e Execução da Tarefa
-                </>
-              )}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-lg bg-blue-100 text-blue-700">
+                {effectiveMode === 'create' ? (
+                  <PlusCircle className="w-4 h-4" />
+                ) : effectiveMode === 'execute' ? (
+                  <PlayCircle className="w-4 h-4 text-amber-600" />
+                ) : effectiveMode === 'view' ? (
+                  <FileText className="w-4 h-4" />
+                ) : (
+                  <CheckSquare className="w-4 h-4" />
+                )}
+              </span>
+              <span className="text-[11px] uppercase font-extrabold text-blue-700 tracking-wider">
+                {effectiveMode === 'create'
+                  ? 'Criação Rápida de Tarefa'
+                  : effectiveMode === 'execute'
+                  ? 'Registo e Execução da Tarefa'
+                  : effectiveMode === 'view'
+                  ? 'Detalhes da Tarefa'
+                  : 'Edição de Tarefa'}
+              </span>
+            </div>
 
             {effectiveMode !== 'create' && (
-              <div className="text-xs font-medium text-slate-500 mt-0.5">
+              <div className="text-xs font-medium text-slate-500 mt-1">
                 Cliente: <strong className="text-slate-800 font-bold">{clientName}</strong> | Projeto: <strong className="text-slate-800 font-bold">{projectTitle}</strong>
               </div>
             )}
 
-            <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-0.5">
-              {effectiveMode === 'create' ? 'Nova Tarefa' : activeTask?.title}
+            <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-1">
+              {effectiveMode === 'create' ? 'Nova Tarefa Operacional' : activeTask?.title}
             </h3>
           </div>
 
@@ -319,7 +339,7 @@ export default function TaskDetailsModal({
             type="button"
             onClick={onClose}
             className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-            title="Fechar"
+            title="Fechar modal"
           >
             <X className="w-5 h-5" />
           </button>
@@ -327,16 +347,16 @@ export default function TaskDetailsModal({
 
         {/* Read-only banner if in edit/view mode */}
         {effectiveMode !== 'create' && activeTask && (
-          <div className="px-5 py-3 bg-blue-50/40 border-b border-blue-50 text-xs text-slate-600 space-y-1.5 shrink-0">
+          <div className="px-6 py-3 bg-blue-50/50 border-b border-blue-100 text-xs text-slate-600 space-y-1.5 shrink-0">
             {activeTask.description && (
               <p className="font-medium text-slate-700 italic bg-white p-2 rounded-xl border border-slate-100">
                 &quot;{activeTask.description}&quot;
               </p>
             )}
-            <div className="flex flex-wrap gap-4 text-[11px] font-semibold text-slate-500">
+            <div className="flex flex-wrap gap-4 text-[11px] font-semibold text-slate-600">
               <span className="flex items-center gap-1">
                 <Users className="w-3.5 h-3.5 text-slate-400" />
-                Responsáveis: <span className="text-slate-700 font-bold">
+                Responsáveis: <span className="text-slate-900 font-bold">
                   {activeTask.assigneeIds && activeTask.assigneeIds.length > 0
                     ? activeTask.assigneeIds.map(id => getUserName(id)).join(', ')
                     : 'Sem utilizadores'}
@@ -345,13 +365,13 @@ export default function TaskDetailsModal({
               {activeTask.estimatedDate && (
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  Data Planeada: <span className="text-slate-700 font-bold">{activeTask.estimatedDate.split('-').reverse().join('/')}</span>
+                  Data Planeada: <span className="text-slate-900 font-bold">{activeTask.estimatedDate.split('-').reverse().join('/')}</span>
                 </span>
               )}
               {Boolean(activeTask.estimatedHours) && (
                 <span className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  Horas Previstas: <span className="text-slate-700 font-bold">{activeTask.estimatedHours} h</span>
+                  Horas Previstas: <span className="text-slate-900 font-bold">{activeTask.estimatedHours} h</span>
                 </span>
               )}
             </div>
@@ -360,21 +380,21 @@ export default function TaskDetailsModal({
 
         {/* Form Error Banner */}
         {formError && (
-          <div className="mx-5 mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
+          <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{formError}</span>
           </div>
         )}
 
         {/* Form Body */}
-        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-5 space-y-4">
+        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-5">
           
           {/* Informative Conflict Warnings Banner */}
           {conflictWarnings.length > 0 && (
-            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-xs text-amber-900 font-medium whitespace-pre-line">
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-xs text-amber-900 font-medium whitespace-pre-line shadow-2xs">
               <div className="font-bold flex items-center gap-1.5 text-amber-800 text-xs">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                Conflitos Detectados
+                Aviso Informativo de Conflitos / Indisponibilidade
               </div>
               {conflictWarnings.map((warn, idx) => (
                 <p key={idx} className="text-xs leading-relaxed">{warn}</p>
@@ -383,22 +403,46 @@ export default function TaskDetailsModal({
           )}
 
           {/* ================= SECTION 1: PLANEAMENTO ================= */}
-          <div className="space-y-3">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block border-b border-slate-100 pb-1">
-              Dados de Planeamento
-            </span>
+          <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3.5">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <ListTodo className="w-4 h-4 text-blue-600" />
+                Dados de Planeamento
+              </span>
+              {effectiveMode === 'create' && (
+                <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                  Campos essenciais
+                </span>
+              )}
+            </div>
 
-            {/* Project Selection (Required in create mode, editable in edit mode) */}
+            {/* Title */}
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700">
-                Projeto <span className="text-rose-500">*</span>
+              <label className="block text-xs font-bold text-slate-800">
+                Título da Tarefa <span className="text-rose-500">*</span>
+              </label>
+              <input 
+                type="text"
+                required
+                readOnly={isReadOnly}
+                value={formTitle}
+                onChange={e => setFormTitle(e.target.value)}
+                placeholder="Ex: Instalação de painéis, Visita técnica, Configuração de rede..."
+                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 read-only:bg-slate-100"
+              />
+            </div>
+
+            {/* Project Selection */}
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-slate-800">
+                Projeto (Cliente) <span className="text-rose-500">*</span>
               </label>
               <select
                 disabled={isReadOnly}
                 value={formProjectId}
                 onChange={e => setFormProjectId(e.target.value)}
                 required
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-500"
+                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 cursor-pointer"
               >
                 <option value="">Selecione um projeto...</option>
                 {projects.filter(p => !p.deleted).map(p => {
@@ -413,71 +457,10 @@ export default function TaskDetailsModal({
               </select>
             </div>
 
-            {/* Title */}
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700">
-                Título da Tarefa <span className="text-rose-500">*</span>
-              </label>
-              <input 
-                type="text"
-                required
-                readOnly={isReadOnly}
-                value={formTitle}
-                onChange={e => setFormTitle(e.target.value)}
-                placeholder="Ex: Instalação de painéis, Visita técnica, Configuração de rede..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-50"
-              />
-            </div>
-
-            {/* Description */}
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700">Descrição / Instruções</label>
-              <textarea 
-                rows={2}
-                readOnly={isReadOnly}
-                value={formDescription}
-                onChange={e => setFormDescription(e.target.value)}
-                placeholder="Detalhes adicionais ou escopo da tarefa..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-50"
-              />
-            </div>
-
-            {/* Status & Type */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700">Estado da Tarefa <span className="text-rose-500">*</span></label>
-                <select 
-                  disabled={isReadOnly}
-                  value={formStatusId}
-                  onChange={e => setFormStatusId(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-                >
-                  {taskStatuses.filter(s => !s.deleted).map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700">Tipo de Tarefa</label>
-                <select
-                  disabled={isReadOnly}
-                  value={formTypeId}
-                  onChange={e => setFormTypeId(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-                >
-                  <option value="">Selecione o tipo de tarefa...</option>
-                  {taskTypes.filter(tt => !tt.deleted).map(tt => (
-                    <option key={tt.id} value={tt.id}>{getTaskTypeName(tt.id, taskTypes)}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
             {/* Planned Date & Estimated Hours */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700">Data Planeada</label>
+                <label className="block text-xs font-bold text-slate-800">Data Planeada</label>
                 <input 
                   type="date"
                   readOnly={isReadOnly}
@@ -487,128 +470,192 @@ export default function TaskDetailsModal({
                     if (!formStartDate) setFormStartDate(e.target.value);
                     if (!formEndDate) setFormEndDate(e.target.value);
                   }}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-50"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-100"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700">Horas Previstas (h)</label>
+                <label className="block text-xs font-bold text-slate-800">Horas Previstas (h)</label>
                 <input 
                   type="text"
                   readOnly={isReadOnly}
                   value={formEstimatedHours}
                   onChange={e => setFormEstimatedHours(e.target.value)}
                   placeholder="Ex: 08:00 ou 8"
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-50"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-100"
                 />
               </div>
             </div>
-          </div>
 
-          {/* ================= SECTION 2: EXECUÇÃO ================= */}
-          <div className="border-t border-slate-100 pt-3 space-y-3">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block border-b border-slate-100 pb-1">
-              Dados de Execução
-            </span>
+            {/* Status & Type */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-800">Estado da Tarefa <span className="text-rose-500">*</span></label>
+                <select 
+                  disabled={isReadOnly}
+                  value={formStatusId}
+                  onChange={e => setFormStatusId(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 cursor-pointer"
+                >
+                  {taskStatuses.filter(s => !s.deleted).map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Consumed Real Hours */}
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-800">Tipo de Tarefa</label>
+                <select
+                  disabled={isReadOnly}
+                  value={formTypeId}
+                  onChange={e => setFormTypeId(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 cursor-pointer"
+                >
+                  <option value="">Selecione o tipo de tarefa...</option>
+                  {taskTypes.filter(tt => !tt.deleted).map(tt => (
+                    <option key={tt.id} value={tt.id}>{getTaskTypeName(tt.id, taskTypes)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Description (Instructions) */}
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700">Horas Reais Consumidas (h)</label>
-              <input 
-                type="number" 
-                min="0"
-                step="0.5"
-                readOnly={isReadOnly}
-                value={formActualHours}
-                onChange={e => setFormActualHours(e.target.value)}
-                placeholder="Ex: 6"
-                className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-50"
-              />
-              <p className="text-[10px] text-slate-400 font-medium">As horas reais consumidas são independentes das horas previstas de planeamento.</p>
-            </div>
-
-            {/* Execution Dates and Times */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-slate-600">Data de Início</label>
-                <input 
-                  type="date" 
-                  readOnly={isReadOnly}
-                  value={formStartDate}
-                  onChange={e => setFormStartDate(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-50"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-slate-600">Hora de Início</label>
-                <input 
-                  type="time" 
-                  readOnly={isReadOnly}
-                  value={formStartTime}
-                  onChange={e => setFormStartTime(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-50"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-slate-600">Data de Fim</label>
-                <input 
-                  type="date" 
-                  readOnly={isReadOnly}
-                  value={formEndDate}
-                  onChange={e => setFormEndDate(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-50"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-slate-600">Hora de Fim</label>
-                <input 
-                  type="time" 
-                  readOnly={isReadOnly}
-                  value={formEndTime}
-                  onChange={e => setFormEndTime(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-50"
-                />
-              </div>
-            </div>
-
-            {/* Execution Description */}
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700">Descrição / Notas de Execução</label>
+              <label className="block text-xs font-bold text-slate-800">Descrição / Instruções de Planeamento</label>
               <textarea 
                 rows={2}
                 readOnly={isReadOnly}
-                value={formNotes}
-                onChange={e => setFormNotes(e.target.value)}
-                placeholder="Descreva o trabalho realizado, anotações de campo..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-50"
+                value={formDescription}
+                onChange={e => setFormDescription(e.target.value)}
+                placeholder="Detalhes adicionais, escopo ou instruções..."
+                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-100"
+              />
+            </div>
+
+            {/* Assignees Selector */}
+            <div className="pt-2">
+              <AssigneeSelector
+                users={users}
+                userGroups={userGroups}
+                allowedGroupIds={appConfig?.taskAssigneeGroupIds}
+                selectedIds={formAssignees}
+                onChange={isReadOnly ? () => {} : setFormAssignees}
+                filterTeamOnly
               />
             </div>
           </div>
 
-          {/* Assignees Selector */}
-          <div className="border-t border-slate-100 pt-3">
-            <AssigneeSelector
-              users={users}
-              userGroups={userGroups}
-              allowedGroupIds={appConfig?.taskAssigneeGroupIds}
-              selectedIds={formAssignees}
-              onChange={isReadOnly ? () => {} : setFormAssignees}
-              filterTeamOnly
-            />
-          </div>
+          {/* ================= SECTION 2: EXECUÇÃO (Available in edit/execute/view modes) ================= */}
+          {effectiveMode !== 'create' && (
+            <div className={`p-4 rounded-2xl border space-y-3.5 transition-all ${
+              effectiveMode === 'execute' 
+                ? 'bg-amber-50/50 border-amber-300 ring-2 ring-amber-200/60' 
+                : 'bg-white border-slate-200'
+            }`}>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <PlayCircle className="w-4 h-4 text-amber-600" />
+                  Dados de Execução Real
+                </span>
+                {effectiveMode === 'execute' && (
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-amber-600" />
+                    Foco no registo de trabalho
+                  </span>
+                )}
+              </div>
+
+              {/* Consumed Real Hours */}
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-800">
+                  Horas Reais Consumidas (h)
+                </label>
+                <input 
+                  type="number" 
+                  min="0"
+                  step="0.5"
+                  readOnly={isReadOnly}
+                  value={formActualHours}
+                  onChange={e => setFormActualHours(e.target.value)}
+                  placeholder="Ex: 6"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 focus:ring-2 focus:ring-amber-200 read-only:bg-slate-100"
+                />
+                <p className="text-[10px] text-slate-500 font-medium">
+                  As horas reais representam o tempo efetivamente despendido na tarefa.
+                </p>
+              </div>
+
+              {/* Execution Dates and Times */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700">Data de Início</label>
+                  <input 
+                    type="date" 
+                    readOnly={isReadOnly}
+                    value={formStartDate}
+                    onChange={e => setFormStartDate(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700">Hora de Início</label>
+                  <input 
+                    type="time" 
+                    readOnly={isReadOnly}
+                    value={formStartTime}
+                    onChange={e => setFormStartTime(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700">Data de Fim</label>
+                  <input 
+                    type="date" 
+                    readOnly={isReadOnly}
+                    value={formEndDate}
+                    onChange={e => setFormEndDate(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-700">Hora de Fim</label>
+                  <input 
+                    type="time" 
+                    readOnly={isReadOnly}
+                    value={formEndTime}
+                    onChange={e => setFormEndTime(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
+                  />
+                </div>
+              </div>
+
+              {/* Execution Description / Notes */}
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-800">Descrição / Notas de Execução</label>
+                <textarea 
+                  rows={2}
+                  readOnly={isReadOnly}
+                  value={formNotes}
+                  onChange={e => setFormNotes(e.target.value)}
+                  placeholder="Relatório do trabalho efetuado, registos de campo ou observações..."
+                  className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-100">
+          <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-200">
             <div>
               {effectiveMode !== 'create' && !isReadOnly && deleteTask && activeTask && (
                 <button
                   type="button"
                   onClick={handleDelete}
                   disabled={isSubmitting}
-                  className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold transition-colors cursor-pointer text-xs flex items-center gap-1.5"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Eliminar Tarefa
@@ -631,7 +678,13 @@ export default function TaskDetailsModal({
                   disabled={isSubmitting}
                   className="px-5 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl font-bold transition-colors cursor-pointer text-xs shadow-md shadow-slate-100 flex items-center gap-1.5"
                 >
-                  {isSubmitting ? 'A processar...' : effectiveMode === 'create' ? 'Criar Tarefa' : 'Gravar Alterações'}
+                  {isSubmitting 
+                    ? 'A processar...' 
+                    : effectiveMode === 'create' 
+                    ? 'Criar Tarefa' 
+                    : effectiveMode === 'execute'
+                    ? 'Registar Execução'
+                    : 'Gravar Alterações'}
                 </button>
               )}
             </div>
