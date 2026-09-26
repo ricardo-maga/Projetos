@@ -4208,21 +4208,6 @@ export default function ProjectSection({
         </div>
       )}
 
-      {/* Task Single View / Edit Modal */}
-      <TaskDetailsModal
-        isOpen={Boolean(selectedTaskForDetails)}
-        task={selectedTaskForDetails}
-        onClose={() => setSelectedTaskForDetails(null)}
-        updateTask={updateTask}
-        taskStatuses={taskStatuses}
-        taskTypes={taskTypes}
-        users={users}
-        userGroups={userGroups}
-        appConfig={appConfig}
-        projects={projects}
-        clients={clients}
-        canWrite={canWriteTasks}
-      />
 
       {/* Modal do Cronograma em Ecrã Cheio */}
       {isFullTimelineModalOpen && selectedProj && (
