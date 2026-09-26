@@ -140,6 +140,9 @@ export function normalizeTaskFromApiResponse(data: any): Task {
     ? data.assignedUserIds
     : (Array.isArray(data.assigneeIds) ? data.assigneeIds : []);
 
+  const rawVersion = data.version !== undefined && data.version !== null ? Number(data.version) : undefined;
+  const version = rawVersion !== undefined && !isNaN(rawVersion) ? rawVersion : undefined;
+
   return {
     id: data.id,
     projectId: data.projectId || data.project_id || '',
@@ -158,7 +161,7 @@ export function normalizeTaskFromApiResponse(data: any): Task {
     notes: data.notes !== undefined ? data.notes : undefined,
     assigneeIds,
     deleted: Boolean(data.deleted),
-    version: typeof data.version === 'number' ? data.version : (Number(data.version) || 1),
+    version,
     createdDate: data.createdAt || data.created_at || data.createdDate || '',
   };
 }

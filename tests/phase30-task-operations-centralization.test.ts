@@ -304,5 +304,36 @@ describe('FASE 30 — Centralização da Operação de Tarefas', () => {
         globalThis.fetch = originalFetch;
       }
     });
+
+    it('não deve criar artificialmente version = 1 quando a API não devolve version', async () => {
+      const originalFetch = globalThis.fetch;
+      try {
+        globalThis.fetch = (async () => {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              success: true,
+              data: {
+                id: 'task-no-version',
+                projectId: 'proj-1',
+                title: 'Tarefa Sem Versão',
+                statusId: 'ts-1',
+                // version omitida intencionalmente
+              }
+            })
+          } as any;
+        }) as any;
+
+        const result = await apiGetTask('task-no-version');
+
+        expect(result.success).toBe(true);
+        expect(result.data).toBeDefined();
+        // Não deve inventar version = 1 se o servidor não forneceu version
+        expect(result.data?.version).toBeUndefined();
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
   });
 });
