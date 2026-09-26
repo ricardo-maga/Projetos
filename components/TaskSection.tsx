@@ -824,7 +824,7 @@ export default function TaskSection({
             </div>
 
             {/* Task Status Filter Buttons (Only in Lista view) */}
-            {activeTaskViewTab !== 'kanban' && (
+            {activeTaskViewTab === 'lista' && (
               <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200/80">
                 <button
                   type="button"

@@ -11,6 +11,7 @@ import {
 import { hasPermission, normalizeRoleId } from '../lib/permissions';
 import { AssigneeSelector } from './AssigneeSelector';
 import TaskDetailsModal from './TaskDetailsModal';
+import OperationalUserCalendar from './OperationalUserCalendar';
 import PlanningAllocationModal from './PlanningAllocationModal';
 import ResourceDayDetailModal from './ResourceDayDetailModal';
 import { getTaskStatusName, getDefaultTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, stripSecondsFromHours, formatToOnlyHours } from '../lib/utils';
@@ -159,7 +160,8 @@ export default function CalendarSection({
   const [isPlanningModalOpen, setIsPlanningModalOpen] = useState<boolean>(false);
   const [selectedAllocationForEdit, setSelectedAllocationForEdit] = useState<PlanningAllocationDTO | null>(null);
   const [selectedTaskForPlanning, setSelectedTaskForPlanning] = useState<Task | null>(null);
-  const [calendarViewMode, setCalendarViewMode] = useState<'projects' | 'resources'>('projects');
+  // Calendar view mode: 'users' (FASE 29 default) | 'projects' | 'resources'
+  const [calendarViewMode, setCalendarViewMode] = useState<'users' | 'projects' | 'resources'>('users');
 
   // FASE 23E-A: Resource Daily Detail Modal state
   const [selectedResourceDay, setSelectedResourceDay] = useState<{
@@ -418,6 +420,23 @@ export default function CalendarSection({
       .filter(p => !p.deleted)
       .sort((a, b) => a.title.localeCompare(b.title, 'pt-PT'));
   }, [projects]);
+
+  const handleQuickCreateForUser = React.useCallback((userId: string, dateStr: string) => {
+    if (!canCreateTaskInCalendar) {
+      alert('Não tem permissão para criar ou agendar tarefas.');
+      return;
+    }
+    const defaultProjId = availableProjects.length > 0 ? availableProjects[0].id : '';
+    setModalProjectId(defaultProjId);
+    setModalDateStr(dateStr);
+    setTaskTitle('');
+    setTaskDescription('');
+    setTaskAssigneeIds([userId]);
+    setTaskStatusId(getDefaultTaskStatusId(taskStatuses));
+    setTaskTypeId('');
+    setTaskEstimatedHours('08:00');
+    setIsModalOpen(true);
+  }, [canCreateTaskInCalendar, availableProjects, taskStatuses]);
 
   // Helper to check if task belongs to a project
   const isTaskInProject = React.useCallback((taskId: string, targetProjectId: string): boolean => {
@@ -2460,41 +2479,45 @@ export default function CalendarSection({
           <div>
             <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-blue-600" />
-              Linha de tempo & Capacidade de Recursos
+              Calendário & Planeamento
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Planeamento diário de projetos, tarefas, técnicos e carga operacional.
+              {calendarViewMode === 'users' 
+                ? 'Vista operacional semanal de tarefas por técnico e dia.' 
+                : 'Planeamento diário de projetos e linha de tempo.'}
             </p>
           </div>
 
           <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
               type="button"
+              onClick={() => setCalendarViewMode('users')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                calendarViewMode === 'users'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              👥 Calendário por Utilizador
+            </button>
+            <button
+              type="button"
               onClick={() => setCalendarViewMode('projects')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 calendarViewMode === 'projects'
                   ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-800'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              📅 Vista de Projetos
-            </button>
-            <button
-              type="button"
-              onClick={() => setCalendarViewMode('resources')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                calendarViewMode === 'resources'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              👥 Capacidade de Recursos
+              📅 Linha de Tempo de Projetos
             </button>
           </div>
         </div>
 
-        {/* Row 1: Filters */}
-        {calendarViewMode === 'resources' ? (
+        {/* Row 1: Filters (Only for projects or resources mode) */}
+        {calendarViewMode !== 'users' && (
+          <>
+            {calendarViewMode === 'resources' ? (
           <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
             {/* Technician Text Search */}
             <div className="relative min-w-[200px] max-w-xs">
@@ -3055,47 +3078,70 @@ export default function CalendarSection({
             )}
           </div>
         )}
+          </>
+        )}
       </div>
+
+      {/* OPERATIONAL USER CALENDAR (FASE 29) */}
+      {calendarViewMode === 'users' && (
+        <OperationalUserCalendar
+          tasks={tasks}
+          users={users}
+          projects={projects}
+          clients={clients}
+          absences={absences}
+          taskStatuses={taskStatuses}
+          taskTypes={taskTypes}
+          specialDays={specialDays}
+          onSelectTask={openTaskDetailsModal}
+          onQuickCreateTask={handleQuickCreateForUser}
+          canCreateTask={canCreateTaskInCalendar}
+          appConfig={appConfig}
+        />
+      )}
 
       {/* OPERATIONAL KPIS BAR (FASE 23E-C3B) */}
       {calendarViewMode === 'resources' && renderOperationalKPIsBar()}
 
       {/* TIMELINE MATRIX BOARD OR RESOURCE CAPACITY MATRIX */}
-      {calendarViewMode === 'resources' ? renderResourceCapacityMatrixTable() : renderTimelineMatrixTable(paginatedProjects)}
+      {calendarViewMode === 'resources' && renderResourceCapacityMatrixTable()}
+      {calendarViewMode === 'projects' && renderTimelineMatrixTable(paginatedProjects)}
 
       {/* FOOTER LEGEND INFO */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs text-xs text-slate-500 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <span className="font-semibold flex items-center gap-1.5">
-          <Info className="w-4 h-4 text-blue-500 flex-shrink-0" />
-          Como ler a linha de tempo & planeamento:
-        </span>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-8 font-medium">
-          <div className="flex items-start gap-2">
-            <span className="w-3 h-3 rounded bg-blue-600 text-white inline-flex items-center justify-center text-[7px] font-black shrink-0 mt-0.5">
-              CONF
-            </span>
-            <span>
-              <strong>CONFIRMED:</strong> Reserva confirmada que consome capacidade na agenda do técnico.
-            </span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="w-3 h-3 rounded bg-amber-200 border border-dashed border-amber-400 text-amber-900 inline-flex items-center justify-center text-[7px] font-black shrink-0 mt-0.5">
-              DRAFT
-            </span>
-            <span>
-              <strong>DRAFT:</strong> Reserva em rascunho. Visível no calendário, mas <em>não</em> consome capacidade formal.
-            </span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="w-3 h-3 rounded bg-slate-200 border border-dashed border-slate-400 text-slate-700 inline-flex items-center justify-center text-[7px] font-bold shrink-0 mt-0.5">
-              NP
-            </span>
-            <span>
-              <strong>Não Planeada:</strong> Tarefa com datas indicativas mas sem blocos de recurso formalizados.
-            </span>
+      {(calendarViewMode === 'projects' || calendarViewMode === 'resources') && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs text-xs text-slate-500 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <span className="font-semibold flex items-center gap-1.5">
+            <Info className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            Como ler a linha de tempo & planeamento:
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-8 font-medium">
+            <div className="flex items-start gap-2">
+              <span className="w-3 h-3 rounded bg-blue-600 text-white inline-flex items-center justify-center text-[7px] font-black shrink-0 mt-0.5">
+                CONF
+              </span>
+              <span>
+                <strong>CONFIRMED:</strong> Reserva confirmada que consome capacidade na agenda do técnico.
+              </span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-3 h-3 rounded bg-amber-200 border border-dashed border-amber-400 text-amber-900 inline-flex items-center justify-center text-[7px] font-black shrink-0 mt-0.5">
+                DRAFT
+              </span>
+              <span>
+                <strong>DRAFT:</strong> Reserva em rascunho. Visível no calendário, mas <em>não</em> consome capacidade formal.
+              </span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-3 h-3 rounded bg-slate-200 border border-dashed border-slate-400 text-slate-700 inline-flex items-center justify-center text-[7px] font-bold shrink-0 mt-0.5">
+                NP
+              </span>
+              <span>
+                <strong>Não Planeada:</strong> Tarefa com datas indicativas mas sem blocos de recurso formalizados.
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Task Single View / Edit Modal */}
       <TaskDetailsModal

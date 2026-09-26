@@ -38,10 +38,13 @@ export function getTaskConflictWarnings({
           abs.user_id === userId ||
           (abs.userId && abs.userId.replace(/[-]/g, '').toLowerCase() === userId.replace(/[-]/g, '').toLowerCase());
         if (!uMatch) return false;
-        const absStart = abs.startDate || abs.start_date;
-        const absEnd = abs.endDate || abs.end_date || absStart;
-        if (!absStart) return false;
-        return date >= absStart && date <= absEnd;
+        const rawStart = abs.absenceStartDate || abs.startDate || abs.start_date;
+        const rawEnd = abs.absenceEndDate || abs.endDate || abs.end_date || rawStart;
+        if (!rawStart) return false;
+        const absStart = rawStart.trim().slice(0, 10);
+        const absEnd = (rawEnd || rawStart).trim().slice(0, 10);
+        const targetDate = date.trim().slice(0, 10);
+        return targetDate >= absStart && targetDate <= absEnd;
       });
 
       if (isAbsent) {
