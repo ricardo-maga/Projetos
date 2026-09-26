@@ -683,6 +683,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
         deleted: t.deleted || false,
         createdDate: t.created_at || '',
         isMilestone: t.is_milestone || false,
+        version: typeof t.version === 'number' ? t.version : 1,
       };
     });
 
@@ -1184,6 +1185,7 @@ export async function fetchPaginatedTasksDirectly(params: {
       isMilestone: Boolean(row.is_milestone),
       createdDate: row.created_at || new Date().toISOString(),
       updatedDate: row.updated_at || new Date().toISOString(),
+      version: typeof row.version === 'number' ? row.version : 1,
     }));
 
     return {
