@@ -261,7 +261,7 @@ export async function getProjectsServerData(
 }
 
 /**
- * Creates a project along with all of its relations atomically via RPC.
+ * Creates a project along with all of its relations atomically via PostgreSQL RPC.
  */
 export async function createProject(
   client: SupabaseClient,
@@ -273,124 +273,40 @@ export async function createProject(
   const effectivePartners = Array.from(new Set([...(input.partnersIds || []), ...(input.partnerIds || [])]));
   const effectiveCategories = Array.from(new Set([...(input.categoryIds || []), ...(input.categoryId ? [input.categoryId] : [])]));
 
-  let rpcSuccess = false;
-  if (typeof client.rpc === 'function') {
-    try {
-      const { data, error } = await client.rpc('create_project_transaction', {
-        p_id: pId,
-        p_demo: Boolean(input.demo),
-        p_client_id: input.clientId?.trim() || null,
-        p_project_title: input.title,
-        p_project_description: input.description || '',
-        p_status_id: input.statusId || null,
-        p_project_manager_id: input.projectManagerId?.trim() || null,
-        p_field_manager_id: input.fieldManagerId?.trim() || null,
-        p_sales_rep_id: input.salesRepId?.trim() || null,
-        p_start_date: input.startDate || null,
-        p_delivery_date: input.deliveryDate || null,
-        p_estimated_date: input.estimatedDate || null,
-        p_scheduled_date: input.scheduledDate || null,
-        p_install_project_no: input.installProjectNo || '',
-        p_sf_opportunity_no: input.sfOpportunityNo || '',
-        p_documents: Array.isArray(input.documents) ? input.documents.join(',') : (input.documents || ''),
-        p_budget_value: Number(input.budgetValue || 0),
-        p_client_contact_name: input.clientContactName || '',
-        p_client_contact_email: input.clientContactEmail || '',
-        p_client_contact_phone: input.clientContactPhone || '',
-        p_color: input.color || '',
-        p_notes: input.notes || '',
-        p_created_by: userId,
-        p_is_urgent: Boolean(input.isUrgent),
-        p_priority_id: input.priorityId || null,
-        p_risk_id: input.riskId || null,
-        p_category_ids: effectiveCategories,
-        p_teams_involved_ids: effectiveTeams,
-        p_partners_ids: effectivePartners
-      });
+  const { error } = await client.rpc('create_project_transaction', {
+    p_id: pId,
+    p_demo: Boolean(input.demo),
+    p_client_id: input.clientId?.trim() || null,
+    p_project_title: input.title,
+    p_project_description: input.description || '',
+    p_status_id: input.statusId || null,
+    p_project_manager_id: input.projectManagerId?.trim() || null,
+    p_field_manager_id: input.fieldManagerId?.trim() || null,
+    p_sales_rep_id: input.salesRepId?.trim() || null,
+    p_start_date: input.startDate || null,
+    p_delivery_date: input.deliveryDate || null,
+    p_estimated_date: input.estimatedDate || null,
+    p_scheduled_date: input.scheduledDate || null,
+    p_install_project_no: input.installProjectNo || '',
+    p_sf_opportunity_no: input.sfOpportunityNo || '',
+    p_documents: Array.isArray(input.documents) ? input.documents.join(',') : (input.documents || ''),
+    p_budget_value: Number(input.budgetValue || 0),
+    p_client_contact_name: input.clientContactName || '',
+    p_client_contact_email: input.clientContactEmail || '',
+    p_client_contact_phone: input.clientContactPhone || '',
+    p_color: input.color || '',
+    p_notes: input.notes || '',
+    p_created_by: userId,
+    p_is_urgent: Boolean(input.isUrgent),
+    p_priority_id: input.priorityId || null,
+    p_risk_id: input.riskId || null,
+    p_category_ids: effectiveCategories,
+    p_teams_involved_ids: effectiveTeams,
+    p_partners_ids: effectivePartners
+  });
 
-      if (!error) {
-        rpcSuccess = true;
-      } else if (error.code === 'P0001' || error.message?.includes('concurrency') || error.message?.includes('conflict')) {
-        throw error;
-      }
-    } catch (err: any) {
-      if (err?.code === 'P0001' || err?.message?.includes('concurrency') || err?.message?.includes('conflict')) {
-        throw err;
-      }
-      rpcSuccess = false;
-    }
-  }
-
-  // Fallback sequential insert for non-RPC or Mock environments
-  if (!rpcSuccess) {
-    const now = new Date().toISOString();
-    const docString = Array.isArray(input.documents) ? input.documents.join(',') : (input.documents || '');
-
-    const coreInsertPayload: Record<string, any> = {
-      id: pId,
-      project_title: input.title,
-      client_id: input.clientId?.trim() || null,
-      project_description: input.description || '',
-      install_project_no: input.installProjectNo || '',
-      sf_opportunity_no: input.sfOpportunityNo || '',
-      status_id: input.statusId || null,
-      category_id: effectiveCategories[0] || null,
-      project_manager_id: input.projectManagerId?.trim() || null,
-      field_manager_id: input.fieldManagerId?.trim() || null,
-      sales_rep_id: input.salesRepId?.trim() || null,
-      start_date: input.startDate || null,
-      delivery_date: input.deliveryDate || null,
-      estimated_date: input.estimatedDate || null,
-      scheduled_date: input.scheduledDate || null,
-      completed_date: input.completedDate || null,
-      budget_value: Number(input.budgetValue || 0),
-      demo: Boolean(input.demo),
-      documents: docString,
-      client_contact_name: input.clientContactName || '',
-      client_contact_email: input.clientContactEmail || '',
-      client_contact_phone: input.clientContactPhone || '',
-      deleted: false,
-      version: 1,
-      created_by: userId,
-      updated_by: userId,
-      created_at: now,
-      updated_at: now,
-      is_urgent: Boolean(input.isUrgent),
-      color: input.color || null,
-      notes: input.notes || null,
-    };
-
-    const { error: insertError } = await client.from('projects').insert([coreInsertPayload]);
-    if (insertError) throw insertError;
-
-    try {
-      if (input.priorityId) {
-        const { error: prioErr } = await client.from('project_priority_link').insert([{ project_id: pId, priority_id: input.priorityId }]);
-        if (prioErr) throw prioErr;
-      }
-      if (input.riskId) {
-        const { error: riskErr } = await client.from('project_risk_link').insert([{ project_id: pId, risk_id: input.riskId }]);
-        if (riskErr) throw riskErr;
-      }
-      if (effectiveTeams.length > 0) {
-        const teamLinks = effectiveTeams.map((tid) => ({ project_id: pId, team_id: tid }));
-        const { error: teamErr } = await client.from('project_teams_link').insert(teamLinks);
-        if (teamErr) throw teamErr;
-      }
-      if (effectivePartners.length > 0) {
-        const partnerLinks = effectivePartners.map((pid) => ({ project_id: pId, partner_id: pid }));
-        const { error: partErr } = await client.from('project_partners_link').insert(partnerLinks);
-        if (partErr) throw partErr;
-      }
-      if (effectiveCategories.length > 0) {
-        const categoryLinks = effectiveCategories.map((cid) => ({ project_id: pId, category_id: cid }));
-        const { error: catErr } = await client.from('project_category_link').insert(categoryLinks);
-        if (catErr) throw catErr;
-      }
-    } catch (linkErr) {
-      await client.from('projects').delete().eq('id', pId);
-      throw linkErr;
-    }
+  if (error) {
+    throw error;
   }
 
   const project = await getProject(client, pId);
@@ -401,7 +317,7 @@ export async function createProject(
 }
 
 /**
- * Updates a project along with all of its relations atomically via RPC.
+ * Updates a project along with all of its relations atomically via PostgreSQL RPC.
  */
 export async function updateProject(
   client: SupabaseClient,
@@ -434,152 +350,48 @@ export async function updateProject(
   const effectivePartners = merged.partnersIds || [];
   const effectiveCategories = merged.categoryIds || [];
 
-  let rpcSuccess = false;
-  if (typeof client.rpc === 'function') {
-    try {
-      const { data: nextV, error } = await client.rpc('update_project_transaction', {
-        p_id: id,
-        p_demo: Boolean(merged.demo),
-        p_client_id: merged.clientId?.trim() || null,
-        p_project_title: merged.title,
-        p_project_description: merged.description || '',
-        p_status_id: merged.statusId || null,
-        p_project_manager_id: merged.projectManagerId?.trim() || null,
-        p_field_manager_id: merged.fieldManagerId?.trim() || null,
-        p_sales_rep_id: merged.salesRepId?.trim() || null,
-        p_start_date: merged.startDate || null,
-        p_delivery_date: merged.deliveryDate || null,
-        p_estimated_date: merged.estimatedDate || null,
-        p_scheduled_date: merged.scheduledDate || null,
-        p_completed_date: merged.completedDate || null,
-        p_install_project_no: merged.installProjectNo || '',
-        p_sf_opportunity_no: merged.sfOpportunityNo || '',
-        p_documents: Array.isArray(merged.documents) ? merged.documents.join(',') : (merged.documents || ''),
-        p_budget_value: Number(merged.budgetValue || 0),
-        p_client_contact_name: merged.clientContactName || '',
-        p_client_contact_email: merged.clientContactEmail || '',
-        p_client_contact_phone: merged.clientContactPhone || '',
-        p_color: merged.color || '',
-        p_notes: merged.notes || '',
-        p_is_urgent: Boolean(merged.isUrgent),
-        p_updated_by: userId,
-        p_expected_version: currentVersion !== undefined ? currentVersion : (current.version || 1),
-        p_priority_id: merged.priorityId || null,
-        p_risk_id: merged.riskId || null,
-        p_category_ids: effectiveCategories,
-        p_teams_involved_ids: effectiveTeams,
-        p_partners_ids: effectivePartners
-      });
+  const { error } = await client.rpc('update_project_transaction', {
+    p_id: id,
+    p_demo: Boolean(merged.demo),
+    p_client_id: merged.clientId?.trim() || null,
+    p_project_title: merged.title,
+    p_project_description: merged.description || '',
+    p_status_id: merged.statusId || null,
+    p_project_manager_id: merged.projectManagerId?.trim() || null,
+    p_field_manager_id: merged.fieldManagerId?.trim() || null,
+    p_sales_rep_id: merged.salesRepId?.trim() || null,
+    p_start_date: merged.startDate || null,
+    p_delivery_date: merged.deliveryDate || null,
+    p_estimated_date: merged.estimatedDate || null,
+    p_scheduled_date: merged.scheduledDate || null,
+    p_completed_date: merged.completedDate || null,
+    p_install_project_no: merged.installProjectNo || '',
+    p_sf_opportunity_no: merged.sfOpportunityNo || '',
+    p_documents: Array.isArray(merged.documents) ? merged.documents.join(',') : (merged.documents || ''),
+    p_budget_value: Number(merged.budgetValue || 0),
+    p_client_contact_name: merged.clientContactName || '',
+    p_client_contact_email: merged.clientContactEmail || '',
+    p_client_contact_phone: merged.clientContactPhone || '',
+    p_color: merged.color || '',
+    p_notes: merged.notes || '',
+    p_is_urgent: Boolean(merged.isUrgent),
+    p_updated_by: userId,
+    p_expected_version: currentVersion !== undefined ? currentVersion : (current.version || 1),
+    p_priority_id: merged.priorityId || null,
+    p_risk_id: merged.riskId || null,
+    p_category_ids: effectiveCategories,
+    p_teams_involved_ids: effectiveTeams,
+    p_partners_ids: effectivePartners
+  });
 
-      if (!error) {
-        rpcSuccess = true;
-      } else if (error.code === 'P0001' || error.message?.includes('concurrency') || error.message?.includes('conflict') || error.message?.includes('Concurrency')) {
-        const err = new Error('Conflito de concorrência.');
-        (err as any).code = 'concurrency';
-        (err as any).currentVersion = current.version;
-        throw err;
-      }
-    } catch (err: any) {
-      if (err?.code === 'concurrency' || err?.message?.includes('Conflito de concorrência') || err?.message?.includes('Concurrency')) {
-        throw err;
-      }
-      rpcSuccess = false;
-    }
-  }
-
-  // Fallback sequential update for non-RPC or Mock environments
-  if (!rpcSuccess) {
-    const now = new Date().toISOString();
-    const docString = Array.isArray(merged.documents) ? merged.documents.join(',') : (merged.documents || '');
-    const nextVersion = (current.version || 1) + 1;
-
-    const updatePayload: Record<string, any> = {
-      demo: Boolean(merged.demo),
-      client_id: merged.clientId?.trim() || null,
-      project_title: merged.title,
-      project_description: merged.description || '',
-      status_id: merged.statusId || null,
-      category_id: effectiveCategories[0] || null,
-      project_manager_id: merged.projectManagerId?.trim() || null,
-      field_manager_id: merged.fieldManagerId?.trim() || null,
-      sales_rep_id: merged.salesRepId?.trim() || null,
-      start_date: merged.startDate || null,
-      delivery_date: merged.deliveryDate || null,
-      estimated_date: merged.estimatedDate || null,
-      scheduled_date: merged.scheduledDate || null,
-      completed_date: merged.completedDate || null,
-      budget_value: Number(merged.budgetValue || 0),
-      documents: docString,
-      client_contact_name: merged.clientContactName || '',
-      client_contact_email: merged.clientContactEmail || '',
-      client_contact_phone: merged.clientContactPhone || '',
-      color: merged.color || '',
-      notes: merged.notes || '',
-      is_urgent: Boolean(merged.isUrgent),
-      version: nextVersion,
-      updated_by: userId,
-      updated_at: now,
-    };
-
-    let updateQuery = client.from('projects').update(updatePayload).eq('id', id);
-    if (current.version !== undefined) {
-      updateQuery = updateQuery.eq('version', current.version);
-    }
-
-    const { data: updatedRows, error: updateError } = await updateQuery.select('id');
-    if (updateError) throw updateError;
-
-    if (current.version !== undefined && (!updatedRows || updatedRows.length === 0)) {
+  if (error) {
+    if (error.code === 'P0001' || error.message?.includes('concurrency') || error.message?.includes('conflict') || error.message?.includes('Concurrency')) {
       const err = new Error('Conflito de concorrência.');
       (err as any).code = 'concurrency';
       (err as any).currentVersion = current.version;
       throw err;
     }
-
-    if (input.teamsInvolvedIds !== undefined || input.teamIds !== undefined) {
-      const { error: delTeamsErr } = await client.from('project_teams_link').delete().eq('project_id', id);
-      if (delTeamsErr) throw delTeamsErr;
-      if (effectiveTeams.length > 0) {
-        const { error: insTeamsErr } = await client.from('project_teams_link').insert(effectiveTeams.map((t: string) => ({ project_id: id, team_id: t })));
-        if (insTeamsErr) throw insTeamsErr;
-      }
-    }
-
-    if (input.partnersIds !== undefined || input.partnerIds !== undefined) {
-      const { error: delPartnersErr } = await client.from('project_partners_link').delete().eq('project_id', id);
-      if (delPartnersErr) throw delPartnersErr;
-      if (effectivePartners.length > 0) {
-        const { error: insPartnersErr } = await client.from('project_partners_link').insert(effectivePartners.map((p: string) => ({ project_id: id, partner_id: p })));
-        if (insPartnersErr) throw insPartnersErr;
-      }
-    }
-
-    if (input.categoryIds !== undefined || input.categoryId !== undefined) {
-      const { error: delCatsErr } = await client.from('project_category_link').delete().eq('project_id', id);
-      if (delCatsErr) throw delCatsErr;
-      if (effectiveCategories.length > 0) {
-        const { error: insCatsErr } = await client.from('project_category_link').insert(effectiveCategories.map((c: string) => ({ project_id: id, category_id: c })));
-        if (insCatsErr) throw insCatsErr;
-      }
-    }
-
-    if (input.priorityId !== undefined) {
-      const { error: delPrioErr } = await client.from('project_priority_link').delete().eq('project_id', id);
-      if (delPrioErr) throw delPrioErr;
-      if (merged.priorityId) {
-        const { error: insPrioErr } = await client.from('project_priority_link').insert([{ project_id: id, priority_id: merged.priorityId }]);
-        if (insPrioErr) throw insPrioErr;
-      }
-    }
-
-    if (input.riskId !== undefined) {
-      const { error: delRiskErr } = await client.from('project_risk_link').delete().eq('project_id', id);
-      if (delRiskErr) throw delRiskErr;
-      if (merged.riskId) {
-        const { error: insRiskErr } = await client.from('project_risk_link').insert([{ project_id: id, risk_id: merged.riskId }]);
-        if (insRiskErr) throw insRiskErr;
-      }
-    }
+    throw error;
   }
 
   const project = await getProject(client, id);

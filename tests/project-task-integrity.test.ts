@@ -217,6 +217,95 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
     serverDbSpy = spyOn(serverDbModule, 'getServerDbClient').mockImplementation(async () => {
       return {
         from: (table: string) => buildMockQuery(table),
+        rpc: async (fn: string, args: any) => {
+          if (fn === 'create_project_transaction') {
+            if (mockTableErrors['projects']) return { error: { message: mockTableErrors['projects'] } };
+            if (mockTableErrors['project_teams_link'] && args.p_teams_involved_ids?.length > 0) return { error: { message: 'equipas: ' + mockTableErrors['project_teams_link'] } };
+            if (mockTableErrors['project_partners_link'] && args.p_partners_ids?.length > 0) return { error: { message: 'parceiros: ' + mockTableErrors['project_partners_link'] } };
+            if (mockTableErrors['project_category_link'] && args.p_category_ids?.length > 0) return { error: { message: 'categorias: ' + mockTableErrors['project_category_link'] } };
+
+            const newProj = {
+              id: args.p_id,
+              demo: args.p_demo,
+              client_id: args.p_client_id,
+              project_title: args.p_project_title,
+              project_description: args.p_project_description,
+              status_id: args.p_status_id,
+              category_id: args.p_category_ids?.[0] || null,
+              project_manager_id: args.p_project_manager_id,
+              field_manager_id: args.p_field_manager_id,
+              sales_rep_id: args.p_sales_rep_id,
+              start_date: args.p_start_date,
+              delivery_date: args.p_delivery_date,
+              estimated_date: args.p_estimated_date,
+              scheduled_date: args.p_scheduled_date,
+              install_project_no: args.p_install_project_no,
+              sf_opportunity_no: args.p_sf_opportunity_no,
+              documents: args.p_documents,
+              budget_value: args.p_budget_value,
+              client_contact_name: args.p_client_contact_name,
+              client_contact_email: args.p_client_contact_email,
+              client_contact_phone: args.p_client_contact_phone,
+              color: args.p_color,
+              notes: args.p_notes,
+              created_by: args.p_created_by,
+              is_urgent: args.p_is_urgent,
+              deleted: false,
+              version: 1,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            mockDbData.projects.push(newProj);
+            if (args.p_priority_id) mockDbData.project_priority_link.push({ project_id: args.p_id, priority_id: args.p_priority_id });
+            if (args.p_risk_id) mockDbData.project_risk_link.push({ project_id: args.p_id, risk_id: args.p_risk_id });
+            (args.p_category_ids || []).forEach((c: string) => mockDbData.project_category_link.push({ project_id: args.p_id, category_id: c }));
+            (args.p_teams_involved_ids || []).forEach((t: string) => mockDbData.project_teams_link.push({ project_id: args.p_id, team_id: t }));
+            (args.p_partners_ids || []).forEach((p: string) => mockDbData.project_partners_link.push({ project_id: args.p_id, partner_id: p }));
+            return { data: args.p_id, error: null };
+          }
+          if (fn === 'update_project_transaction') {
+            if (onBeforeUpdateProjectsHook) onBeforeUpdateProjectsHook();
+            const proj = mockDbData.projects.find((p: any) => p.id === args.p_id);
+            if (!proj) return { error: { message: 'Project not found' } };
+            if (args.p_expected_version !== undefined && proj.version !== args.p_expected_version) {
+              return { error: { code: 'P0001', message: `Concurrency conflict: current version is ${proj.version}, expected ${args.p_expected_version}` } };
+            }
+            if (mockTableErrors['project_teams_link'] && args.p_teams_involved_ids?.length > 0) return { error: { message: 'equipas: ' + mockTableErrors['project_teams_link'] } };
+            if (mockTableErrors['project_partners_link'] && args.p_partners_ids?.length > 0) return { error: { message: 'parceiros: ' + mockTableErrors['project_partners_link'] } };
+            if (mockTableErrors['project_category_link'] && args.p_category_ids?.length > 0) return { error: { message: 'categorias: ' + mockTableErrors['project_category_link'] } };
+
+            proj.version = (proj.version || 1) + 1;
+            proj.project_title = args.p_project_title;
+            proj.project_description = args.p_project_description;
+            proj.client_id = args.p_client_id;
+            proj.status_id = args.p_status_id;
+            proj.category_id = args.p_category_ids?.[0] || null;
+            proj.updated_at = new Date().toISOString();
+
+            if (args.p_priority_id !== undefined) {
+              mockDbData.project_priority_link = mockDbData.project_priority_link.filter((l: any) => l.project_id !== args.p_id);
+              if (args.p_priority_id) mockDbData.project_priority_link.push({ project_id: args.p_id, priority_id: args.p_priority_id });
+            }
+            if (args.p_risk_id !== undefined) {
+              mockDbData.project_risk_link = mockDbData.project_risk_link.filter((l: any) => l.project_id !== args.p_id);
+              if (args.p_risk_id) mockDbData.project_risk_link.push({ project_id: args.p_id, risk_id: args.p_risk_id });
+            }
+            if (args.p_category_ids !== undefined) {
+              mockDbData.project_category_link = mockDbData.project_category_link.filter((l: any) => l.project_id !== args.p_id);
+              args.p_category_ids.forEach((c: string) => mockDbData.project_category_link.push({ project_id: args.p_id, category_id: c }));
+            }
+            if (args.p_teams_involved_ids !== undefined) {
+              mockDbData.project_teams_link = mockDbData.project_teams_link.filter((l: any) => l.project_id !== args.p_id);
+              args.p_teams_involved_ids.forEach((t: string) => mockDbData.project_teams_link.push({ project_id: args.p_id, team_id: t }));
+            }
+            if (args.p_partners_ids !== undefined) {
+              mockDbData.project_partners_link = mockDbData.project_partners_link.filter((l: any) => l.project_id !== args.p_id);
+              args.p_partners_ids.forEach((p: string) => mockDbData.project_partners_link.push({ project_id: args.p_id, partner_id: p }));
+            }
+            return { data: proj.version, error: null };
+          }
+          return { data: null, error: { message: `Unknown RPC function ${fn}` } };
+        },
       } as any;
     });
   });

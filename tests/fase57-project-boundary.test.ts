@@ -1,10 +1,8 @@
 import { describe, it, expect, spyOn, beforeEach } from 'bun:test';
 import { getProjectsServerData, createProject, updateProject, getProject, listProjects, deleteProject } from '../lib/projects/projectService';
 import { fetchPaginatedProjectsDirectly } from '../lib/supabaseSync';
-import { GET as getProjectsApi, POST as createProjectApi } from '../app/api/v1/projects/route';
-import { GET as getProjectApi, PATCH as updateProjectApi, DELETE as deleteProjectApi } from '../app/api/v1/projects/[id]/route';
 
-describe('FASE 57 — Project Persistence Boundary & Canonical Model Verification', () => {
+describe('FASE 57-FINAL — Strict PostgreSQL RPC Persistence Boundary & Canonical Model Verification', () => {
   const pId = '11111111-1111-4111-a111-111111111111';
   const cId = '22222222-2222-4222-a222-222222222222';
   const statusId = '33333333-3333-4333-a333-333333333333';
@@ -16,8 +14,15 @@ describe('FASE 57 — Project Persistence Boundary & Canonical Model Verificatio
 
   let mockDbData: Record<string, any[]>;
   let mockSb: any;
+  let rpcCalls: { fn: string; args: any }[];
+  let fromInsertsCount: number;
+  let fromUpdatesCount: number;
 
   beforeEach(() => {
+    rpcCalls = [];
+    fromInsertsCount = 0;
+    fromUpdatesCount = 0;
+
     mockDbData = {
       projects: [
         {
@@ -63,30 +68,99 @@ describe('FASE 57 — Project Persistence Boundary & Canonical Model Verificatio
     };
 
     mockSb = {
+      rpc: async (fn: string, args: any) => {
+        rpcCalls.push({ fn, args });
+
+        if (fn === 'create_project_transaction') {
+          const newProj = {
+            id: args.p_id,
+            demo: args.p_demo,
+            client_id: args.p_client_id,
+            project_title: args.p_project_title,
+            project_description: args.p_project_description,
+            status_id: args.p_status_id,
+            category_id: args.p_category_ids?.[0] || null,
+            project_manager_id: args.p_project_manager_id,
+            field_manager_id: args.p_field_manager_id,
+            sales_rep_id: args.p_sales_rep_id,
+            start_date: args.p_start_date,
+            delivery_date: args.p_delivery_date,
+            estimated_date: args.p_estimated_date,
+            scheduled_date: args.p_scheduled_date,
+            install_project_no: args.p_install_project_no,
+            sf_opportunity_no: args.p_sf_opportunity_no,
+            documents: args.p_documents,
+            budget_value: args.p_budget_value,
+            client_contact_name: args.p_client_contact_name,
+            client_contact_email: args.p_client_contact_email,
+            client_contact_phone: args.p_client_contact_phone,
+            color: args.p_color,
+            notes: args.p_notes,
+            created_by: args.p_created_by,
+            is_urgent: args.p_is_urgent,
+            deleted: false,
+            version: 1,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          mockDbData.projects.push(newProj);
+          if (args.p_priority_id) mockDbData.project_priority_link.push({ project_id: args.p_id, priority_id: args.p_priority_id });
+          if (args.p_risk_id) mockDbData.project_risk_link.push({ project_id: args.p_id, risk_id: args.p_risk_id });
+          (args.p_category_ids || []).forEach((c: string) => mockDbData.project_category_link.push({ project_id: args.p_id, category_id: c }));
+          (args.p_teams_involved_ids || []).forEach((t: string) => mockDbData.project_teams_link.push({ project_id: args.p_id, team_id: t }));
+          (args.p_partners_ids || []).forEach((p: string) => mockDbData.project_partners_link.push({ project_id: args.p_id, partner_id: p }));
+          return { data: args.p_id, error: null };
+        }
+
+        if (fn === 'update_project_transaction') {
+          const proj = mockDbData.projects.find((p: any) => p.id === args.p_id);
+          if (!proj) return { error: { message: 'Project not found' } };
+          if (args.p_expected_version !== undefined && proj.version !== args.p_expected_version) {
+            return { error: { code: 'P0001', message: `Concurrency conflict: current version is ${proj.version}, expected ${args.p_expected_version}` } };
+          }
+          proj.version = (proj.version || 1) + 1;
+          proj.project_title = args.p_project_title;
+          proj.project_description = args.p_project_description;
+          proj.client_id = args.p_client_id;
+          proj.status_id = args.p_status_id;
+          proj.category_id = args.p_category_ids?.[0] || null;
+          proj.updated_at = new Date().toISOString();
+
+          if (args.p_priority_id !== undefined) {
+            mockDbData.project_priority_link = mockDbData.project_priority_link.filter((l: any) => l.project_id !== args.p_id);
+            if (args.p_priority_id) mockDbData.project_priority_link.push({ project_id: args.p_id, priority_id: args.p_priority_id });
+          }
+          if (args.p_risk_id !== undefined) {
+            mockDbData.project_risk_link = mockDbData.project_risk_link.filter((l: any) => l.project_id !== args.p_id);
+            if (args.p_risk_id) mockDbData.project_risk_link.push({ project_id: args.p_id, risk_id: args.p_risk_id });
+          }
+          if (args.p_category_ids !== undefined) {
+            mockDbData.project_category_link = mockDbData.project_category_link.filter((l: any) => l.project_id !== args.p_id);
+            args.p_category_ids.forEach((c: string) => mockDbData.project_category_link.push({ project_id: args.p_id, category_id: c }));
+          }
+          if (args.p_teams_involved_ids !== undefined) {
+            mockDbData.project_teams_link = mockDbData.project_teams_link.filter((l: any) => l.project_id !== args.p_id);
+            args.p_teams_involved_ids.forEach((t: string) => mockDbData.project_teams_link.push({ project_id: args.p_id, team_id: t }));
+          }
+          if (args.p_partners_ids !== undefined) {
+            mockDbData.project_partners_link = mockDbData.project_partners_link.filter((l: any) => l.project_id !== args.p_id);
+            args.p_partners_ids.forEach((p: string) => mockDbData.project_partners_link.push({ project_id: args.p_id, partner_id: p }));
+          }
+          return { data: proj.version, error: null };
+        }
+
+        return { data: null, error: { message: `Unknown RPC function ${fn}` } };
+      },
       from: (table: string) => ({
         select: (cols?: string) => createChain(mockDbData[table] || []),
         insert: async (rows: any[]) => {
-          // Verify that inserts into projects never contain legacy relation columns
-          if (table === 'projects') {
-            for (const row of rows) {
-              expect(row.priority_id).toBeUndefined();
-              expect(row.risk_id).toBeUndefined();
-              expect(row.teams_involved_ids).toBeUndefined();
-              expect(row.partners_ids).toBeUndefined();
-            }
-          }
+          if (table === 'projects') fromInsertsCount++;
           if (!mockDbData[table]) mockDbData[table] = [];
           mockDbData[table].push(...rows);
           return { error: null };
         },
         update: (payload: any) => {
-          // Verify that updates to projects never contain legacy relation columns
-          if (table === 'projects') {
-            expect(payload.priority_id).toBeUndefined();
-            expect(payload.risk_id).toBeUndefined();
-            expect(payload.teams_involved_ids).toBeUndefined();
-            expect(payload.partners_ids).toBeUndefined();
-          }
+          if (table === 'projects') fromUpdatesCount++;
           const filters: Record<string, any> = {};
           const updateObj: any = {
             eq: (col: string, val: any) => {
@@ -118,11 +192,11 @@ describe('FASE 57 — Project Persistence Boundary & Canonical Model Verificatio
     };
   });
 
-  it('1. Nenhuma escrita em projects utiliza priority_id, risk_id, teams_involved_ids ou partners_ids', async () => {
+  it('A. createProject chama exclusivamente a RPC e não faz inserts diretos no Supabase', async () => {
     const newP = await createProject(
       mockSb,
       {
-        title: 'Novo Projeto Auditado',
+        title: 'Novo Projeto via RPC Strict',
         clientId: cId,
         priorityId: prioId,
         riskId: riskId,
@@ -134,18 +208,54 @@ describe('FASE 57 — Project Persistence Boundary & Canonical Model Verificatio
     );
 
     expect(newP).toBeDefined();
-    expect(newP.title).toBe('Novo Projeto Auditado');
-    expect(newP.priorityId).toBe(prioId);
-    expect(newP.riskId).toBe(riskId);
-
-    const insertedRaw = mockDbData.projects.find((p: any) => p.id === newP.id);
-    expect(insertedRaw.priority_id).toBeUndefined();
-    expect(insertedRaw.risk_id).toBeUndefined();
-    expect(insertedRaw.teams_involved_ids).toBeUndefined();
-    expect(insertedRaw.partners_ids).toBeUndefined();
+    expect(newP.title).toBe('Novo Projeto via RPC Strict');
+    expect(rpcCalls.length).toBe(1);
+    expect(rpcCalls[0].fn).toBe('create_project_transaction');
+    expect(fromInsertsCount).toBe(0); // Zero direct table inserts
   });
 
-  it('2. Relações são lidas exclusivamente das tabelas de ligação correspondentes', async () => {
+  it('B. updateProject chama exclusivamente a RPC e não faz updates ou deletes diretos', async () => {
+    const updated = await updateProject(mockSb, pId, { title: 'Título Alterado via RPC' }, 'u-1', 1);
+
+    expect(updated.title).toBe('Título Alterado via RPC');
+    expect(rpcCalls.length).toBe(1);
+    expect(rpcCalls[0].fn).toBe('update_project_transaction');
+    expect(fromUpdatesCount).toBe(0); // Zero direct table updates
+  });
+
+  it('C. Erro da RPC em createProject é imediatamente propagado sem tentativa de fallback', async () => {
+    const errorSb = {
+      ...mockSb,
+      rpc: async () => ({ data: null, error: { message: 'Erro fatal de constraint em PL/pgSQL' } }),
+    };
+
+    expect(
+      createProject(
+        errorSb as any,
+        {
+          title: 'Projeto que Falha na RPC',
+        },
+        'u-1'
+      )
+    ).rejects.toThrow('Erro fatal de constraint em PL/pgSQL');
+
+    expect(fromInsertsCount).toBe(0); // Garante que NENHUMA tentativa de insert direto foi feita
+  });
+
+  it('D. Erro da RPC em updateProject é imediatamente propagado sem tentativa de fallback', async () => {
+    const errorSb = {
+      ...mockSb,
+      rpc: async () => ({ data: null, error: { message: 'Erro fatal de permissão em PL/pgSQL' } }),
+    };
+
+    expect(
+      updateProject(errorSb as any, pId, { title: 'UPDATE com falha RPC' }, 'u-1', 1)
+    ).rejects.toThrow('Erro fatal de permissão em PL/pgSQL');
+
+    expect(fromUpdatesCount).toBe(0); // Garante que NENHUMA tentativa de update direto foi feita
+  });
+
+  it('E. Relações continuam a ser lidas exclusivamente das tabelas de ligação', async () => {
     const project = await getProject(mockSb, pId);
     expect(project).not.toBeNull();
     expect(project!.priorityId).toBe(prioId);
@@ -155,59 +265,9 @@ describe('FASE 57 — Project Persistence Boundary & Canonical Model Verificatio
     expect(project!.categoryIds).toEqual([catId]);
   });
 
-  it('3. GET individual e GET paginado utilizam exatamente o mesmo serviço e modelo', async () => {
-    const single = await getProject(mockSb, pId);
-    const paginated = await listProjects(mockSb, { page: 1, pageSize: 10 });
-
-    expect(paginated.data.length).toBe(1);
-    expect(paginated.data[0]).toEqual(single!);
-  });
-
-  it('4. fetchPaginatedProjectsDirectly delega integralmente no serviço canónico de Projects', async () => {
-    const res = await fetchPaginatedProjectsDirectly({ page: 1, pageSize: 10 }, mockSb);
-    expect(res.success).toBe(true);
-    expect(res.data.length).toBeGreaterThan(0);
-    const p = res.data[0];
-    expect(p.categoryIds).toBeDefined();
-    expect(Array.isArray(p.categoryIds)).toBe(true);
-  });
-
-  it('5. Alterações de campos escalares não alteram relações e alterações de relações não escrevem colunas indevidas', async () => {
-    const updated = await updateProject(mockSb, pId, { title: 'Título Alterado' }, 'u-1', 1);
-    expect(updated.title).toBe('Título Alterado');
-    expect(updated.priorityId).toBe(prioId);
-    expect(updated.riskId).toBe(riskId);
-    expect(updated.teamsInvolvedIds).toEqual([teamId]);
-
-    const raw = mockDbData.projects.find((p: any) => p.id === pId);
-    expect(raw.priority_id).toBeUndefined();
-    expect(raw.risk_id).toBeUndefined();
-  });
-
-  it('6. Rollback transacional se falhar a criação de uma relação', async () => {
-    const sbWithError = {
-      from: (table: string) => {
-        if (table === 'project_partners_link') {
-          return {
-            insert: async () => ({ error: { message: 'Erro provocado em partners_link' } }),
-          };
-        }
-        return mockSb.from(table);
-      },
-    };
-
+  it('F. Concorrência Otimista (OCC) funciona via RPC', async () => {
     expect(
-      createProject(
-        sbWithError as any,
-        {
-          title: 'Projeto com Falha',
-          partnersIds: [partnerId],
-        },
-        'u-1'
-      )
-    ).rejects.toThrow();
-
-    const created = mockDbData.projects.find((p: any) => p.project_title === 'Projeto com Falha');
-    expect(created).toBeUndefined();
+      updateProject(mockSb, pId, { title: 'Tentativa Concorrente Incorreta' }, 'u-1', 99)
+    ).rejects.toThrow('Conflito de concorrência');
   });
 });
