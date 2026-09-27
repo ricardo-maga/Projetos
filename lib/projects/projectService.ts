@@ -76,7 +76,7 @@ export async function getProjectsServerData(
 
   // 2. Status Group Filter
   if (options.statusGroup && options.statusGroup !== 'all') {
-    const { data: statusesData } = await client.from('project_statuses').select('id, scale, name');
+    const { data: statusesData } = await client.from('project_status').select('id, scale, name');
     if (statusesData) {
       const matchingStatusIds = statusesData
         .filter((st: any) => {
@@ -146,16 +146,11 @@ export async function getProjectsServerData(
 
   // 5. Fetch link relation tables in parallel
   const fetchLinkData = async (tableName: string, colName: string) => {
-    try {
-      const res = await client.from(tableName).select(`project_id, ${colName}`).in('project_id', projectIds);
-      if (res.error) {
-        console.warn(`Link table ${tableName} query notice:`, res.error.message);
-        return [];
-      }
-      return res.data || [];
-    } catch {
-      return [];
+    const res = await client.from(tableName).select(`project_id, ${colName}`).in('project_id', projectIds);
+    if (res.error) {
+      throw res.error;
     }
+    return res.data || [];
   };
 
   const [teamsRes, partnersRes, categoriesRes, priorityRes, riskRes] = await Promise.all([
@@ -260,7 +255,7 @@ export async function getProjectsServerData(
       updatedAt: row.updated_at || row.updatedAt || '',
       createdBy: row.created_by || row.createdBy || '',
       updatedBy: row.updated_by || row.updatedBy || '',
-      version: row.version !== undefined && row.version !== null ? Number(row.version) : 1,
+      version: row.version !== undefined && row.version !== null ? Number(row.version) : row.version,
     } as any;
   });
 
