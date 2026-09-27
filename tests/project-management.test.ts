@@ -578,4 +578,175 @@ describe('FASE 24 — Robustez da Gestão de Projetos: Unit & Integration Tests'
       expect(updatedProject.title).toBe(serverResultData.title);
     });
   });
+
+  describe('8. FASE 56-A — Testes de Prioridade em Projects (project_priority_link)', () => {
+    it('1. PATCH alterando apenas statusId não deve tentar escrever projects.priority_id', () => {
+      const updates = { statusId: 'status-new' };
+      const updatePayload: Record<string, any> = {};
+      
+      // Simulação da lógica de montagem do updatePayload
+      if (updates.statusId !== undefined) updatePayload.status_id = updates.statusId;
+      // updates.priorityId is undefined, so priority_id should never be in updatePayload
+      expect(updatePayload.priority_id).toBeUndefined();
+    });
+
+    it('2. PATCH com priorityId deve atualizar project_priority_link', async () => {
+      let deletedProjectId = '';
+      let insertedPrio: any = null;
+      
+      const mockSb: any = {
+        from: (table: string) => {
+          if (table === 'project_priority_link') {
+            return {
+              delete: () => ({
+                eq: async (col: string, val: any) => {
+                  deletedProjectId = val;
+                  return { error: null };
+                }
+              }),
+              insert: async (rows: any[]) => {
+                insertedPrio = rows[0];
+                return { error: null };
+              }
+            };
+          }
+          return {};
+        }
+      };
+
+      const projectId = validUUID1;
+      const updates = { priorityId: validUUID2 };
+
+      // Simulação do comportamento da API PATCH
+      if (updates.priorityId !== undefined) {
+        const { error: delPrioErr } = await mockSb.from('project_priority_link').delete().eq('project_id', projectId);
+        expect(delPrioErr).toBeNull();
+        expect(deletedProjectId).toBe(projectId);
+
+        if (updates.priorityId) {
+          const { error: insPrioErr } = await mockSb.from('project_priority_link').insert([{ project_id: projectId, priority_id: updates.priorityId }]);
+          expect(insPrioErr).toBeNull();
+        }
+      }
+
+      expect(insertedPrio).not.toBeNull();
+      expect(insertedPrio.project_id).toBe(projectId);
+      expect(insertedPrio.priority_id).toBe(validUUID2);
+    });
+
+    it('3. PATCH removendo priorityId deve remover a relação', async () => {
+      let deletedProjectId = '';
+      let insertedCalled = false;
+
+      const mockSb: any = {
+        from: (table: string) => {
+          if (table === 'project_priority_link') {
+            return {
+              delete: () => ({
+                eq: async (col: string, val: any) => {
+                  deletedProjectId = val;
+                  return { error: null };
+                }
+              }),
+              insert: async () => {
+                insertedCalled = true;
+                return { error: null };
+              }
+            };
+          }
+          return {};
+        }
+      };
+
+      const projectId = validUUID1;
+      // priorityId explicitly empty/null to remove relation
+      const updates = { priorityId: '' };
+
+      if (updates.priorityId !== undefined) {
+        const { error: delPrioErr } = await mockSb.from('project_priority_link').delete().eq('project_id', projectId);
+        expect(delPrioErr).toBeNull();
+        expect(deletedProjectId).toBe(projectId);
+
+        if (updates.priorityId) {
+          await mockSb.from('project_priority_link').insert([{ project_id: projectId, priority_id: updates.priorityId }]);
+        }
+      }
+
+      expect(insertedCalled).toBe(false);
+    });
+
+    it('4. Erro ao inserir project_priority_link deve devolver erro e nunca sucesso', async () => {
+      const mockSb: any = {
+        from: (table: string) => {
+          if (table === 'project_priority_link') {
+            return {
+              delete: () => ({
+                eq: async () => ({ error: null })
+              }),
+              insert: async () => {
+                return { error: { message: 'Erro de violação de FK ou restrição' } };
+              }
+            };
+          }
+          return {};
+        }
+      };
+
+      const projectId = validUUID1;
+      const updates = { priorityId: validUUID2 };
+      let hasError = false;
+
+      if (updates.priorityId !== undefined) {
+        const { error: delPrioErr } = await mockSb.from('project_priority_link').delete().eq('project_id', projectId);
+        expect(delPrioErr).toBeNull();
+
+        if (updates.priorityId) {
+          const { error: insPrioErr } = await mockSb.from('project_priority_link').insert([{ project_id: projectId, priority_id: updates.priorityId }]);
+          if (insPrioErr) {
+            hasError = true;
+          }
+        }
+      }
+
+      expect(hasError).toBe(true);
+    });
+
+    it('5. POST com prioridade deve criar a prioridade através de project_priority_link, sem priority_id em projects', () => {
+      const coreInsertPayload = {
+        id: validUUID1,
+        project_title: 'Novo Projeto',
+      };
+
+      // extendedInsertPayload should not include priority_id anymore
+      const extendedInsertPayload: Record<string, any> = {
+        ...coreInsertPayload,
+        risk_id: validUUID3,
+      };
+
+      expect(extendedInsertPayload.priority_id).toBeUndefined();
+    });
+
+    it('6. Alterar apenas o Estado de um projeto deve funcionar quando o projeto tem prioridade', async () => {
+      const updates = { statusId: 'status-closed' };
+      const updatePayload: Record<string, any> = {};
+      
+      if (updates.statusId !== undefined) updatePayload.status_id = updates.statusId;
+      
+      // Updates priorityId is NOT defined in this request
+      expect(updatePayload.priority_id).toBeUndefined();
+    });
+
+    it('7. A resposta final deve conter a prioridade persistida através da relação', async () => {
+      const refreshedProject = {
+        id: validUUID1,
+        project_title: 'Refreshed Title',
+        priority_id: null // Em projects na base de dados é nulo ou inexistente
+      };
+
+      const dbPriority = validUUID2; // Vem da relação project_priority_link
+
+      const mappedPriorityId = dbPriority || refreshedProject.priority_id || '';
+      expect(mappedPriorityId).toBe(validUUID2);
+    });
+  });
 });

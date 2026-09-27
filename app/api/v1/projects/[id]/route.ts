@@ -224,7 +224,6 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     if (updates.sfOpportunityNo !== undefined) updatePayload.sf_opportunity_no = updates.sfOpportunityNo;
     if (updates.statusId !== undefined) updatePayload.status_id = validation.resolvedStatusId || updates.statusId;
     if (updates.categoryId !== undefined) updatePayload.category_id = validation.resolvedCategoryId || updates.categoryId;
-    if (updates.priorityId !== undefined) updatePayload.priority_id = validation.resolvedPriorityId || updates.priorityId;
     if (updates.riskId !== undefined) updatePayload.risk_id = updates.riskId;
     if (updates.projectManagerId !== undefined) updatePayload.project_manager_id = updates.projectManagerId ? updates.projectManagerId.trim() : null;
     if (updates.fieldManagerId !== undefined) updatePayload.field_manager_id = updates.fieldManagerId ? updates.fieldManagerId.trim() : null;

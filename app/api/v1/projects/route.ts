@@ -154,7 +154,6 @@ export async function POST(req: NextRequest) {
     const extendedInsertPayload: Record<string, any> = {
       ...coreInsertPayload,
       category_ids: effectiveCategories.length > 0 ? effectiveCategories.join(',') : null,
-      priority_id: finalPriorityId || null,
       risk_id: finalRiskId || null,
       teams_involved_ids: effectiveTeams.length > 0 ? effectiveTeams.join(',') : null,
       partners_ids: effectivePartners.length > 0 ? effectivePartners.join(',') : null,
