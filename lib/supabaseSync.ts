@@ -13,6 +13,20 @@ export interface SupabaseBackup {
 const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
 /**
+ * Safely parses string array fields (e.g. documents, categoryIds, teamsInvolvedIds, partnersIds, groupIds)
+ * from both string (comma-separated), string[] arrays, or null/undefined.
+ */
+export function parseStringArray(val: any): string[] {
+  if (Array.isArray(val)) {
+    return val.map(String).map((s) => s.trim()).filter(Boolean);
+  }
+  if (typeof val === 'string') {
+    return val.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+/**
  * Formats and handles Supabase errors, translating network/connection timeouts into user-friendly messages
  */
 export function formatSupabaseError(error: any): string {
@@ -572,14 +586,14 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       footerCopyrightText: configRow.footer_copyright_text || configRow.footer_text || '',
       logoImagePath: configRow.logo_image_path || configRow.logo_url || '',
       theme: configRow.theme_name || 'default',
-      salesRepGroupId: configRow.sales_rep_group_id || '',
-      projManagerGroupId: configRow.proj_manager_group_id || '',
-      fieldManagerGroupId: configRow.field_manager_group_id || '',
-      salesRepGroupIds: configRow.sales_rep_group_id ? configRow.sales_rep_group_id.split(',').filter(Boolean) : [],
-      projManagerGroupIds: configRow.proj_manager_group_id ? configRow.proj_manager_group_id.split(',').filter(Boolean) : [],
-      fieldManagerGroupIds: configRow.field_manager_group_id ? configRow.field_manager_group_id.split(',').filter(Boolean) : [],
-      taskAssigneeGroupIds: configRow.task_assignee_group_id ? configRow.task_assignee_group_id.split(',').filter(Boolean) : [],
-      taskAssigneeGroupId: configRow.task_assignee_group_id || '',
+      salesRepGroupId: configRow.sales_rep_group_id || configRow.salesRepGroupId || '',
+      projManagerGroupId: configRow.proj_manager_group_id || configRow.projManagerGroupId || '',
+      fieldManagerGroupId: configRow.field_manager_group_id || configRow.fieldManagerGroupId || '',
+      salesRepGroupIds: parseStringArray(configRow.salesRepGroupIds ?? configRow.sales_rep_group_id),
+      projManagerGroupIds: parseStringArray(configRow.projManagerGroupIds ?? configRow.proj_manager_group_id),
+      fieldManagerGroupIds: parseStringArray(configRow.fieldManagerGroupIds ?? configRow.field_manager_group_id),
+      taskAssigneeGroupIds: parseStringArray(configRow.taskAssigneeGroupIds ?? configRow.task_assignee_group_id),
+      taskAssigneeGroupId: configRow.task_assignee_group_id || configRow.taskAssigneeGroupId || '',
     } : {
       appName: 'Gestão de Projetos Planeamento',
       appDescription: 'Plataforma integrada de planeamento, orçamentação e gestão de projetos.',
@@ -601,49 +615,68 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     // Map database structures to React types
     let projects: Project[] = (projectsData || []).map((p: any) => {
       const catIdsFromLink = categoriesMap[p.id] || [];
-      const catIdsFromCol = p.category_ids ? (typeof p.category_ids === 'string' ? p.category_ids.split(',').filter(Boolean) : p.category_ids) : (p.category_id ? [p.category_id] : []);
+      const catIdsFromCol = [
+        ...parseStringArray(p.categoryIds),
+        ...parseStringArray(p.category_ids),
+        ...(p.categoryId ? [String(p.categoryId)] : []),
+        ...(p.category_id ? [String(p.category_id)] : []),
+      ];
       const finalCatIds = Array.from(new Set([...catIdsFromLink, ...catIdsFromCol]));
 
       const teamsFromLink = teamsMap[p.id] || [];
-      const teamsFromCol = p.teams_involved_ids ? (typeof p.teams_involved_ids === 'string' ? p.teams_involved_ids.split(',').filter(Boolean) : p.teams_involved_ids) : (p.teams_ids ? (typeof p.teams_ids === 'string' ? p.teams_ids.split(',').filter(Boolean) : p.teams_ids) : []);
+      const teamsFromCol = [
+        ...parseStringArray(p.teamsInvolvedIds),
+        ...parseStringArray(p.teams_involved_ids),
+        ...parseStringArray(p.teams_ids),
+      ];
       const finalTeamIds = Array.from(new Set([...teamsFromLink, ...teamsFromCol]));
 
       const partnersFromLink = partnersMap[p.id] || [];
-      const partnersFromCol = p.partners_ids ? (typeof p.partners_ids === 'string' ? p.partners_ids.split(',').filter(Boolean) : p.partners_ids) : [];
+      const partnersFromCol = [
+        ...parseStringArray(p.partnersIds),
+        ...parseStringArray(p.partners_ids),
+      ];
       const finalPartnerIds = Array.from(new Set([...partnersFromLink, ...partnersFromCol]));
+
+      let versionVal: number | null | undefined = p.version;
+      if (typeof p.version === 'string' && p.version.trim() !== '' && !isNaN(Number(p.version))) {
+        versionVal = Number(p.version);
+      } else if (typeof p.version === 'number') {
+        versionVal = p.version;
+      }
 
       return {
         id: p.id,
-        demo: p.demo || false,
-        clientId: p.client_id || '',
-        title: p.project_title || '',
-        description: p.project_description || '',
-        categoryId: p.category_id || finalCatIds[0] || '',
+        demo: Boolean(p.demo),
+        clientId: p.client_id || p.clientId || '',
+        title: p.project_title || p.title || '',
+        description: p.project_description || p.description || '',
+        categoryId: p.category_id || p.categoryId || finalCatIds[0] || '',
         categoryIds: finalCatIds,
-        statusId: p.status_id || '',
-        projectManagerId: p.project_manager_id || '',
-        fieldManagerId: p.field_manager_id || '',
-        salesRepId: p.sales_rep_id || '',
-        startDate: p.start_date || '',
-        deliveryDate: p.delivery_date || '',
-        estimatedDate: p.estimated_date || '',
-        scheduledDate: p.scheduled_date || '',
-        installProjectNo: p.install_project_no || '',
-        sfOpportunityNo: p.sf_opportunity_no || '',
-        riskId: riskMap[p.id] || p.risk_id || '',
-        priorityId: priorityMap[p.id] || p.priority_id || '',
+        statusId: p.status_id || p.statusId || '',
+        projectManagerId: p.project_manager_id || p.projectManagerId || '',
+        fieldManagerId: p.field_manager_id || p.fieldManagerId || '',
+        salesRepId: p.sales_rep_id || p.salesRepId || '',
+        startDate: p.start_date || p.startDate || '',
+        deliveryDate: p.delivery_date || p.deliveryDate || '',
+        estimatedDate: p.estimated_date || p.estimatedDate || '',
+        scheduledDate: p.scheduled_date || p.scheduledDate || '',
+        installProjectNo: p.install_project_no || p.installProjectNo || '',
+        sfOpportunityNo: p.sf_opportunity_no || p.sfOpportunityNo || '',
+        riskId: riskMap[p.id] || p.risk_id || p.riskId || '',
+        priorityId: priorityMap[p.id] || p.priority_id || p.priorityId || '',
         teamsInvolvedIds: finalTeamIds,
         partnersIds: finalPartnerIds,
-        documents: p.documents ? p.documents.split(',').filter(Boolean) : [],
-        budgetValue: Number(p.budget_value) || 0,
-        createdById: p.created_by || '',
-        deleted: p.deleted || false,
-        createdDate: p.created_at || '',
-        updatedDate: p.updated_at || '',
-        clientContactName: p.client_contact_name || '',
-        clientContactEmail: p.client_contact_email || '',
-        clientContactPhone: p.client_contact_phone || '',
-        version: typeof p.version === 'number' ? p.version : 1,
+        documents: parseStringArray(p.documents),
+        budgetValue: Number(p.budget_value ?? p.budgetValue ?? 0),
+        createdById: p.created_by || p.createdById || '',
+        deleted: Boolean(p.deleted),
+        createdDate: p.created_at || p.createdDate || '',
+        updatedDate: p.updated_at || p.updatedDate || '',
+        clientContactName: p.client_contact_name || p.clientContactName || '',
+        clientContactEmail: p.client_contact_email || p.clientContactEmail || '',
+        clientContactPhone: p.client_contact_phone || p.clientContactPhone || '',
+        version: versionVal,
       };
     });
 
