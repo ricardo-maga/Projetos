@@ -1013,95 +1013,43 @@ export interface PaginatedResult<T> {
 }
 
 /**
- * Fetches projects directly from Supabase with SQL-level pagination and indexing
+ * Fetches projects directly from Supabase via canonical Project repository/service
  */
-export async function fetchPaginatedProjectsDirectly(params: {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-  statusId?: string;
-  categoryId?: string;
-  managerId?: string;
-  includeCompleted?: boolean;
-}): Promise<PaginatedResult<Project>> {
-  if (!isSupabaseConfigured || !supabase) {
+export async function fetchPaginatedProjectsDirectly(
+  params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    statusId?: string;
+    categoryId?: string;
+    managerId?: string;
+    includeCompleted?: boolean;
+  },
+  clientOverride?: SupabaseClient
+): Promise<PaginatedResult<Project>> {
+  const dbClient = clientOverride || supabase;
+  if (!isSupabaseConfigured || !dbClient) {
     return { success: false, data: [], total: 0, page: 1, pageSize: 25, totalPages: 0, message: 'Supabase não configurado.' };
   }
 
-  const page = Math.max(1, Number(params.page) || 1);
-  const pageSize = Math.min(100, Math.max(5, Number(params.pageSize) || 25));
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-
   try {
-    let query = supabase
-      .from('projects')
-      .select('*', { count: 'exact' })
-      .eq('deleted', false);
-
-    if (params.search && params.search.trim()) {
-      const q = `%${params.search.trim()}%`;
-      query = query.or(`project_title.ilike.${q},install_project_no.ilike.${q},project_description.ilike.${q}`);
-    }
-
-    if (params.statusId) {
-      query = query.eq('status_id', params.statusId);
-    }
-
-    if (params.categoryId) {
-      query = query.eq('category_id', params.categoryId);
-    }
-
-    if (params.managerId) {
-      query = query.eq('project_manager_id', params.managerId);
-    }
-
-    // Uses idx_projects_deleted_created_at
-    query = query.order('created_at', { ascending: false }).range(from, to);
-
-    const { data, count, error } = await query;
-    if (error) throw error;
-
-    const total = count ?? (data ? data.length : 0);
-    const totalPages = Math.ceil(total / pageSize) || 1;
-
-    const projects: Project[] = (data || []).map((row: any) => ({
-      id: row.id,
-      title: row.project_title || row.title || 'Sem Título',
-      clientId: row.client_id || '',
-      description: row.project_description || row.description || '',
-      categoryId: row.category_id || '',
-      categoryIds: [row.category_id].filter(Boolean),
-      statusId: row.status_id || '',
-      projectManagerId: row.project_manager_id || '',
-      fieldManagerId: row.field_manager_id || '',
-      salesRepId: row.sales_rep_id || '',
-      startDate: row.start_date || '',
-      deliveryDate: row.delivery_date || '',
-      estimatedDate: row.estimated_date || '',
-      scheduledDate: row.scheduled_date || '',
-      installProjectNo: row.install_project_no || '',
-      sfOpportunityNo: row.sf_opportunity_no || '',
-      riskId: row.risk_id || '',
-      priorityId: row.priority_id || '',
-      teamsInvolvedIds: [],
-      partnersIds: [],
-      documents: [],
-      budgetValue: Number(row.budget_value) || 0,
-      createdById: row.created_by || '',
-      demo: Boolean(row.demo),
-      deleted: Boolean(row.deleted),
-      createdDate: row.created_at || new Date().toISOString(),
-      updatedDate: row.updated_at || new Date().toISOString(),
-    }));
+    const result = await getProjectsServerData(dbClient, {
+      page: params.page,
+      pageSize: params.pageSize,
+      search: params.search,
+      statusId: params.statusId,
+      categoryId: params.categoryId,
+      managerId: params.managerId,
+      includeDeleted: false,
+    });
 
     return {
       success: true,
-      data: projects,
-      total,
-      page,
-      pageSize,
-      totalPages,
+      data: result.data,
+      total: result.total,
+      page: result.page || 1,
+      pageSize: result.pageSize || 25,
+      totalPages: result.totalPages || 1,
     };
   } catch (error: any) {
     console.error('Error in fetchPaginatedProjectsDirectly:', error);
@@ -1109,8 +1057,8 @@ export async function fetchPaginatedProjectsDirectly(params: {
       success: false,
       data: [],
       total: 0,
-      page,
-      pageSize,
+      page: params.page || 1,
+      pageSize: params.pageSize || 25,
       totalPages: 0,
       message: formatSupabaseError(error),
     };
@@ -1547,11 +1495,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         updated_at: p.updatedDate || new Date().toISOString(),
         client_contact_name: p.clientContactName || null,
         client_contact_email: p.clientContactEmail || null,
-        client_contact_phone: p.clientContactPhone || null,
-        risk_id: (riskId && (validRiskIds.size === 0 || validRiskIds.has(riskId))) ? riskId : null,
-        priority_id: (priorityId && (validPriorityIds.size === 0 || validPriorityIds.has(priorityId))) ? priorityId : null,
-        teams_involved_ids: teamsInvolvedUUIDs.length > 0 ? teamsInvolvedUUIDs.join(',') : null,
-        partners_ids: partnersUUIDs.length > 0 ? partnersUUIDs.join(',') : null
+        client_contact_phone: p.clientContactPhone || null
       };
     });
 
@@ -2240,12 +2184,6 @@ ALTER TABLE IF EXISTS user_groups ADD COLUMN IF NOT EXISTS permissions TEXT;
 -- Adicionar campos de notas e eliminação lógica (deleted) à tabela de clientes
 ALTER TABLE IF EXISTS clients ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE IF EXISTS clients ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false;
-
--- Adicionar campos de ligação direta na tabela projects
-ALTER TABLE IF EXISTS projects ADD COLUMN IF NOT EXISTS risk_id UUID;
-ALTER TABLE IF EXISTS projects ADD COLUMN IF NOT EXISTS priority_id UUID;
-ALTER TABLE IF EXISTS projects ADD COLUMN IF NOT EXISTS teams_involved_ids TEXT;
-ALTER TABLE IF EXISTS projects ADD COLUMN IF NOT EXISTS partners_ids TEXT;
 
 -- Criar tabelas novas
 CREATE TABLE IF NOT EXISTS project_risk_link (
