@@ -41,6 +41,28 @@ export const createTaskSchema = z.object({
     message: 'A hora de fim deve ser posterior à hora de início.',
     path: ['endTime'],
   }
+).refine(
+  (data) => {
+    if (data.startDate && !data.endDate) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'A data de fim é obrigatória se a data de início estiver preenchida.',
+    path: ['endDate'],
+  }
+).refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      return data.endDate >= data.startDate;
+    }
+    return true;
+  },
+  {
+    message: 'A data de fim não pode ser anterior à data de início.',
+    path: ['endDate'],
+  }
 );
 
 export const updateTaskSchema = z.object({
@@ -77,6 +99,28 @@ export const updateTaskSchema = z.object({
   {
     message: 'A hora de fim deve ser posterior à hora de início.',
     path: ['endTime'],
+  }
+).refine(
+  (data) => {
+    if (data.startDate && !data.endDate) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'A data de fim é obrigatória se a data de início estiver preenchida.',
+    path: ['endDate'],
+  }
+).refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      return data.endDate >= data.startDate;
+    }
+    return true;
+  },
+  {
+    message: 'A data de fim não pode ser anterior à data de início.',
+    path: ['endDate'],
   }
 );
 

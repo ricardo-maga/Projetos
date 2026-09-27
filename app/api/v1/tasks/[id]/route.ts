@@ -121,6 +121,20 @@ async function handleUpdate(req: NextRequest, ctx: any) {
       );
     }
 
+    const cleanDateVal = (val?: string | null) => (val && typeof val === 'string' && val.trim() ? val.trim() : null);
+
+    // Strict execution dates validation on merged state
+    const mergedStartDate = updates.startDate !== undefined ? cleanDateVal(updates.startDate) : current.start_date;
+    const mergedEndDate = updates.endDate !== undefined ? cleanDateVal(updates.endDate) : current.end_date;
+    if (mergedStartDate) {
+      if (!mergedEndDate) {
+        return badRequest('A data de fim é obrigatória se a data de início estiver preenchida.', requestId);
+      }
+      if (mergedEndDate < mergedStartDate) {
+        return badRequest('A data de fim não pode ser anterior à data de início.', requestId);
+      }
+    }
+
     const now = new Date().toISOString();
     const updatePayload: Record<string, any> = {
       updated_at: now,
@@ -129,8 +143,6 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     if (hasVersion) {
       updatePayload.version = currentVersion + 1;
     }
-
-    const cleanDateVal = (val?: string | null) => (val && typeof val === 'string' && val.trim() ? val.trim() : null);
 
     if (updates.projectId !== undefined && updates.projectId) {
       const { data: targetProject, error: projError } = await sb

@@ -29,7 +29,7 @@ import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { TaskAnalytics } from './TaskAnalytics';
 
 import { hasPermission } from '../lib/permissions';
-import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours } from '../lib/utils';
+import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate } from '../lib/utils';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
@@ -244,7 +244,7 @@ export default function TaskSection({
 
     activeTasks.forEach(t => {
       const scale = getTaskScale(t.statusId);
-      const targetDate = t.estimatedDate || t.startDate;
+      const targetDate = getTaskEffectiveDate(t);
 
       if (targetDate === todayStr && (scale === 1 || scale === 2 || scale === 3)) {
         todayCount++;
@@ -265,7 +265,7 @@ export default function TaskSection({
 
     let weekHoursSum = 0;
     activeTasks.forEach(t => {
-      const targetDate = t.estimatedDate || t.startDate;
+      const targetDate = getTaskEffectiveDate(t);
       if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end) {
         const isActualHoursFilled = t.actualHours !== undefined && t.actualHours !== null && String(t.actualHours).trim() !== '';
         const baseHours = isActualHoursFilled
@@ -331,7 +331,7 @@ export default function TaskSection({
 
       // Date Preset Filter
       let matchesPreset = true;
-      const targetDate = t.estimatedDate || t.startDate;
+      const targetDate = getTaskEffectiveDate(t);
       const scale = getTaskScale(t.statusId);
 
       if (datePreset === 'all') {
@@ -357,8 +357,8 @@ export default function TaskSection({
   const sortTasks = (taskList: Task[]) => {
     return [...taskList].sort((a, b) => {
       if (sortBy === 'estimatedDate') {
-        const dateA = a.estimatedDate || a.startDate || '';
-        const dateB = b.estimatedDate || b.startDate || '';
+        const dateA = getTaskEffectiveDate(a);
+        const dateB = getTaskEffectiveDate(b);
         if (!dateA && !dateB) return 0;
         if (!dateA) return 1;
         if (!dateB) return -1;
@@ -788,7 +788,7 @@ export default function TaskSection({
                       const statusName = getStatusName(t.statusId);
                       const estHours = formatToOnlyHours(t.estimatedHours) || '0';
                       const actHours = formatToOnlyHours(t.actualHours) || '0';
-                      const targetDate = t.estimatedDate || t.startDate;
+                      const targetDate = getTaskEffectiveDate(t);
                       const isOverdue = Boolean(targetDate && targetDate < todayStr && scale !== 3);
 
                       // Status Badge Styling

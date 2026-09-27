@@ -255,6 +255,13 @@ export function checkTaskSchedulingConflicts(params: {
   return warnings;
 }
 
+export function getTaskEffectiveDate(t: { estimatedDate?: string | null; startDate?: string | null; endDate?: string | null }): string {
+  if (t.startDate && t.endDate) {
+    return t.endDate || t.startDate || '';
+  }
+  return t.estimatedDate || '';
+}
+
 export function genId(prefix: string = 'id'): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();

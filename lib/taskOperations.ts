@@ -230,7 +230,14 @@ export function validateTaskExecutionTimes(
   }
 
   // 1. Date comparison
-  if (startDate && endDate) {
+  if (startDate) {
+    if (!endDate) {
+      return {
+        valid: false,
+        isValid: false,
+        error: 'A data de fim é obrigatória se a data de início estiver preenchida.',
+      };
+    }
     if (endDate < startDate) {
       return {
         valid: false,
