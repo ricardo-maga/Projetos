@@ -238,39 +238,51 @@ export default function TaskSection({
   // Operational KPIs
   const operationalStats = useMemo(() => {
     let todayCount = 0;
+    let thisWeekCount = 0;
     let overdueCount = 0;
-    let inExecutionCount = 0;
-    let completedCount = 0;
-    let totalActualHours = 0;
+    let completedThisWeekCount = 0;
 
     activeTasks.forEach(t => {
       const scale = getTaskScale(t.statusId);
       const targetDate = t.estimatedDate || t.startDate;
-      const actH = parseTaskHoursToFloat(t.actualHours);
-      totalActualHours += actH;
 
-      if (scale === 3) {
-        completedCount++;
-      } else {
-        if (scale === 2) {
-          inExecutionCount++;
-        }
-        if (targetDate === todayStr) {
-          todayCount++;
-        } else if (targetDate && targetDate < todayStr) {
-          overdueCount++;
-        }
+      if (targetDate === todayStr && (scale === 1 || scale === 2)) {
+        todayCount++;
+      }
+
+      if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && (scale === 1 || scale === 2)) {
+        thisWeekCount++;
+      }
+
+      if (targetDate && targetDate < todayStr && (scale === 1 || scale === 2)) {
+        overdueCount++;
+      }
+
+      if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && scale === 3) {
+        completedThisWeekCount++;
+      }
+    });
+
+    let weekHoursSum = 0;
+    activeTasks.forEach(t => {
+      const targetDate = t.estimatedDate || t.startDate;
+      if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end) {
+        const realHours = parseTaskHoursToFloat(t.actualHours);
+        const estHours = parseTaskHoursToFloat(t.estimatedHours);
+        const baseHours = realHours > 0 ? realHours : estHours;
+        const userCount = (t.assigneeIds || []).length;
+        weekHoursSum += baseHours * userCount;
       }
     });
 
     return {
       todayCount,
+      thisWeekCount,
       overdueCount,
-      inExecutionCount,
-      completedCount,
-      totalActualHours: Math.round(totalActualHours * 10) / 10,
+      completedThisWeekCount,
+      weekHoursSum: Math.round(weekHoursSum * 10) / 10,
     };
-  }, [activeTasks, getTaskScale, todayStr]);
+  }, [activeTasks, getTaskScale, todayStr, weekRange]);
 
   // Users with at least 1 defined task assigned to them
   const usersWithTasks = useMemo(() => {
@@ -294,15 +306,24 @@ export default function TaskSection({
       const clientName = client ? (client.clientName || '').toLowerCase() : '';
       const clientShortName = client ? (client.shortName || '').toLowerCase() : '';
       const projTitle = proj ? (proj.title || '').toLowerCase() : '';
+      const projIp = proj?.installProjectNo ? proj.installProjectNo.toLowerCase() : '';
       const taskTitle = (t.title || '').toLowerCase();
       const taskDesc = (t.description || '').toLowerCase();
+
+      // Search by assigned technicians' names
+      const hasMatchingAssignee = !q ? true : (t.assigneeIds || []).some(uid => {
+        const uName = users.find(u => matchUserId(u.id, uid))?.name;
+        return uName ? uName.toLowerCase().includes(q) : false;
+      });
 
       const matchesSearch = !q || 
                             taskTitle.includes(q) || 
                             taskDesc.includes(q) ||
                             clientName.includes(q) ||
                             clientShortName.includes(q) ||
-                            projTitle.includes(q);
+                            projTitle.includes(q) ||
+                            projIp.includes(q) ||
+                            hasMatchingAssignee;
       const matchesProject = filterProject ? t.projectId === filterProject : true;
       const matchesType = filterType ? t.taskTypeId === filterType : true;
       const matchesAssignee = filterAssignee ? t.assigneeIds.some(id => matchUserId(id, filterAssignee)) : true;
@@ -312,21 +333,25 @@ export default function TaskSection({
       const targetDate = t.estimatedDate || t.startDate;
       const scale = getTaskScale(t.statusId);
 
-      if (datePreset === 'today') {
-        matchesPreset = targetDate === todayStr && scale !== 3;
+      if (datePreset === 'all') {
+        matchesPreset = scale !== 3; // default: do NOT show level 3
+      } else if (datePreset === 'today') {
+        matchesPreset = targetDate === todayStr && (scale === 1 || scale === 2);
       } else if (datePreset === 'tomorrow') {
-        matchesPreset = targetDate === tomorrowStr && scale !== 3;
+        matchesPreset = targetDate === tomorrowStr && (scale === 1 || scale === 2);
       } else if (datePreset === 'this_week') {
-        matchesPreset = Boolean(targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end);
+        matchesPreset = Boolean(targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && (scale === 1 || scale === 2));
       } else if (datePreset === 'overdue') {
-        matchesPreset = Boolean(targetDate && targetDate < todayStr && scale !== 3);
+        matchesPreset = Boolean(targetDate && targetDate < todayStr && (scale === 1 || scale === 2));
       } else if (datePreset === 'completed') {
         matchesPreset = scale === 3;
+      } else if (datePreset === 'completed_this_week') {
+        matchesPreset = Boolean(targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && scale === 3);
       }
 
       return matchesSearch && matchesProject && matchesType && matchesAssignee && matchesPreset;
     });
-  }, [activeTasks, search, filterProject, filterType, filterAssignee, datePreset, projectMap, clientMap, getTaskScale, todayStr, tomorrowStr, weekRange]);
+  }, [activeTasks, search, filterProject, filterType, filterAssignee, datePreset, projectMap, clientMap, getTaskScale, todayStr, tomorrowStr, weekRange, users]);
 
   const sortTasks = (taskList: Task[]) => {
     return [...taskList].sort((a, b) => {
@@ -422,47 +447,84 @@ export default function TaskSection({
 
         {/* OPERATIONAL KPI CARDS */}
         {activeTaskViewTab === 'lista' && (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 select-none">
+            {/* 1. Para Hoje */}
+            <button
+              type="button"
+              onClick={() => setFilterDatePreset(datePreset === 'today' ? 'all' : 'today')}
+              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+                datePreset === 'today'
+                  ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-100'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
+            >
               <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Para Hoje</div>
               <div className="text-xl font-black text-slate-900 mt-1 flex items-center gap-2">
-                <span>{operationalStats.todayCount}</span>
+                <span className="font-mono tabular-nums">{operationalStats.todayCount}</span>
                 <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">tarefas</span>
               </div>
-            </div>
+            </button>
 
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+            {/* 2. Esta semana */}
+            <button
+              type="button"
+              onClick={() => setFilterDatePreset(datePreset === 'this_week' ? 'all' : 'this_week')}
+              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+                datePreset === 'this_week'
+                  ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-100'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Esta semana</div>
+              <div className="text-xl font-black text-slate-900 mt-1 flex items-center gap-2">
+                <span className="font-mono tabular-nums">{operationalStats.thisWeekCount}</span>
+                <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">ativas</span>
+              </div>
+            </button>
+
+            {/* 3. Atrasadas */}
+            <button
+              type="button"
+              onClick={() => setFilterDatePreset(datePreset === 'overdue' ? 'all' : 'overdue')}
+              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+                datePreset === 'overdue'
+                  ? 'border-rose-500 bg-rose-50/30 ring-2 ring-rose-100'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
+            >
               <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Atrasadas</div>
               <div className="text-xl font-black text-rose-700 mt-1 flex items-center gap-2">
-                <span>{operationalStats.overdueCount}</span>
+                <span className="font-mono tabular-nums">{operationalStats.overdueCount}</span>
                 {operationalStats.overdueCount > 0 && (
                   <span className="text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> Atenção
                   </span>
                 )}
               </div>
-            </div>
+            </button>
 
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
-              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Em Execução</div>
-              <div className="text-xl font-black text-amber-700 mt-1 flex items-center gap-2">
-                <span>{operationalStats.inExecutionCount}</span>
-                <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">ativas</span>
-              </div>
-            </div>
-
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
-              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Concluídas</div>
+            {/* 4. Concluídas esta semana */}
+            <button
+              type="button"
+              onClick={() => setFilterDatePreset(datePreset === 'completed_this_week' ? 'all' : 'completed_this_week')}
+              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+                datePreset === 'completed_this_week'
+                  ? 'border-emerald-500 bg-emerald-50/30 ring-2 ring-emerald-100'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Concluídas esta semana</div>
               <div className="text-xl font-black text-emerald-700 mt-1 flex items-center gap-2">
-                <span>{operationalStats.completedCount}</span>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">concluídas</span>
+                <span className="font-mono tabular-nums">{operationalStats.completedThisWeekCount}</span>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">feitas</span>
               </div>
-            </div>
+            </button>
 
+            {/* 5. Horas prev. semana */}
             <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
-              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Horas Reais Gastas</div>
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Horas prev. semana</div>
               <div className="text-xl font-black text-slate-900 mt-1 flex items-center gap-1">
-                <span>{operationalStats.totalActualHours}</span>
+                <span className="font-mono tabular-nums">{operationalStats.weekHoursSum}</span>
                 <span className="text-xs font-bold text-slate-500">h</span>
               </div>
             </div>
@@ -535,6 +597,18 @@ export default function TaskSection({
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
                 <span>Atrasadas</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterDatePreset('completed_this_week')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'completed_this_week'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                }`}
+              >
+                Concluídas esta semana
               </button>
 
               <button
@@ -702,8 +776,7 @@ export default function TaskSection({
                       <th className="px-4 py-3 text-left">Título da Tarefa</th>
                       <th className="px-4 py-3 text-left">Projeto / Cliente</th>
                       <th className="px-4 py-3 text-left">Responsáveis</th>
-                      <th className="px-4 py-3 text-center">Horas Prev.</th>
-                      <th className="px-4 py-3 text-center">Horas Reais</th>
+                      <th className="px-4 py-3 text-center">Horas prev./reais</th>
                       <th className="px-4 py-3 text-left">Tipo</th>
                       <th className="px-4 py-3 text-right">Ações</th>
                     </tr>
@@ -781,16 +854,17 @@ export default function TaskSection({
                             </div>
                           </td>
 
-                          {/* Horas Previstas */}
-                          <td className="px-4 py-3.5 text-center font-bold text-slate-800 whitespace-nowrap">
-                            {estHours} h
-                          </td>
-
-                          {/* Horas Reais */}
-                          <td className="px-4 py-3.5 text-center font-bold whitespace-nowrap">
-                            <span className={parseTaskHoursToFloat(actHours) > 0 ? 'text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded' : 'text-slate-400'}>
-                              {actHours} h
-                            </span>
+                          {/* Horas prev./reais */}
+                          <td className="px-4 py-3.5 text-center font-bold whitespace-nowrap text-slate-800">
+                            <span>{estHours} h</span>
+                            <span className="text-slate-300 mx-1.5">/</span>
+                            {parseTaskHoursToFloat(actHours) > 0 ? (
+                              <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                {actHours} h
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
                           </td>
 
                           {/* Tipo */}
