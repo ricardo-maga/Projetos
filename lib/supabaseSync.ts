@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem, AuditLog } from './types';
+import { getProjectsServerData } from './projects/projectService';
 
 export interface SupabaseBackup {
   id: string;
@@ -293,7 +294,7 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
  * Test the connection to Supabase
  */
 export async function testSupabaseConnection(): Promise<{ success: boolean; message: string }> {
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured) {
     return {
       success: false,
       message: 'Supabase não está configurado. Insira as credenciais no menu "Settings / Secrets" da plataforma.'
@@ -301,18 +302,19 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
   }
 
   try {
-    const { error } = await supabase.from('projects').select('id').limit(1);
-    
-    if (error) {
+    const res = await fetch('/api/supabase/config', { method: 'GET' });
+    const data = await res.json().catch(() => null);
+
+    if (res.ok && data?.isConfigured) {
       return {
-        success: false,
-        message: `Erro na ligação: ${formatSupabaseError(error)} (Verifique se as tabelas foram criadas com o script SQL)`
+        success: true,
+        message: 'Ligação ao servidor de base de dados e configuração bem-sucedida!'
       };
     }
 
     return {
-      success: true,
-      message: 'Ligação direta ao banco de dados SQL bem-sucedida!'
+      success: false,
+      message: 'Erro na ligação ao servidor Supabase.'
     };
   } catch (error: any) {
     return {
@@ -466,7 +468,10 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       client.from('task_types').select('*').order('sort_order', { ascending: true }),
       client.from('users').select('*'),
       client.from('clients').select('*').order('created_at', { ascending: false }),
-      client.from('projects').select('*').order('created_at', { ascending: false }),
+      getProjectsServerData(client, { all: true, includeDeleted: true }).catch(err => {
+        console.warn('Error fetching projects via getProjectsServerData:', err);
+        return { data: [], total: 0 };
+      }),
       client.from('tasks').select('*').order('created_at', { ascending: false }),
       client.from('comments').select('*').order('created_at', { ascending: true }),
       client.from('user_absences').select('*'),
@@ -486,22 +491,8 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       client.from('automation_rules').select('*').order('created_at', { ascending: false }),
     ]);
 
-    // Check for schema issues
-    let projectsData = resProjects.data || [];
-    if (resProjects.error) {
-      if (customClient && supabase && customClient !== supabase) {
-        const fallback = await supabase.from('projects').select('*').order('created_at', { ascending: false });
-        if (!fallback.error && fallback.data) {
-          projectsData = fallback.data;
-        } else {
-          console.warn('Could not query projects table, possibly missing schema. SQL error:', resProjects.error);
-          throw resProjects.error;
-        }
-      } else {
-        console.warn('Could not query projects table, possibly missing schema. SQL error:', resProjects.error);
-        throw resProjects.error;
-      }
-    }
+    // Get projects data mapped via getProjectsServerData
+    let projectsData: Project[] = (resProjects as any)?.data || [];
 
     // Fetch relational link tables with safe queries
     const fetchLinkData = async (tableName: string) => {

@@ -8,6 +8,7 @@ import { validationError, badRequest, internalServerError } from '@/lib/apiError
 import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
+import { getProjectsServerData } from '@/lib/projects/projectService';
 
 function parseCommaSeparated(val: any): string[] {
   if (!val) return [];
@@ -37,185 +38,26 @@ export async function GET(req: NextRequest) {
       return internalServerError('Base de dados Supabase não disponível.', requestId);
     }
 
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-
-    let query = sb
-      .from('projects')
-      .select('*', { count: 'exact' })
-      .eq('deleted', false);
-
-    if (search && search.trim()) {
-      const q = `%${search.trim()}%`;
-      const { data: matchedClients } = await sb.from('clients').select('id').or(`client_name.ilike.${q},short_name.ilike.${q}`);
-      const clientIds = (matchedClients || []).map((c: any) => c.id);
-
-      const { data: matchedUsers } = await sb.from('users').select('id').ilike('name', q);
-      const userIds = (matchedUsers || []).map((u: any) => u.id);
-
-      let orClauses = [`project_title.ilike.${q}`, `project_description.ilike.${q}`, `install_project_no.ilike.${q}`, `sf_opportunity_no.ilike.${q}`];
-      if (clientIds.length > 0) {
-        clientIds.forEach(cid => orClauses.push(`client_id.eq.${cid}`));
-      }
-      if (userIds.length > 0) {
-        userIds.forEach(uid => orClauses.push(`project_manager_id.eq.${uid}`));
-      }
-      query = query.or(orClauses.join(','));
-    }
-
-    if (statusGroup && statusGroup !== 'all') {
-      const { data: statusesData } = await sb.from('project_statuses').select('id, scale, name');
-      if (statusesData) {
-        const matchingStatusIds = statusesData.filter((st: any) => {
-          const scale = st.scale !== undefined ? Number(st.scale) : 1;
-          const name = (st.name || '').toLowerCase();
-          const isLvl5 = scale >= 5 || name.includes('conclu') || name.includes('suspen') || name.includes('cancel');
-          const lvl = isLvl5 ? 5 : scale;
-
-          if (statusGroup === 'active') return lvl >= 1 && lvl <= 4;
-          if (statusGroup === 'implementation') return lvl === 4;
-          if (statusGroup === 'completed') return lvl >= 5;
-          return true;
-        }).map((st: any) => st.id);
-
-        if (matchingStatusIds.length > 0) {
-          query = query.in('status_id', matchingStatusIds);
-        } else {
-          query = query.eq('id', '00000000-0000-0000-0000-000000000000');
-        }
-      }
-    }
-
-    if (statusId) {
-      query = query.eq('status_id', statusId);
-    }
-
-    if (categoryId) {
-      query = query.eq('category_id', categoryId);
-    }
-
-    if (managerId) {
-      query = query.or(`project_manager_id.eq.${managerId},field_manager_id.eq.${managerId},sales_rep_id.eq.${managerId}`);
-    }
-
-    if (clientId) {
-      query = query.eq('client_id', clientId);
-    }
-
-    const { data: projectsData, count, error } = await query
-      .order('created_at', { ascending: false })
-      .range(from, to);
-
-    if (error) {
-      console.error('[API PROJECTS GET ERROR]', error);
-      return internalServerError(`Erro ao consultar projetos: ${error.message}`, requestId);
-    }
-
-    const total = count || 0;
-    const totalPages = Math.ceil(total / pageSize);
-    const projectIds = (projectsData || []).map((p: any) => p.id);
-
-    // Fetch link relations in parallel
-    const [teamsRes, partnersRes, categoriesRes, priorityRes, riskRes] = await Promise.all([
-      projectIds.length > 0 ? sb.from('project_teams_link').select('project_id, team_id').in('project_id', projectIds) : { data: [] },
-      projectIds.length > 0 ? sb.from('project_partners_link').select('project_id, partner_id').in('project_id', projectIds) : { data: [] },
-      projectIds.length > 0 ? sb.from('project_category_link').select('project_id, category_id').in('project_id', projectIds) : { data: [] },
-      projectIds.length > 0 ? sb.from('project_priority_link').select('project_id, priority_id').in('project_id', projectIds) : { data: [] },
-      projectIds.length > 0 ? sb.from('project_risk_link').select('project_id, risk_id').in('project_id', projectIds) : { data: [] },
-    ]);
-
-    const teamsByProject = new Map<string, string[]>();
-    (teamsRes.data || []).forEach((row: any) => {
-      const current = teamsByProject.get(row.project_id) || [];
-      current.push(row.team_id);
-      teamsByProject.set(row.project_id, current);
-    });
-
-    const partnersByProject = new Map<string, string[]>();
-    (partnersRes.data || []).forEach((row: any) => {
-      const current = partnersByProject.get(row.project_id) || [];
-      current.push(row.partner_id);
-      partnersByProject.set(row.project_id, current);
-    });
-
-    const categoriesByProject = new Map<string, string[]>();
-    (categoriesRes.data || []).forEach((row: any) => {
-      const current = categoriesByProject.get(row.project_id) || [];
-      current.push(row.category_id);
-      categoriesByProject.set(row.project_id, current);
-    });
-
-    const priorityByProject = new Map<string, string>();
-    (priorityRes.data || []).forEach((row: any) => {
-      priorityByProject.set(row.project_id, row.priority_id);
-    });
-
-    const riskByProject = new Map<string, string>();
-    (riskRes.data || []).forEach((row: any) => {
-      riskByProject.set(row.project_id, row.risk_id);
-    });
-
-    const mappedProjects = (projectsData || []).map((row: any) => {
-      const directCatIds = parseCommaSeparated(row.category_ids || (row.category_id ? [row.category_id] : []));
-      const linkCatIds = categoriesByProject.get(row.id) || [];
-      const categoryIds = Array.from(new Set([...linkCatIds, ...directCatIds]));
-
-      const directTeamIds = parseCommaSeparated(row.teams_involved_ids || row.teams_ids);
-      const linkTeamIds = teamsByProject.get(row.id) || [];
-      const teamsInvolvedIds = Array.from(new Set([...linkTeamIds, ...directTeamIds]));
-
-      const directPartnerIds = parseCommaSeparated(row.partners_ids);
-      const linkPartnerIds = partnersByProject.get(row.id) || [];
-      const partnersIds = Array.from(new Set([...linkPartnerIds, ...directPartnerIds]));
-
-      return {
-        id: row.id,
-        title: row.project_title || row.title || '',
-        clientId: row.client_id || row.clientId || '',
-        installProjectNo: row.install_project_no || row.installProjectNo || '',
-        sfOpportunityNo: row.sf_opportunity_no || row.sfOpportunityNo || '',
-        description: row.project_description || row.description || '',
-        statusId: row.status_id || row.statusId || '',
-        categoryId: row.category_id || row.categoryId || categoryIds[0] || '',
-        categoryIds,
-        priorityId: priorityByProject.get(row.id) || row.priority_id || row.priorityId || '',
-        riskId: riskByProject.get(row.id) || row.risk_id || row.riskId || '',
-        projectManagerId: row.project_manager_id || row.projectManagerId || '',
-        fieldManagerId: row.field_manager_id || row.fieldManagerId || '',
-        salesRepId: row.sales_rep_id || row.salesRepId || '',
-        teamsInvolvedIds,
-        partnersIds,
-        startDate: row.start_date || '',
-        deliveryDate: row.delivery_date || '',
-        estimatedDate: row.estimated_date || '',
-        scheduledDate: row.scheduled_date || '',
-        completedDate: row.completed_date || '',
-        budgetValue: Number(row.budget_value ?? row.budgetValue ?? 0),
-        isUrgent: Boolean(row.is_urgent),
-        demo: Boolean(row.demo),
-        documents: parseCommaSeparated(row.documents),
-        clientContactName: row.client_contact_name || row.clientContactName || '',
-        clientContactEmail: row.client_contact_email || row.clientContactEmail || '',
-        clientContactPhone: row.client_contact_phone || row.clientContactPhone || '',
-        color: row.color || '',
-        notes: row.notes || '',
-        version: typeof row.version === 'number' ? row.version : 1,
-        deleted: Boolean(row.deleted),
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        createdBy: row.created_by,
-        updatedBy: row.updated_by,
-      };
+    const result = await getProjectsServerData(sb, {
+      page,
+      pageSize,
+      search,
+      statusId,
+      categoryId,
+      managerId,
+      clientId,
+      statusGroup,
+      includeDeleted: false,
     });
 
     return NextResponse.json({
       success: true,
-      count: mappedProjects.length,
-      total,
-      page,
-      pageSize,
-      totalPages,
-      data: mappedProjects,
+      count: result.data.length,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+      totalPages: result.totalPages,
+      data: result.data,
     });
   } catch (error: any) {
     console.error('[API PROJECTS GET EXCEPTION]', error);
