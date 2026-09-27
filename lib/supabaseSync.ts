@@ -614,29 +614,9 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
 
     // Map database structures to React types
     let projects: Project[] = (projectsData || []).map((p: any) => {
-      const catIdsFromLink = categoriesMap[p.id] || [];
-      const catIdsFromCol = [
-        ...parseStringArray(p.categoryIds),
-        ...parseStringArray(p.category_ids),
-        ...(p.categoryId ? [String(p.categoryId)] : []),
-        ...(p.category_id ? [String(p.category_id)] : []),
-      ];
-      const finalCatIds = Array.from(new Set([...catIdsFromLink, ...catIdsFromCol]));
-
-      const teamsFromLink = teamsMap[p.id] || [];
-      const teamsFromCol = [
-        ...parseStringArray(p.teamsInvolvedIds),
-        ...parseStringArray(p.teams_involved_ids),
-        ...parseStringArray(p.teams_ids),
-      ];
-      const finalTeamIds = Array.from(new Set([...teamsFromLink, ...teamsFromCol]));
-
-      const partnersFromLink = partnersMap[p.id] || [];
-      const partnersFromCol = [
-        ...parseStringArray(p.partnersIds),
-        ...parseStringArray(p.partners_ids),
-      ];
-      const finalPartnerIds = Array.from(new Set([...partnersFromLink, ...partnersFromCol]));
+      const finalCatIds = categoriesMap[p.id] || [];
+      const finalTeamIds = teamsMap[p.id] || [];
+      const finalPartnerIds = partnersMap[p.id] || [];
 
       let versionVal: number | null | undefined = p.version;
       if (typeof p.version === 'string' && p.version.trim() !== '' && !isNaN(Number(p.version))) {
@@ -663,8 +643,8 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
         scheduledDate: p.scheduled_date || p.scheduledDate || '',
         installProjectNo: p.install_project_no || p.installProjectNo || '',
         sfOpportunityNo: p.sf_opportunity_no || p.sfOpportunityNo || '',
-        riskId: riskMap[p.id] || p.risk_id || p.riskId || '',
-        priorityId: priorityMap[p.id] || p.priority_id || p.priorityId || '',
+        riskId: riskMap[p.id] || '',
+        priorityId: priorityMap[p.id] || '',
         teamsInvolvedIds: finalTeamIds,
         partnersIds: finalPartnerIds,
         documents: parseStringArray(p.documents),

@@ -82,8 +82,8 @@ export async function GET(req: NextRequest, ctx: any) {
         statusId: project.status_id || project.statusId || '',
         categoryId: project.category_id || project.categoryId || categoryIds[0] || '',
         categoryIds,
-        priorityId: dbPriority || project.priority_id || project.priorityId || '',
-        riskId: dbRisk || project.risk_id || project.riskId || '',
+        priorityId: dbPriority || '',
+        riskId: dbRisk || '',
         projectManagerId: project.project_manager_id || project.projectManagerId || '',
         fieldManagerId: project.field_manager_id || project.fieldManagerId || '',
         salesRepId: project.sales_rep_id || project.salesRepId || '',
@@ -224,7 +224,6 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     if (updates.sfOpportunityNo !== undefined) updatePayload.sf_opportunity_no = updates.sfOpportunityNo;
     if (updates.statusId !== undefined) updatePayload.status_id = validation.resolvedStatusId || updates.statusId;
     if (updates.categoryId !== undefined) updatePayload.category_id = validation.resolvedCategoryId || updates.categoryId;
-    if (updates.riskId !== undefined) updatePayload.risk_id = updates.riskId;
     if (updates.projectManagerId !== undefined) updatePayload.project_manager_id = updates.projectManagerId ? updates.projectManagerId.trim() : null;
     if (updates.fieldManagerId !== undefined) updatePayload.field_manager_id = updates.fieldManagerId ? updates.fieldManagerId.trim() : null;
     if (updates.salesRepId !== undefined) updatePayload.sales_rep_id = updates.salesRepId ? updates.salesRepId.trim() : null;
@@ -386,8 +385,8 @@ async function handleUpdate(req: NextRequest, ctx: any) {
       statusId: refreshedProject.status_id || '',
       categoryId: refreshedProject.category_id || finalCategoryIds[0] || '',
       categoryIds: finalCategoryIds,
-      priorityId: dbPriority || refreshedProject.priority_id || '',
-      riskId: dbRisk || refreshedProject.risk_id || '',
+      priorityId: dbPriority || '',
+      riskId: dbRisk || '',
       projectManagerId: refreshedProject.project_manager_id || '',
       fieldManagerId: refreshedProject.field_manager_id || '',
       salesRepId: refreshedProject.sales_rep_id || '',

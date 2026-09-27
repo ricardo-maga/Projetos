@@ -204,17 +204,9 @@ export async function getProjectsServerData(
 
   // 6. Map database rows to Project interface
   const data: Project[] = (projectsData || []).map((row: any) => {
-    const directCatIds = parseCommaSeparated(row.category_ids || (row.category_id ? [row.category_id] : []));
-    const linkCatIds = categoriesByProject.get(row.id) || [];
-    const categoryIds = Array.from(new Set([...linkCatIds, ...directCatIds]));
-
-    const directTeamIds = parseCommaSeparated(row.teams_involved_ids || row.teams_ids);
-    const linkTeamIds = teamsByProject.get(row.id) || [];
-    const teamsInvolvedIds = Array.from(new Set([...linkTeamIds, ...directTeamIds]));
-
-    const directPartnerIds = parseCommaSeparated(row.partners_ids);
-    const linkPartnerIds = partnersByProject.get(row.id) || [];
-    const partnersIds = Array.from(new Set([...linkPartnerIds, ...directPartnerIds]));
+    const categoryIds = categoriesByProject.get(row.id) || [];
+    const teamsInvolvedIds = teamsByProject.get(row.id) || [];
+    const partnersIds = partnersByProject.get(row.id) || [];
 
     return {
       id: row.id,
@@ -225,8 +217,8 @@ export async function getProjectsServerData(
       categoryId: row.category_id || row.categoryId || categoryIds[0] || '',
       categoryIds,
       statusId: row.status_id || row.statusId || '',
-      priorityId: priorityByProject.get(row.id) || row.priority_id || row.priorityId || '',
-      riskId: riskByProject.get(row.id) || row.risk_id || row.riskId || '',
+      priorityId: priorityByProject.get(row.id) || '',
+      riskId: riskByProject.get(row.id) || '',
       projectManagerId: row.project_manager_id || row.projectManagerId || '',
       fieldManagerId: row.field_manager_id || row.fieldManagerId || '',
       salesRepId: row.sales_rep_id || row.salesRepId || '',

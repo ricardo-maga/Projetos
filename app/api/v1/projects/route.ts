@@ -151,33 +151,15 @@ export async function POST(req: NextRequest) {
       updated_at: now,
     };
 
-    const extendedInsertPayload: Record<string, any> = {
+    const canonicalInsertPayload: Record<string, any> = {
       ...coreInsertPayload,
-      category_ids: effectiveCategories.length > 0 ? effectiveCategories.join(',') : null,
-      risk_id: finalRiskId || null,
-      teams_involved_ids: effectiveTeams.length > 0 ? effectiveTeams.join(',') : null,
-      partners_ids: effectivePartners.length > 0 ? effectivePartners.join(',') : null,
       completed_date: p.completedDate || null,
       is_urgent: Boolean(p.isUrgent),
       color: p.color || null,
       notes: p.notes || null,
     };
 
-    let { error: insertError } = await sb.from('projects').insert([extendedInsertPayload]);
-    if (insertError && (insertError.code === '42703' || insertError.message?.includes('column') || insertError.message?.includes('schema cache'))) {
-      console.warn('[API PROJECT INSERT] Retrying with core columns due to schema notice:', insertError.message);
-      const retryRes = await sb.from('projects').insert([coreInsertPayload]);
-      insertError = retryRes.error;
-
-      if (insertError && (insertError.code === '42703' || insertError.message?.includes('column') || insertError.message?.includes('schema cache'))) {
-        const minimalPayload = { ...coreInsertPayload };
-        delete minimalPayload.version;
-        delete minimalPayload.updated_by;
-        delete minimalPayload.created_by;
-        const fallbackRes = await sb.from('projects').insert([minimalPayload]);
-        insertError = fallbackRes.error;
-      }
-    }
+    const { error: insertError } = await sb.from('projects').insert([canonicalInsertPayload]);
 
     if (insertError) {
       console.error('[API PROJECT INSERT ERROR]', insertError);

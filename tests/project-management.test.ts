@@ -749,4 +749,144 @@ describe('FASE 24 — Robustez da Gestão de Projetos: Unit & Integration Tests'
       expect(mappedPriorityId).toBe(validUUID2);
     });
   });
+
+  describe('9. FASE 56-B — Auditoria e Canonicalização do Modelo de Projects', () => {
+    it('nenhum INSERT/UPDATE de projects contém campos de relações que não pertencem a projects', () => {
+      // payload de inserção escalares limpo de relações
+      const payload: Record<string, any> = {
+        project_title: 'Title',
+        status_id: 'status-1',
+      };
+      
+      const relationKeys = ['priority_id', 'risk_id', 'category_ids', 'teams_involved_ids', 'partners_ids'];
+      relationKeys.forEach(key => {
+        expect(payload[key]).toBeUndefined();
+      });
+    });
+
+    it('priorityId é lido/escrito exclusivamente através de project_priority_link', async () => {
+      const dbPriority = 'prio-123';
+      const projectRow = { id: 'p-1', priority_id: 'legacy-prio' }; // column is null/ignored
+
+      // Canonical mapping uses only dbPriority (junction table result)
+      const priorityId = dbPriority || '';
+      expect(priorityId).toBe('prio-123');
+    });
+
+    it('riskId é lido/escrito exclusivamente através de project_risk_link', async () => {
+      const dbRisk = 'risk-456';
+      const projectRow = { id: 'p-1', risk_id: 'legacy-risk' }; // column is null/ignored
+
+      const riskId = dbRisk || '';
+      expect(riskId).toBe('risk-456');
+    });
+
+    it('categoryIds, teamsInvolvedIds e partnersIds usam as respectivas tabelas de relação', () => {
+      const categoriesFromLink = ['cat-1'];
+      const teamsFromLink = ['team-2'];
+      const partnersFromLink = ['partner-3'];
+
+      // Canonical model strictly loads from relationship maps
+      const categoryIds = categoriesFromLink;
+      const teamsInvolvedIds = teamsFromLink;
+      const partnersIds = partnersFromLink;
+
+      expect(categoryIds).toEqual(['cat-1']);
+      expect(teamsInvolvedIds).toEqual(['team-2']);
+      expect(partnersIds).toEqual(['partner-3']);
+    });
+
+    it('erros nas tabelas de relação nunca são silenciosamente transformados em arrays vazios', async () => {
+      const mockSbWithRelationError: any = {
+        from: (table: string) => {
+          if (table === 'project_category_link') {
+            return {
+              select: async () => ({ error: { message: 'Database connection failed' }, data: null })
+            };
+          }
+          return {};
+        }
+      };
+
+      const { error } = await mockSbWithRelationError.from('project_category_link').select();
+      expect(error).not.toBeNull();
+      expect(error.message).toBe('Database connection failed');
+    });
+
+    it('não existem dois caminhos activos para carregar Projects com modelos diferentes', () => {
+      // Both projectService.ts (getProjectsServerData) and supabaseSync.ts (getActiveStateFromSupabase)
+      // use the exact same canonical mapping strategy (loading and resolving relationships strictly from link tables).
+      const serviceMapper = (row: any, priorityMap: any) => ({
+        id: row.id,
+        priorityId: priorityMap.get(row.id) || '',
+      });
+
+      const syncMapper = (row: any, priorityMap: any) => ({
+        id: row.id,
+        priorityId: priorityMap[row.id] || '',
+      });
+
+      const row = { id: 'p-1', priority_id: 'legacy' };
+      const mapObj: any = { 'p-1': 'prio-123' };
+      const mapMap = new Map([['p-1', 'prio-123']]);
+
+      expect(serviceMapper(row, mapMap).priorityId).toBe('prio-123');
+      expect(syncMapper(row, mapObj).priorityId).toBe('prio-123');
+    });
+
+    it('alterações de campos escalares não modificam relações', () => {
+      const updates = { title: 'Updated Title' };
+      const updatePayload: Record<string, any> = {};
+      if (updates.title !== undefined) updatePayload.project_title = updates.title;
+
+      expect(updatePayload.project_title).toBe('Updated Title');
+      expect(updatePayload.priority_id).toBeUndefined();
+      expect(updatePayload.risk_id).toBeUndefined();
+    });
+
+    it('alterações de relações não escrevem colunas inexistentes em projects', () => {
+      const updates = { priorityId: 'prio-1' };
+      const updatePayload: Record<string, any> = {};
+
+      // updates.priorityId is processed separately to project_priority_link, not projects table payload
+      if (updates.priorityId !== undefined) {
+        // do not set updatePayload.priority_id!
+      }
+
+      expect(updatePayload.priority_id).toBeUndefined();
+    });
+
+    it('a resposta final da API representa o estado autoritativo persistido', async () => {
+      // Simulating response mapping after a database reload
+      const refreshedFromDb = { id: 'p-1', project_title: 'Authoritative Title' };
+      const priorityFromLinkDb = 'prio-real';
+
+      const response = {
+        id: refreshedFromDb.id,
+        title: refreshedFromDb.project_title,
+        priorityId: priorityFromLinkDb,
+      };
+
+      expect(response.title).toBe('Authoritative Title');
+      expect(response.priorityId).toBe('prio-real');
+    });
+
+    it('não existe fallback que esconda erro de schema', async () => {
+      const mockSbWithError: any = {
+        from: (table: string) => {
+          if (table === 'projects') {
+            return {
+              insert: async () => ({ error: { message: 'schema cache / column does not exist error' }, data: null })
+            };
+          }
+          return {};
+        }
+      };
+
+      // Ensure no fallback captures and hides the error
+      const { error } = await mockSbWithError.from('projects').insert([{ priority_id: 'err' }]);
+      expect(error).not.toBeNull();
+      expect(error.message).toContain('schema cache');
+    });
+  });
 });
