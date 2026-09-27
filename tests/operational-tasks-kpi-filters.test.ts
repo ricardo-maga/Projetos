@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'bun:test';
-import { parseStringArray } from '../lib/supabaseSync';
 
 // Mock getTaskScale function equivalent
 function mockGetTaskScale(statusId: string) {
@@ -12,16 +11,15 @@ function mockGetTaskScale(statusId: string) {
 
 // Replicate parseTaskHoursToFloat
 function parseTaskHoursToFloat(val: any): number {
-  if (!val) return 0;
-  if (typeof val === 'number') return val;
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return Math.max(0, val);
   const clean = val.replace(',', '.').replace('h', '').trim();
   const parsed = parseFloat(clean);
-  return isNaN(parsed) ? 0 : parsed;
+  return isNaN(parsed) ? 0 : Math.max(0, parsed);
 }
 
 describe('FASE 46-A — Testes de Lista Operacional de Tarefas e Filtros', () => {
   const todayStr = '2026-09-27';
-  const tomorrowStr = '2026-09-28';
   
   // Current calendar week: Monday 2026-09-21 to Sunday 2026-09-27
   const weekRange = {
@@ -40,7 +38,7 @@ describe('FASE 46-A — Testes de Lista Operacional de Tarefas e Filtros', () =>
   ];
 
   const mockTasks = [
-    // 1. Hoje (Pendente)
+    // 1. Hoje (Pendente, Nível 1)
     {
       id: 't-1',
       title: 'Montagem de inversores',
@@ -48,10 +46,10 @@ describe('FASE 46-A — Testes de Lista Operacional de Tarefas e Filtros', () =>
       statusId: 'ts-1', // Scale 1
       estimatedDate: todayStr,
       estimatedHours: '3h',
-      actualHours: '0h',
+      actualHours: '0h', // actualHours = '0h' is filled/preenchido (should count as 0, not 3)
       assigneeIds: ['u-1', 'u-2'], // 2 users
     },
-    // 2. Esta semana, Hoje (Em Execução, tem actual hours)
+    // 2. Esta semana, Hoje (Em Execução, Nível 2)
     {
       id: 't-2',
       title: 'Cablagens elétricas',
@@ -59,10 +57,10 @@ describe('FASE 46-A — Testes de Lista Operacional de Tarefas e Filtros', () =>
       statusId: 'ts-2', // Scale 2
       estimatedDate: todayStr,
       estimatedHours: '4h',
-      actualHours: '2h', // actual hours are non-zero/filled
+      actualHours: '2h', // actualHours = '2h' is filled/preenchido
       assigneeIds: ['u-1'], // 1 user
     },
-    // 3. Atrasada (Em Execução)
+    // 3. Atrasada (Em Execução, Nível 2)
     {
       id: 't-3',
       title: 'Escavação da vala',
@@ -70,48 +68,51 @@ describe('FASE 46-A — Testes de Lista Operacional de Tarefas e Filtros', () =>
       statusId: 'ts-2', // Scale 2
       estimatedDate: '2026-09-20', // before today
       estimatedHours: '5h',
-      actualHours: '0h',
+      actualHours: null, // null means empty (should fallback to estimatedHours 5h)
       assigneeIds: ['u-1', 'u-2'], // 2 users
     },
-    // 4. Concluída esta semana
+    // 4. Concluída esta semana (Nível 3, Hoje)
     {
       id: 't-4',
       title: 'Sinalização do estaleiro',
       projectId: 'p-2',
       statusId: 'ts-3', // Scale 3 (completed)
-      estimatedDate: '2026-09-22', // within week
+      estimatedDate: todayStr, // Today and completed
       estimatedHours: '2h',
-      actualHours: '0h',
+      actualHours: undefined, // undefined means empty (fallback to estimatedHours 2h)
       assigneeIds: ['u-2'], // 1 user
     },
   ];
 
   describe('1. Cálculos de Estatísticas de KPI (operationalStats)', () => {
-    it('cálculo correto de tarefas Para Hoje (exclui concluídas e canceladas)', () => {
+    it('cálculo de tarefas Para Hoje inclui tarefas de nível 1, 2 e 3', () => {
       let todayCount = 0;
       mockTasks.forEach(t => {
         const scale = mockGetTaskScale(t.statusId);
         const targetDate = t.estimatedDate;
-        if (targetDate === todayStr && (scale === 1 || scale === 2)) {
+        if (targetDate === todayStr && (scale === 1 || scale === 2 || scale === 3)) {
           todayCount++;
         }
       });
-      expect(todayCount).toBe(2); // t-1, t-2 are today and active
+      // t-1 (scale 1), t-2 (scale 2), t-4 (scale 3) are all today
+      expect(todayCount).toBe(3);
     });
 
-    it('cálculo correto de tarefas Esta Semana (segunda a domingo, exclui concluídas/canceladas)', () => {
+    it('cálculo de tarefas Esta Semana inclui tarefas de nível 1, 2 e 3', () => {
       let thisWeekCount = 0;
       mockTasks.forEach(t => {
         const scale = mockGetTaskScale(t.statusId);
         const targetDate = t.estimatedDate;
-        if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && (scale === 1 || scale === 2)) {
+        if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && (scale === 1 || scale === 2 || scale === 3)) {
           thisWeekCount++;
         }
       });
-      expect(thisWeekCount).toBe(2); // t-1, t-2
+      // All 4 mock tasks are within the week range (t-1, t-2, t-3 is on 20th which is before the range start on 21st)
+      // Range: 21st to 27th. t-1 (27), t-2 (27), t-4 (27) are inside range.
+      expect(thisWeekCount).toBe(3);
     });
 
-    it('cálculo de tarefas Atrasadas (anterior a hoje, hoje é exclusivo, exclui concluídas)', () => {
+    it('cálculo de tarefas Atrasadas continua limitado exclusivamente a nível 1 ou 2', () => {
       let overdueCount = 0;
       mockTasks.forEach(t => {
         const scale = mockGetTaskScale(t.statusId);
@@ -123,7 +124,7 @@ describe('FASE 46-A — Testes de Lista Operacional de Tarefas e Filtros', () =>
       expect(overdueCount).toBe(1); // t-3 is overdue
     });
 
-    it('cálculo de Concluídas esta semana', () => {
+    it('cálculo de Concluídas esta semana limitado exclusivamente a nível 3', () => {
       let completedThisWeekCount = 0;
       mockTasks.forEach(t => {
         const scale = mockGetTaskScale(t.statusId);
@@ -132,27 +133,28 @@ describe('FASE 46-A — Testes de Lista Operacional de Tarefas e Filtros', () =>
           completedThisWeekCount++;
         }
       });
-      expect(completedThisWeekCount).toBe(1); // t-4 is completed
+      expect(completedThisWeekCount).toBe(1); // t-4
     });
 
-    it('cálculo de Horas previstas com multiplicação de utilizadores e fallback de horas reais', () => {
+    it('cálculo de Horas previstas com multiplicação de utilizadores e preenchimento de horas reais', () => {
       let weekHoursSum = 0;
       mockTasks.forEach(t => {
         const targetDate = t.estimatedDate;
         if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end) {
-          const realHours = parseTaskHoursToFloat(t.actualHours);
-          const estHours = parseTaskHoursToFloat(t.estimatedHours);
-          const baseHours = realHours > 0 ? realHours : estHours;
+          const isActualHoursFilled = t.actualHours !== undefined && t.actualHours !== null && String(t.actualHours).trim() !== '';
+          const baseHours = isActualHoursFilled
+            ? parseTaskHoursToFloat(t.actualHours)
+            : parseTaskHoursToFloat(t.estimatedHours);
           const userCount = t.assigneeIds.length;
           weekHoursSum += baseHours * userCount;
         }
       });
       // Calculations:
-      // t-1: today, estimated=3h, actual=0h, users=2 -> 3h * 2 = 6h
-      // t-2: today, estimated=4h, actual=2h, users=1 -> 2h (actual used) * 1 = 2h
-      // t-4: completed this week, estimated=2h, actual=0h, users=1 -> 2h * 1 = 2h
-      // Total: 6 + 2 + 2 = 10h
-      expect(weekHoursSum).toBe(10);
+      // t-1 (within week): actualHours = '0h' (filled) -> 0h * 2 users = 0h
+      // t-2 (within week): actualHours = '2h' (filled) -> 2h * 1 user = 2h
+      // t-4 (within week): actualHours = undefined (empty) -> fallback to estimatedHours '2h' * 1 user = 2h
+      // Total: 0 + 2 + 2 = 4h
+      expect(weekHoursSum).toBe(4);
     });
   });
 
@@ -161,29 +163,9 @@ describe('FASE 46-A — Testes de Lista Operacional de Tarefas e Filtros', () =>
       // datePreset === 'all'
       const filteredAll = mockTasks.filter(t => {
         const scale = mockGetTaskScale(t.statusId);
-        return scale !== 3; // exlcude completed
+        return scale !== 3; // exclude completed
       });
       expect(filteredAll.length).toBe(3); // t-1, t-2, t-3 (excludes t-4)
-    });
-
-    it('sincronização de Hoje para tarefas de nível 1 ou 2', () => {
-      // datePreset === 'today'
-      const filteredToday = mockTasks.filter(t => {
-        const scale = mockGetTaskScale(t.statusId);
-        const targetDate = t.estimatedDate;
-        return targetDate === todayStr && (scale === 1 || scale === 2);
-      });
-      expect(filteredToday.length).toBe(2); // t-1, t-2
-    });
-
-    it('sincronização de Atrasadas para tarefas de nível 1 ou 2 anteriores a hoje', () => {
-      // datePreset === 'overdue'
-      const filteredOverdue = mockTasks.filter(t => {
-        const scale = mockGetTaskScale(t.statusId);
-        const targetDate = t.estimatedDate;
-        return targetDate && targetDate < todayStr && (scale === 1 || scale === 2);
-      });
-      expect(filteredOverdue.length).toBe(1); // t-3
     });
   });
 

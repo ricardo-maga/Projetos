@@ -246,11 +246,11 @@ export default function TaskSection({
       const scale = getTaskScale(t.statusId);
       const targetDate = t.estimatedDate || t.startDate;
 
-      if (targetDate === todayStr && (scale === 1 || scale === 2)) {
+      if (targetDate === todayStr && (scale === 1 || scale === 2 || scale === 3)) {
         todayCount++;
       }
 
-      if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && (scale === 1 || scale === 2)) {
+      if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && (scale === 1 || scale === 2 || scale === 3)) {
         thisWeekCount++;
       }
 
@@ -267,9 +267,10 @@ export default function TaskSection({
     activeTasks.forEach(t => {
       const targetDate = t.estimatedDate || t.startDate;
       if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end) {
-        const realHours = parseTaskHoursToFloat(t.actualHours);
-        const estHours = parseTaskHoursToFloat(t.estimatedHours);
-        const baseHours = realHours > 0 ? realHours : estHours;
+        const isActualHoursFilled = t.actualHours !== undefined && t.actualHours !== null && String(t.actualHours).trim() !== '';
+        const baseHours = isActualHoursFilled
+          ? parseTaskHoursToFloat(t.actualHours)
+          : parseTaskHoursToFloat(t.estimatedHours);
         const userCount = (t.assigneeIds || []).length;
         weekHoursSum += baseHours * userCount;
       }
