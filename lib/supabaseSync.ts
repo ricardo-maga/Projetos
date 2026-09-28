@@ -1,3 +1,25 @@
+/**
+ * ============================================================================
+ * ARQUITETURA DE DADOS — CONTENÇÃO DO MECANISMO LEGACY DE SINCRONIZAÇÃO
+ * FASE 59: SUPABASE SYNC BOUNDARY & ERPSTATE CONTAINMENT
+ * ============================================================================
+ * 
+ * REGRA ARQUITETURAL FUNDAMENTAL:
+ * 1. PostgreSQL = FONTE ÚNICA DE VERDADE (Single Source of Truth - SSOT).
+ * 2. ERPState (em memória / useERP.ts) = Estado de apresentação e cache temporário,
+ *    NUNCA fonte de verdade persistente.
+ * 3. supabaseSync.ts = Mecanismo LEGACY controlado, temporário e explicitamente delimitado.
+ * 
+ * RESTRIÇÕES E REGRAS DE CONTENÇÃO:
+ * - É ESTRITAMENTE PROIBIDO utilizar saveActiveStateToSupabase() para implementar
+ *   novas operações CRUD ou funcionalidades de negócio.
+ * - Novos domínios e rotas devem comunicar diretamente via:
+ *   UI -> API Route -> Domain Service / Repository -> PostgreSQL (ou RPC).
+ * - O agregado Projects já se encontra 100% CANONICALIZADO e ISOLADO neste ficheiro:
+ *   saveActiveStateToSupabase() NUNCA escreve na tabela 'projects' ou link tables.
+ * ============================================================================
+ */
+
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem, AuditLog } from './types';
 import { getProjectsServerData } from './projects/projectService';
@@ -430,7 +452,10 @@ export async function checkAndCreateAutoDailyBackup(currentState: ERPState): Pro
 }
 
 /**
- * Get the active real-time state from Supabase by fetching from all individual SQL tables
+ * @deprecated MECANISMO LEGACY CONTROLADO (FASE 59: SUPABASE SYNC BOUNDARY)
+ * Carrega o snapshot completo do ERP em memória.
+ * NÃO deve ser utilizado por novas rotas, serviços ou funcionalidades.
+ * Destina-se apenas ao suporte de rotas legadas em transição e ao endpoint de sincronização global.
  */
 export async function getActiveStateFromSupabase(customClient?: any): Promise<{ success: boolean; data?: ERPState; message?: string }> {
   const client = customClient || supabase;
@@ -1200,7 +1225,24 @@ async function safeUpsertRef(
 }
 
 /**
- * Saves/Synchronizes the full state directly and relational-wise into the corresponding SQL tables in Supabase
+ * @deprecated MECANISMO LEGACY CONTROLADO (FASE 59: SUPABASE SYNC BOUNDARY)
+ * 
+ * AVISO ARQUITETURAL CRÍTICO:
+ * Grava em lote múltiplos agregados diretamente no PostgreSQL.
+ * Este mecanismo cria fontes de verdade concorrentes (last-write-wins) e riscos de supressão silenciosa de erros.
+ * 
+ * REGRAS DE CONTENÇÃO:
+ * - É ESTRITAMENTE PROIBIDO utilizar esta função para implementar novas operações de negócio.
+ * - Novas rotas de API e novos domínios NÃO podem chamar esta função.
+ * - O agregado Projects NUNCA é gravado por esta função (isolamento estrito).
+ * 
+ * CONSUMIDORES LEGACY PERMITIDOS (EM TRANSIÇÃO):
+ * 1. app/api/supabase/sync/route.ts (Endpoint de sincronização global)
+ * 2. app/api/v1/tickets/route.ts (Migração futura)
+ * 3. app/api/v1/tickets/[id]/route.ts (Migração futura)
+ * 4. app/api/tickets/inbound/route.ts (Migração futura)
+ * 5. app/api/v1/project-materials/route.ts (Migração futura)
+ * 6. app/api/v1/project-materials/[id]/route.ts (Migração futura)
  */
 export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ success: boolean; message?: string }> {
   if (!isSupabaseConfigured || !supabase) {
@@ -1576,9 +1618,13 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       }));
       try {
         const resPM = await supabase.from('project_materials').upsert(pmUpserts);
-        if (resPM.error) console.warn('Notice saving project_materials:', resPM.error.message);
-      } catch (pmErr) {
-        console.warn('Exception saving project_materials:', pmErr);
+        if (resPM.error) {
+          console.error('Error saving project_materials:', resPM.error.message);
+          return { success: false, message: `Erro ao gravar materiais de projeto: ${formatSupabaseError(resPM.error)}` };
+        }
+      } catch (pmErr: any) {
+        console.error('Exception saving project_materials:', pmErr);
+        return { success: false, message: `Exceção ao gravar materiais de projeto: ${formatSupabaseError(pmErr)}` };
       }
     }
 
@@ -1620,9 +1666,13 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       if (priUpserts.length > 0) {
         try {
           const resPRI = await supabase.from('project_risk_items').upsert(priUpserts);
-          if (resPRI.error) console.warn('Notice saving project_risk_items:', resPRI.error.message);
-        } catch (priErr) {
-          console.warn('Exception saving project_risk_items:', priErr);
+          if (resPRI.error) {
+            console.error('Error saving project_risk_items:', resPRI.error.message);
+            return { success: false, message: `Erro ao gravar itens de risco: ${formatSupabaseError(resPRI.error)}` };
+          }
+        } catch (priErr: any) {
+          console.error('Exception saving project_risk_items:', priErr);
+          return { success: false, message: `Exceção ao gravar itens de risco: ${formatSupabaseError(priErr)}` };
         }
       }
     }
@@ -1777,51 +1827,83 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     */
 
     // 6. Comments, User Absences, Quotes, BOMs, Equipment List, Special Days, Default Tasks
-    // Delete what is not in state list to match exactly (real CRUD sync)
-    // Note: Clients are soft-deleted via deleted = true, not hard deleted.
+    // Safe hard-deletes: Only attempt targeted deletion if state is explicitly defined as a non-empty array,
+    // and DB query succeeds without error. If state list is empty or omitted, skip deletion to prevent mass accidental wipes.
 
-    const stateCommentIds = state.comments.map((c: any) => c.id);
-    const { data: dbComments } = await supabase.from('comments').select('id');
-    if (dbComments && dbComments.length > 0) {
-      const commentIdsToDelete = dbComments.map((d: any) => d.id).filter(id => !stateCommentIds.includes(id));
-      if (commentIdsToDelete.length > 0) {
-        await supabase.from('comments').delete().in('id', commentIdsToDelete);
+    if (Array.isArray(state.comments) && state.comments.length > 0) {
+      const stateCommentIds = state.comments.map((c: any) => c.id);
+      const { data: dbComments, error: dbCommentsErr } = await supabase.from('comments').select('id');
+      if (dbCommentsErr) {
+        console.error('Error querying comments for sync deletion:', dbCommentsErr.message);
+        return { success: false, message: `Erro ao consultar comentários: ${formatSupabaseError(dbCommentsErr)}` };
       }
-    } else if (!dbComments) {
-      await supabase.from('comments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (dbComments && dbComments.length > 0) {
+        const commentIdsToDelete = dbComments.map((d: any) => d.id).filter(id => !stateCommentIds.includes(id));
+        if (commentIdsToDelete.length > 0) {
+          const resDel = await supabase.from('comments').delete().in('id', commentIdsToDelete);
+          if (resDel.error) {
+            console.error('Error deleting comments:', resDel.error.message);
+            return { success: false, message: `Erro ao eliminar comentários: ${formatSupabaseError(resDel.error)}` };
+          }
+        }
+      }
     }
 
-    const stateAbsenceIds = state.userAbsences.map((a: any) => a.id);
-    const { data: dbAbsences } = await supabase.from('user_absences').select('id');
-    if (dbAbsences && dbAbsences.length > 0) {
-      const absenceIdsToDelete = dbAbsences.map((d: any) => d.id).filter(id => !stateAbsenceIds.includes(id));
-      if (absenceIdsToDelete.length > 0) {
-        await supabase.from('user_absences').delete().in('id', absenceIdsToDelete);
+    if (Array.isArray(state.userAbsences) && state.userAbsences.length > 0) {
+      const stateAbsenceIds = state.userAbsences.map((a: any) => a.id);
+      const { data: dbAbsences, error: dbAbsencesErr } = await supabase.from('user_absences').select('id');
+      if (dbAbsencesErr) {
+        console.error('Error querying user_absences for sync deletion:', dbAbsencesErr.message);
+        return { success: false, message: `Erro ao consultar ausências: ${formatSupabaseError(dbAbsencesErr)}` };
       }
-    } else if (!dbAbsences) {
-      await supabase.from('user_absences').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (dbAbsences && dbAbsences.length > 0) {
+        const absenceIdsToDelete = dbAbsences.map((d: any) => d.id).filter(id => !stateAbsenceIds.includes(id));
+        if (absenceIdsToDelete.length > 0) {
+          const resDel = await supabase.from('user_absences').delete().in('id', absenceIdsToDelete);
+          if (resDel.error) {
+            console.error('Error deleting user_absences:', resDel.error.message);
+            return { success: false, message: `Erro ao eliminar ausências: ${formatSupabaseError(resDel.error)}` };
+          }
+        }
+      }
     }
 
-    const stateSpecialDayIds = (state.specialDays || []).map((sd: any) => sd.id);
-    const { data: dbSpecialDays } = await supabase.from('special_days').select('id');
-    if (dbSpecialDays && dbSpecialDays.length > 0) {
-      const specialDayIdsToDelete = dbSpecialDays.map((d: any) => d.id).filter(id => !stateSpecialDayIds.includes(id));
-      if (specialDayIdsToDelete.length > 0) {
-        await supabase.from('special_days').delete().in('id', specialDayIdsToDelete);
+    if (Array.isArray(state.specialDays) && state.specialDays.length > 0) {
+      const stateSpecialDayIds = state.specialDays.map((sd: any) => sd.id);
+      const { data: dbSpecialDays, error: dbSpecialDaysErr } = await supabase.from('special_days').select('id');
+      if (dbSpecialDaysErr) {
+        console.error('Error querying special_days for sync deletion:', dbSpecialDaysErr.message);
+        return { success: false, message: `Erro ao consultar dias especiais: ${formatSupabaseError(dbSpecialDaysErr)}` };
       }
-    } else if (!dbSpecialDays) {
-      await supabase.from('special_days').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (dbSpecialDays && dbSpecialDays.length > 0) {
+        const specialDayIdsToDelete = dbSpecialDays.map((d: any) => d.id).filter(id => !stateSpecialDayIds.includes(id));
+        if (specialDayIdsToDelete.length > 0) {
+          const resDel = await supabase.from('special_days').delete().in('id', specialDayIdsToDelete);
+          if (resDel.error) {
+            console.error('Error deleting special_days:', resDel.error.message);
+            return { success: false, message: `Erro ao eliminar dias especiais: ${formatSupabaseError(resDel.error)}` };
+          }
+        }
+      }
     }
 
-    const stateDefaultTaskIds = (state.defaultTasks || []).map((dt: any) => dt.id);
-    const { data: dbDefaultTasks } = await supabase.from('default_tasks').select('id');
-    if (dbDefaultTasks && dbDefaultTasks.length > 0) {
-      const defaultTaskIdsToDelete = dbDefaultTasks.map((d: any) => d.id).filter(id => !stateDefaultTaskIds.includes(id));
-      if (defaultTaskIdsToDelete.length > 0) {
-        await supabase.from('default_tasks').delete().in('id', defaultTaskIdsToDelete);
+    if (Array.isArray(state.defaultTasks) && state.defaultTasks.length > 0) {
+      const stateDefaultTaskIds = state.defaultTasks.map((dt: any) => dt.id);
+      const { data: dbDefaultTasks, error: dbDefaultTasksErr } = await supabase.from('default_tasks').select('id');
+      if (dbDefaultTasksErr) {
+        console.error('Error querying default_tasks for sync deletion:', dbDefaultTasksErr.message);
+        return { success: false, message: `Erro ao consultar tarefas padrão: ${formatSupabaseError(dbDefaultTasksErr)}` };
       }
-    } else if (!dbDefaultTasks) {
-      await supabase.from('default_tasks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (dbDefaultTasks && dbDefaultTasks.length > 0) {
+        const defaultTaskIdsToDelete = dbDefaultTasks.map((d: any) => d.id).filter(id => !stateDefaultTaskIds.includes(id));
+        if (defaultTaskIdsToDelete.length > 0) {
+          const resDel = await supabase.from('default_tasks').delete().in('id', defaultTaskIdsToDelete);
+          if (resDel.error) {
+            console.error('Error deleting default_tasks:', resDel.error.message);
+            return { success: false, message: `Erro ao eliminar tarefas padrão: ${formatSupabaseError(resDel.error)}` };
+          }
+        }
+      }
     }
 
     const validProjIds = new Set(state.projects.map((p: any) => p.id));
@@ -1959,9 +2041,14 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           deleted: ts.deleted || false,
           sort_order: ts.sort_order || 0
         }));
-        await supabase.from('ticket_statuses').upsert(mappedTS);
-      } catch (e) {
-        console.warn('ticket_statuses upsert notice:', e);
+        const resTS = await supabase.from('ticket_statuses').upsert(mappedTS);
+        if (resTS.error) {
+          console.error('Error saving ticket_statuses:', resTS.error.message);
+          return { success: false, message: `Erro ao gravar estados de tickets: ${formatSupabaseError(resTS.error)}` };
+        }
+      } catch (e: any) {
+        console.error('ticket_statuses upsert error:', e);
+        return { success: false, message: `Exceção ao gravar estados de tickets: ${formatSupabaseError(e)}` };
       }
     }
 
@@ -1977,9 +2064,14 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           link_url: n.linkUrl || null,
           created_at: n.createdDate || new Date().toISOString()
         }));
-        await supabase.from('notifications').upsert(mappedNotifs);
-      } catch (e) {
-        console.warn('notifications upsert notice:', e);
+        const resNotif = await supabase.from('notifications').upsert(mappedNotifs);
+        if (resNotif.error) {
+          console.error('Error saving notifications:', resNotif.error.message);
+          return { success: false, message: `Erro ao gravar notificações: ${formatSupabaseError(resNotif.error)}` };
+        }
+      } catch (e: any) {
+        console.error('notifications upsert error:', e);
+        return { success: false, message: `Exceção ao gravar notificações: ${formatSupabaseError(e)}` };
       }
     }
 
@@ -1996,9 +2088,14 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           enabled: r.enabled !== false,
           created_at: r.createdDate || new Date().toISOString()
         }));
-        await supabase.from('automation_rules').upsert(mappedRules);
-      } catch (e) {
-        console.warn('automation_rules upsert notice:', e);
+        const resRules = await supabase.from('automation_rules').upsert(mappedRules);
+        if (resRules.error) {
+          console.error('Error saving automation_rules:', resRules.error.message);
+          return { success: false, message: `Erro ao gravar regras de automação: ${formatSupabaseError(resRules.error)}` };
+        }
+      } catch (e: any) {
+        console.error('automation_rules upsert error:', e);
+        return { success: false, message: `Exceção ao gravar regras de automação: ${formatSupabaseError(e)}` };
       }
     }
 
@@ -2033,9 +2130,14 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           updated_at: t.updatedDate || new Date().toISOString(),
           resolved_at: t.resolvedDate || null,
         }));
-        await supabase.from('tickets').upsert(mappedTickets);
-      } catch (e) {
-        console.warn('tickets upsert warning:', e);
+        const resTickets = await supabase.from('tickets').upsert(mappedTickets);
+        if (resTickets.error) {
+          console.error('Error saving tickets:', resTickets.error.message);
+          return { success: false, message: `Erro ao gravar tickets: ${formatSupabaseError(resTickets.error)}` };
+        }
+      } catch (e: any) {
+        console.error('tickets upsert error:', e);
+        return { success: false, message: `Exceção ao gravar tickets: ${formatSupabaseError(e)}` };
       }
     }
 

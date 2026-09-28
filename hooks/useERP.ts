@@ -1,5 +1,20 @@
 'use client';
 
+/**
+ * ============================================================================
+ * ARQUITETURA DE APRESENTAÇÃO — useERP
+ * FASE 59: SUPABASE SYNC BOUNDARY & ERPSTATE CONTAINMENT
+ * ============================================================================
+ * 
+ * REGRA ARQUITETURAL:
+ * - PostgreSQL = ÚNICA fonte de verdade persistente.
+ * - ERPState / useERP = Estado de apresentação e cache temporário no cliente React,
+ *   NUNCA a autoridade de persistência.
+ * - As mutações de entidades devem migrar progressivamente para o fluxo autoritativo:
+ *   UI -> API Dedicada (/api/v1/*) -> Service -> PostgreSQL -> Atualização local
+ * ============================================================================
+ */
+
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, Ticket } from '../lib/types';
 import { 
@@ -13,7 +28,7 @@ import {
 } from '../lib/planning/types';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
-import { getActiveStateFromSupabase, saveActiveStateToSupabase, mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
+import { mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
 import { getAuthHeaders, getClientUser, clearClientSession } from '../lib/clientAuth';
 import { apiCreateTask, apiUpdateTask, apiDeleteTask, parseTaskHoursToFloat } from '../lib/taskOperations';
