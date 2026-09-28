@@ -294,6 +294,24 @@ export async function createPlanningAllocation(
     .single();
 
   if (insertError) {
+    const isOverlapError =
+      insertError.code === '23P01' ||
+      insertError.message?.toLowerCase().includes('exclusion') ||
+      insertError.message?.toLowerCase().includes('overlap') ||
+      insertError.message?.toLowerCase().includes('no_overlapping_confirmed_allocations');
+
+    if (isOverlapError) {
+      return {
+        success: false,
+        error: {
+          httpStatus: 409,
+          errorCode: 'PLANNING_ALLOCATION_OVERLAP',
+          message: 'O recurso já possui uma alocação confirmada sobreposta neste intervalo temporal.',
+          details: { error: insertError.message },
+        },
+      };
+    }
+
     console.error('[AllocationService.createPlanningAllocation INSERT ERROR]', insertError);
     return {
       success: false,
@@ -486,6 +504,24 @@ export async function updatePlanningAllocation(
     .maybeSingle();
 
   if (updateError) {
+    const isOverlapError =
+      updateError.code === '23P01' ||
+      updateError.message?.toLowerCase().includes('exclusion') ||
+      updateError.message?.toLowerCase().includes('overlap') ||
+      updateError.message?.toLowerCase().includes('no_overlapping_confirmed_allocations');
+
+    if (isOverlapError) {
+      return {
+        success: false,
+        error: {
+          httpStatus: 409,
+          errorCode: 'PLANNING_ALLOCATION_OVERLAP',
+          message: 'O recurso já possui uma alocação confirmada sobreposta neste intervalo temporal.',
+          details: { error: updateError.message },
+        },
+      };
+    }
+
     console.error('[AllocationService.updatePlanningAllocation UPDATE ERROR]', updateError);
     return {
       success: false,
