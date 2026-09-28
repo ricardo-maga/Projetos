@@ -2,7 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface TaskDTO {
   id: string;
-  projectId: string;
+  projectId: string | null;
   title: string;
   description: string;
   statusId: string;
@@ -27,7 +27,7 @@ export interface TaskDTO {
 
 export interface CreateTaskParams {
   id?: string;
-  projectId: string;
+  projectId?: string | null;
   title: string;
   description?: string;
   statusId?: string;
@@ -48,7 +48,7 @@ export interface CreateTaskParams {
 
 export interface UpdateTaskParams {
   version?: number;
-  projectId?: string;
+  projectId?: string | null;
   title?: string;
   description?: string;
   statusId?: string;
@@ -160,13 +160,17 @@ export function parseTaskHoursToNumber(val: any): number {
 }
 
 /**
- * Maps raw database row and assignees into standard TaskDTO format
+ * Maps raw database row and assignees into standard TaskDTO format.
+ * Strictly preserves null semantics for tasks without an associated project.
  */
 export function mapRowToTaskDTO(row: any, assigneesMap: Record<string, string[]> = {}): TaskDTO {
+  const rawProjectId = row.project_id !== undefined ? row.project_id : row.projectId;
+  const finalProjectId = rawProjectId ? String(rawProjectId).trim() : null;
+
   return {
     id: row.id,
-    projectId: row.project_id || row.projectId,
-    title: row.task_title || row.title,
+    projectId: finalProjectId,
+    title: row.task_title || row.title || '',
     description: row.task_description || row.description || '',
     statusId: row.status_id || row.statusId || 'ts-1',
     taskTypeId: row.task_type_id || row.taskTypeId || '',
@@ -182,8 +186,8 @@ export function mapRowToTaskDTO(row: any, assigneesMap: Record<string, string[]>
     assignedUserIds: assigneesMap[row.id] || [],
     version: row.version || 1,
     deleted: Boolean(row.deleted),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: row.created_at || new Date().toISOString(),
+    updatedAt: row.updated_at || new Date().toISOString(),
     createdBy: row.created_by || null,
     updatedBy: row.updated_by || null,
   };
@@ -191,7 +195,8 @@ export function mapRowToTaskDTO(row: any, assigneesMap: Record<string, string[]>
 
 /**
  * Server-side Domain Service for Tasks.
- * Provides atomic, transactional persistence and DTO mapping.
+ * Provides atomic, transactional persistence via create_task_atomic PostgreSQL RPC.
+ * Zero manual fallbacks or split writes.
  */
 export async function createTaskServer(
   sb: SupabaseClient,
@@ -203,117 +208,53 @@ export async function createTaskServer(
   const estimatedHoursStr = `${estH} hours`;
   const actualHoursStr = `${actH} hours`;
 
-  // 1. Try atomic RPC
-  try {
-    const { data: rpcData, error: rpcError } = await sb.rpc('create_task_atomic', {
-      p_id: newId,
-      p_project_id: params.projectId,
-      p_task_title: params.title,
-      p_status_id: params.statusId || 'ts-1',
-      p_task_type_id: params.taskTypeId || null,
-      p_estimated_hours: estimatedHoursStr,
-      p_actual_hours: actualHoursStr,
-      p_start_date: params.startDate || null,
-      p_start_time: params.startTime || null,
-      p_end_date: params.endDate || null,
-      p_end_time: params.endTime || null,
-      p_estimated_date: params.estimatedDate || null,
-      p_completed_date: params.completedDate || null,
-      p_task_description: params.description || '',
-      p_notes: params.notes || null,
-      p_is_milestone: Boolean(params.isMilestone),
-      p_created_by: params.userId,
-      p_assignee_user_ids: params.assignedUserIds || [],
-    });
+  const finalProjectId = params.projectId ? params.projectId.trim() : null;
 
-    if (!rpcError && rpcData) {
-      const assigneesMap: Record<string, string[]> = {
-        [newId]: params.assignedUserIds || [],
-      };
-      return {
-        success: true,
-        data: mapRowToTaskDTO(rpcData, assigneesMap),
-      };
-    }
+  const { data: rpcData, error: rpcError } = await sb.rpc('create_task_atomic', {
+    p_id: newId,
+    p_project_id: finalProjectId,
+    p_task_title: params.title.trim(),
+    p_status_id: params.statusId || 'ts-1',
+    p_task_type_id: params.taskTypeId || null,
+    p_estimated_hours: estimatedHoursStr,
+    p_actual_hours: actualHoursStr,
+    p_start_date: params.startDate || null,
+    p_start_time: params.startTime || null,
+    p_end_date: params.endDate || null,
+    p_end_time: params.endTime || null,
+    p_estimated_date: params.estimatedDate || null,
+    p_completed_date: params.completedDate || null,
+    p_task_description: params.description || '',
+    p_notes: params.notes || null,
+    p_is_milestone: Boolean(params.isMilestone),
+    p_created_by: params.userId,
+    p_assignee_user_ids: params.assignedUserIds || [],
+  });
 
-    if (rpcError && rpcError.message.includes('Projeto associado não existe')) {
+  if (rpcError) {
+    if (rpcError.message?.includes('Projeto associado não existe') || rpcError.code === 'P0002') {
       return { success: false, error: 'O projeto especificado não existe ou foi eliminado.', statusCode: 400 };
     }
-  } catch (err) {
-    // Fallback to transactional pattern if RPC is not available in test/dev mock env
+    return { success: false, error: `Erro ao criar tarefa: ${rpcError.message}`, statusCode: 500 };
   }
 
-  // Fallback transactional create with rollback
-  const now = new Date().toISOString();
-  const insertPayload = {
-    id: newId,
-    project_id: params.projectId,
-    task_title: params.title,
-    task_description: params.description || '',
-    status_id: params.statusId || 'ts-1',
-    task_type_id: params.taskTypeId || null,
-    estimated_hours: estimatedHoursStr,
-    actual_hours: actualHoursStr,
-    start_date: params.startDate || null,
-    start_time: params.startTime || null,
-    end_date: params.endDate || null,
-    end_time: params.endTime || null,
-    estimated_date: params.estimatedDate || null,
-    completed_date: params.completedDate || null,
-    notes: params.notes || null,
-    deleted: false,
-    version: 1,
-    created_by: params.userId,
-    updated_by: params.userId,
-    created_at: now,
-    updated_at: now,
+  if (!rpcData) {
+    return { success: false, error: 'Falha ao obter dados da tarefa criada.', statusCode: 500 };
+  }
+
+  const assigneesMap: Record<string, string[]> = {
+    [newId]: params.assignedUserIds || [],
   };
-
-  const { error: insertError } = await sb.from('tasks').insert([insertPayload]);
-  if (insertError) {
-    return { success: false, error: `Erro ao inserir tarefa: ${insertError.message}`, statusCode: 400 };
-  }
-
-  if (params.assignedUserIds && params.assignedUserIds.length > 0) {
-    const assigneeRows = params.assignedUserIds.map((uid) => ({ task_id: newId, user_id: uid }));
-    const { error: assigneeError } = await sb.from('task_assignees').insert(assigneeRows);
-    if (assigneeError) {
-      await sb.from('tasks').delete().eq('id', newId);
-      return { success: false, error: `Erro ao associar responsáveis: ${assigneeError.message}`, statusCode: 500 };
-    }
-  }
 
   return {
     success: true,
-    data: {
-      id: newId,
-      projectId: params.projectId,
-      title: params.title,
-      description: params.description || '',
-      statusId: params.statusId || 'ts-1',
-      taskTypeId: params.taskTypeId || '',
-      estimatedHours: params.estimatedHours || 0,
-      actualHours: params.actualHours || 0,
-      startDate: params.startDate || '',
-      startTime: params.startTime || '',
-      endDate: params.endDate || '',
-      endTime: params.endTime || '',
-      estimatedDate: params.estimatedDate || '',
-      completedDate: params.completedDate || '',
-      notes: params.notes || '',
-      assignedUserIds: params.assignedUserIds || [],
-      version: 1,
-      deleted: false,
-      createdAt: now,
-      updatedAt: now,
-      createdBy: params.userId,
-      updatedBy: params.userId,
-    },
+    data: mapRowToTaskDTO(rpcData, assigneesMap),
   };
 }
 
 /**
- * Server-side atomic task update
+ * Server-side atomic task update via update_task_atomic PostgreSQL RPC.
+ * Zero manual fallbacks. Enforces strict OCC and project decoupling.
  */
 export async function updateTaskServer(
   sb: SupabaseClient,
@@ -321,124 +262,56 @@ export async function updateTaskServer(
   params: UpdateTaskParams
 ): Promise<{ success: boolean; data?: TaskDTO; error?: string; statusCode?: number; currentVersion?: number }> {
   const hasAssigneesUpdate = params.assignedUserIds !== undefined;
+  const hasProjectUpdate = params.projectId !== undefined;
+  const finalProjectId = hasProjectUpdate && params.projectId ? params.projectId.trim() : null;
+
   const estH = params.estimatedHours !== undefined ? parseTaskHoursToNumber(params.estimatedHours) : undefined;
   const actH = params.actualHours !== undefined ? parseTaskHoursToNumber(params.actualHours) : undefined;
-  const estimatedHoursStr = estH !== undefined ? `${estH} hours` : undefined;
-  const actualHoursStr = actH !== undefined ? `${actH} hours` : undefined;
+  const estimatedHoursStr = estH !== undefined ? `${estH} hours` : null;
+  const actualHoursStr = actH !== undefined ? `${actH} hours` : null;
 
-  try {
-    const { data: rpcData, error: rpcError } = await sb.rpc('update_task_atomic', {
-      p_id: id,
-      p_expected_version: params.version ?? null,
-      p_project_id: params.projectId || null,
-      p_task_title: params.title || null,
-      p_status_id: params.statusId || null,
-      p_task_type_id: params.taskTypeId || null,
-      p_estimated_hours: estimatedHoursStr || null,
-      p_actual_hours: actualHoursStr || null,
-      p_start_date: params.startDate || null,
-      p_start_time: params.startTime || null,
-      p_end_date: params.endDate || null,
-      p_end_time: params.endTime || null,
-      p_estimated_date: params.estimatedDate || null,
-      p_completed_date: params.completedDate || null,
-      p_task_description: params.description || null,
-      p_notes: params.notes || null,
-      p_is_milestone: params.isMilestone ?? null,
-      p_updated_by: params.userId,
-      p_assignee_user_ids: params.assignedUserIds || [],
-      p_update_assignees: hasAssigneesUpdate,
-    });
+  const { data: rpcData, error: rpcError } = await sb.rpc('update_task_atomic', {
+    p_id: id,
+    p_expected_version: params.version ?? null,
+    p_project_id: finalProjectId,
+    p_task_title: params.title ? params.title.trim() : null,
+    p_status_id: params.statusId || null,
+    p_task_type_id: params.taskTypeId || null,
+    p_estimated_hours: estimatedHoursStr,
+    p_actual_hours: actualHoursStr,
+    p_start_date: params.startDate || null,
+    p_start_time: params.startTime || null,
+    p_end_date: params.endDate || null,
+    p_end_time: params.endTime || null,
+    p_estimated_date: params.estimatedDate || null,
+    p_completed_date: params.completedDate || null,
+    p_task_description: params.description !== undefined ? params.description : null,
+    p_notes: params.notes !== undefined ? params.notes : null,
+    p_is_milestone: params.isMilestone ?? null,
+    p_updated_by: params.userId,
+    p_assignee_user_ids: params.assignedUserIds || [],
+    p_update_assignees: hasAssigneesUpdate,
+    p_update_project_id: hasProjectUpdate,
+  });
 
-    if (!rpcError && rpcData) {
-      const { data: assignees } = await sb.from('task_assignees').select('user_id').eq('task_id', id);
-      const assigneesMap = {
-        [id]: (assignees || []).map((a: any) => a.user_id),
-      };
-      return {
-        success: true,
-        data: mapRowToTaskDTO(rpcData, assigneesMap),
-      };
+  if (rpcError) {
+    if (rpcError.message?.includes('Conflito de concorrência') || rpcError.code === 'P0001') {
+      return { success: false, error: 'Conflito de concorrência. A tarefa foi alterada por outro utilizador.', statusCode: 409 };
     }
-
-    if (rpcError) {
-      if (rpcError.message.includes('Conflito de concorrência') || rpcError.code === 'P0001') {
-        return { success: false, error: 'Conflito de concorrência. A tarefa foi alterada por outro utilizador.', statusCode: 409 };
-      }
-      if (rpcError.message.includes('não encontrada') || rpcError.code === 'P0002') {
-        return { success: false, error: 'Tarefa não encontrada.', statusCode: 404 };
-      }
+    if (rpcError.message?.includes('Tarefa não encontrada') || rpcError.code === 'P0002') {
+      return { success: false, error: 'Tarefa não encontrada.', statusCode: 404 };
     }
-  } catch (err) {
-    // Fallback
-  }
-
-  // Fallback update
-  const { data: current, error: fetchError } = await sb.from('tasks').select('*').eq('id', id).maybeSingle();
-  if (fetchError) return { success: false, error: `Erro ao ler tarefa: ${fetchError.message}`, statusCode: 500 };
-  if (!current || current.deleted) return { success: false, error: 'Tarefa não encontrada.', statusCode: 404 };
-
-  const currentVersion = current.version || 1;
-  if (params.version !== undefined && params.version !== currentVersion) {
-    return {
-      success: false,
-      error: `Conflito de concorrência. A tarefa foi alterada por outro utilizador (versão atual: ${currentVersion}, versão submetida: ${params.version}).`,
-      statusCode: 409,
-      currentVersion,
-    };
-  }
-
-  const now = new Date().toISOString();
-  const updatePayload: Record<string, any> = {
-    updated_at: now,
-    updated_by: params.userId,
-    version: currentVersion + 1,
-  };
-
-  if (params.projectId !== undefined) updatePayload.project_id = params.projectId;
-  if (params.title !== undefined) updatePayload.task_title = params.title;
-  if (params.description !== undefined) updatePayload.task_description = params.description;
-  if (params.statusId !== undefined) updatePayload.status_id = params.statusId;
-  if (params.taskTypeId !== undefined) updatePayload.task_type_id = params.taskTypeId;
-  if (params.estimatedHours !== undefined) updatePayload.estimated_hours = `${params.estimatedHours} hours`;
-  if (params.actualHours !== undefined) updatePayload.actual_hours = `${params.actualHours} hours`;
-  if (params.startDate !== undefined) updatePayload.start_date = params.startDate;
-  if (params.startTime !== undefined) updatePayload.start_time = params.startTime;
-  if (params.endDate !== undefined) updatePayload.end_date = params.endDate;
-  if (params.endTime !== undefined) updatePayload.end_time = params.endTime;
-  if (params.estimatedDate !== undefined) updatePayload.estimated_date = params.estimatedDate;
-  if (params.completedDate !== undefined) updatePayload.completed_date = params.completedDate;
-  if (params.notes !== undefined) updatePayload.notes = params.notes;
-
-  const { data: updatedRows, error: updateError } = await sb
-    .from('tasks')
-    .update(updatePayload)
-    .eq('id', id)
-    .eq('version', currentVersion)
-    .select('id');
-
-  if (updateError) {
-    return { success: false, error: `Erro ao atualizar tarefa: ${updateError.message}`, statusCode: 400 };
-  }
-
-  if (!updatedRows || updatedRows.length === 0) {
-    return {
-      success: false,
-      error: `Conflito de concorrência ao atualizar tarefa (versão esperada: ${currentVersion}).`,
-      statusCode: 409,
-      currentVersion,
-    };
-  }
-
-  if (hasAssigneesUpdate) {
-    await sb.from('task_assignees').delete().eq('task_id', id);
-    if (params.assignedUserIds && params.assignedUserIds.length > 0) {
-      const assigneeRows = params.assignedUserIds.map((uid) => ({ task_id: id, user_id: uid }));
-      await sb.from('task_assignees').insert(assigneeRows);
+    if (rpcError.message?.includes('Projeto associado não existe')) {
+      return { success: false, error: 'O projeto especificado não existe ou foi eliminado.', statusCode: 400 };
     }
+    return { success: false, error: `Erro ao atualizar tarefa: ${rpcError.message}`, statusCode: 400 };
   }
 
-  const { data: refreshedTask } = await sb.from('tasks').select('*').eq('id', id).maybeSingle();
+  if (!rpcData) {
+    return { success: false, error: 'Falha ao atualizar tarefa.', statusCode: 500 };
+  }
+
+  // Fetch updated assignees
   const { data: assignees } = await sb.from('task_assignees').select('user_id').eq('task_id', id);
   const assigneesMap = {
     [id]: (assignees || []).map((a: any) => a.user_id),
@@ -446,12 +319,13 @@ export async function updateTaskServer(
 
   return {
     success: true,
-    data: mapRowToTaskDTO(refreshedTask || { ...current, ...updatePayload }, assigneesMap),
+    data: mapRowToTaskDTO(rpcData, assigneesMap),
   };
 }
 
 /**
- * Server-side atomic task soft-delete
+ * Server-side atomic task soft-delete via delete_task_atomic PostgreSQL RPC.
+ * Zero manual fallbacks.
  */
 export async function deleteTaskServer(
   sb: SupabaseClient,
@@ -459,54 +333,24 @@ export async function deleteTaskServer(
   userId: string,
   expectedVersion?: number
 ): Promise<{ success: boolean; error?: string; statusCode?: number }> {
-  try {
-    const { data: rpcData, error: rpcError } = await sb.rpc('delete_task_atomic', {
-      p_id: id,
-      p_expected_version: expectedVersion ?? null,
-      p_updated_by: userId,
-    });
+  const { data: rpcData, error: rpcError } = await sb.rpc('delete_task_atomic', {
+    p_id: id,
+    p_expected_version: expectedVersion ?? null,
+    p_updated_by: userId,
+  });
 
-    if (!rpcError && rpcData) {
-      return { success: true };
+  if (rpcError) {
+    if (rpcError.message?.includes('Conflito de concorrência') || rpcError.code === 'P0001') {
+      return { success: false, error: 'Conflito de concorrência ao eliminar tarefa.', statusCode: 409 };
     }
-
-    if (rpcError) {
-      if (rpcError.message.includes('Conflito de concorrência') || rpcError.code === 'P0001') {
-        return { success: false, error: 'Conflito de concorrência ao eliminar tarefa.', statusCode: 409 };
-      }
-      if (rpcError.message.includes('não encontrada') || rpcError.code === 'P0002') {
-        return { success: false, error: 'Tarefa não encontrada.', statusCode: 404 };
-      }
+    if (rpcError.message?.includes('não encontrada') || rpcError.code === 'P0002') {
+      return { success: false, error: 'Tarefa não encontrada.', statusCode: 404 };
     }
-  } catch (err) {
-    // Fallback
+    return { success: false, error: `Erro ao eliminar tarefa: ${rpcError.message}`, statusCode: 400 };
   }
 
-  const { data: current, error: fetchErr } = await sb.from('tasks').select('*').eq('id', id).maybeSingle();
-  if (fetchErr) return { success: false, error: `Erro ao ler tarefa: ${fetchErr.message}`, statusCode: 500 };
-  if (!current || current.deleted) return { success: false, error: 'Tarefa não encontrada.', statusCode: 404 };
-
-  const currentVersion = current.version || 1;
-  const now = new Date().toISOString();
-
-  let deleteQuery = sb.from('tasks').update({
-    deleted: true,
-    version: currentVersion + 1,
-    updated_at: now,
-    updated_by: userId,
-  }).eq('id', id);
-
-  if (expectedVersion !== undefined) {
-    deleteQuery = deleteQuery.eq('version', expectedVersion);
-  }
-
-  const { data: updatedRows, error: deleteError } = await deleteQuery.select('id');
-  if (deleteError) {
-    return { success: false, error: `Erro ao eliminar tarefa: ${deleteError.message}`, statusCode: 400 };
-  }
-
-  if (expectedVersion !== undefined && (!updatedRows || updatedRows.length === 0)) {
-    return { success: false, error: 'Conflito de concorrência ao eliminar tarefa.', statusCode: 409 };
+  if (!rpcData) {
+    return { success: false, error: 'Falha ao eliminar tarefa.', statusCode: 500 };
   }
 
   return { success: true };

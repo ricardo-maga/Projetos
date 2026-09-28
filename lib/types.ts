@@ -34,7 +34,7 @@ export interface Project {
 
 export interface Task {
   id: string;
-  projectId: string; // Relation: Projects table
+  projectId: string | null; // Relation: Projects table (or null if task has no project)
   title: string;
   statusId: string; // Relation: Task status table
   taskTypeId?: string; // Relation: Task types table

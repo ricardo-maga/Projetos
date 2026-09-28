@@ -304,6 +304,82 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
             }
             return { data: proj.version, error: null };
           }
+          if (fn === 'create_task_atomic') {
+            const newTask = {
+              id: args.p_id,
+              project_id: args.p_project_id,
+              task_title: args.p_task_title,
+              task_description: args.p_task_description,
+              status_id: args.p_status_id || 'ts-1',
+              task_type_id: args.p_task_type_id || null,
+              estimated_hours: args.p_estimated_hours,
+              actual_hours: args.p_actual_hours,
+              start_date: args.p_start_date,
+              start_time: args.p_start_time,
+              end_date: args.p_end_date,
+              end_time: args.p_end_time,
+              estimated_date: args.p_estimated_date,
+              completed_date: args.p_completed_date,
+              notes: args.p_notes,
+              is_milestone: args.p_is_milestone || false,
+              deleted: false,
+              version: 1,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              created_by: args.p_created_by,
+              updated_by: args.p_created_by,
+            };
+            mockDbData.tasks.push(newTask);
+            (args.p_assignee_user_ids || []).forEach((uid: string) => {
+              mockDbData.task_assignees.push({ task_id: args.p_id, user_id: uid });
+            });
+            return { data: newTask, error: null };
+          }
+          if (fn === 'update_task_atomic') {
+            if (onBeforeUpdateTasksHook) onBeforeUpdateTasksHook();
+            const task = mockDbData.tasks.find((t: any) => t.id === args.p_id);
+            if (!task) return { error: { code: 'P0002', message: 'Tarefa não encontrada' } };
+            if (args.p_expected_version !== undefined && args.p_expected_version !== null && task.version !== args.p_expected_version) {
+              return { error: { code: 'P0001', message: `Conflito de concorrência: current version is ${task.version}, expected ${args.p_expected_version}` } };
+            }
+            task.version = (task.version || 1) + 1;
+            if (args.p_update_project_id) task.project_id = args.p_project_id;
+            if (args.p_task_title) task.task_title = args.p_task_title;
+            if (args.p_status_id) task.status_id = args.p_status_id;
+            if (args.p_task_type_id !== null && args.p_task_type_id !== undefined) task.task_type_id = args.p_task_type_id;
+            if (args.p_estimated_hours) task.estimated_hours = args.p_estimated_hours;
+            if (args.p_actual_hours) task.actual_hours = args.p_actual_hours;
+            if (args.p_start_date) task.start_date = args.p_start_date;
+            if (args.p_start_time) task.start_time = args.p_start_time;
+            if (args.p_end_date) task.end_date = args.p_end_date;
+            if (args.p_end_time) task.end_time = args.p_end_time;
+            if (args.p_estimated_date) task.estimated_date = args.p_estimated_date;
+            if (args.p_completed_date) task.completed_date = args.p_completed_date;
+            if (args.p_task_description !== null && args.p_task_description !== undefined) task.task_description = args.p_task_description;
+            if (args.p_notes !== null && args.p_notes !== undefined) task.notes = args.p_notes;
+            if (args.p_is_milestone !== null && args.p_is_milestone !== undefined) task.is_milestone = args.p_is_milestone;
+            task.updated_at = new Date().toISOString();
+
+            if (args.p_update_assignees) {
+              mockDbData.task_assignees = mockDbData.task_assignees.filter((a: any) => a.task_id !== args.p_id);
+              (args.p_assignee_user_ids || []).forEach((uid: string) => {
+                mockDbData.task_assignees.push({ task_id: args.p_id, user_id: uid });
+              });
+            }
+            return { data: task, error: null };
+          }
+          if (fn === 'delete_task_atomic') {
+            if (onBeforeUpdateTasksHook) onBeforeUpdateTasksHook();
+            const task = mockDbData.tasks.find((t: any) => t.id === args.p_id);
+            if (!task) return { error: { code: 'P0002', message: 'Tarefa não encontrada' } };
+            if (args.p_expected_version !== undefined && args.p_expected_version !== null && task.version !== args.p_expected_version) {
+              return { error: { code: 'P0001', message: `Conflito de concorrência: current version is ${task.version}, expected ${args.p_expected_version}` } };
+            }
+            task.deleted = true;
+            task.version = (task.version || 1) + 1;
+            task.updated_at = new Date().toISOString();
+            return { data: task, error: null };
+          }
           return { data: null, error: { message: `Unknown RPC function ${fn}` } };
         },
       } as any;

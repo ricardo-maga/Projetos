@@ -6,8 +6,26 @@ const optionalDateField = z
   .optional()
   .transform((v) => (v && typeof v === 'string' && v.trim() ? v.trim() : null));
 
+/**
+ * Normalizes a projectId field:
+ * - undefined => undefined
+ * - null => null
+ * - '' => null
+ * - string UUID => trimmed UUID string
+ */
+const optionalNullableProjectId = z
+  .string()
+  .nullable()
+  .optional()
+  .transform((val) => {
+    if (val === undefined) return undefined;
+    if (val === null) return null;
+    const trimmed = typeof val === 'string' ? val.trim() : '';
+    return trimmed === '' ? null : trimmed;
+  });
+
 export const createTaskSchema = z.object({
-  projectId: z.string().trim().min(1, 'O ID de projeto é obrigatório'),
+  projectId: optionalNullableProjectId.default(null),
   title: z.string().trim().min(2, 'O título da tarefa deve ter no mínimo 2 caracteres'),
   description: z.string().optional().default(''),
   statusId: z.string().optional(),
@@ -66,7 +84,7 @@ export const createTaskSchema = z.object({
 );
 
 export const updateTaskSchema = z.object({
-  projectId: z.string().trim().min(1, 'O ID de projeto é obrigatório').optional(),
+  projectId: optionalNullableProjectId,
   title: z.string().trim().min(2, 'O título da tarefa deve ter no mínimo 2 caracteres').optional(),
   description: z.string().optional(),
   statusId: z.string().optional(),

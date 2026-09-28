@@ -165,6 +165,39 @@ describe('FASE 27 — Integridade CRUD Transversal', () => {
     serverDbSpy = spyOn(serverDbModule, 'getServerDbClient').mockImplementation(async () => {
       return {
         from: (table: string) => buildMockQuery(table),
+        rpc: async (fn: string, args: any) => {
+          if (fn === 'delete_task_atomic') {
+            const task = (mockDbData.tasks || []).find((t: any) => t.id === args.p_id);
+            if (!task || task.deleted) return { data: null, error: { message: 'Tarefa não encontrada.', code: 'P0002' } };
+            if (args.p_expected_version !== undefined && args.p_expected_version !== null && task.version !== args.p_expected_version) {
+              return { data: null, error: { message: 'Conflito de concorrência', code: 'P0001' } };
+            }
+            task.deleted = true;
+            task.version = (task.version || 1) + 1;
+            return { data: task, error: null };
+          }
+          if (fn === 'create_task_atomic') {
+            if (mockTableErrors['task_assignees'] && args.p_assignee_user_ids?.length > 0) {
+              return { data: null, error: { message: mockTableErrors['task_assignees'] } };
+            }
+            if (mockTableErrors['tasks']) {
+              return { data: null, error: { message: mockTableErrors['tasks'] } };
+            }
+            const newTask = {
+              id: args.p_id,
+              project_id: args.p_project_id,
+              task_title: args.p_task_title,
+              task_description: args.p_task_description,
+              status_id: args.p_status_id || 'ts-1',
+              deleted: false,
+              version: 1,
+            };
+            if (!mockDbData.tasks) mockDbData.tasks = [];
+            mockDbData.tasks.push(newTask);
+            return { data: newTask, error: null };
+          }
+          return { data: null, error: null };
+        },
       } as any;
     });
 
