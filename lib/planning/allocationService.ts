@@ -627,11 +627,13 @@ export async function deletePlanningAllocation(
     };
   }
 
-  // 3. Status is DRAFT: Perform atomic delete from database
-  const { error: deleteError } = await sb
+  // 3. Status is DRAFT: Perform atomic delete from database with status constraint
+  const { data: deletedRows, error: deleteError } = await sb
     .from('planning_allocations')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('status', 'DRAFT')
+    .select('id');
 
   if (deleteError) {
     console.error('[AllocationService.deletePlanningAllocation DELETE ERROR]', deleteError);
@@ -641,6 +643,18 @@ export async function deletePlanningAllocation(
         httpStatus: 500,
         errorCode: 'DATABASE_ERROR',
         message: `Erro ao eliminar alocação de planeamento: ${deleteError.message}`,
+      },
+    };
+  }
+
+  if (!deletedRows || deletedRows.length === 0) {
+    return {
+      success: false,
+      error: {
+        httpStatus: 409,
+        errorCode: 'CONCURRENT_STATUS_CHANGE',
+        message: 'A alocação de planeamento já não se encontra no estado DRAFT ou foi alterada concorrentemente.',
+        details: { id },
       },
     };
   }
