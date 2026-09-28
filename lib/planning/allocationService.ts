@@ -294,20 +294,28 @@ export async function createPlanningAllocation(
     .single();
 
   if (insertError) {
-    const isOverlapError =
-      insertError.code === '23P01' ||
-      insertError.message?.toLowerCase().includes('exclusion') ||
-      insertError.message?.toLowerCase().includes('overlap') ||
-      insertError.message?.toLowerCase().includes('no_overlapping_confirmed_allocations');
-
-    if (isOverlapError) {
+    // 23P01: exclusion_violation (PostgreSQL standard error code for EXCLUDE constraint)
+    if (insertError.code === '23P01' || insertError.message?.includes('no_overlapping_confirmed_allocations')) {
       return {
         success: false,
         error: {
           httpStatus: 409,
           errorCode: 'PLANNING_ALLOCATION_OVERLAP',
           message: 'O recurso já possui uma alocação confirmada sobreposta neste intervalo temporal.',
-          details: { error: insertError.message },
+          details: { code: insertError.code, error: insertError.message },
+        },
+      };
+    }
+
+    // 23514: check_violation (e.g., start_time >= end_time or invalid status)
+    if (insertError.code === '23514' || insertError.message?.includes('chk_planning_allocations_start_before_end')) {
+      return {
+        success: false,
+        error: {
+          httpStatus: 400,
+          errorCode: 'INVALID_TIME_RANGE',
+          message: 'A hora de início deve ser anterior à hora de fim e o intervalo deve ser válido.',
+          details: { code: insertError.code, error: insertError.message },
         },
       };
     }
@@ -504,20 +512,28 @@ export async function updatePlanningAllocation(
     .maybeSingle();
 
   if (updateError) {
-    const isOverlapError =
-      updateError.code === '23P01' ||
-      updateError.message?.toLowerCase().includes('exclusion') ||
-      updateError.message?.toLowerCase().includes('overlap') ||
-      updateError.message?.toLowerCase().includes('no_overlapping_confirmed_allocations');
-
-    if (isOverlapError) {
+    // 23P01: exclusion_violation (PostgreSQL standard error code for EXCLUDE constraint)
+    if (updateError.code === '23P01' || updateError.message?.includes('no_overlapping_confirmed_allocations')) {
       return {
         success: false,
         error: {
           httpStatus: 409,
           errorCode: 'PLANNING_ALLOCATION_OVERLAP',
           message: 'O recurso já possui uma alocação confirmada sobreposta neste intervalo temporal.',
-          details: { error: updateError.message },
+          details: { code: updateError.code, error: updateError.message },
+        },
+      };
+    }
+
+    // 23514: check_violation (e.g., start_time >= end_time or invalid status)
+    if (updateError.code === '23514' || updateError.message?.includes('chk_planning_allocations_start_before_end')) {
+      return {
+        success: false,
+        error: {
+          httpStatus: 400,
+          errorCode: 'INVALID_TIME_RANGE',
+          message: 'A hora de início deve ser anterior à hora de fim e o intervalo deve ser válido.',
+          details: { code: updateError.code, error: updateError.message },
         },
       };
     }
