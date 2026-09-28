@@ -1,6 +1,6 @@
 -- Migration: 20260928030000_tasks_atomic_rpcs_project_decoupling.sql
 -- FASE 66-B: Tasks Persistence Boundary & Project Decoupling
--- FASE 66-B-HARDENING-2: Granular RPC Authorization Boundary (tasks:write / tasks:delete)
+-- FASE 66-B-HARDENING: Granular RPC Authorization Boundary & Named Dollar Quoting
 -- Permite criação e atualização de tarefas com ou sem projeto associado (project_id NULL)
 -- e elimina ambiguidades no update através do parâmetro p_update_project_id.
 
@@ -13,41 +13,7 @@ DROP FUNCTION IF EXISTS public.update_task_atomic(UUID, INTEGER, UUID, TEXT, TEX
 DROP FUNCTION IF EXISTS public.delete_task_atomic(UUID, INTEGER, UUID);
 DROP FUNCTION IF EXISTS public.has_permission(TEXT, UUID);
 
--- 0. Seed standard permissions into role_permissions for canonical roles if not present
-DO $$
-DECLARE
-  v_role_super_admin UUID := '00000000-0000-0000-0000-000000000001';
-  v_role_admin UUID := '00000000-0000-0000-0000-000000000002';
-  v_role_pm UUID := '00000000-0000-0000-0000-000000000003';
-  v_role_tech UUID := '00000000-0000-0000-0000-000000000004';
-  v_role_viewer UUID := '00000000-0000-0000-0000-000000000005';
-  v_perm_id UUID;
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'role_permissions') THEN
-    -- SUPER_ADMIN & ADMIN: all permissions
-    FOR v_perm_id IN SELECT id FROM public.permissions LOOP
-      INSERT INTO public.role_permissions (role_id, permission_id) VALUES (v_role_super_admin, v_perm_id) ON CONFLICT DO NOTHING;
-      INSERT INTO public.role_permissions (role_id, permission_id) VALUES (v_role_admin, v_perm_id) ON CONFLICT DO NOTHING;
-    END LOOP;
-
-    -- PROJECT_MANAGER: projects:read, projects:write, tasks:read, tasks:write, tasks:delete, clients:read, clients:write
-    FOR v_perm_id IN SELECT id FROM public.permissions WHERE code IN ('projects:read', 'projects:write', 'tasks:read', 'tasks:write', 'tasks:delete', 'clients:read', 'clients:write') LOOP
-      INSERT INTO public.role_permissions (role_id, permission_id) VALUES (v_role_pm, v_perm_id) ON CONFLICT DO NOTHING;
-    END LOOP;
-
-    -- TECHNICIAN: projects:read, tasks:read, tasks:write, clients:read (NO tasks:delete!)
-    FOR v_perm_id IN SELECT id FROM public.permissions WHERE code IN ('projects:read', 'tasks:read', 'tasks:write', 'clients:read') LOOP
-      INSERT INTO public.role_permissions (role_id, permission_id) VALUES (v_role_tech, v_perm_id) ON CONFLICT DO NOTHING;
-    END LOOP;
-
-    -- VIEWER: projects:read, tasks:read, clients:read (NO tasks:write, NO tasks:delete!)
-    FOR v_perm_id IN SELECT id FROM public.permissions WHERE code IN ('projects:read', 'tasks:read', 'clients:read') LOOP
-      INSERT INTO public.role_permissions (role_id, permission_id) VALUES (v_role_viewer, v_perm_id) ON CONFLICT DO NOTHING;
-    END LOOP;
-  END IF;
-END $$;
-
--- 0.1 Canonical Helper Function to check granular permissions for a given user or authenticated caller
+-- 1. Canonical Helper Function to check granular permissions for a given user or authenticated caller
 CREATE OR REPLACE FUNCTION public.has_permission(
   p_permission_code TEXT,
   p_user_id UUID DEFAULT NULL
@@ -56,11 +22,11 @@ RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $function$
 DECLARE
   v_target_uid UUID;
   v_user RECORD;
-  v_normalized_role TEXT;
+  v_role_code TEXT;
   v_perm_code_alt TEXT;
 BEGIN
   -- 1. Determine effective target user ID:
@@ -106,57 +72,76 @@ BEGIN
     ELSE REPLACE(p_permission_code, '_', ':')
   END;
 
-  -- 6. Check database role_permissions junction table if configured
+  -- 6. Check database role_permissions junction table if entries exist
   IF EXISTS (
-    SELECT 1
-    FROM public.role_permissions rp
-    JOIN public.permissions p ON p.id = rp.permission_id
-    WHERE (rp.role_id::text = v_user.role_id::text)
-      AND (p.code = p_permission_code OR p.code = v_perm_code_alt)
+    SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'role_permissions'
   ) THEN
+    IF EXISTS (
+      SELECT 1
+      FROM public.role_permissions rp
+      JOIN public.permissions p ON p.id = rp.permission_id
+      WHERE (rp.role_id::text = v_user.role_id::text)
+        AND (p.code = p_permission_code OR p.code = v_perm_code_alt)
+    ) THEN
+      RETURN TRUE;
+    END IF;
+  END IF;
+
+  -- 7. Resolve role code from public.roles if role_id is UUID
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'roles'
+  ) THEN
+    SELECT code INTO v_role_code FROM public.roles WHERE id::text = v_user.role_id::text;
+  END IF;
+
+  -- 8. Fallback for legacy text role IDs ('ug-1'..'ug-4') or missing roles record
+  IF v_role_code IS NULL THEN
+    v_role_code := CASE
+      WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000001', 'ug-1') THEN 'SUPER_ADMIN'
+      WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000002') THEN 'ADMIN'
+      WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000003', 'ug-2') THEN 'PROJECT_MANAGER'
+      WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000004', 'ug-3') THEN 'TECHNICIAN'
+      WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000005', 'ug-4') THEN 'VIEWER'
+      ELSE COALESCE(v_user.role_id, 'VIEWER')
+    END;
+  END IF;
+
+  -- Super Admin and Admin have all permissions
+  IF v_role_code IN ('SUPER_ADMIN', 'ADMIN') THEN
     RETURN TRUE;
   END IF;
 
-  -- 7. Canonical role evaluation (aligns with DEFAULT_PERMISSIONS from lib/permissions.ts)
-  v_normalized_role := CASE
-    WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000001', 'ug-1') THEN 'ug-1'
-    WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000003', 'ug-2') THEN 'ug-2'
-    WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000004', 'ug-3') THEN 'ug-3'
-    WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000005', 'ug-4') THEN 'ug-4'
-    ELSE COALESCE(v_user.role_id, 'ug-4')
-  END;
-
   -- Tasks permissions:
-  -- tasks:write / tasks_write -> ug-1, ug-2, ug-3
+  -- tasks:write / tasks_write -> SUPER_ADMIN, ADMIN, PROJECT_MANAGER, TECHNICIAN
   IF p_permission_code IN ('tasks_write', 'tasks:write') THEN
-    RETURN v_normalized_role IN ('ug-1', 'ug-2', 'ug-3');
+    RETURN v_role_code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'TECHNICIAN');
   END IF;
 
-  -- tasks:delete / tasks_delete -> ug-1, ug-2 (technicians and viewers CANNOT delete tasks)
+  -- tasks:delete / tasks_delete -> SUPER_ADMIN, ADMIN, PROJECT_MANAGER (technician and viewer CANNOT delete)
   IF p_permission_code IN ('tasks_delete', 'tasks:delete') THEN
-    RETURN v_normalized_role IN ('ug-1', 'ug-2');
+    RETURN v_role_code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER');
   END IF;
 
   -- tasks:read / tasks_read -> all active roles
   IF p_permission_code IN ('tasks_read', 'tasks:read') THEN
-    RETURN v_normalized_role IN ('ug-1', 'ug-2', 'ug-3', 'ug-4');
+    RETURN v_role_code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'TECHNICIAN', 'VIEWER');
   END IF;
 
-  -- projects:write / projects_write -> ug-1, ug-2
+  -- projects:write / projects_write -> SUPER_ADMIN, ADMIN, PROJECT_MANAGER
   IF p_permission_code IN ('projects_write', 'projects:write') THEN
-    RETURN v_normalized_role IN ('ug-1', 'ug-2');
+    RETURN v_role_code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER');
   END IF;
 
   -- projects:read / projects_read -> all active roles
   IF p_permission_code IN ('projects_read', 'projects:read') THEN
-    RETURN v_normalized_role IN ('ug-1', 'ug-2', 'ug-3', 'ug-4');
+    RETURN v_role_code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'TECHNICIAN', 'VIEWER');
   END IF;
 
   RETURN FALSE;
 END;
-$$;
+$function$;
 
--- 1. Function to atomically create a task with assignees (suporta project_id NULL)
+-- 2. Function to atomically create a task with assignees (suporta project_id NULL)
 CREATE OR REPLACE FUNCTION public.create_task_atomic(
   p_id UUID,
   p_project_id UUID DEFAULT NULL,
@@ -181,7 +166,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $function$
 DECLARE
   v_task_row RECORD;
   v_uid UUID;
@@ -263,7 +248,7 @@ BEGIN
   )
   RETURNING * INTO v_task_row;
 
-  -- 3. Insert assignees atomically
+  -- 4. Insert assignees atomically
   IF p_assignee_user_ids IS NOT NULL AND array_length(p_assignee_user_ids, 1) > 0 THEN
     FOREACH v_uid IN ARRAY p_assignee_user_ids LOOP
       IF v_uid IS NOT NULL THEN
@@ -276,9 +261,9 @@ BEGIN
 
   RETURN to_jsonb(v_task_row);
 END;
-$$;
+$function$;
 
--- 2. Function to atomically update a task with OCC verification, project decoupling and assignee syncing
+-- 3. Function to atomically update a task with OCC verification, project decoupling and assignee syncing
 CREATE OR REPLACE FUNCTION public.update_task_atomic(
   p_id UUID,
   p_expected_version INTEGER,
@@ -306,7 +291,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $function$
 DECLARE
   v_current_version INTEGER;
   v_task_row RECORD;
@@ -381,7 +366,7 @@ BEGIN
   WHERE id = p_id
   RETURNING * INTO v_task_row;
 
-  -- 4. Sync assignees atomically if requested
+  -- 5. Sync assignees atomically if requested
   IF p_update_assignees THEN
     DELETE FROM public.task_assignees WHERE task_id = p_id;
     IF p_assignee_user_ids IS NOT NULL AND array_length(p_assignee_user_ids, 1) > 0 THEN
@@ -397,9 +382,9 @@ BEGIN
 
   RETURN to_jsonb(v_task_row);
 END;
-$$;
+$function$;
 
--- 3. Function to atomically soft-delete a task with OCC verification
+-- 4. Function to atomically soft-delete a task with OCC verification
 CREATE OR REPLACE FUNCTION public.delete_task_atomic(
   p_id UUID,
   p_expected_version INTEGER,
@@ -409,7 +394,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $function$
 DECLARE
   v_current_version INTEGER;
   v_task_row RECORD;
@@ -457,11 +442,10 @@ BEGIN
 
   RETURN to_jsonb(v_task_row);
 END;
-$$;
+$function$;
 
 -- Grant execution permissions with explicit signatures
 GRANT EXECUTE ON FUNCTION public.has_permission(TEXT, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.create_task_atomic(UUID, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[]) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.update_task_atomic(UUID, INTEGER, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[], BOOLEAN, BOOLEAN) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.delete_task_atomic(UUID, INTEGER, UUID) TO authenticated, service_role;
-

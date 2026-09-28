@@ -406,6 +406,28 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
       expect(sqlContent).toContain("USING ERRCODE = 'P0002'");
       expect(sqlContent).toContain("USING ERRCODE = '23503'");
     });
+
+    it('migration SQL utiliza delimitadores nomeados ($function$) consistentes e não possui dollar quoting ambíguo ou quebrado', () => {
+      const sqlContent = readFileSync(
+        join(process.cwd(), 'supabase/migrations/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
+        'utf-8'
+      );
+      // Sem anonymous dollar quotes ($$)
+      expect(sqlContent).not.toContain('$$');
+      // Sem quebras de dollar quote como "AS $" ou "DO $"
+      expect(sqlContent).not.toMatch(/AS\s+\$(?!\w+\$)/);
+      expect(sqlContent).not.toMatch(/DO\s+\$(?!\w+\$)/);
+      // Todas as funções têm delimitadores correspondentes
+      const opens = (sqlContent.match(/AS\s+\$function\$/g) || []).length;
+      const closes = (sqlContent.match(/\$function\$;/g) || []).length;
+      expect(opens).toBe(4);
+      expect(closes).toBe(4);
+      // Todas as 4 funções declaradas
+      expect(sqlContent).toContain('CREATE OR REPLACE FUNCTION public.has_permission');
+      expect(sqlContent).toContain('CREATE OR REPLACE FUNCTION public.create_task_atomic');
+      expect(sqlContent).toContain('CREATE OR REPLACE FUNCTION public.update_task_atomic');
+      expect(sqlContent).toContain('CREATE OR REPLACE FUNCTION public.delete_task_atomic');
+    });
   });
 
   describe('3. Auditoria de Writers e Ausência de Fallbacks', () => {
