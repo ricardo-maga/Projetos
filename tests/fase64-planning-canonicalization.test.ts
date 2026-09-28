@@ -77,18 +77,23 @@ describe('FASE 64 — Auditoria e Canonicalização do Domínio Planning', () =>
         join(process.cwd(), 'app/api/v1/planning-allocations/[id]/route.ts'),
         'utf-8'
       );
+      const allocationService = readFileSync(
+        join(process.cwd(), 'lib/planning/allocationService.ts'),
+        'utf-8'
+      );
+      const combined = allocationIdRoute + '\n' + allocationService;
 
       // Mutating CANCELLED blocked
-      expect(allocationIdRoute).toContain("current.status === 'CANCELLED'");
-      expect(allocationIdRoute).toContain('INVALID_STATUS_TRANSITION');
+      expect(combined).toContain("current.status === 'CANCELLED'");
+      expect(combined).toContain('INVALID_STATUS_TRANSITION');
 
       // Optimistic concurrency control (version match and increment)
-      expect(allocationIdRoute).toContain('updates.version !== currentVersion');
-      expect(allocationIdRoute).toContain('currentVersion + 1');
+      expect(combined).toContain('updates.version !== currentVersion');
+      expect(combined).toContain('currentVersion + 1');
 
       // DELETE restrictions: CONFIRMED and CANCELLED forbidden, DRAFT allowed
-      expect(allocationIdRoute).toContain('CANNOT_DELETE_CONFIRMED');
-      expect(allocationIdRoute).toContain('CANNOT_DELETE_CANCELLED');
+      expect(combined).toContain('CANNOT_DELETE_CONFIRMED');
+      expect(combined).toContain('CANNOT_DELETE_CANCELLED');
     });
   });
 
