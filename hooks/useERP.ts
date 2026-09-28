@@ -1003,14 +1003,7 @@ export function useERP() {
 
   // ==================== TASKS CRUD ====================
   const parseHoursToFloat = (hoursStr: any): number => {
-    if (typeof hoursStr === 'number') return hoursStr;
-    if (!hoursStr || typeof hoursStr !== 'string') return 0;
-    if (hoursStr.includes(':')) {
-      const [h, m] = hoursStr.split(':').map(Number);
-      return (isNaN(h) ? 0 : h) + (isNaN(m) ? 0 : m / 60);
-    }
-    const parsed = parseFloat(hoursStr);
-    return isNaN(parsed) ? 0 : parsed;
+    return parseTaskHoursToFloat(hoursStr);
   };
 
   const addTask = async (task: Omit<Task, 'id' | 'deleted' | 'createdDate'>) => {

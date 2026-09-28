@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { parseTaskHoursToNumber } from '../tasks/taskService';
 import type {
   ValidationContext,
   ValidationResult,
@@ -36,29 +37,7 @@ export function getIsoDayOfWeek(dateStr: string): number {
 }
 
 export function parseIntervalToHours(val: any): number {
-  if (typeof val === 'number') return val;
-  if (!val) return 0;
-  if (typeof val === 'string') {
-    const timeMatch = val.match(/^(\d+):(\d+)(?::(\d+))?$/);
-    if (timeMatch) {
-      const hours = parseInt(timeMatch[1], 10);
-      const minutes = parseInt(timeMatch[2], 10);
-      return hours + minutes / 60;
-    }
-    let totalHours = 0;
-    const hoursMatch = val.match(/(\d+(?:\.\d+)?)\s*(?:hour|hours|hrs|h)/i);
-    if (hoursMatch) totalHours += parseFloat(hoursMatch[1]);
-    const minsMatch = val.match(/(\d+)\s*(?:minute|minutes|mins|m)/i);
-    if (minsMatch) totalHours += parseInt(minsMatch[1], 10) / 60;
-    if (totalHours > 0) return totalHours;
-    const num = parseFloat(val);
-    if (!isNaN(num)) return num;
-  }
-  if (typeof val === 'object') {
-    const hours = (val.days || 0) * 8 + (val.hours || 0) + (val.minutes || 0) / 60;
-    return hours;
-  }
-  return 0;
+  return parseTaskHoursToNumber(val);
 }
 
 /**

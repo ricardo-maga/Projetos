@@ -1,19 +1,11 @@
 import type { PlanningAllocationDTO } from './types.ts';
+import { parseTaskHoursToNumber } from '../tasks/taskService';
 
 /**
  * Parses a duration/hours input (e.g. '08:00', '8', '8.5', 8) into numeric decimal hours.
  */
 export function parseHoursToNumber(val?: string | number | null): number {
-  if (val === null || val === undefined) return 0;
-  if (typeof val === 'number') return isNaN(val) ? 0 : val;
-  const str = String(val).trim();
-  if (!str) return 0;
-  if (str.includes(':')) {
-    const [h, m] = str.split(':').map(Number);
-    return (h || 0) + ((m || 0) / 60);
-  }
-  const num = parseFloat(str.replace('h', '').replace('H', '').replace(',', '.'));
-  return isNaN(num) ? 0 : num;
+  return parseTaskHoursToNumber(val);
 }
 
 /**

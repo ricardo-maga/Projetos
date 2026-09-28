@@ -77,18 +77,92 @@ export interface ListTasksParams {
 }
 
 /**
+ * Canonical helper to parse any interval/hours representation into decimal numeric hours.
+ * Handles numbers, strings, HH:MM:SS, ISO durations, objects, and self-healing for corrupted values (e.g. 80000 -> 8).
+ */
+export function parseTaskHoursToNumber(val: any): number {
+  if (val === null || val === undefined) return 0;
+
+  const sanitizeCorrupted = (n: number): number => {
+    if (isNaN(n) || !isFinite(n)) return 0;
+    let clean = Math.max(0, n);
+    if (clean >= 10000 && clean % 10000 === 0) {
+      while (clean >= 10000 && clean % 10000 === 0) {
+        clean = clean / 10000;
+      }
+    }
+    return Math.round(clean * 100) / 100;
+  };
+
+  if (typeof val === 'number') {
+    return sanitizeCorrupted(val);
+  }
+
+  if (typeof val === 'object') {
+    const days = Number(val.days) || 0;
+    const hours = Number(val.hours) || 0;
+    const minutes = Number(val.minutes) || 0;
+    const seconds = Number(val.seconds) || 0;
+    const total = days * 8 + hours + minutes / 60 + seconds / 3600;
+    return sanitizeCorrupted(total);
+  }
+
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return 0;
+
+    // Standard HH:MM:SS or HH:MM format (e.g. "08:00:00", "08:30", "120:15:00")
+    const timeMatch = trimmed.match(/^(\d+):(\d+)(?::(\d+))?$/);
+    if (timeMatch) {
+      const hours = parseInt(timeMatch[1], 10);
+      const minutes = parseInt(timeMatch[2], 10);
+      const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+      const total = hours + minutes / 60 + seconds / 3600;
+      return sanitizeCorrupted(total);
+    }
+
+    // ISO 8601 Duration (e.g. "PT8H30M", "P0DT8H")
+    if (trimmed.startsWith('P')) {
+      const hoursMatch = trimmed.match(/(\d+(?:\.\d+)?)H/i);
+      const minsMatch = trimmed.match(/(\d+(?:\.\d+)?)M/i);
+      const daysMatch = trimmed.match(/(\d+(?:\.\d+)?)D/i);
+      let total = 0;
+      if (daysMatch) total += parseFloat(daysMatch[1]) * 8;
+      if (hoursMatch) total += parseFloat(hoursMatch[1]);
+      if (minsMatch) total += parseFloat(minsMatch[1]) / 60;
+      return sanitizeCorrupted(total);
+    }
+
+    // Match text like "8 hours", "8.5 hours", "8h 30m"
+    let totalHours = 0;
+    let matched = false;
+    const hoursMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*(?:hour|hours|hrs|h)\b/i);
+    if (hoursMatch) {
+      totalHours += parseFloat(hoursMatch[1]);
+      matched = true;
+    }
+    const minsMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*(?:minute|minutes|mins|m)\b/i);
+    if (minsMatch) {
+      totalHours += parseFloat(minsMatch[1]) / 60;
+      matched = true;
+    }
+    if (matched) return sanitizeCorrupted(totalHours);
+
+    // Fallback plain float parse (e.g. "8", "8.5", "8,5")
+    const cleanNumberStr = trimmed.replace(',', '.');
+    const num = parseFloat(cleanNumberStr);
+    if (!isNaN(num)) {
+      return sanitizeCorrupted(num);
+    }
+  }
+
+  return 0;
+}
+
+/**
  * Maps raw database row and assignees into standard TaskDTO format
  */
 export function mapRowToTaskDTO(row: any, assigneesMap: Record<string, string[]> = {}): TaskDTO {
-  const parseHours = (val: any): number => {
-    if (typeof val === 'number') return val;
-    if (typeof val === 'string') {
-      const parsed = parseFloat(val.replace(/[^\d.-]/g, ''));
-      return isNaN(parsed) ? 0 : parsed;
-    }
-    return 0;
-  };
-
   return {
     id: row.id,
     projectId: row.project_id || row.projectId,
@@ -96,8 +170,8 @@ export function mapRowToTaskDTO(row: any, assigneesMap: Record<string, string[]>
     description: row.task_description || row.description || '',
     statusId: row.status_id || row.statusId || 'ts-1',
     taskTypeId: row.task_type_id || row.taskTypeId || '',
-    estimatedHours: parseHours(row.estimated_hours),
-    actualHours: parseHours(row.actual_hours),
+    estimatedHours: parseTaskHoursToNumber(row.estimated_hours ?? row.estimatedHours),
+    actualHours: parseTaskHoursToNumber(row.actual_hours ?? row.actualHours),
     startDate: row.start_date || '',
     startTime: row.start_time || '',
     endDate: row.end_date || '',
@@ -124,8 +198,10 @@ export async function createTaskServer(
   params: CreateTaskParams
 ): Promise<{ success: boolean; data?: TaskDTO; error?: string; statusCode?: number }> {
   const newId = params.id || crypto.randomUUID();
-  const estimatedHoursStr = `${params.estimatedHours || 0} hours`;
-  const actualHoursStr = `${params.actualHours || 0} hours`;
+  const estH = parseTaskHoursToNumber(params.estimatedHours);
+  const actH = parseTaskHoursToNumber(params.actualHours);
+  const estimatedHoursStr = `${estH} hours`;
+  const actualHoursStr = `${actH} hours`;
 
   // 1. Try atomic RPC
   try {
@@ -245,8 +321,10 @@ export async function updateTaskServer(
   params: UpdateTaskParams
 ): Promise<{ success: boolean; data?: TaskDTO; error?: string; statusCode?: number; currentVersion?: number }> {
   const hasAssigneesUpdate = params.assignedUserIds !== undefined;
-  const estimatedHoursStr = params.estimatedHours !== undefined ? `${params.estimatedHours} hours` : undefined;
-  const actualHoursStr = params.actualHours !== undefined ? `${params.actualHours} hours` : undefined;
+  const estH = params.estimatedHours !== undefined ? parseTaskHoursToNumber(params.estimatedHours) : undefined;
+  const actH = params.actualHours !== undefined ? parseTaskHoursToNumber(params.actualHours) : undefined;
+  const estimatedHoursStr = estH !== undefined ? `${estH} hours` : undefined;
+  const actualHoursStr = actH !== undefined ? `${actH} hours` : undefined;
 
   try {
     const { data: rpcData, error: rpcError } = await sb.rpc('update_task_atomic', {

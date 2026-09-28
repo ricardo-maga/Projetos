@@ -1,6 +1,7 @@
 import { Task } from './types';
 import { getAuthHeaders, getApiErrorMessage } from './clientAuth';
 import { getTaskConflictWarnings, TaskConflictParams } from './taskConflicts';
+import { parseTaskHoursToNumber } from './tasks/taskService';
 
 export { getTaskConflictWarnings, type TaskConflictParams };
 
@@ -102,16 +103,7 @@ export interface TaskOperationResult<T = Task> {
  * Parses hours string (e.g. "08:00", "4.5", "4") to a non-negative float
  */
 export function parseTaskHoursToFloat(hoursStr: string | number | undefined | null): number {
-  if (hoursStr === undefined || hoursStr === null || hoursStr === '') return 0;
-  if (typeof hoursStr === 'number') return Math.max(0, hoursStr);
-  const trimmed = String(hoursStr).trim();
-  if (trimmed.includes(':')) {
-    const [h, m] = trimmed.split(':').map(Number);
-    const val = (isNaN(h) ? 0 : h) + (isNaN(m) ? 0 : m / 60);
-    return Math.max(0, Math.round(val * 100) / 100);
-  }
-  const parsed = parseFloat(trimmed);
-  return isNaN(parsed) ? 0 : Math.max(0, parsed);
+  return parseTaskHoursToNumber(hoursStr);
 }
 
 /**
@@ -123,7 +115,7 @@ export const parseTaskHours = parseTaskHoursToFloat;
  * Normalizes task hours for display (e.g. "08:00" -> "8" or "8.5")
  */
 export function formatTaskHoursToString(hours: number | string | undefined | null): string {
-  const num = parseTaskHoursToFloat(hours);
+  const num = parseTaskHoursToNumber(hours);
   return num === 0 ? '0' : String(num);
 }
 
@@ -150,8 +142,8 @@ export function normalizeTaskFromApiResponse(data: any): Task {
     description: data.description !== undefined ? data.description : (data.task_description || ''),
     statusId: data.statusId || data.status_id || '',
     taskTypeId: data.taskTypeId || data.task_type_id || undefined,
-    estimatedHours: data.estimatedHours !== undefined ? String(data.estimatedHours) : (data.estimated_hours !== undefined ? String(data.estimated_hours) : '0'),
-    actualHours: data.actualHours !== undefined ? String(data.actualHours) : (data.actual_hours !== undefined ? String(data.actual_hours) : '0'),
+    estimatedHours: String(parseTaskHoursToNumber(data.estimatedHours ?? data.estimated_hours)),
+    actualHours: String(parseTaskHoursToNumber(data.actualHours ?? data.actual_hours)),
     startDate: data.startDate || data.start_date || undefined,
     startTime: data.startTime || data.start_time || undefined,
     endDate: data.endDate || data.end_date || undefined,

@@ -317,6 +317,28 @@ describe('FASE 63 — Desacoplamento e Persistência Atómica do domínio Tasks'
       expect(dto.assignedUserIds).toEqual(['user-1']);
     });
 
+    it('mapRowToTaskDTO lida corretamente com formatos de INTERVAL do PostgreSQL (08:00:00) e auto-correção de valores corrompidos', () => {
+      // 1. PostgreSQL standard interval string output "08:00:00"
+      const pgIntervalRow = {
+        id: 'task-pg',
+        estimated_hours: '08:00:00',
+        actual_hours: '04:30:00',
+      };
+      const dtoPg = mapRowToTaskDTO(pgIntervalRow);
+      expect(dtoPg.estimatedHours).toBe(8);
+      expect(dtoPg.actualHours).toBe(4.5);
+
+      // 2. Corrupted historical values resulting from prior colon-stripping regex (e.g. 80000 -> 8, 800000000 -> 8)
+      const corruptedRow = {
+        id: 'task-corrupt',
+        estimated_hours: '800000000',
+        actual_hours: '80000',
+      };
+      const dtoCorrupt = mapRowToTaskDTO(corruptedRow);
+      expect(dtoCorrupt.estimatedHours).toBe(8);
+      expect(dtoCorrupt.actualHours).toBe(8);
+    });
+
     it('os endpoints /api/v1/tasks importam e consomem o taskService', () => {
       const mainRoute = readFileSync(join(process.cwd(), 'app/api/v1/tasks/route.ts'), 'utf-8');
       expect(mainRoute).toContain('from \'@/lib/tasks/taskService\'');

@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { ProjectRiskItem } from "./types"
+import { parseTaskHoursToNumber } from "./tasks/taskService"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -137,17 +138,7 @@ export function getDefaultTaskTypeId(
 }
 
 export function parseTimeToHours(timeStr?: string | null): number {
-  if (!timeStr) return 0;
-  const clean = String(timeStr).trim();
-  if (!clean) return 0;
-  if (clean.includes(':')) {
-    const parts = clean.split(':');
-    const hours = parseInt(parts[0], 10) || 0;
-    const mins = parseInt(parts[1], 10) || 0;
-    return hours + mins / 60;
-  }
-  const num = parseFloat(clean);
-  return isNaN(num) ? 0 : num;
+  return parseTaskHoursToNumber(timeStr);
 }
 
 export function formatHoursToHHMM(hoursFloat: number): string {
@@ -171,11 +162,9 @@ export function stripSecondsFromHours(timeStr?: string | null): string {
 
 export function formatToOnlyHours(timeStr?: string | null): string {
   if (!timeStr) return '0';
-  const clean = String(timeStr).trim();
-  if (!clean) return '0';
-  const hours = parseTimeToHours(clean);
+  const hours = parseTaskHoursToNumber(timeStr);
   if (isNaN(hours) || hours <= 0) return '0';
-  return String(Math.round(hours));
+  return String(Math.round(hours * 100) / 100);
 }
 
 export interface TaskConflictWarning {
