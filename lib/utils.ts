@@ -251,6 +251,158 @@ export function getTaskEffectiveDate(t: { estimatedDate?: string | null; startDa
   return t.estimatedDate || '';
 }
 
+export interface StatusColorInfo {
+  id: string;
+  name: string;
+  hex: string;
+  bgClass: string;
+  textClass: string;
+  borderClass: string;
+  badgeClass: string;
+  dotClass: string;
+}
+
+export const PASTEL_COLOR_MAP: Record<string, StatusColorInfo> = {
+  vermelho: {
+    id: 'vermelho',
+    name: 'Vermelho',
+    hex: '#fca5a5',
+    bgClass: 'bg-red-50',
+    textClass: 'text-red-700',
+    borderClass: 'border-red-200',
+    badgeClass: 'bg-red-50 text-red-700 border-red-200',
+    dotClass: 'bg-red-500',
+  },
+  amarelo: {
+    id: 'amarelo',
+    name: 'Amarelo',
+    hex: '#fef08a',
+    bgClass: 'bg-amber-50',
+    textClass: 'text-amber-800',
+    borderClass: 'border-amber-200',
+    badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
+    dotClass: 'bg-amber-500',
+  },
+  verde: {
+    id: 'verde',
+    name: 'Verde',
+    hex: '#bbf7d0',
+    bgClass: 'bg-emerald-50',
+    textClass: 'text-emerald-700',
+    borderClass: 'border-emerald-200',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    dotClass: 'bg-emerald-500',
+  },
+  azul: {
+    id: 'azul',
+    name: 'Azul Céu',
+    hex: '#38bdf8',
+    bgClass: 'bg-sky-100',
+    textClass: 'text-sky-800',
+    borderClass: 'border-sky-300',
+    badgeClass: 'bg-sky-100 text-sky-800 border-sky-300',
+    dotClass: 'bg-sky-500',
+  },
+  laranja: {
+    id: 'laranja',
+    name: 'Laranja',
+    hex: '#fed7aa',
+    bgClass: 'bg-orange-50',
+    textClass: 'text-orange-800',
+    borderClass: 'border-orange-200',
+    badgeClass: 'bg-orange-50 text-orange-800 border-orange-200',
+    dotClass: 'bg-orange-500',
+  },
+  cinza: {
+    id: 'cinza',
+    name: 'Cinza',
+    hex: '#e2e8f0',
+    bgClass: 'bg-slate-100',
+    textClass: 'text-slate-700',
+    borderClass: 'border-slate-200',
+    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+    dotClass: 'bg-slate-400',
+  },
+};
+
+export function getStatusColorInfo(colorInput?: string | null, fallbackScaleOrName?: number | string): StatusColorInfo {
+  if (colorInput) {
+    const lower = colorInput.toLowerCase().trim();
+    if (lower.includes('vermelho') || lower === '#fca5a5' || lower === '#ef4444' || lower.includes('red') || lower.includes('danger')) return PASTEL_COLOR_MAP.vermelho;
+    if (lower.includes('amarelo') || lower === '#fef08a' || lower === '#eab308' || lower.includes('yellow') || lower.includes('warning')) return PASTEL_COLOR_MAP.amarelo;
+    if (lower.includes('verde') || lower === '#bbf7d0' || lower === '#22c55e' || lower.includes('green') || lower.includes('success')) return PASTEL_COLOR_MAP.verde;
+    if (lower.includes('azul') || lower === '#bfdbfe' || lower === '#38bdf8' || lower === '#7dd3fc' || lower === '#3b82f6' || lower.includes('blue') || lower.includes('sky') || lower.includes('info')) return PASTEL_COLOR_MAP.azul;
+    if (lower.includes('laranja') || lower === '#fed7aa' || lower === '#f97316' || lower.includes('orange')) return PASTEL_COLOR_MAP.laranja;
+    if (lower.includes('cinza') || lower === '#e2e8f0' || lower === '#64748b' || lower.includes('gray') || lower.includes('slate') || lower.includes('secondary')) return PASTEL_COLOR_MAP.cinza;
+  }
+
+  if (typeof fallbackScaleOrName === 'number') {
+    if (fallbackScaleOrName === 1) return PASTEL_COLOR_MAP.cinza;
+    if (fallbackScaleOrName === 2) return PASTEL_COLOR_MAP.azul;
+    if (fallbackScaleOrName === 3) return PASTEL_COLOR_MAP.verde;
+    if (fallbackScaleOrName === 4) return PASTEL_COLOR_MAP.amarelo;
+    if (fallbackScaleOrName >= 5) return PASTEL_COLOR_MAP.verde;
+  } else if (typeof fallbackScaleOrName === 'string') {
+    const lowerName = fallbackScaleOrName.toLowerCase();
+    if (lowerName.includes('concl') || lowerName.includes('fechad') || lowerName.includes('implement')) return PASTEL_COLOR_MAP.verde;
+    if (lowerName.includes('curso') || lowerName.includes('iniciad') || lowerName.includes('execu')) return PASTEL_COLOR_MAP.azul;
+    if (lowerName.includes('susp') || lowerName.includes('pausa') || lowerName.includes('ensai')) return PASTEL_COLOR_MAP.amarelo;
+    if (lowerName.includes('prepar') || lowerName.includes('melhor')) return PASTEL_COLOR_MAP.laranja;
+  }
+
+  return PASTEL_COLOR_MAP.azul;
+}
+
+export function getProjectStatusStyle(
+  statusId?: string | null,
+  projectStatuses: { id: string; name: string; color?: string; scale?: number }[] = []
+): StatusColorInfo & { name: string } {
+  if (!statusId) {
+    return { ...PASTEL_COLOR_MAP.cinza, name: 'Sem Estado' };
+  }
+  const matchId = (idA?: string | null, idB?: string | null) => {
+    if (!idA || !idB) return false;
+    if (idA === idB) return true;
+    return idA.replace(/[-]/g, '').toLowerCase() === idB.replace(/[-]/g, '').toLowerCase();
+  };
+  const found = projectStatuses.find(s => s.id === statusId || matchId(s.id, statusId));
+  if (found) {
+    const colorInfo = getStatusColorInfo(found.color, found.scale || found.name);
+    return { ...colorInfo, name: found.name };
+  }
+  const fallbackInfo = getStatusColorInfo(null, statusId);
+  return { ...fallbackInfo, name: statusId };
+}
+
+export function getTaskStatusStyle(
+  statusId?: string | null,
+  taskStatuses: { id: string; name: string; color?: string; scale?: number }[] = []
+): StatusColorInfo & { name: string } {
+  if (!statusId) {
+    return { ...PASTEL_COLOR_MAP.cinza, name: 'Sem Estado' };
+  }
+  const found = taskStatuses.find(s => s.id === statusId || matchTaskStatusId(s.id, statusId));
+  if (found) {
+    const colorInfo = getStatusColorInfo(found.color, found.scale || found.name);
+    return { ...colorInfo, name: found.name };
+  }
+
+  if (statusId === 'ts-1' || statusId === '99999999-9999-9999-9999-999999999901') {
+    return { ...PASTEL_COLOR_MAP.cinza, name: 'Por iniciar' };
+  }
+  if (statusId === 'ts-2' || statusId === '99999999-9999-9999-9999-999999999902') {
+    return { ...PASTEL_COLOR_MAP.azul, name: 'Em curso' };
+  }
+  if (statusId === 'ts-3' || statusId === '99999999-9999-9999-9999-999999999903') {
+    return { ...PASTEL_COLOR_MAP.verde, name: 'Completa' };
+  }
+  if (statusId === 'ts-4' || statusId === '99999999-9999-9999-9999-999999999904') {
+    return { ...PASTEL_COLOR_MAP.amarelo, name: 'Suspensa' };
+  }
+
+  return { ...PASTEL_COLOR_MAP.azul, name: statusId };
+}
+
 export function genId(prefix: string = 'id'): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();

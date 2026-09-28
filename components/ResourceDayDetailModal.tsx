@@ -21,6 +21,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { User, Task, Project, UserAbsence, TaskStatus } from '../lib/types';
+import { getTaskStatusStyle } from '../lib/utils';
 import { 
   PlanningAllocationDTO, 
   ResourceCapacityDetail, 
@@ -720,18 +721,14 @@ export default function ResourceDayDetailModal({
                               <Briefcase className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                               <span>{project ? project.title : 'Projeto não associado'}</span>
                             </div>
-                            {taskStatus && (
-                              <span 
-                                className="px-2 py-0.5 rounded-md text-[10px] font-bold border"
-                                style={{
-                                  backgroundColor: taskStatus.color ? `${taskStatus.color}15` : '#f1f5f9',
-                                  color: taskStatus.color || '#334155',
-                                  borderColor: taskStatus.color ? `${taskStatus.color}40` : '#cbd5e1'
-                                }}
-                              >
-                                {taskStatus.name}
-                              </span>
-                            )}
+                            {taskStatus && (() => {
+                              const tStyle = getTaskStatusStyle(task?.statusId, taskStatuses);
+                              return (
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${tStyle.badgeClass}`}>
+                                  {tStyle.name}
+                                </span>
+                              );
+                            })()}
                             {/* Indicador Operacional da Carga da Tarefa (FASE 23E-C3G Secção 7) */}
                             <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${opStatus.badgeClass}`}>
                               {opStatus.label}

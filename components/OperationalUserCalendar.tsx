@@ -28,7 +28,7 @@ import {
   isUserAssignedToTask,
   isTaskOnDate
 } from '../lib/operationalCalendar';
-import { getTaskStatusName, matchTaskStatusId, formatToOnlyHours, getTaskTypeName } from '../lib/utils';
+import { getTaskStatusName, matchTaskStatusId, formatToOnlyHours, getTaskTypeName, getTaskStatusStyle } from '../lib/utils';
 import { normalizeRoleId } from '../lib/permissions';
 
 interface OperationalUserCalendarProps {
@@ -692,27 +692,14 @@ export default function OperationalUserCalendar({
                               {dayTasks.map(task => {
                                 const project = getProject(task.projectId);
                                 const clientName = project ? getClientName(project.clientId) : '';
-                                const statusName = getTaskStatusName(task.statusId, taskStatuses);
+                                const tStyle = getTaskStatusStyle(task.statusId, taskStatuses);
+                                const statusName = tStyle.name;
                                 const scale = getTaskScale(task.statusId);
                                 const hours = formatToOnlyHours(task.estimatedHours) || '0';
 
-                                // Color styling based on status scale
-                                let cardStyle = 'border-l-4 border-l-blue-500 bg-blue-50/20 border-slate-200 hover:border-blue-400';
-                                let badgeStyle = 'bg-blue-100 text-blue-800';
-
-                                if (scale === 2) {
-                                  // Em Execução
-                                  cardStyle = 'border-l-4 border-l-amber-500 bg-amber-50/30 border-amber-200 hover:border-amber-400';
-                                  badgeStyle = 'bg-amber-100 text-amber-900 font-extrabold';
-                                } else if (scale === 3) {
-                                  // Concluída
-                                  cardStyle = 'border-l-4 border-l-emerald-500 bg-emerald-50/20 border-emerald-200 hover:border-emerald-400 opacity-90';
-                                  badgeStyle = 'bg-emerald-100 text-emerald-800 font-bold';
-                                } else if (scale === 4) {
-                                  // Bloqueada
-                                  cardStyle = 'border-l-4 border-l-rose-500 bg-rose-50/30 border-rose-200 hover:border-rose-400';
-                                  badgeStyle = 'bg-rose-100 text-rose-800 font-bold';
-                                }
+                                // Color styling based on status color configuration
+                                const cardStyle = `border-l-4 ${tStyle.dotClass.replace('bg-', 'border-l-')} ${tStyle.bgClass} ${tStyle.borderClass} hover:brightness-95`;
+                                const badgeStyle = `${tStyle.badgeClass} font-extrabold`;
 
                                 return (
                                   <div

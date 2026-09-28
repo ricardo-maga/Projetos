@@ -29,7 +29,7 @@ import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { TaskAnalytics } from './TaskAnalytics';
 
 import { hasPermission } from '../lib/permissions';
-import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate } from '../lib/utils';
+import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate, getTaskStatusStyle } from '../lib/utils';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
@@ -785,18 +785,14 @@ export default function TaskSection({
                   <tbody className="text-xs divide-y divide-slate-100">
                     {paginatedTasks.map(t => {
                       const scale = getTaskScale(t.statusId);
-                      const statusName = getStatusName(t.statusId);
+                      const tStyle = getTaskStatusStyle(t.statusId, taskStatuses);
+                      const statusName = tStyle.name;
                       const estHours = formatToOnlyHours(t.estimatedHours) || '0';
                       const actHours = formatToOnlyHours(t.actualHours) || '0';
                       const targetDate = getTaskEffectiveDate(t);
                       const isOverdue = Boolean(targetDate && targetDate < todayStr && scale !== 3);
 
-                      // Status Badge Styling
-                      let statusBadgeStyle = 'bg-slate-100 text-slate-600 border-slate-200';
-                      if (scale === 1) statusBadgeStyle = 'bg-blue-50 text-blue-700 border-blue-200';
-                      if (scale === 2) statusBadgeStyle = 'bg-amber-50 text-amber-800 border-amber-300 font-extrabold';
-                      if (scale === 3) statusBadgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-200';
-                      if (scale === 4) statusBadgeStyle = 'bg-rose-50 text-rose-800 border-rose-200';
+                      const statusBadgeStyle = tStyle.badgeClass;
 
                       return (
                         <tr 

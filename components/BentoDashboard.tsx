@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Project, Task, Comment, UserAbsence, Material, Quote, Client, ProjectMaterial, ProjectRiskItem } from '../lib/types';
 import { Briefcase, CheckSquare, Users, MessageSquare, CalendarClock, CalendarDays, Activity, ChevronLeft, ChevronRight, AlertTriangle, Package, CheckCircle2, Clock, BarChart2, Search } from 'lucide-react';
 import { stringToUUID } from '../lib/supabaseSync';
-import { getProjectCalculatedRisk, matchTaskStatusId, parseTimeToHours } from '../lib/utils';
+import { getProjectCalculatedRisk, matchTaskStatusId, parseTimeToHours, getProjectStatusStyle } from '../lib/utils';
 
 interface BentoDashboardProps {
   projects: Project[];
@@ -537,15 +537,14 @@ export default function BentoDashboard({
                         )}
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                          project.statusId === 'ps-5' || project.statusId === 'ps-4'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                            : project.statusId === 'ps-7'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-100'
-                            : 'bg-blue-50 text-blue-700 border border-blue-100'
-                        }`}>
-                          {getProjectStatus(project.statusId)}
-                        </span>
+                        {(() => {
+                          const pStyle = getProjectStatusStyle(project.statusId, projectStatuses);
+                          return (
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${pStyle.badgeClass}`}>
+                              {pStyle.name}
+                            </span>
+                          );
+                        })()}
                       </td>
                     </tr>
                   );
@@ -605,33 +604,41 @@ export default function BentoDashboard({
                 Nenhum projeto com tarefas planeadas para os próximos 7 dias.
               </div>
             ) : (
-              activeProjectsThisWeek.map(({ project, clientName, projTasksCount, totalTasksThisWeek, progressPct }) => (
-                <div 
-                  key={project.id}
-                  onClick={() => onSelectProject(project.id)}
-                  className="bg-slate-800/80 hover:bg-slate-800 p-3 rounded-xl border border-slate-700/80 cursor-pointer transition-all space-y-2"
-                >
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[11px] font-bold text-blue-400 truncate">{clientName}</div>
-                      <div className="text-xs font-extrabold text-white truncate">{project.title}</div>
+              activeProjectsThisWeek.map(({ project, clientName, projTasksCount, totalTasksThisWeek, progressPct }) => {
+                const pStyle = getProjectStatusStyle(project.statusId, projectStatuses);
+                return (
+                  <div 
+                    key={project.id}
+                    onClick={() => onSelectProject(project.id)}
+                    className="bg-slate-800/80 hover:bg-slate-800 p-3 rounded-xl border border-slate-700/80 cursor-pointer transition-all space-y-2"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] font-bold text-blue-400 truncate">{clientName}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase border ${pStyle.badgeClass}`}>
+                            {pStyle.name}
+                          </span>
+                        </div>
+                        <div className="text-xs font-extrabold text-white truncate">{project.title}</div>
+                      </div>
+                      <span className="text-[11px] font-mono font-bold text-slate-300 shrink-0">
+                        {projTasksCount} de {totalTasksThisWeek} tarefas
+                      </span>
                     </div>
-                    <span className="text-[11px] font-mono font-bold text-slate-300 shrink-0">
-                      {projTasksCount} de {totalTasksThisWeek} tarefas
-                    </span>
+                    
+                    {/* Progress bar */}
+                    <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          progressPct === 100 ? 'bg-emerald-400' : 'bg-blue-500'
+                        }`}
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
                   </div>
-                  
-                  {/* Progress bar */}
-                  <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        progressPct === 100 ? 'bg-emerald-400' : 'bg-blue-500'
-                      }`}
-                      style={{ width: `${progressPct}%` }}
-                    />
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -666,6 +673,7 @@ export default function BentoDashboard({
               displayedWorkloadProjects.map(({ project, clientName, totalHours, completedHours, pendingHours, tasksCount }, idx) => {
                 const globalIndex = (currentWorkloadPage - 1) * WORKLOAD_PER_PAGE + idx + 1;
                 const barWidth = maxWorkloadHours > 0 ? Math.min(100, Math.round((totalHours / maxWorkloadHours) * 100)) : 0;
+                const pStyle = getProjectStatusStyle(project.statusId, projectStatuses);
                 
                 return (
                   <div 
@@ -679,7 +687,12 @@ export default function BentoDashboard({
                           {globalIndex}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <div className="text-[10px] font-bold text-blue-600 truncate">{clientName}</div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-bold text-blue-600 truncate">{clientName}</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase border ${pStyle.badgeClass}`}>
+                              {pStyle.name}
+                            </span>
+                          </div>
                           <div className="text-xs font-extrabold text-slate-800 truncate">{project.title}</div>
                         </div>
                       </div>

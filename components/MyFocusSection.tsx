@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Task, Project, Client, Notification, TaskStatus, ProjectStatus, User, SpecialDay, TaskType
 } from '../lib/types';
-import { TASK_STATUS_ID_MAPPINGS, getTaskTypeName, formatToOnlyHours } from '../lib/utils';
+import { TASK_STATUS_ID_MAPPINGS, getTaskTypeName, formatToOnlyHours, getTaskStatusStyle, getProjectStatusStyle } from '../lib/utils';
 import { AssigneeSelector } from './AssigneeSelector';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { hasPermission } from '../lib/permissions';
@@ -183,38 +183,14 @@ export default function MyFocusSection({
     if (scale < 1) scale = 1;
     if (scale > 4) scale = ((scale - 1) % 4) + 1;
 
-    switch (scale) {
-      case 1:
-        return {
-          scale: 1,
-          circleClass: 'text-red-600 bg-red-50 hover:bg-red-100 border border-red-200/90 shadow-2xs',
-          badgeClass: 'bg-red-100 text-red-800 border border-red-200',
-          statusName: status?.name || 'Por iniciar',
-        };
-      case 2:
-        return {
-          scale: 2,
-          circleClass: 'text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 shadow-2xs',
-          badgeClass: 'bg-blue-100 text-blue-800 border border-blue-200',
-          statusName: status?.name || 'Em curso',
-        };
-      case 3:
-        return {
-          scale: 3,
-          circleClass: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/90 shadow-2xs',
-          badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
-          statusName: status?.name || 'Concluído',
-        };
-      case 4:
-      default:
-        return {
-          scale: 4,
-          circleClass: 'text-slate-500 bg-slate-100 hover:bg-slate-200 border border-slate-300/90 shadow-2xs',
-          badgeClass: 'bg-slate-100 text-slate-700 border border-slate-200',
-          statusName: status?.name || 'Em pausa',
-        };
-    }
-  }, [taskStatusMap, sortedTaskStatuses]);
+    const tStyle = getTaskStatusStyle(statusId, taskStatuses);
+    return {
+      scale,
+      circleClass: `${tStyle.textClass} ${tStyle.bgClass} hover:brightness-95 border ${tStyle.borderClass} shadow-2xs`,
+      badgeClass: `${tStyle.badgeClass} border`,
+      statusName: tStyle.name,
+    };
+  }, [taskStatusMap, sortedTaskStatuses, taskStatuses]);
 
   const handleCycleStatus = (task: Task) => {
     if (!sortedTaskStatuses || sortedTaskStatuses.length === 0) return;
@@ -769,11 +745,14 @@ export default function MyFocusSection({
                             <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
                               {client?.clientName || 'N/D'}
                             </h4>
-                            {pStatus && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                                {pStatus.name}
-                              </span>
-                            )}
+                            {pStatus && (() => {
+                              const pStyle = getProjectStatusStyle(proj.statusId, projectStatuses);
+                              return (
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${pStyle.badgeClass}`}>
+                                  {pStyle.name}
+                                </span>
+                              );
+                            })()}
                           </div>
                           <p className="text-xs text-slate-500 font-medium">
                             <strong className="text-slate-700">{proj.title}</strong>

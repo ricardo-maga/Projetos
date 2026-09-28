@@ -15,7 +15,7 @@ import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getAuthHeaders } from '../lib/clientAuth';
-import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours } from '../lib/utils';
+import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours, getProjectStatusStyle, getTaskStatusStyle } from '../lib/utils';
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
   if (total <= 7) {
@@ -2140,11 +2140,7 @@ export default function ProjectSection({
                                                   e.dataTransfer.setData('taskId', t.id);
                                                 }}
                                                 className={`py-1.5 px-1 rounded-lg text-[9px] font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
-                                                  t.statusId === 'ts-3' 
-                                                    ? 'bg-emerald-500 hover:bg-emerald-600' 
-                                                    : t.statusId === 'ts-2'
-                                                    ? 'bg-amber-500 hover:bg-amber-600'
-                                                    : 'bg-blue-500 hover:bg-blue-600'
+                                                  getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                                 }`}
                                                 title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}
                                               >
@@ -4159,15 +4155,14 @@ export default function ProjectSection({
                           <div>Entrega: {proj.scheduledDate || proj.estimatedDate || proj.deliveryDate || '-'}</div>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            proj.statusId === 'ps-5' || proj.statusId === 'ps-4'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                              : proj.statusId === 'ps-7'
-                              ? 'bg-amber-50 text-amber-700 border border-amber-100'
-                              : 'bg-blue-50 text-blue-700 border border-blue-100'
-                          }`}>
-                            {getStatusName(proj.statusId)}
-                          </span>
+                          {(() => {
+                            const pStyle = getProjectStatusStyle(proj.statusId, projectStatuses);
+                            return (
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${pStyle.badgeClass}`}>
+                                {pStyle.name}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex flex-col gap-1 items-start">
@@ -4469,13 +4464,14 @@ export default function ProjectSection({
                                     {t.title}
                                   </div>
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-extrabold border tracking-wider ${
-                                      t.statusId === 'ts-3' || t.statusId === '99999999-9999-9999-9999-999999999903'
-                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' 
-                                        : t.statusId === 'ts-2' || t.statusId === '99999999-9999-9999-9999-999999999902'
-                                        ? 'bg-amber-50 text-amber-700 border-amber-200/50'
-                                        : 'bg-blue-50 text-blue-700 border-blue-200/50'
-                                    }`}>{getTaskStatusName(t.statusId, taskStatuses)}</span>
+                                    {(() => {
+                                      const tStyle = getTaskStatusStyle(t.statusId, taskStatuses);
+                                      return (
+                                        <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-extrabold border tracking-wider ${tStyle.badgeClass}`}>
+                                          {tStyle.name}
+                                        </span>
+                                      );
+                                    })()}
                                     
                                     <span className="text-[10px] text-slate-500 font-bold truncate max-w-[150px]">
                                       👤 {assigneesText}
@@ -4551,11 +4547,7 @@ export default function ProjectSection({
                                             e.dataTransfer.setData('taskId', t.id);
                                           }}
                                           className={`py-1.5 px-1 rounded-lg text-[9px] font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
-                                            t.statusId === 'ts-3' 
-                                              ? 'bg-emerald-500 hover:bg-emerald-600' 
-                                              : t.statusId === 'ts-2'
-                                              ? 'bg-amber-500 hover:bg-amber-600'
-                                              : 'bg-blue-500 hover:bg-blue-600'
+                                            getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                           }`}
                                           title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}
                                         >
