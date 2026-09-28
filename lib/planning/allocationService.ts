@@ -294,8 +294,8 @@ export async function createPlanningAllocation(
     .single();
 
   if (insertError) {
-    // 23P01: exclusion_violation (PostgreSQL standard error code for EXCLUDE constraint)
-    if (insertError.code === '23P01' || insertError.message?.includes('no_overlapping_confirmed_allocations')) {
+    // 23P01: exclusion_violation (PostgreSQL standard SQLSTATE for EXCLUDE constraint)
+    if (insertError.code === '23P01') {
       return {
         success: false,
         error: {
@@ -307,8 +307,8 @@ export async function createPlanningAllocation(
       };
     }
 
-    // 23514: check_violation (e.g., start_time >= end_time or invalid status)
-    if (insertError.code === '23514' || insertError.message?.includes('chk_planning_allocations_start_before_end')) {
+    // 23514: check_violation (PostgreSQL standard SQLSTATE for CHECK constraint)
+    if (insertError.code === '23514') {
       return {
         success: false,
         error: {
@@ -512,8 +512,8 @@ export async function updatePlanningAllocation(
     .maybeSingle();
 
   if (updateError) {
-    // 23P01: exclusion_violation (PostgreSQL standard error code for EXCLUDE constraint)
-    if (updateError.code === '23P01' || updateError.message?.includes('no_overlapping_confirmed_allocations')) {
+    // 23P01: exclusion_violation (PostgreSQL standard SQLSTATE for EXCLUDE constraint)
+    if (updateError.code === '23P01') {
       return {
         success: false,
         error: {
@@ -525,8 +525,8 @@ export async function updatePlanningAllocation(
       };
     }
 
-    // 23514: check_violation (e.g., start_time >= end_time or invalid status)
-    if (updateError.code === '23514' || updateError.message?.includes('chk_planning_allocations_start_before_end')) {
+    // 23514: check_violation (PostgreSQL standard SQLSTATE for CHECK constraint)
+    if (updateError.code === '23514') {
       return {
         success: false,
         error: {
