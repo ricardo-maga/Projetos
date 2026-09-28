@@ -36,23 +36,18 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
-  v_target_uid UUID;
+  v_auth_uid UUID;
   v_user RECORD;
-  v_resolved_role_id UUID;
   v_perm_code_alt TEXT;
 BEGIN
-  -- 1. Determine effective target user ID:
-  -- In authenticated session context, auth.uid() is primary and authoritative.
-  -- Callers cannot forge another user's identity.
+  -- 1. Determine effective target user identity
   IF auth.role() = 'authenticated' THEN
-    v_target_uid := auth.uid();
+    v_auth_uid := auth.uid();
   ELSE
-    -- For service_role / backend trusted context, use provided p_user_id
-    v_target_uid := p_user_id;
+    v_auth_uid := p_user_id;
   END IF;
 
-  -- If no user identity is resolved:
-  IF v_target_uid IS NULL THEN
+  IF v_auth_uid IS NULL THEN
     IF auth.role() = 'service_role' THEN
       RETURN TRUE; -- Trusted backend system maintenance
     END IF;
@@ -63,7 +58,7 @@ BEGIN
   SELECT id, role_id, is_admin, approved, deleted
   INTO v_user
   FROM public.users
-  WHERE (auth_user_id = v_target_uid OR id = v_target_uid);
+  WHERE (auth_user_id = v_auth_uid OR id = v_auth_uid);
 
   IF NOT FOUND THEN
     RETURN FALSE;
@@ -74,45 +69,18 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  -- 4. Resolve role_id to canonical UUID in public.roles
-  IF v_user.role_id IS NOT NULL THEN
-    -- Check if it matches an existing role id directly
-    SELECT id INTO v_resolved_role_id
-    FROM public.roles
-    WHERE id::text = v_user.role_id::text;
-
-    -- If not found directly, check if it's a legacy code (e.g. 'ug-1'..'ug-4')
-    IF v_resolved_role_id IS NULL THEN
-      SELECT id INTO v_resolved_role_id
-      FROM public.roles
-      WHERE (v_user.role_id = 'ug-1' AND code = 'SUPER_ADMIN')
-         OR (v_user.role_id = 'ug-2' AND code = 'PROJECT_MANAGER')
-         OR (v_user.role_id = 'ug-3' AND code = 'TECHNICIAN')
-         OR (v_user.role_id = 'ug-4' AND code = 'VIEWER');
-    END IF;
-  END IF;
-
-  -- If user has is_admin = true but role_id was not resolved, map to SUPER_ADMIN
-  IF v_resolved_role_id IS NULL AND v_user.is_admin IS TRUE THEN
-    SELECT id INTO v_resolved_role_id FROM public.roles WHERE code = 'SUPER_ADMIN';
-  END IF;
-
-  IF v_resolved_role_id IS NULL THEN
-    RETURN FALSE;
-  END IF;
-
-  -- 5. Normalize permission code between 'tasks_write' and 'tasks:write'
+  -- 4. Normalize permission code between 'tasks_write' and 'tasks:write'
   v_perm_code_alt := CASE
     WHEN POSITION(':' IN p_permission_code) > 0 THEN REPLACE(p_permission_code, ':', '_')
     ELSE REPLACE(p_permission_code, '_', ':')
   END;
 
-  -- 6. Query RBAC SQL table as the SINGLE source of truth (no hardcoded permission matrix)
+  -- 5. Query RBAC SQL table (roles -> role_permissions -> permissions)
   RETURN EXISTS (
     SELECT 1
     FROM public.role_permissions rp
     JOIN public.permissions p ON p.id = rp.permission_id
-    WHERE rp.role_id = v_resolved_role_id
+    WHERE rp.role_id = v_user.role_id
       AND (p.code = p_permission_code OR p.code = v_perm_code_alt)
   );
 END;
@@ -147,6 +115,7 @@ AS $function$
 DECLARE
   v_task_row RECORD;
   v_uid UUID;
+  v_caller_user_id UUID;
 BEGIN
   -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved and has tasks:write permission
   IF auth.role() = 'authenticated' THEN
@@ -156,11 +125,18 @@ BEGIN
     IF NOT public.has_permission('tasks:write', auth.uid()) THEN
       RAISE EXCEPTION 'Sem permissão para criar tarefas.' USING ERRCODE = '42501';
     END IF;
+
+    -- Resolve caller profile in public.users to preserve FK integrity (tasks.created_by -> users.id)
+    SELECT id INTO v_caller_user_id
+    FROM public.users
+    WHERE (auth_user_id = auth.uid() OR id = auth.uid())
+      AND approved = TRUE AND deleted = FALSE;
+
     -- Non-admin cannot forge created_by
-    IF p_created_by IS NOT NULL AND p_created_by <> auth.uid() AND NOT public.is_admin() THEN
-      p_created_by := auth.uid();
-    ELSIF p_created_by IS NULL THEN
-      p_created_by := auth.uid();
+    IF p_created_by IS NOT NULL AND p_created_by <> v_caller_user_id AND p_created_by <> auth.uid() AND NOT public.is_admin() THEN
+      p_created_by := COALESCE(v_caller_user_id, auth.uid());
+    ELSIF p_created_by IS NULL OR p_created_by = auth.uid() THEN
+      p_created_by := COALESCE(v_caller_user_id, auth.uid());
     END IF;
   ELSIF p_created_by IS NOT NULL THEN
     IF NOT public.has_permission('tasks:write', p_created_by) THEN
@@ -273,6 +249,7 @@ DECLARE
   v_current_version INTEGER;
   v_task_row RECORD;
   v_uid UUID;
+  v_caller_user_id UUID;
 BEGIN
   -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved and has tasks:write permission
   IF auth.role() = 'authenticated' THEN
@@ -282,11 +259,18 @@ BEGIN
     IF NOT public.has_permission('tasks:write', auth.uid()) THEN
       RAISE EXCEPTION 'Sem permissão para editar tarefas.' USING ERRCODE = '42501';
     END IF;
+
+    -- Resolve caller profile in public.users to preserve FK integrity (tasks.updated_by -> users.id)
+    SELECT id INTO v_caller_user_id
+    FROM public.users
+    WHERE (auth_user_id = auth.uid() OR id = auth.uid())
+      AND approved = TRUE AND deleted = FALSE;
+
     -- Non-admin cannot forge updated_by
-    IF p_updated_by IS NOT NULL AND p_updated_by <> auth.uid() AND NOT public.is_admin() THEN
-      p_updated_by := auth.uid();
-    ELSIF p_updated_by IS NULL THEN
-      p_updated_by := auth.uid();
+    IF p_updated_by IS NOT NULL AND p_updated_by <> v_caller_user_id AND p_updated_by <> auth.uid() AND NOT public.is_admin() THEN
+      p_updated_by := COALESCE(v_caller_user_id, auth.uid());
+    ELSIF p_updated_by IS NULL OR p_updated_by = auth.uid() THEN
+      p_updated_by := COALESCE(v_caller_user_id, auth.uid());
     END IF;
   ELSIF p_updated_by IS NOT NULL THEN
     IF NOT public.has_permission('tasks:write', p_updated_by) THEN
@@ -375,6 +359,7 @@ AS $function$
 DECLARE
   v_current_version INTEGER;
   v_task_row RECORD;
+  v_caller_user_id UUID;
 BEGIN
   -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved and has tasks:delete permission
   IF auth.role() = 'authenticated' THEN
@@ -384,11 +369,18 @@ BEGIN
     IF NOT public.has_permission('tasks:delete', auth.uid()) THEN
       RAISE EXCEPTION 'Sem permissão para eliminar tarefas.' USING ERRCODE = '42501';
     END IF;
+
+    -- Resolve caller profile in public.users to preserve FK integrity (tasks.updated_by -> users.id)
+    SELECT id INTO v_caller_user_id
+    FROM public.users
+    WHERE (auth_user_id = auth.uid() OR id = auth.uid())
+      AND approved = TRUE AND deleted = FALSE;
+
     -- Non-admin cannot forge updated_by
-    IF p_updated_by IS NOT NULL AND p_updated_by <> auth.uid() AND NOT public.is_admin() THEN
-      p_updated_by := auth.uid();
-    ELSIF p_updated_by IS NULL THEN
-      p_updated_by := auth.uid();
+    IF p_updated_by IS NOT NULL AND p_updated_by <> v_caller_user_id AND p_updated_by <> auth.uid() AND NOT public.is_admin() THEN
+      p_updated_by := COALESCE(v_caller_user_id, auth.uid());
+    ELSIF p_updated_by IS NULL OR p_updated_by = auth.uid() THEN
+      p_updated_by := COALESCE(v_caller_user_id, auth.uid());
     END IF;
   ELSIF p_updated_by IS NOT NULL THEN
     IF NOT public.has_permission('tasks:delete', p_updated_by) THEN

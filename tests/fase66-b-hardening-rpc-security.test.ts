@@ -492,12 +492,23 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
       // Confirma que consulta a tabela relacional role_permissions
       expect(sqlContent).toContain('FROM public.role_permissions rp');
       expect(sqlContent).toContain('JOIN public.permissions p ON p.id = rp.permission_id');
-      expect(sqlContent).toContain('WHERE rp.role_id = v_resolved_role_id');
+      expect(sqlContent).toContain('WHERE rp.role_id = v_user.role_id');
 
       // Confirma que NÃO possui a matriz estática hardcoded
       expect(sqlContent).not.toContain("RETURN v_role_code IN ('SUPER_ADMIN'");
       expect(sqlContent).not.toContain("RETURN v_normalized_role IN ('ug-1'");
       expect(sqlContent).not.toContain("IF p_permission_code IN ('tasks_write'");
+    });
+
+    it('a migration 20260928040000_normalize_users_role_id_canonical_rbac.sql normaliza FK de users.role_id para roles(id)', () => {
+      const sqlPath = join(process.cwd(), 'supabase/migrations/20260928040000_normalize_users_role_id_canonical_rbac.sql');
+      expect(existsSync(sqlPath)).toBe(true);
+      const content = readFileSync(sqlPath, 'utf-8');
+      expect(content).toContain('ALTER TABLE public.users');
+      expect(content).toContain('ADD CONSTRAINT users_role_id_fkey');
+      expect(content).toContain('FOREIGN KEY (role_id)');
+      expect(content).toContain('REFERENCES public.roles(id)');
+      expect(content).toContain('ON DELETE SET NULL');
     });
 
     it('a migration SQL popula role_permissions via INSERT ... SELECT canónico baseado em roles.code e permissions.code', () => {
