@@ -41,14 +41,19 @@ DECLARE
   v_task_row RECORD;
   v_uid UUID;
 BEGIN
-  -- 1. Validate project exists and is active ONLY IF project_id is provided
+  -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved
+  IF auth.role() = 'authenticated' AND NOT public.is_approved() THEN
+    RAISE EXCEPTION 'Utilizador não autorizado ou inativo.' USING ERRCODE = '42501';
+  END IF;
+
+  -- 2. Validate project exists and is active ONLY IF project_id is provided
   IF p_project_id IS NOT NULL THEN
     IF NOT EXISTS (SELECT 1 FROM public.projects WHERE id = p_project_id AND (deleted IS NOT TRUE)) THEN
       RAISE EXCEPTION 'Projeto associado não existe ou foi eliminado.' USING ERRCODE = 'P0002';
     END IF;
   END IF;
 
-  -- 2. Insert into tasks table (project_id pode ser NULL)
+  -- 3. Insert into tasks table (project_id pode ser NULL)
   INSERT INTO public.tasks (
     id,
     project_id,
@@ -147,7 +152,12 @@ DECLARE
   v_task_row RECORD;
   v_uid UUID;
 BEGIN
-  -- 1. Check current task version for OCC
+  -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved
+  IF auth.role() = 'authenticated' AND NOT public.is_approved() THEN
+    RAISE EXCEPTION 'Utilizador não autorizado ou inativo.' USING ERRCODE = '42501';
+  END IF;
+
+  -- 2. Check current task version for OCC
   SELECT version INTO v_current_version
   FROM public.tasks
   WHERE id = p_id AND (deleted IS NOT TRUE);
@@ -160,14 +170,14 @@ BEGIN
     RAISE EXCEPTION 'Conflito de concorrência (OCC): a tarefa foi modificada por outro utilizador.' USING ERRCODE = 'P0001';
   END IF;
 
-  -- 2. Validate target project if project_id is being updated and is not null
+  -- 3. Validate target project if project_id is being updated and is not null
   IF p_update_project_id AND p_project_id IS NOT NULL THEN
     IF NOT EXISTS (SELECT 1 FROM public.projects WHERE id = p_project_id AND (deleted IS NOT TRUE)) THEN
-      RAISE EXCEPTION 'Projeto associado não existe ou foi eliminado.' USING ERRCODE = 'P0002';
+      RAISE EXCEPTION 'Projeto associado não existe ou foi eliminado.' USING ERRCODE = '23503';
     END IF;
   END IF;
 
-  -- 3. Update task row and increment version
+  -- 4. Update task row and increment version
   -- Quando p_update_project_id é TRUE:
   --   Se p_project_id for UUID -> associa ao novo projeto
   --   Se p_project_id for NULL -> desassocia do projeto (project_id = NULL)
@@ -229,6 +239,11 @@ DECLARE
   v_current_version INTEGER;
   v_task_row RECORD;
 BEGIN
+  -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved
+  IF auth.role() = 'authenticated' AND NOT public.is_approved() THEN
+    RAISE EXCEPTION 'Utilizador não autorizado ou inativo.' USING ERRCODE = '42501';
+  END IF;
+
   SELECT version INTO v_current_version
   FROM public.tasks
   WHERE id = p_id AND (deleted IS NOT TRUE);

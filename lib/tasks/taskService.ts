@@ -232,8 +232,11 @@ export async function createTaskServer(
   });
 
   if (rpcError) {
-    if (rpcError.message?.includes('Projeto associado não existe') || rpcError.code === 'P0002') {
+    if (rpcError.code === 'P0002' || rpcError.code === '23503') {
       return { success: false, error: 'O projeto especificado não existe ou foi eliminado.', statusCode: 400 };
+    }
+    if (rpcError.code === '42501') {
+      return { success: false, error: 'Sem permissão para realizar esta operação.', statusCode: 403 };
     }
     return { success: false, error: `Erro ao criar tarefa: ${rpcError.message}`, statusCode: 500 };
   }
@@ -295,14 +298,17 @@ export async function updateTaskServer(
   });
 
   if (rpcError) {
-    if (rpcError.message?.includes('Conflito de concorrência') || rpcError.code === 'P0001') {
+    if (rpcError.code === 'P0001') {
       return { success: false, error: 'Conflito de concorrência. A tarefa foi alterada por outro utilizador.', statusCode: 409 };
     }
-    if (rpcError.message?.includes('Tarefa não encontrada') || rpcError.code === 'P0002') {
+    if (rpcError.code === 'P0002') {
       return { success: false, error: 'Tarefa não encontrada.', statusCode: 404 };
     }
-    if (rpcError.message?.includes('Projeto associado não existe')) {
+    if (rpcError.code === '23503') {
       return { success: false, error: 'O projeto especificado não existe ou foi eliminado.', statusCode: 400 };
+    }
+    if (rpcError.code === '42501') {
+      return { success: false, error: 'Sem permissão para alterar tarefa.', statusCode: 403 };
     }
     return { success: false, error: `Erro ao atualizar tarefa: ${rpcError.message}`, statusCode: 400 };
   }
@@ -340,11 +346,14 @@ export async function deleteTaskServer(
   });
 
   if (rpcError) {
-    if (rpcError.message?.includes('Conflito de concorrência') || rpcError.code === 'P0001') {
+    if (rpcError.code === 'P0001') {
       return { success: false, error: 'Conflito de concorrência ao eliminar tarefa.', statusCode: 409 };
     }
-    if (rpcError.message?.includes('não encontrada') || rpcError.code === 'P0002') {
+    if (rpcError.code === 'P0002') {
       return { success: false, error: 'Tarefa não encontrada.', statusCode: 404 };
+    }
+    if (rpcError.code === '42501') {
+      return { success: false, error: 'Sem permissão para eliminar tarefa.', statusCode: 403 };
     }
     return { success: false, error: `Erro ao eliminar tarefa: ${rpcError.message}`, statusCode: 400 };
   }

@@ -212,7 +212,7 @@ describe('FASE 66-B — Tasks Persistence Boundary & Project Decoupling', () => 
             if (args.p_update_project_id && args.p_project_id) {
               const proj = mockDbData.projects.find((p: any) => p.id === args.p_project_id && !p.deleted);
               if (!proj) {
-                return { data: null, error: { code: 'P0002', message: 'Projeto associado não existe ou foi eliminado.' } };
+                return { data: null, error: { code: '23503', message: 'Projeto associado não existe ou foi eliminado.' } };
               }
             }
 
