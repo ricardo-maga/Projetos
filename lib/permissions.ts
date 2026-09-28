@@ -374,17 +374,58 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
   }
 };
 
-export function normalizeRoleId(roleId: string): string {
-  if (!roleId) return CANONICAL_ROLE_IDS.VIEWER;
-  return ROLE_UUID_MAP[roleId] || roleId;
+export const EMPTY_PERMISSIONS: GroupPermissions = {
+  projects_read: false,
+  projects_write: false,
+  projects_delete: false,
+  tasks_read: false,
+  tasks_write: false,
+  tasks_delete: false,
+  calendar_read: false,
+  calendar_write: false,
+  clients_read: false,
+  clients_write: false,
+  clients_delete: false,
+  absences_read: false,
+  absences_write: false,
+  absences_delete: false,
+  config_read: false,
+  config_write: false,
+  tickets_read: false,
+  tickets_write: false,
+  tickets_delete: false,
+  quotes_read: false,
+  quotes_write: false,
+  quotes_delete: false,
+  materials_read: false,
+  materials_write: false,
+  materials_delete: false,
+  equipment_read: false,
+  equipment_write: false,
+  equipment_delete: false,
+  users_read: false,
+  users_write: false,
+  users_delete: false,
+};
+
+export function normalizeRoleId(roleId?: string | null): string | null {
+  if (!roleId || typeof roleId !== 'string' || !roleId.trim()) return null;
+  return ROLE_UUID_MAP[roleId] || (DEFAULT_PERMISSIONS[roleId] ? roleId : null);
 }
 
 /**
- * Returns the resolved GroupPermissions object for a given roleId, merging customized settings if available
+ * Returns the resolved GroupPermissions object for a given roleId.
+ * NOTA: Esta função serve para apresentação e estado visual de UI.
+ * A autorização runtime e integridade de dados é garantida exclusivamente no PostgreSQL / RPC.
+ * Roles desconhecidas ou vazias nunca recebem permissões por fallback.
  */
-export function getGroupPermissions(roleId: string, customGroups?: UserGroup[]): GroupPermissions {
+export function getGroupPermissions(roleId?: string | null, customGroups?: UserGroup[]): GroupPermissions {
+  if (!roleId) return { ...EMPTY_PERMISSIONS };
   const normalizedRole = normalizeRoleId(roleId);
-  const fallback = DEFAULT_PERMISSIONS[normalizedRole] || DEFAULT_PERMISSIONS[roleId] || DEFAULT_PERMISSIONS['ug-4'];
+  if (!normalizedRole) return { ...EMPTY_PERMISSIONS };
+
+  const base = DEFAULT_PERMISSIONS[normalizedRole] || DEFAULT_PERMISSIONS[roleId];
+  if (!base) return { ...EMPTY_PERMISSIONS };
   
   if (customGroups) {
     const group = customGroups.find(g => g.id === roleId || g.id === normalizedRole);
@@ -393,19 +434,21 @@ export function getGroupPermissions(roleId: string, customGroups?: UserGroup[]):
       if (typeof parsedPerms === 'string') {
         try {
           parsedPerms = JSON.parse(parsedPerms);
-        } catch (e) {
+        } catch {
           parsedPerms = {};
         }
       }
-      return { ...fallback, ...parsedPerms };
+      return { ...base, ...parsedPerms };
     }
   }
   
-  return fallback;
+  return base;
 }
 
 /**
- * Checks if a specific action is authorized for a user's roleId or user object
+ * Helper de apresentação para a camada de visualização UI (botões, tabs, menus).
+ * AVISO: NÃO é uma boundary de segurança de backend. A autorização runtime
+ * é efetuada no PostgreSQL (has_permission / RPC / RLS).
  */
 export function hasPermission(
   userOrRoleId: string | { roleId?: string; role_id?: string; type?: string; isAdmin?: boolean; is_admin?: boolean; [key: string]: any } | null | undefined,
@@ -418,13 +461,13 @@ export function hasPermission(
   let isAdminUser = false;
   
   if (typeof userOrRoleId === 'string') {
-    roleId = userOrRoleId;
-    if (roleId === 'ug-1' || roleId === '00000000-0000-0000-0000-000000000001' || roleId === 'admin') {
+    roleId = userOrRoleId.trim();
+    if (roleId === 'ug-1' || roleId === CANONICAL_ROLE_IDS.SUPER_ADMIN || roleId === 'admin') {
       isAdminUser = true;
     }
   } else if (typeof userOrRoleId === 'object') {
-    roleId = userOrRoleId.roleId || userOrRoleId.role_id || userOrRoleId.type || '';
-    isAdminUser = !!(userOrRoleId.isAdmin || userOrRoleId.is_admin || roleId === 'ug-1' || roleId === '00000000-0000-0000-0000-000000000001' || roleId === 'admin');
+    roleId = (userOrRoleId.roleId || userOrRoleId.role_id || userOrRoleId.type || '').trim();
+    isAdminUser = !!(userOrRoleId.isAdmin || userOrRoleId.is_admin || roleId === 'ug-1' || roleId === CANONICAL_ROLE_IDS.SUPER_ADMIN || roleId === 'admin');
   }
   
   if (isAdminUser) return true;

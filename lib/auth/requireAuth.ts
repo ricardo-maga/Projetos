@@ -59,7 +59,34 @@ export async function requirePermission(reqOrCode: Request | keyof GroupPermissi
   const code = typeof reqOrCode === 'string' ? reqOrCode : permissionCode;
   if (!code) throw new ForbiddenError();
   const user = await requireAuth(typeof reqOrCode === 'string' ? undefined : reqOrCode);
-  if (user.is_admin || user.role_id === 'ug-1' || user.role_id === '00000000-0000-0000-0000-000000000001') return user;
-  if (!getGroupPermissions(user.role_id)[code]) throw new ForbiddenError();
+  
+  if (!user.role_id && !user.is_admin) {
+    throw new ForbiddenError('Utilizador sem role atribuída.');
+  }
+
+  if (user.is_admin || user.role_id === '00000000-0000-0000-0000-000000000001' || user.role_id === 'ug-1') {
+    return user;
+  }
+
+  // Autorização via RPC PostgreSQL has_permission quando admin client disponível
+  const admin = createAdminClient();
+  if (admin && user.id) {
+    try {
+      const { data: hasPerm, error } = await admin.rpc('has_permission', {
+        p_permission_code: code,
+        p_user_id: user.id,
+      });
+      if (!error && typeof hasPerm === 'boolean') {
+        if (!hasPerm) throw new ForbiddenError();
+        return user;
+      }
+    } catch (e: any) {
+      if (e instanceof ForbiddenError) throw e;
+    }
+  }
+
+  // Fallback estrito sem concessão para roles desconhecidas
+  const perms = getGroupPermissions(user.role_id);
+  if (!perms[code]) throw new ForbiddenError();
   return user;
 }

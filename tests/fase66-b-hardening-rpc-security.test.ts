@@ -550,6 +550,47 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
       expect(ROLE_UUID_MAP['ug-4']).not.toBe(CANONICAL_ROLE_IDS.TECHNICIAN);
     });
 
+    it('lib/permissions.ts não concede permissões nem VIEWER para roles desconhecidas ou vazias', () => {
+      const { normalizeRoleId, getGroupPermissions, hasPermission, CANONICAL_ROLE_IDS } = require('@/lib/permissions');
+      
+      // Role vazia ou nula não pode retornar VIEWER
+      expect(normalizeRoleId('')).toBe(null);
+      expect(normalizeRoleId(null as any)).toBe(null);
+      expect(normalizeRoleId(undefined as any)).toBe(null);
+      expect(normalizeRoleId('role-inexistente-xyz')).toBe(null);
+
+      // getGroupPermissions para role vazia ou desconhecida devolve todas as permissões false
+      const permsEmpty = getGroupPermissions('');
+      expect(permsEmpty.projects_read).toBe(false);
+      expect(permsEmpty.tasks_write).toBe(false);
+      expect(permsEmpty.tasks_read).toBe(false);
+
+      const permsUnknown = getGroupPermissions('role-fantasma-123');
+      expect(permsUnknown.projects_read).toBe(false);
+      expect(permsUnknown.tasks_write).toBe(false);
+      expect(permsUnknown.tasks_read).toBe(false);
+
+      // hasPermission para utilizador sem role e não admin devolve false
+      expect(hasPermission({ roleId: '' }, 'tasks_read')).toBe(false);
+      expect(hasPermission({ roleId: 'role-fantasma-123' }, 'tasks_read')).toBe(false);
+      expect(hasPermission(null, 'tasks_read')).toBe(false);
+    });
+
+    it('a migration 20260928040000 possui proteção de replay safety para não degradar roles já canónicas', () => {
+      const sqlPath = join(process.cwd(), 'supabase/migrations/20260928040000_normalize_users_role_id_canonical_rbac.sql');
+      const content = readFileSync(sqlPath, 'utf-8');
+
+      // Verifica deteção prévia da constraint apontando para roles
+      expect(content).toContain('v_already_migrated BOOLEAN := FALSE;');
+      expect(content).toContain("ccu.table_name = 'roles'");
+      expect(content).toContain('IF v_already_migrated THEN');
+      expect(content).toContain('RETURN;');
+
+      // Utiliza coluna temporária de staging
+      expect(content).toContain('canonical_role_id UUID');
+      expect(content).toContain('ALTER TABLE public.users DROP COLUMN IF EXISTS canonical_role_id;');
+    });
+
     it('a migration SQL popula role_permissions via INSERT ... SELECT canónico baseado em roles.code e permissions.code', () => {
       const sqlContent = readFileSync(
         join(process.cwd(), 'supabase/migrations/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),

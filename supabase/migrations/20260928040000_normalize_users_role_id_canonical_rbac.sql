@@ -1,10 +1,11 @@
 -- Migration: 20260928040000_normalize_users_role_id_canonical_rbac.sql
--- FASE 66-B-HARDENING-4-FIX: Mapeamento Semântico Rigoroso de user_groups -> roles
+-- FASE 66-B-HARDENING-4-FIX-2: Mapeamento Semântico e Idempotência Rigorosa
 -- Corrige a colisão de UUIDs entre o modelo legado user_groups e o modelo canónico roles:
 --   user_groups ...0001 (Administrator)   -> roles ...0001 (SUPER_ADMIN)
 --   user_groups ...0002 (Project Manager) -> roles ...0003 (PROJECT_MANAGER)
 --   user_groups ...0003 (Technician)      -> roles ...0004 (TECHNICIAN)
 --   user_groups ...0004 (Viewer)          -> roles ...0005 (VIEWER)
+-- Garante replay safety: se a migration for reexecutada, não degrada roles já canónicas.
 
 SET search_path = public;
 
@@ -122,10 +123,84 @@ WHERE code IN (
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- 4. Migração e normalização da coluna users.role_id com MAPEAMENTO SEMÂNTICO EXPLÍCITO
+-- 4. Migração e normalização com Verificação Explícita de Replay Safety
 DO $migration$
+DECLARE
+  v_already_migrated BOOLEAN := FALSE;
 BEGIN
-  -- Remover a FK legada que apontava para user_groups(id) se existir
+  -- Verificar se users.role_id já aponta formalmente para public.roles(id)
+  SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints tc
+    JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name
+    WHERE tc.table_name = 'users'
+      AND tc.constraint_type = 'FOREIGN KEY'
+      AND tc.constraint_name = 'users_role_id_fkey'
+      AND ccu.table_name = 'roles'
+  ) INTO v_already_migrated;
+
+  IF v_already_migrated THEN
+    RAISE NOTICE 'A tabela public.users já possui FK para public.roles(id). Replay seguro: ignorando mapeamento semântico legacy.';
+    RETURN;
+  END IF;
+
+  -- Criar coluna temporária de staging para garantir atomicidade sem corridas entre IDs coincidentes
+  ALTER TABLE public.users ADD COLUMN IF NOT EXISTS canonical_role_id UUID;
+
+  -- Mapeamento semântico explícito dos IDs legados de user_groups
+  UPDATE public.users
+  SET canonical_role_id = CASE
+    -- ug-1: Administrator (...0001) -> SUPER_ADMIN (...0001)
+    WHEN role_id = '00000000-0000-0000-0000-000000000001'::UUID THEN '00000000-0000-0000-0000-000000000001'::UUID
+    -- ug-2: Project Manager (...0002) -> PROJECT_MANAGER (...0003)  [NÃO ADMIN ...0002]
+    WHEN role_id = '00000000-0000-0000-0000-000000000002'::UUID THEN '00000000-0000-0000-0000-000000000003'::UUID
+    -- ug-3: Technician (...0003) -> TECHNICIAN (...0004)            [NÃO PROJECT_MANAGER ...0003]
+    WHEN role_id = '00000000-0000-0000-0000-000000000003'::UUID THEN '00000000-0000-0000-0000-000000000004'::UUID
+    -- ug-4: Viewer (...0004) -> VIEWER (...0005)                    [NÃO TECHNICIAN ...0004]
+    WHEN role_id = '00000000-0000-0000-0000-000000000004'::UUID THEN '00000000-0000-0000-0000-000000000005'::UUID
+    -- Caso já seja o UUID canónico do VIEWER (...0005), preserva
+    WHEN role_id = '00000000-0000-0000-0000-000000000005'::UUID THEN '00000000-0000-0000-0000-000000000005'::UUID
+    ELSE NULL
+  END
+  WHERE role_id IS NOT NULL;
+
+  -- Mapeamento por nome de user_group para grupos dinâmicos criados com outros UUIDs
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_groups') THEN
+    UPDATE public.users u
+    SET canonical_role_id = CASE
+      WHEN LOWER(ug.name) LIKE '%super%' OR LOWER(ug.name) LIKE '%admin%' THEN '00000000-0000-0000-0000-000000000001'::UUID
+      WHEN LOWER(ug.name) LIKE '%project%' OR LOWER(ug.name) LIKE '%leader%' OR LOWER(ug.name) LIKE '%gestor%' THEN '00000000-0000-0000-0000-000000000003'::UUID
+      WHEN LOWER(ug.name) LIKE '%tech%' OR LOWER(ug.name) LIKE '%téc%' OR LOWER(ug.name) LIKE '%equipa%' THEN '00000000-0000-0000-0000-000000000004'::UUID
+      WHEN LOWER(ug.name) LIKE '%view%' OR LOWER(ug.name) LIKE '%visua%' THEN '00000000-0000-0000-0000-000000000005'::UUID
+      ELSE NULL
+    END
+    FROM public.user_groups ug
+    WHERE u.role_id = ug.id AND u.canonical_role_id IS NULL;
+  END IF;
+
+  -- Tratamento de is_admin: apenas utilizadores com is_admin = true E role_id NULL recebem SUPER_ADMIN
+  UPDATE public.users
+  SET canonical_role_id = '00000000-0000-0000-0000-000000000001'::UUID
+  WHERE is_admin = TRUE AND role_id IS NULL;
+
+  -- Validação de Integridade: se existir qualquer utilizador com role_id não-nulo cujo mapeamento não foi encontrado, ABORTAR
+  IF EXISTS (
+    SELECT 1 
+    FROM public.users 
+    WHERE role_id IS NOT NULL AND canonical_role_id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'MIGRATION BLOCKER: Existem utilizadores com role_id desconhecido que não puderam ser convertidos para public.roles.' USING ERRCODE = '23503';
+  END IF;
+
+  -- Aplicar a coluna convertida de volta a role_id
+  UPDATE public.users
+  SET role_id = canonical_role_id
+  WHERE canonical_role_id IS NOT NULL;
+
+  -- Remover coluna de staging
+  ALTER TABLE public.users DROP COLUMN IF EXISTS canonical_role_id;
+
+  -- Remover constraint legada se existir
   IF EXISTS (
     SELECT 1 
     FROM information_schema.table_constraints 
@@ -135,55 +210,7 @@ BEGIN
     ALTER TABLE public.users DROP CONSTRAINT users_role_id_fkey;
   END IF;
 
-  -- A. Mapeamento explícito de IDs semânticos legados de user_groups para roles.id
-  -- Executado atomicamente via CASE expression para prevenir colisões entre ...0002 -> ...0003 -> ...0004
-  UPDATE public.users
-  SET role_id = CASE
-    -- ug-1: Administrator (...0001) -> SUPER_ADMIN (...0001)
-    WHEN role_id = '00000000-0000-0000-0000-000000000001'::UUID THEN '00000000-0000-0000-0000-000000000001'::UUID
-    -- ug-2: Project Manager (...0002) -> PROJECT_MANAGER (...0003)  [NÃO ADMIN]
-    WHEN role_id = '00000000-0000-0000-0000-000000000002'::UUID THEN '00000000-0000-0000-0000-000000000003'::UUID
-    -- ug-3: Technician (...0003) -> TECHNICIAN (...0004)            [NÃO PROJECT_MANAGER]
-    WHEN role_id = '00000000-0000-0000-0000-000000000003'::UUID THEN '00000000-0000-0000-0000-000000000004'::UUID
-    -- ug-4: Viewer (...0004) -> VIEWER (...0005)                    [NÃO TECHNICIAN]
-    WHEN role_id = '00000000-0000-0000-0000-000000000004'::UUID THEN '00000000-0000-0000-0000-000000000005'::UUID
-    -- Caso já seja o UUID canónico do VIEWER (...0005), preserva
-    WHEN role_id = '00000000-0000-0000-0000-000000000005'::UUID THEN '00000000-0000-0000-0000-000000000005'::UUID
-    ELSE role_id
-  END
-  WHERE role_id IS NOT NULL;
-
-  -- B. Mapeamento por nome de user_group para grupos legados criados dinamicamente com outros UUIDs
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_groups') THEN
-    UPDATE public.users u
-    SET role_id = CASE
-      WHEN LOWER(ug.name) LIKE '%super%' OR LOWER(ug.name) LIKE '%admin%' THEN '00000000-0000-0000-0000-000000000001'::UUID
-      WHEN LOWER(ug.name) LIKE '%project%' OR LOWER(ug.name) LIKE '%leader%' OR LOWER(ug.name) LIKE '%gestor%' THEN '00000000-0000-0000-0000-000000000003'::UUID
-      WHEN LOWER(ug.name) LIKE '%tech%' OR LOWER(ug.name) LIKE '%téc%' OR LOWER(ug.name) LIKE '%equipa%' THEN '00000000-0000-0000-0000-000000000004'::UUID
-      WHEN LOWER(ug.name) LIKE '%view%' OR LOWER(ug.name) LIKE '%visua%' THEN '00000000-0000-0000-0000-000000000005'::UUID
-      ELSE u.role_id
-    END
-    FROM public.user_groups ug
-    WHERE u.role_id = ug.id
-      AND u.role_id NOT IN (SELECT id FROM public.roles);
-  END IF;
-
-  -- C. Tratamento de is_admin: apenas utilizadores com is_admin = true E role_id NULL recebem SUPER_ADMIN
-  UPDATE public.users
-  SET role_id = '00000000-0000-0000-0000-000000000001'::UUID
-  WHERE is_admin = TRUE AND role_id IS NULL;
-
-  -- D. Validação de Integridade: Se restarem utilizadores com role_id desconhecido (não-nulo) que não exista em public.roles, ABORTAR
-  IF EXISTS (
-    SELECT 1 
-    FROM public.users 
-    WHERE role_id IS NOT NULL 
-      AND role_id NOT IN (SELECT id FROM public.roles)
-  ) THEN
-    RAISE EXCEPTION 'MIGRATION BLOCKER: Existem utilizadores com role_id desconhecido que não puderam ser convertidos para public.roles.' USING ERRCODE = '23503';
-  END IF;
-
-  -- E. Adicionar a nova Foreign Key canónica apontando para public.roles(id)
+  -- Adicionar nova Foreign Key canónica para public.roles(id)
   ALTER TABLE public.users
     ADD CONSTRAINT users_role_id_fkey
     FOREIGN KEY (role_id)
