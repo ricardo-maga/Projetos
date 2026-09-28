@@ -511,6 +511,45 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
       expect(content).toContain('ON DELETE SET NULL');
     });
 
+    it('a migration 20260928040000 implementa explicitamente o mapeamento semântico de user_groups para roles prevenindo colisão de UUIDs', () => {
+      const sqlPath = join(process.cwd(), 'supabase/migrations/20260928040000_normalize_users_role_id_canonical_rbac.sql');
+      const content = readFileSync(sqlPath, 'utf-8');
+
+      // ug-1: Administrator (...0001) -> SUPER_ADMIN (...0001)
+      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000001'::UUID THEN '00000000-0000-0000-0000-000000000001'::UUID");
+
+      // ug-2: Project Manager (...0002) -> PROJECT_MANAGER (...0003)  [NÃO ADMIN ...0002]
+      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000002'::UUID THEN '00000000-0000-0000-0000-000000000003'::UUID");
+
+      // ug-3: Technician (...0003) -> TECHNICIAN (...0004)            [NÃO PROJECT_MANAGER ...0003]
+      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000003'::UUID THEN '00000000-0000-0000-0000-000000000004'::UUID");
+
+      // ug-4: Viewer (...0004) -> VIEWER (...0005)                    [NÃO TECHNICIAN ...0004]
+      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000004'::UUID THEN '00000000-0000-0000-0000-000000000005'::UUID");
+
+      // Proteção de integridade: aborta com erro caso existam roles desconhecidas
+      expect(content).toContain("RAISE EXCEPTION 'MIGRATION BLOCKER:");
+    });
+
+    it('lib/permissions.ts mapeia corretamente os aliases semânticos ug-1..ug-4 para os UUIDs canónicos', () => {
+      const { ROLE_UUID_MAP, CANONICAL_ROLE_IDS, normalizeRoleId } = require('@/lib/permissions');
+      expect(ROLE_UUID_MAP['ug-1']).toBe(CANONICAL_ROLE_IDS.SUPER_ADMIN);
+      expect(ROLE_UUID_MAP['ug-2']).toBe(CANONICAL_ROLE_IDS.PROJECT_MANAGER);
+      expect(ROLE_UUID_MAP['ug-3']).toBe(CANONICAL_ROLE_IDS.TECHNICIAN);
+      expect(ROLE_UUID_MAP['ug-4']).toBe(CANONICAL_ROLE_IDS.VIEWER);
+
+      expect(normalizeRoleId('ug-2')).toBe(CANONICAL_ROLE_IDS.PROJECT_MANAGER);
+      expect(normalizeRoleId('ug-3')).toBe(CANONICAL_ROLE_IDS.TECHNICIAN);
+      expect(normalizeRoleId('ug-4')).toBe(CANONICAL_ROLE_IDS.VIEWER);
+
+      // Garante que ug-2 NÃO é mapeado para ADMIN (...0002)
+      expect(ROLE_UUID_MAP['ug-2']).not.toBe(CANONICAL_ROLE_IDS.ADMIN);
+      // Garante que ug-3 NÃO é mapeado para PROJECT_MANAGER (...0003)
+      expect(ROLE_UUID_MAP['ug-3']).not.toBe(CANONICAL_ROLE_IDS.PROJECT_MANAGER);
+      // Garante que ug-4 NÃO é mapeado para TECHNICIAN (...0004)
+      expect(ROLE_UUID_MAP['ug-4']).not.toBe(CANONICAL_ROLE_IDS.TECHNICIAN);
+    });
+
     it('a migration SQL popula role_permissions via INSERT ... SELECT canónico baseado em roles.code e permissions.code', () => {
       const sqlContent = readFileSync(
         join(process.cwd(), 'supabase/migrations/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),

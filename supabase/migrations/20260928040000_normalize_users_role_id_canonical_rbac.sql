@@ -1,11 +1,14 @@
 -- Migration: 20260928040000_normalize_users_role_id_canonical_rbac.sql
--- FASE 66-B-HARDENING-4: Normalização Canónica de Identidade e RBAC em PostgreSQL
--- Estabelece public.roles e public.role_permissions como a única fonte de verdade para RBAC.
--- Altera a Foreign Key de public.users.role_id para referenciar public.roles(id).
+-- FASE 66-B-HARDENING-4-FIX: Mapeamento Semântico Rigoroso de user_groups -> roles
+-- Corrige a colisão de UUIDs entre o modelo legado user_groups e o modelo canónico roles:
+--   user_groups ...0001 (Administrator)   -> roles ...0001 (SUPER_ADMIN)
+--   user_groups ...0002 (Project Manager) -> roles ...0003 (PROJECT_MANAGER)
+--   user_groups ...0003 (Technician)      -> roles ...0004 (TECHNICIAN)
+--   user_groups ...0004 (Viewer)          -> roles ...0005 (VIEWER)
 
 SET search_path = public;
 
--- 1. Garantir que os 5 roles canónicos existem na tabela public.roles
+-- 1. Garantir que os 5 roles canónicos existem na tabela public.roles com os UUIDs canónicos
 INSERT INTO public.roles (id, code, name, description) VALUES
 ('00000000-0000-0000-0000-000000000001', 'SUPER_ADMIN', 'Super Administrador', 'Acesso total e irrestrito a todo o sistema e parametrizações'),
 ('00000000-0000-0000-0000-000000000002', 'ADMIN', 'Administrador', 'Gestão global de projetos, tarefas, utilizadores e configurações'),
@@ -119,7 +122,7 @@ WHERE code IN (
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- 4. Migração e normalização da coluna users.role_id
+-- 4. Migração e normalização da coluna users.role_id com MAPEAMENTO SEMÂNTICO EXPLÍCITO
 DO $migration$
 BEGIN
   -- Remover a FK legada que apontava para user_groups(id) se existir
@@ -132,26 +135,55 @@ BEGIN
     ALTER TABLE public.users DROP CONSTRAINT users_role_id_fkey;
   END IF;
 
-  -- Mapear utilizadores existentes para os UUIDs canónicos de roles
-  -- A. Utilizadores marcados como is_admin -> SUPER_ADMIN
+  -- A. Mapeamento explícito de IDs semânticos legados de user_groups para roles.id
+  -- Executado atomicamente via CASE expression para prevenir colisões entre ...0002 -> ...0003 -> ...0004
+  UPDATE public.users
+  SET role_id = CASE
+    -- ug-1: Administrator (...0001) -> SUPER_ADMIN (...0001)
+    WHEN role_id = '00000000-0000-0000-0000-000000000001'::UUID THEN '00000000-0000-0000-0000-000000000001'::UUID
+    -- ug-2: Project Manager (...0002) -> PROJECT_MANAGER (...0003)  [NÃO ADMIN]
+    WHEN role_id = '00000000-0000-0000-0000-000000000002'::UUID THEN '00000000-0000-0000-0000-000000000003'::UUID
+    -- ug-3: Technician (...0003) -> TECHNICIAN (...0004)            [NÃO PROJECT_MANAGER]
+    WHEN role_id = '00000000-0000-0000-0000-000000000003'::UUID THEN '00000000-0000-0000-0000-000000000004'::UUID
+    -- ug-4: Viewer (...0004) -> VIEWER (...0005)                    [NÃO TECHNICIAN]
+    WHEN role_id = '00000000-0000-0000-0000-000000000004'::UUID THEN '00000000-0000-0000-0000-000000000005'::UUID
+    -- Caso já seja o UUID canónico do VIEWER (...0005), preserva
+    WHEN role_id = '00000000-0000-0000-0000-000000000005'::UUID THEN '00000000-0000-0000-0000-000000000005'::UUID
+    ELSE role_id
+  END
+  WHERE role_id IS NOT NULL;
+
+  -- B. Mapeamento por nome de user_group para grupos legados criados dinamicamente com outros UUIDs
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_groups') THEN
+    UPDATE public.users u
+    SET role_id = CASE
+      WHEN LOWER(ug.name) LIKE '%super%' OR LOWER(ug.name) LIKE '%admin%' THEN '00000000-0000-0000-0000-000000000001'::UUID
+      WHEN LOWER(ug.name) LIKE '%project%' OR LOWER(ug.name) LIKE '%leader%' OR LOWER(ug.name) LIKE '%gestor%' THEN '00000000-0000-0000-0000-000000000003'::UUID
+      WHEN LOWER(ug.name) LIKE '%tech%' OR LOWER(ug.name) LIKE '%téc%' OR LOWER(ug.name) LIKE '%equipa%' THEN '00000000-0000-0000-0000-000000000004'::UUID
+      WHEN LOWER(ug.name) LIKE '%view%' OR LOWER(ug.name) LIKE '%visua%' THEN '00000000-0000-0000-0000-000000000005'::UUID
+      ELSE u.role_id
+    END
+    FROM public.user_groups ug
+    WHERE u.role_id = ug.id
+      AND u.role_id NOT IN (SELECT id FROM public.roles);
+  END IF;
+
+  -- C. Tratamento de is_admin: apenas utilizadores com is_admin = true E role_id NULL recebem SUPER_ADMIN
   UPDATE public.users
   SET role_id = '00000000-0000-0000-0000-000000000001'::UUID
-  WHERE is_admin = TRUE AND (role_id IS NULL OR role_id NOT IN (
-    '00000000-0000-0000-0000-000000000001'::UUID,
-    '00000000-0000-0000-0000-000000000002'::UUID
-  ));
+  WHERE is_admin = TRUE AND role_id IS NULL;
 
-  -- B. Utilizadores sem role_id atribuído -> TECHNICIAN (00000000-0000-0000-0000-000000000004)
-  UPDATE public.users
-  SET role_id = '00000000-0000-0000-0000-000000000004'::UUID
-  WHERE role_id IS NULL;
+  -- D. Validação de Integridade: Se restarem utilizadores com role_id desconhecido (não-nulo) que não exista em public.roles, ABORTAR
+  IF EXISTS (
+    SELECT 1 
+    FROM public.users 
+    WHERE role_id IS NOT NULL 
+      AND role_id NOT IN (SELECT id FROM public.roles)
+  ) THEN
+    RAISE EXCEPTION 'MIGRATION BLOCKER: Existem utilizadores com role_id desconhecido que não puderam ser convertidos para public.roles.' USING ERRCODE = '23503';
+  END IF;
 
-  -- C. Utilizadores com role_id que não corresponda a nenhum role existente -> TECHNICIAN
-  UPDATE public.users
-  SET role_id = '00000000-0000-0000-0000-000000000004'::UUID
-  WHERE role_id NOT IN (SELECT id FROM public.roles);
-
-  -- Adicionar a nova Foreign Key canónica apontando para public.roles(id)
+  -- E. Adicionar a nova Foreign Key canónica apontando para public.roles(id)
   ALTER TABLE public.users
     ADD CONSTRAINT users_role_id_fkey
     FOREIGN KEY (role_id)
@@ -199,8 +231,8 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  -- 3. Utilizadores inativos, não aprovados ou eliminados nunca têm permissões
-  IF (v_profile.approved IS NOT TRUE) OR (v_profile.deleted IS TRUE) THEN
+  -- 3. Utilizadores inativos, não aprovados, eliminados ou sem role_id nunca têm permissões
+  IF (v_profile.approved IS NOT TRUE) OR (v_profile.deleted IS TRUE) OR (v_profile.role_id IS NULL) THEN
     RETURN FALSE;
   END IF;
 
@@ -210,7 +242,7 @@ BEGIN
     ELSE REPLACE(p_permission_code, '_', ':')
   END;
 
-  -- 5. Consulta à tabela canónica de RBAC (role_permissions -> permissions)
+  -- 5. Consulta direta à tabela canónica de RBAC (role_permissions -> permissions)
   RETURN EXISTS (
     SELECT 1
     FROM public.role_permissions rp
