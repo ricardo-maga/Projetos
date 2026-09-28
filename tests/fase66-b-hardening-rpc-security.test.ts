@@ -12,6 +12,8 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
   const validUUIDProjectActive = '11111111-1111-4111-8111-111111111111';
   const validUUIDProjectDeleted = '22222222-2222-4222-8222-222222222222';
   const validUUIDUserApproved = '33333333-3333-4333-8333-333333333333';
+  const validUUIDUserTechnician = '33333333-3333-4333-8333-333333333334';
+  const validUUIDUserViewer = '33333333-3333-4333-8333-333333333335';
   const validUUIDUserUnapproved = '44444444-4444-4444-8444-444444444444';
   const validUUIDUserDeleted = '55555555-5555-4555-8555-555555555555';
 
@@ -26,7 +28,9 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
         { id: validUUIDProjectDeleted, project_title: 'Projeto Eliminado', deleted: true },
       ],
       users: [
-        { id: validUUIDUserApproved, name: 'Utilizador Aprovado', approved: true, deleted: false, role_id: 'ug-1', is_admin: true },
+        { id: validUUIDUserApproved, name: 'Utilizador Aprovado Admin', approved: true, deleted: false, role_id: 'ug-1', is_admin: true },
+        { id: validUUIDUserTechnician, name: 'Utilizador Técnico', approved: true, deleted: false, role_id: 'ug-3', is_admin: false },
+        { id: validUUIDUserViewer, name: 'Utilizador Visualizador', approved: true, deleted: false, role_id: 'ug-4', is_admin: false },
         { id: validUUIDUserUnapproved, name: 'Utilizador Não Aprovado', approved: false, deleted: false, role_id: 'ug-3', is_admin: false },
         { id: validUUIDUserDeleted, name: 'Utilizador Eliminado', approved: true, deleted: true, role_id: 'ug-3', is_admin: false },
       ],
@@ -106,7 +110,23 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
             return { data: null, error: { code: '42501', message: 'Utilizador não autorizado ou inativo.' } };
           }
 
+          // Granular permission simulation:
+          // ug-1 (admin): tasks_write: true, tasks_delete: true
+          // ug-3 (technician): tasks_write: true, tasks_delete: false
+          // ug-4 (viewer): tasks_write: false, tasks_delete: false
+          const hasPermissionSim = (perm: 'tasks_write' | 'tasks_delete', user: any) => {
+            if (!user || !user.approved || user.deleted) return false;
+            if (user.is_admin || user.role_id === 'ug-1') return true;
+            if (perm === 'tasks_write') return user.role_id === 'ug-2' || user.role_id === 'ug-3';
+            if (perm === 'tasks_delete') return user.role_id === 'ug-2';
+            return false;
+          };
+
           if (fn === 'create_task_atomic') {
+            if (caller && !hasPermissionSim('tasks_write', caller)) {
+              return { data: null, error: { code: '42501', message: 'Sem permissão para criar tarefas.' } };
+            }
+
             if (args.p_project_id) {
               const proj = mockDbData.projects.find((p: any) => p.id === args.p_project_id && !p.deleted);
               if (!proj) {
@@ -125,6 +145,10 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
           }
 
           if (fn === 'update_task_atomic') {
+            if (caller && !hasPermissionSim('tasks_write', caller)) {
+              return { data: null, error: { code: '42501', message: 'Sem permissão para editar tarefas.' } };
+            }
+
             const task = mockDbData.tasks.find((t: any) => t.id === args.p_id && !t.deleted);
             if (!task) return { data: null, error: { code: 'P0002', message: 'Tarefa não encontrada.' } };
 
@@ -148,6 +172,10 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
           }
 
           if (fn === 'delete_task_atomic') {
+            if (caller && !hasPermissionSim('tasks_delete', caller)) {
+              return { data: null, error: { code: '42501', message: 'Sem permissão para eliminar tarefas.' } };
+            }
+
             const task = mockDbData.tasks.find((t: any) => t.id === args.p_id && !t.deleted);
             if (!task) return { data: null, error: { code: 'P0002', message: 'Tarefa não encontrada.' } };
 
@@ -293,6 +321,63 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
       expect(res.statusCode).toBe(409);
       expect(res.error).toContain('Conflito de concorrência');
     });
+
+    it('utilizador Técnico (ug-3) pode criar e editar tarefas (tasks_write), mas é bloqueado ao eliminar (tasks_delete) com 42501 / HTTP 403', async () => {
+      const fakeSb = await serverDbModule.getServerDbClient();
+
+      // 1. Create task - allowed for ug-3
+      const createRes = await createTaskServer(fakeSb, {
+        title: 'Tarefa Criada por Técnico',
+        projectId: validUUIDProjectActive,
+        userId: validUUIDUserTechnician,
+      });
+      expect(createRes.success).toBe(true);
+      expect(createRes.data?.title).toBe('Tarefa Criada por Técnico');
+
+      // 2. Update task - allowed for ug-3
+      const updateRes = await updateTaskServer(fakeSb, 'task-sec-1', {
+        title: 'Tarefa Atualizada por Técnico',
+        version: 1,
+        userId: validUUIDUserTechnician,
+      });
+      expect(updateRes.success).toBe(true);
+
+      // 3. Delete task - FORBIDDEN for ug-3 (no tasks_delete)
+      const deleteRes = await deleteTaskServer(fakeSb, 'task-sec-1', validUUIDUserTechnician, 2);
+      expect(deleteRes.success).toBe(false);
+      expect(deleteRes.statusCode).toBe(403);
+      expect(deleteRes.error).toBe('Sem permissão para eliminar tarefa.');
+    });
+
+    it('utilizador Visualizador (ug-4) é bloqueado em criar, editar e eliminar tarefas com 42501 / HTTP 403', async () => {
+      const fakeSb = await serverDbModule.getServerDbClient();
+
+      // 1. Create task - forbidden for ug-4
+      const createRes = await createTaskServer(fakeSb, {
+        title: 'Tentativa por Visualizador',
+        projectId: validUUIDProjectActive,
+        userId: validUUIDUserViewer,
+      });
+      expect(createRes.success).toBe(false);
+      expect(createRes.statusCode).toBe(403);
+      expect(createRes.error).toBe('Sem permissão para realizar esta operação.');
+
+      // 2. Update task - forbidden for ug-4
+      const updateRes = await updateTaskServer(fakeSb, 'task-sec-1', {
+        title: 'Tentativa Update por Visualizador',
+        version: 1,
+        userId: validUUIDUserViewer,
+      });
+      expect(updateRes.success).toBe(false);
+      expect(updateRes.statusCode).toBe(403);
+      expect(updateRes.error).toBe('Sem permissão para alterar tarefa.');
+
+      // 3. Delete task - forbidden for ug-4
+      const deleteRes = await deleteTaskServer(fakeSb, 'task-sec-1', validUUIDUserViewer, 1);
+      expect(deleteRes.success).toBe(false);
+      expect(deleteRes.statusCode).toBe(403);
+      expect(deleteRes.error).toBe('Sem permissão para eliminar tarefa.');
+    });
   });
 
   describe('2. Auditoria Determinística de SQLSTATE sem Parsing de Texto', () => {
@@ -306,12 +391,16 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
       expect(content).toContain("rpcError.code === '42501'");
     });
 
-    it('migration SQL 20260928030000 inclui verificações de is_approved() e códigos de erro estruturados', () => {
+    it('migration SQL 20260928030000 inclui verificações de is_approved(), has_permission() e códigos de erro estruturados', () => {
       const sqlContent = readFileSync(
         join(process.cwd(), 'supabase/migrations/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
         'utf-8'
       );
-      expect(sqlContent).toContain("auth.role() = 'authenticated' AND NOT public.is_approved()");
+      expect(sqlContent).toContain("auth.role() = 'authenticated'");
+      expect(sqlContent).toContain("public.is_approved()");
+      expect(sqlContent).toContain("public.has_permission(");
+      expect(sqlContent).toContain("tasks:write");
+      expect(sqlContent).toContain("tasks:delete");
       expect(sqlContent).toContain("USING ERRCODE = '42501'");
       expect(sqlContent).toContain("USING ERRCODE = 'P0001'");
       expect(sqlContent).toContain("USING ERRCODE = 'P0002'");

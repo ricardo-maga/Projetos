@@ -1,5 +1,6 @@
 -- Migration: 20260928030000_tasks_atomic_rpcs_project_decoupling.sql
 -- FASE 66-B: Tasks Persistence Boundary & Project Decoupling
+-- FASE 66-B-HARDENING-2: Granular RPC Authorization Boundary (tasks:write / tasks:delete)
 -- Permite criação e atualização de tarefas com ou sem projeto associado (project_id NULL)
 -- e elimina ambiguidades no update através do parâmetro p_update_project_id.
 
@@ -10,6 +11,150 @@ DROP FUNCTION IF EXISTS public.create_task_atomic(UUID, UUID, TEXT, TEXT, TEXT, 
 DROP FUNCTION IF EXISTS public.update_task_atomic(UUID, INTEGER, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[], BOOLEAN);
 DROP FUNCTION IF EXISTS public.update_task_atomic(UUID, INTEGER, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[], BOOLEAN, BOOLEAN);
 DROP FUNCTION IF EXISTS public.delete_task_atomic(UUID, INTEGER, UUID);
+DROP FUNCTION IF EXISTS public.has_permission(TEXT, UUID);
+
+-- 0. Seed standard permissions into role_permissions for canonical roles if not present
+DO $$
+DECLARE
+  v_role_super_admin UUID := '00000000-0000-0000-0000-000000000001';
+  v_role_admin UUID := '00000000-0000-0000-0000-000000000002';
+  v_role_pm UUID := '00000000-0000-0000-0000-000000000003';
+  v_role_tech UUID := '00000000-0000-0000-0000-000000000004';
+  v_role_viewer UUID := '00000000-0000-0000-0000-000000000005';
+  v_perm_id UUID;
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'role_permissions') THEN
+    -- SUPER_ADMIN & ADMIN: all permissions
+    FOR v_perm_id IN SELECT id FROM public.permissions LOOP
+      INSERT INTO public.role_permissions (role_id, permission_id) VALUES (v_role_super_admin, v_perm_id) ON CONFLICT DO NOTHING;
+      INSERT INTO public.role_permissions (role_id, permission_id) VALUES (v_role_admin, v_perm_id) ON CONFLICT DO NOTHING;
+    END LOOP;
+
+    -- PROJECT_MANAGER: projects:read, projects:write, tasks:read, tasks:write, tasks:delete, clients:read, clients:write
+    FOR v_perm_id IN SELECT id FROM public.permissions WHERE code IN ('projects:read', 'projects:write', 'tasks:read', 'tasks:write', 'tasks:delete', 'clients:read', 'clients:write') LOOP
+      INSERT INTO public.role_permissions (role_id, permission_id) VALUES (v_role_pm, v_perm_id) ON CONFLICT DO NOTHING;
+    END LOOP;
+
+    -- TECHNICIAN: projects:read, tasks:read, tasks:write, clients:read (NO tasks:delete!)
+    FOR v_perm_id IN SELECT id FROM public.permissions WHERE code IN ('projects:read', 'tasks:read', 'tasks:write', 'clients:read') LOOP
+      INSERT INTO public.role_permissions (role_id, permission_id) VALUES (v_role_tech, v_perm_id) ON CONFLICT DO NOTHING;
+    END LOOP;
+
+    -- VIEWER: projects:read, tasks:read, clients:read (NO tasks:write, NO tasks:delete!)
+    FOR v_perm_id IN SELECT id FROM public.permissions WHERE code IN ('projects:read', 'tasks:read', 'clients:read') LOOP
+      INSERT INTO public.role_permissions (role_id, permission_id) VALUES (v_role_viewer, v_perm_id) ON CONFLICT DO NOTHING;
+    END LOOP;
+  END IF;
+END $$;
+
+-- 0.1 Canonical Helper Function to check granular permissions for a given user or authenticated caller
+CREATE OR REPLACE FUNCTION public.has_permission(
+  p_permission_code TEXT,
+  p_user_id UUID DEFAULT NULL
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_target_uid UUID;
+  v_user RECORD;
+  v_normalized_role TEXT;
+  v_perm_code_alt TEXT;
+BEGIN
+  -- 1. Determine effective target user ID:
+  -- In authenticated session context, auth.uid() is primary
+  -- If service_role or server-side call without auth session, use p_user_id
+  IF auth.role() = 'authenticated' THEN
+    v_target_uid := auth.uid();
+  ELSE
+    v_target_uid := p_user_id;
+  END IF;
+
+  -- If still null and service_role, grant access (trusted system backend)
+  IF v_target_uid IS NULL THEN
+    IF auth.role() = 'service_role' THEN
+      RETURN TRUE;
+    END IF;
+    RETURN FALSE;
+  END IF;
+
+  -- 2. Lookup user profile in public.users
+  SELECT id, role_id, is_admin, approved, deleted
+  INTO v_user
+  FROM public.users
+  WHERE (auth_user_id = v_target_uid OR id = v_target_uid);
+
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+
+  -- 3. Inactive, unapproved, or deleted users never have permissions
+  IF (v_user.approved IS NOT TRUE) OR (v_user.deleted IS TRUE) THEN
+    RETURN FALSE;
+  END IF;
+
+  -- 4. Administrators have unrestricted access
+  IF (v_user.is_admin IS TRUE) OR (v_user.role_id IN ('ug-1', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002')) THEN
+    RETURN TRUE;
+  END IF;
+
+  -- 5. Normalize permission code between 'tasks_write' and 'tasks:write'
+  v_perm_code_alt := CASE
+    WHEN POSITION(':' IN p_permission_code) > 0 THEN REPLACE(p_permission_code, ':', '_')
+    ELSE REPLACE(p_permission_code, '_', ':')
+  END;
+
+  -- 6. Check database role_permissions junction table if configured
+  IF EXISTS (
+    SELECT 1
+    FROM public.role_permissions rp
+    JOIN public.permissions p ON p.id = rp.permission_id
+    WHERE (rp.role_id::text = v_user.role_id::text)
+      AND (p.code = p_permission_code OR p.code = v_perm_code_alt)
+  ) THEN
+    RETURN TRUE;
+  END IF;
+
+  -- 7. Canonical role evaluation (aligns with DEFAULT_PERMISSIONS from lib/permissions.ts)
+  v_normalized_role := CASE
+    WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000001', 'ug-1') THEN 'ug-1'
+    WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000003', 'ug-2') THEN 'ug-2'
+    WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000004', 'ug-3') THEN 'ug-3'
+    WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000005', 'ug-4') THEN 'ug-4'
+    ELSE COALESCE(v_user.role_id, 'ug-4')
+  END;
+
+  -- Tasks permissions:
+  -- tasks:write / tasks_write -> ug-1, ug-2, ug-3
+  IF p_permission_code IN ('tasks_write', 'tasks:write') THEN
+    RETURN v_normalized_role IN ('ug-1', 'ug-2', 'ug-3');
+  END IF;
+
+  -- tasks:delete / tasks_delete -> ug-1, ug-2 (technicians and viewers CANNOT delete tasks)
+  IF p_permission_code IN ('tasks_delete', 'tasks:delete') THEN
+    RETURN v_normalized_role IN ('ug-1', 'ug-2');
+  END IF;
+
+  -- tasks:read / tasks_read -> all active roles
+  IF p_permission_code IN ('tasks_read', 'tasks:read') THEN
+    RETURN v_normalized_role IN ('ug-1', 'ug-2', 'ug-3', 'ug-4');
+  END IF;
+
+  -- projects:write / projects_write -> ug-1, ug-2
+  IF p_permission_code IN ('projects_write', 'projects:write') THEN
+    RETURN v_normalized_role IN ('ug-1', 'ug-2');
+  END IF;
+
+  -- projects:read / projects_read -> all active roles
+  IF p_permission_code IN ('projects_read', 'projects:read') THEN
+    RETURN v_normalized_role IN ('ug-1', 'ug-2', 'ug-3', 'ug-4');
+  END IF;
+
+  RETURN FALSE;
+END;
+$$;
 
 -- 1. Function to atomically create a task with assignees (suporta project_id NULL)
 CREATE OR REPLACE FUNCTION public.create_task_atomic(
@@ -41,9 +186,24 @@ DECLARE
   v_task_row RECORD;
   v_uid UUID;
 BEGIN
-  -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved
-  IF auth.role() = 'authenticated' AND NOT public.is_approved() THEN
-    RAISE EXCEPTION 'Utilizador não autorizado ou inativo.' USING ERRCODE = '42501';
+  -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved and has tasks:write permission
+  IF auth.role() = 'authenticated' THEN
+    IF NOT public.is_approved() THEN
+      RAISE EXCEPTION 'Utilizador não autorizado ou inativo.' USING ERRCODE = '42501';
+    END IF;
+    IF NOT public.has_permission('tasks:write', auth.uid()) THEN
+      RAISE EXCEPTION 'Sem permissão para criar tarefas.' USING ERRCODE = '42501';
+    END IF;
+    -- Non-admin cannot forge created_by
+    IF p_created_by IS NOT NULL AND p_created_by <> auth.uid() AND NOT public.is_admin() THEN
+      p_created_by := auth.uid();
+    ELSIF p_created_by IS NULL THEN
+      p_created_by := auth.uid();
+    END IF;
+  ELSIF p_created_by IS NOT NULL THEN
+    IF NOT public.has_permission('tasks:write', p_created_by) THEN
+      RAISE EXCEPTION 'Sem permissão para criar tarefas.' USING ERRCODE = '42501';
+    END IF;
   END IF;
 
   -- 2. Validate project exists and is active ONLY IF project_id is provided
@@ -152,9 +312,24 @@ DECLARE
   v_task_row RECORD;
   v_uid UUID;
 BEGIN
-  -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved
-  IF auth.role() = 'authenticated' AND NOT public.is_approved() THEN
-    RAISE EXCEPTION 'Utilizador não autorizado ou inativo.' USING ERRCODE = '42501';
+  -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved and has tasks:write permission
+  IF auth.role() = 'authenticated' THEN
+    IF NOT public.is_approved() THEN
+      RAISE EXCEPTION 'Utilizador não autorizado ou inativo.' USING ERRCODE = '42501';
+    END IF;
+    IF NOT public.has_permission('tasks:write', auth.uid()) THEN
+      RAISE EXCEPTION 'Sem permissão para editar tarefas.' USING ERRCODE = '42501';
+    END IF;
+    -- Non-admin cannot forge updated_by
+    IF p_updated_by IS NOT NULL AND p_updated_by <> auth.uid() AND NOT public.is_admin() THEN
+      p_updated_by := auth.uid();
+    ELSIF p_updated_by IS NULL THEN
+      p_updated_by := auth.uid();
+    END IF;
+  ELSIF p_updated_by IS NOT NULL THEN
+    IF NOT public.has_permission('tasks:write', p_updated_by) THEN
+      RAISE EXCEPTION 'Sem permissão para editar tarefas.' USING ERRCODE = '42501';
+    END IF;
   END IF;
 
   -- 2. Check current task version for OCC
@@ -239,9 +414,24 @@ DECLARE
   v_current_version INTEGER;
   v_task_row RECORD;
 BEGIN
-  -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved
-  IF auth.role() = 'authenticated' AND NOT public.is_approved() THEN
-    RAISE EXCEPTION 'Utilizador não autorizado ou inativo.' USING ERRCODE = '42501';
+  -- 1. Authorization check: if called directly in authenticated user context, verify caller is approved and has tasks:delete permission
+  IF auth.role() = 'authenticated' THEN
+    IF NOT public.is_approved() THEN
+      RAISE EXCEPTION 'Utilizador não autorizado ou inativo.' USING ERRCODE = '42501';
+    END IF;
+    IF NOT public.has_permission('tasks:delete', auth.uid()) THEN
+      RAISE EXCEPTION 'Sem permissão para eliminar tarefas.' USING ERRCODE = '42501';
+    END IF;
+    -- Non-admin cannot forge updated_by
+    IF p_updated_by IS NOT NULL AND p_updated_by <> auth.uid() AND NOT public.is_admin() THEN
+      p_updated_by := auth.uid();
+    ELSIF p_updated_by IS NULL THEN
+      p_updated_by := auth.uid();
+    END IF;
+  ELSIF p_updated_by IS NOT NULL THEN
+    IF NOT public.has_permission('tasks:delete', p_updated_by) THEN
+      RAISE EXCEPTION 'Sem permissão para eliminar tarefas.' USING ERRCODE = '42501';
+    END IF;
   END IF;
 
   SELECT version INTO v_current_version
@@ -270,6 +460,8 @@ END;
 $$;
 
 -- Grant execution permissions with explicit signatures
+GRANT EXECUTE ON FUNCTION public.has_permission(TEXT, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.create_task_atomic(UUID, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[]) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.update_task_atomic(UUID, INTEGER, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[], BOOLEAN, BOOLEAN) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.delete_task_atomic(UUID, INTEGER, UUID) TO authenticated, service_role;
+
