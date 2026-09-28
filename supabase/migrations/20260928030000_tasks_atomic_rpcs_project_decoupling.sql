@@ -1,6 +1,6 @@
 -- Migration: 20260928030000_tasks_atomic_rpcs_project_decoupling.sql
 -- FASE 66-B: Tasks Persistence Boundary & Project Decoupling
--- FASE 66-B-HARDENING: Granular RPC Authorization Boundary & Named Dollar Quoting
+-- FASE 66-B-HARDENING-2: RBAC SQL como única fonte de verdade para autorização das Task RPCs
 -- Permite criação e atualização de tarefas com ou sem projeto associado (project_id NULL)
 -- e elimina ambiguidades no update através do parâmetro p_update_project_id.
 
@@ -13,7 +13,19 @@ DROP FUNCTION IF EXISTS public.update_task_atomic(UUID, INTEGER, UUID, TEXT, TEX
 DROP FUNCTION IF EXISTS public.delete_task_atomic(UUID, INTEGER, UUID);
 DROP FUNCTION IF EXISTS public.has_permission(TEXT, UUID);
 
--- 1. Canonical Helper Function to check granular permissions for a given user or authenticated caller
+-- 1. Seed base role_permissions from canonical roles and permissions
+INSERT INTO public.role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM public.roles r
+CROSS JOIN public.permissions p
+WHERE (
+  (r.code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER') AND p.code IN ('tasks:read', 'tasks:write', 'tasks:delete'))
+  OR (r.code = 'TECHNICIAN' AND p.code IN ('tasks:read', 'tasks:write'))
+  OR (r.code = 'VIEWER' AND p.code = 'tasks:read')
+)
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- 2. Canonical Helper Function: RBAC SQL como ÚNICA fonte de verdade
 CREATE OR REPLACE FUNCTION public.has_permission(
   p_permission_code TEXT,
   p_user_id UUID DEFAULT NULL
@@ -26,22 +38,23 @@ AS $function$
 DECLARE
   v_target_uid UUID;
   v_user RECORD;
-  v_role_code TEXT;
+  v_resolved_role_id UUID;
   v_perm_code_alt TEXT;
 BEGIN
   -- 1. Determine effective target user ID:
-  -- In authenticated session context, auth.uid() is primary
-  -- If service_role or server-side call without auth session, use p_user_id
+  -- In authenticated session context, auth.uid() is primary and authoritative.
+  -- Callers cannot forge another user's identity.
   IF auth.role() = 'authenticated' THEN
     v_target_uid := auth.uid();
   ELSE
+    -- For service_role / backend trusted context, use provided p_user_id
     v_target_uid := p_user_id;
   END IF;
 
-  -- If still null and service_role, grant access (trusted system backend)
+  -- If no user identity is resolved:
   IF v_target_uid IS NULL THEN
     IF auth.role() = 'service_role' THEN
-      RETURN TRUE;
+      RETURN TRUE; -- Trusted backend system maintenance
     END IF;
     RETURN FALSE;
   END IF;
@@ -61,9 +74,31 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  -- 4. Administrators have unrestricted access
-  IF (v_user.is_admin IS TRUE) OR (v_user.role_id IN ('ug-1', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002')) THEN
-    RETURN TRUE;
+  -- 4. Resolve role_id to canonical UUID in public.roles
+  IF v_user.role_id IS NOT NULL THEN
+    -- Check if it matches an existing role id directly
+    SELECT id INTO v_resolved_role_id
+    FROM public.roles
+    WHERE id::text = v_user.role_id::text;
+
+    -- If not found directly, check if it's a legacy code (e.g. 'ug-1'..'ug-4')
+    IF v_resolved_role_id IS NULL THEN
+      SELECT id INTO v_resolved_role_id
+      FROM public.roles
+      WHERE (v_user.role_id = 'ug-1' AND code = 'SUPER_ADMIN')
+         OR (v_user.role_id = 'ug-2' AND code = 'PROJECT_MANAGER')
+         OR (v_user.role_id = 'ug-3' AND code = 'TECHNICIAN')
+         OR (v_user.role_id = 'ug-4' AND code = 'VIEWER');
+    END IF;
+  END IF;
+
+  -- If user has is_admin = true but role_id was not resolved, map to SUPER_ADMIN
+  IF v_resolved_role_id IS NULL AND v_user.is_admin IS TRUE THEN
+    SELECT id INTO v_resolved_role_id FROM public.roles WHERE code = 'SUPER_ADMIN';
+  END IF;
+
+  IF v_resolved_role_id IS NULL THEN
+    RETURN FALSE;
   END IF;
 
   -- 5. Normalize permission code between 'tasks_write' and 'tasks:write'
@@ -72,76 +107,18 @@ BEGIN
     ELSE REPLACE(p_permission_code, '_', ':')
   END;
 
-  -- 6. Check database role_permissions junction table if entries exist
-  IF EXISTS (
-    SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'role_permissions'
-  ) THEN
-    IF EXISTS (
-      SELECT 1
-      FROM public.role_permissions rp
-      JOIN public.permissions p ON p.id = rp.permission_id
-      WHERE (rp.role_id::text = v_user.role_id::text)
-        AND (p.code = p_permission_code OR p.code = v_perm_code_alt)
-    ) THEN
-      RETURN TRUE;
-    END IF;
-  END IF;
-
-  -- 7. Resolve role code from public.roles if role_id is UUID
-  IF EXISTS (
-    SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'roles'
-  ) THEN
-    SELECT code INTO v_role_code FROM public.roles WHERE id::text = v_user.role_id::text;
-  END IF;
-
-  -- 8. Fallback for legacy text role IDs ('ug-1'..'ug-4') or missing roles record
-  IF v_role_code IS NULL THEN
-    v_role_code := CASE
-      WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000001', 'ug-1') THEN 'SUPER_ADMIN'
-      WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000002') THEN 'ADMIN'
-      WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000003', 'ug-2') THEN 'PROJECT_MANAGER'
-      WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000004', 'ug-3') THEN 'TECHNICIAN'
-      WHEN v_user.role_id IN ('00000000-0000-0000-0000-000000000005', 'ug-4') THEN 'VIEWER'
-      ELSE COALESCE(v_user.role_id, 'VIEWER')
-    END;
-  END IF;
-
-  -- Super Admin and Admin have all permissions
-  IF v_role_code IN ('SUPER_ADMIN', 'ADMIN') THEN
-    RETURN TRUE;
-  END IF;
-
-  -- Tasks permissions:
-  -- tasks:write / tasks_write -> SUPER_ADMIN, ADMIN, PROJECT_MANAGER, TECHNICIAN
-  IF p_permission_code IN ('tasks_write', 'tasks:write') THEN
-    RETURN v_role_code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'TECHNICIAN');
-  END IF;
-
-  -- tasks:delete / tasks_delete -> SUPER_ADMIN, ADMIN, PROJECT_MANAGER (technician and viewer CANNOT delete)
-  IF p_permission_code IN ('tasks_delete', 'tasks:delete') THEN
-    RETURN v_role_code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER');
-  END IF;
-
-  -- tasks:read / tasks_read -> all active roles
-  IF p_permission_code IN ('tasks_read', 'tasks:read') THEN
-    RETURN v_role_code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'TECHNICIAN', 'VIEWER');
-  END IF;
-
-  -- projects:write / projects_write -> SUPER_ADMIN, ADMIN, PROJECT_MANAGER
-  IF p_permission_code IN ('projects_write', 'projects:write') THEN
-    RETURN v_role_code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER');
-  END IF;
-
-  -- projects:read / projects_read -> all active roles
-  IF p_permission_code IN ('projects_read', 'projects:read') THEN
-    RETURN v_role_code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'TECHNICIAN', 'VIEWER');
-  END IF;
-
-  RETURN FALSE;
+  -- 6. Query RBAC SQL table as the SINGLE source of truth (no hardcoded permission matrix)
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.role_permissions rp
+    JOIN public.permissions p ON p.id = rp.permission_id
+    WHERE rp.role_id = v_resolved_role_id
+      AND (p.code = p_permission_code OR p.code = v_perm_code_alt)
+  );
 END;
 $function$;
 
--- 2. Function to atomically create a task with assignees (suporta project_id NULL)
+-- 3. Function to atomically create a task with assignees (suporta project_id NULL)
 CREATE OR REPLACE FUNCTION public.create_task_atomic(
   p_id UUID,
   p_project_id UUID DEFAULT NULL,
@@ -263,7 +240,7 @@ BEGIN
 END;
 $function$;
 
--- 3. Function to atomically update a task with OCC verification, project decoupling and assignee syncing
+-- 4. Function to atomically update a task with OCC verification, project decoupling and assignee syncing
 CREATE OR REPLACE FUNCTION public.update_task_atomic(
   p_id UUID,
   p_expected_version INTEGER,
@@ -384,7 +361,7 @@ BEGIN
 END;
 $function$;
 
--- 4. Function to atomically soft-delete a task with OCC verification
+-- 5. Function to atomically soft-delete a task with OCC verification
 CREATE OR REPLACE FUNCTION public.delete_task_atomic(
   p_id UUID,
   p_expected_version INTEGER,

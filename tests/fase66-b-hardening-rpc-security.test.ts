@@ -12,10 +12,17 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
   const validUUIDProjectActive = '11111111-1111-4111-8111-111111111111';
   const validUUIDProjectDeleted = '22222222-2222-4222-8222-222222222222';
   const validUUIDUserApproved = '33333333-3333-4333-8333-333333333333';
+  const validUUIDUserProjectManager = '33333333-3333-4333-8333-333333333336';
   const validUUIDUserTechnician = '33333333-3333-4333-8333-333333333334';
   const validUUIDUserViewer = '33333333-3333-4333-8333-333333333335';
   const validUUIDUserUnapproved = '44444444-4444-4444-8444-444444444444';
   const validUUIDUserDeleted = '55555555-5555-4555-8555-555555555555';
+
+  const roleSuperAdminId = '00000000-0000-0000-0000-000000000001';
+  const roleAdminId = '00000000-0000-0000-0000-000000000002';
+  const roleProjectManagerId = '00000000-0000-0000-0000-000000000003';
+  const roleTechnicianId = '00000000-0000-0000-0000-000000000004';
+  const roleViewerId = '00000000-0000-0000-0000-000000000005';
 
   let mockDbData: any;
   let authSpy: any;
@@ -27,12 +34,44 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
         { id: validUUIDProjectActive, project_title: 'Projeto Autorizado Ativo', deleted: false },
         { id: validUUIDProjectDeleted, project_title: 'Projeto Eliminado', deleted: true },
       ],
+      roles: [
+        { id: roleSuperAdminId, code: 'SUPER_ADMIN', name: 'Super Administrador' },
+        { id: roleAdminId, code: 'ADMIN', name: 'Administrador' },
+        { id: roleProjectManagerId, code: 'PROJECT_MANAGER', name: 'Gestor de Projetos' },
+        { id: roleTechnicianId, code: 'TECHNICIAN', name: 'Técnico / Equipa' },
+        { id: roleViewerId, code: 'VIEWER', name: 'Visualizador' },
+      ],
+      permissions: [
+        { id: 'perm-tasks-read', code: 'tasks:read' },
+        { id: 'perm-tasks-write', code: 'tasks:write' },
+        { id: 'perm-tasks-delete', code: 'tasks:delete' },
+      ],
+      role_permissions: [
+        // SUPER_ADMIN
+        { role_id: roleSuperAdminId, permission_id: 'perm-tasks-read' },
+        { role_id: roleSuperAdminId, permission_id: 'perm-tasks-write' },
+        { role_id: roleSuperAdminId, permission_id: 'perm-tasks-delete' },
+        // ADMIN
+        { role_id: roleAdminId, permission_id: 'perm-tasks-read' },
+        { role_id: roleAdminId, permission_id: 'perm-tasks-write' },
+        { role_id: roleAdminId, permission_id: 'perm-tasks-delete' },
+        // PROJECT_MANAGER
+        { role_id: roleProjectManagerId, permission_id: 'perm-tasks-read' },
+        { role_id: roleProjectManagerId, permission_id: 'perm-tasks-write' },
+        { role_id: roleProjectManagerId, permission_id: 'perm-tasks-delete' },
+        // TECHNICIAN
+        { role_id: roleTechnicianId, permission_id: 'perm-tasks-read' },
+        { role_id: roleTechnicianId, permission_id: 'perm-tasks-write' },
+        // VIEWER
+        { role_id: roleViewerId, permission_id: 'perm-tasks-read' },
+      ],
       users: [
-        { id: validUUIDUserApproved, name: 'Utilizador Aprovado Admin', approved: true, deleted: false, role_id: 'ug-1', is_admin: true },
-        { id: validUUIDUserTechnician, name: 'Utilizador Técnico', approved: true, deleted: false, role_id: 'ug-3', is_admin: false },
-        { id: validUUIDUserViewer, name: 'Utilizador Visualizador', approved: true, deleted: false, role_id: 'ug-4', is_admin: false },
-        { id: validUUIDUserUnapproved, name: 'Utilizador Não Aprovado', approved: false, deleted: false, role_id: 'ug-3', is_admin: false },
-        { id: validUUIDUserDeleted, name: 'Utilizador Eliminado', approved: true, deleted: true, role_id: 'ug-3', is_admin: false },
+        { id: validUUIDUserApproved, name: 'Utilizador Aprovado Admin', approved: true, deleted: false, role_id: roleSuperAdminId, is_admin: true },
+        { id: validUUIDUserProjectManager, name: 'Utilizador PM', approved: true, deleted: false, role_id: roleProjectManagerId, is_admin: false },
+        { id: validUUIDUserTechnician, name: 'Utilizador Técnico', approved: true, deleted: false, role_id: roleTechnicianId, is_admin: false },
+        { id: validUUIDUserViewer, name: 'Utilizador Visualizador', approved: true, deleted: false, role_id: roleViewerId, is_admin: false },
+        { id: validUUIDUserUnapproved, name: 'Utilizador Não Aprovado', approved: false, deleted: false, role_id: roleTechnicianId, is_admin: false },
+        { id: validUUIDUserDeleted, name: 'Utilizador Eliminado', approved: true, deleted: true, role_id: roleTechnicianId, is_admin: false },
       ],
       tasks: [
         {
@@ -101,7 +140,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
           select: () => createChain(mockDbData[table] || []),
         }),
         rpc: async (fn: string, args: any) => {
-          // Simulation of PostgreSQL RPC logic with authorization and deterministic SQLSTATE codes
+          // Simulation of PostgreSQL RPC logic with RBAC SQL as single source of truth
           const callerUid = args.p_created_by || args.p_updated_by;
           const caller = mockDbData.users.find((u: any) => u.id === callerUid);
 
@@ -110,20 +149,27 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
             return { data: null, error: { code: '42501', message: 'Utilizador não autorizado ou inativo.' } };
           }
 
-          // Granular permission simulation:
-          // ug-1 (admin): tasks_write: true, tasks_delete: true
-          // ug-3 (technician): tasks_write: true, tasks_delete: false
-          // ug-4 (viewer): tasks_write: false, tasks_delete: false
-          const hasPermissionSim = (perm: 'tasks_write' | 'tasks_delete', user: any) => {
+          // 2. Pure SQL RBAC resolution via role_permissions + permissions table join
+          const hasPermissionSqlRbac = (perm: string, user: any) => {
             if (!user || !user.approved || user.deleted) return false;
-            if (user.is_admin || user.role_id === 'ug-1') return true;
-            if (perm === 'tasks_write') return user.role_id === 'ug-2' || user.role_id === 'ug-3';
-            if (perm === 'tasks_delete') return user.role_id === 'ug-2';
-            return false;
+            let roleId = user.role_id;
+            // Legacy mapping fallback
+            if (roleId === 'ug-1') roleId = roleSuperAdminId;
+            if (roleId === 'ug-2') roleId = roleProjectManagerId;
+            if (roleId === 'ug-3') roleId = roleTechnicianId;
+            if (roleId === 'ug-4') roleId = roleViewerId;
+
+            const permNormalized = perm.includes(':') ? perm : perm.replace('_', ':');
+            const permObj = mockDbData.permissions.find((p: any) => p.code === permNormalized);
+            if (!permObj) return false;
+
+            return mockDbData.role_permissions.some(
+              (rp: any) => rp.role_id === roleId && rp.permission_id === permObj.id
+            );
           };
 
           if (fn === 'create_task_atomic') {
-            if (caller && !hasPermissionSim('tasks_write', caller)) {
+            if (caller && !hasPermissionSqlRbac('tasks:write', caller)) {
               return { data: null, error: { code: '42501', message: 'Sem permissão para criar tarefas.' } };
             }
 
@@ -145,7 +191,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
           }
 
           if (fn === 'update_task_atomic') {
-            if (caller && !hasPermissionSim('tasks_write', caller)) {
+            if (caller && !hasPermissionSqlRbac('tasks:write', caller)) {
               return { data: null, error: { code: '42501', message: 'Sem permissão para editar tarefas.' } };
             }
 
@@ -172,7 +218,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
           }
 
           if (fn === 'delete_task_atomic') {
-            if (caller && !hasPermissionSim('tasks_delete', caller)) {
+            if (caller && !hasPermissionSqlRbac('tasks:delete', caller)) {
               return { data: null, error: { code: '42501', message: 'Sem permissão para eliminar tarefas.' } };
             }
 
@@ -378,9 +424,98 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
       expect(deleteRes.statusCode).toBe(403);
       expect(deleteRes.error).toBe('Sem permissão para eliminar tarefa.');
     });
+
+    it('utilizador Gestor de Projeto (PROJECT_MANAGER) tem permissão de read, write e delete', async () => {
+      const fakeSb = await serverDbModule.getServerDbClient();
+
+      // 1. Create task
+      const createRes = await createTaskServer(fakeSb, {
+        title: 'Tarefa PM',
+        projectId: validUUIDProjectActive,
+        userId: validUUIDUserProjectManager,
+      });
+      expect(createRes.success).toBe(true);
+
+      // 2. Update task
+      const updateRes = await updateTaskServer(fakeSb, 'task-sec-1', {
+        title: 'Tarefa PM Atualizada',
+        version: 1,
+        userId: validUUIDUserProjectManager,
+      });
+      expect(updateRes.success).toBe(true);
+
+      // 3. Delete task
+      const deleteRes = await deleteTaskServer(fakeSb, 'task-sec-1', validUUIDUserProjectManager, 2);
+      expect(deleteRes.success).toBe(true);
+    });
   });
 
-  describe('2. Auditoria Determinística de SQLSTATE sem Parsing de Texto', () => {
+  describe('2. Auditoria de RBAC SQL como Fonte Única de Verdade', () => {
+    it('remover uma relação de role_permissions remove efetivamente a autorização na RPC', async () => {
+      const fakeSb = await serverDbModule.getServerDbClient();
+
+      // Removendo permissão tasks:write do TECHNICIAN na tabela role_permissions
+      mockDbData.role_permissions = mockDbData.role_permissions.filter(
+        (rp: any) => !(rp.role_id === roleTechnicianId && rp.permission_id === 'perm-tasks-write')
+      );
+
+      // Agora o técnico deve ser bloqueado na escrita
+      const createRes = await createTaskServer(fakeSb, {
+        title: 'Tentativa Técnico sem permissão',
+        projectId: validUUIDProjectActive,
+        userId: validUUIDUserTechnician,
+      });
+      expect(createRes.success).toBe(false);
+      expect(createRes.statusCode).toBe(403);
+      expect(createRes.error).toBe('Sem permissão para realizar esta operação.');
+    });
+
+    it('adicionar uma relação de role_permissions concede efetivamente a autorização na RPC', async () => {
+      const fakeSb = await serverDbModule.getServerDbClient();
+
+      // Concedendo permissão tasks:delete ao TECHNICIAN na tabela role_permissions
+      mockDbData.role_permissions.push({
+        role_id: roleTechnicianId,
+        permission_id: 'perm-tasks-delete',
+      });
+
+      // Agora o técnico tem permissão para eliminar tarefas
+      const deleteRes = await deleteTaskServer(fakeSb, 'task-sec-1', validUUIDUserTechnician, 1);
+      expect(deleteRes.success).toBe(true);
+    });
+
+    it('a função public.has_permission() na migration SQL consulta role_permissions e NÃO possui CASE/IF hardcoded de roles', () => {
+      const sqlContent = readFileSync(
+        join(process.cwd(), 'supabase/migrations/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
+        'utf-8'
+      );
+      // Confirma que consulta a tabela relacional role_permissions
+      expect(sqlContent).toContain('FROM public.role_permissions rp');
+      expect(sqlContent).toContain('JOIN public.permissions p ON p.id = rp.permission_id');
+      expect(sqlContent).toContain('WHERE rp.role_id = v_resolved_role_id');
+
+      // Confirma que NÃO possui a matriz estática hardcoded
+      expect(sqlContent).not.toContain("RETURN v_role_code IN ('SUPER_ADMIN'");
+      expect(sqlContent).not.toContain("RETURN v_normalized_role IN ('ug-1'");
+      expect(sqlContent).not.toContain("IF p_permission_code IN ('tasks_write'");
+    });
+
+    it('a migration SQL popula role_permissions via INSERT ... SELECT canónico baseado em roles.code e permissions.code', () => {
+      const sqlContent = readFileSync(
+        join(process.cwd(), 'supabase/migrations/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
+        'utf-8'
+      );
+      expect(sqlContent).toContain('INSERT INTO public.role_permissions (role_id, permission_id)');
+      expect(sqlContent).toContain('FROM public.roles r');
+      expect(sqlContent).toContain('CROSS JOIN public.permissions p');
+      expect(sqlContent).toContain("r.code IN ('SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER')");
+      expect(sqlContent).toContain("r.code = 'TECHNICIAN'");
+      expect(sqlContent).toContain("r.code = 'VIEWER'");
+      expect(sqlContent).toContain('ON CONFLICT (role_id, permission_id) DO NOTHING');
+    });
+  });
+
+  describe('3. Auditoria Determinística de SQLSTATE sem Parsing de Texto', () => {
     it('taskService.ts não utiliza rpcError.message?.includes(...) para mapear erros da boundary', () => {
       const content = readFileSync(join(process.cwd(), 'lib/tasks/taskService.ts'), 'utf-8');
       expect(content).not.toContain('rpcError.message?.includes(');
@@ -430,7 +565,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
     });
   });
 
-  describe('3. Auditoria de Writers e Ausência de Fallbacks', () => {
+  describe('4. Auditoria de Writers e Ausência de Fallbacks', () => {
     it('garante que não existem chamadas .insert() diretas na tabela tasks fora de RPCs', () => {
       const taskServiceContent = readFileSync(join(process.cwd(), 'lib/tasks/taskService.ts'), 'utf-8');
       expect(taskServiceContent).not.toContain(".from('tasks').insert(");
@@ -446,7 +581,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
     });
   });
 
-  describe('4. Conformidade com Regra Global de Utilizador', () => {
+  describe('5. Conformidade com Regra Global de Utilizador', () => {
     it('garante que ricardo75@gmail.com permanece com deleted: true', () => {
       const rules = readFileSync(join(process.cwd(), 'AGENTS.md'), 'utf-8');
       expect(rules).toContain('ricardo75@gmail.com');
