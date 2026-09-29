@@ -60,33 +60,29 @@ export async function requirePermission(reqOrCode: Request | keyof GroupPermissi
   if (!code) throw new ForbiddenError();
   const user = await requireAuth(typeof reqOrCode === 'string' ? undefined : reqOrCode);
   
-  if (!user.role_id && !user.is_admin) {
-    throw new ForbiddenError('Utilizador sem role atribuída.');
+  if (!user.id || !user.role_id) {
+    throw new ForbiddenError('Utilizador sem role válida atribuída.');
   }
 
-  if (user.is_admin || user.role_id === '00000000-0000-0000-0000-000000000001' || user.role_id === 'ug-1') {
-    return user;
-  }
-
-  // Autorização via RPC PostgreSQL has_permission quando admin client disponível
+  // Boundary única de autorização: consulta a RPC PostgreSQL has_permission()
   const admin = createAdminClient();
-  if (admin && user.id) {
-    try {
-      const { data: hasPerm, error } = await admin.rpc('has_permission', {
-        p_permission_code: code,
-        p_user_id: user.id,
-      });
-      if (!error && typeof hasPerm === 'boolean') {
-        if (!hasPerm) throw new ForbiddenError();
-        return user;
-      }
-    } catch (e: any) {
-      if (e instanceof ForbiddenError) throw e;
-    }
+  if (!admin) {
+    throw new AuthError('Serviço de autorização indisponível.', 503);
   }
 
-  // Fallback estrito sem concessão para roles desconhecidas
-  const perms = getGroupPermissions(user.role_id);
-  if (!perms[code]) throw new ForbiddenError();
+  const { data: hasPerm, error } = await admin.rpc('has_permission', {
+    p_permission_code: code,
+    p_user_id: user.id,
+  });
+
+  if (error) {
+    console.error('[AUTH RPC ERROR]', error);
+    throw new AuthError('Erro de infraestrutura ao validar permissões no PostgreSQL.', 503);
+  }
+
+  if (hasPerm !== true) {
+    throw new ForbiddenError('Sem permissão para realizar esta operação.');
+  }
+
   return user;
 }

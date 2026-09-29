@@ -168,6 +168,13 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
             );
           };
 
+          if (fn === 'has_permission') {
+            const user = mockDbData.users.find((u: any) => u.id === args.p_user_id || u.auth_user_id === args.p_user_id);
+            if (!user) return { data: false, error: null };
+            const ok = hasPermissionSqlRbac(args.p_permission_code, user);
+            return { data: ok, error: null };
+          }
+
           if (fn === 'create_task_atomic') {
             if (caller && !hasPermissionSqlRbac('tasks:write', caller)) {
               return { data: null, error: { code: '42501', message: 'Sem permissão para criar tarefas.' } };
