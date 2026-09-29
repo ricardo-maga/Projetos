@@ -23,6 +23,7 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem, AuditLog } from './types';
 import { getProjectsServerData } from './projects/projectService';
+import { normalizeRoleId } from './permissions';
 
 export interface SupabaseBackup {
   id: string;
@@ -87,11 +88,11 @@ export const stringToUUID = (str: string): string => {
   if (isUUID(str)) return str;
   
   const mappings: Record<string, string> = {
-    // Groups
-    'ug-1': '00000000-0000-0000-0000-000000000001',
-    'ug-2': '00000000-0000-0000-0000-000000000002',
-    'ug-3': '00000000-0000-0000-0000-000000000003',
-    'ug-4': '00000000-0000-0000-0000-000000000004',
+    // Groups / Roles (Canonical 10000000 Series)
+    'ug-1': '10000000-0000-0000-0000-000000000001',
+    'ug-2': '10000000-0000-0000-0000-000000000003',
+    'ug-3': '10000000-0000-0000-0000-000000000004',
+    'ug-4': '10000000-0000-0000-0000-000000000007',
     
     // Statuses
     'ps-1': '33333333-3333-3333-3333-333333333301',
@@ -214,7 +215,7 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
     users: (state.users || []).map((u: any) => ({
       ...u,
       id: stringToUUID(u.id),
-      roleId: stringToUUID(u.roleId),
+      roleId: normalizeRoleId(u.roleId) || stringToUUID(u.roleId),
     })),
     clients: (state.clients || []).map((c: any) => ({
       ...c,
@@ -1453,7 +1454,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         type: u.type,
         name: u.name,
         email: u.email || null,
-        role_id: u.roleId || null,
+        role_id: normalizeRoleId(u.roleId) || u.roleId || null,
         approved: u.approved,
         deleted: u.deleted,
         created_at: u.createdDate || new Date().toISOString(),

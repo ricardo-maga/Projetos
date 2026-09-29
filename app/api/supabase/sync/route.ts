@@ -5,6 +5,7 @@ import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseEr
 import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
 import { requireAuth, AuthError, ForbiddenError } from '@/lib/auth/requireAuth';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { normalizeRoleId, CANONICAL_ROLE_IDS } from '@/lib/permissions';
 
 export async function GET(req: NextRequest) {
   if (!isSupabaseConfigured) {
@@ -105,9 +106,20 @@ export async function POST(req: NextRequest) {
     delete (state as any).planningResourceLoad;
 
     // Passwords live exclusively in Supabase Auth and are never part of ERP state.
-    if (state.users) state.users = state.users.map(({ password, ...u }: any) => u);
+    // Ensure all roleId values in state.users are normalized to canonical role UUIDs.
+    if (state.users && Array.isArray(state.users)) {
+      state.users = state.users.map(({ password, ...u }: any) => ({
+        ...u,
+        roleId: normalizeRoleId(u.roleId || u.role_id) || CANONICAL_ROLE_IDS.TECHNICIAN,
+      }));
+    }
 
-    const isAdmin = user.is_admin || user.role_id === 'ug-1' || user.role_id === '00000000-0000-0000-0000-000000000001';
+    const userNormalizedRole = normalizeRoleId(user.role_id);
+    const isAdmin = user.is_admin || 
+      userNormalizedRole === CANONICAL_ROLE_IDS.SUPER_ADMIN || 
+      userNormalizedRole === CANONICAL_ROLE_IDS.ADMIN || 
+      user.role_id === 'ug-1' || 
+      user.role_id === '00000000-0000-0000-0000-000000000001';
 
     // FASE 26: Prevenção de Privilege Escalation.
     // Utilizadores não-admin não podem alterar configurações globais, utilizadores ou grupos.

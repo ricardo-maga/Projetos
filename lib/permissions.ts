@@ -50,132 +50,91 @@ export interface GroupPermissions {
 }
 
 export const CANONICAL_ROLE_IDS = {
-  SUPER_ADMIN: '00000000-0000-0000-0000-000000000001',
-  ADMIN: '00000000-0000-0000-0000-000000000002',
-  PROJECT_MANAGER: '00000000-0000-0000-0000-000000000003',
-  TECHNICIAN: '00000000-0000-0000-0000-000000000004',
-  VIEWER: '00000000-0000-0000-0000-000000000005',
+  SUPER_ADMIN: '10000000-0000-0000-0000-000000000001',
+  ADMIN: '10000000-0000-0000-0000-000000000002',
+  PROJECT_MANAGER: '10000000-0000-0000-0000-000000000003',
+  TECHNICIAN: '10000000-0000-0000-0000-000000000004',
+  COMMERCIAL: '10000000-0000-0000-0000-000000000005',
+  SOLUTIONS: '10000000-0000-0000-0000-000000000006',
+  VIEWER: '10000000-0000-0000-0000-000000000007',
 } as const;
 
 export const ROLE_UUID_MAP: Record<string, string> = {
-  '00000000-0000-0000-0000-000000000001': '00000000-0000-0000-0000-000000000001',
-  '00000000-0000-0000-0000-000000000002': '00000000-0000-0000-0000-000000000002',
-  '00000000-0000-0000-0000-000000000003': '00000000-0000-0000-0000-000000000003',
-  '00000000-0000-0000-0000-000000000004': '00000000-0000-0000-0000-000000000004',
-  '00000000-0000-0000-0000-000000000005': '00000000-0000-0000-0000-000000000005',
-  'ug-1': '00000000-0000-0000-0000-000000000001',
-  'ug-2': '00000000-0000-0000-0000-000000000003',
-  'ug-3': '00000000-0000-0000-0000-000000000004',
-  'ug-4': '00000000-0000-0000-0000-000000000005',
+  // Canonical series 10000000
+  '10000000-0000-0000-0000-000000000001': '10000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000002': '10000000-0000-0000-0000-000000000002',
+  '10000000-0000-0000-0000-000000000003': '10000000-0000-0000-0000-000000000003',
+  '10000000-0000-0000-0000-000000000004': '10000000-0000-0000-0000-000000000004',
+  '10000000-0000-0000-0000-000000000005': '10000000-0000-0000-0000-000000000005',
+  '10000000-0000-0000-0000-000000000006': '10000000-0000-0000-0000-000000000006',
+  '10000000-0000-0000-0000-000000000007': '10000000-0000-0000-0000-000000000007',
+
+  // Legacy UUIDs
+  '00000000-0000-0000-0000-000000000001': '10000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000002': '10000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000003': '10000000-0000-0000-0000-000000000004',
+  '00000000-0000-0000-0000-000000000004': '10000000-0000-0000-0000-000000000004',
+  '00000000-0000-0000-0000-000000000005': '10000000-0000-0000-0000-000000000007',
+  '52616954-8b59-4459-a00b-963f1b29a91c': '10000000-0000-0000-0000-000000000005',
+  'a158a7b3-88ce-46d1-a779-cd6d73363d3c': '10000000-0000-0000-0000-000000000006',
+  '9de391f6-46fa-45f6-b32d-25c11e1dd533': '10000000-0000-0000-0000-000000000007',
+
+  // Legacy string group IDs
+  'ug-1': '10000000-0000-0000-0000-000000000001',
+  'ug-2': '10000000-0000-0000-0000-000000000003',
+  'ug-3': '10000000-0000-0000-0000-000000000004',
+  'ug-4': '10000000-0000-0000-0000-000000000007',
+};
+
+const ALL_TRUE_PERMISSIONS: GroupPermissions = {
+  projects_read: true,
+  projects_write: true,
+  projects_delete: true,
+  tasks_read: true,
+  tasks_write: true,
+  tasks_delete: true,
+  calendar_read: true,
+  calendar_write: true,
+  clients_read: true,
+  clients_write: true,
+  clients_delete: true,
+  absences_read: true,
+  absences_write: true,
+  absences_delete: true,
+  config_read: true,
+  config_write: true,
+  tickets_read: true,
+  tickets_write: true,
+  tickets_delete: true,
+  quotes_read: true,
+  quotes_write: true,
+  quotes_delete: true,
+  materials_read: true,
+  materials_write: true,
+  materials_delete: true,
+  equipment_read: true,
+  equipment_write: true,
+  equipment_delete: true,
+  users_read: true,
+  users_write: true,
+  users_delete: true,
 };
 
 export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
-  // SUPER_ADMIN (00000000-0000-0000-0000-000000000001) / ug-1
-  '00000000-0000-0000-0000-000000000001': {
+  // SUPER_ADMIN (10000000-0000-0000-0000-000000000001) / ug-1
+  '10000000-0000-0000-0000-000000000001': ALL_TRUE_PERMISSIONS,
+  '00000000-0000-0000-0000-000000000001': ALL_TRUE_PERMISSIONS,
+  'ug-1': ALL_TRUE_PERMISSIONS,
+
+  // ADMIN (10000000-0000-0000-0000-000000000002)
+  '10000000-0000-0000-0000-000000000002': ALL_TRUE_PERMISSIONS,
+  '00000000-0000-0000-0000-000000000002': ALL_TRUE_PERMISSIONS,
+
+  // PROJECT_MANAGER (10000000-0000-0000-0000-000000000003) / ug-2
+  '10000000-0000-0000-0000-000000000003': {
     projects_read: true,
     projects_write: true,
     projects_delete: true,
-    tasks_read: true,
-    tasks_write: true,
-    tasks_delete: true,
-    calendar_read: true,
-    calendar_write: true,
-    clients_read: true,
-    clients_write: true,
-    clients_delete: true,
-    absences_read: true,
-    absences_write: true,
-    absences_delete: true,
-    config_read: true,
-    config_write: true,
-    tickets_read: true,
-    tickets_write: true,
-    tickets_delete: true,
-    quotes_read: true,
-    quotes_write: true,
-    quotes_delete: true,
-    materials_read: true,
-    materials_write: true,
-    materials_delete: true,
-    equipment_read: true,
-    equipment_write: true,
-    equipment_delete: true,
-    users_read: true,
-    users_write: true,
-    users_delete: true,
-  },
-  'ug-1': {
-    projects_read: true,
-    projects_write: true,
-    projects_delete: true,
-    tasks_read: true,
-    tasks_write: true,
-    tasks_delete: true,
-    calendar_read: true,
-    calendar_write: true,
-    clients_read: true,
-    clients_write: true,
-    clients_delete: true,
-    absences_read: true,
-    absences_write: true,
-    absences_delete: true,
-    config_read: true,
-    config_write: true,
-    tickets_read: true,
-    tickets_write: true,
-    tickets_delete: true,
-    quotes_read: true,
-    quotes_write: true,
-    quotes_delete: true,
-    materials_read: true,
-    materials_write: true,
-    materials_delete: true,
-    equipment_read: true,
-    equipment_write: true,
-    equipment_delete: true,
-    users_read: true,
-    users_write: true,
-    users_delete: true,
-  },
-  // ADMIN (00000000-0000-0000-0000-000000000002)
-  '00000000-0000-0000-0000-000000000002': {
-    projects_read: true,
-    projects_write: true,
-    projects_delete: true,
-    tasks_read: true,
-    tasks_write: true,
-    tasks_delete: true,
-    calendar_read: true,
-    calendar_write: true,
-    clients_read: true,
-    clients_write: true,
-    clients_delete: true,
-    absences_read: true,
-    absences_write: true,
-    absences_delete: true,
-    config_read: true,
-    config_write: true,
-    tickets_read: true,
-    tickets_write: true,
-    tickets_delete: true,
-    quotes_read: true,
-    quotes_write: true,
-    quotes_delete: true,
-    materials_read: true,
-    materials_write: true,
-    materials_delete: true,
-    equipment_read: true,
-    equipment_write: true,
-    equipment_delete: true,
-    users_read: true,
-    users_write: true,
-    users_delete: true,
-  },
-  // PROJECT_MANAGER (00000000-0000-0000-0000-000000000003) / ug-2
-  '00000000-0000-0000-0000-000000000003': {
-    projects_read: true,
-    projects_write: true,
-    projects_delete: false,
     tasks_read: true,
     tasks_write: true,
     tasks_delete: true,
@@ -186,7 +145,40 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
     clients_delete: false,
     absences_read: true,
     absences_write: true,
-    absences_delete: false,
+    absences_delete: true,
+    config_read: true,
+    config_write: false,
+    tickets_read: true,
+    tickets_write: true,
+    tickets_delete: true,
+    quotes_read: true,
+    quotes_write: true,
+    quotes_delete: false,
+    materials_read: true,
+    materials_write: true,
+    materials_delete: false,
+    equipment_read: true,
+    equipment_write: true,
+    equipment_delete: false,
+    users_read: true,
+    users_write: false,
+    users_delete: false,
+  },
+  '00000000-0000-0000-0000-000000000003': {
+    projects_read: true,
+    projects_write: true,
+    projects_delete: true,
+    tasks_read: true,
+    tasks_write: true,
+    tasks_delete: true,
+    calendar_read: true,
+    calendar_write: true,
+    clients_read: true,
+    clients_write: true,
+    clients_delete: false,
+    absences_read: true,
+    absences_write: true,
+    absences_delete: true,
     config_read: true,
     config_write: false,
     tickets_read: true,
@@ -208,7 +200,7 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
   'ug-2': {
     projects_read: true,
     projects_write: true,
-    projects_delete: false,
+    projects_delete: true,
     tasks_read: true,
     tasks_write: true,
     tasks_delete: true,
@@ -219,7 +211,7 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
     clients_delete: false,
     absences_read: true,
     absences_write: true,
-    absences_delete: false,
+    absences_delete: true,
     config_read: true,
     config_write: false,
     tickets_read: true,
@@ -238,7 +230,41 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
     users_write: false,
     users_delete: false,
   },
-  // TECHNICIAN (00000000-0000-0000-0000-000000000004) / ug-3
+
+  // TECHNICIAN (10000000-0000-0000-0000-000000000004) / ug-3
+  '10000000-0000-0000-0000-000000000004': {
+    projects_read: true,
+    projects_write: false,
+    projects_delete: false,
+    tasks_read: true,
+    tasks_write: true,
+    tasks_delete: false,
+    calendar_read: true,
+    calendar_write: true,
+    clients_read: true,
+    clients_write: false,
+    clients_delete: false,
+    absences_read: true,
+    absences_write: true,
+    absences_delete: false,
+    config_read: false,
+    config_write: false,
+    tickets_read: true,
+    tickets_write: true,
+    tickets_delete: false,
+    quotes_read: false,
+    quotes_write: false,
+    quotes_delete: false,
+    materials_read: true,
+    materials_write: false,
+    materials_delete: false,
+    equipment_read: true,
+    equipment_write: false,
+    equipment_delete: false,
+    users_read: false,
+    users_write: false,
+    users_delete: false,
+  },
   '00000000-0000-0000-0000-000000000004': {
     projects_read: true,
     projects_write: false,
@@ -305,7 +331,111 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
     users_write: false,
     users_delete: false,
   },
-  // VIEWER (00000000-0000-0000-0000-000000000005) / ug-4
+
+  // COMMERCIAL (10000000-0000-0000-0000-000000000005)
+  '10000000-0000-0000-0000-000000000005': {
+    projects_read: true,
+    projects_write: false,
+    projects_delete: false,
+    tasks_read: true,
+    tasks_write: false, // DENY per principle of least privilege
+    tasks_delete: false,
+    calendar_read: true,
+    calendar_write: false, // DENY
+    clients_read: true,
+    clients_write: true,
+    clients_delete: false,
+    absences_read: true,
+    absences_write: true,
+    absences_delete: false,
+    config_read: false,
+    config_write: false,
+    tickets_read: false,
+    tickets_write: false,
+    tickets_delete: false,
+    quotes_read: true,
+    quotes_write: true,
+    quotes_delete: false,
+    materials_read: false,
+    materials_write: false,
+    materials_delete: false,
+    equipment_read: false,
+    equipment_write: false,
+    equipment_delete: false,
+    users_read: false,
+    users_write: false,
+    users_delete: false,
+  },
+
+  // SOLUTIONS (10000000-0000-0000-0000-000000000006)
+  '10000000-0000-0000-0000-000000000006': {
+    projects_read: true,
+    projects_write: true,
+    projects_delete: false,
+    tasks_read: true,
+    tasks_write: true,
+    tasks_delete: true,
+    calendar_read: true,
+    calendar_write: true,
+    clients_read: true,
+    clients_write: true,
+    clients_delete: false,
+    absences_read: false,
+    absences_write: false,
+    absences_delete: false,
+    config_read: false,
+    config_write: false,
+    tickets_read: false,
+    tickets_write: false,
+    tickets_delete: false,
+    quotes_read: true,
+    quotes_write: true,
+    quotes_delete: false,
+    materials_read: true,
+    materials_write: false,
+    materials_delete: false,
+    equipment_read: true,
+    equipment_write: false,
+    equipment_delete: false,
+    users_read: true,
+    users_write: false,
+    users_delete: false,
+  },
+
+  // VIEWER (10000000-0000-0000-0000-000000000007) / ug-4
+  '10000000-0000-0000-0000-000000000007': {
+    projects_read: true,
+    projects_write: false,
+    projects_delete: false,
+    tasks_read: true,
+    tasks_write: false,
+    tasks_delete: false,
+    calendar_read: true,
+    calendar_write: false,
+    clients_read: true,
+    clients_write: false,
+    clients_delete: false,
+    absences_read: true,
+    absences_write: false,
+    absences_delete: false,
+    config_read: false,
+    config_write: false,
+    tickets_read: true,
+    tickets_write: false,
+    tickets_delete: false,
+    quotes_read: true,
+    quotes_write: false,
+    quotes_delete: false,
+    materials_read: true,
+    materials_write: false,
+    materials_delete: false,
+    equipment_read: true,
+    equipment_write: false,
+    equipment_delete: false,
+    users_read: false,
+    users_write: false,
+    users_delete: false,
+  },
   '00000000-0000-0000-0000-000000000005': {
     projects_read: true,
     projects_write: false,
@@ -326,7 +456,7 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
     tickets_read: true,
     tickets_write: false,
     tickets_delete: false,
-    quotes_read: false,
+    quotes_read: true,
     quotes_write: false,
     quotes_delete: false,
     materials_read: true,
@@ -359,7 +489,7 @@ export const DEFAULT_PERMISSIONS: Record<string, GroupPermissions> = {
     tickets_read: true,
     tickets_write: false,
     tickets_delete: false,
-    quotes_read: false,
+    quotes_read: true,
     quotes_write: false,
     quotes_delete: false,
     materials_read: true,
@@ -410,7 +540,8 @@ export const EMPTY_PERMISSIONS: GroupPermissions = {
 
 export function normalizeRoleId(roleId?: string | null): string | null {
   if (!roleId || typeof roleId !== 'string' || !roleId.trim()) return null;
-  return ROLE_UUID_MAP[roleId] || (DEFAULT_PERMISSIONS[roleId] ? roleId : null);
+  const trimmed = roleId.trim();
+  return ROLE_UUID_MAP[trimmed] || (DEFAULT_PERMISSIONS[trimmed] ? trimmed : null);
 }
 
 /**
@@ -462,12 +593,24 @@ export function hasPermission(
   
   if (typeof userOrRoleId === 'string') {
     roleId = userOrRoleId.trim();
-    if (roleId === 'ug-1' || roleId === CANONICAL_ROLE_IDS.SUPER_ADMIN || roleId === 'admin') {
+    if (
+      roleId === 'ug-1' ||
+      roleId === CANONICAL_ROLE_IDS.SUPER_ADMIN ||
+      roleId === '00000000-0000-0000-0000-000000000001' ||
+      roleId === 'admin'
+    ) {
       isAdminUser = true;
     }
   } else if (typeof userOrRoleId === 'object') {
     roleId = (userOrRoleId.roleId || userOrRoleId.role_id || userOrRoleId.type || '').trim();
-    isAdminUser = !!(userOrRoleId.isAdmin || userOrRoleId.is_admin || roleId === 'ug-1' || roleId === CANONICAL_ROLE_IDS.SUPER_ADMIN || roleId === 'admin');
+    isAdminUser = !!(
+      userOrRoleId.isAdmin ||
+      userOrRoleId.is_admin ||
+      roleId === 'ug-1' ||
+      roleId === CANONICAL_ROLE_IDS.SUPER_ADMIN ||
+      roleId === '00000000-0000-0000-0000-000000000001' ||
+      roleId === 'admin'
+    );
   }
   
   if (isAdminUser) return true;
@@ -476,4 +619,3 @@ export function hasPermission(
   const perms = getGroupPermissions(roleId, customGroups);
   return !!perms[permissionKey];
 }
-

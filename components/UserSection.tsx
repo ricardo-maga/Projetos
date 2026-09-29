@@ -5,7 +5,17 @@ import { UserAbsence, SpecialDay } from '../lib/types';
 import { Plus, Trash2, Calendar, Users, UserCheck, AlertCircle, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, Filter, Shield } from 'lucide-react';
 import { hashPassword } from '../lib/utils';
 import ConfirmModal from './ConfirmModal';
-import { getGroupPermissions, hasPermission } from '../lib/permissions';
+import { getGroupPermissions, hasPermission, CANONICAL_ROLE_IDS, normalizeRoleId } from '../lib/permissions';
+
+const CANONICAL_ROLES_LIST = [
+  { id: CANONICAL_ROLE_IDS.SUPER_ADMIN, name: 'Super Administrador', type: 'Admin' as const },
+  { id: CANONICAL_ROLE_IDS.ADMIN, name: 'Administrador', type: 'Admin' as const },
+  { id: CANONICAL_ROLE_IDS.PROJECT_MANAGER, name: 'Gestor de Projetos', type: 'Team' as const },
+  { id: CANONICAL_ROLE_IDS.TECHNICIAN, name: 'Técnico', type: 'Team' as const },
+  { id: CANONICAL_ROLE_IDS.COMMERCIAL, name: 'Comercial', type: 'Sales' as const },
+  { id: CANONICAL_ROLE_IDS.SOLUTIONS, name: 'Soluções', type: 'Team' as const },
+  { id: CANONICAL_ROLE_IDS.VIEWER, name: 'Visualizador', type: 'Team' as const },
+];
 
 interface UserSectionProps {
   absences: UserAbsence[];
@@ -93,7 +103,7 @@ export default function UserSection({
   const [uEmail, setUEmail] = useState('');
   const [uPassword, setUPassword] = useState('');
   const [uPasswordConfirm, setUPasswordConfirm] = useState('');
-  const [uRoleId, setURoleId] = useState(userGroups?.[0]?.id || 'ug-3');
+  const [uRoleId, setURoleId] = useState(CANONICAL_ROLE_IDS.TECHNICIAN);
   const [uType, setUType] = useState<'Team' | 'Sales' | 'Admin' | 'External' | 'Other'>('Team');
   const [uIsAdmin, setUIsAdmin] = useState(false);
 
@@ -145,7 +155,7 @@ export default function UserSection({
     setUEmail('');
     setUPassword('');
     setUPasswordConfirm('');
-    setURoleId(userGroups?.[0]?.id || 'ug-3');
+    setURoleId(CANONICAL_ROLE_IDS.TECHNICIAN);
     setUType('Team');
     setUIsAdmin(false);
     setIsAddingUser(true);
@@ -158,7 +168,7 @@ export default function UserSection({
     setUEmail(user.email);
     setUPassword('');
     setUPasswordConfirm('');
-    setURoleId(user.roleId || userGroups?.[0]?.id || 'ug-3');
+    setURoleId(normalizeRoleId(user.roleId) || user.roleId || CANONICAL_ROLE_IDS.TECHNICIAN);
     setUType(user.type || 'Team');
     setUIsAdmin(!!user.isAdmin);
   };
@@ -256,6 +266,9 @@ export default function UserSection({
   };
 
   const getGroupName = (roleId: string) => {
+    const normalized = normalizeRoleId(roleId);
+    const canonicalRole = CANONICAL_ROLES_LIST.find(r => r.id === normalized || r.id === roleId);
+    if (canonicalRole) return canonicalRole.name;
     return userGroups?.find(g => g.id === roleId)?.name || 'Sem Grupo';
   };
 
@@ -849,24 +862,20 @@ export default function UserSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-500">Grupo *</label>
+                  <label className="block text-slate-500">Role Canónica / Grupo *</label>
                   <select 
-                    value={uRoleId}
+                    value={normalizeRoleId(uRoleId) || uRoleId}
                     onChange={e => {
-                      const selectedGroup = userGroups.find(g => g.id === e.target.value);
+                      const selectedRole = CANONICAL_ROLES_LIST.find(r => r.id === e.target.value);
                       setURoleId(e.target.value);
-                      if (selectedGroup?.name.toLowerCase().includes('admin')) {
-                        setUType('Admin');
-                      } else if (selectedGroup?.name.toLowerCase().includes('sales') || selectedGroup?.name.toLowerCase().includes('comercial')) {
-                        setUType('Sales');
-                      } else {
-                        setUType('Team');
+                      if (selectedRole) {
+                        setUType(selectedRole.type);
                       }
                     }}
                     className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold"
                   >
-                    {userGroups?.filter(g => !g.deleted).map(group => (
-                      <option key={group.id} value={group.id}>{group.name}</option>
+                    {CANONICAL_ROLES_LIST.map(role => (
+                      <option key={role.id} value={role.id}>{role.name}</option>
                     ))}
                   </select>
                 </div>

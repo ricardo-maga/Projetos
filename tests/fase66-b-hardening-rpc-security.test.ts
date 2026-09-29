@@ -522,17 +522,17 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
       const sqlPath = join(process.cwd(), 'supabase/migrations/20260928040000_normalize_users_role_id_canonical_rbac.sql');
       const content = readFileSync(sqlPath, 'utf-8');
 
-      // ug-1: Administrator (...0001) -> SUPER_ADMIN (...0001)
-      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000001'::UUID THEN '00000000-0000-0000-0000-000000000001'::UUID");
+      // ug-1: Administrator (...0001) -> SUPER_ADMIN (...001)
+      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000001'::UUID THEN '10000000-0000-0000-0000-000000000001'::UUID");
 
-      // ug-2: Project Manager (...0002) -> PROJECT_MANAGER (...0003)  [NÃO ADMIN ...0002]
-      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000002'::UUID THEN '00000000-0000-0000-0000-000000000003'::UUID");
+      // ug-2: Project Manager (...0002) -> PROJECT_MANAGER (...003)
+      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000002'::UUID THEN '10000000-0000-0000-0000-000000000003'::UUID");
 
-      // ug-3: Technician (...0003) -> TECHNICIAN (...0004)            [NÃO PROJECT_MANAGER ...0003]
-      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000003'::UUID THEN '00000000-0000-0000-0000-000000000004'::UUID");
+      // ug-3: Technician (...0003) -> TECHNICIAN (...004)
+      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000003'::UUID THEN '10000000-0000-0000-0000-000000000004'::UUID");
 
-      // ug-4: Viewer (...0004) -> VIEWER (...0005)                    [NÃO TECHNICIAN ...0004]
-      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000004'::UUID THEN '00000000-0000-0000-0000-000000000005'::UUID");
+      // ug-4 / Viewer (...0005) -> VIEWER (...007)
+      expect(content).toContain("WHEN role_id = '00000000-0000-0000-0000-000000000005'::UUID THEN '10000000-0000-0000-0000-000000000007'::UUID");
 
       // Proteção de integridade: aborta com erro caso existam roles desconhecidas
       expect(content).toContain("RAISE EXCEPTION 'MIGRATION BLOCKER:");

@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
         auth_user_id: authUserId,
         name: name.trim(),
         email: cleanEmail,
-        role_id: '00000000-0000-0000-0000-000000000004', // Default: TECHNICIAN
+        role_id: '10000000-0000-0000-0000-000000000004', // Default: TECHNICIAN (Canonical RBAC)
         approved: false, // Requires administrator approval
         deleted: false,
         is_admin: false,

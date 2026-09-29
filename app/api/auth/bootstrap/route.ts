@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
         approved: true,
         deleted: false,
         type: 'Team',
-        role_id: '00000000-0000-0000-0000-000000000001',
+        role_id: '10000000-0000-0000-0000-000000000001', // Canonical RBAC SUPER_ADMIN
       },
       { onConflict: 'email' }
     );
