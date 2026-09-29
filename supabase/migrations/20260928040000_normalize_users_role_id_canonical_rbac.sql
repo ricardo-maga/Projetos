@@ -1,11 +1,11 @@
 -- Migration: 20260928040000_normalize_users_role_id_canonical_rbac.sql
--- FASE 66-B-HARDENING-4-FIX-2: Mapeamento Semântico e Idempotência Rigorosa
+-- FASE 66-B-HARDENING-4-FIX-3: Normalização RBAC Determinística, Sem Matching Fuzzy e Com Replay Safety
 -- Corrige a colisão de UUIDs entre o modelo legado user_groups e o modelo canónico roles:
 --   user_groups ...0001 (Administrator)   -> roles ...0001 (SUPER_ADMIN)
 --   user_groups ...0002 (Project Manager) -> roles ...0003 (PROJECT_MANAGER)
 --   user_groups ...0003 (Technician)      -> roles ...0004 (TECHNICIAN)
 --   user_groups ...0004 (Viewer)          -> roles ...0005 (VIEWER)
--- Garante replay safety: se a migration for reexecutada, não degrada roles já canónicas.
+--   user_groups ...0005 (Viewer)          -> roles ...0005 (VIEWER)
 
 SET search_path = public;
 
@@ -123,7 +123,7 @@ WHERE code IN (
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- 4. Migração e normalização com Verificação Explícita de Replay Safety
+-- 4. Migração e normalização determinística com Verificação Explícita de Replay Safety
 DO $migration$
 DECLARE
   v_already_migrated BOOLEAN := FALSE;
@@ -147,49 +147,30 @@ BEGIN
   -- Criar coluna temporária de staging para garantir atomicidade sem corridas entre IDs coincidentes
   ALTER TABLE public.users ADD COLUMN IF NOT EXISTS canonical_role_id UUID;
 
-  -- Mapeamento semântico explícito dos IDs legados de user_groups
+  -- Mapeamento semântico explícito dos IDs legados conhecidos (SEM MATCHING FUZZY 'LIKE')
   UPDATE public.users
   SET canonical_role_id = CASE
     -- ug-1: Administrator (...0001) -> SUPER_ADMIN (...0001)
     WHEN role_id = '00000000-0000-0000-0000-000000000001'::UUID THEN '00000000-0000-0000-0000-000000000001'::UUID
-    -- ug-2: Project Manager (...0002) -> PROJECT_MANAGER (...0003)  [NÃO ADMIN ...0002]
+    -- ug-2: Project Manager (...0002) -> PROJECT_MANAGER (...0003)
     WHEN role_id = '00000000-0000-0000-0000-000000000002'::UUID THEN '00000000-0000-0000-0000-000000000003'::UUID
-    -- ug-3: Technician (...0003) -> TECHNICIAN (...0004)            [NÃO PROJECT_MANAGER ...0003]
+    -- ug-3: Technician (...0003) -> TECHNICIAN (...0004)
     WHEN role_id = '00000000-0000-0000-0000-000000000003'::UUID THEN '00000000-0000-0000-0000-000000000004'::UUID
-    -- ug-4: Viewer (...0004) -> VIEWER (...0005)                    [NÃO TECHNICIAN ...0004]
+    -- ug-4: Viewer (...0004) -> VIEWER (...0005)
     WHEN role_id = '00000000-0000-0000-0000-000000000004'::UUID THEN '00000000-0000-0000-0000-000000000005'::UUID
-    -- Caso já seja o UUID canónico do VIEWER (...0005), preserva
+    -- ug-5 / VIEWER (...0005) -> VIEWER (...0005)
     WHEN role_id = '00000000-0000-0000-0000-000000000005'::UUID THEN '00000000-0000-0000-0000-000000000005'::UUID
     ELSE NULL
   END
   WHERE role_id IS NOT NULL;
 
-  -- Mapeamento por nome de user_group para grupos dinâmicos criados com outros UUIDs
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_groups') THEN
-    UPDATE public.users u
-    SET canonical_role_id = CASE
-      WHEN LOWER(ug.name) LIKE '%super%' OR LOWER(ug.name) LIKE '%admin%' THEN '00000000-0000-0000-0000-000000000001'::UUID
-      WHEN LOWER(ug.name) LIKE '%project%' OR LOWER(ug.name) LIKE '%leader%' OR LOWER(ug.name) LIKE '%gestor%' THEN '00000000-0000-0000-0000-000000000003'::UUID
-      WHEN LOWER(ug.name) LIKE '%tech%' OR LOWER(ug.name) LIKE '%téc%' OR LOWER(ug.name) LIKE '%equipa%' THEN '00000000-0000-0000-0000-000000000004'::UUID
-      WHEN LOWER(ug.name) LIKE '%view%' OR LOWER(ug.name) LIKE '%visua%' THEN '00000000-0000-0000-0000-000000000005'::UUID
-      ELSE NULL
-    END
-    FROM public.user_groups ug
-    WHERE u.role_id = ug.id AND u.canonical_role_id IS NULL;
-  END IF;
-
-  -- Tratamento de is_admin: apenas utilizadores com is_admin = true E role_id NULL recebem SUPER_ADMIN
-  UPDATE public.users
-  SET canonical_role_id = '00000000-0000-0000-0000-000000000001'::UUID
-  WHERE is_admin = TRUE AND role_id IS NULL;
-
-  -- Validação de Integridade: se existir qualquer utilizador com role_id não-nulo cujo mapeamento não foi encontrado, ABORTAR
+  -- Validação de Integridade Estrita: Se existir qualquer utilizador com role_id não-nulo cujo mapeamento explícito falhou, ABORTAR
   IF EXISTS (
     SELECT 1 
     FROM public.users 
     WHERE role_id IS NOT NULL AND canonical_role_id IS NULL
   ) THEN
-    RAISE EXCEPTION 'MIGRATION BLOCKER: Existem utilizadores com role_id desconhecido que não puderam ser convertidos para public.roles.' USING ERRCODE = '23503';
+    RAISE EXCEPTION 'MIGRATION BLOCKER: Existem utilizadores com role_id desconhecido sem mapeamento explícito para public.roles.' USING ERRCODE = '23503';
   END IF;
 
   -- Aplicar a coluna convertida de volta a role_id

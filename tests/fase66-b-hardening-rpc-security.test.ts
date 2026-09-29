@@ -589,6 +589,11 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
       // Utiliza coluna temporária de staging
       expect(content).toContain('canonical_role_id UUID');
       expect(content).toContain('ALTER TABLE public.users DROP COLUMN IF EXISTS canonical_role_id;');
+
+      // Garante ausência de matching fuzzy (LIKE '%admin%', etc.)
+      expect(content).not.toContain("LIKE '%admin%'");
+      expect(content).not.toContain("LIKE '%tech%'");
+      expect(content).not.toContain("LIKE '%view%'");
     });
 
     it('a migration SQL popula role_permissions via INSERT ... SELECT canónico baseado em roles.code e permissions.code', () => {
