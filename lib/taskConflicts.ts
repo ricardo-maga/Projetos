@@ -1,4 +1,5 @@
 import { Task, Project, User } from './types';
+import { getTaskEffectiveDate } from './utils';
 
 export interface TaskConflictParams {
   date?: string | null;
@@ -67,7 +68,7 @@ export function getTaskConflictWarnings({
         aid => aid === userId || (aid && aid.replace(/[-]/g, '').toLowerCase() === userId.replace(/[-]/g, '').toLowerCase())
       );
       if (!isAssigned) return false;
-      const tDate = t.estimatedDate || t.startDate;
+      const tDate = getTaskEffectiveDate(t);
       return tDate === date;
     });
 

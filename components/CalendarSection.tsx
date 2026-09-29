@@ -1164,9 +1164,13 @@ export default function CalendarSection({
   // Helper to check if a task is active on a given day
   const isTaskActiveOnDay = (t: Task, dayStr: string): boolean => {
     if (t.deleted) return false;
-    // If actual start and end date are defined, check range
+    // Se data de início e fim reais estiverem preenchidas, verificar intervalo
     if (t.startDate && t.endDate) {
       return dayStr >= t.startDate && dayStr <= t.endDate;
+    }
+    // A data planeada prevalece em qualquer situação até existirem início e fim reais
+    if (t.estimatedDate) {
+      return t.estimatedDate === dayStr;
     }
     if (t.startDate) {
       return dayStr === t.startDate;
@@ -1174,8 +1178,7 @@ export default function CalendarSection({
     if (t.endDate) {
       return dayStr === t.endDate;
     }
-    // Fallback to estimatedDate
-    return t.estimatedDate === dayStr;
+    return false;
   };
 
   // Check if user has double bookings on a given day (assigned to > 1 active tasks on this day)

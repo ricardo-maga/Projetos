@@ -22,7 +22,8 @@ import {
   Filter,
   CheckCircle2,
   CalendarDays,
-  ListTodo
+  ListTodo,
+  Copy
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
@@ -916,6 +917,21 @@ export default function TaskSection({
                                   title="Editar Tarefa"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* Duplicar Tarefa */}
+                              {canWriteTasks && (
+                                <button 
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openTaskModal(t, 'create');
+                                  }}
+                                  className="p-1.5 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg text-slate-400"
+                                  title="Duplicar Tarefa"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
                                 </button>
                               )}
 

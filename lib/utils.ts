@@ -245,10 +245,15 @@ export function checkTaskSchedulingConflicts(params: {
 }
 
 export function getTaskEffectiveDate(t: { estimatedDate?: string | null; startDate?: string | null; endDate?: string | null }): string {
-  if (t.startDate && t.endDate) {
-    return t.endDate || t.startDate || '';
+  // Se ambos os dados de execução real (data de início e fim) estiverem preenchidos, passa a ser a data de início real
+  if (t.startDate && t.endDate && t.startDate.trim() && t.endDate.trim()) {
+    return t.startDate.trim();
   }
-  return t.estimatedDate || '';
+  // Caso contrário, o campo "data planeada" (estimatedDate) é o que prevalece em qualquer situação
+  if (t.estimatedDate && t.estimatedDate.trim()) {
+    return t.estimatedDate.trim();
+  }
+  return t.startDate?.trim() || t.endDate?.trim() || '';
 }
 
 export interface StatusColorInfo {

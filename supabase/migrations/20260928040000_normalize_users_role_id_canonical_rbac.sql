@@ -241,15 +241,7 @@ BEGIN
     RAISE EXCEPTION 'MIGRATION BLOCKER: Utilizador com role_id desconhecido sem mapeamento canónico: %', v_unmapped_role_id USING ERRCODE = '23503';
   END IF;
 
-  -- Aplicar a coluna convertida de volta a role_id
-  UPDATE public.users
-  SET role_id = canonical_role_id
-  WHERE canonical_role_id IS NOT NULL;
-
-  -- Remover coluna de staging
-  ALTER TABLE public.users DROP COLUMN IF EXISTS canonical_role_id;
-
-  -- PARTE F: Remover constraint legada se existir
+  -- PARTE F: Remover a constraint legada (que aponta para user_groups) ANTES de atualizar role_id com UUIDs canónicos!
   IF EXISTS (
     SELECT 1 
     FROM information_schema.table_constraints 
@@ -259,7 +251,15 @@ BEGIN
     ALTER TABLE public.users DROP CONSTRAINT users_role_id_fkey;
   END IF;
 
-  -- Adicionar nova Foreign Key canónica para public.roles(id)
+  -- Aplicar a coluna convertida de volta a role_id
+  UPDATE public.users
+  SET role_id = canonical_role_id
+  WHERE canonical_role_id IS NOT NULL;
+
+  -- Remover coluna de staging
+  ALTER TABLE public.users DROP COLUMN IF EXISTS canonical_role_id;
+
+  -- Adicionar a nova Foreign Key canónica para public.roles(id)
   ALTER TABLE public.users
     ADD CONSTRAINT users_role_id_fkey
     FOREIGN KEY (role_id)
