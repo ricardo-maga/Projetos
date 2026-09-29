@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unauthorized, forbidden } from '@/lib/apiErrors';
-import { GroupPermissions, getGroupPermissions } from '@/lib/permissions';
+import { GroupPermissions, getGroupPermissions, normalizeRoleId, CANONICAL_ROLE_IDS } from '@/lib/permissions';
 import {
   requireAuth as requireCentralAuth,
   requirePermission as requireCentralPermission,
@@ -133,7 +133,12 @@ export async function requireAdmin(req?: NextRequest): Promise<AuthResult> {
 
   try {
     const centralUser = await requireCentralAuth(req);
-    if (!centralUser.is_admin && centralUser.role_id !== 'ug-1' && centralUser.role_id !== '00000000-0000-0000-0000-000000000001') {
+    const userNormalizedRole = normalizeRoleId(centralUser.role_id);
+    const isExplicitAdmin = centralUser.is_admin ||
+      userNormalizedRole === CANONICAL_ROLE_IDS.SUPER_ADMIN ||
+      userNormalizedRole === CANONICAL_ROLE_IDS.ADMIN;
+
+    if (!isExplicitAdmin) {
       return {
         success: false,
         response: forbidden('Operação reservada exclusivamente a Administradores.', requestId),

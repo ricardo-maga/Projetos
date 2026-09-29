@@ -1106,7 +1106,12 @@ export function useERP() {
         console.error('Erro na criação da tarefa:', errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
-        alert(`Erro ao criar tarefa: ${errMsg}`);
+        if (opResult.status === 401) {
+          clearClientSession();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message: errMsg } }));
+          }
+        }
         throw new Error(errMsg);
       }
     } catch (err: any) {
@@ -1114,7 +1119,6 @@ export function useERP() {
       const errMsg = err?.message || 'Falha de comunicação com a API de tarefas.';
       setSyncStatus('error');
       setSyncError(errMsg);
-      alert(`Erro de comunicação: ${errMsg}`);
       throw err;
     }
   };
@@ -1164,9 +1168,14 @@ export function useERP() {
 
       if (opResult.status === 409 || !opResult.success || !opResult.data) {
         const errMsg = opResult.error || 'Conflito de concorrência ou erro ao atualizar tarefa.';
-        alert(errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
+        if (opResult.status === 401) {
+          clearClientSession();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message: errMsg } }));
+          }
+        }
         throw new Error(errMsg);
       }
 
@@ -1257,7 +1266,6 @@ export function useERP() {
       const errMsg = err?.message || 'Falha de comunicação com a API de tarefas.';
       setSyncStatus('error');
       setSyncError(errMsg);
-      alert(`Erro de comunicação: ${errMsg}`);
       throw err;
     }
   };
@@ -1288,7 +1296,12 @@ export function useERP() {
         console.error('Erro ao eliminar tarefa:', errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
-        alert(`Erro ao eliminar tarefa: ${errMsg}`);
+        if (opResult.status === 401) {
+          clearClientSession();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message: errMsg } }));
+          }
+        }
         throw new Error(errMsg);
       }
     } catch (err: any) {
@@ -1296,7 +1309,6 @@ export function useERP() {
       const errMsg = err?.message || 'Falha de comunicação com a API de tarefas.';
       setSyncStatus('error');
       setSyncError(errMsg);
-      alert(`Erro de comunicação: ${errMsg}`);
       throw err;
     }
   };

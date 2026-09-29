@@ -117,9 +117,7 @@ export async function POST(req: NextRequest) {
     const userNormalizedRole = normalizeRoleId(user.role_id);
     const isAdmin = user.is_admin || 
       userNormalizedRole === CANONICAL_ROLE_IDS.SUPER_ADMIN || 
-      userNormalizedRole === CANONICAL_ROLE_IDS.ADMIN || 
-      user.role_id === 'ug-1' || 
-      user.role_id === '00000000-0000-0000-0000-000000000001';
+      userNormalizedRole === CANONICAL_ROLE_IDS.ADMIN;
 
     // FASE 26: Prevenção de Privilege Escalation.
     // Utilizadores não-admin não podem alterar configurações globais, utilizadores ou grupos.

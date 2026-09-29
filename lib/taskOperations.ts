@@ -303,6 +303,11 @@ export async function apiCreateTask(input: TaskCreateInput): Promise<TaskOperati
       return { success: true, data: createdTask, status: res.status };
     }
 
+    if (res.status === 401) {
+      const errMsg = getApiErrorMessage(result, 'A sua sessão expirou ou é inválida. Por favor, faça login novamente.');
+      return { success: false, error: errMsg, status: 401 };
+    }
+
     const errMsg = getApiErrorMessage(result, `Erro ao criar tarefa (${res.status}).`);
     return { success: false, error: errMsg, status: res.status };
   } catch (err: any) {
@@ -371,6 +376,11 @@ export async function apiUpdateTask(
       return { success: true, data: updatedTask, status: res.status };
     }
 
+    if (res.status === 401) {
+      const errMsg = getApiErrorMessage(result, 'A sua sessão expirou ou é inválida. Por favor, faça login novamente.');
+      return { success: false, error: errMsg, status: 401 };
+    }
+
     const errMsg = getApiErrorMessage(result, `Erro ao atualizar tarefa (${res.status}).`);
     return { success: false, error: errMsg, status: res.status };
   } catch (err: any) {
@@ -400,6 +410,11 @@ export async function apiDeleteTask(id: string): Promise<TaskOperationResult<voi
 
     if (res.ok && result.success) {
       return { success: true, status: res.status };
+    }
+
+    if (res.status === 401) {
+      const errMsg = getApiErrorMessage(result, 'A sua sessão expirou ou é inválida. Por favor, faça login novamente.');
+      return { success: false, error: errMsg, status: 401 };
     }
 
     const errMsg = getApiErrorMessage(result, `Erro ao eliminar tarefa (${res.status}).`);

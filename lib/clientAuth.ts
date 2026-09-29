@@ -66,6 +66,7 @@ export function getApiErrorMessage(result: any, fallback: string = 'Ocorreu um e
   if (typeof result === 'string') return result;
   if (result.message && typeof result.message === 'string') return result.message;
   if (result.error && typeof result.error === 'string') return result.error;
+  if (result.error && typeof result.error === 'object' && typeof result.error.message === 'string') return result.error.message;
   if (Array.isArray(result.errors) && result.errors.length > 0) {
     return result.errors.map((e: any) => e.message || e).join('; ');
   }

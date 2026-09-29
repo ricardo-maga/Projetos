@@ -25,6 +25,22 @@ export async function requireAuth(req?: Request): Promise<AuthenticatedUser> {
     } catch (e: any) {
       authError = e;
     }
+
+    if (!userAuth) {
+      try {
+        const admin = createAdminClient();
+        if (admin) {
+          const { data, error } = await admin.auth.getUser(token);
+          if (data?.user) {
+            userAuth = data.user;
+          } else if (!authError) {
+            authError = error;
+          }
+        }
+      } catch (e: any) {
+        if (!authError) authError = e;
+      }
+    }
   }
 
   if (!userAuth) {

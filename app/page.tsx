@@ -72,6 +72,9 @@ export default function Page() {
         } catch {}
 
         if (res.ok && data && data.success && data.user) {
+          if (data.token) {
+            setClientSession(data.token, data.user);
+          }
           setCurrentUser(data.user);
         } else {
           if (res.status === 401) {

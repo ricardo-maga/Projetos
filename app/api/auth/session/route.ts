@@ -27,9 +27,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Sessão inválida ou expirada.' }, { status: 401 });
     }
 
+    let token: string | null = null;
+    const header = req.headers.get('authorization');
+    if (header?.startsWith('Bearer ')) {
+      token = header.slice(7).trim();
+    }
+    if (!token) {
+      try {
+        const supabase = await createClient();
+        const { data: sessionData } = await supabase.auth.getSession();
+        token = sessionData?.session?.access_token || null;
+      } catch {}
+    }
+
     return NextResponse.json({
       success: true,
       user,
+      token,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error?.message || 'Erro interno.' }, { status: 500 });
