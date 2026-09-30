@@ -115,8 +115,11 @@ export function formatOperationalDateRange(days: CalendarDayItem[]): string {
 }
 
 /**
- * Checks whether a task is active and scheduled on the given date (YYYY-MM-DD)
- * In the Operational Task Calendar: shows on startDate if filled, otherwise on estimatedDate
+ * Checks whether a task is active and scheduled on the given date (YYYY-MM-DD).
+ * Regra FASE 73:
+ * - Caso B: Se START_DATE e END_DATE estiverem ambas preenchidas -> usa START_DATE como data operacional.
+ * - Caso A: Caso contrário (START_DATE e END_DATE não preenchidas em conjunto) -> usa ESTIMATED_DATE.
+ * Não aceita estados parciais nem usa START_DATE isoladamente.
  */
 export function isTaskOnDate(task: Task, dateStr: string): boolean {
   if (!task || task.deleted) return false;
@@ -124,12 +127,17 @@ export function isTaskOnDate(task: Task, dateStr: string): boolean {
   if (!targetDate) return false;
 
   const startDate = normalizeDateStr(task.startDate);
+  const endDate = normalizeDateStr(task.endDate);
   const estDate = normalizeDateStr(task.estimatedDate);
 
-  // Regra: Mostra no dia da data prevista OU, caso esteja preenchido, na data de início real
-  const operationalDate = startDate || estDate;
-  if (operationalDate) {
-    return operationalDate === targetDate;
+  // Caso B: START_DATE e END_DATE preenchidas em conjunto
+  if (startDate && endDate) {
+    return targetDate === startDate;
+  }
+
+  // Caso A: START_DATE e END_DATE não preenchidas em conjunto -> usar ESTIMATED_DATE
+  if (estDate) {
+    return targetDate === estDate;
   }
 
   return false;

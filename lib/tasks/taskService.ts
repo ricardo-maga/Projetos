@@ -266,6 +266,9 @@ export async function createTaskServer(
   });
 
   if (rpcError) {
+    if (rpcError.code === '23514') {
+      return { success: false, error: rpcError.message || 'As datas de início e fim devem ser preenchidas em conjunto e a data de fim não pode ser anterior à data de início.', statusCode: 400 };
+    }
     if (rpcError.code === 'P0002' || rpcError.code === '23503') {
       return { success: false, error: 'O projeto especificado não existe ou foi eliminado.', statusCode: 400 };
     }
@@ -301,6 +304,7 @@ export async function updateTaskServer(
 ): Promise<{ success: boolean; data?: TaskDTO; error?: string; statusCode?: number; currentVersion?: number }> {
   const hasAssigneesUpdate = params.assignedUserIds !== undefined;
   const hasProjectUpdate = params.projectId !== undefined;
+  const hasDatesUpdate = params.startDate !== undefined || params.endDate !== undefined;
   const finalProjectId = hasProjectUpdate && params.projectId ? params.projectId.trim() : null;
 
   const estH = params.estimatedHours !== undefined ? parseTaskHoursToNumber(params.estimatedHours) : undefined;
@@ -333,9 +337,13 @@ export async function updateTaskServer(
     p_assignee_user_ids: params.assignedUserIds || [],
     p_update_assignees: hasAssigneesUpdate,
     p_update_project_id: hasProjectUpdate,
+    p_update_dates: hasDatesUpdate,
   });
 
   if (rpcError) {
+    if (rpcError.code === '23514') {
+      return { success: false, error: rpcError.message || 'As datas de início e fim devem ser preenchidas em conjunto e a data de fim não pode ser anterior à data de início.', statusCode: 400 };
+    }
     if (rpcError.code === 'P0001') {
       return { success: false, error: 'Conflito de concorrência. A tarefa foi alterada por outro utilizador.', statusCode: 409 };
     }
