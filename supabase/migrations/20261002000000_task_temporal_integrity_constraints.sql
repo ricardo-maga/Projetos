@@ -2,14 +2,9 @@
 -- FASE 73: INTEGRIDADE TEMPORAL CANÓNICA DAS TASKS
 -- Constraints & RPC Validation for start_date and end_date integrity
 
--- 1. Align legacy historical records if any exist with partial start_date or end_date
-UPDATE public.tasks
-SET end_date = COALESCE(estimated_date, start_date)
-WHERE start_date IS NOT NULL AND end_date IS NULL;
-
-UPDATE public.tasks
-SET start_date = COALESCE(estimated_date, end_date)
-WHERE start_date IS NULL AND end_date IS NOT NULL;
+-- 1. Note on historical records:
+-- FASE 73-A audit confirmed 0 partial date records (start_date alone or end_date alone)
+-- and 0 records with start_date > end_date. No historical data cleanup UPDATE required.
 
 -- 2. Add CHECK constraints to public.tasks table
 DO $$
@@ -36,7 +31,16 @@ BEGIN
   END IF;
 END $$;
 
--- 3. Atomic create_task_atomic RPC with temporal validation
+-- 3. Cleanup legacy/overloaded function signatures to prevent overloaded RPCs
+DROP FUNCTION IF EXISTS public.create_task_atomic(UUID, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[]);
+
+DROP FUNCTION IF EXISTS public.update_task_atomic(UUID, INTEGER, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[], BOOLEAN);
+DROP FUNCTION IF EXISTS public.update_task_atomic(UUID, INTEGER, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[], BOOLEAN, BOOLEAN);
+DROP FUNCTION IF EXISTS public.update_task_atomic(UUID, INTEGER, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[], BOOLEAN, BOOLEAN, BOOLEAN);
+
+DROP FUNCTION IF EXISTS public.delete_task_atomic(UUID, INTEGER, UUID);
+
+-- 4. Atomic create_task_atomic RPC with temporal validation
 CREATE OR REPLACE FUNCTION public.create_task_atomic(
   p_id UUID,
   p_project_id UUID DEFAULT NULL,
@@ -202,7 +206,12 @@ BEGIN
 END;
 $function$;
 
--- 4. Atomic update_task_atomic RPC with temporal validation
+-- Revoke default public/anon access and grant strictly to authenticated and service_role
+REVOKE EXECUTE ON FUNCTION public.create_task_atomic(UUID, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_task_atomic(UUID, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[]) TO authenticated, service_role;
+
+
+-- 5. Atomic update_task_atomic RPC with temporal validation
 CREATE OR REPLACE FUNCTION public.update_task_atomic(
   p_id UUID,
   p_expected_version INTEGER DEFAULT NULL,
@@ -374,3 +383,94 @@ BEGIN
   RETURN to_jsonb(v_task_row);
 END;
 $function$;
+
+-- Revoke default public/anon access and grant strictly to authenticated and service_role
+REVOKE EXECUTE ON FUNCTION public.update_task_atomic(UUID, INTEGER, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[], BOOLEAN, BOOLEAN, BOOLEAN) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.update_task_atomic(UUID, INTEGER, UUID, TEXT, TEXT, TEXT, INTERVAL, INTERVAL, DATE, TIME, DATE, TIME, DATE, DATE, TEXT, TEXT, BOOLEAN, UUID, UUID[], BOOLEAN, BOOLEAN, BOOLEAN) TO authenticated, service_role;
+
+
+-- 6. Atomic delete_task_atomic RPC with active planning allocations check
+CREATE OR REPLACE FUNCTION public.delete_task_atomic(
+  p_id UUID,
+  p_expected_version INTEGER DEFAULT NULL,
+  p_updated_by UUID DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_current_version INTEGER;
+  v_task_row RECORD;
+  v_caller_user_id UUID;
+BEGIN
+  -- 1. Authorization check
+  IF auth.role() = 'authenticated' THEN
+    IF NOT public.is_approved() THEN
+      RAISE EXCEPTION 'Utilizador não autorizado ou inativo.' USING ERRCODE = '42501';
+    END IF;
+    IF NOT public.has_permission('tasks:delete', auth.uid()) THEN
+      RAISE EXCEPTION 'Sem permissão para eliminar tarefas.' USING ERRCODE = '42501';
+    END IF;
+
+    -- Resolve caller profile in public.users to preserve FK integrity (tasks.updated_by -> users.id)
+    SELECT id INTO v_caller_user_id
+    FROM public.users
+    WHERE (auth_user_id = auth.uid() OR id = auth.uid())
+      AND approved = TRUE AND deleted = FALSE;
+
+    -- Non-admin cannot forge updated_by
+    IF p_updated_by IS NOT NULL AND p_updated_by <> v_caller_user_id AND p_updated_by <> auth.uid() AND NOT public.is_admin() THEN
+      p_updated_by := COALESCE(v_caller_user_id, auth.uid());
+    ELSIF p_updated_by IS NULL OR p_updated_by = auth.uid() THEN
+      p_updated_by := COALESCE(v_caller_user_id, auth.uid());
+    END IF;
+  ELSIF p_updated_by IS NOT NULL THEN
+    IF NOT public.has_permission('tasks:delete', p_updated_by) THEN
+      RAISE EXCEPTION 'Sem permissão para eliminar tarefas.' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
+  -- 2. Check current task version for OCC
+  SELECT version INTO v_current_version
+  FROM public.tasks
+  WHERE id = p_id AND (deleted IS NOT TRUE);
+
+  IF v_current_version IS NULL THEN
+    RAISE EXCEPTION 'Tarefa não encontrada.' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF p_expected_version IS NOT NULL AND v_current_version <> p_expected_version THEN
+    RAISE EXCEPTION 'Conflito de concorrência (OCC): a tarefa foi modificada por outro utilizador.' USING ERRCODE = 'P0001';
+  END IF;
+
+  -- 3. Hardening Invariant: Check for active planning allocations (DRAFT or CONFIRMED)
+  IF EXISTS (
+    SELECT 1
+    FROM public.planning_allocations
+    WHERE task_id = p_id
+      AND status <> 'CANCELLED'
+  ) THEN
+    RAISE EXCEPTION
+      'Não é possível eliminar a tarefa porque existem alocações de planeamento ativas associadas.'
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  -- 4. Soft-delete task and increment version
+  UPDATE public.tasks
+  SET
+    deleted = TRUE,
+    version = version + 1,
+    updated_at = timezone('utc'::text, now()),
+    updated_by = p_updated_by
+  WHERE id = p_id
+  RETURNING * INTO v_task_row;
+
+  RETURN to_jsonb(v_task_row);
+END;
+$function$;
+
+-- Revoke default public/anon access and grant strictly to authenticated and service_role
+REVOKE EXECUTE ON FUNCTION public.delete_task_atomic(UUID, INTEGER, UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.delete_task_atomic(UUID, INTEGER, UUID) TO authenticated, service_role;
