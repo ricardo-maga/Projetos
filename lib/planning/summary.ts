@@ -23,22 +23,51 @@ export function formatHoursDisplay(hours: number): string {
 
 /**
  * Checks whether an allocation date falls outside the known temporal window of a task.
- * Returns true if allocationDate < task.startDate or allocationDate > task.endDate.
+ * Evaluates strictly against known dates without manufacturing missing boundaries.
  */
 export function isAllocationOutsideTaskWindow(
   allocationDate: string,
-  task?: { startDate?: string; endDate?: string; estimatedDate?: string; start_date?: string; end_date?: string; estimated_date?: string } | null
+  task?: {
+    startDate?: string | null;
+    endDate?: string | null;
+    estimatedDate?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    estimated_date?: string | null;
+  } | null
 ): boolean {
   if (!task || !allocationDate) return false;
 
-  const startDate = task.startDate || task.start_date || task.estimatedDate || task.estimated_date || null;
-  const endDate = task.endDate || task.end_date || task.estimatedDate || task.estimated_date || task.startDate || task.start_date || null;
+  const startDate = task.startDate || task.start_date || null;
+  const endDate = task.endDate || task.end_date || null;
+  const estimatedDate = task.estimatedDate || task.estimated_date || null;
 
-  if (!startDate && !endDate) return false;
+  // Case A: Both startDate and endDate are known
+  if (startDate && endDate) {
+    if (allocationDate < startDate) return true;
+    if (allocationDate > endDate) return true;
+    return false;
+  }
 
-  if (startDate && allocationDate < startDate) return true;
-  if (endDate && allocationDate > endDate) return true;
+  // Case B: Only startDate is known
+  if (startDate && !endDate) {
+    if (allocationDate < startDate) return true;
+    return false;
+  }
 
+  // Case C: Only endDate is known
+  if (!startDate && endDate) {
+    if (allocationDate > endDate) return true;
+    return false;
+  }
+
+  // Case D: Neither startDate nor endDate is known, but estimatedDate is known
+  if (!startDate && !endDate && estimatedDate) {
+    if (allocationDate !== estimatedDate) return true;
+    return false;
+  }
+
+  // Case E: No dates known
   return false;
 }
 

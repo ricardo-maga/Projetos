@@ -169,15 +169,14 @@ export async function validatePlanningAllocation(
 
   // 4b. Task Temporal Window check (generates WARNING if allocation date is outside task window)
   if (task && isAllocationOutsideTaskWindow(ctx.date, task)) {
-    const taskStart = task.start_date || task.estimated_date || null;
-    const taskEnd = task.end_date || task.estimated_date || task.start_date || null;
     warnings.push({
       code: 'OUTSIDE_TASK_TEMPORAL_WINDOW',
       message: 'Alocação fora da janela temporal da tarefa.',
       details: {
         allocationDate: ctx.date,
-        taskStartDate: taskStart,
-        taskEndDate: taskEnd,
+        taskStartDate: task.start_date || null,
+        taskEndDate: task.end_date || null,
+        taskEstimatedDate: task.estimated_date || null,
       },
     });
   }
