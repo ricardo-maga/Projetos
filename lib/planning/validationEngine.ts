@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { parseTaskHoursToNumber } from '../tasks/taskService';
+import { isAllocationOutsideTaskWindow } from './summary';
 import type {
   ValidationContext,
   ValidationResult,
@@ -79,7 +80,7 @@ export async function validatePlanningAllocation(
   // 2. Validate Task existence
   const { data: task, error: taskError } = await sb
     .from('tasks')
-    .select('id, task_title, estimated_hours, deleted')
+    .select('id, task_title, estimated_hours, start_date, end_date, estimated_date, deleted')
     .eq('id', ctx.taskId)
     .maybeSingle();
 
@@ -164,6 +165,21 @@ export async function validatePlanningAllocation(
         },
       });
     }
+  }
+
+  // 4b. Task Temporal Window check (generates WARNING if allocation date is outside task window)
+  if (task && isAllocationOutsideTaskWindow(ctx.date, task)) {
+    const taskStart = task.start_date || task.estimated_date || null;
+    const taskEnd = task.end_date || task.estimated_date || task.start_date || null;
+    warnings.push({
+      code: 'OUTSIDE_TASK_TEMPORAL_WINDOW',
+      message: 'Alocação fora da janela temporal da tarefa.',
+      details: {
+        allocationDate: ctx.date,
+        taskStartDate: taskStart,
+        taskEndDate: taskEnd,
+      },
+    });
   }
 
   // If status is DRAFT, conflicts do not block creation/updates!

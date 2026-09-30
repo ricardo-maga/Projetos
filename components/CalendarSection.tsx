@@ -381,7 +381,11 @@ export default function CalendarSection({
   // Helper to check if task belongs to a project
   const isTaskInProject = React.useCallback((taskId: string, targetProjectId: string): boolean => {
     const task = tasks.find(t => t.id === taskId);
-    return !!task && task.projectId === targetProjectId;
+    if (!task) return false;
+    if (targetProjectId === 'no_project') {
+      return !task.projectId || task.projectId === null || task.projectId === '';
+    }
+    return task.projectId === targetProjectId;
   }, [tasks]);
 
   // Helper to check if task belongs to a project managed by leader
@@ -2554,6 +2558,7 @@ export default function CalendarSection({
                     {p.title}
                   </option>
                 ))}
+                <option value="no_project">Sem projeto</option>
               </select>
             </div>
 

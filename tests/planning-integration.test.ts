@@ -17,7 +17,7 @@ import {
 // Known real columns for Phase 18 schema verification
 const SCHEMA_TABLES: Record<string, string[]> = {
   users: ['id', 'name', 'email', 'deleted', 'approved', 'is_admin', 'role'],
-  tasks: ['id', 'task_title', 'estimated_hours', 'deleted', 'status', 'project_id'],
+  tasks: ['id', 'task_title', 'estimated_hours', 'deleted', 'status', 'project_id', 'start_date', 'end_date', 'estimated_date'],
   work_schedules: ['id', 'name', 'description', 'is_active', 'created_at', 'updated_at', 'version'],
   work_schedule_periods: ['id', 'schedule_id', 'day_of_week', 'start_time', 'end_time', 'created_at', 'updated_at'],
   resource_work_schedules: ['id', 'resource_id', 'schedule_id', 'created_at', 'updated_at', 'version'],

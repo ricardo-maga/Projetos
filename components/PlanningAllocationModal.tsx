@@ -12,7 +12,7 @@ import {
   PlanningAllocationUpdateInput, 
   PlanningWarning 
 } from '../lib/planning/types';
-import { parseHoursToNumber, formatHoursDisplay } from '../lib/planning/summary';
+import { parseHoursToNumber, formatHoursDisplay, isAllocationOutsideTaskWindow } from '../lib/planning/summary';
 import { getAuthHeaders } from '../lib/clientAuth';
 
 interface PlanningAllocationModalProps {
@@ -203,6 +203,7 @@ export default function PlanningAllocationModal({
   // Selected task and project metadata
   const currentTask = task || tasks.find(t => t.id === selectedTaskId);
   const currentProject = projects.find(p => p.id === currentTask?.projectId);
+  const isOutsideTaskWindow = isAllocationOutsideTaskWindow(date, currentTask);
 
   // Calculate local duration for feedback
   const getDurationHours = (): number => {
@@ -430,6 +431,14 @@ export default function PlanningAllocationModal({
                 {w.message}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Temporal Window Warning */}
+        {isOutsideTaskWindow && (
+          <div id="warning-outside-task-window" className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 text-xs font-semibold text-amber-800">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>⚠ Alocação fora da janela temporal da tarefa</span>
           </div>
         )}
 

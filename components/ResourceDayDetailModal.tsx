@@ -35,7 +35,8 @@ import {
   computeResourceDayTaskConsistency,
   computeResourceDayProjectDistribution,
   ResourceDayProjectDistribution,
-  ResourceDayProjectTaskDistribution
+  ResourceDayProjectTaskDistribution,
+  isAllocationOutsideTaskWindow
 } from '../lib/planning/summary';
 
 interface ResourceDayDetailModalProps {
@@ -733,6 +734,17 @@ export default function ResourceDayDetailModal({
                             <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${opStatus.badgeClass}`}>
                               {opStatus.label}
                             </span>
+
+                            {/* Temporal Window Warning */}
+                            {isAllocationOutsideTaskWindow(dateStr, task) && (
+                              <span 
+                                title="⚠ Alocação fora da janela temporal da tarefa"
+                                className="px-2 py-0.5 rounded-md text-[10px] font-bold border bg-amber-100 text-amber-900 border-amber-300 flex items-center gap-1"
+                              >
+                                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                <span>⚠ Alocação fora da janela temporal da tarefa</span>
+                              </span>
+                            )}
                           </div>
 
                           {/* Nome / Título da Tarefa */}

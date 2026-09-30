@@ -21,6 +21,27 @@ export function formatHoursDisplay(hours: number): string {
   return `${wholeHours}h ${minutes}m`;
 }
 
+/**
+ * Checks whether an allocation date falls outside the known temporal window of a task.
+ * Returns true if allocationDate < task.startDate or allocationDate > task.endDate.
+ */
+export function isAllocationOutsideTaskWindow(
+  allocationDate: string,
+  task?: { startDate?: string; endDate?: string; estimatedDate?: string; start_date?: string; end_date?: string; estimated_date?: string } | null
+): boolean {
+  if (!task || !allocationDate) return false;
+
+  const startDate = task.startDate || task.start_date || task.estimatedDate || task.estimated_date || null;
+  const endDate = task.endDate || task.end_date || task.estimatedDate || task.estimated_date || task.startDate || task.start_date || null;
+
+  if (!startDate && !endDate) return false;
+
+  if (startDate && allocationDate < startDate) return true;
+  if (endDate && allocationDate > endDate) return true;
+
+  return false;
+}
+
 export interface PlanningSummary {
   estimatedHours: number;
   confirmedHours: number;

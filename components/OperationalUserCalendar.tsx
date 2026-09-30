@@ -673,7 +673,7 @@ export default function OperationalUserCalendar({
                                     key={task.id}
                                     onClick={() => onSelectTask(task)}
                                     className={`p-2 bg-white rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer group/card space-y-1 text-left ${cardStyle}`}
-                                    title={`Abrir tarefa: ${task.title}\nProjeto: ${project?.title || 'N/A'}\nHoras previstas: ${hours} h\nEstado: ${statusName}`}
+                                    title={`Abrir tarefa: ${task.title}\nProjeto: ${project?.title || 'Sem projeto'}\nHoras previstas: ${hours} h\nEstado: ${statusName}`}
                                   >
                                     {/* Project / Client label */}
                                     <div className="text-[9px] font-bold text-blue-700 truncate leading-tight flex items-center gap-1">
