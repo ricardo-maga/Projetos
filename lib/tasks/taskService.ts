@@ -386,7 +386,7 @@ export async function deleteTaskServer(
 
   if (rpcError) {
     if (rpcError.code === 'P0001') {
-      return { success: false, error: 'Conflito de concorrência ao eliminar tarefa.', statusCode: 409 };
+      return { success: false, error: rpcError.message || 'Conflito de concorrência ao eliminar tarefa.', statusCode: 409 };
     }
     if (rpcError.code === 'P0002') {
       return { success: false, error: 'Tarefa não encontrada.', statusCode: 404 };

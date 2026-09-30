@@ -116,7 +116,7 @@ export function groupResourceDayAllocationsByTask(
     const matchedTask = tasks.find(t => t.id === taskId) || (allocList[0]?.task ? {
       id: allocList[0].task.id,
       title: allocList[0].task.title,
-      projectId: allocList[0].task.projectId || '',
+      projectId: allocList[0].task.projectId ?? null,
       assigneeIds: [],
       statusId: '',
       estimatedDate: '',
@@ -759,8 +759,11 @@ export function computeResourceDayProjectDistribution(
     const taskProjectId = matchedTask?.projectId;
     const matchedProject = taskProjectId ? projects.find(p => p.id === taskProjectId) || (matchedTask as any)?.project || (a as any)?.project || null : null;
 
-    const projectId = matchedProject?.id || (taskProjectId || 'unidentified');
-    const projectTitle = matchedProject?.title || (projectId === 'unidentified' ? 'Projeto não identificado' : 'Projeto sem título');
+    const projectId = matchedProject?.id || (taskProjectId || (matchedTask ? 'no_project' : 'unidentified'));
+    const projectTitle = matchedProject?.title || (
+      projectId === 'no_project' ? 'Sem projeto' :
+      projectId === 'unidentified' ? 'Projeto não identificado' : 'Projeto sem título'
+    );
 
     let projEntry = projectMap.get(projectId);
     if (!projEntry) {
@@ -991,7 +994,10 @@ export function computeProjectPlanningImpact(
   projects: any[] = []
 ): ProjectPlanningSummary {
   const projectObj = projects.find(p => p.id === projectId) || null;
-  const projectTitle = projectObj?.title || (projectId === 'unidentified' ? 'Projeto não identificado' : 'Projeto sem título');
+  const projectTitle = projectObj?.title || (
+    projectId === 'no_project' ? 'Sem projeto' :
+    projectId === 'unidentified' ? 'Projeto não identificado' : 'Projeto sem título'
+  );
 
   // Filter allocations that belong to this projectId and are active (CONFIRMED or DRAFT)
   const projectAllocations = allocations.filter(a => {
@@ -1002,7 +1008,8 @@ export function computeProjectPlanningImpact(
 
     if (taskProjectId === projectId) return true;
     if (!taskProjectId && a.taskId && tasks.some(t => t.id === a.taskId && t.projectId === projectId)) return true;
-    if (projectId === 'unidentified' && !taskProjectId) return true;
+    if (projectId === 'no_project' && !taskProjectId && matchedTask) return true;
+    if (projectId === 'unidentified' && !taskProjectId && !matchedTask) return true;
 
     return false;
   });
@@ -1435,7 +1442,10 @@ export function computeProjectPlanningVsEstimate(
   projects: any[] = []
 ): ProjectPlanningVsEstimateSummary {
   const projectObj = projects.find(p => p.id === projectId) || null;
-  const projectTitle = projectObj?.title || projectObj?.name || (projectId === 'unidentified' ? 'Projeto não identificado' : projectId);
+  const projectTitle = projectObj?.title || projectObj?.name || (
+    projectId === 'no_project' ? 'Sem projeto' :
+    projectId === 'unidentified' ? 'Projeto não identificado' : projectId
+  );
 
   // Filter valid allocations for this project (exclude CANCELLED)
   const projectAllocations = allocations.filter(a => {
@@ -1444,6 +1454,7 @@ export function computeProjectPlanningVsEstimate(
     const t = tasks.find(task => task.id === a.taskId);
     if (t && t.projectId === projectId) return true;
     if (!t && !(a as any).projectId && projectId === 'unidentified') return true;
+    if (t && !t.projectId && projectId === 'no_project') return true;
     return false;
   });
 

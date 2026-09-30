@@ -224,7 +224,7 @@ export async function DELETE(req: NextRequest, ctx: any) {
     // Delegate atomic delete to taskService
     const deleteRes = await deleteTaskServer(sb, id, user.id, currentVersion);
     if (!deleteRes.success) {
-      if (deleteRes.statusCode === 409) return conflict('Conflito de concorrência ao eliminar tarefa.', requestId);
+      if (deleteRes.statusCode === 409) return conflict(deleteRes.error || 'Conflito de concorrência ao eliminar tarefa.', requestId);
       if (deleteRes.statusCode === 404) return notFound('Tarefa não encontrada.', requestId);
       return badRequest(deleteRes.error || 'Erro ao eliminar tarefa.', requestId);
     }
