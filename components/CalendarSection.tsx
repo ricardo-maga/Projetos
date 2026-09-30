@@ -368,16 +368,15 @@ export default function CalendarSection({
       alert('Não tem permissão para criar ou agendar tarefas.');
       return;
     }
-    const defaultProjId = projectId || (availableProjects.length > 0 ? availableProjects[0].id : '');
     setTaskModalState({
       isOpen: true,
       task: null,
       mode: 'create',
-      initialProjectId: defaultProjId,
+      initialProjectId: projectId || '',
       initialDate: dateStr,
       initialAssigneeId: userId,
     });
-  }, [canCreateTaskInCalendar, availableProjects]);
+  }, [canCreateTaskInCalendar]);
 
   // Helper to check if task belongs to a project
   const isTaskInProject = React.useCallback((taskId: string, targetProjectId: string): boolean => {
@@ -1317,9 +1316,14 @@ export default function CalendarSection({
                 return (
                   <th 
                     key={dayStr} 
-                    className={`p-2 text-center text-[10px] font-bold border-l border-b border-slate-200/80 sticky top-0 z-20 ${
-                      isToday ? 'bg-amber-100 text-amber-900 border-x border-amber-300' : 
-                      (isWeekend || isSpecial) ? 'bg-slate-100 text-slate-600' : 'bg-slate-50 text-slate-600'
+                    className={`p-2 text-center text-[10px] font-bold border-l border-b border-slate-200/80 sticky top-0 z-20 transition-colors ${
+                      (isWeekend || isSpecial)
+                        ? (isToday 
+                            ? 'bg-slate-100 text-amber-950 border-x-2 border-amber-400' 
+                            : 'bg-slate-100 text-slate-600')
+                        : (isToday 
+                            ? 'bg-amber-100 text-amber-900 border-x border-amber-300' 
+                            : 'bg-slate-50 text-slate-600')
                     }`}
                     title={specialDay ? specialDay.name : ''}
                   >
@@ -1440,11 +1444,29 @@ export default function CalendarSection({
                           onClick={() => handleDayClick(proj.id, dayStr)}
                           onDrop={(e) => handleDrop(e, dayStr, proj.id)}
                           onDragOver={handleDragOver}
-                          className={`p-2 border-l border-slate-100 text-center vertical-align-top space-y-2 select-none min-h-[90px] cursor-pointer hover:bg-blue-50/30 transition-colors ${
-                            isToday ? 'bg-amber-50/20' : 
-                            (isWeekend || isSpecial) ? 'bg-slate-50' : ''
+                          className={`p-2 border-l border-slate-100 text-center align-top space-y-2 select-none min-h-[90px] cursor-pointer hover:bg-blue-50/40 transition-colors group relative ${
+                            (isWeekend || isSpecial)
+                              ? (isToday ? 'bg-slate-100/90 border-x border-amber-200' : 'bg-slate-100/70')
+                              : (isToday ? 'bg-amber-50/20' : '')
                           }`}
                         >
+                          {/* Quick Create Task button on hover */}
+                          {canCreateTaskInCalendar && (
+                            <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDayClick(proj.id, dayStr);
+                                }}
+                                className="p-1 hover:bg-blue-100 text-blue-600 rounded-md transition-colors cursor-pointer"
+                                title={`Criar nova tarefa para ${proj.title} em ${dayStr}`}
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+
                           {/* Project milestone badges */}
                           <div className="space-y-1">
                             {isProjStart && (
@@ -1715,9 +1737,14 @@ export default function CalendarSection({
                   return (
                     <th 
                       key={dayStr} 
-                      className={`p-2 text-center text-[10px] font-bold border-l border-b border-slate-200/80 sticky top-0 z-20 ${
-                        isToday ? 'bg-amber-100 text-amber-900 border-x border-amber-300' : 
-                        (isWeekend || isSpecial) ? 'bg-slate-100 text-slate-600' : 'bg-slate-50 text-slate-600'
+                      className={`p-2 text-center text-[10px] font-bold border-l border-b border-slate-200/80 sticky top-0 z-20 transition-colors ${
+                        (isWeekend || isSpecial)
+                          ? (isToday 
+                              ? 'bg-slate-100 text-amber-950 border-x-2 border-amber-400' 
+                              : 'bg-slate-100 text-slate-600')
+                          : (isToday 
+                              ? 'bg-amber-100 text-amber-900 border-x border-amber-300' 
+                              : 'bg-slate-50 text-slate-600')
                       }`}
                     >
                       <div className="uppercase tracking-wider text-[9px] text-slate-400 font-medium">{weekday}</div>

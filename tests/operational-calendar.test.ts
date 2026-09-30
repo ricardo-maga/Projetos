@@ -279,27 +279,39 @@ describe('FASE 29 — Calendário Operacional Semanal por Utilizador', () => {
   });
 
   describe('4. Tarefas Multi-dia, Tarefas Sem Utilizadores e Limites Temporais', () => {
-    it('tarefa de múltiplos dias aparece em todos os dias abrangidos', () => {
-      const multiDayTask: Task = {
-        id: 't-multiday',
-        title: 'Instalação Complexa Multi-dia',
+    it('tarefa com data de início aparece na data de início, e sem data de início aparece na data prevista', () => {
+      const taskWithStart: Task = {
+        id: 't-start',
+        title: 'Instalação com Início Real',
         projectId: 'p-1',
         startDate: '2026-09-22',
         endDate: '2026-09-24',
+        estimatedDate: '2026-09-20',
         estimatedHours: '16:00',
         assigneeIds: ['user-pedro'],
         version: 1,
         deleted: false,
       };
 
-      // Day before span
-      expect(isTaskOnDate(multiDayTask, '2026-09-21')).toBe(false);
-      // Days inside span
-      expect(isTaskOnDate(multiDayTask, '2026-09-22')).toBe(true);
-      expect(isTaskOnDate(multiDayTask, '2026-09-23')).toBe(true);
-      expect(isTaskOnDate(multiDayTask, '2026-09-24')).toBe(true);
-      // Day after span
-      expect(isTaskOnDate(multiDayTask, '2026-09-25')).toBe(false);
+      // Aparece na data de início real (2026-09-22)
+      expect(isTaskOnDate(taskWithStart, '2026-09-22')).toBe(true);
+      expect(isTaskOnDate(taskWithStart, '2026-09-20')).toBe(false);
+      expect(isTaskOnDate(taskWithStart, '2026-09-23')).toBe(false);
+      expect(isTaskOnDate(taskWithStart, '2026-09-24')).toBe(false);
+
+      const taskWithEstimatedOnly: Task = {
+        id: 't-est',
+        title: 'Tarefa apenas com Data Prevista',
+        projectId: 'p-1',
+        estimatedDate: '2026-09-23',
+        estimatedHours: '08:00',
+        assigneeIds: ['user-pedro'],
+        version: 1,
+        deleted: false,
+      };
+
+      expect(isTaskOnDate(taskWithEstimatedOnly, '2026-09-23')).toBe(true);
+      expect(isTaskOnDate(taskWithEstimatedOnly, '2026-09-22')).toBe(false);
     });
 
     it('tarefas sem atribuídos não causam erro e não aparecem na linha de nenhum utilizador', () => {

@@ -116,29 +116,21 @@ export function formatOperationalDateRange(days: CalendarDayItem[]): string {
 
 /**
  * Checks whether a task is active and scheduled on the given date (YYYY-MM-DD)
- * Supports single dates and multi-day spans (startDate to endDate)
+ * In the Operational Task Calendar: shows on startDate if filled, otherwise on estimatedDate
  */
 export function isTaskOnDate(task: Task, dateStr: string): boolean {
   if (!task || task.deleted) return false;
   const targetDate = normalizeDateStr(dateStr);
   if (!targetDate) return false;
 
-  const estDate = normalizeDateStr(task.estimatedDate);
   const startDate = normalizeDateStr(task.startDate);
-  const endDate = normalizeDateStr(task.endDate);
+  const estDate = normalizeDateStr(task.estimatedDate);
 
-  // Date span matches (startDate to endDate, or estDate to endDate)
-  if (startDate && endDate) {
-    return targetDate >= startDate && targetDate <= endDate;
+  // Regra: Mostra no dia da data prevista OU, caso esteja preenchido, na data de início real
+  const operationalDate = startDate || estDate;
+  if (operationalDate) {
+    return operationalDate === targetDate;
   }
-  if (estDate && endDate && endDate > estDate) {
-    return targetDate >= estDate && targetDate <= endDate;
-  }
-
-  // Single date matches
-  if (estDate && estDate === targetDate) return true;
-  if (startDate && startDate === targetDate) return true;
-  if (endDate && endDate === targetDate) return true;
 
   return false;
 }

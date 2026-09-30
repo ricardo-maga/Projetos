@@ -67,8 +67,6 @@ export default function OperationalUserCalendar({
   const [anchorDate, setAnchorDate] = useState<Date>(() => new Date());
 
   // 3. Filters
-  const [projectFilter, setProjectFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
   const [userSearchTerm, setUserSearchTerm] = useState<string>('');
   const [showOnlyWithTasks, setShowOnlyWithTasks] = useState<boolean>(false);
 
@@ -156,12 +154,7 @@ export default function OperationalUserCalendar({
     const tasksMap = new Map<string, Task[]>();
     const countMap = new Map<string, number>();
 
-    const candidateTasks = tasks.filter(t => {
-      if (t.deleted) return false;
-      if (projectFilter && t.projectId !== projectFilter) return false;
-      if (statusFilter && t.statusId !== statusFilter) return false;
-      return true;
-    });
+    const candidateTasks = tasks.filter(t => !t.deleted);
 
     for (const u of activeEligibleUsers) {
       let uTotalCount = 0;
@@ -195,7 +188,7 @@ export default function OperationalUserCalendar({
       userDayAbsenceMap: absenceMap,
       userTaskCountMap: countMap,
     };
-  }, [tasks, absences, activeEligibleUsers, calendarDays, projectFilter, statusFilter]);
+  }, [tasks, absences, activeEligibleUsers, calendarDays]);
 
   // 8. Filtered displayed users
   const displayedUsers = useMemo(() => {
@@ -215,11 +208,6 @@ export default function OperationalUserCalendar({
 
     return result;
   }, [activeEligibleUsers, selectedUserIds, userSearchTerm, showOnlyWithTasks, userTaskCountMap]);
-
-  // Available projects for filtering
-  const activeProjects = useMemo(() => {
-    return projects.filter(p => !p.deleted).sort((a, b) => a.title.localeCompare(b.title, 'pt-PT'));
-  }, [projects]);
 
   // User selection handlers
   const handleSelectAllUsers = () => {
@@ -346,7 +334,7 @@ export default function OperationalUserCalendar({
                 onClick={() => {
                   const defaultUser = displayedUsers[0]?.id || activeEligibleUsers[0]?.id || '';
                   const defaultDate = calendarDays[0]?.dateStr || formatDateToYYYYMMDD(new Date());
-                  onQuickCreateTask(defaultUser, defaultDate, projectFilter || undefined);
+                  onQuickCreateTask(defaultUser, defaultDate);
                 }}
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer ml-auto"
                 title="Criar nova tarefa no calendário"
@@ -358,41 +346,15 @@ export default function OperationalUserCalendar({
           </div>
         </div>
 
-        {/* Filters Row: Project, Status, User Search & Options */}
+        {/* Filters Row: User Search & Options */}
         <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
             <Filter className="w-3.5 h-3.5" />
             <span>Filtros:</span>
           </div>
 
-          {/* Project Filter */}
-          <select
-            value={projectFilter}
-            onChange={e => setProjectFilter(e.target.value)}
-            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer max-w-[200px] truncate"
-            title="Filtrar tarefas por projeto"
-          >
-            <option value="">Todos os Projetos</option>
-            {activeProjects.map(p => (
-              <option key={p.id} value={p.id}>{p.title}</option>
-            ))}
-          </select>
-
-          {/* Task Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
-            title="Filtrar por estado da tarefa"
-          >
-            <option value="">Todos os Estados</option>
-            {taskStatuses.filter(s => !s.deleted).map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-
           {/* User Search Input */}
-          <div className="relative min-w-[180px]">
+          <div className="relative min-w-[200px]">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -424,12 +386,10 @@ export default function OperationalUserCalendar({
             <span>Apenas com tarefas no período</span>
           </label>
 
-          {(projectFilter || statusFilter || userSearchTerm || showOnlyWithTasks) && (
+          {(userSearchTerm || showOnlyWithTasks) && (
             <button
               type="button"
               onClick={() => {
-                setProjectFilter('');
-                setStatusFilter('');
                 setUserSearchTerm('');
                 setShowOnlyWithTasks(false);
               }}
@@ -520,11 +480,13 @@ export default function OperationalUserCalendar({
                     <th
                       key={day.dateStr}
                       className={`p-2.5 text-center text-xs font-bold border-l border-slate-200 transition-colors ${
-                        day.isToday
-                          ? 'bg-amber-50/90 text-amber-950 border-amber-200'
-                          : day.isWeekend
-                          ? 'bg-slate-100/70 text-slate-500'
-                          : 'bg-slate-50 text-slate-700'
+                        (day.isWeekend || !!specialDay)
+                          ? (day.isToday
+                              ? 'bg-slate-100 text-amber-950 border-x-2 border-amber-400'
+                              : 'bg-slate-100/70 text-slate-500')
+                          : (day.isToday
+                              ? 'bg-amber-50/90 text-amber-950 border-amber-200'
+                              : 'bg-slate-50 text-slate-700')
                       }`}
                       title={specialDay ? specialDay.name : undefined}
                     >
@@ -637,7 +599,9 @@ export default function OperationalUserCalendar({
                           <td
                             key={day.dateStr}
                             className={`p-2 border-l border-slate-100 align-top transition-colors group relative ${
-                              day.isToday ? 'bg-amber-50/20' : day.isWeekend ? 'bg-slate-50/40' : ''
+                              (day.isWeekend || !!specialDays.find(sd => sd.date === day.dateStr))
+                                ? (day.isToday ? 'bg-slate-100/80 border-x border-amber-200/80' : 'bg-slate-50/70')
+                                : (day.isToday ? 'bg-amber-50/20' : '')
                             }`}
                           >
                             <div className="min-h-[70px] space-y-1.5 flex flex-col justify-start">
@@ -646,7 +610,10 @@ export default function OperationalUserCalendar({
                                 <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button
                                     type="button"
-                                    onClick={() => onQuickCreateTask(user.id, day.dateStr, projectFilter || undefined)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onQuickCreateTask(user.id, day.dateStr);
+                                    }}
                                     className="p-1 hover:bg-blue-100 text-blue-600 rounded-md transition-colors cursor-pointer"
                                     title={`Adicionar nova tarefa para ${user.name} em ${day.dateStr}`}
                                   >
