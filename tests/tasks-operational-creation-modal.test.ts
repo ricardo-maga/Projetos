@@ -173,18 +173,19 @@ describe('Tarefas — Janela de Criação de Tarefas & Lista Operacional', () =>
       });
     });
 
-    it('validação torna obrigatória a seleção de um projeto existente', () => {
-      const validateProjectSelection = (selectedProjectId: string, projects: typeof thousandProjects) => {
-        const matched = projects.find(p => p.id === selectedProjectId && !p.deleted);
-        if (!selectedProjectId || !matched) {
-          return { valid: false, error: 'A escolha de um projeto existente a partir das sugestões é obrigatória.' };
-        }
-        return { valid: true };
+    it('validação torna o campo projeto opcional, atribuindo null se não for selecionado ou se texto arbitrário for introduzido', () => {
+      const resolveProjectSelection = (inputProjectId: string, projects: typeof thousandProjects): string | null => {
+        if (!inputProjectId || !inputProjectId.trim()) return null;
+        const matched = projects.find(p => p.id === inputProjectId.trim() && !p.deleted);
+        return matched ? matched.id : null;
       };
 
-      expect(validateProjectSelection('', thousandProjects).valid).toBe(false);
-      expect(validateProjectSelection('inexistente-123', thousandProjects).valid).toBe(false);
-      expect(validateProjectSelection('p-100', thousandProjects).valid).toBe(true);
+      // Vazio -> null (sem projeto)
+      expect(resolveProjectSelection('', thousandProjects)).toBeNull();
+      // Texto arbitrário que não corresponde a um id de projeto existente -> null
+      expect(resolveProjectSelection('texto-qualquer-inexistente', thousandProjects)).toBeNull();
+      // Projeto existente selecionado -> id do projeto
+      expect(resolveProjectSelection('p-100', thousandProjects)).toBe('p-100');
     });
   });
 

@@ -55,7 +55,7 @@ export function checkTaskConflicts(
 }
 
 export interface TaskCreateInput {
-  projectId: string;
+  projectId?: string | null;
   title: string;
   description?: string;
   statusId?: string;
@@ -73,7 +73,7 @@ export interface TaskCreateInput {
 }
 
 export interface TaskUpdateInput {
-  projectId?: string;
+  projectId?: string | null;
   title?: string;
   description?: string;
   statusId?: string;
@@ -265,7 +265,7 @@ export async function apiCreateTask(input: TaskCreateInput): Promise<TaskOperati
   }
 
   const payload = {
-    projectId: input.projectId.trim(),
+    projectId: input.projectId ? input.projectId.trim() : null,
     title: input.title.trim(),
     description: input.description?.trim() || '',
     statusId: input.statusId || undefined,
@@ -334,7 +334,7 @@ export async function apiUpdateTask(
 
   const patchPayload: Record<string, any> = {};
   if (updates.version !== undefined) patchPayload.version = updates.version;
-  if (updates.projectId !== undefined) patchPayload.projectId = updates.projectId;
+  if (updates.projectId !== undefined) patchPayload.projectId = updates.projectId ? updates.projectId.trim() : null;
   if (updates.title !== undefined) patchPayload.title = updates.title.trim();
   if (updates.description !== undefined) patchPayload.description = updates.description;
   if (updates.statusId !== undefined) patchPayload.statusId = updates.statusId;

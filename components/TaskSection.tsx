@@ -207,20 +207,23 @@ export default function TaskSection({
   const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
 
   const getProjectWithClientLabel = (projId: string) => {
+    if (!projId) return 'Sem projeto';
     const proj = projectMap.get(projId);
-    if (!proj) return '';
+    if (!proj) return 'Sem projeto';
     const client = clientMap.get(proj.clientId);
-    const clientName = client ? client.clientName : 'Desconhecido';
+    const clientName = client ? (client.clientName || client.shortName) : '';
     const ipPart = proj.installProjectNo ? ` (${proj.installProjectNo})` : '';
-    return `${clientName} - ${proj.title}${ipPart}`;
+    return clientName ? `${clientName} - ${proj.title}${ipPart}` : `${proj.title}${ipPart}`;
   };
 
-  // Filter active tasks (active projects & not deleted)
+  // Filter active tasks (not deleted, and if associated with project, project must not be deleted)
   const activeTasks = useMemo(() => {
     return tasks.filter(t => {
       if (t.deleted) return false;
-      const proj = projectMap.get(t.projectId);
-      if (!proj || proj.deleted) return false;
+      if (t.projectId) {
+        const proj = projectMap.get(t.projectId);
+        if (proj && proj.deleted) return false;
+      }
       return true;
     });
   }, [tasks, projectMap]);
@@ -303,7 +306,7 @@ export default function TaskSection({
   const filteredTasks = useMemo(() => {
     const q = search.toLowerCase().trim();
     return activeTasks.filter(t => {
-      const proj = projectMap.get(t.projectId);
+      const proj = t.projectId ? projectMap.get(t.projectId) : null;
       const client = proj ? clientMap.get(proj.clientId) : null;
       const clientName = client ? (client.clientName || '').toLowerCase() : '';
       const clientShortName = client ? (client.shortName || '').toLowerCase() : '';
@@ -377,11 +380,17 @@ export default function TaskSection({
   let processedTasks: Task[] = [];
   if (groupByProject) {
     const tasksByProject: Record<string, Task[]> = {};
+    const noProjectTasks: Task[] = [];
+
     filteredTasks.forEach(t => {
-      if (!tasksByProject[t.projectId]) {
-        tasksByProject[t.projectId] = [];
+      if (!t.projectId) {
+        noProjectTasks.push(t);
+      } else {
+        if (!tasksByProject[t.projectId]) {
+          tasksByProject[t.projectId] = [];
+        }
+        tasksByProject[t.projectId].push(t);
       }
-      tasksByProject[t.projectId].push(t);
     });
 
     const sortedProjectIds = Object.keys(tasksByProject).sort((idA, idB) => {
@@ -394,6 +403,11 @@ export default function TaskSection({
       const sortedProjTasks = sortTasks(tasksByProject[projId]);
       processedTasks.push(...sortedProjTasks);
     });
+
+    if (noProjectTasks.length > 0) {
+      const sortedNoProjTasks = sortTasks(noProjectTasks);
+      processedTasks.push(...sortedNoProjTasks);
+    }
   } else {
     processedTasks = sortTasks(filteredTasks);
   }
@@ -406,12 +420,13 @@ export default function TaskSection({
   const endIndex = Math.min(startIndex + pageSize, totalTasks);
   const paginatedTasks = processedTasks.slice(startIndex, endIndex);
 
-  const getProjectTitle = (projId: string) => {
+  const getProjectTitle = (projId?: string | null) => {
+    if (!projId) return 'Sem projeto';
     const proj = projects.find(p => p.id === projId);
-    if (!proj) return 'Projeto';
+    if (!proj) return 'Sem projeto';
     const client = clients.find(c => c.id === proj.clientId);
-    const clientName = client ? (client.clientName || client.shortName) : 'Desconhecido';
-    return `${clientName} • ${proj.title}`;
+    const clientName = client ? (client.clientName || client.shortName) : '';
+    return clientName ? `${clientName} • ${proj.title}` : proj.title;
   };
 
   const getStatusName = (id: string) => getTaskStatusName(id, taskStatuses);
@@ -833,8 +848,12 @@ export default function TaskSection({
                           </td>
 
                           {/* Projeto */}
-                          <td className="px-4 py-3.5 text-blue-700 font-bold text-[11px]">
-                            {getProjectTitle(t.projectId)}
+                          <td className="px-4 py-3.5 text-[11px]">
+                            {t.projectId ? (
+                              <span className="text-blue-700 font-bold">{getProjectTitle(t.projectId)}</span>
+                            ) : (
+                              <span className="text-slate-400 font-medium italic">Sem projeto</span>
+                            )}
                           </td>
 
                           {/* Responsáveis */}

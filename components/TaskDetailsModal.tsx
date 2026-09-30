@@ -351,11 +351,14 @@ export default function TaskDetailsModal({
       return;
     }
 
-    // "A escolha de um valor existente é obrigatória"
-    const matchedProject = projects.find(p => p.id === formProjectId && !p.deleted);
-    if (!formProjectId || !matchedProject) {
-      setFormError('A escolha de um projeto existente a partir das sugestões é obrigatória.');
-      return;
+    // Resolve project ID: only assign if formProjectId matches a valid, non-deleted project.
+    // If user cleared the selection or typed arbitrary text without selecting, projectId is null.
+    let resolvedProjectId: string | null = null;
+    if (formProjectId && formProjectId.trim()) {
+      const matchedProject = projects.find(p => p.id === formProjectId.trim() && !p.deleted);
+      if (matchedProject) {
+        resolvedProjectId = matchedProject.id;
+      }
     }
 
     // "Não podes permitir que a data de fim seja anterior à data de início no preenchimento da tarefa"
@@ -392,7 +395,7 @@ export default function TaskDetailsModal({
     try {
       if (effectiveMode === 'create') {
         const payload = {
-          projectId: formProjectId.trim(),
+          projectId: resolvedProjectId,
           title: formTitle.trim(),
           description: formDescription.trim(),
           statusId: formStatusId || undefined,
@@ -415,7 +418,7 @@ export default function TaskDetailsModal({
         onClose();
       } else if (activeTask && updateTask) {
         const payload = {
-          projectId: formProjectId.trim(),
+          projectId: resolvedProjectId,
           title: formTitle.trim(),
           description: formDescription.trim(),
           statusId: formStatusId || undefined,
@@ -631,7 +634,7 @@ export default function TaskDetailsModal({
             <div className="space-y-1 relative" ref={projectDropdownRef}>
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-slate-800">
-                  Projeto (Cliente) <span className="text-rose-500">*</span>
+                  Projeto (Cliente) <span className="text-[10px] text-slate-400 font-normal">(Opcional)</span>
                 </label>
                 {selectedProject && (
                   <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-200 flex items-center gap-1">
@@ -677,7 +680,7 @@ export default function TaskDetailsModal({
                 <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100">
                   <div className="p-2 bg-slate-50 text-[10px] uppercase font-extrabold text-slate-500 tracking-wider flex items-center justify-between">
                     <span>Projetos Sugeridos ({projectSuggestions.length})</span>
-                    <span className="font-normal lowercase">escolha obrigatória</span>
+                    <span className="font-normal lowercase">opcional</span>
                   </div>
                   {projectSuggestions.length === 0 ? (
                     <div className="p-3 text-xs text-slate-500 italic text-center">
