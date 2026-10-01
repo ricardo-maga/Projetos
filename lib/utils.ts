@@ -415,4 +415,62 @@ export function genId(prefix: string = 'id'): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
+const LEGACY_TO_CANONICAL: Record<string, string> = {
+  '00000000-0000-0000-0000-000000000002': '10000000-0000-0000-0000-000000000003', // Project Manager -> PROJECT_MANAGER
+  '00000000-0000-0000-0000-000000000003': '10000000-0000-0000-0000-000000000004', // Técnico -> TECHNICIAN
+  '52616954-8b59-4459-a00b-963f1b29a91c': '10000000-0000-0000-0000-000000000005', // Comercial -> COMMERCIAL
+};
+
+const CANONICAL_IDS = new Set([
+  '10000000-0000-0000-0000-000000000003', // PROJECT_MANAGER
+  '10000000-0000-0000-0000-000000000004', // TECHNICIAN
+  '10000000-0000-0000-0000-000000000005', // COMMERCIAL
+]);
+
+export function normalizeUUIDString(id: string): string {
+  return id.replace(/[-]/g, '').toLowerCase();
+}
+
+export function translateToCanonicalRoleIds(ids: (string | null | undefined)[] | null | undefined): string[] {
+  if (!ids) return [];
+  const result: string[] = [];
+  const normalizedAdded = new Set<string>();
+
+  const normalizedLegacyMap: Record<string, string> = {};
+  for (const [legacyId, canonicalId] of Object.entries(LEGACY_TO_CANONICAL)) {
+    normalizedLegacyMap[normalizeUUIDString(legacyId)] = canonicalId;
+  }
+
+  const normalizedCanonicalSet = new Set<string>();
+  for (const canonicalId of CANONICAL_IDS) {
+    normalizedCanonicalSet.add(normalizeUUIDString(canonicalId));
+  }
+
+  for (const rawId of ids) {
+    if (!rawId) continue;
+    const trimmed = rawId.trim();
+    if (!trimmed) continue;
+
+    const normalized = normalizeUUIDString(trimmed);
+
+    if (normalizedLegacyMap[normalized]) {
+      const canonicalVal = normalizedLegacyMap[normalized];
+      const normCanonical = normalizeUUIDString(canonicalVal);
+      if (!normalizedAdded.has(normCanonical)) {
+        result.push(canonicalVal);
+        normalizedAdded.add(normCanonical);
+      }
+    } else if (normalizedCanonicalSet.has(normalized)) {
+      const canonicalVal = Array.from(CANONICAL_IDS).find(c => normalizeUUIDString(c) === normalized) || trimmed;
+      if (!normalizedAdded.has(normalized)) {
+        result.push(canonicalVal);
+        normalizedAdded.add(normalized);
+      }
+    }
+  }
+
+  return result;
+}
+
+
 

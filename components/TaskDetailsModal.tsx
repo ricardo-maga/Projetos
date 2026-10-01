@@ -153,15 +153,15 @@ export default function TaskDetailsModal({
 
         setFormTitle(activeTask.title || '');
         setFormDescription(activeTask.description || '');
-        setFormStatusId(activeTask.statusId || getDefaultTaskStatusId(taskStatuses));
+        setFormStatusId(getDefaultTaskStatusId(taskStatuses)); // Reset to default unstarted status on duplicate
         setFormTypeId(activeTask.taskTypeId || '');
         setFormEstimatedDate(activeTask.estimatedDate || '');
         setFormEstimatedHours(formatToOnlyHours(activeTask.estimatedHours) || '08:00');
-        setFormActualHours(formatToOnlyHours(activeTask.actualHours) || '0');
-        setFormStartDate(activeTask.startDate || '');
-        setFormStartTime(activeTask.startTime || '');
-        setFormEndDate(activeTask.endDate || '');
-        setFormEndTime(activeTask.endTime || '');
+        setFormActualHours('0'); // Reset actual hours to 0 on duplicate
+        setFormStartDate(''); // Clear execution start date on duplicate
+        setFormStartTime(''); // Clear execution start time on duplicate
+        setFormEndDate(''); // Clear execution end date on duplicate
+        setFormEndTime(''); // Clear execution end time on duplicate
         setFormNotes(activeTask.notes || '');
         setFormAssignees(activeTask.assigneeIds || []);
         setFormError(null);

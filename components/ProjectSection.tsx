@@ -15,7 +15,7 @@ import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getAuthHeaders } from '../lib/clientAuth';
-import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours, getProjectStatusStyle, getTaskStatusStyle } from '../lib/utils';
+import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours, getProjectStatusStyle, getTaskStatusStyle, translateToCanonicalRoleIds } from '../lib/utils';
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
   if (total <= 7) {
@@ -3674,15 +3674,12 @@ export default function ProjectSection({
                 <option value="">Escolher utilizador</option>
                 {(() => {
                   const projGroupIds = appConfig?.projManagerGroupIds || (appConfig?.projManagerGroupId ? [appConfig.projManagerGroupId] : []);
-                  let filteredUsers = projGroupIds.length > 0
-                    ? users.filter(u => projGroupIds.some(gid => matchId(gid, u.roleId || '')) && !u.deleted)
-                    : users.filter(u => (u.type === 'Team' || u.type === 'Sales' || !u.type) && !u.deleted);
-                  
-                  if (filteredUsers.length === 0) {
-                    filteredUsers = users.filter(u => !u.deleted);
-                  }
+                  const canonicalRoleIds = translateToCanonicalRoleIds(projGroupIds);
+                  let filteredUsers = canonicalRoleIds.length > 0
+                    ? users.filter(u => canonicalRoleIds.some(cid => matchId(cid, u.roleId)) && !u.deleted)
+                    : [];
 
-                  // Keep currently selected user even if deleted or not in the group
+                  // Keep currently selected user even if deleted or not in the group to preserve existing data
                   if (formProjManager && !filteredUsers.some(u => matchId(u.id, formProjManager))) {
                     const currentMgr = users.find(u => matchId(u.id, formProjManager));
                     if (currentMgr) {
@@ -3692,11 +3689,20 @@ export default function ProjectSection({
 
                   filteredUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }));
 
-                  return filteredUsers.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ));
+                  return (
+                    <>
+                      {filteredUsers.length === 0 && (
+                        <option disabled value="">
+                          (Nenhum utilizador elegível / Configuração inconsistente)
+                        </option>
+                      )}
+                      {filteredUsers.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name}
+                        </option>
+                      ))}
+                    </>
+                  );
                 })()}
               </select>
             </div>
@@ -3712,15 +3718,12 @@ export default function ProjectSection({
                 <option value="">Escolher utilizador</option>
                 {(() => {
                   const fieldGroupIds = appConfig?.fieldManagerGroupIds || (appConfig?.fieldManagerGroupId ? [appConfig.fieldManagerGroupId] : []);
-                  let filteredUsers = fieldGroupIds.length > 0
-                    ? users.filter(u => fieldGroupIds.some(gid => matchId(gid, u.roleId || '')) && !u.deleted)
-                    : users.filter(u => (u.type === 'Team' || !u.type) && !u.deleted);
-                  
-                  if (filteredUsers.length === 0) {
-                    filteredUsers = users.filter(u => !u.deleted);
-                  }
+                  const canonicalRoleIds = translateToCanonicalRoleIds(fieldGroupIds);
+                  let filteredUsers = canonicalRoleIds.length > 0
+                    ? users.filter(u => canonicalRoleIds.some(cid => matchId(cid, u.roleId)) && !u.deleted)
+                    : [];
 
-                  // Keep currently selected user even if deleted or not in the group
+                  // Keep currently selected user even if deleted or not in the group to preserve existing data
                   if (formFieldManager && !filteredUsers.some(u => matchId(u.id, formFieldManager))) {
                     const currentMgr = users.find(u => matchId(u.id, formFieldManager));
                     if (currentMgr) {
@@ -3730,11 +3733,20 @@ export default function ProjectSection({
 
                   filteredUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }));
 
-                  return filteredUsers.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ));
+                  return (
+                    <>
+                      {filteredUsers.length === 0 && (
+                        <option disabled value="">
+                          (Nenhum utilizador elegível / Configuração inconsistente)
+                        </option>
+                      )}
+                      {filteredUsers.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name}
+                        </option>
+                      ))}
+                    </>
+                  );
                 })()}
               </select>
             </div>
@@ -3750,15 +3762,12 @@ export default function ProjectSection({
                 <option value="">Escolher utilizador</option>
                 {(() => {
                   const salesGroupIds = appConfig?.salesRepGroupIds || (appConfig?.salesRepGroupId ? [appConfig.salesRepGroupId] : []);
-                  let filteredUsers = salesGroupIds.length > 0
-                    ? users.filter(u => salesGroupIds.some(gid => matchId(gid, u.roleId || '')) && !u.deleted)
-                    : users.filter(u => (u.type === 'Sales' || u.type === 'Team' || !u.type) && !u.deleted);
-                  
-                  if (filteredUsers.length === 0) {
-                    filteredUsers = users.filter(u => !u.deleted);
-                  }
+                  const canonicalRoleIds = translateToCanonicalRoleIds(salesGroupIds);
+                  let filteredUsers = canonicalRoleIds.length > 0
+                    ? users.filter(u => canonicalRoleIds.some(cid => matchId(cid, u.roleId)) && !u.deleted)
+                    : [];
 
-                  // Keep currently selected user even if deleted or not in the group
+                  // Keep currently selected user even if deleted or not in the group to preserve existing data
                   if (formSales && !filteredUsers.some(u => matchId(u.id, formSales))) {
                     const currentSales = users.find(u => matchId(u.id, formSales));
                     if (currentSales) {
@@ -3768,11 +3777,20 @@ export default function ProjectSection({
 
                   filteredUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }));
 
-                  return filteredUsers.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ));
+                  return (
+                    <>
+                      {filteredUsers.length === 0 && (
+                        <option disabled value="">
+                          (Nenhum utilizador elegível / Configuração inconsistente)
+                        </option>
+                      )}
+                      {filteredUsers.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name}
+                        </option>
+                      ))}
+                    </>
+                  );
                 })()}
               </select>
             </div>
