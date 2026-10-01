@@ -144,4 +144,34 @@ describe('FASE 75-B — Consolidação RBAC de elegibilidade de utilizadores', (
       expect(filteredUsers.length).toBe(2);
     });
   });
+
+  describe('4. Partial Project Updates Schema (Zod Defaults Bug Fix)', () => {
+    const { updateProjectSchema } = require('@/lib/validations/project');
+
+    it('deve permitir atualizações parciais sem preencher campos ausentes com valores por defeito', () => {
+      // Quando apenas o statusId é atualizado, o resto dos campos ausentes devem permanecer undefined
+      const partialInput = {
+        statusId: 'new-status-id',
+        version: 5,
+      };
+
+      const parseResult = updateProjectSchema.safeParse(partialInput);
+      expect(parseResult.success).toBe(true);
+
+      if (parseResult.success) {
+        const parsedData = parseResult.data;
+        expect(parsedData.statusId).toBe('new-status-id');
+        expect(parsedData.version).toBe(5);
+
+        // Campos críticos ausentes NÃO devem ser preenchidos com string vazia ou outros defaults
+        expect(parsedData.title).toBeUndefined();
+        expect(parsedData.clientId).toBeUndefined();
+        expect(parsedData.description).toBeUndefined();
+        expect(parsedData.budgetValue).toBeUndefined();
+        expect(parsedData.categoryIds).toBeUndefined();
+        expect(parsedData.teamsInvolvedIds).toBeUndefined();
+      }
+    });
+  });
 });
+
