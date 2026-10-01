@@ -678,6 +678,7 @@ export default function ProjectSection({
         }
       }
       setIsEditing(false);
+      setRefreshTrigger(prev => prev + 1);
     } catch (err) {
       console.error('[PROJECT FORM ERROR]', err);
       // Keep form open for correction on failure
@@ -872,7 +873,7 @@ export default function ProjectSection({
     };
     fetchDetails();
     return () => { isMounted = false; };
-  }, [selectedProjectId, tasks]);
+  }, [selectedProjectId, tasks, projects, projectMaterials, projectRiskItems, refreshTrigger]);
 
   // Fallback client-side filtering matching server logic
   const filteredLocalProjects = React.useMemo(() => {
