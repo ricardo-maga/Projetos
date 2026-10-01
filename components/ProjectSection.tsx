@@ -562,20 +562,32 @@ export default function ProjectSection({
     const trimmedQuery = clientSearchQuery.trim();
 
     if (trimmedQuery) {
-      // Find if there is an existing client with this name or full match
-      const existing = (clients || []).find(c => 
+      // 1. Check if the currently set formClient is valid in our client list
+      const clientByFormId = (clients || []).find(c => c && !c.deleted && matchId(c.id, formClient));
+
+      // 2. Search for any client matching by name, shortName, or concatenated format
+      const existingByName = (clients || []).find(c => 
         c && !c.deleted && (
           c.clientName.toLowerCase().trim() === trimmedQuery.toLowerCase() ||
-          `${c.clientName} (${c.shortName})`.toLowerCase().trim() === trimmedQuery.toLowerCase()
+          (c.shortName && c.shortName.toLowerCase().trim() === trimmedQuery.toLowerCase()) ||
+          `${c.clientName} (${c.shortName})`.toLowerCase().trim() === trimmedQuery.toLowerCase() ||
+          (c.shortName ? `${c.clientName} (${c.shortName})` : c.clientName).toLowerCase().trim() === trimmedQuery.toLowerCase()
         )
       );
 
-      if (existing) {
-        finalClientId = existing.id;
-      } else if (!formClient || !(clients || []).some(c => c && c.id === formClient && !c.deleted)) {
+      if (clientByFormId && (!existingByName || existingByName.id === clientByFormId.id)) {
+        finalClientId = clientByFormId.id;
+      } else if (existingByName) {
+        finalClientId = existingByName.id;
+      } else if (!formClient || !(clients || []).some(c => c && !c.deleted && matchId(c.id, formClient))) {
         // Create new client dynamically since name was typed but doesn't exist
         let clientNameInput = trimmedQuery;
-        let shortNameInput = trimmedQuery; // Use the inserted name for both clientName and shortName
+        let shortNameInput = trimmedQuery;
+        if (trimmedQuery.includes('(') && trimmedQuery.endsWith(')')) {
+          const parts = trimmedQuery.split('(');
+          clientNameInput = parts[0].trim();
+          shortNameInput = parts[1].replace(')', '').trim();
+        }
 
         const newClient = await addClient({
           clientName: clientNameInput,
@@ -3505,8 +3517,21 @@ export default function ProjectSection({
                   required
                   value={clientSearchQuery}
                   onChange={e => {
-                    setClientSearchQuery(e.target.value);
+                    const val = e.target.value;
+                    setClientSearchQuery(val);
                     setShowClientSuggestions(true);
+                    
+                    // Match typed value dynamically to prevent losing client ID
+                    const matched = (clients || []).find(c => 
+                      c && !c.deleted && (
+                        c.clientName.toLowerCase().trim() === val.toLowerCase().trim() ||
+                        `${c.clientName} (${c.shortName})`.toLowerCase().trim() === val.toLowerCase().trim() ||
+                        (c.shortName && c.shortName.toLowerCase().trim() === val.toLowerCase().trim())
+                      )
+                    );
+                    if (matched) {
+                      setFormClient(matched.id);
+                    }
                   }}
                   onFocus={() => setShowClientSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowClientSuggestions(false), 250)}
@@ -3648,13 +3673,17 @@ export default function ProjectSection({
                 <option value="">Escolher utilizador</option>
                 {(() => {
                   const projGroupIds = appConfig?.projManagerGroupIds || (appConfig?.projManagerGroupId ? [appConfig.projManagerGroupId] : []);
-                  const filteredUsers = projGroupIds.length > 0
-                    ? users.filter(u => projGroupIds.includes(u.roleId || '') && !u.deleted)
-                    : users.filter(u => u.type === 'Team' && !u.deleted);
+                  let filteredUsers = projGroupIds.length > 0
+                    ? users.filter(u => projGroupIds.some(gid => matchId(gid, u.roleId || '')) && !u.deleted)
+                    : users.filter(u => (u.type === 'Team' || u.type === 'Sales' || !u.type) && !u.deleted);
                   
+                  if (filteredUsers.length === 0) {
+                    filteredUsers = users.filter(u => !u.deleted);
+                  }
+
                   // Keep currently selected user even if deleted or not in the group
-                  if (formProjManager && !filteredUsers.some(u => u.id === formProjManager)) {
-                    const currentMgr = users.find(u => u.id === formProjManager);
+                  if (formProjManager && !filteredUsers.some(u => matchId(u.id, formProjManager))) {
+                    const currentMgr = users.find(u => matchId(u.id, formProjManager));
                     if (currentMgr) {
                       filteredUsers.push(currentMgr);
                     }
@@ -3682,13 +3711,17 @@ export default function ProjectSection({
                 <option value="">Escolher utilizador</option>
                 {(() => {
                   const fieldGroupIds = appConfig?.fieldManagerGroupIds || (appConfig?.fieldManagerGroupId ? [appConfig.fieldManagerGroupId] : []);
-                  const filteredUsers = fieldGroupIds.length > 0
-                    ? users.filter(u => fieldGroupIds.includes(u.roleId || '') && !u.deleted)
-                    : users.filter(u => u.type === 'Team' && !u.deleted);
+                  let filteredUsers = fieldGroupIds.length > 0
+                    ? users.filter(u => fieldGroupIds.some(gid => matchId(gid, u.roleId || '')) && !u.deleted)
+                    : users.filter(u => (u.type === 'Team' || !u.type) && !u.deleted);
                   
+                  if (filteredUsers.length === 0) {
+                    filteredUsers = users.filter(u => !u.deleted);
+                  }
+
                   // Keep currently selected user even if deleted or not in the group
-                  if (formFieldManager && !filteredUsers.some(u => u.id === formFieldManager)) {
-                    const currentMgr = users.find(u => u.id === formFieldManager);
+                  if (formFieldManager && !filteredUsers.some(u => matchId(u.id, formFieldManager))) {
+                    const currentMgr = users.find(u => matchId(u.id, formFieldManager));
                     if (currentMgr) {
                       filteredUsers.push(currentMgr);
                     }
@@ -3716,13 +3749,17 @@ export default function ProjectSection({
                 <option value="">Escolher utilizador</option>
                 {(() => {
                   const salesGroupIds = appConfig?.salesRepGroupIds || (appConfig?.salesRepGroupId ? [appConfig.salesRepGroupId] : []);
-                  const filteredUsers = salesGroupIds.length > 0
-                    ? users.filter(u => salesGroupIds.includes(u.roleId || '') && !u.deleted)
-                    : users.filter(u => (u.type === 'Sales' || u.type === 'Team') && !u.deleted);
+                  let filteredUsers = salesGroupIds.length > 0
+                    ? users.filter(u => salesGroupIds.some(gid => matchId(gid, u.roleId || '')) && !u.deleted)
+                    : users.filter(u => (u.type === 'Sales' || u.type === 'Team' || !u.type) && !u.deleted);
                   
+                  if (filteredUsers.length === 0) {
+                    filteredUsers = users.filter(u => !u.deleted);
+                  }
+
                   // Keep currently selected user even if deleted or not in the group
-                  if (formSales && !filteredUsers.some(u => u.id === formSales)) {
-                    const currentSales = users.find(u => u.id === formSales);
+                  if (formSales && !filteredUsers.some(u => matchId(u.id, formSales))) {
+                    const currentSales = users.find(u => matchId(u.id, formSales));
                     if (currentSales) {
                       filteredUsers.push(currentSales);
                     }
