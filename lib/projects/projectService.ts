@@ -338,12 +338,20 @@ export async function updateProject(
     throw err;
   }
 
+  // Sanitize input to eliminate any undefined fields so they do not overwrite current values via spread
+  const sanitizedInput = { ...input };
+  Object.keys(sanitizedInput).forEach((key) => {
+    if (sanitizedInput[key] === undefined) {
+      delete sanitizedInput[key];
+    }
+  });
+
   const merged = {
     ...current,
-    ...input,
-    categoryIds: input.categoryIds !== undefined ? input.categoryIds : current.categoryIds,
-    teamsInvolvedIds: input.teamsInvolvedIds !== undefined ? input.teamsInvolvedIds : current.teamsInvolvedIds,
-    partnersIds: input.partnersIds !== undefined ? input.partnersIds : current.partnersIds,
+    ...sanitizedInput,
+    categoryIds: sanitizedInput.categoryIds !== undefined ? sanitizedInput.categoryIds : current.categoryIds,
+    teamsInvolvedIds: sanitizedInput.teamsInvolvedIds !== undefined ? sanitizedInput.teamsInvolvedIds : current.teamsInvolvedIds,
+    partnersIds: sanitizedInput.partnersIds !== undefined ? sanitizedInput.partnersIds : current.partnersIds,
   };
 
   const effectiveTeams = merged.teamsInvolvedIds || [];

@@ -134,6 +134,13 @@ async function handleUpdate(req: NextRequest, ctx: any) {
       riskId: updates.riskId,
     };
 
+    // Eliminate undefined keys so they are completely absent from updateInput
+    Object.keys(updateInput).forEach((key) => {
+      if ((updateInput as any)[key] === undefined) {
+        delete (updateInput as any)[key];
+      }
+    });
+
     try {
       const updatedProject = await updateProject(sb, id, updateInput, user.id, updates.version);
 
