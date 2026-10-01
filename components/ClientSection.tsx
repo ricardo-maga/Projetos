@@ -73,26 +73,7 @@ export default function ClientSection({
   };
 
 
-  const [serverClients, setServerClients] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  useEffect(() => {
-    let isMounted = true;
-    const fetchClients = async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch('/api/v1/clients', { headers: getAuthHeaders() });
-        const json = await res.json();
-        if (json.success && isMounted) setServerClients(json.data);
-      } catch (err) {} finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-    fetchClients();
-    return () => { isMounted = false; };
-  }, []);
-
-  const activeClients = (serverClients.length > 0 ? serverClients : (clients || [])).filter(c => c && (showDeleted ? c.deleted : !c.deleted));
+  const activeClients = (clients || []).filter(c => c && (showDeleted ? Boolean(c.deleted) : !c.deleted));
 
   const sortedClients = [...activeClients].sort((a, b) => {
     const nameA = (a.clientName || a.shortName || '').trim();
@@ -447,8 +428,10 @@ export default function ClientSection({
                           {c.deleted ? (
                             canWriteClients && (
                               <button
-                                onClick={() => updateClient(c.id, { deleted: false })}
-                                className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-md text-[10px] font-bold"
+                                onClick={async () => {
+                                  await updateClient(c.id, { deleted: false });
+                                }}
+                                className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-md text-[10px] font-bold cursor-pointer"
                                 title="Restaurar Cliente"
                               >
                                 Restaurar
@@ -465,8 +448,8 @@ export default function ClientSection({
                                   askConfirmation(
                                     'Confirmar Eliminação de Cliente',
                                     'Tem a certeza que deseja eliminar este cliente? O registo será marcado como eliminado (deleted = true) e não surgirá na lista ativa.',
-                                    () => {
-                                      deleteClient(c.id);
+                                    async () => {
+                                      await deleteClient(c.id);
                                       if (editingId === c.id) {
                                         setIsEditing(false);
                                         setEditingId(null);
@@ -474,7 +457,7 @@ export default function ClientSection({
                                     }
                                   );
                                 }}
-                                className="p-1.5 hover:bg-red-50 hover:text-red-700 rounded-md text-slate-500"
+                                className="p-1.5 hover:bg-red-50 hover:text-red-700 rounded-md text-slate-500 cursor-pointer"
                                 title="Eliminar (Soft Delete)"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />

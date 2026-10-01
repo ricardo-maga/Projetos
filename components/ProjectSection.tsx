@@ -952,11 +952,32 @@ export default function ProjectSection({
     materialGroupsDict[supKey].push(m);
   });
   const projMaterialsGrouped = Object.entries(materialGroupsDict);
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const missingMaterialsCount = projMaterials.filter(m => {
     const st = pendingMaterialStatuses[m.id] || m.status;
     return st !== 'em_armazem' && st !== 'em_stock';
   }).length;
   const hasMissingMaterials = missingMaterialsCount > 0;
+
+  const warningMaterialsCount = projMaterials.filter(m => {
+    const st = pendingMaterialStatuses[m.id] || m.status;
+    const notInWarehouse = st !== 'em_armazem' && st !== 'em_stock';
+    if (!notInWarehouse) return false;
+
+    const isPorEncomendar = st === 'por_encomendar' || (typeof st === 'string' && st.toLowerCase().includes('por_encomendar'));
+    let deliveryDateOnly = m.expectedDeliveryDate ? m.expectedDeliveryDate.trim().split('T')[0] : '';
+    if (deliveryDateOnly.includes('/')) {
+      const parts = deliveryDateOnly.split('/');
+      if (parts.length === 3) {
+        deliveryDateOnly = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+    const isPastDeliveryDate = Boolean(deliveryDateOnly && todayStr > deliveryDateOnly);
+
+    return isPorEncomendar || isPastDeliveryDate;
+  }).length;
+  const hasMaterialWarning = warningMaterialsCount > 0;
 
   const projRiskItems = (projectRiskItems || []).filter(ri => matchId(ri.projectId, selectedProjectId) && !ri.deleted);
   const projCriticalRisksCount = projRiskItems.filter(ri => (ri.probability * ri.impact) >= 16).length;
@@ -1360,10 +1381,10 @@ export default function ProjectSection({
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {hasMissingMaterials && (
+              {hasMaterialWarning && (
                 <span className="text-xs font-bold uppercase px-3 py-1.5 rounded-xl bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1.5">
                   <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                  <span>Material em falta ({missingMaterialsCount})</span>
+                  <span>Material em falta ({warningMaterialsCount})</span>
                 </span>
               )}
               {(() => {
@@ -2625,15 +2646,15 @@ export default function ProjectSection({
           {/* TAB 3: MATERIAL */}
           {activeDetailTab === 'material' && (
             <div className="p-6 space-y-6">
-              {/* Red Warning Banner if material is missing */}
-              {hasMissingMaterials ? (
+              {/* Red Warning Banner if material has warning */}
+              {hasMaterialWarning ? (
                 <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 flex items-center justify-between text-rose-900 shadow-xs animate-fade-in">
                   <div className="flex items-center gap-3">
                     <AlertTriangle className="w-6 h-6 text-rose-600 shrink-0" />
                     <div>
                       <h4 className="font-extrabold text-sm uppercase tracking-wide text-rose-800">Aviso: Material em falta</h4>
                       <p className="text-xs font-semibold text-rose-700 mt-0.5">
-                        Este projeto possui {missingMaterialsCount} {missingMaterialsCount === 1 ? 'linha de material pendente' : 'linhas de material pendentes'} que ainda não {missingMaterialsCount === 1 ? 'está' : 'estão'} em armazém.
+                        Este projeto possui {warningMaterialsCount} {warningMaterialsCount === 1 ? 'linha de material com aviso' : 'linhas de material com aviso'} (por encomendar ou com data de entrega ultrapassada).
                       </p>
                     </div>
                   </div>
@@ -2646,9 +2667,9 @@ export default function ProjectSection({
                   <div className="flex items-center gap-3">
                     <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
                     <div>
-                      <h4 className="font-extrabold text-sm uppercase tracking-wide text-emerald-800">Todo o Material em Armazém</h4>
+                      <h4 className="font-extrabold text-sm uppercase tracking-wide text-emerald-800">Sem Avisos de Material em Falta</h4>
                       <p className="text-xs font-semibold text-emerald-700 mt-0.5">
-                        Não existem avisos ou materiais pendentes de receção no armazém para este projeto.
+                        Não existem materiais por encomendar nem encomendas com data prevista de entrega ultrapassada.
                       </p>
                     </div>
                   </div>

@@ -1617,7 +1617,7 @@ export function useERP() {
           if (!prev) return prev;
           return {
             ...prev,
-            clients: (prev.clients || []).filter(c => !matchId(c.id, id))
+            clients: (prev.clients || []).map(c => matchId(c.id, id) ? { ...c, deleted: true } : c)
           };
         });
 
