@@ -26,14 +26,14 @@ interface BentoDashboardProps {
 }
 
 const SummaryCard = ({ title, value, subtext, icon: Icon, colorClass }: { title: string, value: string | number, subtext?: string, icon: React.ElementType, colorClass: string }) => (
-  <div className="bg-surface rounded-container border border-border p-5 shadow-raised flex items-start gap-4 transition-all hover:shadow-overlay hover:-translate-y-0.5">
-    <div className={`p-3 rounded-control ${colorClass}`}>
+  <div className="bg-white rounded-2xl border border-slate-200 p-5 -sm flex items-start gap-4 transition-all hover:-md hover:-translate-y-0.5">
+    <div className={`p-3 rounded-xl ${colorClass}`}>
       <Icon className="w-6 h-6" />
     </div>
     <div>
-      <div className="text-caption font-semibold text-text-secondary uppercase tracking-wider">{title}</div>
-      <div className="text-2xl font-bold text-text-primary mt-1 tabular-nums">{value}</div>
-      {subtext && <div className="text-body-sm text-text-muted mt-1">{subtext}</div>}
+      <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">{title}</div>
+      <div className="text-2xl font-black text-slate-800 mt-1">{value}</div>
+      {subtext && <div className="text-xs font-semibold text-slate-500 mt-1">{subtext}</div>}
     </div>
   </div>
 );

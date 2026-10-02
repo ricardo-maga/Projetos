@@ -12,18 +12,6 @@ import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 
-// Reusable UI Foundation Components
-import Button from './ui/Button';
-import IconButton from './ui/IconButton';
-import Input from './ui/Input';
-import Textarea from './ui/Textarea';
-import Select from './ui/Select';
-import Checkbox from './ui/Checkbox';
-import Badge from './ui/Badge';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
-import Dialog from './ui/Dialog';
-import Tabs from './ui/Tabs';
-
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getAuthHeaders } from '../lib/clientAuth';
@@ -1321,43 +1309,39 @@ export default function ProjectSection({
       
       {/* 1. If viewing detail & NOT editing */}
       {selectedProj && !isEditing ? (
-        <div className="bg-surface rounded-card border border-border shadow-raised overflow-hidden animate-fade-in">
+        <div className="bg-white rounded-2xl border border-slate-200 -sm overflow-hidden animate-fade-in">
           
           {/* Header Action Row */}
-          <div className="p-4 border-b border-border bg-surface-muted/30 flex flex-wrap gap-4 items-center justify-between">
-            <Button 
-              variant="ghost"
-              size="sm"
+          <div className="p-5 border-b border-slate-200 bg-slate-50 flex flex-wrap gap-4 items-center justify-between">
+            <button 
               onClick={() => setSelectedProjectId(null)}
-              className="gap-2 text-text-secondary hover:text-text-primary font-semibold"
+              className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 font-semibold"
             >
               <ArrowLeft className="w-4 h-4" /> Voltar
-            </Button>
+            </button>
             <div className="flex gap-2">
-              <Button
-                variant={copiedLink ? "success" : "outline"}
-                size="sm"
+              <button
                 onClick={handleCopyLink}
-                className="gap-1.5"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                  copiedLink 
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900'
+                }`}
                 title="Copiar link do projeto"
               >
                 <Link2 className="w-3.5 h-3.5" />
-                <span>{copiedLink ? "Copiado!" : "Copiar Link"}</span>
-              </Button>
+                
+              </button>
               {canWriteProjects && (
-                <Button 
-                  variant="secondary"
-                  size="sm"
+                <button 
                   onClick={() => openForm(selectedProj)}
-                  className="gap-1.5 text-primary border-primary/20 hover:bg-primary/5"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-colors"
                 >
                   <Edit2 className="w-3.5 h-3.5" /> Editar Projeto
-                </Button>
+                </button>
               )}
               {canDeleteProjects && (
-                <Button 
-                  variant="danger"
-                  size="sm"
+                <button 
                   onClick={() => {
                     if (!canDeleteProjects) {
                       alert('Não tem permissão para eliminar projetos.');
@@ -1382,47 +1366,44 @@ export default function ProjectSection({
                       }
                     );
                   }}
-                  className="gap-1.5"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 font-bold text-xs rounded-xl transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Eliminar
-                </Button>
+                </button>
               )}
             </div>
           </div>
 
           {/* PROJECT BANNER HEADER (Client, Name, Risk, Priority, Material status) */}
-          <div className="p-6 bg-surface border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="p-6 bg-white border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-body-sm font-bold text-primary uppercase tracking-wider">{getClientName(selectedProj.clientId)}</span>
-                {selectedProj.demo && <Badge variant="primary" className="uppercase font-bold">Demo</Badge>}
+                <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">{getClientName(selectedProj.clientId)}</span>
+                {selectedProj.demo && <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Demo</span>}
               </div>
-              <h1 className="text-heading-lg font-bold text-text-primary tracking-tight">{selectedProj.title}</h1>
-              <p className="text-caption font-mono text-text-muted">IP: {selectedProj.installProjectNo || 'S/N'} • Oportunidade SF: {selectedProj.sfOpportunityNo || 'S/N'}</p>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">{selectedProj.title}</h1>
+              <p className="text-xs text-slate-500 font-mono">IP: {selectedProj.installProjectNo || 'S/N'} • Oportunidade SF: {selectedProj.sfOpportunityNo || 'S/N'}</p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
               {hasMaterialWarning && (
-                <Badge variant="error" className="py-1.5 px-3 gap-1.5 font-bold">
-                  <AlertTriangle className="w-3.5 h-3.5 text-error shrink-0" />
+                <span className="text-xs font-bold uppercase px-3 py-1.5 rounded-xl bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                   <span>Material em falta ({warningMaterialsCount})</span>
-                </Badge>
+                </span>
               )}
               {(() => {
                 const calcRisk = getProjectCalculatedRisk(selectedProj.id, projectRiskItems);
-                const isBaixo = calcRisk.label.toLowerCase() === 'baixo';
-                const isMedio = calcRisk.label.toLowerCase() === 'médio';
-                const variant = isBaixo ? 'success' : isMedio ? 'warning' : 'error';
                 return (
-                  <Badge variant={variant} className="py-1.5 px-3 gap-1.5 font-bold">
+                  <span className={`text-xs font-extrabold uppercase px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${calcRisk.color}`}>
                     <span>{calcRisk.dot}</span>
                     <span>Risco: {calcRisk.label}</span>
-                  </Badge>
+                  </span>
                 );
               })()}
-              <Badge variant="neutral" className="py-1.5 px-3 font-bold">
+              <span className="text-xs font-bold uppercase px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
                 Prioridade: {getPriorityName(selectedProj.priorityId)}
-              </Badge>
+              </span>
             </div>
           </div>
           
@@ -1531,48 +1512,74 @@ export default function ProjectSection({
           })()}
 
           {/* Project Separators Header (Tabs: Visão Geral / Tarefas / Material / Riscos / Análise) */}
-          {(() => {
-            const projectDetailTabs = [
-              { id: 'geral', label: 'Visão Geral', icon: <FileText className="w-4 h-4 shrink-0" /> },
-              { id: 'tarefas', label: `Tarefas (${projTasks.length})`, icon: <ListTodo className="w-4 h-4 shrink-0" /> },
-              { id: 'material', label: `Material (${projMaterials.length})`, icon: (
-                  <div className="flex items-center gap-1">
-                    <Package className="w-4 h-4 shrink-0" />
-                    {hasMissingMaterials && (
-                      <span className="w-2 h-2 rounded-full bg-error animate-ping shrink-0" />
-                    )}
-                  </div>
-                ) 
-              },
-              { id: 'riscos', label: `Riscos (${projRiskItems.length})`, icon: (
-                  <div className="flex items-center gap-1">
-                    <ShieldAlert className="w-4 h-4 shrink-0" />
-                    {projCriticalRisksCount > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-error animate-ping shrink-0" />
-                    )}
-                  </div>
-                ) 
-              },
-              { id: 'analise', label: 'Análise', icon: <BarChart3 className="w-4 h-4 shrink-0" /> }
-            ];
-
-            return (
-              <div className="border-b border-border bg-surface-muted/30 px-4 pt-1.5 w-full">
-                <Tabs
-                  tabs={projectDetailTabs}
-                  activeTabId={activeDetailTab}
-                  onChange={(id) => {
-                    if (id === 'riscos') {
-                      resetRiskForm();
-                    }
-                    setActiveDetailTab(id as any);
-                  }}
-                  variant="line"
-                  className="border-0 bg-transparent"
-                />
-              </div>
-            );
-          })()}
+          <div className="border-b border-slate-200 bg-slate-50/80 px-3 sm:px-6 pt-2.5 sm:pt-3 overflow-x-auto w-full scrollbar-thin">
+            <div className="flex gap-2 min-w-max pb-0.5">
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab('geral')}
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeDetailTab === 'geral'
+                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <FileText className="w-4 h-4 shrink-0" /> Visão Geral
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab('tarefas')}
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeDetailTab === 'tarefas'
+                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <ListTodo className="w-4 h-4 shrink-0" /> Tarefas ({projTasks.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab('material')}
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeDetailTab === 'material'
+                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Package className="w-4 h-4 shrink-0" /> Material ({projMaterials.length})
+                {hasMissingMaterials && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping inline-block shrink-0" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveDetailTab('riscos');
+                  resetRiskForm();
+                }}
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeDetailTab === 'riscos'
+                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <ShieldAlert className="w-4 h-4 shrink-0" /> Riscos ({projRiskItems.length})
+                {projCriticalRisksCount > 0 && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping inline-block shrink-0" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveDetailTab('analise')}
+                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeDetailTab === 'analise'
+                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4 shrink-0" /> Análise
+              </button>
+            </div>
+          </div>
 
           {/* TAB 1: VISÃO GERAL */}
           {activeDetailTab === 'geral' && (
@@ -2844,205 +2851,217 @@ export default function ProjectSection({
                 )}
               </div>
 
-              {/* MODAL FORM: Registar material USING NEW UI DIALOG */}
-              <Dialog
-                isOpen={isMaterialModalOpen && canWriteProjects}
-                onClose={handleCloseMaterialModal}
-                title={editingMaterialId ? 'Editar Material' : 'Registar material'}
-                className="max-w-2xl"
-              >
-                <form onSubmit={handleSaveMaterial} className="space-y-4 text-xs font-medium">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                    
-                    {/* Descrição (Required) */}
-                    <div className="sm:col-span-2 space-y-1">
-                      <label className="block font-bold text-text-secondary select-none">Descrição *</label>
-                      <input
-                        type="text"
-                        required
-                        value={matDesc}
-                        onChange={e => setMatDesc(e.target.value)}
-                        placeholder="Ex: Sensor indutivo IFM 24V M12"
-                        className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20 font-semibold"
-                      />
+              {/* MODAL FORM: Registar material */}
+              {isMaterialModalOpen && canWriteProjects && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+                  <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 border border-slate-100 my-8">
+                    {/* Modal Header */}
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                      <h3 className="font-extrabold text-slate-900 flex items-center gap-2.5 text-base">
+                        <Package className="w-5 h-5 text-blue-600" />
+                        {editingMaterialId ? 'Editar Material' : 'Registar material'}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleCloseMaterialModal}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                     </div>
 
-                    {/* Fornecedor (Required + Autocomplete) */}
-                    <div className="sm:col-span-2 space-y-1 relative">
-                      <label className="block font-bold text-text-secondary select-none">Fornecedor *</label>
-                      <input
-                        type="text"
-                        required
-                        value={matSupplier}
-                        onChange={e => {
-                          setMatSupplier(e.target.value);
-                          setIsSupplierAutocompleteOpen(true);
-                        }}
-                        onFocus={() => setIsSupplierAutocompleteOpen(true)}
-                        placeholder="Comece a escrever o fornecedor..."
-                        className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20 font-semibold"
-                      />
-                      {/* Autocomplete Suggestions */}
-                      {isSupplierAutocompleteOpen && matSupplier.trim() !== '' && (
-                        (() => {
-                          const matches = allSuppliers.filter(s => s.toLowerCase().includes(matSupplier.toLowerCase().trim()));
-                          if (matches.length === 0) return null;
-                          return (
-                            <div className="absolute left-0 right-0 top-full mt-1.5 bg-surface border border-border rounded-control shadow-overlay z-30 max-h-48 overflow-y-auto divide-y divide-border">
-                              {matches.map((s, idx) => (
-                                <div
-                                  key={idx}
-                                  onClick={() => {
-                                    setMatSupplier(s);
-                                    setIsSupplierAutocompleteOpen(false);
-                                  }}
-                                  className="p-3 hover:bg-surface-muted text-text-primary font-semibold cursor-pointer text-body-sm flex justify-between items-center"
-                                >
-                                  <span>{s}</span>
-                                  <span className="text-caption text-text-disabled">Sugestão</span>
+                    {/* Modal Form */}
+                    <form onSubmit={handleSaveMaterial} className="space-y-4 text-xs font-medium">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        
+                        {/* Descrição (Required) */}
+                        <div className="sm:col-span-2 space-y-1">
+                          <label className="block font-bold text-slate-700">Descrição *</label>
+                          <input
+                            type="text"
+                            required
+                            value={matDesc}
+                            onChange={e => setMatDesc(e.target.value)}
+                            placeholder="Ex: Sensor indutivo IFM 24V M12"
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+
+                        {/* Fornecedor (Required + Autocomplete) */}
+                        <div className="sm:col-span-2 space-y-1 relative">
+                          <label className="block font-bold text-slate-700">Fornecedor *</label>
+                          <input
+                            type="text"
+                            required
+                            value={matSupplier}
+                            onChange={e => {
+                              setMatSupplier(e.target.value);
+                              setIsSupplierAutocompleteOpen(true);
+                            }}
+                            onFocus={() => setIsSupplierAutocompleteOpen(true)}
+                            placeholder="Comece a escrever o fornecedor..."
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                          {/* Autocomplete Suggestions */}
+                          {isSupplierAutocompleteOpen && matSupplier.trim() !== '' && (
+                            (() => {
+                              const matches = allSuppliers.filter(s => s.toLowerCase().includes(matSupplier.toLowerCase().trim()));
+                              if (matches.length === 0) return null;
+                              return (
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                  {matches.map((s, idx) => (
+                                    <div
+                                      key={idx}
+                                      onClick={() => {
+                                        setMatSupplier(s);
+                                        setIsSupplierAutocompleteOpen(false);
+                                      }}
+                                      className="p-2.5 hover:bg-blue-50 text-slate-800 font-semibold cursor-pointer text-xs flex justify-between items-center"
+                                    >
+                                      <span>{s}</span>
+                                      <span className="text-[10px] text-slate-400">Sugestão</span>
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
-                          );
-                        })()
-                      )}
-                    </div>
+                              );
+                            })()
+                          )}
+                        </div>
 
-                    {/* Quantidade */}
-                    <div className="space-y-1">
-                      <label className="block font-bold text-text-secondary select-none">Quantidade</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={matQty}
-                        onChange={e => setMatQty(Number(e.target.value))}
-                        className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20 font-semibold"
-                      />
-                    </div>
+                        {/* Quantidade */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">Quantidade</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={matQty}
+                            onChange={e => setMatQty(Number(e.target.value))}
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
 
-                    {/* Referência */}
-                    <div className="space-y-1">
-                      <label className="block font-bold text-text-secondary select-none">Referência</label>
-                      <input
-                        type="text"
-                        value={matRef}
-                        onChange={e => setMatRef(e.target.value)}
-                        placeholder="Ex: REF-88231"
-                        className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20 font-semibold"
-                      />
-                    </div>
+                        {/* Referência */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">Referência</label>
+                          <input
+                            type="text"
+                            value={matRef}
+                            onChange={e => setMatRef(e.target.value)}
+                            placeholder="Ex: REF-88231"
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
 
-                    {/* N° de orçamento */}
-                    <div className="space-y-1">
-                      <label className="block font-bold text-text-secondary select-none">N° de orçamento</label>
-                      <input
-                        type="text"
-                        value={matBudget}
-                        onChange={e => setMatBudget(e.target.value)}
-                        placeholder="Ex: ORÇ-2026/01"
-                        className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20 font-semibold"
-                      />
-                    </div>
+                        {/* N° de orçamento */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">N° de orçamento</label>
+                          <input
+                            type="text"
+                            value={matBudget}
+                            onChange={e => setMatBudget(e.target.value)}
+                            placeholder="Ex: ORÇ-2026/01"
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
 
-                    {/* Preço Custo */}
-                    <div className="space-y-1">
-                      <label className="block font-bold text-text-secondary select-none">Preço Custo (€)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={matCostPrice}
-                        onChange={e => setMatCostPrice(Number(e.target.value))}
-                        className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20 font-semibold"
-                      />
-                    </div>
+                        {/* Preço Custo */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">Preço Custo (€)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={matCostPrice}
+                            onChange={e => setMatCostPrice(Number(e.target.value))}
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
 
-                    {/* Preço Venda */}
-                    <div className="space-y-1">
-                      <label className="block font-bold text-text-secondary select-none">Preço Venda (€)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={matSalePrice}
-                        onChange={e => setMatSalePrice(Number(e.target.value))}
-                        className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20 font-semibold"
-                      />
-                    </div>
+                        {/* Preço Venda */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">Preço Venda (€)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={matSalePrice}
+                            onChange={e => setMatSalePrice(Number(e.target.value))}
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
 
-                    {/* Data Prevista de Entrega */}
-                    <div className="space-y-1">
-                      <label className="block font-bold text-text-secondary select-none">Data Prevista de Entrega</label>
-                      <input
-                        type="date"
-                        value={matDeliveryDate}
-                        onChange={e => setMatDeliveryDate(e.target.value)}
-                        className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20 font-semibold text-center"
-                      />
-                    </div>
+                        {/* Data Prevista de Entrega */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">Data Prevista de Entrega</label>
+                          <input
+                            type="date"
+                            value={matDeliveryDate}
+                            onChange={e => setMatDeliveryDate(e.target.value)}
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
 
-                    {/* Estado Inicial */}
-                    <div className="space-y-1 sm:col-span-2">
-                      <label className="block font-bold text-text-secondary select-none">Estado do Material</label>
-                      <div className="flex gap-2">
+                        {/* Estado Inicial */}
+                        <div className="space-y-1 sm:col-span-2">
+                          <label className="block font-bold text-slate-700">Estado do Material</label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setMatStatus('por_encomendar')}
+                              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                                matStatus === 'por_encomendar'
+                                  ? 'bg-blue-100 text-blue-900 border-blue-300'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                              }`}
+                            >
+                              <ShoppingBag className="w-3.5 h-3.5 text-blue-600" /> Por encomendar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMatStatus('encomendado')}
+                              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                                matStatus === 'encomendado'
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                              }`}
+                            >
+                              <Truck className="w-3.5 h-3.5 text-amber-600" /> Encomendado
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMatStatus('em_armazem')}
+                              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                                matStatus === 'em_armazem' || matStatus === 'em_stock'
+                                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                              }`}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Em armazém
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Modal Footer */}
+                      <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                         <button
                           type="button"
-                          onClick={() => setMatStatus('por_encomendar')}
-                          className={cn(
-                            "flex-1 py-3 px-3 rounded-control border text-body-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5",
-                            matStatus === 'por_encomendar'
-                              ? 'bg-primary/10 text-primary border-primary/30'
-                              : 'bg-surface text-text-secondary border-border hover:bg-surface-muted'
-                          )}
+                          onClick={handleCloseMaterialModal}
+                          className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-xl transition-colors cursor-pointer text-xs"
                         >
-                          <ShoppingBag className="w-4 h-4 text-primary" /> Por encomendar
+                          Cancelar
                         </button>
                         <button
-                          type="button"
-                          onClick={() => setMatStatus('encomendado')}
-                          className={cn(
-                            "flex-1 py-3 px-3 rounded-control border text-body-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5",
-                            matStatus === 'encomendado'
-                              ? 'bg-warning/10 text-warning border-warning/30'
-                              : 'bg-surface text-text-secondary border-border hover:bg-surface-muted'
-                          )}
+                          type="submit"
+                          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2 text-xs"
                         >
-                          <Truck className="w-4 h-4 text-warning" /> Encomendado
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMatStatus('em_armazem')}
-                          className={cn(
-                            "flex-1 py-3 px-3 rounded-control border text-body-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5",
-                            matStatus === 'em_armazem' || matStatus === 'em_stock'
-                              ? 'bg-success/10 text-success border-success/30'
-                              : 'bg-surface text-text-secondary border-border hover:bg-surface-muted'
-                          )}
-                        >
-                          <CheckCircle2 className="w-4 h-4 text-success" /> Em armazém
+                          <Plus className="w-4 h-4" />
+                          {editingMaterialId ? 'Atualizar Linha' : 'Registar material'}
                         </button>
                       </div>
-                    </div>
-
+                    </form>
                   </div>
-
-                  {/* Modal Footer */}
-                  <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={handleCloseMaterialModal}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                    >
-                      <Plus className="w-5 h-5 mr-1" />
-                      {editingMaterialId ? 'Atualizar Linha' : 'Registar material'}
-                    </Button>
-                  </div>
-                </form>
-              </Dialog>
+                </div>
+              )}
             </div>
           )}
 
