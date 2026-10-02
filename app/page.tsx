@@ -22,6 +22,7 @@ import { hasPermission } from '../lib/permissions';
 import AppLogo from '../components/AppLogo';
 import Dialog from '../components/ui/Dialog';
 import IconButton from '../components/ui/IconButton';
+import { cn } from '../lib/utils';
 
 import { 
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
