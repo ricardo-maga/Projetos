@@ -123,7 +123,7 @@ export default function CalendarSection({
   currentUser,
   userGroups = [],
   appConfig,
-  planningAllocations = [],
+  planningAllocations: rawPlanningAllocations = [],
   planningLoading = false,
   fetchPlanningAllocations,
   createPlanningAllocation,
@@ -136,6 +136,23 @@ export default function CalendarSection({
   fetchPlanningCapacity,
   fetchPlanningResourceLoad,
 }: CalendarSectionProps) {
+  const planningAllocations = React.useMemo(() => {
+    const taskMap = new Map((tasks || []).map(t => [t.id, t]));
+    const projectMap = new Map((projects || []).map(p => [p.id, p]));
+
+    return (rawPlanningAllocations || []).filter(alloc => {
+      if (alloc.deleted) return false;
+      const task = taskMap.get(alloc.taskId);
+      if (!task) return true; // allow orphans/tasks not currently loaded
+      if (task.deleted) return false;
+      if (task.projectId) {
+        const proj = projectMap.get(task.projectId);
+        if (proj && proj.deleted) return false;
+      }
+      return true;
+    });
+  }, [rawPlanningAllocations, tasks, projects]);
+
   const canReadCalendar = hasPermission(currentUser, 'calendar_read', userGroups);
   const canWriteCalendar = hasPermission(currentUser, 'calendar_write', userGroups);
   const canReadTasks = hasPermission(currentUser, 'tasks_read', userGroups);
