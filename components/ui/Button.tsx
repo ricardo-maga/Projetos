@@ -18,7 +18,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || isLoading}
         className={cn(
           // Base styles with focused and animated transitions
-          "inline-flex items-center justify-center font-medium transition-all duration-200 outline-none select-none active:scale-[0.98]",
+          "inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 outline-none select-none active:scale-[0.98] whitespace-nowrap",
           "focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none",
           "disabled:opacity-50 disabled:pointer-events-none disabled:scale-100",
           
@@ -40,9 +40,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading ? (
-          <Loader2 className="w-5 h-5 animate-spin mr-2 shrink-0" />
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
         ) : null}
-        <span className="whitespace-nowrap truncate">{children}</span>
+        {children}
       </button>
     );
   }
