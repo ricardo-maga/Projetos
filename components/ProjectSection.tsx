@@ -878,7 +878,7 @@ export default function ProjectSection({
     };
     fetchDetails();
     return () => { isMounted = false; };
-  }, [selectedProjectId, tasks, projects, projectMaterials, projectRiskItems, refreshTrigger]);
+  }, [selectedProjectId, refreshTrigger]);
 
   // Fallback client-side filtering matching server logic
   const filteredLocalProjects = React.useMemo(() => {
