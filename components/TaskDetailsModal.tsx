@@ -53,6 +53,13 @@ export interface TaskDetailsModalProps {
   onSelectTask?: (task: Task) => void;
 }
 
+const getEffectiveAssignees = (t: any): string[] => {
+  if (!t) return [];
+  if (Array.isArray(t.assigneeIds) && t.assigneeIds.length > 0) return t.assigneeIds;
+  if (Array.isArray(t.assignedUserIds) && t.assignedUserIds.length > 0) return t.assignedUserIds;
+  return Array.isArray(t.assigneeIds) ? t.assigneeIds : [];
+};
+
 export default function TaskDetailsModal({
   task = null,
   isOpen,
@@ -163,7 +170,7 @@ export default function TaskDetailsModal({
         setFormEndDate(''); // Clear execution end date on duplicate
         setFormEndTime(''); // Clear execution end time on duplicate
         setFormNotes(activeTask.notes || '');
-        setFormAssignees(activeTask.assigneeIds || []);
+        setFormAssignees(getEffectiveAssignees(activeTask));
         setFormError(null);
       } else {
         // CRIAÇÃO NOVA LIMPA
@@ -214,7 +221,7 @@ export default function TaskDetailsModal({
       setFormEndDate(activeTask.endDate || '');
       setFormEndTime(activeTask.endTime || '');
       setFormNotes(activeTask.notes || '');
-      setFormAssignees(activeTask.assigneeIds || []);
+      setFormAssignees(getEffectiveAssignees(activeTask));
       setFormError(null);
 
       // If in execute mode, suggest completed status if currently pending and set default actual hours if 0
@@ -555,8 +562,8 @@ export default function TaskDetailsModal({
               <span className="flex items-center gap-1">
                 <Users className="w-3.5 h-3.5 text-slate-400" />
                 Responsáveis: <span className="text-slate-900 font-bold">
-                  {activeTask.assigneeIds && activeTask.assigneeIds.length > 0
-                    ? activeTask.assigneeIds.map(id => getUserName(id)).join(', ')
+                  {getEffectiveAssignees(activeTask).length > 0
+                    ? getEffectiveAssignees(activeTask).map(id => getUserName(id)).join(', ')
                     : 'Sem utilizadores'}
                 </span>
               </span>

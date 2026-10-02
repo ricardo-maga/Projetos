@@ -64,7 +64,7 @@ describe('FASE 78 — Auditoria e Hardening da Integridade Física Projects → 
   });
 
   describe('2. Auditoria de Comportamento CASCADE: Project → Tasks', () => {
-    it('Evidência empírica: na BD viva, tasks_project_id_fkey tem ON DELETE CASCADE ativo (Divergência BD vs Aplicação)', async () => {
+    it('Evidência empírica: na BD viva, tasks_project_id_fkey tem ON DELETE RESTRICT ativo e bloqueia DELETE físico', async () => {
       const dummyProjId = crypto.randomUUID();
       const dummyTaskId = crypto.randomUUID();
 
@@ -83,15 +83,15 @@ describe('FASE 78 — Auditoria e Hardening da Integridade Física Projects → 
         deleted: false,
       });
 
-      // CENÁRIO A: DELETE físico direto na tabela projects via SQL
+      // CENÁRIO A: DELETE físico direto na tabela projects via SQL é rejeitado com foreign_key_violation (23503)
       const { error: delProjError } = await sb.from('projects').delete().eq('id', dummyProjId);
-      expect(delProjError).toBeNull(); // PostgreSQL aceitou o DELETE direto
+      expect(delProjError).not.toBeNull();
+      expect(delProjError?.code).toBe('23503');
+      expect(delProjError?.message).toContain('tasks_project_id_fkey');
 
-      // Verificar se a tarefa sofreu cascade delete na BD física
-      const { data: taskAfterProjDel } = await sb.from('tasks').select('id').eq('id', dummyTaskId).maybeSingle();
-      
-      // CONFIRMAÇÃO DO FINDING: A tarefa foi fisicamente eliminada por CASCADE no PostgreSQL
-      expect(taskAfterProjDel).toBeNull();
+      // Cleanup
+      await sb.from('tasks').delete().eq('id', dummyTaskId);
+      await sb.from('projects').delete().eq('id', dummyProjId);
     });
 
     it('A camada aplicacional (projectService.deleteProject) protege e BLOQUEIA eliminação de projeto com tarefas ativas', async () => {
