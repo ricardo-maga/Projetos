@@ -20,6 +20,8 @@ import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { logAuditEventToSupabase } from '../lib/supabaseSync';
 import { hasPermission } from '../lib/permissions';
 import AppLogo from '../components/AppLogo';
+import Dialog from '../components/ui/Dialog';
+import IconButton from '../components/ui/IconButton';
 
 import { 
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
@@ -653,47 +655,52 @@ export default function Page() {
   const appConfig = state?.appConfig || {};
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/50 text-slate-800" id="main-root" data-theme={appConfig.theme || 'default'}>
+    <div className="min-h-screen flex flex-col bg-background text-text-primary" id="main-root" data-theme={appConfig.theme || 'default'}>
       
-      {/* HEADER BAR */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 h-14 sm:h-16 px-2.5 sm:px-4 shadow-2xs flex items-center justify-between shrink-0" id="app-header">
-        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
-          <button 
+      {/* HEADER BAR (Gmail / Material inspired contract: exactly 3 zones) */}
+      <header className="bg-surface border-b border-border sticky top-0 z-50 h-16 px-4 shadow-raised flex items-center justify-between shrink-0" id="app-header">
+        {/* Zone 1: Burger + Brand logo wordmark */}
+        <div className="flex items-center gap-3 min-w-0">
+          <IconButton
+            variant="ghost"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded-xl md:hidden text-slate-600 transition-colors shrink-0"
+            className="md:hidden text-text-secondary hover:bg-surface-muted hover:text-text-primary rounded-full shrink-0"
             id="toggle-sidebar"
             aria-label={sidebarOpen ? "Fechar menu" : "Abrir menu"}
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          </IconButton>
           
-          <button 
+          <IconButton
+            variant="ghost"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-9 h-9 items-center justify-center hover:bg-slate-100 rounded-xl hidden md:flex text-slate-500 transition-colors shrink-0"
+            className="hidden md:inline-flex text-text-secondary hover:bg-surface-muted hover:text-text-primary rounded-full shrink-0"
             title={isCollapsed ? "Expandir menu" : "Colapsar menu"}
             id="toggle-desktop-sidebar"
+            aria-label="Alternar menu lateral"
           >
             <Menu className="w-5 h-5" />
-          </button>
+          </IconButton>
           
           <div 
-            className="flex items-center gap-2 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0"
+            className="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0"
             onClick={() => handleTabChange('dashboard')}
             title="Ir para o Dashboard"
           >
             <AppLogo 
               logoUrl={appConfig.logoImagePath || appConfig.logo} 
               appName={appConfig.appName}
-              className="w-auto max-w-[238px] sm:max-w-[320px] h-9 sm:h-10 bg-transparent border-0 shadow-none p-0 shrink"
+              className="w-auto max-w-[200px] h-10 bg-transparent border-0 shadow-none p-0 shrink"
             />
             <div className="min-w-0 hidden sm:block">
-              <h1 className="text-sm font-black text-slate-900 tracking-tight leading-none truncate">{appConfig.appName}</h1>
-              <p className="text-[10px] text-slate-500 font-semibold mt-0.5 truncate">{appConfig.appDescription}</p>
+              <h1 className="text-body font-bold text-text-primary tracking-tight leading-tight truncate">{appConfig.appName}</h1>
+              <p className="text-caption text-text-muted font-medium truncate">{appConfig.appDescription}</p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        {/* Zone 2 & 3: Actions + Notification + Profile dropdown */}
+        <div className="flex items-center gap-3 shrink-0">
           
           <NotificationDropdown 
             notifications={(state.notifications || []).filter(n => !n.userId || n.userId === currentUser.id || n.userId === 'all')}
@@ -703,49 +710,52 @@ export default function Page() {
           
           <div
             onClick={() => {
-            setProfileName(currentUser.name);
-            setNewPassword('');
-            setConfirmNewPassword('');
-            setIsChangingPassword(true);
-          }}
-          className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:opacity-85 transition-all" 
-          id="user-profile"
-        >
-          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs border border-slate-200 shadow-sm uppercase shrink-0">
-            {(() => {
-              const parts = (currentUser.name || '').trim().split(/\s+/);
-              if (parts.length >= 2) {
-                return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-              }
-              return (parts[0] || '').charAt(0).toUpperCase();
-            })()}
-          </div>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              if (currentUser) {
-                logAuditEventToSupabase({
-                  userId: currentUser.id,
-                  userName: currentUser.name,
-                  userEmail: currentUser.email,
-                  action: 'LOGOUT',
-                  entityType: 'USER',
-                  entityId: currentUser.id,
-                  entityName: currentUser.name,
-                  details: `Sessão terminada por ${currentUser.name}`
-                }).catch(() => {});
-              }
-              clearClientSession();
-              fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
-              setCurrentUser(null);
+              setProfileName(currentUser.name);
+              setNewPassword('');
+              setConfirmNewPassword('');
+              setIsChangingPassword(true);
             }}
-            className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
-            title="Terminar sessão"
+            className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-all p-1.5 hover:bg-surface-muted rounded-full" 
+            id="user-profile"
+            title="Editar perfil"
           >
-            <LogOut className="w-4 h-4" />
-          </button>
+            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-caption border border-border shadow-raised uppercase shrink-0">
+              {(() => {
+                const parts = (currentUser.name || '').trim().split(/\s+/);
+                if (parts.length >= 2) {
+                  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+                }
+                return (parts[0] || '').charAt(0).toUpperCase();
+              })()}
+            </div>
+            
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (currentUser) {
+                  logAuditEventToSupabase({
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    userEmail: currentUser.email,
+                    action: 'LOGOUT',
+                    entityType: 'USER',
+                    entityId: currentUser.id,
+                    entityName: currentUser.name,
+                    details: `Sessão terminada por ${currentUser.name}`
+                  }).catch(() => {});
+                }
+                clearClientSession();
+                fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
+                setCurrentUser(null);
+              }}
+              className="p-1.5 hover:bg-error/10 text-text-muted hover:text-error rounded-full transition-colors"
+              title="Terminar sessão"
+              aria-label="Terminar sessão"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      </div>
       </header>
 
       {/* BODY WRAPPER */}
@@ -754,19 +764,19 @@ export default function Page() {
         {/* Mobile drawer backdrop overlay */}
         {sidebarOpen && (
           <div 
-            className="fixed inset-0 top-14 sm:top-16 bg-slate-900/40 backdrop-blur-xs z-30 md:hidden animate-fade-in"
+            className="fixed inset-0 top-16 bg-black/40 backdrop-blur-xs z-30 md:hidden animate-fade-in"
             onClick={() => setSidebarOpen(false)}
             aria-label="Fechar menu"
           />
         )}
         
-        {/* SIDEBAR NAVIGATION - Positioned strictly below header, collapsible on mobile & desktop */}
+        {/* SIDEBAR NAVIGATION - Gmail/Material inspired sidebar */}
         <aside 
-          className={`fixed top-14 sm:top-16 bottom-0 left-0 z-40 h-[calc(100dvh-3.5rem)] sm:h-[calc(100dvh-4rem)] transform ${
-            sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+          className={`fixed top-16 bottom-0 left-0 z-40 h-[calc(100dvh-4rem)] transform ${
+            sidebarOpen ? 'translate-x-0 shadow-overlay' : '-translate-x-full'
           } md:static md:top-auto md:bottom-auto md:h-auto md:translate-x-0 md:shadow-none md:flex flex-col ${
-            isCollapsed ? 'md:w-16' : 'md:w-64'
-          } w-72 max-w-[85vw] bg-white border-r border-slate-200 transition-all duration-200 ease-in-out`}
+            isCollapsed ? 'md:w-20' : 'md:w-64'
+          } w-72 max-w-[85vw] bg-surface border-r border-border transition-all duration-200 ease-in-out`}
           id="sidebar-nav"
         >
           <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
@@ -797,25 +807,28 @@ export default function Page() {
                           handleTabChange(tab.id);
                         }
                       }}
-                      className={`w-full flex items-center ${
-                        isCollapsed ? 'md:justify-center md:px-2' : 'gap-3 px-3'
-                      } py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={cn(
+                        "w-full flex items-center gap-3 py-3 rounded-control text-body-sm font-semibold transition-all duration-150 cursor-pointer select-none border-l-[3px]",
+                        isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-4',
                         isDisabled 
-                          ? 'opacity-40 cursor-not-allowed text-slate-400' 
+                          ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent' 
                           : isActive 
-                            ? 'bg-slate-900 text-white -sm' 
-                            : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
-                      }`}
+                            ? 'bg-primary/10 text-primary border-primary font-bold' 
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
+                      )}
                       id={`tab-${tab.id}`}
                       title={isCollapsed ? (isDisabled ? `${tab.label} (Desativado)` : tab.label) : undefined}
                     >
-                      <Icon className={`w-4 h-4 flex-shrink-0 ${isDisabled ? 'text-slate-300' : isActive ? 'text-blue-400' : 'text-slate-400'}`} />
-                      <span className={`${isCollapsed ? 'md:hidden' : 'block'}`}>{tab.label}</span>
+                      <Icon className={cn(
+                        "w-5 h-5 flex-shrink-0 transition-colors",
+                        isDisabled ? 'text-text-disabled' : isActive ? 'text-primary' : 'text-text-muted'
+                      )} />
+                      <span className={cn("truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
                     </button>
 
                     {/* Submenu under Configurações */}
                     {isActive && (
-                      <div className={`${isCollapsed ? 'md:pl-0' : 'pl-3 pr-1'} py-1 space-y-1 my-1`}>
+                      <div className={cn("space-y-1.5 my-1.5", isCollapsed ? 'md:pl-0' : 'pl-5 pr-1')}>
                         {configSubItems.map(sub => {
                           const SubIcon = sub.icon;
                           const isSubActive = activeConfigTab === sub.id;
@@ -826,17 +839,20 @@ export default function Page() {
                                 handleTabChange('configuracoes');
                                 setActiveConfigTab(sub.id);
                               }}
-                              className={`w-full flex items-center ${
-                                isCollapsed ? 'md:justify-center md:px-2' : 'gap-2.5 px-3'
-                              } py-2 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                              className={cn(
+                                "w-full flex items-center gap-2.5 py-2 rounded-control text-caption font-semibold transition-all duration-150 cursor-pointer select-none border-l-2",
+                                isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-3',
                                 isSubActive
-                                  ? 'bg-blue-50 text-blue-700 font-bold border-l-2 border-blue-600'
-                                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/70 border-l-2 border-transparent'
-                              }`}
+                                  ? 'bg-primary/5 text-primary font-bold border-primary'
+                                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
+                              )}
                               title={isCollapsed ? sub.label : undefined}
                             >
-                              <SubIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? 'text-blue-600' : 'text-slate-400'}`} />
-                              <span className={`truncate ${isCollapsed ? 'md:hidden' : 'block'}`}>{sub.label}</span>
+                              <SubIcon className={cn(
+                                "w-4 h-4 shrink-0 transition-colors",
+                                isSubActive ? 'text-primary' : 'text-text-muted'
+                              )} />
+                              <span className={cn("truncate", isCollapsed ? 'md:hidden' : 'block')}>{sub.label}</span>
                             </button>
                           );
                         })}
@@ -855,20 +871,23 @@ export default function Page() {
                       handleTabChange(tab.id);
                     }
                   }}
-                  className={`w-full flex items-center ${
-                    isCollapsed ? 'md:justify-center md:px-2' : 'gap-3 px-3'
-                  } py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  className={cn(
+                    "w-full flex items-center gap-3 py-3 rounded-control text-body-sm font-semibold transition-all duration-150 cursor-pointer select-none border-l-[3px]",
+                    isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-4',
                     isDisabled 
-                      ? 'opacity-40 cursor-not-allowed text-slate-400' 
+                      ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent' 
                       : isActive 
-                        ? 'bg-slate-900 text-white -sm' 
-                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
-                  }`}
+                        ? 'bg-primary/10 text-primary border-primary font-bold' 
+                        : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
+                  )}
                   id={`tab-${tab.id}`}
                   title={isCollapsed ? (isDisabled ? `${tab.label} (Desativado)` : tab.label) : undefined}
                 >
-                  <Icon className={`w-4 h-4 flex-shrink-0 ${isDisabled ? 'text-slate-300' : isActive ? 'text-blue-400' : 'text-slate-400'}`} />
-                  <span className={`${isCollapsed ? 'md:hidden' : 'block'}`}>{tab.label}</span>
+                  <Icon className={cn(
+                    "w-5 h-5 flex-shrink-0 transition-colors",
+                    isDisabled ? 'text-text-disabled' : isActive ? 'text-primary' : 'text-text-muted'
+                  )} />
+                  <span className={cn("truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
                 </button>
               );
             })}
@@ -876,28 +895,28 @@ export default function Page() {
 
           {/* System metadata line in sidebar footer */}
           {!isCollapsed && (
-            <div className="p-4 border-t border-slate-100 bg-slate-50/50 text-[10px] text-slate-400 font-medium space-y-1">
-              <div className="flex justify-between">
+            <div className="p-4 border-t border-border bg-surface-muted/30 text-caption text-text-secondary space-y-2">
+              <div className="flex justify-between items-center">
                 <span>Nível de Acesso:</span>
-                <span className="font-bold text-slate-600 font-mono">
+                <span className="font-bold text-text-primary font-mono bg-surface-muted px-2 py-0.5 rounded-badge border border-border">
                   {state.userGroups?.find(g => g.id === currentUser?.roleId)?.name || currentUser?.type || 'Utilizador'}
                 </span>
               </div>
-              <div className="flex flex-col gap-1 w-full">
+              <div className="flex flex-col gap-1.5 w-full">
                 <div className="flex justify-between items-center w-full">
                   <span>Sincronização:</span>
                   {!isDbConfigured ? (
-                    <span className="font-bold text-rose-600 flex items-center gap-0.5">● Base de Dados Não Configurada</span>
+                    <span className="font-bold text-error flex items-center gap-1">● Desativada</span>
                   ) : syncStatus === 'syncing' ? (
-                    <span className="font-bold text-amber-500 flex items-center gap-0.5 animate-pulse">● A gravar na BD...</span>
+                    <span className="font-bold text-warning flex items-center gap-1 animate-pulse">● Gravando...</span>
                   ) : syncStatus === 'error' ? (
-                    <span className="font-bold text-rose-600 flex items-center gap-0.5 cursor-help" title={syncError || 'Erro ao sincronizar'}>● Erro BD (Revertido)</span>
+                    <span className="font-bold text-error flex items-center gap-1 cursor-help" title={syncError || 'Erro de sincronização'}>● Erro</span>
                   ) : (
-                    <span className="font-bold text-emerald-600 flex items-center gap-0.5">● Base de dados (Live)</span>
+                    <span className="font-bold text-success flex items-center gap-1">● Ativa (Live)</span>
                   )}
                 </div>
                 {syncError && (
-                  <div className="text-[9px] text-red-500 font-mono mt-1 leading-tight break-words bg-red-50 p-2 rounded border border-red-100 max-h-24 overflow-y-auto">
+                  <div className="text-caption text-error font-mono leading-tight break-words bg-error/5 p-2.5 rounded-control border border-error/10 max-h-24 overflow-y-auto">
                     {syncError}
                   </div>
                 )}
@@ -907,51 +926,51 @@ export default function Page() {
         </aside>
 
         {/* MAIN PANEL CONTENT */}
-        <main className="flex-1 min-w-0 p-3 sm:p-4 md:p-6 overflow-x-hidden" id="main-content">
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 overflow-y-auto bg-background" id="main-content">
           <div className="max-w-7xl mx-auto space-y-6">
             
             {/* Header info */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-200/60 pb-4" id="main-section-title">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4" id="main-section-title">
               <div>
-                <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                <h2 className="text-heading-lg font-bold text-text-primary tracking-tight">
                   {tabs.find(t => t.id === activeTab)?.label}
                 </h2>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  {activeTab === 'dashboard' && 'Visão global e indicadores de performance'}
-                  {activeTab === 'meu-foco' && 'O teu plano de trabalho, tarefas atribuídas, projetos e calendário'}
-                  {activeTab === 'projetos' && 'Pipeline de execução e planeamento de projetos'}
-                  {activeTab === 'tarefas' && 'Gestão global de tarefas'}
-                  {activeTab === 'calendario' && 'Linha temporal integrada de projetos, tarefas e planeamento'}
-                  {activeTab === 'clientes' && 'Diretório de clientes'}
-                  {activeTab === 'ausencias' && 'Registo e escala de ausências da equipa'}
-                  {activeTab === 'configuracoes' && 'Definições da aplicação'}
+                <p className="text-body-sm text-text-secondary mt-1">
+                  {activeTab === 'dashboard' && 'Visão global e indicadores de performance.'}
+                  {activeTab === 'meu-foco' && 'O teu plano de trabalho, tarefas atribuídas, projetos e calendário.'}
+                  {activeTab === 'projetos' && 'Pipeline de execução e planeamento de projetos.'}
+                  {activeTab === 'tarefas' && 'Gestão global de tarefas.'}
+                  {activeTab === 'calendario' && 'Linha temporal integrada de projetos, tarefas e planeamento.'}
+                  {activeTab === 'clientes' && 'Diretório de clientes.'}
+                  {activeTab === 'ausencias' && 'Registo e escala de ausências da equipa.'}
+                  {activeTab === 'configuracoes' && 'Definições da aplicação.'}
                 </p>
               </div>
             </div>
 
             {/* Error or Rollback Notification */}
             {syncStatus === 'error' && (
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-800 text-xs font-semibold shadow-xs" id="db-error-banner">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0 animate-ping" />
+              <div className="bg-error/5 border border-error/20 rounded-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-error text-body-sm font-semibold shadow-raised" id="db-error-banner">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-error shrink-0 animate-ping" />
                   <div>
                     <span className="font-bold">Aviso de Integridade da Base de Dados: </span>
-                    <span>{syncError || 'A última operação não pôde ser gravada na base de dados e foi revertida para proteção de dados.'}</span>
+                    <span className="font-medium">{syncError || 'A última operação não pôde ser gravada na base de dados e foi revertida para proteção de dados.'}</span>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => refreshFromDatabase()}
-                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs transition-colors shrink-0 flex items-center gap-1.5"
+                  className="px-4 py-2 bg-error hover:opacity-90 text-white font-bold rounded-control text-caption transition-colors shrink-0 flex items-center gap-1.5 shadow-raised cursor-pointer"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
+                  <RefreshCw className="w-4 h-4" />
                   Recarregar da Base de Dados
                 </button>
               </div>
             )}
 
             {/* Content view switcher */}
-            <div id="active-tab-content" key={`${activeTab}-${navKey}`}>
+            <div id="active-tab-content" key={`${activeTab}-${navKey}`} className="animate-fade-in">
               {activeTab === 'dashboard' && (
                 <BentoDashboard 
                   projects={state.projects}
@@ -1210,84 +1229,80 @@ export default function Page() {
 
       </div>
 
-      {/* FOOTER COYPRIGHT */}
-      <footer className="bg-white border-t border-slate-200 py-3 px-6 text-center text-[10px] text-slate-400 font-medium" id="app-footer-copyright">
+      {/* FOOTER COPYRIGHT */}
+      <footer className="bg-surface border-t border-border py-3 px-6 text-center text-caption text-text-muted font-medium" id="app-footer-copyright">
         {appConfig.footerCopyrightText}
       </footer>
 
-      {/* CHANGE PASSWORD MODAL */}
-      {isChangingPassword && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden -2xl">
-            <div className="p-6">
-              <h3 className="text-lg font-bold text-slate-800 mb-4">Editar Perfil</h3>
-              
-              {changePasswordSuccess ? (
-                <div className="p-4 bg-green-50 text-green-700 rounded-lg text-sm text-center font-medium">
-                  Perfil atualizado com sucesso!
-                </div>
-              ) : (
-                <form onSubmit={handleChangePassword} className="space-y-4">
-                  {changePasswordError && (
-                    <div className="p-3 bg-red-50 text-red-600 rounded-lg text-xs font-medium border border-red-100">
-                      {changePasswordError}
-                    </div>
-                  )}
-                  
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase">Nome</label>
-                    <input 
-                      type="text"
-                      value={profileName}
-                      onChange={e => setProfileName(e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-bold"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase">Nova password (Opcional)</label>
-                    <input 
-                      type="password"
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      placeholder="Deixe em branco para manter a atual"
-                      className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase">Confirmar nova password</label>
-                    <input 
-                      type="password"
-                      value={confirmNewPassword}
-                      onChange={e => setConfirmNewPassword(e.target.value)}
-                      placeholder="Deixe em branco para manter a atual"
-                      className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  
-                  <div className="pt-2 flex gap-2">
-                    <button 
-                      type="button"
-                      onClick={() => setIsChangingPassword(false)}
-                      className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      type="submit"
-                      className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-colors"
-                    >
-                      Guardar
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
+      {/* CHANGE PASSWORD MODAL USING NEW UI DIALOG */}
+      <Dialog 
+        isOpen={isChangingPassword} 
+        onClose={() => setIsChangingPassword(false)} 
+        title="Editar Perfil"
+      >
+        {changePasswordSuccess ? (
+          <div className="p-4 bg-success/10 text-success border border-success/20 rounded-control text-body-sm text-center font-semibold">
+            Perfil atualizado com sucesso!
           </div>
-        </div>
-      )}
+        ) : (
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            {changePasswordError && (
+              <div className="p-3 bg-error/10 text-error rounded-control text-caption font-semibold border border-error/20">
+                {changePasswordError}
+              </div>
+            )}
+            
+            <div className="space-y-1.5">
+              <label className="block text-label font-bold text-text-secondary select-none">Nome</label>
+              <input 
+                type="text"
+                value={profileName}
+                onChange={e => setProfileName(e.target.value)}
+                className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20 font-bold"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-label font-bold text-text-secondary select-none">Nova password (Opcional)</label>
+              <input 
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Deixe em branco para manter a atual"
+                className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="block text-label font-bold text-text-secondary select-none">Confirmar nova password</label>
+              <input 
+                type="password"
+                value={confirmNewPassword}
+                onChange={e => setConfirmNewPassword(e.target.value)}
+                placeholder="Deixe em branco para manter a atual"
+                className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            
+            <div className="pt-4 flex gap-3">
+              <button 
+                type="button"
+                onClick={() => setIsChangingPassword(false)}
+                className="flex-1 h-11 bg-surface-muted text-text-primary hover:bg-border border border-border rounded-control text-body-sm font-semibold transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit"
+                className="flex-1 h-11 bg-primary text-white hover:bg-primary-hover active:bg-primary-active rounded-control text-body-sm font-semibold transition-all shadow-raised cursor-pointer"
+              >
+                Guardar
+              </button>
+            </div>
+          </form>
+        )}
+      </Dialog>
 
     </div>
   );
