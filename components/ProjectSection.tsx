@@ -15,6 +15,7 @@ import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getAuthHeaders } from '../lib/clientAuth';
+import { normalizeTaskFromApiResponse } from '../lib/taskOperations';
 import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours, getProjectStatusStyle, getTaskStatusStyle, translateToCanonicalRoleIds } from '../lib/utils';
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
@@ -864,10 +865,14 @@ export default function ProjectSection({
       } catch (err) {}
       
       try {
-        const taskRes = await fetch(`/api/v1/tasks?projectId=${selectedProjectId}`, { headers: getAuthHeaders() });
+        const taskRes = await fetch(`/api/v1/tasks?projectId=${selectedProjectId}&pageSize=100`, { headers: getAuthHeaders() });
         if (taskRes.ok) {
           const taskResult = await taskRes.json();
-          if (taskResult.success && isMounted) setServerTasks(taskResult.data);
+          if (taskResult.success && isMounted) {
+            const rawList = taskResult.data || [];
+            const normalized = rawList.map((t: any) => normalizeTaskFromApiResponse(t));
+            setServerTasks(normalized);
+          }
         }
       } catch (err) {}
     };
@@ -2632,6 +2637,19 @@ export default function ProjectSection({
                       {task.description && (
                         <p className="text-xs text-slate-600 line-clamp-2">{task.description}</p>
                       )}
+                      {/* Responsáveis */}
+                      <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                        <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        {task.assigneeIds && task.assigneeIds.length > 0 ? (
+                          task.assigneeIds.map(uid => (
+                            <span key={uid} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-bold rounded-md text-[10px]">
+                              {getUserName(uid)}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-slate-400 italic text-[10px]">Sem atribuição</span>
+                        )}
+                      </div>
                       <div className="flex justify-between items-center text-[11px] text-slate-500 pt-2 border-t border-slate-100 font-medium">
                         <span>Previsão: {task.estimatedDate ? new Date(task.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Sem data'}</span>
                         {task.estimatedHours && <span>Est: {task.estimatedHours}h</span>}
@@ -4939,9 +4957,24 @@ export default function ProjectSection({
         initialProjectId={selectedProj?.id}
         initialDate={taskModalState.initialDate}
         onClose={() => setTaskModalState(prev => ({ ...prev, isOpen: false, task: null }))}
-        createTask={addTask}
-        updateTask={updateTask}
-        deleteTask={deleteTask}
+        createTask={async (newTask: any) => {
+          const res = await addTask(newTask);
+          setRefreshTrigger(prev => prev + 1);
+          return res;
+        }}
+        updateTask={async (id: string, updates: any) => {
+          const res = await updateTask(id, updates);
+          setRefreshTrigger(prev => prev + 1);
+          return res;
+        }}
+        deleteTask={async (id: string) => {
+          if (deleteTask) {
+            const res = await deleteTask(id);
+            setServerTasks(prev => prev.filter(t => t.id !== id));
+            setRefreshTrigger(prev => prev + 1);
+            return res;
+          }
+        }}
         taskStatuses={taskStatuses}
         taskTypes={taskTypes}
         users={users}

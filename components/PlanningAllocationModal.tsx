@@ -518,7 +518,7 @@ export default function PlanningAllocationModal({
                 <option value="">Selecione uma tarefa...</option>
                 {tasks.map(t => (
                   <option key={t.id} value={t.id}>
-                    {t.title} ({projects.find(p => p.id === t.projectId)?.title || 'Sem projeto'})
+                    {t.title} ({!t.projectId ? 'Sem projeto' : (projects.find(p => p.id === t.projectId)?.title || 'Projeto não encontrado')})
                   </option>
                 ))}
               </select>

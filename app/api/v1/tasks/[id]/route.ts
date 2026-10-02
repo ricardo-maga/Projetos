@@ -98,13 +98,14 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     // Strict execution dates validation on merged state
     const mergedStartDate = updates.startDate !== undefined ? cleanDateVal(updates.startDate) : current.start_date;
     const mergedEndDate = updates.endDate !== undefined ? cleanDateVal(updates.endDate) : current.end_date;
-    if (mergedStartDate) {
-      if (!mergedEndDate) {
-        return badRequest('A data de fim é obrigatória se a data de início estiver preenchida.', requestId);
-      }
-      if (mergedEndDate < mergedStartDate) {
-        return badRequest('A data de fim não pode ser anterior à data de início.', requestId);
-      }
+    if (mergedStartDate && !mergedEndDate) {
+      return badRequest('A data de fim é obrigatória se a data de início estiver preenchida.', requestId);
+    }
+    if (!mergedStartDate && mergedEndDate) {
+      return badRequest('A data de início é obrigatória se a data de fim estiver preenchida.', requestId);
+    }
+    if (mergedStartDate && mergedEndDate && mergedEndDate < mergedStartDate) {
+      return badRequest('A data de fim não pode ser anterior à data de início.', requestId);
     }
 
     if (updates.projectId !== undefined && updates.projectId) {

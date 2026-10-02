@@ -209,7 +209,7 @@ export default function TaskSection({
   const getProjectWithClientLabel = (projId: string) => {
     if (!projId) return 'Sem projeto';
     const proj = projectMap.get(projId);
-    if (!proj) return 'Sem projeto';
+    if (!proj) return 'Projeto não encontrado';
     const client = clientMap.get(proj.clientId);
     const clientName = client ? (client.clientName || client.shortName) : '';
     const ipPart = proj.installProjectNo ? ` (${proj.installProjectNo})` : '';
@@ -423,7 +423,7 @@ export default function TaskSection({
   const getProjectTitle = (projId?: string | null) => {
     if (!projId) return 'Sem projeto';
     const proj = projects.find(p => p.id === projId);
-    if (!proj) return 'Sem projeto';
+    if (!proj) return 'Projeto não encontrado';
     const client = clients.find(c => c.id === proj.clientId);
     const clientName = client ? (client.clientName || client.shortName) : '';
     return clientName ? `${clientName} • ${proj.title}` : proj.title;

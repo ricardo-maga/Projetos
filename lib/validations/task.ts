@@ -120,17 +120,6 @@ export const updateTaskSchema = z.object({
   }
 ).refine(
   (data) => {
-    if (data.startDate && !data.endDate) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: 'A data de fim é obrigatória se a data de início estiver preenchida.',
-    path: ['endDate'],
-  }
-).refine(
-  (data) => {
     if (data.startDate && data.endDate) {
       return data.endDate >= data.startDate;
     }
