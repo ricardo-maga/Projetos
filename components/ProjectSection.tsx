@@ -11,7 +11,6 @@ import {
 import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
-import { normalizeTaskFromApiResponse } from '../lib/taskOperations';
 
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
@@ -455,44 +454,6 @@ export default function ProjectSection({
     });
   };
 
-  const handleUpdateTaskWrapper = async (id: string, updates: any) => {
-    const res = await updateTask(id, updates);
-    setServerTasks(prev => prev.map(t => {
-      if (t.id === id) {
-        return {
-          ...t,
-          ...updates,
-          assigneeIds: updates.assigneeIds !== undefined ? updates.assigneeIds : t.assigneeIds,
-        };
-      }
-      return t;
-    }));
-    setRefreshTrigger(prev => prev + 1);
-    return res;
-  };
-
-  const handleAddTaskWrapper = async (newTask: any) => {
-    const res = await addTask(newTask);
-    if (res && res.id) {
-      try {
-        const normalized = normalizeTaskFromApiResponse(res);
-        setServerTasks(prev => [normalized, ...prev]);
-      } catch {
-        setServerTasks(prev => [res, ...prev]);
-      }
-    }
-    setRefreshTrigger(prev => prev + 1);
-    return res;
-  };
-
-  const handleDeleteTaskWrapper = async (id: string) => {
-    if (deleteTask) {
-      await deleteTask(id);
-      setServerTasks(prev => prev.filter(t => t.id !== id));
-      setRefreshTrigger(prev => prev + 1);
-    }
-  };
-
   const openCreateTaskModal = (initialDate?: string) => {
     if (!canWriteTasks) {
       alert('Não tem permissão para criar tarefas.');
@@ -779,7 +740,7 @@ export default function ProjectSection({
   const getCategoryName = (id: string) => projectCategories.find(c => matchId(c.id, id))?.name || 'N/A';
   const getRiskName = (id?: string) => id ? (projectRisks.find(r => matchId(r.id, id))?.name || 'N/D') : 'N/D';
   const getPriorityName = (id: string) => projectPriorities.find(p => matchId(p.id, id))?.name || 'N/A';
-  const getUserName = (id: string) => users.find(u => matchId(u.id, id))?.name || 'Equipa';
+  const getUserName = (id: string, fallback = '-') => (id ? (users.find(u => matchId(u.id, id))?.name || fallback) : fallback);
 
   const getProjectStatusScale = React.useCallback((statusId: string): number => {
     if (!statusId) return 1;
@@ -889,10 +850,7 @@ export default function ProjectSection({
     let isMounted = true;
     if (!selectedProjectId) {
       Promise.resolve().then(() => {
-        if (isMounted) {
-          setServerSelectedProj(null);
-          setServerTasks([]);
-        }
+        if (isMounted) setServerSelectedProj(null);
       });
       return;
     }
@@ -906,12 +864,10 @@ export default function ProjectSection({
       } catch (err) {}
       
       try {
-        const taskRes = await fetch(`/api/v1/tasks?projectId=${selectedProjectId}&pageSize=100`, { headers: getAuthHeaders() });
+        const taskRes = await fetch(`/api/v1/tasks?projectId=${selectedProjectId}`, { headers: getAuthHeaders() });
         if (taskRes.ok) {
           const taskResult = await taskRes.json();
-          if (taskResult.success && isMounted && Array.isArray(taskResult.data)) {
-            setServerTasks(taskResult.data.map(normalizeTaskFromApiResponse));
-          }
+          if (taskResult.success && isMounted) setServerTasks(taskResult.data);
         }
       } catch (err) {}
     };
@@ -2653,56 +2609,35 @@ export default function ProjectSection({
                     if (!dateA) return 1;
                     if (!dateB) return -1;
                     return dateA.localeCompare(dateB);
-                  }).map(task => {
-                    const taskAssignees = (Array.isArray(task.assigneeIds) && task.assigneeIds.length > 0)
-                      ? task.assigneeIds
-                      : (Array.isArray((task as any).assignedUserIds) ? (task as any).assignedUserIds : []);
-
-                    return (
-                      <div 
-                        key={task.id} 
-                        onClick={() => openTaskDetailsModal(task)}
-                        className="bg-white border border-slate-200 hover:border-blue-300 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer transition-all hover:shadow-md"
-                      >
-                        <div className="flex justify-between items-start gap-2">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded">
-                                {getTaskStatusName(task.statusId, taskStatuses)}
-                              </span>
-                              <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold rounded flex items-center gap-1">
-                                {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Bell className="w-3 h-3 text-purple-600" />}
-                                {getTaskTypeName(task.taskTypeId, taskTypes)}
-                              </span>
-                            </div>
-                            <h4 className="font-extrabold text-slate-900 text-sm hover:text-blue-600 transition-colors">{task.title}</h4>
+                  }).map(task => (
+                    <div 
+                      key={task.id} 
+                      onClick={() => openTaskDetailsModal(task)}
+                      className="bg-white border border-slate-200 hover:border-blue-300 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer transition-all hover:shadow-md"
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded">
+                              {getTaskStatusName(task.statusId, taskStatuses)}
+                            </span>
+                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold rounded flex items-center gap-1">
+                              {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Bell className="w-3 h-3 text-purple-600" />}
+                              {getTaskTypeName(task.taskTypeId, taskTypes)}
+                            </span>
                           </div>
-                        </div>
-                        {task.description && (
-                          <p className="text-xs text-slate-600 line-clamp-2">{task.description}</p>
-                        )}
-                        {/* Responsáveis / Utilizadores atribuídos */}
-                        <div className="flex items-center gap-1.5 pt-1 text-xs">
-                          <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <div className="flex flex-wrap gap-1 items-center">
-                            {taskAssignees.length > 0 ? (
-                              taskAssignees.map(uid => (
-                                <span key={uid} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-bold rounded-md text-[10px]">
-                                  {getUserName(uid)}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-slate-400 italic text-[10px]">Sem utilizador atribuído</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px] text-slate-500 pt-2 border-t border-slate-100 font-medium">
-                          <span>Previsão: {task.estimatedDate ? new Date(task.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Sem data'}</span>
-                          {task.estimatedHours && <span>Est: {task.estimatedHours}h</span>}
+                          <h4 className="font-extrabold text-slate-900 text-sm hover:text-blue-600 transition-colors">{task.title}</h4>
                         </div>
                       </div>
-                    );
-                  })}
+                      {task.description && (
+                        <p className="text-xs text-slate-600 line-clamp-2">{task.description}</p>
+                      )}
+                      <div className="flex justify-between items-center text-[11px] text-slate-500 pt-2 border-t border-slate-100 font-medium">
+                        <span>Previsão: {task.estimatedDate ? new Date(task.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Sem data'}</span>
+                        {task.estimatedHours && <span>Est: {task.estimatedHours}h</span>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -5004,9 +4939,9 @@ export default function ProjectSection({
         initialProjectId={selectedProj?.id}
         initialDate={taskModalState.initialDate}
         onClose={() => setTaskModalState(prev => ({ ...prev, isOpen: false, task: null }))}
-        createTask={handleAddTaskWrapper}
-        updateTask={handleUpdateTaskWrapper}
-        deleteTask={handleDeleteTaskWrapper}
+        createTask={addTask}
+        updateTask={updateTask}
+        deleteTask={deleteTask}
         taskStatuses={taskStatuses}
         taskTypes={taskTypes}
         users={users}
