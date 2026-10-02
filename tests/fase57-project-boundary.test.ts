@@ -149,6 +149,19 @@ describe('FASE 57-FINAL — Strict PostgreSQL RPC Persistence Boundary & Canonic
           return { data: proj.version, error: null };
         }
 
+        if (fn === 'delete_project_transaction') {
+          const proj = mockDbData.projects.find((p: any) => p.id === args.p_id);
+          if (!proj) return { error: { code: 'P0002', message: 'Project not found' } };
+          if (args.p_expected_version !== undefined && proj.version !== args.p_expected_version) {
+            return { error: { code: 'P0001', message: `Concurrency conflict: current version is ${proj.version}, expected ${args.p_expected_version}` } };
+          }
+          proj.deleted = true;
+          proj.version = (proj.version || 1) + 1;
+          proj.updated_at = new Date().toISOString();
+          proj.updated_by = args.p_updated_by || null;
+          return { data: proj.version, error: null };
+        }
+
         return { data: null, error: { message: `Unknown RPC function ${fn}` } };
       },
       from: (table: string) => ({
@@ -269,5 +282,19 @@ describe('FASE 57-FINAL — Strict PostgreSQL RPC Persistence Boundary & Canonic
     expect(
       updateProject(mockSb, pId, { title: 'Tentativa Concorrente Incorreta' }, 'u-1', 99)
     ).rejects.toThrow('Conflito de concorrência');
+  });
+
+  it('G. deleteProject chama exclusivamente a RPC delete_project_transaction e não faz updates diretos no Supabase', async () => {
+    fromUpdatesCount = 0;
+    rpcCalls = [];
+
+    await deleteProject(mockSb, pId, 'u-1', 1);
+
+    expect(rpcCalls.length).toBe(1);
+    expect(rpcCalls[0].fn).toBe('delete_project_transaction');
+    expect(rpcCalls[0].args.p_id).toBe(pId);
+    expect(rpcCalls[0].args.p_expected_version).toBe(1);
+    expect(fromUpdatesCount).toBe(0); // Zero direct table updates
+    expect(mockDbData.projects.find((p: any) => p.id === pId).deleted).toBe(true);
   });
 });

@@ -304,6 +304,18 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
             }
             return { data: proj.version, error: null };
           }
+          if (fn === 'delete_project_transaction') {
+            const proj = mockDbData.projects.find((p: any) => p.id === args.p_id);
+            if (!proj) return { error: { code: 'P0002', message: 'Project not found' } };
+            if (args.p_expected_version !== undefined && proj.version !== args.p_expected_version) {
+              return { error: { code: 'P0001', message: `Concurrency conflict: current version is ${proj.version}, expected ${args.p_expected_version}` } };
+            }
+            proj.deleted = true;
+            proj.version = (proj.version || 1) + 1;
+            proj.updated_at = new Date().toISOString();
+            proj.updated_by = args.p_updated_by || null;
+            return { data: proj.version, error: null };
+          }
           if (fn === 'create_task_atomic') {
             const newTask = {
               id: args.p_id,

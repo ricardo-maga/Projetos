@@ -428,7 +428,8 @@ export async function listProjects(
 export async function deleteProject(
   client: SupabaseClient,
   id: string,
-  userId?: string
+  userId?: string,
+  expectedVersion?: number
 ): Promise<void> {
   const current = await getProject(client, id);
   if (!current) {
@@ -456,18 +457,28 @@ export async function deleteProject(
     throw err;
   }
 
-  const nextVersion = (current.version || 1) + 1;
-  const { error } = await client
-    .from('projects')
-    .update({
-      deleted: true,
-      version: nextVersion,
-      updated_by: userId || null,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', id);
+  // Canonical PostgreSQL RPC call (FASE 57 / FASE 79 Project Persistence Boundary)
+  const { error } = await client.rpc('delete_project_transaction', {
+    p_id: id,
+    p_expected_version: expectedVersion !== undefined ? expectedVersion : (current.version || 1),
+    p_updated_by: userId || null,
+  });
 
   if (error) {
+    if (error.code === 'P0001' || error.message?.includes('concurrency') || error.message?.includes('conflict') || error.message?.includes('Concurrency')) {
+      const err = new Error('Conflito de concorrência.');
+      (err as any).code = 'concurrency';
+      (err as any).currentVersion = current.version;
+      throw err;
+    }
+    if (error.code === 'P0002' || error.message?.includes('not found') || error.message?.includes('Project not found')) {
+      throw new Error('Project not found.');
+    }
+    if (error.message?.includes('Não é possível eliminar')) {
+      const err = new Error(error.message);
+      (err as any).code = 'dependency';
+      throw err;
+    }
     throw error;
   }
 }
