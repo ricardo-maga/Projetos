@@ -143,11 +143,10 @@ export default function CalendarSection({
     return (rawPlanningAllocations || []).filter(alloc => {
       if (alloc.deleted) return false;
       const task = taskMap.get(alloc.taskId);
-      if (!task) return true; // allow orphans/tasks not currently loaded
-      if (task.deleted) return false;
+      if (!task || task.deleted) return false;
       if (task.projectId) {
         const proj = projectMap.get(task.projectId);
-        if (proj && proj.deleted) return false;
+        if (!proj || proj.deleted) return false;
       }
       return true;
     });

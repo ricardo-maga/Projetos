@@ -64,16 +64,16 @@ body,
 #main-root,
 [data-theme="default"],
 [data-theme="blue"] {
-  --color-background-token: #f8fafc;
+  --color-background-token: #f9fafb;
   --color-surface-token: #ffffff;
-  --color-surface-muted-token: #f1f5f9;
+  --color-surface-muted-token: #f3f4f6;
   --color-surface-elevated-token: #ffffff;
-  --color-text-primary-token: #0f172a;
-  --color-text-secondary-token: #475569;
-  --color-text-muted-token: #64748b;
-  --color-text-disabled-token: #94a3b8;
-  --color-border-token: #e2e8f0;
-  --color-border-subtle-token: #f1f5f9;
+  --color-text-primary-token: #111827;
+  --color-text-secondary-token: #4b5563;
+  --color-text-muted-token: #9ca3af;
+  --color-text-disabled-token: #d1d5db;
+  --color-border-token: #e5e7eb;
+  --color-border-subtle-token: #f3f4f6;
 
   --primary-50: #eff6ff;
   --primary-100: #dbeafe;
