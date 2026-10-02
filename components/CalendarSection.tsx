@@ -1293,15 +1293,15 @@ export default function CalendarSection({
 
   const renderTimelineMatrixTable = (projectsToDisplay: Project[], isFullscreen = false) => {
     return (
-      <div className={`bg-white rounded-2xl border border-slate-200 shadow-2xs relative ${
+      <div className={`bg-surface rounded-card border border-border shadow-raised relative ${
         isFullscreen ? 'h-full max-h-none overflow-auto' : 'sticky top-[57px] z-20 max-h-[calc(100vh-70px)] overflow-auto'
       }`}>
         <table className="w-full min-w-[1200px] border-collapse text-left table-fixed relative">
           {/* Header Columns definition */}
-          <thead className="sticky top-0 z-20 bg-slate-50/90 border-b border-slate-200/80 shadow-2xs">
+          <thead className="sticky top-0 z-20 bg-surface-muted/90 border-b border-border shadow-raised">
             <tr>
               {/* Project Header Column */}
-              <th className="w-72 p-3.5 text-[11px] uppercase tracking-wider font-bold text-slate-500 sticky top-0 left-0 z-30 bg-slate-50/95 border-r border-b border-slate-200/80 shadow-[2px_2px_5px_rgba(0,0,0,0.04)]">
+              <th className="w-72 p-3.5 text-caption uppercase tracking-wider font-extrabold text-text-secondary sticky top-0 left-0 z-30 bg-surface-muted/95 border-r border-b border-border shadow-[2px_2px_5px_rgba(0,0,0,0.02)]">
                 Projeto / Cliente
               </th>
               
@@ -2445,32 +2445,32 @@ export default function CalendarSection({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-text-primary bg-background">
       
       {/* TIMELINE CONTROL HEADER */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+      <div className="bg-surface rounded-card border border-border p-5 space-y-4 shadow-raised">
         {/* Row 0: Full width Title, Subtitle and View Mode Toggles */}
         <div className="flex flex-wrap items-center justify-between gap-4 w-full">
           <div>
-            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
+            <h2 className="text-heading-sm font-bold text-text-primary flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary" />
               Calendário & Planeamento
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-caption text-text-secondary mt-1">
               {calendarViewMode === 'users' 
                 ? 'Vista operacional semanal de tarefas por técnico e dia.' 
                 : 'Planeamento diário de projetos e linha de tempo.'}
             </p>
           </div>
 
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <div className="flex items-center bg-surface-muted p-1 rounded-control border border-border">
             <button
               type="button"
               onClick={() => setCalendarViewMode('users')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-control text-caption font-bold transition-all cursor-pointer ${
                 calendarViewMode === 'users'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-surface text-text-primary shadow-raised border border-border/40'
+                  : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               👥 Calendário por Utilizador
@@ -2478,10 +2478,10 @@ export default function CalendarSection({
             <button
               type="button"
               onClick={() => setCalendarViewMode('projects')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-control text-caption font-bold transition-all cursor-pointer ${
                 calendarViewMode === 'projects'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-surface text-text-primary shadow-raised border border-border/40'
+                  : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               📅 Linha de Tempo de Projetos
