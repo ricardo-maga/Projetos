@@ -35,6 +35,8 @@ import IconButton from './ui/IconButton';
 import Badge from './ui/Badge';
 import { Card } from './ui/Card';
 import Tabs from './ui/Tabs';
+import Input from './ui/Input';
+import Select from './ui/Select';
 
 import { hasPermission } from '../lib/permissions';
 import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate, getTaskStatusStyle } from '../lib/utils';
@@ -627,54 +629,51 @@ export default function TaskSection({
             </div>
 
             {/* Detailed Filters Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               {/* Search Input */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none" />
-                <input 
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none z-10" />
+                <Input 
                   type="text" 
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Pesquisar..."
-                  className="w-full pl-9 pr-4 h-10 bg-surface border border-border rounded-control text-body-sm font-medium text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary transition-all"
+                  className="pl-10"
                 />
               </div>
 
               {/* Project Filter */}
-              <select 
+              <Select 
                 value={filterProject}
                 onChange={e => setFilterProject(e.target.value)}
-                className="w-full h-10 px-3 bg-surface border border-border rounded-control text-body-sm font-semibold text-text-secondary cursor-pointer outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary transition-all truncate"
               >
                 <option value="">Todos os Projetos</option>
                 {projects.filter(p => !p.deleted).map(p => (
                   <option key={p.id} value={p.id}>{p.title}</option>
                 ))}
-              </select>
+              </Select>
 
               {/* Task Type Filter */}
-              <select 
+              <Select 
                 value={filterType}
                 onChange={e => setFilterType(e.target.value)}
-                className="w-full h-10 px-3 bg-surface border border-border rounded-control text-body-sm font-semibold text-text-secondary cursor-pointer outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary transition-all"
               >
                 <option value="">Todos os Tipos</option>
                 {taskTypes.filter(tt => !tt.deleted).map(tt => (
                   <option key={tt.id} value={tt.id}>{tt.name}</option>
                 ))}
-              </select>
+              </Select>
 
               {/* Assignee Filter */}
-              <select 
+              <Select 
                 value={filterAssignee}
                 onChange={e => setFilterAssignee(e.target.value)}
-                className="w-full h-10 px-3 bg-surface border border-border rounded-control text-body-sm font-semibold text-text-secondary cursor-pointer outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary transition-all"
               >
                 <option value="">Qualquer Responsável</option>
                 {usersWithTasks.map(u => (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -703,31 +702,31 @@ export default function TaskSection({
                 <div className="flex flex-wrap items-center gap-4 text-body-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-text-secondary font-semibold">Mostrar:</span>
-                    <select
+                    <Select
                       value={pageSize}
                       onChange={e => {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="px-2.5 py-1.5 bg-surface border border-border rounded-control text-caption font-bold text-text-secondary cursor-pointer outline-none focus:ring-1 focus:ring-primary"
+                      className="h-9 py-1 px-2 text-caption pr-8 w-20 min-w-[70px]"
                     >
                       <option value={10}>10</option>
                       <option value={25}>25</option>
                       <option value={50}>50</option>
                       <option value={100}>100</option>
-                    </select>
+                    </Select>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <span className="text-text-secondary font-semibold">Ordenar por:</span>
-                    <select
+                    <Select
                       value={sortBy}
                       onChange={e => setSortBy(e.target.value as 'estimatedDate' | 'status')}
-                      className="px-2.5 py-1.5 bg-surface border border-border rounded-control text-caption font-bold text-text-secondary cursor-pointer outline-none focus:ring-1 focus:ring-primary"
+                      className="h-9 py-1 px-2 text-caption pr-8 w-44"
                     >
                       <option value="estimatedDate">Data prevista (padrão)</option>
                       <option value="status">Estado</option>
-                    </select>
+                    </Select>
                   </div>
 
                   <label className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-control text-caption font-bold text-text-secondary cursor-pointer select-none hover:bg-surface-muted transition-colors">

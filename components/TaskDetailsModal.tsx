@@ -24,6 +24,13 @@ import { getTaskTypeName, formatToOnlyHours, getDefaultTaskStatusId } from '../l
 import { getTaskConflictWarnings } from '../lib/taskConflicts';
 import { validateTaskExecutionTimes, parseTaskHoursToFloat } from '../lib/taskOperations';
 
+// UI Foundation Components
+import Button from './ui/Button';
+import Input from './ui/Input';
+import Textarea from './ui/Textarea';
+import Select from './ui/Select';
+import Badge from './ui/Badge';
+
 export type TaskModalMode = 'create' | 'edit' | 'execute' | 'view';
 
 export interface TaskDetailsModalProps {
@@ -608,14 +615,14 @@ export default function TaskDetailsModal({
           )}
 
           {/* ================= SECTION 1: PLANEAMENTO ================= */}
-          <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3.5">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <ListTodo className="w-4 h-4 text-blue-600" />
+          <div className="bg-surface-muted/50 p-4 rounded-2xl border border-border space-y-3.5">
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <span className="text-body-sm font-bold text-text-primary flex items-center gap-1.5">
+                <ListTodo className="w-4 h-4 text-primary" />
                 Dados de Planeamento
               </span>
               {effectiveMode === 'create' && (
-                <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                   Campos essenciais
                 </span>
               )}
@@ -623,35 +630,32 @@ export default function TaskDetailsModal({
 
             {/* Title */}
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-800">
-                Título da Tarefa <span className="text-rose-500">*</span>
-              </label>
-              <input 
-                type="text"
+              <Input 
+                label="Título da Tarefa *"
                 required
                 readOnly={isReadOnly}
+                disabled={isReadOnly}
                 value={formTitle}
                 onChange={e => setFormTitle(e.target.value)}
                 placeholder="Ex: Instalação de painéis, Visita técnica, Configuração de rede..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 read-only:bg-slate-100"
               />
             </div>
 
             {/* Project Selection with Autocomplete and Suggestions */}
             <div className="space-y-1 relative" ref={projectDropdownRef}>
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-slate-800">
-                  Projeto (Cliente) <span className="text-[10px] text-slate-400 font-normal">(Opcional)</span>
+                <label className="block text-label font-semibold text-text-secondary select-none">
+                  Projeto (Cliente) <span className="text-[10px] text-text-muted font-normal">(Opcional)</span>
                 </label>
                 {selectedProject && (
-                  <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-200 flex items-center gap-1">
+                  <span className="text-[10px] text-success bg-success/5 px-2 py-0.5 rounded-full font-bold border border-success/20 flex items-center gap-1">
                     <Check className="w-2.5 h-2.5" /> Projeto selecionado
                   </span>
                 )}
               </div>
 
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-muted">
                   <Search className="w-3.5 h-3.5" />
                 </div>
                 <input
@@ -664,17 +668,17 @@ export default function TaskDetailsModal({
                     if (!isReadOnly) setIsProjectDropdownOpen(true);
                   }}
                   placeholder="Pesquisar por título de projeto ou nome de cliente (completo ou abreviado)..."
-                  className={`w-full pl-9 pr-8 py-2.5 border rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-100 focus:outline-none transition-colors ${
+                  className={`w-full h-11 pl-9 pr-8 text-body rounded-control border focus:ring-2 focus:outline-none transition-all ${
                     formProjectId 
-                      ? 'border-blue-300 bg-blue-50/20 text-slate-900 font-bold' 
-                      : 'border-slate-200 bg-white text-slate-800'
-                  } read-only:bg-slate-100 read-only:text-slate-500`}
+                      ? 'border-primary bg-primary/5 text-text-primary font-bold focus:ring-primary/20' 
+                      : 'border-border bg-surface text-text-primary focus:border-primary focus:ring-primary/20'
+                  } read-only:bg-surface-muted read-only:text-text-disabled`}
                 />
                 {!isReadOnly && projectSearchQuery && (
                   <button
                     type="button"
                     onClick={handleClearProject}
-                    className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-text-muted hover:text-text-primary cursor-pointer"
                     title="Limpar seleção"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -684,13 +688,13 @@ export default function TaskDetailsModal({
 
               {/* Suggestions Dropdown */}
               {!isReadOnly && isProjectDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="p-2 bg-slate-50 text-[10px] uppercase font-extrabold text-slate-500 tracking-wider flex items-center justify-between">
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-surface border border-border rounded-xl shadow-overlay z-50 max-h-60 overflow-y-auto divide-y divide-border animate-in fade-in zoom-in-95 duration-100">
+                  <div className="p-2 bg-surface-muted text-[10px] uppercase font-bold text-text-secondary tracking-wider flex items-center justify-between">
                     <span>Projetos Sugeridos ({projectSuggestions.length})</span>
                     <span className="font-normal lowercase">opcional</span>
                   </div>
                   {projectSuggestions.length === 0 ? (
-                    <div className="p-3 text-xs text-slate-500 italic text-center">
+                    <div className="p-3 text-body-sm text-text-secondary italic text-center">
                       Nenhum projeto encontrado com &quot;{projectSearchQuery}&quot;
                     </div>
                   ) : (
@@ -706,26 +710,26 @@ export default function TaskDetailsModal({
                           key={p.id}
                           type="button"
                           onClick={() => handleSelectProject(p)}
-                          className={`w-full text-left px-3.5 py-2.5 hover:bg-blue-50/80 transition-colors flex items-center justify-between text-xs cursor-pointer ${
-                            isSelected ? 'bg-blue-50 text-blue-900 font-bold' : 'text-slate-800 font-medium'
+                          className={`w-full text-left px-3.5 py-2.5 hover:bg-surface-muted transition-colors flex items-center justify-between text-body-sm cursor-pointer ${
+                            isSelected ? 'bg-primary/5 text-primary font-bold' : 'text-text-primary font-medium'
                           }`}
                         >
                           <div className="min-w-0 pr-2">
-                            <div className="font-bold text-slate-900 truncate">
+                            <div className="font-bold text-text-primary truncate">
                               {p.title}
                               {p.installProjectNo && (
-                                <span className="ml-1 text-[10px] text-slate-500 font-normal">
+                                <span className="ml-1 text-[10px] text-text-muted font-normal font-mono">
                                   #{p.installProjectNo}
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-slate-500 flex items-center gap-1 truncate mt-0.5">
-                              <Briefcase className="w-3 h-3 text-slate-400 shrink-0" />
+                            <div className="text-caption text-text-secondary flex items-center gap-1 truncate mt-0.5">
+                              <Briefcase className="w-3 h-3 text-text-muted shrink-0" />
                               <span>{clDisplay}</span>
                             </div>
                           </div>
                           {isSelected && (
-                            <Check className="w-4 h-4 text-blue-600 shrink-0 ml-2" />
+                            <Check className="w-4 h-4 text-primary shrink-0 ml-2" />
                           )}
                         </button>
                       );
@@ -738,27 +742,25 @@ export default function TaskDetailsModal({
             {/* Planned Date & Estimated Hours */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-800">
-                  Data Planeada <span className="text-[10px] text-slate-500 font-normal">(Prevalece até existirem datas reais)</span>
-                </label>
-                <input 
+                <Input 
                   type="date"
+                  label="Data Planeada *"
                   readOnly={isReadOnly}
+                  disabled={isReadOnly}
                   value={formEstimatedDate}
                   onChange={e => setFormEstimatedDate(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-100"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-800">Horas Previstas (h)</label>
-                <input 
+                <Input 
                   type="text"
+                  label="Horas Previstas (h)"
                   readOnly={isReadOnly}
+                  disabled={isReadOnly}
                   value={formEstimatedHours}
                   onChange={e => setFormEstimatedHours(e.target.value)}
                   placeholder="Ex: 08:00 ou 8"
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-100"
                 />
               </div>
             </div>
@@ -766,45 +768,43 @@ export default function TaskDetailsModal({
             {/* Status & Type */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-800">Estado da Tarefa <span className="text-rose-500">*</span></label>
-                <select 
+                <Select 
+                  label="Estado da Tarefa *"
                   disabled={isReadOnly}
                   value={formStatusId}
                   onChange={e => setFormStatusId(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 cursor-pointer"
                 >
                   {taskStatuses.filter(s => !s.deleted).map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-800">Tipo de Tarefa</label>
-                <select
+                <Select
+                  label="Tipo de Tarefa"
                   disabled={isReadOnly}
                   value={formTypeId}
                   onChange={e => setFormTypeId(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 cursor-pointer"
                 >
                   <option value="">Selecione o tipo de tarefa...</option>
                   {taskTypes.filter(tt => !tt.deleted).map(tt => (
                     <option key={tt.id} value={tt.id}>{getTaskTypeName(tt.id, taskTypes)}</option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
 
             {/* Description (Instructions) */}
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-800">Descrição / Instruções de Planeamento</label>
-              <textarea 
+              <Textarea 
+                label="Descrição / Instruções de Planeamento"
                 rows={2}
                 readOnly={isReadOnly}
+                disabled={isReadOnly}
                 value={formDescription}
                 onChange={e => setFormDescription(e.target.value)}
                 placeholder="Detalhes adicionais, escopo ou instruções..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-100"
               />
             </div>
 
@@ -824,21 +824,21 @@ export default function TaskDetailsModal({
           {/* ================= SECTION 2: EXECUÇÃO (Available in all modes) ================= */}
           <div className={`p-4 rounded-2xl border space-y-3.5 transition-all ${
             effectiveMode === 'execute' 
-              ? 'bg-amber-50/50 border-amber-300 ring-2 ring-amber-200/60' 
-              : 'bg-white border-slate-200'
+              ? 'bg-warning/5 border-warning ring-2 ring-warning/20' 
+              : 'bg-surface border-border'
           }`}>
-            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <PlayCircle className="w-4 h-4 text-amber-600" />
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <span className="text-body-sm font-bold text-text-primary flex items-center gap-1.5">
+                <PlayCircle className="w-4 h-4 text-warning" />
                 Dados de Execução Real
               </span>
               {effectiveMode === 'create' ? (
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold text-text-secondary bg-surface-muted px-2 py-0.5 rounded-full border border-border">
                   Opcional na criação
                 </span>
               ) : effectiveMode === 'execute' ? (
-                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-amber-600" />
+                <span className="text-[10px] font-bold text-warning bg-warning/5 border border-warning/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-warning" />
                   Foco no registo de trabalho
                 </span>
               ) : null}
@@ -846,131 +846,128 @@ export default function TaskDetailsModal({
 
             {/* Consumed Real Hours */}
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-800">
-                Horas Reais Consumidas (h)
-              </label>
-              <input 
+              <Input 
                 type="number" 
                 min="0"
                 step="0.5"
+                label="Horas Reais Consumidas (h)"
                 readOnly={isReadOnly}
+                disabled={isReadOnly}
                 value={formActualHours}
                 onChange={e => setFormActualHours(e.target.value)}
                 placeholder="Ex: 6"
-                className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 focus:ring-2 focus:ring-amber-200 read-only:bg-slate-100"
               />
-              <p className="text-[10px] text-slate-500 font-medium">
+              <p className="text-caption text-text-secondary font-medium">
                 As horas reais representam o tempo efetivamente despendido na tarefa.
               </p>
             </div>
 
             {/* Execution Dates and Times */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700">Data de Início</label>
-                <input 
+                <Input 
                   type="date" 
+                  label="Data de Início"
                   readOnly={isReadOnly}
+                  disabled={isReadOnly}
                   value={formStartDate}
                   onChange={e => handleStartDateChange(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700">Hora de Início</label>
-                <input 
+                <Input 
                   type="time" 
+                  label="Hora de Início"
                   readOnly={isReadOnly}
+                  disabled={isReadOnly}
                   value={formStartTime}
                   onChange={e => setFormStartTime(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700">Data de Fim</label>
-                <input 
+                <Input 
                   type="date" 
+                  label="Data de Fim"
                   readOnly={isReadOnly}
+                  disabled={isReadOnly}
                   min={formStartDate || undefined}
                   value={formEndDate}
                   onChange={e => handleEndDateChange(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700">Hora de Fim</label>
-                <input 
+                <Input 
                   type="time" 
+                  label="Hora de Fim"
                   readOnly={isReadOnly}
+                  disabled={isReadOnly}
                   value={formEndTime}
                   onChange={e => setFormEndTime(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
                 />
               </div>
             </div>
 
             {/* Execution Description / Notes */}
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-800">Descrição / Notas de Execução</label>
-              <textarea 
+              <Textarea 
+                label="Descrição / Notas de Execução"
                 rows={2}
                 readOnly={isReadOnly}
+                disabled={isReadOnly}
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 placeholder="Relatório do trabalho efetuado, registos de campo ou observações..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
               />
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-200">
+          <div className="flex items-center justify-between gap-2 pt-4 border-t border-border">
             <div>
               {effectiveMode !== 'create' && !isReadOnly && deleteTask && activeTask && (
-                <button
+                <Button
                   type="button"
+                  variant="danger"
+                  size="sm"
                   onClick={handleDelete}
                   disabled={isSubmitting}
-                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold transition-colors cursor-pointer text-xs flex items-center gap-1.5"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-4 h-4 mr-1.5 shrink-0" />
                   Eliminar Tarefa
-                </button>
+                </Button>
               )}
             </div>
 
             <div className="flex items-center gap-2">
-              <button 
+              <Button 
                 type="button" 
+                variant="outline"
+                size="sm"
                 onClick={onClose}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors cursor-pointer text-xs"
               >
                 {effectiveMode === 'view' ? 'Fechar' : 'Cancelar'}
-              </button>
+              </Button>
 
               {effectiveMode !== 'view' && canWrite && (
-                <button 
+                <Button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className={`px-5 py-2 text-white rounded-xl font-bold transition-colors cursor-pointer text-xs shadow-md shadow-slate-100 flex items-center gap-1.5 ${
-                    isDuplication
-                      ? 'bg-indigo-600 hover:bg-indigo-700'
-                      : 'bg-slate-900 hover:bg-slate-800 disabled:opacity-50'
-                  }`}
+                  isLoading={isSubmitting}
+                  size="sm"
+                  variant="primary"
+                  className={isDuplication ? "bg-indigo-600 hover:bg-indigo-700" : ""}
                 >
-                  {isSubmitting 
-                    ? 'A processar...' 
-                    : isDuplication
+                  {isDuplication
                     ? 'Criar Tarefa Duplicada'
                     : effectiveMode === 'create' 
                     ? 'Criar Tarefa' 
                     : effectiveMode === 'execute'
                     ? 'Registar Execução'
                     : 'Gravar Alterações'}
-                </button>
+                </Button>
               )}
             </div>
           </div>

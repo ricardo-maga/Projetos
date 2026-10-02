@@ -14,6 +14,9 @@ import TaskDetailsModal from './TaskDetailsModal';
 import OperationalUserCalendar from './OperationalUserCalendar';
 import PlanningAllocationModal from './PlanningAllocationModal';
 import ResourceDayDetailModal from './ResourceDayDetailModal';
+
+// UI Foundation Components
+import IconButton from './ui/IconButton';
 import { getTaskStatusName, getDefaultTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, stripSecondsFromHours, formatToOnlyHours } from '../lib/utils';
 import { 
   PlanningAllocationDTO, 
@@ -2830,12 +2833,13 @@ export default function CalendarSection({
             {/* Navigation & Fullscreen */}
             <div className="flex items-center gap-3">
               {/* Date Shifting */}
-              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
-                <button 
+              <div className="flex items-center gap-1.5 bg-surface border border-border rounded-xl p-1">
+                <IconButton 
                   type="button"
                   id="btn-nav-prev"
+                  variant="ghost"
+                  size="sm"
                   onClick={shiftPrev}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
                   title={
                     operationalPeriod === 'today' || operationalPeriod === 'tomorrow'
                       ? 'Dia anterior'
@@ -2845,22 +2849,23 @@ export default function CalendarSection({
                   }
                   aria-label="Período anterior"
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
+                  <ChevronLeft className="w-4 h-4 text-text-secondary" />
+                </IconButton>
                 <button 
                   type="button"
                   id="btn-nav-today"
                   onClick={jumpToToday}
-                  className="px-2.5 py-1 hover:bg-slate-100 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                  className="px-3.5 h-9 flex items-center justify-center hover:bg-surface-muted rounded-control text-caption font-bold text-text-primary transition-all cursor-pointer border border-border shadow-flat"
                   aria-label="Ir para a data atual"
                 >
                   Hoje
                 </button>
-                <button 
+                <IconButton 
                   type="button"
                   id="btn-nav-next"
+                  variant="ghost"
+                  size="sm"
                   onClick={shiftNext}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
                   title={
                     operationalPeriod === 'today' || operationalPeriod === 'tomorrow'
                       ? 'Dia seguinte'
@@ -2870,8 +2875,8 @@ export default function CalendarSection({
                   }
                   aria-label="Período seguinte"
                 >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                  <ChevronRight className="w-4 h-4 text-text-secondary" />
+                </IconButton>
               </div>
 
               {/* Ecrã Cheio Button */}
@@ -2907,50 +2912,54 @@ export default function CalendarSection({
               </div>
 
               {/* Paginação Anterior / Seguinte */}
-              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
-                <button 
+              <div className="flex items-center gap-1.5 bg-surface border border-border rounded-xl p-1">
+                <IconButton 
                   disabled={currentTimelinePage === 1}
                   onClick={() => setTimelineCurrentPage(p => Math.max(1, p - 1))}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
                   title="Página anterior"
+                  variant="ghost"
+                  size="sm"
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-xs font-bold text-slate-700 px-2 min-w-[65px] text-center">
+                  <ChevronLeft className="w-4 h-4 text-text-secondary" />
+                </IconButton>
+                <span className="text-caption font-bold text-text-primary px-2 min-w-[65px] text-center font-mono">
                   {currentTimelinePage} / {totalTimelinePages}
                 </span>
-                <button 
+                <IconButton 
                   disabled={currentTimelinePage === totalTimelinePages}
                   onClick={() => setTimelineCurrentPage(p => Math.min(totalTimelinePages, p + 1))}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
                   title="Página seguinte"
+                  variant="ghost"
+                  size="sm"
                 >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                  <ChevronRight className="w-4 h-4 text-text-secondary" />
+                </IconButton>
               </div>
 
               {/* Shift date buttons */}
-              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5">
-                <button 
+              <div className="flex items-center gap-1.5 bg-surface border border-border rounded-xl p-1">
+                <IconButton 
                   onClick={shiftPrev}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
                   title="Retroceder 7 dias"
+                  variant="ghost"
+                  size="sm"
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
+                  <ChevronLeft className="w-4 h-4 text-text-secondary" />
+                </IconButton>
                 <button 
                   onClick={jumpToToday}
-                  className="px-2.5 py-1 hover:bg-slate-100 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                  className="px-3.5 h-9 flex items-center justify-center hover:bg-surface-muted rounded-control text-caption font-bold text-text-primary transition-all cursor-pointer border border-border shadow-flat"
                 >
                   Hoje
                 </button>
-                <button 
+                <IconButton 
                   onClick={shiftNext}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
                   title="Avançar 7 dias"
+                  variant="ghost"
+                  size="sm"
                 >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                  <ChevronRight className="w-4 h-4 text-text-secondary" />
+                </IconButton>
               </div>
             </div>
 
