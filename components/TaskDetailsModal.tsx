@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Task, Project, Client, TaskType, User } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
-import { getTaskTypeName, formatToOnlyHours, getDefaultTaskStatusId } from '../lib/utils';
+import { getTaskTypeName, formatToOnlyHours, getDefaultTaskStatusId, matchId } from '../lib/utils';
 import { getTaskConflictWarnings } from '../lib/taskConflicts';
 import { validateTaskExecutionTimes, parseTaskHoursToFloat } from '../lib/taskOperations';
 
@@ -133,6 +133,7 @@ export default function TaskDetailsModal({
   const [formAssignees, setFormAssignees] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const hasInitializedRef = useRef<string | null>(null);
 
   // Click outside to close project dropdown
   useEffect(() => {
@@ -150,12 +151,23 @@ export default function TaskDetailsModal({
 
   // Initialize form based on mode and task
   useEffect(() => {
+    if (!isModalOpen) {
+      hasInitializedRef.current = null;
+      return;
+    }
+
+    const sessionKey = `${effectiveMode}_${activeTask?.id || 'new'}`;
+    if (hasInitializedRef.current === sessionKey) {
+      return;
+    }
+    hasInitializedRef.current = sessionKey;
+
     if (effectiveMode === 'create') {
       if (activeTask) {
         // DADOS PRÉ-PREENCHIDOS PARA DUPLICAÇÃO
         const projId = activeTask.projectId || '';
         setFormProjectId(projId);
-        const pObj = projects.find(p => p.id === projId);
+        const pObj = projects.find(p => matchId(p.id, projId) || p.id === projId);
         setProjectSearchQuery(pObj ? getProjectDisplayLabel(pObj) : '');
 
         setFormTitle(activeTask.title || '');
@@ -177,7 +189,7 @@ export default function TaskDetailsModal({
         const defaultProj = initialProjectId || '';
         setFormProjectId(defaultProj);
         if (defaultProj) {
-          const pObj = projects.find(p => p.id === defaultProj);
+          const pObj = projects.find(p => matchId(p.id, defaultProj) || p.id === defaultProj);
           setProjectSearchQuery(pObj ? getProjectDisplayLabel(pObj) : '');
         } else {
           setProjectSearchQuery('');
@@ -206,7 +218,7 @@ export default function TaskDetailsModal({
       // EDIÇÃO / EXECUÇÃO / VISUALIZAÇÃO
       const projId = activeTask.projectId || '';
       setFormProjectId(projId);
-      const pObj = projects.find(p => p.id === projId);
+      const pObj = projects.find(p => matchId(p.id, projId) || p.id === projId);
       setProjectSearchQuery(pObj ? getProjectDisplayLabel(pObj) : '');
 
       setFormTitle(activeTask.title || '');
@@ -233,7 +245,7 @@ export default function TaskDetailsModal({
         }
       }
     }
-  }, [effectiveMode, activeTask, initialProjectId, initialDate, initialAssigneeId, initialAssigneeIds, projects, taskStatuses, getProjectDisplayLabel]);
+  }, [isModalOpen, effectiveMode, activeTask, initialProjectId, initialDate, initialAssigneeId, initialAssigneeIds, projects, taskStatuses, getProjectDisplayLabel]);
 
   // Fast suggestions filtering with early termination (designed for thousands of projects)
   const projectSuggestions = useMemo(() => {
@@ -363,11 +375,9 @@ export default function TaskDetailsModal({
     let resolvedProjectId: string | null = null;
     if (formProjectId && formProjectId.trim()) {
       const targetId = formProjectId.trim();
-      const matchedProject = projects.find(p => !p.deleted && (p.id === targetId || p.id.replace(/-/g, '') === targetId.replace(/-/g, '')));
+      const matchedProject = projects.find(p => !p.deleted && (matchId(p.id, targetId) || p.id === targetId));
       if (matchedProject) {
         resolvedProjectId = matchedProject.id;
-      } else {
-        resolvedProjectId = targetId;
       }
     }
 
