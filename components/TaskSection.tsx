@@ -32,7 +32,7 @@ import { TaskAnalytics } from './TaskAnalytics';
 import { hasPermission } from '../lib/permissions';
 import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate, getTaskStatusStyle, getUserInitials, cn } from '../lib/utils';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
-import { Button, IconButton, Badge, Tabs } from './ui';
+import { Button, IconButton, Badge, Tabs, Select, Checkbox } from './ui';
 
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
@@ -692,16 +692,15 @@ export default function TaskSection({
               </div>
 
               {/* Assignee Filter */}
-              <select 
+              <Select
                 value={filterAssignee}
                 onChange={e => setFilterAssignee(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
-              >
-                <option value="">Qualquer Responsável</option>
-                {usersWithTasks.map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
+                className="h-10 text-xs font-semibold w-full sm:w-auto min-w-[220px]"
+                options={[
+                  { value: '', label: 'Qualquer Responsável' },
+                  ...usersWithTasks.map(u => ({ value: u.id, label: u.name }))
+                ]}
+              />
             </div>
           </div>
         )}
@@ -735,42 +734,43 @@ export default function TaskSection({
                 <div className="flex flex-wrap items-center gap-3 text-xs">
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-medium">Mostrar:</span>
-                    <select
-                      value={pageSize}
+                    <Select
+                      value={String(pageSize)}
                       onChange={e => {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value={10}>10</option>
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                    </select>
+                      className="h-9 py-1 px-2.5 text-xs font-semibold w-20"
+                      options={[
+                        { value: '10', label: '10' },
+                        { value: '25', label: '25' },
+                        { value: '50', label: '50' },
+                        { value: '100', label: '100' },
+                      ]}
+                    />
                   </div>
 
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-medium">Ordenar por:</span>
-                    <select
+                    <Select
                       value={sortBy}
                       onChange={e => setSortBy(e.target.value as 'estimatedDate' | 'status')}
-                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="estimatedDate">Data prevista (padrão)</option>
-                      <option value="status">Estado</option>
-                    </select>
+                      className="h-9 py-1 px-2.5 text-xs font-semibold w-auto min-w-[180px]"
+                      options={[
+                        { value: 'estimatedDate', label: 'Data prevista (padrão)' },
+                        { value: 'status', label: 'Estado' },
+                      ]}
+                    />
                   </div>
 
-                  <label className="flex items-center gap-2 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer select-none hover:bg-slate-50 transition-colors">
-                    <input
-                      type="checkbox"
+                  <div className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-control flex items-center">
+                    <Checkbox
                       checked={groupByProject}
                       onChange={e => setGroupByProject(e.target.checked)}
-                      className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 cursor-pointer"
+                      label="Agrupar por Projeto"
+                      className="text-xs font-semibold"
                     />
-                    <span>Agrupar por Projeto</span>
-                  </label>
+                  </div>
                 </div>
 
                 <div className="text-xs text-slate-500 font-medium">
