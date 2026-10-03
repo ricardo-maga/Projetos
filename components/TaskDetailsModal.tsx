@@ -534,7 +534,6 @@ export default function TaskDetailsModal({
 
         {/* Form Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* ...existing form content... */}
           
           {/* Informative Conflict Warnings Banner */}
           {conflictWarnings.length > 0 && (
@@ -866,6 +865,8 @@ export default function TaskDetailsModal({
                 className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
               />
             </div>
+          </div>
+
           </div>
 
           {/* Action Buttons */}
