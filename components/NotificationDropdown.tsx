@@ -1,6 +1,10 @@
+'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Check, ExternalLink, X } from 'lucide-react';
+import { Bell, Check, ExternalLink } from 'lucide-react';
 import { Notification } from '../lib/types';
+import { cn } from '../lib/utils';
+import IconButton from './ui/IconButton';
 
 interface NotificationDropdownProps {
   notifications: Notification[];
@@ -26,55 +30,69 @@ export default function NotificationDropdown({ notifications, markAsRead, markAl
 
   return (
     <div className="relative" ref={ref}>
-      <button 
+      <IconButton 
+        variant="ghost" 
+        size="md"
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors relative"
+        className="relative hover:bg-surface-muted rounded-full"
+        aria-label="Abrir notificações"
       >
-        <Bell className="w-5 h-5" />
+        <Bell className="w-5 h-5 text-text-secondary hover:text-text-primary" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-error rounded-full ring-2 ring-surface"></span>
         )}
-      </button>
+      </IconButton>
 
       {isOpen && (
-        <div className="fixed right-3 sm:right-6 top-14 sm:top-16 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-slate-200 z-[9999] overflow-hidden flex flex-col max-h-96">
-          <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-            <h3 className="font-bold text-sm text-slate-800">Notificações</h3>
+        <div className="fixed right-4 sm:right-6 top-16 w-80 sm:w-96 bg-surface rounded-card shadow-modal border border-border z-[9999] overflow-hidden flex flex-col max-h-96 animate-fade-in text-left">
+          <div className="p-4 border-b border-border flex items-center justify-between bg-surface-muted/40">
+            <h3 className="font-bold text-body text-text-primary">Notificações</h3>
             {unreadCount > 0 && (
               <button 
                 onClick={markAllAsRead}
-                className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                className="text-label font-semibold text-primary hover:text-primary-hover flex items-center gap-1.5 transition-colors cursor-pointer"
               >
-                <Check className="w-3 h-3" />
+                <Check className="w-4 h-4" />
                 Marcar todas como lidas
               </button>
             )}
           </div>
           
-          <div className="overflow-y-auto flex-1 p-2 space-y-1">
+          <div className="overflow-y-auto flex-1 p-3 space-y-2">
             {notifications.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-sm">
+              <div className="p-8 text-center text-text-muted text-body-sm">
                 Não tem notificações.
               </div>
             ) : (
               notifications.map(notif => (
                 <div 
                   key={notif.id} 
-                  className={`p-3 rounded-lg text-sm flex gap-3 ${notif.isRead ? 'bg-white opacity-60' : 'bg-blue-50/50'}`}
+                  className={cn(
+                    "p-3 rounded-control border text-body-sm flex gap-3 transition-all",
+                    notif.isRead 
+                      ? "bg-surface border-border-subtle opacity-60" 
+                      : "bg-primary/5 border-primary/10 hover:bg-primary/10"
+                  )}
                 >
-                  <div className="flex-1">
-                    <p className={`font-semibold ${notif.isRead ? 'text-slate-600' : 'text-slate-800'}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn(
+                      "font-bold truncate",
+                      notif.isRead ? "text-text-secondary" : "text-text-primary"
+                    )}>
                       {notif.title}
                     </p>
-                    <p className="text-slate-500 text-xs mt-0.5 line-clamp-2">
+                    <p className="text-text-secondary text-caption mt-0.5 line-clamp-2">
                       {notif.message}
                     </p>
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className="text-[10px] text-slate-400 font-medium">
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      <span className="text-caption text-text-muted font-mono font-medium">
                         {new Date(notif.createdDate).toLocaleString('pt-PT')}
                       </span>
                       {notif.linkUrl && (
-                        <a href={notif.linkUrl} className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-0.5">
+                        <a 
+                          href={notif.linkUrl} 
+                          className="text-caption font-bold text-primary hover:text-primary-hover hover:underline flex items-center gap-0.5"
+                        >
                           Ver detalhes <ExternalLink className="w-3 h-3" />
                         </a>
                       )}
@@ -83,10 +101,10 @@ export default function NotificationDropdown({ notifications, markAsRead, markAl
                   {!notif.isRead && (
                     <button 
                       onClick={() => markAsRead(notif.id)}
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors"
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-primary hover:bg-primary/10 transition-colors cursor-pointer self-start shrink-0 border border-primary/10"
                       title="Marcar como lida"
                     >
-                      <Check className="w-4 h-4" />
+                      <Check className="w-4 h-4 stroke-[2.5px]" />
                     </button>
                   )}
                 </div>

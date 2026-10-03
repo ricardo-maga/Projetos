@@ -362,9 +362,12 @@ export default function TaskDetailsModal({
     // If user cleared the selection or typed arbitrary text without selecting, projectId is null.
     let resolvedProjectId: string | null = null;
     if (formProjectId && formProjectId.trim()) {
-      const matchedProject = projects.find(p => p.id === formProjectId.trim() && !p.deleted);
+      const targetId = formProjectId.trim();
+      const matchedProject = projects.find(p => !p.deleted && (p.id === targetId || p.id.replace(/-/g, '') === targetId.replace(/-/g, '')));
       if (matchedProject) {
         resolvedProjectId = matchedProject.id;
+      } else {
+        resolvedProjectId = targetId;
       }
     }
 

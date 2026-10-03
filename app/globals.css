@@ -16,6 +16,46 @@
   --color-blue-800: var(--primary-800);
   --color-blue-900: var(--primary-900);
   --color-blue-950: var(--primary-950);
+
+  /* Design Tokens - Colors */
+  --color-background: var(--color-background-token);
+  --color-surface: var(--color-surface-token);
+  --color-surface-muted: var(--color-surface-muted-token);
+  --color-surface-elevated: var(--color-surface-elevated-token);
+  --color-text-primary: var(--color-text-primary-token);
+  --color-text-secondary: var(--color-text-secondary-token);
+  --color-text-muted: var(--color-text-muted-token);
+  --color-text-disabled: var(--color-text-disabled-token);
+  --color-border: var(--color-border-token);
+  --color-border-subtle: var(--color-border-subtle-token);
+  --color-primary: var(--primary-600);
+  --color-primary-hover: var(--primary-700);
+  --color-primary-active: var(--primary-800);
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-info: var(--primary-600);
+
+  /* Spacing Scale */
+  --spacing-token-xs: 4px;
+  --spacing-token-sm: 8px;
+  --spacing-token-md: 12px;
+  --spacing-token-lg: 16px;
+  --spacing-token-xl: 24px;
+  --spacing-token-2xl: 32px;
+
+  /* Border Radius */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-dialog: 16px;
+  --radius-badge: 4px;
+  --radius-container: 16px;
+
+  /* Shadows (Gmail/Material Style) */
+  --shadow-flat: none;
+  --shadow-raised: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-overlay: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
 }
 
 :root,
@@ -24,6 +64,17 @@ body,
 #main-root,
 [data-theme="default"],
 [data-theme="blue"] {
+  --color-background-token: #f9fafb;
+  --color-surface-token: #ffffff;
+  --color-surface-muted-token: #f3f4f6;
+  --color-surface-elevated-token: #ffffff;
+  --color-text-primary-token: #111827;
+  --color-text-secondary-token: #4b5563;
+  --color-text-muted-token: #9ca3af;
+  --color-text-disabled-token: #d1d5db;
+  --color-border-token: #e5e7eb;
+  --color-border-subtle-token: #f3f4f6;
+
   --primary-50: #eff6ff;
   --primary-100: #dbeafe;
   --primary-200: #bfdbfe;
@@ -187,3 +238,37 @@ body[data-theme="rose"],
   --color-blue-900: #881337 !important;
   --color-blue-950: #4c0519 !important;
 }
+
+/* Typographic Scale Classes - Legible & Accessible Heights */
+.text-body {
+  font-size: 15px;
+  line-height: 1.5;
+}
+.text-body-sm {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.text-label {
+  font-size: 13px;
+  line-height: 1.4;
+}
+.text-caption {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.text-heading-sm {
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+.text-heading-md {
+  font-size: 22px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.text-heading-lg {
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+

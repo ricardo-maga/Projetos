@@ -2097,13 +2097,14 @@ export default function ProjectSection({
                                           {t.title}
                                         </div>
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-extrabold border tracking-wider ${
-                                            t.statusId === 'ts-3' || t.statusId === '99999999-9999-9999-9999-999999999903'
-                                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' 
-                                              : t.statusId === 'ts-2' || t.statusId === '99999999-9999-9999-9999-999999999902'
-                                              ? 'bg-amber-50 text-amber-700 border-amber-200/50'
-                                              : 'bg-blue-50 text-blue-700 border-blue-200/50'
-                                          }`}>{getTaskStatusName(t.statusId, taskStatuses)}</span>
+                                          {(() => {
+                                            const tStyle = getTaskStatusStyle(t.statusId, taskStatuses);
+                                            return (
+                                              <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-extrabold border tracking-wider ${tStyle.badgeClass}`}>
+                                                {tStyle.name}
+                                              </span>
+                                            );
+                                          })()}
                                           
                                           <span className="text-[10px] text-slate-500 font-bold truncate max-w-[150px]">
                                             👤 {assigneesText}
@@ -2421,20 +2422,7 @@ export default function ProjectSection({
                   </div>
                 </div>
               
-              {/* Documents Attachments list */}
-              <div className="space-y-2">
-                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Documentação técnica</span>
-                {selectedProj.documents?.length > 0 ? (
-                  <div className="space-y-1 mt-1">
-                    {selectedProj.documents.map((doc, i) => (
-                      <div key={i} className="flex items-center gap-1.5 py-1 text-blue-600 hover:underline cursor-pointer">
-                        <FileText className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
-                        <span className="font-semibold truncate max-w-[180px]">{doc}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : <span className="text-slate-400 italic block mt-1">Sem esquemas ou PDFs anexados.</span>}
-              </div>
+              {/* Documents removed as requested */}
 
             </div>
 
