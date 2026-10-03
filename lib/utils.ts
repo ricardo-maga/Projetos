@@ -7,6 +7,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function getUserInitials(name?: string | null): string {
+  if (!name || typeof name !== 'string') return '?';
+  const trimmed = name.trim();
+  if (!trimmed) return '?';
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  const first = parts[0].charAt(0).toUpperCase();
+  const last = parts[parts.length - 1].charAt(0).toUpperCase();
+  return `${first}${last}`;
+}
+
 export function matchId(idA?: string | null, idB?: string | null): boolean {
   if (!idA || !idB) return false;
   if (idA === idB) return true;

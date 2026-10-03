@@ -30,7 +30,7 @@ import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { TaskAnalytics } from './TaskAnalytics';
 
 import { hasPermission } from '../lib/permissions';
-import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate, getTaskStatusStyle } from '../lib/utils';
+import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate, getTaskStatusStyle, getUserInitials } from '../lib/utils';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
@@ -422,11 +422,50 @@ export default function TaskSection({
 
   const getProjectTitle = (projId?: string | null) => {
     if (!projId) return 'Sem projeto';
-    const proj = projects.find(p => p.id === projId);
+    const proj = projectMap.get(projId);
     if (!proj) return 'Projeto não encontrado';
-    const client = clients.find(c => c.id === proj.clientId);
+    const client = clientMap.get(proj.clientId);
     const clientName = client ? (client.clientName || client.shortName) : '';
-    return clientName ? `${clientName} • ${proj.title}` : proj.title;
+    const ipPart = proj.installProjectNo ? ` (${proj.installProjectNo})` : '';
+    const projectTitle = `${proj.title}${ipPart}`;
+    return clientName ? `${clientName} · ${projectTitle}` : projectTitle;
+  };
+
+  const renderAssignees = (assigneeIds?: string[]) => {
+    if (!assigneeIds || assigneeIds.length === 0) {
+      return <span className="text-slate-400 italic text-xs">Sem atribuição</span>;
+    }
+
+    const maxVisible = 3;
+    const visibleIds = assigneeIds.slice(0, maxVisible);
+    const remainingCount = assigneeIds.length - maxVisible;
+
+    return (
+      <div className="flex flex-wrap items-center gap-1">
+        {visibleIds.map(uid => {
+          const user = users.find(u => matchUserId(u.id, uid));
+          const userName = user ? user.name : uid;
+          const initials = getUserInitials(userName);
+          return (
+            <span 
+              key={uid} 
+              className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-800 font-extrabold text-xs rounded-md shadow-2xs"
+              title={userName}
+            >
+              {initials}
+            </span>
+          );
+        })}
+        {remainingCount > 0 && (
+          <span 
+            className="px-1.5 py-0.5 bg-slate-200 border border-slate-300 text-slate-700 font-extrabold text-xs rounded-md shadow-2xs"
+            title={`${remainingCount} outro(s) responsável(eis)`}
+          >
+            +{remainingCount}
+          </span>
+        )}
+      </div>
+    );
   };
 
   const getStatusName = (id: string) => getTaskStatusName(id, taskStatuses);
@@ -786,14 +825,13 @@ export default function TaskSection({
                 </div>
               ) : (
                 <table className="w-full min-w-[850px] text-left border-collapse">
-                  <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+                  <thead className="bg-slate-50/90 text-xs font-bold text-slate-500 border-b border-slate-200/80 whitespace-nowrap select-none">
                     <tr>
+                      <th className="px-3 py-3 text-center w-10"></th>
                       <th className="px-4 py-3 text-left">Data</th>
-                      <th className="px-4 py-3 text-left">Estado</th>
-                      <th className="px-4 py-3 text-left">Título da Tarefa</th>
-                      <th className="px-4 py-3 text-left">Projeto / Cliente</th>
+                      <th className="px-4 py-3 text-left">Tarefa</th>
                       <th className="px-4 py-3 text-left">Responsáveis</th>
-                      <th className="px-4 py-3 text-center">Horas prev./reais</th>
+                      <th className="px-4 py-3 text-center">Horas prev./Reais</th>
                       <th className="px-4 py-3 text-left">Tipo</th>
                       <th className="px-4 py-3 text-right">Ações</th>
                     </tr>
@@ -816,78 +854,84 @@ export default function TaskSection({
                           onClick={() => openTaskModal(t, canWriteTasks ? 'edit' : 'view')}
                           className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                         >
-                          {/* Data */}
-                          <td className="px-4 py-3.5 font-bold font-mono text-slate-700 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <span>{targetDate ? targetDate.split('-').reverse().join('/') : 'N/A'}</span>
+                          {/* 1. Execução */}
+                          <td className="px-3 py-3.5 text-center whitespace-nowrap w-10">
+                            {canWriteTasks ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openTaskModal(t, 'execute');
+                                }}
+                                className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                                title="Registar execução da tarefa"
+                                aria-label="Registar execução da tarefa"
+                              >
+                                <PlayCircle className="w-4 h-4 text-amber-600" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled
+                                className="p-1.5 bg-slate-50 text-slate-300 rounded-lg cursor-not-allowed inline-flex items-center justify-center opacity-40"
+                                title="Não tem permissão para registar execução"
+                                aria-label="Registar execução da tarefa"
+                              >
+                                <PlayCircle className="w-4 h-4 text-slate-400" />
+                              </button>
+                            )}
+                          </td>
+
+                          {/* 2. Data (Linha 1: Data + Alerta atraso, Linha 2: Badge Estado) */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 text-sm font-bold font-mono text-slate-800">
+                              <span>{targetDate ? targetDate.split('-').reverse().join('/') : '—'}</span>
                               {isOverdue && (
-                                <span className="p-0.5 rounded text-rose-600 bg-rose-50" title="Tarefa atrasada">
-                                  <AlertTriangle className="w-3 h-3" />
+                                <span className="p-0.5 rounded text-rose-600 bg-rose-50 inline-flex items-center" title="Tarefa atrasada">
+                                  <AlertTriangle className="w-3.5 h-3.5" />
                                 </span>
                               )}
                             </div>
+                            <div className="mt-1">
+                              <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider border ${statusBadgeStyle}`}>
+                                {statusName}
+                              </span>
+                            </div>
                           </td>
 
-                          {/* Estado */}
-                          <td className="px-4 py-3.5 whitespace-nowrap">
-                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border ${statusBadgeStyle}`}>
-                              {statusName}
-                            </span>
-                          </td>
-
-                          {/* Título */}
+                          {/* 3. Tarefa (Linha 1: Cliente · Projeto, Linha 2: Título da Tarefa) */}
                           <td className="px-4 py-3.5">
-                            <div className="text-xs sm:text-sm font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
+                            <div className="text-xs font-bold text-blue-700 truncate max-w-[340px]">
+                              {getProjectTitle(t.projectId)}
+                            </div>
+                            <div className="text-sm font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors mt-0.5">
                               {t.title}
                             </div>
                             {t.description && (
-                              <div className="text-[11px] text-slate-500 italic line-clamp-1 mt-0.5">
+                              <div className="text-xs text-slate-500 italic line-clamp-1 mt-0.5">
                                 {t.description}
                               </div>
                             )}
                           </td>
 
-                          {/* Projeto */}
-                          <td className="px-4 py-3.5 text-xs">
-                            {t.projectId ? (
-                              <span className="text-blue-700 font-bold">{getProjectTitle(t.projectId)}</span>
-                            ) : (
-                              <span className="text-slate-400 font-medium italic">Sem projeto</span>
-                            )}
-                          </td>
-
-                          {/* Responsáveis */}
+                          {/* 4. Responsáveis */}
                           <td className="px-4 py-3.5">
-                            <div className="flex flex-wrap gap-1 max-w-[180px]">
-                              {t.assigneeIds && t.assigneeIds.length > 0 ? (
-                                t.assigneeIds.map(uid => (
-                                  <span key={uid} className="px-2 py-0.5 bg-slate-100 text-slate-700 font-bold rounded-md text-xs">
-                                    {getUserName(uid)}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="text-slate-400 italic text-xs">Sem atribuição</span>
-                              )}
-                            </div>
+                            {renderAssignees(t.assigneeIds)}
                           </td>
 
-                          {/* Horas prev./reais */}
-                          <td className="px-4 py-3.5 text-center font-bold whitespace-nowrap text-slate-800 text-xs">
-                            <span>{estHours} h</span>
+                          {/* 5. Horas prev./Reais */}
+                          <td className="px-4 py-3.5 text-center font-bold text-xs whitespace-nowrap text-slate-800">
+                            <span className="text-slate-700">{estHours} h</span>
                             <span className="text-slate-300 mx-1.5">/</span>
-                            {parseTaskHoursToFloat(actHours) > 0 ? (
-                              <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                                {actHours} h
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">—</span>
-                            )}
+                            <span className={parseTaskHoursToFloat(actHours) > 0 ? "text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-extrabold" : "text-slate-600"}>
+                              {actHours} h
+                            </span>
                           </td>
 
-                          {/* Tipo */}
+                          {/* 6. Tipo */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
                             {t.taskTypeId ? (
-                              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs font-semibold">
+                              <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-md text-xs font-semibold">
                                 {getTaskTypeName(t.taskTypeId, taskTypes)}
                               </span>
                             ) : (
@@ -895,47 +939,22 @@ export default function TaskSection({
                             )}
                           </td>
 
-                          {/* Ações */}
+                          {/* 7. Ações (Apenas ícones: Editar, Duplicar, Eliminar) */}
                           <td className="px-4 py-3.5 text-right whitespace-nowrap">
                             <div className="flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
-                              {/* Quick Action: Registar Execução */}
-                              {canWriteTasks && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openTaskModal(t, 'execute');
-                                  }}
-                                  className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1"
-                                  title="Registar horas e execução da tarefa"
-                                >
-                                  <PlayCircle className="w-3 h-3 text-amber-600" />
-                                  <span>Execução</span>
-                                </button>
-                              )}
-
-                              {/* Link Copy */}
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCopyTaskLink(t.id);
-                                }}
-                                className={`p-1.5 rounded-lg ${copiedLinkId === t.id ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'}`}
-                                title="Copiar Link da Tarefa"
-                              >
-                                <Link2 className="w-3.5 h-3.5" />
-                              </button>
-
                               {/* Edit */}
                               {canWriteTasks && (
                                 <button 
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     openTaskModal(t, 'edit');
                                   }}
-                                  className="p-1.5 hover:bg-blue-50 hover:text-blue-700 rounded-lg text-slate-400"
+                                  className="p-1.5 hover:bg-blue-50 hover:text-blue-700 rounded-lg text-slate-400 transition-colors cursor-pointer"
                                   title="Editar Tarefa"
+                                  aria-label="Editar Tarefa"
                                 >
-                                  <Edit2 className="w-3.5 h-3.5" />
+                                  <Edit2 className="w-4 h-4" />
                                 </button>
                               )}
 
@@ -947,16 +966,18 @@ export default function TaskSection({
                                     e.stopPropagation();
                                     openTaskModal(t, 'create');
                                   }}
-                                  className="p-1.5 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg text-slate-400"
+                                  className="p-1.5 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg text-slate-400 transition-colors cursor-pointer"
                                   title="Duplicar Tarefa"
+                                  aria-label="Duplicar Tarefa"
                                 >
-                                  <Copy className="w-3.5 h-3.5" />
+                                  <Copy className="w-4 h-4" />
                                 </button>
                               )}
 
                               {/* Delete */}
                               {canDeleteTasks && (
                                 <button 
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     askConfirmation(
@@ -965,10 +986,11 @@ export default function TaskSection({
                                       () => deleteTask(t.id)
                                     );
                                   }}
-                                  className="p-1.5 hover:bg-rose-50 hover:text-rose-700 rounded-lg text-slate-400"
+                                  className="p-1.5 hover:bg-rose-50 hover:text-rose-700 rounded-lg text-slate-400 transition-colors cursor-pointer"
                                   title="Eliminar Tarefa"
+                                  aria-label="Eliminar Tarefa"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               )}
                             </div>
