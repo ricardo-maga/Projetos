@@ -12,7 +12,6 @@ import {
   CheckSquare, 
   X, 
   Users, 
-  Link2, 
   ChevronLeft, 
   ChevronRight, 
   BarChart2, 
@@ -192,29 +191,9 @@ export default function TaskSection({
     });
   };
 
-  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
-
-  const handleCopyTaskLink = (taskId: string) => {
-    if (typeof window === 'undefined') return;
-    let url = window.location.origin + window.location.pathname + '?tab=tarefas&task=' + taskId;
-    navigator.clipboard.writeText(url);
-    setCopiedLinkId(taskId);
-    setTimeout(() => setCopiedLinkId(null), 2000);
-  };
-
   // Pre-build O(1) Map lookups for projects and clients
   const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
   const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
-
-  const getProjectWithClientLabel = (projId: string) => {
-    if (!projId) return 'Sem projeto';
-    const proj = projectMap.get(projId);
-    if (!proj) return 'Projeto não encontrado';
-    const client = clientMap.get(proj.clientId);
-    const clientName = client ? (client.clientName || client.shortName) : '';
-    const ipPart = proj.installProjectNo ? ` (${proj.installProjectNo})` : '';
-    return clientName ? `${clientName} - ${proj.title}${ipPart}` : `${proj.title}${ipPart}`;
-  };
 
   // Filter active tasks (not deleted, and if associated with project, project must not be deleted)
   const activeTasks = useMemo(() => {
@@ -394,8 +373,8 @@ export default function TaskSection({
     });
 
     const sortedProjectIds = Object.keys(tasksByProject).sort((idA, idB) => {
-      const titleA = getProjectWithClientLabel(idA).toLowerCase();
-      const titleB = getProjectWithClientLabel(idB).toLowerCase();
+      const titleA = getProjectTitle(idA).toLowerCase();
+      const titleB = getProjectTitle(idB).toLowerCase();
       return titleA.localeCompare(titleB);
     });
 
@@ -907,11 +886,6 @@ export default function TaskSection({
                             <div className="text-sm font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors mt-0.5">
                               {t.title}
                             </div>
-                            {t.description && (
-                              <div className="text-xs text-slate-500 italic line-clamp-1 mt-0.5">
-                                {t.description}
-                              </div>
-                            )}
                           </td>
 
                           {/* 4. Responsáveis */}

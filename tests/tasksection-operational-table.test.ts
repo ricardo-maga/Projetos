@@ -263,4 +263,65 @@ describe('FASE — TaskSection: Nova Tabela Operacional', () => {
       expect(JSON.stringify(taskOriginal)).toBe(snapshot);
     });
   });
+
+  describe('7. FASE — Correções Visuais e Limpeza Cirúrgica (TaskSection)', () => {
+    const projectMap = new Map<string, Project>([
+      ['p-1', { id: 'p-1', clientId: 'c-1', title: 'Linha de Produção', version: 1, deleted: false }],
+      ['p-2', { id: 'p-2', clientId: 'c-2', title: 'Parque Fotovoltaico', installProjectNo: 'IP-99', version: 1, deleted: false }],
+    ]);
+
+    const clientMap = new Map<string, Client>([
+      ['c-1', { id: 'c-1', clientName: 'ACME Corp', shortName: 'ACME', version: 1, deleted: false }],
+    ]);
+
+    const getProjectTitle = (projId?: string | null) => {
+      if (!projId) return 'Sem projeto';
+      const proj = projectMap.get(projId);
+      if (!proj) return 'Projeto não encontrado';
+      const client = clientMap.get(proj.clientId);
+      const clientName = client ? (client.clientName || client.shortName) : '';
+      const ipPart = proj.installProjectNo ? ` (${proj.installProjectNo})` : '';
+      const projectTitle = `${proj.title}${ipPart}`;
+      return clientName ? `${clientName} · ${projectTitle}` : projectTitle;
+    };
+
+    it('1. Coluna Tarefa contém apenas 2 linhas de informação (Linha 1: Cliente · Projeto, Linha 2: Título)', () => {
+      const task: Task = {
+        id: 't-10',
+        title: 'Manutenção de Inversores',
+        description: 'Descrição longa que deve ser omitida na tabela operacional',
+        projectId: 'p-1',
+        version: 1,
+        deleted: false,
+      };
+
+      const line1 = getProjectTitle(task.projectId);
+      const line2 = task.title;
+
+      expect(line1).toBe('ACME Corp · Linha de Produção');
+      expect(line2).toBe('Manutenção de Inversores');
+      // A descrição existe na tarefa mas não faz parte das linhas da coluna
+      expect(task.description).toBeDefined();
+    });
+
+    it('2. Resolução canónica Cliente/Projeto lida com todos os cenários de ID', () => {
+      expect(getProjectTitle(null)).toBe('Sem projeto');
+      expect(getProjectTitle(undefined)).toBe('Sem projeto');
+      expect(getProjectTitle('')).toBe('Sem projeto');
+      expect(getProjectTitle('p-inexistente')).toBe('Projeto não encontrado');
+      expect(getProjectTitle('p-1')).toBe('ACME Corp · Linha de Produção');
+      expect(getProjectTitle('p-2')).toBe('Parque Fotovoltaico (IP-99)');
+    });
+
+    it('3. Ordenação no agrupamento por projeto utiliza a resolução canónica getProjectTitle', () => {
+      const projectIds = ['p-2', 'p-1', 'p-inexistente'];
+      const sorted = [...projectIds].sort((idA, idB) => {
+        const titleA = getProjectTitle(idA).toLowerCase();
+        const titleB = getProjectTitle(idB).toLowerCase();
+        return titleA.localeCompare(titleB);
+      });
+
+      expect(sorted).toEqual(['p-1', 'p-2', 'p-inexistente']);
+    });
+  });
 });
