@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { 
   Users, 
   Plus, 
@@ -24,6 +24,27 @@ import {
 import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, getTaskStatusStyle, getUserInitials } from '../lib/utils';
 import { normalizeRoleId } from '../lib/permissions';
 import DateViewNavigator from './ui/DateViewNavigator';
+
+export function sanitizeUserIds(rawIds: any, eligibleUsers: User[] = []): string[] {
+  if (!Array.isArray(rawIds)) return [];
+  const eligibleSet = eligibleUsers.length > 0 ? new Set(eligibleUsers.map(u => u.id)) : null;
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  for (const id of rawIds) {
+    if (typeof id === 'string' && id.trim() !== '') {
+      const cleanId = id.trim();
+      if (!seen.has(cleanId)) {
+        if (!eligibleSet || eligibleSet.has(cleanId)) {
+          seen.add(cleanId);
+          result.push(cleanId);
+        }
+      }
+    }
+  }
+
+  return result;
+}
 
 interface OperationalUserCalendarProps {
   tasks: Task[];
@@ -174,45 +195,71 @@ export default function OperationalUserCalendar({
       .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-PT', { sensitivity: 'base' }));
   }, [users, appConfig?.taskAssigneeGroupIds, appConfig?.taskAssigneeGroupId]);
 
-  // 6. Selected User IDs & LocalStorage Persistence (default: NO users selected when no preference saved)
-  const currentUserId = currentUser?.id || 'default';
-  const storageKey = `task-calendar-selected-users-v1:${currentUserId}`;
+  // 6. Selected User IDs & Hardened LocalStorage Persistence
+  const currentUserId = currentUser?.id ? String(currentUser.id) : null;
+  const loadedUserIdRef = useRef<string | null>(null);
 
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(storageKey);
-        if (saved !== null) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            return parsed;
-          }
-        }
-      } catch (err) {
-        console.error('[OperationalUserCalendar] Erro ao ler preferência de utilizadores:', err);
+  // Helper to load and sanitize preference from localStorage for a specific userId
+  const loadUserPreference = useCallback((userId: string, eligible: User[]) => {
+    if (typeof window === 'undefined' || !userId) return [];
+    try {
+      const key = `task-calendar-selected-users-v1:${userId}`;
+      const saved = localStorage.getItem(key);
+      if (saved !== null) {
+        const parsed = JSON.parse(saved);
+        return sanitizeUserIds(parsed, eligible);
       }
+    } catch (err) {
+      console.error('[OperationalUserCalendar] Erro ao ler preferência de utilizadores:', err);
     }
+    return [];
+  }, []);
+
+  // Initial state load
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>(() => {
+    if (currentUserId) {
+      loadedUserIdRef.current = currentUserId;
+      return loadUserPreference(currentUserId, activeEligibleUsers);
+    }
+    loadedUserIdRef.current = null;
     return [];
   });
 
+  // Reactive Effect: When currentUserId or activeEligibleUsers change or become available
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(selectedUserIds));
-      } catch (err) {
-        console.error('[OperationalUserCalendar] Erro ao guardar preferência de utilizadores:', err);
-      }
+    if (!currentUserId) {
+      loadedUserIdRef.current = null;
+      setSelectedUserIds([]);
+      return;
     }
-  }, [selectedUserIds, storageKey]);
 
-  useEffect(() => {
-    if (selectedUserIds.length > 0 && activeEligibleUsers.length > 0) {
-      const valid = selectedUserIds.filter(id => activeEligibleUsers.some(u => u.id === id));
-      if (valid.length !== selectedUserIds.length) {
-        setSelectedUserIds(valid);
-      }
+    if (loadedUserIdRef.current !== currentUserId) {
+      const loaded = loadUserPreference(currentUserId, activeEligibleUsers);
+      setSelectedUserIds(loaded);
+      loadedUserIdRef.current = currentUserId;
+    } else if (activeEligibleUsers.length > 0) {
+      setSelectedUserIds(prev => {
+        const sanitized = sanitizeUserIds(prev, activeEligibleUsers);
+        if (sanitized.length !== prev.length || sanitized.some((id, idx) => id !== prev[idx])) {
+          return sanitized;
+        }
+        return prev;
+      });
     }
-  }, [activeEligibleUsers, selectedUserIds]);
+  }, [currentUserId, activeEligibleUsers, loadUserPreference]);
+
+  // Saving Effect: Persist selection changes to localStorage ONLY if currentUserId is present AND matched
+  useEffect(() => {
+    if (typeof window === 'undefined' || !currentUserId) return;
+    if (loadedUserIdRef.current !== currentUserId) return;
+
+    try {
+      const key = `task-calendar-selected-users-v1:${currentUserId}`;
+      localStorage.setItem(key, JSON.stringify(selectedUserIds));
+    } catch (err) {
+      console.error('[OperationalUserCalendar] Erro ao guardar preferência de utilizadores:', err);
+    }
+  }, [selectedUserIds, currentUserId]);
 
   // 7. Navigation handlers
   const handlePrevWeek = () => {
