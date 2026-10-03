@@ -29,19 +29,9 @@ import ConfirmModal from './ConfirmModal';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { TaskAnalytics } from './TaskAnalytics';
 
-// Reusable UI Foundation Components
-import Button from './ui/Button';
-import IconButton from './ui/IconButton';
-import Badge from './ui/Badge';
-import { Card } from './ui/Card';
-import Tabs from './ui/Tabs';
-import Input from './ui/Input';
-import Select from './ui/Select';
-
 import { hasPermission } from '../lib/permissions';
 import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate, getTaskStatusStyle } from '../lib/utils';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
-import { cn } from '../lib/utils';
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
   if (total <= 7) {
@@ -242,10 +232,10 @@ export default function TaskSection({
   const getTaskScale = React.useCallback((statusId: string) => {
     const status = taskStatuses.find(s => s.id === statusId || matchTaskStatusId(s.id, statusId));
     if (status && typeof status.scale === 'number') return status.scale;
-    if (statusId === 'ts-1' || statusId === '99999999-9999-9999-9999-999911111111') return 1;
-    if (statusId === 'ts-2' || statusId === '99999999-9999-9999-9999-999922222222') return 2;
-    if (statusId === 'ts-3' || statusId === '99999999-9999-9999-9999-999933333333') return 3;
-    if (statusId === 'ts-4' || statusId === '99999999-9999-9999-9999-999944444444') return 4;
+    if (statusId === 'ts-1' || statusId === '99999999-9999-9999-9999-999999999901') return 1;
+    if (statusId === 'ts-2' || statusId === '99999999-9999-9999-9999-999999999902') return 2;
+    if (statusId === 'ts-3' || statusId === '99999999-9999-9999-9999-999999999903') return 3;
+    if (statusId === 'ts-4' || statusId === '99999999-9999-9999-9999-999999999904') return 4;
     return 1;
   }, [taskStatuses]);
 
@@ -439,307 +429,349 @@ export default function TaskSection({
     return clientName ? `${clientName} • ${proj.title}` : proj.title;
   };
 
-  const getUserName = (id: string) => users.find(u => matchUserId(u.id, id))?.name || 'N/A';
+  const getStatusName = (id: string) => getTaskStatusName(id, taskStatuses);
 
-  const viewTabsOptions = [
-    { id: 'lista', label: 'Lista Operacional de Tarefas', icon: <ListTodo className="w-4.5 h-4.5" /> },
-    { id: 'analise', label: 'Análise de Tarefas', icon: <BarChart2 className="w-4.5 h-4.5" /> }
-  ];
+  const getUserName = (id: string) => users.find(u => matchUserId(u.id, id))?.name || 'N/A';
 
   return (
     <div className="space-y-6">
-      {/* View Selection Tabs */}
-      <Tabs 
-        tabs={viewTabsOptions} 
-        activeTabId={activeTaskViewTab} 
-        onChange={(id) => setActiveTaskViewTab(id as 'lista' | 'analise')}
-        variant="line"
-        className="mb-2"
-      />
+      <div className="space-y-6">
+        {/* View Selection Tabs */}
+        <div className="flex border-b border-slate-200 gap-6 mb-2">
+          <button
+            onClick={() => setActiveTaskViewTab('lista')}
+            className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+              activeTaskViewTab === 'lista'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <ListTodo className="w-4 h-4" />
+            <span>Lista Operacional de Tarefas</span>
+          </button>
+          <button
+            onClick={() => setActiveTaskViewTab('analise')}
+            className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+              activeTaskViewTab === 'analise'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <BarChart2 className="w-4 h-4" />
+            <span>Análise de Tarefas</span>
+          </button>
+        </div>
 
-      {activeTaskViewTab === 'lista' && (
-        <>
-          {/* OPERATIONAL KPI CARDS */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        {/* OPERATIONAL KPI CARDS */}
+        {activeTaskViewTab === 'lista' && (
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 select-none">
             {/* 1. Para Hoje */}
-            <Card 
+            <button
+              type="button"
               onClick={() => setFilterDatePreset(datePreset === 'today' ? 'all' : 'today')}
-              className={cn(
-                "p-4 cursor-pointer select-none border-l-[4px] transition-all",
+              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
                 datePreset === 'today'
-                  ? 'border-l-primary bg-primary/5 shadow-raised ring-1 ring-primary/10'
-                  : 'border-l-primary/40 bg-surface hover:bg-surface-muted/30 border-border'
-              )}
+                  ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-100'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
             >
-              <div className="text-caption font-semibold text-text-muted uppercase tracking-wider">Para Hoje</div>
-              <div className="text-heading-lg font-black text-text-primary mt-2 flex items-baseline gap-1.5">
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Para Hoje</div>
+              <div className="text-xl font-black text-slate-900 mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums">{operationalStats.todayCount}</span>
-                <span className="text-caption font-bold text-primary">tarefas</span>
+                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">tarefas</span>
               </div>
-            </Card>
+            </button>
 
             {/* 2. Esta semana */}
-            <Card 
+            <button
+              type="button"
               onClick={() => setFilterDatePreset(datePreset === 'this_week' ? 'all' : 'this_week')}
-              className={cn(
-                "p-4 cursor-pointer select-none border-l-[4px] transition-all",
+              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
                 datePreset === 'this_week'
-                  ? 'border-l-info bg-primary/5 shadow-raised ring-1 ring-primary/10'
-                  : 'border-l-info/40 bg-surface hover:bg-surface-muted/30 border-border'
-              )}
+                  ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-100'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
             >
-              <div className="text-caption font-semibold text-text-muted uppercase tracking-wider">Esta semana</div>
-              <div className="text-heading-lg font-black text-text-primary mt-2 flex items-baseline gap-1.5">
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Esta semana</div>
+              <div className="text-xl font-black text-slate-900 mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums">{operationalStats.thisWeekCount}</span>
-                <span className="text-caption font-bold text-primary">ativas</span>
+                <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">ativas</span>
               </div>
-            </Card>
+            </button>
 
             {/* 3. Atrasadas */}
-            <Card 
+            <button
+              type="button"
               onClick={() => setFilterDatePreset(datePreset === 'overdue' ? 'all' : 'overdue')}
-              className={cn(
-                "p-4 cursor-pointer select-none border-l-[4px] transition-all",
+              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
                 datePreset === 'overdue'
-                  ? 'border-l-error bg-error/5 shadow-raised ring-1 ring-error/10'
-                  : 'border-l-error/40 bg-surface hover:bg-surface-muted/30 border-border'
-              )}
+                  ? 'border-rose-500 bg-rose-50/30 ring-2 ring-rose-100'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
             >
-              <div className="text-caption font-semibold text-text-muted uppercase tracking-wider">Atrasadas</div>
-              <div className="text-heading-lg font-black text-error mt-2 flex items-baseline gap-2">
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Atrasadas</div>
+              <div className="text-xl font-black text-rose-700 mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums">{operationalStats.overdueCount}</span>
                 {operationalStats.overdueCount > 0 && (
-                  <Badge variant="error" className="text-[10px] py-0 px-1.5">Atenção</Badge>
+                  <span className="text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Atenção
+                  </span>
                 )}
               </div>
-            </Card>
+            </button>
 
             {/* 4. Concluídas esta semana */}
-            <Card 
+            <button
+              type="button"
               onClick={() => setFilterDatePreset(datePreset === 'completed_this_week' ? 'all' : 'completed_this_week')}
-              className={cn(
-                "p-4 cursor-pointer select-none border-l-[4px] transition-all",
+              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
                 datePreset === 'completed_this_week'
-                  ? 'border-l-success bg-success/5 shadow-raised ring-1 ring-success/10'
-                  : 'border-l-success/40 bg-surface hover:bg-surface-muted/30 border-border'
-              )}
+                  ? 'border-emerald-500 bg-emerald-50/30 ring-2 ring-emerald-100'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
             >
-              <div className="text-caption font-semibold text-text-muted uppercase tracking-wider">Concluídas esta semana</div>
-              <div className="text-heading-lg font-black text-success mt-2 flex items-baseline gap-1.5">
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Concluídas esta semana</div>
+              <div className="text-xl font-black text-emerald-700 mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums">{operationalStats.completedThisWeekCount}</span>
-                <span className="text-caption font-bold text-success">feitas</span>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">feitas</span>
               </div>
-            </Card>
+            </button>
 
             {/* 5. Horas prev. semana */}
-            <Card className="p-4 border-l-[4px] border-l-text-muted bg-surface border-border">
-              <div className="text-caption font-semibold text-text-muted uppercase tracking-wider">Horas prev. semana</div>
-              <div className="text-heading-lg font-black text-text-primary mt-2 flex items-baseline gap-1.5">
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
+              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Horas prev. semana</div>
+              <div className="text-xl font-black text-slate-900 mt-1 flex items-center gap-1">
                 <span className="font-mono tabular-nums">{operationalStats.weekHoursSum}</span>
-                <span className="text-caption font-bold text-text-secondary">h</span>
+                <span className="text-xs font-bold text-slate-500">h</span>
               </div>
-            </Card>
+            </div>
           </div>
+        )}
 
-          {/* SHARED FILTERS BAR */}
-          <div className="space-y-4 bg-surface p-5 rounded-card border border-border shadow-raised">
+        {/* Shared Filters Bar */}
+        {activeTaskViewTab === 'lista' && (
+          <div className="space-y-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
             {/* Quick Date Presets Row */}
-            <div className="flex flex-wrap items-center gap-2 pb-4 border-b border-border/60">
-              <span className="text-body-sm font-extrabold text-text-secondary mr-2">Filtros Rápidos:</span>
+            <div className="flex flex-wrap items-center gap-1.5 pb-3 border-b border-slate-100">
+              <span className="text-xs font-extrabold text-slate-500 mr-1">Filtros Rápidos:</span>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                selected={datePreset === 'all'}
+              <button
+                type="button"
                 onClick={() => setFilterDatePreset('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'all'
+                    ? 'bg-slate-900 text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
               >
                 Todas
-              </Button>
+              </button>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                selected={datePreset === 'today'}
+              <button
+                type="button"
                 onClick={() => setFilterDatePreset('today')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'today'
+                    ? 'bg-blue-600 text-white shadow-2xs'
+                    : 'bg-blue-50 text-blue-800 hover:bg-blue-100'
+                }`}
               >
                 Hoje
-              </Button>
+              </button>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                selected={datePreset === 'tomorrow'}
+              <button
+                type="button"
                 onClick={() => setFilterDatePreset('tomorrow')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'tomorrow'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
+                }`}
               >
                 Amanhã
-              </Button>
+              </button>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                selected={datePreset === 'this_week'}
+              <button
+                type="button"
                 onClick={() => setFilterDatePreset('this_week')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'this_week'
+                    ? 'bg-purple-600 text-white shadow-2xs'
+                    : 'bg-purple-50 text-purple-800 hover:bg-purple-100'
+                }`}
               >
                 Esta Semana
-              </Button>
+              </button>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                selected={datePreset === 'overdue'}
+              <button
+                type="button"
                 onClick={() => setFilterDatePreset('overdue')}
-                className={datePreset === 'overdue' ? '!bg-error/15 !border-error !text-error font-bold' : 'text-error hover:bg-error/10'}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  datePreset === 'overdue'
+                    ? 'bg-rose-600 text-white shadow-2xs'
+                    : 'bg-rose-50 text-rose-800 hover:bg-rose-100'
+                }`}
               >
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <AlertTriangle className="w-3.5 h-3.5" />
                 <span>Atrasadas</span>
-              </Button>
+              </button>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                selected={datePreset === 'completed_this_week'}
+              <button
+                type="button"
                 onClick={() => setFilterDatePreset('completed_this_week')}
-                className={datePreset === 'completed_this_week' ? '!bg-success/15 !border-success !text-success font-bold' : 'text-success hover:bg-success/10'}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'completed_this_week'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                }`}
               >
                 Concluídas esta semana
-              </Button>
+              </button>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                selected={datePreset === 'completed'}
+              <button
+                type="button"
                 onClick={() => setFilterDatePreset('completed')}
-                className={datePreset === 'completed' ? '!bg-success/15 !border-success !text-success font-bold' : 'text-success hover:bg-success/10'}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  datePreset === 'completed'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                }`}
               >
                 Concluídas
-              </Button>
+              </button>
 
               {datePreset !== 'all' && (
                 <button
                   type="button"
                   onClick={() => setFilterDatePreset('all')}
-                  className="ml-auto text-caption font-semibold text-text-muted hover:text-text-primary flex items-center gap-1 cursor-pointer transition-colors"
+                  className="ml-auto text-xs font-bold text-slate-400 hover:text-slate-600 flex items-center gap-1 cursor-pointer"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3 h-3" />
                   <span>Limpar preset</span>
                 </button>
               )}
             </div>
 
             {/* Detailed Filters Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Search Input */}
-              <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none z-10" />
-                <Input 
+              <div className="flex-1 min-w-[200px] relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+                <input 
                   type="text" 
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Pesquisar..."
-                  className="pl-10"
+                  placeholder="Pesquisar por título, cliente ou projeto..."
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
                 />
               </div>
 
               {/* Project Filter */}
-              <Select 
+              <select 
                 value={filterProject}
                 onChange={e => setFilterProject(e.target.value)}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all max-w-[200px] truncate"
               >
                 <option value="">Todos os Projetos</option>
                 {projects.filter(p => !p.deleted).map(p => (
                   <option key={p.id} value={p.id}>{p.title}</option>
                 ))}
-              </Select>
+              </select>
 
               {/* Task Type Filter */}
-              <Select 
+              <select 
                 value={filterType}
                 onChange={e => setFilterType(e.target.value)}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
               >
                 <option value="">Todos os Tipos</option>
                 {taskTypes.filter(tt => !tt.deleted).map(tt => (
                   <option key={tt.id} value={tt.id}>{tt.name}</option>
                 ))}
-              </Select>
+              </select>
 
               {/* Assignee Filter */}
-              <Select 
+              <select 
                 value={filterAssignee}
                 onChange={e => setFilterAssignee(e.target.value)}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
               >
                 <option value="">Qualquer Responsável</option>
                 {usersWithTasks.map(u => (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
-              </Select>
+              </select>
             </div>
           </div>
+        )}
 
-          {/* LISTA DE TAREFAS */}
-          <div className="bg-surface rounded-card border border-border shadow-raised overflow-hidden">
-            <div className="p-5 border-b border-border bg-surface-muted/50 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* LISTA DE TAREFAS */}
+        {activeTaskViewTab === 'lista' && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-heading-sm font-bold text-text-primary">Lista Operacional de Tarefas</h2>
-                  <p className="text-caption text-text-secondary mt-1">
+                  <h2 className="text-base font-extrabold text-slate-900">Lista Operacional de Tarefas</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
                     Visualização rápida e direta das tarefas com controlo de datas, estado, horas previstas e horas reais consumidas.
                   </p>
                 </div>
                 {canWriteTasks && (
-                  <Button 
+                  <button 
+                    type="button"
                     onClick={() => openTaskModal(null, 'create')}
-                    className="flex items-center gap-2 h-10"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
                   >
                     <Plus className="w-4 h-4" /> Criar Tarefa
-                  </Button>
+                  </button>
                 )}
               </div>
 
               {/* Controls: Page size, Sort & Group */}
-              <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-border/50">
-                <div className="flex flex-wrap items-center gap-4 text-body-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-text-secondary font-semibold">Mostrar:</span>
-                    <Select
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200/60">
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 font-medium">Mostrar:</span>
+                    <select
                       value={pageSize}
                       onChange={e => {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="h-9 py-1 px-2 text-caption pr-8 w-20 min-w-[70px]"
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value={10}>10</option>
                       <option value={25}>25</option>
                       <option value={50}>50</option>
                       <option value={100}>100</option>
-                    </Select>
+                    </select>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-text-secondary font-semibold">Ordenar por:</span>
-                    <Select
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 font-medium">Ordenar por:</span>
+                    <select
                       value={sortBy}
                       onChange={e => setSortBy(e.target.value as 'estimatedDate' | 'status')}
-                      className="h-9 py-1 px-2 text-caption pr-8 w-44"
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="estimatedDate">Data prevista (padrão)</option>
                       <option value="status">Estado</option>
-                    </Select>
+                    </select>
                   </div>
 
-                  <label className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-control text-caption font-bold text-text-secondary cursor-pointer select-none hover:bg-surface-muted transition-colors">
+                  <label className="flex items-center gap-2 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer select-none hover:bg-slate-50 transition-colors">
                     <input
                       type="checkbox"
                       checked={groupByProject}
                       onChange={e => setGroupByProject(e.target.checked)}
-                      className="w-3.5 h-3.5 text-primary rounded border-border cursor-pointer focus:ring-0"
+                      className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 cursor-pointer"
                     />
                     <span>Agrupar por Projeto</span>
                   </label>
                 </div>
 
-                <div className="text-body-sm text-text-secondary font-semibold">
-                  Total: <span className="font-bold text-text-primary">{totalTasks}</span> {totalTasks === 1 ? 'tarefa' : 'tarefas'}
+                <div className="text-xs text-slate-500 font-medium">
+                  Total: <span className="font-bold text-slate-800">{totalTasks}</span> {totalTasks === 1 ? 'tarefa' : 'tarefas'}
                 </div>
               </div>
             </div>
@@ -747,28 +779,26 @@ export default function TaskSection({
             {/* Table List Output */}
             <div className="overflow-x-auto w-full">
               {paginatedTasks.length === 0 ? (
-                <div className="p-12 text-center text-text-muted space-y-4">
-                  <ListTodo className="w-10 h-10 text-text-muted/60 mx-auto" />
-                  <div>
-                    <p className="text-body-sm font-bold text-text-primary">Nenhuma tarefa encontrada.</p>
-                    <p className="text-caption text-text-secondary mt-1">Tente ajustar a pesquisa ou limpar os filtros operacionais selecionados.</p>
-                  </div>
+                <div className="p-12 text-center text-slate-400 font-medium text-xs space-y-2">
+                  <ListTodo className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="font-bold text-slate-700">Nenhuma tarefa encontrada.</p>
+                  <p className="text-slate-500 text-[11px]">Tente ajustar a pesquisa ou limpar os filtros operacionais selecionados.</p>
                 </div>
               ) : (
                 <table className="w-full min-w-[850px] text-left border-collapse">
-                  <thead className="bg-surface-muted/50 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border select-none whitespace-nowrap">
+                  <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
                     <tr>
-                      <th className="px-5 py-3 text-left">Data</th>
-                      <th className="px-5 py-3 text-left">Estado</th>
-                      <th className="px-5 py-3 text-left">Título da Tarefa</th>
-                      <th className="px-5 py-3 text-left">Projeto / Cliente</th>
-                      <th className="px-5 py-3 text-left">Responsáveis</th>
-                      <th className="px-5 py-3 text-center">Horas prev./reais</th>
-                      <th className="px-5 py-3 text-left">Tipo</th>
-                      <th className="px-5 py-3 text-right">Ações</th>
+                      <th className="px-4 py-3 text-left">Data</th>
+                      <th className="px-4 py-3 text-left">Estado</th>
+                      <th className="px-4 py-3 text-left">Título da Tarefa</th>
+                      <th className="px-4 py-3 text-left">Projeto / Cliente</th>
+                      <th className="px-4 py-3 text-left">Responsáveis</th>
+                      <th className="px-4 py-3 text-center">Horas prev./reais</th>
+                      <th className="px-4 py-3 text-left">Tipo</th>
+                      <th className="px-4 py-3 text-right">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="text-body-sm divide-y divide-border/60">
+                  <tbody className="text-xs divide-y divide-slate-100">
                     {paginatedTasks.map(t => {
                       const scale = getTaskScale(t.statusId);
                       const tStyle = getTaskStatusStyle(t.statusId, taskStatuses);
@@ -780,101 +810,94 @@ export default function TaskSection({
 
                       const statusBadgeStyle = tStyle.badgeClass;
 
-                      // Map badge style to Badge component variants
-                      let badgeVar: 'neutral' | 'primary' | 'success' | 'warning' | 'error' | 'info' = 'neutral';
-                      if (scale === 3) badgeVar = 'success';
-                      else if (scale === 2) badgeVar = 'primary';
-                      else if (scale === 1) badgeVar = 'neutral';
-                      else if (scale === 4) badgeVar = 'info';
-
                       return (
                         <tr 
                           key={t.id} 
                           onClick={() => openTaskModal(t, canWriteTasks ? 'edit' : 'view')}
-                          className="hover:bg-surface-muted/35 transition-colors cursor-pointer group"
+                          className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                         >
                           {/* Data */}
-                          <td className="px-5 py-4 font-bold font-mono text-text-primary whitespace-nowrap">
-                            <div className="flex items-center gap-2">
+                          <td className="px-4 py-3.5 font-bold font-mono text-slate-700 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
                               <span>{targetDate ? targetDate.split('-').reverse().join('/') : 'N/A'}</span>
                               {isOverdue && (
-                                <span className="p-0.5 rounded text-error bg-error/5 border border-error/10" title="Tarefa atrasada">
-                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                <span className="p-0.5 rounded text-rose-600 bg-rose-50" title="Tarefa atrasada">
+                                  <AlertTriangle className="w-3 h-3" />
                                 </span>
                               )}
                             </div>
                           </td>
 
                           {/* Estado */}
-                          <td className="px-5 py-4 whitespace-nowrap">
-                            <Badge variant={badgeVar} className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5">
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider border ${statusBadgeStyle}`}>
                               {statusName}
-                            </Badge>
+                            </span>
                           </td>
 
                           {/* Título */}
-                          <td className="px-5 py-4">
-                            <div className="font-extrabold text-text-primary group-hover:text-primary transition-colors">
+                          <td className="px-4 py-3.5">
+                            <div className="font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
                               {t.title}
                             </div>
                             {t.description && (
-                              <div className="text-caption text-text-muted italic line-clamp-1 mt-1">
+                              <div className="text-[10px] text-slate-400 italic line-clamp-1 mt-0.5">
                                 {t.description}
                               </div>
                             )}
                           </td>
 
                           {/* Projeto */}
-                          <td className="px-5 py-4">
+                          <td className="px-4 py-3.5 text-[11px]">
                             {t.projectId ? (
-                              <span className="text-primary font-bold text-caption">{getProjectTitle(t.projectId)}</span>
+                              <span className="text-blue-700 font-bold">{getProjectTitle(t.projectId)}</span>
                             ) : (
-                              <span className="text-text-muted font-medium italic text-caption">Sem projeto</span>
+                              <span className="text-slate-400 font-medium italic">Sem projeto</span>
                             )}
                           </td>
 
                           {/* Responsáveis */}
-                          <td className="px-5 py-4">
+                          <td className="px-4 py-3.5">
                             <div className="flex flex-wrap gap-1 max-w-[160px]">
                               {t.assigneeIds && t.assigneeIds.length > 0 ? (
                                 t.assigneeIds.map(uid => (
-                                  <Badge key={uid} variant="neutral" className="text-[10px] px-1.5 py-0">
+                                  <span key={uid} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-bold rounded-md text-[10px]">
                                     {getUserName(uid)}
-                                  </Badge>
+                                  </span>
                                 ))
                               ) : (
-                                <span className="text-text-muted italic text-[10px]">Sem atribuição</span>
+                                <span className="text-slate-400 italic text-[10px]">Sem atribuição</span>
                               )}
                             </div>
                           </td>
 
                           {/* Horas prev./reais */}
-                          <td className="px-5 py-4 text-center font-bold whitespace-nowrap text-text-secondary">
+                          <td className="px-4 py-3.5 text-center font-bold whitespace-nowrap text-slate-800">
                             <span>{estHours} h</span>
-                            <span className="text-border mx-2">/</span>
+                            <span className="text-slate-300 mx-1.5">/</span>
                             {parseTaskHoursToFloat(actHours) > 0 ? (
-                              <span className="text-success bg-success/5 border border-success/10 px-1.5 py-0.5 rounded font-mono">
+                              <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
                                 {actHours} h
                               </span>
                             ) : (
-                              <span className="text-text-muted">—</span>
+                              <span className="text-slate-400">—</span>
                             )}
                           </td>
 
                           {/* Tipo */}
-                          <td className="px-5 py-4 whitespace-nowrap">
+                          <td className="px-4 py-3.5 whitespace-nowrap">
                             {t.taskTypeId ? (
-                              <Badge variant="neutral" className="text-[10px] bg-surface-muted/80 text-text-primary font-semibold">
+                              <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px] font-semibold">
                                 {getTaskTypeName(t.taskTypeId, taskTypes)}
-                              </Badge>
+                              </span>
                             ) : (
-                              <span className="text-text-muted text-[10px]">—</span>
+                              <span className="text-slate-400 text-[10px]">—</span>
                             )}
                           </td>
 
                           {/* Ações */}
-                          <td className="px-5 py-4 text-right whitespace-nowrap">
-                            <div className="flex items-center gap-1.5 justify-end" onClick={e => e.stopPropagation()}>
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <div className="flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
                               {/* Quick Action: Registar Execução */}
                               {canWriteTasks && (
                                 <button
@@ -882,69 +905,71 @@ export default function TaskSection({
                                     e.stopPropagation();
                                     openTaskModal(t, 'execute');
                                   }}
-                                  className="px-2.5 py-1.5 bg-warning/5 hover:bg-warning/10 text-warning border border-warning/10 rounded-control text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer h-8"
-                                  title="Registar horas e execução"
+                                  className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1"
+                                  title="Registar horas e execução da tarefa"
                                 >
-                                  <PlayCircle className="w-3.5 h-3.5" />
+                                  <PlayCircle className="w-3 h-3 text-amber-600" />
                                   <span>Execução</span>
                                 </button>
                               )}
 
                               {/* Link Copy */}
-                              <IconButton 
-                                variant="ghost"
-                                onClick={() => handleCopyTaskLink(t.id)}
-                                className={cn(
-                                  "w-8 h-8 rounded-full",
-                                  copiedLinkId === t.id ? 'text-success bg-success/5' : 'text-text-muted hover:bg-surface-muted'
-                                )}
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopyTaskLink(t.id);
+                                }}
+                                className={`p-1.5 rounded-lg ${copiedLinkId === t.id ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'}`}
                                 title="Copiar Link da Tarefa"
-                                aria-label="Copiar Link da Tarefa"
                               >
                                 <Link2 className="w-3.5 h-3.5" />
-                              </IconButton>
+                              </button>
 
                               {/* Edit */}
                               {canWriteTasks && (
-                                <IconButton 
-                                  variant="ghost"
-                                  onClick={() => openTaskModal(t, 'edit')}
-                                  className="w-8 h-8 rounded-full text-text-muted hover:text-primary hover:bg-surface-muted"
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openTaskModal(t, 'edit');
+                                  }}
+                                  className="p-1.5 hover:bg-blue-50 hover:text-blue-700 rounded-lg text-slate-400"
                                   title="Editar Tarefa"
-                                  aria-label="Editar Tarefa"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
-                                </IconButton>
+                                </button>
                               )}
 
                               {/* Duplicar Tarefa */}
                               {canWriteTasks && (
-                                <IconButton 
-                                  variant="ghost"
-                                  onClick={() => openTaskModal(t, 'create')}
-                                  className="w-8 h-8 rounded-full text-text-muted hover:text-primary hover:bg-surface-muted"
+                                <button 
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openTaskModal(t, 'create');
+                                  }}
+                                  className="p-1.5 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg text-slate-400"
                                   title="Duplicar Tarefa"
-                                  aria-label="Duplicar Tarefa"
                                 >
                                   <Copy className="w-3.5 h-3.5" />
-                                </IconButton>
+                                </button>
                               )}
 
                               {/* Delete */}
                               {canDeleteTasks && (
-                                <IconButton 
-                                  variant="ghost"
-                                  onClick={() => askConfirmation(
-                                    'Confirmar Eliminação de Tarefa',
-                                    'Tem a certeza que deseja eliminar esta tarefa? Esta ação não pode ser anulada.',
-                                    () => deleteTask(t.id)
-                                  )}
-                                  className="w-8 h-8 rounded-full text-text-muted hover:text-error hover:bg-error/5"
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    askConfirmation(
+                                      'Confirmar Eliminação de Tarefa',
+                                      'Tem a certeza que deseja eliminar esta tarefa? Esta ação não pode ser anulada.',
+                                      () => deleteTask(t.id)
+                                    );
+                                  }}
+                                  className="p-1.5 hover:bg-rose-50 hover:text-rose-700 rounded-lg text-slate-400"
                                   title="Eliminar Tarefa"
-                                  aria-label="Eliminar Tarefa"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
-                                </IconButton>
+                                </button>
                               )}
                             </div>
                           </td>
@@ -958,39 +983,39 @@ export default function TaskSection({
 
             {/* Pagination Controls */}
             {totalTasks > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-4 bg-surface-muted/40 border-t border-border text-caption gap-4 font-semibold text-text-secondary">
-                <div>
-                  A mostrar <span className="font-bold text-text-primary">{startIndex + 1}</span> a{' '}
-                  <span className="font-bold text-text-primary">{endIndex}</span> de{' '}
-                  <span className="font-bold text-text-primary">{totalTasks}</span> tarefas
+              <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50/70 border-t border-slate-200/80 text-xs gap-3 font-medium">
+                <div className="flex items-center gap-3 text-slate-500 font-medium">
+                  <span>
+                    A mostrar <span className="font-bold text-slate-700">{startIndex + 1}</span> a{' '}
+                    <span className="font-bold text-slate-700">{endIndex}</span> de{' '}
+                    <span className="font-bold text-slate-700">{totalTasks}</span> tarefas
+                  </span>
                 </div>
 
                 {totalPages > 1 && (
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="secondary"
+                  <div className="flex items-center gap-1">
+                    <button
                       onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                       disabled={validCurrentPage === 1}
-                      className="py-1.5 px-3 h-auto text-caption font-bold flex items-center gap-1"
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                       <span>Anterior</span>
-                    </Button>
+                    </button>
                     
                     <div className="flex items-center gap-1 mx-1">
                       {getPaginationPages(validCurrentPage, totalPages).map((p, idx) => (
                         p === '...' ? (
-                          <span key={`ellipsis-${idx}`} className="px-1.5 text-text-muted font-bold">...</span>
+                          <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 font-bold">...</span>
                         ) : (
                           <button
                             key={`page-${p}`}
                             onClick={() => setCurrentPage(Number(p))}
-                            className={cn(
-                              "min-w-[32px] h-8 px-2.5 flex items-center justify-center rounded-control font-bold text-caption transition-colors cursor-pointer select-none border",
+                            className={`min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg font-bold text-xs transition-colors ${
                               validCurrentPage === p
-                                ? 'bg-primary text-white border-primary shadow-raised'
-                                : 'bg-surface border-border text-text-secondary hover:bg-surface-muted'
-                            )}
+                                ? 'bg-slate-900 text-white'
+                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
                           >
                             {p}
                           </button>
@@ -998,34 +1023,33 @@ export default function TaskSection({
                       ))}
                     </div>
 
-                    <Button
-                      variant="secondary"
+                    <button
                       onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                       disabled={validCurrentPage === totalPages}
-                      className="py-1.5 px-3 h-auto text-caption font-bold flex items-center gap-1"
+                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                     >
                       <span>Seguinte</span>
                       <ChevronRight className="w-3.5 h-3.5" />
-                    </Button>
+                    </button>
                   </div>
                 )}
               </div>
             )}
           </div>
-        </>
-      )}
+        )}
 
-      {/* ANÁLISE DE TAREFAS */}
-      {activeTaskViewTab === 'analise' && (
-        <TaskAnalytics 
-          tasks={tasks}
-          projects={projects}
-          taskTypes={taskTypes || []}
-          taskStatuses={taskStatuses}
-          users={users}
-          clients={clients}
-        />
-      )}
+        {/* ANÁLISE DE TAREFAS */}
+        {activeTaskViewTab === 'analise' && (
+          <TaskAnalytics 
+            tasks={tasks}
+            projects={projects}
+            taskTypes={taskTypes || []}
+            taskStatuses={taskStatuses}
+            users={users}
+            clients={clients}
+          />
+        )}
+      </div>
 
       {/* Unified Task Modal */}
       <TaskDetailsModal

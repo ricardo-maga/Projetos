@@ -2097,14 +2097,13 @@ export default function ProjectSection({
                                           {t.title}
                                         </div>
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          {(() => {
-                                            const tStyle = getTaskStatusStyle(t.statusId, taskStatuses);
-                                            return (
-                                              <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-extrabold border tracking-wider ${tStyle.badgeClass}`}>
-                                                {tStyle.name}
-                                              </span>
-                                            );
-                                          })()}
+                                          <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-extrabold border tracking-wider ${
+                                            t.statusId === 'ts-3' || t.statusId === '99999999-9999-9999-9999-999999999903'
+                                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' 
+                                              : t.statusId === 'ts-2' || t.statusId === '99999999-9999-9999-9999-999999999902'
+                                              ? 'bg-amber-50 text-amber-700 border-amber-200/50'
+                                              : 'bg-blue-50 text-blue-700 border-blue-200/50'
+                                          }`}>{getTaskStatusName(t.statusId, taskStatuses)}</span>
                                           
                                           <span className="text-[10px] text-slate-500 font-bold truncate max-w-[150px]">
                                             👤 {assigneesText}
@@ -2278,20 +2277,11 @@ export default function ProjectSection({
               {/*  Status Overview */}
               
      
-                <div className="space-y-2.5">
+                <div  className="space-y-2.5">
                   <h4 className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Estado</h4>
                   <select 
                     value={selectedProj.statusId}
-                    onChange={async (e) => {
-                      const newStatusId = e.target.value;
-                      setServerSelectedProj(prev => prev ? { ...prev, statusId: newStatusId } : null);
-                      try {
-                        await updateProject(selectedProj.id, { statusId: newStatusId });
-                        setRefreshTrigger(prev => prev + 1);
-                      } catch (err) {
-                        setRefreshTrigger(prev => prev + 1);
-                      }
-                    }}
+                    onChange={(e) => updateProject(selectedProj.id, { statusId: e.target.value })}
                     className="px-2.5 py-1 bg-blue-50 border border-blue-200 rounded-full font-bold text-blue-700 text-[10px] uppercase tracking-wide cursor-pointer outline-none hover:bg-blue-100 transition-colors"
                   >
                     {sortedStatuses.filter(s => !s.deleted || s.id === selectedProj.statusId).map(s => (
@@ -2431,7 +2421,20 @@ export default function ProjectSection({
                   </div>
                 </div>
               
-              {/* Documents removed as requested */}
+              {/* Documents Attachments list */}
+              <div className="space-y-2">
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Documentação técnica</span>
+                {selectedProj.documents?.length > 0 ? (
+                  <div className="space-y-1 mt-1">
+                    {selectedProj.documents.map((doc, i) => (
+                      <div key={i} className="flex items-center gap-1.5 py-1 text-blue-600 hover:underline cursor-pointer">
+                        <FileText className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+                        <span className="font-semibold truncate max-w-[180px]">{doc}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <span className="text-slate-400 italic block mt-1">Sem esquemas ou PDFs anexados.</span>}
+              </div>
 
             </div>
 
@@ -2620,14 +2623,9 @@ export default function ProjectSection({
                       <div className="flex justify-between items-start gap-2">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            {(() => {
-                              const tStyle = getTaskStatusStyle(task.statusId, taskStatuses);
-                              return (
-                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${tStyle.badgeClass}`}>
-                                  {tStyle.name}
-                                </span>
-                              );
-                            })()}
+                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded">
+                              {getTaskStatusName(task.statusId, taskStatuses)}
+                            </span>
                             <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold rounded flex items-center gap-1">
                               {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Bell className="w-3 h-3 text-purple-600" />}
                               {getTaskTypeName(task.taskTypeId, taskTypes)}
@@ -4003,6 +4001,43 @@ export default function ProjectSection({
               </div>
             </div>
 
+            {/* Documents lists input */}
+            <div className="space-y-2 md:col-span-2">
+              <label className="block text-slate-500">Esquemas Técnicos / Documentos (Anexos)</label>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  value={newDocName}
+                  onChange={e => setNewDocName(e.target.value)}
+                  placeholder="Introduza o nome do ficheiro (ex: Esquema_Pneumatico_v1.pdf)"
+                  className="flex-1 p-2 border border-slate-200 rounded-xl"
+                />
+                <button 
+                  type="button"
+                  onClick={addDocument}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-xl font-bold"
+                >
+                  Adicionar
+                </button>
+              </div>
+              
+              {formDocs.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formDocs.map((doc, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg">
+                      <span className="font-semibold truncate max-w-[200px]">{doc}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => removeDocument(idx)}
+                        className="text-red-500 hover:text-red-700 font-extrabold ml-1"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Default Tasks Selection section */}
             {!editingId && defaultTasks && defaultTasks.length > 0 && (

@@ -8,13 +8,6 @@ import ConfirmModal from './ConfirmModal';
 import { hasPermission } from '../lib/permissions';
 import { getAuthHeaders } from '../lib/clientAuth';
 
-// UI Foundation Components
-import Button from './ui/Button';
-import IconButton from './ui/IconButton';
-import Input from './ui/Input';
-import Textarea from './ui/Textarea';
-import Badge from './ui/Badge';
-
 interface ClientSectionProps {
   clients: Client[];
   projects?: any[];
@@ -308,33 +301,35 @@ export default function ClientSection({
                 <p className="text-xs text-slate-500 mt-0.5">Gestão de entidades clientes, contactos fiscais e operacionais.</p>
               </div>
               <div className="flex items-center gap-2 self-start sm:self-auto">
-                <Button
+                <button
                   type="button"
-                  variant={showDeleted ? "secondary" : "outline"}
-                  size="sm"
                   onClick={() => {
                     setShowDeleted(!showDeleted);
                     setCurrentPage(1);
                   }}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                    showDeleted
+                      ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
                 >
                   {showDeleted ? 'Ver Clientes Ativos' : 'Reciclagem'}
-                </Button>
+                </button>
                 {canWriteClients && (
-                  <Button 
+                  <button 
                     type="button"
-                    variant="primary"
-                    size="sm"
                     onClick={() => openForm(null)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
                   >
-                    <Plus className="w-4 h-4 mr-1 shrink-0" /> Registar Cliente
-                  </Button>
+                    <Plus className="w-4 h-4" /> Registar Cliente
+                  </button>
                 )}
               </div>
             </div>
 
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none z-10" />
-              <Input 
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+              <input 
                 type="text" 
                 value={search}
                 onChange={e => {
@@ -342,7 +337,7 @@ export default function ClientSection({
                   setCurrentPage(1);
                 }}
                 placeholder="Pesquisar por nome, abreviatura, contacto ou notas..."
-                className="pl-10 h-10 text-xs"
+                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
               />
             </div>
           </div>

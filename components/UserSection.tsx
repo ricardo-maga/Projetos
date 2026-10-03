@@ -7,12 +7,6 @@ import { hashPassword } from '../lib/utils';
 import ConfirmModal from './ConfirmModal';
 import { getGroupPermissions, hasPermission, CANONICAL_ROLE_IDS, normalizeRoleId } from '../lib/permissions';
 
-// UI Foundation Components
-import Button from './ui/Button';
-import IconButton from './ui/IconButton';
-import Input from './ui/Input';
-import Select from './ui/Select';
-
 const CANONICAL_ROLES_LIST = [
   { id: CANONICAL_ROLE_IDS.SUPER_ADMIN, name: 'Super Administrador', type: 'Admin' as const },
   { id: CANONICAL_ROLE_IDS.ADMIN, name: 'Administrador', type: 'Admin' as const },
@@ -401,61 +395,56 @@ export default function UserSection({
       
       {/* Sub Tabs */}
       {!hideAbsences && !hideUsers ? (
-        <div className="flex border-b border-border">
+        <div className="flex border-b border-slate-200">
           <button 
-            type="button"
             onClick={() => setSubTab('absences')}
-            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 ${
               subTab === 'absences' 
-                ? 'border-primary text-primary bg-primary/10' 
-                : 'border-transparent text-text-secondary hover:text-text-primary'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/20' 
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Calendar className="w-4 h-4" /> Registo de ausências
           </button>
           <button 
-            type="button"
             onClick={() => setSubTab('users')}
-            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 ${
               subTab === 'users' 
-                ? 'border-primary text-primary bg-primary/10' 
-                : 'border-transparent text-text-secondary hover:text-text-primary'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/20' 
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Users className="w-4 h-4" /> Utilizadores
           </button>
           <button 
-            type="button"
             onClick={() => setSubTab('permissions')}
-            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 ${
               subTab === 'permissions' 
-                ? 'border-primary text-primary bg-primary/10' 
-                : 'border-transparent text-text-secondary hover:text-text-primary'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/20' 
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Shield className="w-4 h-4" /> Grupos e Permissões
           </button>
         </div>
       ) : hideAbsences ? (
-        <div className="flex border-b border-border">
+        <div className="flex border-b border-slate-200">
           <button 
-            type="button"
             onClick={() => setSubTab('users')}
-            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 ${
               subTab === 'users' 
-                ? 'border-primary text-primary bg-primary/10' 
-                : 'border-transparent text-text-secondary hover:text-text-primary'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/20' 
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Users className="w-4 h-4" /> Utilizadores
           </button>
           <button 
-            type="button"
             onClick={() => setSubTab('permissions')}
-            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
+            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 ${
               subTab === 'permissions' 
-                ? 'border-primary text-primary bg-primary/10' 
-                : 'border-transparent text-text-secondary hover:text-text-primary'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/20' 
+                : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Shield className="w-4 h-4" /> Grupos e Permissões
