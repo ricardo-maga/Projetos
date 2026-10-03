@@ -505,8 +505,8 @@ export default function TaskDetailsModal({
                   <CheckSquare className="w-4 h-4" />
                 )}
               </span>
-              <span className={`text-[11px] uppercase font-extrabold tracking-wider ${
-                isDuplication ? 'text-indigo-700' : 'text-blue-700'
+              <span className={`text-caption uppercase font-bold tracking-wider ${
+                isDuplication ? 'text-indigo-700' : 'text-primary'
               }`}>
                 {isDuplication
                   ? 'Duplicação de Tarefa'
@@ -558,7 +558,7 @@ export default function TaskDetailsModal({
                 &quot;{activeTask.description}&quot;
               </p>
             )}
-            <div className="flex flex-wrap gap-4 text-[11px] font-semibold text-slate-600">
+            <div className="flex flex-wrap gap-4 text-caption font-semibold text-text-secondary">
               <span className="flex items-center gap-1">
                 <Users className="w-3.5 h-3.5 text-slate-400" />
                 Responsáveis: <span className="text-slate-900 font-bold">
@@ -615,7 +615,7 @@ export default function TaskDetailsModal({
                 Dados de Planeamento
               </span>
               {effectiveMode === 'create' && (
-                <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                <span className="text-caption font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-badge">
                   Campos essenciais
                 </span>
               )}
@@ -640,12 +640,12 @@ export default function TaskDetailsModal({
             {/* Project Selection with Autocomplete and Suggestions */}
             <div className="space-y-1 relative" ref={projectDropdownRef}>
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-slate-800">
-                  Projeto (Cliente) <span className="text-[10px] text-slate-400 font-normal">(Opcional)</span>
+                <label className="block text-label font-bold text-text-primary">
+                  Projeto (Cliente) <span className="text-caption text-text-muted font-normal">(Opcional)</span>
                 </label>
                 {selectedProject && (
-                  <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-200 flex items-center gap-1">
-                    <Check className="w-2.5 h-2.5" /> Projeto selecionado
+                  <span className="text-caption text-success bg-success/10 px-2 py-0.5 rounded-badge font-bold border border-success/20 flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Projeto selecionado
                   </span>
                 )}
               </div>
@@ -685,7 +685,7 @@ export default function TaskDetailsModal({
               {/* Suggestions Dropdown */}
               {!isReadOnly && isProjectDropdownOpen && (
                 <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="p-2 bg-slate-50 text-[10px] uppercase font-extrabold text-slate-500 tracking-wider flex items-center justify-between">
+                  <div className="p-2 bg-surface-muted text-caption uppercase font-bold text-text-muted tracking-wider flex items-center justify-between">
                     <span>Projetos Sugeridos ({projectSuggestions.length})</span>
                     <span className="font-normal lowercase">opcional</span>
                   </div>
@@ -714,12 +714,12 @@ export default function TaskDetailsModal({
                             <div className="font-bold text-slate-900 truncate">
                               {p.title}
                               {p.installProjectNo && (
-                                <span className="ml-1 text-[10px] text-slate-500 font-normal">
+                                <span className="ml-1 text-caption text-text-muted font-normal">
                                   #{p.installProjectNo}
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-slate-500 flex items-center gap-1 truncate mt-0.5">
+                            <div className="text-caption text-text-secondary flex items-center gap-1 truncate mt-0.5">
                               <Briefcase className="w-3 h-3 text-slate-400 shrink-0" />
                               <span>{clDisplay}</span>
                             </div>
@@ -738,8 +738,8 @@ export default function TaskDetailsModal({
             {/* Planned Date & Estimated Hours */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-800">
-                  Data Planeada <span className="text-[10px] text-slate-500 font-normal">(Prevalece até existirem datas reais)</span>
+                <label className="block text-label font-bold text-text-primary">
+                  Data Planeada <span className="text-caption text-text-muted font-normal">(Prevalece até existirem datas reais)</span>
                 </label>
                 <input 
                   type="date"
@@ -833,12 +833,12 @@ export default function TaskDetailsModal({
                 Dados de Execução Real
               </span>
               {effectiveMode === 'create' ? (
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                <span className="text-caption font-bold text-text-muted bg-surface-muted px-2 py-0.5 rounded-badge border border-border">
                   Opcional na criação
                 </span>
               ) : effectiveMode === 'execute' ? (
-                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-amber-600" />
+                <span className="text-caption font-bold text-warning bg-warning/10 border border-warning/20 px-2 py-0.5 rounded-badge flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-warning" />
                   Foco no registo de trabalho
                 </span>
               ) : null}
@@ -859,7 +859,7 @@ export default function TaskDetailsModal({
                 placeholder="Ex: 6"
                 className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 focus:ring-2 focus:ring-amber-200 read-only:bg-slate-100"
               />
-              <p className="text-[10px] text-slate-500 font-medium">
+              <p className="text-caption text-text-muted font-medium">
                 As horas reais representam o tempo efetivamente despendido na tarefa.
               </p>
             </div>
@@ -867,47 +867,47 @@ export default function TaskDetailsModal({
             {/* Execution Dates and Times */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700">Data de Início</label>
+                <label className="block text-label font-bold text-text-primary">Data de Início</label>
                 <input 
                   type="date" 
                   readOnly={isReadOnly}
                   value={formStartDate}
                   onChange={e => handleStartDateChange(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
+                  className="w-full p-2.5 border border-border rounded-control text-body-sm font-semibold bg-surface text-text-primary read-only:bg-surface-muted"
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700">Hora de Início</label>
+                <label className="block text-label font-bold text-text-primary">Hora de Início</label>
                 <input 
                   type="time" 
                   readOnly={isReadOnly}
                   value={formStartTime}
                   onChange={e => setFormStartTime(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
+                  className="w-full p-2.5 border border-border rounded-control text-body-sm font-semibold bg-surface text-text-primary read-only:bg-surface-muted"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700">Data de Fim</label>
+                <label className="block text-label font-bold text-text-primary">Data de Fim</label>
                 <input 
                   type="date" 
                   readOnly={isReadOnly}
                   min={formStartDate || undefined}
                   value={formEndDate}
                   onChange={e => handleEndDateChange(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
+                  className="w-full p-2.5 border border-border rounded-control text-body-sm font-semibold bg-surface text-text-primary read-only:bg-surface-muted"
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700">Hora de Fim</label>
+                <label className="block text-label font-bold text-text-primary">Hora de Fim</label>
                 <input 
                   type="time" 
                   readOnly={isReadOnly}
                   value={formEndTime}
                   onChange={e => setFormEndTime(e.target.value)}
-                  className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
+                  className="w-full p-2.5 border border-border rounded-control text-body-sm font-semibold bg-surface text-text-primary read-only:bg-surface-muted"
                 />
               </div>
             </div>

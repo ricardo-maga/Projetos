@@ -632,7 +632,7 @@ export function TaskAnalytics({
           </div>
           <div className="mt-3 text-xs text-slate-600 flex items-center justify-between font-medium pt-2 border-t border-slate-100">
             <span>Requer atenção rápida</span>
-            <span className="text-[11px] font-bold text-amber-600">
+            <span className="text-caption font-bold text-amber-600">
               {kpis.totalOpen > 0 ? Math.round((kpis.overdueCount / kpis.totalOpen) * 100) : 0}% das abertas
             </span>
           </div>
@@ -916,28 +916,28 @@ export function TaskAnalytics({
                   </td>
                   <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '7' ? 'bg-indigo-100/30' : ''}`}>
                     <span className="font-semibold">{formatHoursToHHMM(item.estHours7)}h</span>
-                    <span className="text-[10px] text-slate-400 block">Real: {formatHoursToHHMM(item.actHours7)}h</span>
+                    <span className="text-caption text-text-muted block">Real: {formatHoursToHHMM(item.actHours7)}h</span>
                   </td>
                   <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '30' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'bg-indigo-50/20 text-indigo-900'}`}>
                     {item.count30}
                   </td>
                   <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '30' ? 'bg-indigo-100/30' : 'bg-indigo-50/20'}`}>
                     <span className="font-semibold">{formatHoursToHHMM(item.estHours30)}h</span>
-                    <span className="text-[10px] text-slate-400 block">Real: {formatHoursToHHMM(item.actHours30)}h</span>
+                    <span className="text-caption text-text-muted block">Real: {formatHoursToHHMM(item.actHours30)}h</span>
                   </td>
                   <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '60' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'bg-slate-50/30 text-slate-800'}`}>
                     {item.count60}
                   </td>
                   <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '60' ? 'bg-indigo-100/30' : 'bg-slate-50/30'}`}>
                     <span className="font-semibold">{formatHoursToHHMM(item.estHours60)}h</span>
-                    <span className="text-[10px] text-slate-400 block">Real: {formatHoursToHHMM(item.actHours60)}h</span>
+                    <span className="text-caption text-text-muted block">Real: {formatHoursToHHMM(item.actHours60)}h</span>
                   </td>
                   <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '90' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'text-slate-800'}`}>
                     {item.count90}
                   </td>
                   <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '90' ? 'bg-indigo-100/30' : ''}`}>
                     <span className="font-semibold">{formatHoursToHHMM(item.estHours90)}h</span>
-                    <span className="text-[10px] text-slate-400 block">Real: {formatHoursToHHMM(item.actHours90)}h</span>
+                    <span className="text-caption text-text-muted block">Real: {formatHoursToHHMM(item.actHours90)}h</span>
                   </td>
                 </tr>
               ))}
@@ -1014,7 +1014,7 @@ export function TaskAnalytics({
               {userWorkloadUpcoming.map(u => (
                 <tr key={u.userId} className="hover:bg-slate-50 transition-colors">
                   <td className="py-3 px-3 font-semibold text-slate-900 flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[11px]">
+                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-caption">
                       {u.userName.slice(0, 2).toUpperCase()}
                     </div>
                     {u.userName}
@@ -1032,7 +1032,7 @@ export function TaskAnalytics({
                     {u.tasksCount30d}
                   </td>
                   <td className="py-3 px-3 text-right">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${u.loadBadge.color}`}>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-caption font-bold border ${u.loadBadge.color}`}>
                       {u.loadBadge.label}
                     </span>
                   </td>
@@ -1180,7 +1180,7 @@ export function TaskAnalytics({
               <div className="text-xl font-black text-slate-900">
                 {st.count}
               </div>
-              <div className="text-[10px] text-slate-400 mt-1">
+              <div className="text-caption text-text-muted mt-1">
                 {filteredTasks.length > 0 ? Math.round((st.count / filteredTasks.length) * 100) : 0}% do total
               </div>
             </div>

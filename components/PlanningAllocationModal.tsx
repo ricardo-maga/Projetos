@@ -461,26 +461,26 @@ export default function PlanningAllocationModal({
               </div>
 
               {contextCapacity && (
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2 border-t border-blue-200/60 text-[11px]">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2 border-t border-blue-200/60 text-caption">
                   <div className="bg-white/80 rounded-lg p-1.5 text-center border border-blue-100">
-                    <span className="text-[10px] text-slate-500 font-semibold block uppercase">Capacidade</span>
+                    <span className="text-caption text-text-muted font-semibold block uppercase">Capacidade</span>
                     <span className="font-bold text-slate-800">{contextCapacity.capacityHours}</span>
                   </div>
                   <div className="bg-white/80 rounded-lg p-1.5 text-center border border-blue-100">
-                    <span className="text-[10px] text-slate-500 font-semibold block uppercase">Confirmado</span>
+                    <span className="text-caption text-text-muted font-semibold block uppercase">Confirmado</span>
                     <span className="font-bold text-blue-700">{contextCapacity.confirmedHours}</span>
                   </div>
                   <div className="bg-white/80 rounded-lg p-1.5 text-center border border-blue-100">
-                    <span className="text-[10px] text-slate-500 font-semibold block uppercase">Planeado</span>
+                    <span className="text-caption text-text-muted font-semibold block uppercase">Planeado</span>
                     <span className="font-bold text-slate-800">{contextCapacity.plannedHours}</span>
                   </div>
                   <div className="bg-white/80 rounded-lg p-1.5 text-center border border-blue-100">
-                    <span className="text-[10px] text-slate-500 font-semibold block uppercase">Livre</span>
+                    <span className="text-caption text-text-muted font-semibold block uppercase">Livre</span>
                     <span className="font-bold text-emerald-700">{contextCapacity.freeHours}</span>
                   </div>
                   <div className="bg-white/80 rounded-lg p-1.5 text-center border border-blue-100">
-                    <span className="text-[10px] text-slate-500 font-semibold block uppercase">Excesso</span>
-                    <span className={`font-bold ${contextCapacity.excessHours && contextCapacity.excessHours !== '0h' ? 'text-amber-800' : 'text-slate-500'}`}>
+                    <span className="text-caption text-text-muted font-semibold block uppercase">Excesso</span>
+                    <span className={`font-bold ${contextCapacity.excessHours && contextCapacity.excessHours !== '0h' ? 'text-amber-800' : 'text-text-muted'}`}>
                       {contextCapacity.excessHours || '0h'}
                     </span>
                   </div>
@@ -552,12 +552,12 @@ export default function PlanningAllocationModal({
                 ))}
               </select>
               {isEditing && (
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-caption text-text-muted mt-1">
                   O recurso está associado a esta reserva. Para planear outro técnico, crie uma nova alocação.
                 </p>
               )}
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">
+            <p className="text-caption text-text-muted mt-1">
               Nota: O recurso alocado não necessita de ser assignee formal da tarefa.
             </p>
           </div>
@@ -629,29 +629,29 @@ export default function PlanningAllocationModal({
                   <Clock className="w-3.5 h-3.5 text-blue-600" />
                   Capacidade Diária do Recurso
                 </span>
-                <span className="text-[11px] text-slate-500 font-medium">
+                <span className="text-caption text-text-muted font-medium">
                   {new Date(date + 'T00:00:00').toLocaleDateString('pt-PT')}
                 </span>
               </div>
               {loadingCapacityInfo ? (
-                <div className="text-slate-400 text-center py-1">A carregar capacidade...</div>
+                <div className="text-text-muted text-center py-1">A carregar capacidade...</div>
               ) : dayCapacityInfo ? (
                 <div className="grid grid-cols-4 gap-2 text-center">
-                  <div className="bg-white p-2 rounded-lg border border-slate-200">
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Capacidade</div>
-                    <div className="font-extrabold text-slate-800 text-xs sm:text-sm mt-0.5">{formatHoursDisplay(dayCapacityInfo.operationalCapacityMinutes / 60)}</div>
+                  <div className="bg-surface p-2 rounded-control border border-border">
+                    <div className="text-caption text-text-muted uppercase font-bold">Capacidade</div>
+                    <div className="font-extrabold text-text-primary text-body-sm mt-0.5">{formatHoursDisplay(dayCapacityInfo.operationalCapacityMinutes / 60)}</div>
                   </div>
-                  <div className="bg-white p-2 rounded-lg border border-slate-200">
-                    <div className="text-[10px] text-blue-600 uppercase font-bold">Confirmado</div>
-                    <div className="font-extrabold text-blue-900 text-xs sm:text-sm mt-0.5">{formatHoursDisplay(dayCapacityInfo.confirmedAllocationMinutes / 60)}</div>
+                  <div className="bg-surface p-2 rounded-control border border-border">
+                    <div className="text-caption text-primary uppercase font-bold">Confirmado</div>
+                    <div className="font-extrabold text-primary text-body-sm mt-0.5">{formatHoursDisplay(dayCapacityInfo.confirmedAllocationMinutes / 60)}</div>
                   </div>
-                  <div className="bg-white p-2 rounded-lg border border-slate-200">
-                    <div className="text-[10px] text-emerald-600 uppercase font-bold">Livre</div>
-                    <div className="font-extrabold text-emerald-900 text-xs sm:text-sm mt-0.5">{formatHoursDisplay(Math.max(0, dayCapacityInfo.availableMinutes / 60))}</div>
+                  <div className="bg-surface p-2 rounded-control border border-border">
+                    <div className="text-caption text-success uppercase font-bold">Livre</div>
+                    <div className="font-extrabold text-success text-body-sm mt-0.5">{formatHoursDisplay(Math.max(0, dayCapacityInfo.availableMinutes / 60))}</div>
                   </div>
-                  <div className={`bg-white p-2 rounded-lg border ${dayCapacityInfo.overAllocatedMinutes > 0 ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200'}`}>
-                    <div className={`text-[10px] uppercase font-bold ${dayCapacityInfo.overAllocatedMinutes > 0 ? 'text-amber-700' : 'text-slate-400'}`}>Excesso</div>
-                    <div className={`font-extrabold text-xs sm:text-sm mt-0.5 ${dayCapacityInfo.overAllocatedMinutes > 0 ? 'text-amber-900' : 'text-slate-800'}`}>
+                  <div className={`bg-surface p-2 rounded-control border ${dayCapacityInfo.overAllocatedMinutes > 0 ? 'border-amber-300 bg-amber-50/50' : 'border-border'}`}>
+                    <div className={`text-caption uppercase font-bold ${dayCapacityInfo.overAllocatedMinutes > 0 ? 'text-amber-700' : 'text-text-muted'}`}>Excesso</div>
+                    <div className={`font-extrabold text-body-sm mt-0.5 ${dayCapacityInfo.overAllocatedMinutes > 0 ? 'text-amber-900' : 'text-text-primary'}`}>
                       {formatHoursDisplay(dayCapacityInfo.overAllocatedMinutes / 60)}
                     </div>
                   </div>
@@ -689,18 +689,18 @@ export default function PlanningAllocationModal({
                       className="text-blue-600 focus:ring-blue-500"
                     />
                   </div>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-caption text-text-muted">
                     Consome capacidade formal do recurso e bloqueia a disponibilidade.
                   </span>
                 </label>
 
-                <label className={`cursor-pointer flex flex-col p-3 rounded-lg border transition-all ${
+                <label className={`cursor-pointer flex flex-col p-3 rounded-control border transition-all ${
                   status === 'DRAFT'
                     ? 'border-amber-500 bg-amber-50/60 ring-1 ring-amber-500'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                    : 'border-border hover:border-text-disabled bg-surface'
                 }`}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                    <span className="text-body-sm font-bold text-amber-900 flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-amber-600" />
                       RASCUNHO (DRAFT)
                     </span>
@@ -714,7 +714,7 @@ export default function PlanningAllocationModal({
                       className="text-amber-600 focus:ring-amber-500"
                     />
                   </div>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-caption text-text-muted">
                     Visível no planeamento, mas NÃO consome capacidade nem bloqueia horário.
                   </span>
                 </label>

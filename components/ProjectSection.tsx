@@ -4482,7 +4482,7 @@ export default function ProjectSection({
                                 }`}
                                 title="Clique para adicionar tarefa neste dia"
                               >
-                                <div className="text-[10px] uppercase font-semibold text-slate-400">
+                                <div className="text-caption uppercase font-semibold text-text-muted">
                                   {d.toLocaleDateString('pt-PT', { weekday: 'short' }).charAt(0).toUpperCase()}
                                 </div>
                                 <div className={`text-xs ${isToday ? 'font-extrabold text-amber-900' : ''}`}>{d.getDate()}</div>
@@ -4694,13 +4694,13 @@ export default function ProjectSection({
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-slate-50 border-t border-slate-200 px-6 py-4 flex flex-wrap gap-4 items-center justify-between text-[10px] font-bold text-slate-500 flex-shrink-0">
+            <div className="bg-surface-muted border-t border-border px-6 py-4 flex flex-wrap gap-4 items-center justify-between text-caption font-bold text-text-secondary shrink-0">
               <div className="flex flex-wrap gap-4 items-center">
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Pendente</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Em Progresso</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Concluído</span>
-                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-red-200 bg-red-50 text-red-600 rounded flex items-center justify-center text-[8px]">⚠️</span> Alertas</span>
-                <span className="text-[10px] text-slate-400 italic font-medium">Arraste as barras coloridas das tarefas no cronograma para reagendá-las em novos dias.</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-primary"></span> Pendente</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-warning"></span> Em Progresso</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-success"></span> Concluído</span>
+                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-error/20 bg-error/10 text-error rounded flex items-center justify-center text-caption">⚠️</span> Alertas</span>
+                <span className="text-caption text-text-muted italic font-medium">Arraste as barras coloridas das tarefas no cronograma para reagendá-las em novos dias.</span>
               </div>
               <button
                 type="button"
@@ -4798,8 +4798,8 @@ export default function ProjectSection({
 
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <label className="block text-slate-500 font-bold">Data da Próxima Revisão *</label>
-                    <span className="text-[9px] text-blue-600 font-extrabold uppercase bg-blue-50 px-1.5 py-0.5 rounded">Sugestão Automática</span>
+                    <label className="block text-text-secondary font-bold">Data da Próxima Revisão *</label>
+                    <span className="text-caption text-primary font-bold uppercase bg-primary/10 px-1.5 py-0.5 rounded">Sugestão Automática</span>
                   </div>
                   <input
                     type="date"
@@ -4812,7 +4812,7 @@ export default function ProjectSection({
 
                 {/* Probability & Impact */}
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                  <span className="block text-[10px] uppercase font-black text-slate-500 tracking-wider">Avaliação da Probabilidade</span>
+                  <span className="block text-caption uppercase font-bold text-text-secondary tracking-wider">Avaliação da Probabilidade</span>
                   <div className="flex items-center gap-3">
                     <input
                       type="range"
@@ -4838,7 +4838,7 @@ export default function ProjectSection({
                 </div>
 
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                  <span className="block text-[10px] uppercase font-black text-slate-500 tracking-wider">Avaliação do Impacto</span>
+                  <span className="block text-caption uppercase font-bold text-text-secondary tracking-wider">Avaliação do Impacto</span>
                   <div className="flex items-center gap-3">
                     <input
                       type="range"
@@ -4866,7 +4866,7 @@ export default function ProjectSection({
                 {/* Auto Calculated Risk Score Badge */}
                 <div className="md:col-span-2 flex items-center justify-between p-4 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-xs">
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Nível de Risco Calculado</span>
+                    <span className="text-caption text-text-muted font-bold uppercase tracking-wider">Nível de Risco Calculado</span>
                     <span className="text-xs font-semibold text-slate-300">Fórmula: Probabilidade ({riskProbability}) × Impacto ({riskImpact})</span>
                   </div>
                   {(() => {

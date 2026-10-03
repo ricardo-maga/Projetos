@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '../../lib/utils';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   hoverable?: boolean;
@@ -7,16 +8,17 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(({
   children,
   hoverable = false,
-  className = '',
+  className,
   ...props
 }, ref) => {
-  const baseClasses = 'bg-white border border-slate-200 rounded-2xl shadow-2xs transition-all';
-  const hoverClasses = hoverable ? 'hover:border-slate-300 hover:shadow-xs cursor-pointer' : '';
-
   return (
     <div
       ref={ref}
-      className={`${baseClasses} ${hoverClasses} ${className}`}
+      className={cn(
+        "bg-surface border border-border rounded-card shadow-flat transition-all text-text-primary",
+        hoverable && "hover:border-text-disabled hover:shadow-raised cursor-pointer",
+        className
+      )}
       {...props}
     >
       {children}
@@ -25,3 +27,6 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(({
 });
 
 Card.displayName = 'Card';
+
+export default Card;
+

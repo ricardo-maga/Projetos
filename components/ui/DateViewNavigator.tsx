@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 interface DateViewNavigatorProps {
   periodDays: 7 | 14;
@@ -25,19 +26,20 @@ export default function DateViewNavigator({
   className = '',
 }: DateViewNavigatorProps) {
   return (
-    <div className={`flex flex-wrap items-center justify-between gap-3 ${className}`}>
+    <div className={cn("flex flex-wrap items-center justify-between gap-3", className)}>
       {/* 7 vs 14 days toggle on the Left */}
       <div className="flex items-center gap-2">
-        <span className="text-xs font-bold text-slate-700">Datas de visualização:</span>
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <span className="text-label font-bold text-text-primary">Datas de visualização:</span>
+        <div className="flex items-center bg-surface-muted p-1 rounded-control border border-border">
           <button
             type="button"
             onClick={() => onPeriodDaysChange(7)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={cn(
+              "px-3 py-1.5 rounded-control text-label font-bold transition-all cursor-pointer",
               periodDays === 7 
-                ? 'bg-white text-slate-900 shadow-2xs' 
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
+                ? 'bg-surface text-text-primary shadow-raised border border-border' 
+                : 'text-text-secondary hover:text-text-primary'
+            )}
             title="Modo de 7 dias"
           >
             7 Dias
@@ -45,11 +47,12 @@ export default function DateViewNavigator({
           <button
             type="button"
             onClick={() => onPeriodDaysChange(14)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={cn(
+              "px-3 py-1.5 rounded-control text-label font-bold transition-all cursor-pointer",
               periodDays === 14 
-                ? 'bg-white text-slate-900 shadow-2xs' 
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
+                ? 'bg-surface text-text-primary shadow-raised border border-border' 
+                : 'text-text-secondary hover:text-text-primary'
+            )}
             title="Modo de 14 dias"
           >
             14 Dias
@@ -59,17 +62,17 @@ export default function DateViewNavigator({
 
       {/* Centralized Date Range Label if provided */}
       {label && (
-        <div className="text-xs font-black text-slate-800 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200/80">
+        <div className="text-label font-bold text-text-primary bg-surface-muted/80 px-3 py-1.5 rounded-control border border-border">
           {label}
         </div>
       )}
 
       {/* Navigation buttons: Prev, Today, Next on the Right */}
-      <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5 shadow-2xs">
+      <div className="flex items-center gap-1 bg-surface border border-border rounded-control p-0.5 shadow-flat">
         <button
           type="button"
           onClick={onPrev}
-          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+          className="p-1.5 hover:bg-surface-muted rounded-control text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
           title={`Recuar ${periodDays} dias`}
           aria-label="Período anterior"
         >
@@ -79,11 +82,12 @@ export default function DateViewNavigator({
           type="button"
           onClick={onToday}
           disabled={isToday}
-          className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+          className={cn(
+            "px-3 py-1 rounded-control text-label font-bold transition-colors",
             isToday
-              ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-70'
-              : 'hover:bg-slate-100 text-slate-700 cursor-pointer'
-          }`}
+              ? 'bg-surface-muted text-text-disabled cursor-not-allowed opacity-70'
+              : 'hover:bg-surface-muted text-text-secondary hover:text-text-primary cursor-pointer'
+          )}
           title="Ir para a data atual"
         >
           Hoje
@@ -91,7 +95,7 @@ export default function DateViewNavigator({
         <button
           type="button"
           onClick={onNext}
-          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+          className="p-1.5 hover:bg-surface-muted rounded-control text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
           title={`Avançar ${periodDays} dias`}
           aria-label="Período seguinte"
         >
@@ -101,4 +105,5 @@ export default function DateViewNavigator({
     </div>
   );
 }
+
 
