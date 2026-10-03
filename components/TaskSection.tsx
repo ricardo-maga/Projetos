@@ -12,6 +12,7 @@ import {
   CheckSquare, 
   X, 
   Users, 
+  Link2, 
   ChevronLeft, 
   ChevronRight, 
   BarChart2, 
@@ -102,8 +103,6 @@ export default function TaskSection({
 
   // Filters state
   const [search, setSearch] = useState('');
-  const [filterProject, setFilterProject] = useState('');
-  const [filterType, setFilterType] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('');
   const [datePreset, setFilterDatePreset] = useState<'all' | 'today' | 'tomorrow' | 'this_week' | 'overdue' | 'completed'>('all');
 
@@ -118,7 +117,7 @@ export default function TaskSection({
   // Reset pagination when filter/sorting/grouping variables change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterProject, filterType, filterAssignee, datePreset, pageSize, sortBy, groupByProject]);
+  }, [search, filterAssignee, datePreset, pageSize, sortBy, groupByProject]);
 
   // Dates computation
   const todayStr = useMemo(() => {
@@ -191,9 +190,29 @@ export default function TaskSection({
     });
   };
 
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+
+  const handleCopyTaskLink = (taskId: string) => {
+    if (typeof window === 'undefined') return;
+    let url = window.location.origin + window.location.pathname + '?tab=tarefas&task=' + taskId;
+    navigator.clipboard.writeText(url);
+    setCopiedLinkId(taskId);
+    setTimeout(() => setCopiedLinkId(null), 2000);
+  };
+
   // Pre-build O(1) Map lookups for projects and clients
   const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
   const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
+
+  const getProjectWithClientLabel = (projId: string) => {
+    if (!projId) return 'Sem projeto';
+    const proj = projectMap.get(projId);
+    if (!proj) return 'Projeto não encontrado';
+    const client = clientMap.get(proj.clientId);
+    const clientName = client ? (client.clientName || client.shortName) : '';
+    const ipPart = proj.installProjectNo ? ` (${proj.installProjectNo})` : '';
+    return clientName ? `${clientName} - ${proj.title}${ipPart}` : `${proj.title}${ipPart}`;
+  };
 
   // Filter active tasks (not deleted, and if associated with project, project must not be deleted)
   const activeTasks = useMemo(() => {
@@ -308,8 +327,6 @@ export default function TaskSection({
                             projTitle.includes(q) ||
                             projIp.includes(q) ||
                             hasMatchingAssignee;
-      const matchesProject = filterProject ? t.projectId === filterProject : true;
-      const matchesType = filterType ? t.taskTypeId === filterType : true;
       const matchesAssignee = filterAssignee ? t.assigneeIds.some(id => matchUserId(id, filterAssignee)) : true;
 
       // Date Preset Filter
@@ -333,9 +350,9 @@ export default function TaskSection({
         matchesPreset = Boolean(targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && scale === 3);
       }
 
-      return matchesSearch && matchesProject && matchesType && matchesAssignee && matchesPreset;
+      return matchesSearch && matchesAssignee && matchesPreset;
     });
-  }, [activeTasks, search, filterProject, filterType, filterAssignee, datePreset, projectMap, clientMap, getTaskScale, todayStr, tomorrowStr, weekRange, users]);
+  }, [activeTasks, search, filterAssignee, datePreset, projectMap, clientMap, getTaskScale, todayStr, tomorrowStr, weekRange, users]);
 
   const sortTasks = (taskList: Task[]) => {
     return [...taskList].sort((a, b) => {
@@ -373,8 +390,8 @@ export default function TaskSection({
     });
 
     const sortedProjectIds = Object.keys(tasksByProject).sort((idA, idB) => {
-      const titleA = getProjectTitle(idA).toLowerCase();
-      const titleB = getProjectTitle(idB).toLowerCase();
+      const titleA = getProjectWithClientLabel(idA).toLowerCase();
+      const titleB = getProjectWithClientLabel(idB).toLowerCase();
       return titleA.localeCompare(titleB);
     });
 
@@ -672,7 +689,7 @@ export default function TaskSection({
 
             {/* Detailed Filters Row */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              {/* Search Input */}
+              {/* Search Input - expands to fill space */}
               <div className="flex-1 min-w-[200px] relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
                 <input 
@@ -683,30 +700,6 @@ export default function TaskSection({
                   className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
                 />
               </div>
-
-              {/* Project Filter */}
-              <select 
-                value={filterProject}
-                onChange={e => setFilterProject(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all max-w-[200px] truncate"
-              >
-                <option value="">Todos os Projetos</option>
-                {projects.filter(p => !p.deleted).map(p => (
-                  <option key={p.id} value={p.id}>{p.title}</option>
-                ))}
-              </select>
-
-              {/* Task Type Filter */}
-              <select 
-                value={filterType}
-                onChange={e => setFilterType(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
-              >
-                <option value="">Todos os Tipos</option>
-                {taskTypes.filter(tt => !tt.deleted).map(tt => (
-                  <option key={tt.id} value={tt.id}>{tt.name}</option>
-                ))}
-              </select>
 
               {/* Assignee Filter */}
               <select 
@@ -886,6 +879,11 @@ export default function TaskSection({
                             <div className="text-sm font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors mt-0.5">
                               {t.title}
                             </div>
+                            {t.description && (
+                              <div className="text-xs text-slate-500 italic line-clamp-1 mt-0.5">
+                                {t.description}
+                              </div>
+                            )}
                           </td>
 
                           {/* 4. Responsáveis */}

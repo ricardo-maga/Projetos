@@ -1,27 +1,19 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
-  Calendar, 
-  ChevronLeft, 
-  ChevronRight, 
   Users, 
   Plus, 
-  Clock, 
   AlertTriangle, 
-  Search, 
   X, 
-  Briefcase, 
-  Filter, 
   CalendarDays,
-  CheckCircle2,
-  PlayCircle
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { Task, Project, Client, User, UserAbsence, SpecialDay, TaskType } from '../lib/types';
 import { 
   CalendarDayItem, 
   getOperationalCalendarDays, 
-  formatOperationalDateRange, 
   getUserDayAbsence, 
   getOperationalDayConflicts,
   formatDateToYYYYMMDD,
@@ -29,8 +21,9 @@ import {
   isTaskOnDate,
   computeTaskDropUpdates
 } from '../lib/operationalCalendar';
-import { getTaskStatusName, matchTaskStatusId, formatToOnlyHours, getTaskTypeName, getTaskStatusStyle } from '../lib/utils';
+import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, getTaskStatusStyle, getUserInitials } from '../lib/utils';
 import { normalizeRoleId } from '../lib/permissions';
+import DateViewNavigator from './ui/DateViewNavigator';
 
 interface OperationalUserCalendarProps {
   tasks: Task[];
@@ -47,6 +40,7 @@ interface OperationalUserCalendarProps {
   canMoveTask?: boolean;
   updateTask?: (id: string, updates: any) => void;
   appConfig?: any;
+  currentUser?: User | any;
 }
 
 export default function OperationalUserCalendar({
@@ -64,16 +58,38 @@ export default function OperationalUserCalendar({
   canMoveTask = false,
   updateTask,
   appConfig,
+  currentUser,
 }: OperationalUserCalendarProps) {
-  // 1. Period state: 7 days (default) or 14 days
+  // 1. Fullscreen container ref and state
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen?.().catch(() => {
+        setIsFullscreen(true);
+      });
+    } else {
+      document.exitFullscreen?.().catch(() => {
+        setIsFullscreen(false);
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleFS = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFS);
+    return () => document.removeEventListener('fullscreenchange', handleFS);
+  }, []);
+
+  // 2. Period state: 7 days (default) or 14 days
   const [periodDays, setPeriodDays] = useState<7 | 14>(7);
 
-  // 2. Anchor Date for the calendar
+  // 3. Anchor Date for the calendar
   const [anchorDate, setAnchorDate] = useState<Date>(() => new Date());
-
-  // 3. Filters
-  const [userSearchTerm, setUserSearchTerm] = useState<string>('');
-  const [showOnlyWithTasks, setShowOnlyWithTasks] = useState<boolean>(false);
 
   // 4. Drag and Drop state
   const [dragOverCell, setDragOverCell] = useState<string | null>(null);
@@ -134,7 +150,7 @@ export default function OperationalUserCalendar({
     return 1;
   }, [taskStatuses]);
 
-  // 4. Active eligible users
+  // 5. Active eligible users
   const activeEligibleUsers = useMemo(() => {
     const allowedGroupIds = Array.isArray(appConfig?.taskAssigneeGroupIds) && appConfig.taskAssigneeGroupIds.length > 0
       ? appConfig.taskAssigneeGroupIds
@@ -158,21 +174,47 @@ export default function OperationalUserCalendar({
       .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-PT', { sensitivity: 'base' }));
   }, [users, appConfig?.taskAssigneeGroupIds, appConfig?.taskAssigneeGroupId]);
 
-  // 5. Selected User IDs for the calendar display
+  // 6. Selected User IDs & LocalStorage Persistence (default: NO users selected when no preference saved)
+  const currentUserId = currentUser?.id || 'default';
+  const storageKey = `task-calendar-selected-users-v1:${currentUserId}`;
+
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>(() => {
-    return activeEligibleUsers.map(u => u.id);
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            return parsed;
+          }
+        }
+      } catch (err) {
+        console.error('[OperationalUserCalendar] Erro ao ler preferência de utilizadores:', err);
+      }
+    }
+    return [];
   });
 
-  const hasInitializedRef = React.useRef(false);
-
-  React.useEffect(() => {
-    if (!hasInitializedRef.current && activeEligibleUsers.length > 0) {
-      setSelectedUserIds(activeEligibleUsers.map(u => u.id));
-      hasInitializedRef.current = true;
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(selectedUserIds));
+      } catch (err) {
+        console.error('[OperationalUserCalendar] Erro ao guardar preferência de utilizadores:', err);
+      }
     }
-  }, [activeEligibleUsers]);
+  }, [selectedUserIds, storageKey]);
 
-  // 6. Navigation handlers
+  useEffect(() => {
+    if (selectedUserIds.length > 0 && activeEligibleUsers.length > 0) {
+      const valid = selectedUserIds.filter(id => activeEligibleUsers.some(u => u.id === id));
+      if (valid.length !== selectedUserIds.length) {
+        setSelectedUserIds(valid);
+      }
+    }
+  }, [activeEligibleUsers, selectedUserIds]);
+
+  // 7. Navigation handlers
   const handlePrevWeek = () => {
     setAnchorDate(prev => {
       const next = new Date(prev);
@@ -193,16 +235,12 @@ export default function OperationalUserCalendar({
     setAnchorDate(new Date());
   };
 
-  // 7. Computed days for the operational period
+  // 8. Computed days for the operational period
   const calendarDays: CalendarDayItem[] = useMemo(() => {
     return getOperationalCalendarDays(anchorDate, periodDays, true);
   }, [anchorDate, periodDays]);
 
-  const dateRangeLabel = useMemo(() => {
-    return formatOperationalDateRange(calendarDays);
-  }, [calendarDays]);
-
-  // Pre-indexed lookup maps for high-performance rendering
+  // Pre-indexed lookup maps
   const { userDayTasksMap, userDayAbsenceMap, userTaskCountMap } = useMemo(() => {
     const tasksMap = new Map<string, Task[]>();
     const countMap = new Map<string, number>();
@@ -243,24 +281,10 @@ export default function OperationalUserCalendar({
     };
   }, [tasks, absences, activeEligibleUsers, calendarDays]);
 
-  // 8. Filtered displayed users
+  // Filtered displayed users
   const displayedUsers = useMemo(() => {
-    let result = activeEligibleUsers.filter(u => selectedUserIds.includes(u.id));
-
-    if (userSearchTerm.trim()) {
-      const term = userSearchTerm.trim().toLowerCase();
-      result = result.filter(u => 
-        u.name.toLowerCase().includes(term) || 
-        (u.email || '').toLowerCase().includes(term)
-      );
-    }
-
-    if (showOnlyWithTasks) {
-      result = result.filter(u => (userTaskCountMap.get(u.id) || 0) > 0);
-    }
-
-    return result;
-  }, [activeEligibleUsers, selectedUserIds, userSearchTerm, showOnlyWithTasks, userTaskCountMap]);
+    return activeEligibleUsers.filter(u => selectedUserIds.includes(u.id));
+  }, [activeEligibleUsers, selectedUserIds]);
 
   // User selection handlers
   const handleSelectAllUsers = () => {
@@ -295,97 +319,49 @@ export default function OperationalUserCalendar({
     return c ? (c.shortName || c.clientName || '') : '';
   };
 
-  const getUserInitials = (name: string): string => {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
-
   return (
-    <div className="space-y-4">
+    <div 
+      ref={containerRef}
+      className={isFullscreen ? 'fixed inset-0 z-50 bg-slate-100 overflow-y-auto p-4 space-y-4' : 'space-y-4'}
+    >
       {/* TOP CONTROL BAR */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-4">
-        {/* Title, Period & Navigation */}
+        {/* Title & Actions */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-blue-50 text-blue-700">
-                <CalendarDays className="w-5 h-5" />
-              </span>
-              <div>
-                <h3 className="text-base font-extrabold text-slate-900 leading-tight">
-                  Calendário Operacional das Tarefas
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Visão e gestão semanal direta por técnico e por dia. Clique nas tarefas para editar ou registar execução.
-                </p>
-              </div>
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-lg bg-blue-50 text-blue-700">
+              <CalendarDays className="w-5 h-5" />
+            </span>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                Calendário Operacional das Tarefas — {periodDays} dias
+              </h3>
+              <p className="text-xs text-slate-500">
+                Visão e gestão semanal direta por técnico e por dia. Clique nas tarefas para editar ou registar execução.
+              </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* 7 vs 14 days toggle */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-              <button
-                type="button"
-                onClick={() => setPeriodDays(7)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  periodDays === 7 
-                    ? 'bg-white text-slate-900 shadow-2xs' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Modo principal de 7 dias"
-              >
-                7 Dias
-              </button>
-              <button
-                type="button"
-                onClick={() => setPeriodDays(14)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  periodDays === 14 
-                    ? 'bg-white text-slate-900 shadow-2xs' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Modo alargado de 14 dias"
-              >
-                14 Dias
-              </button>
-            </div>
-
-            {/* Navigation buttons: Prev, Today, Next */}
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5 shadow-2xs">
-              <button
-                type="button"
-                onClick={handlePrevWeek}
-                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-                title={`Recuar ${periodDays} dias`}
-                aria-label="Período anterior"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={handleToday}
-                className="px-3 py-1 hover:bg-slate-100 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
-                title="Ir para a data atual"
-              >
-                Hoje
-              </button>
-              <button
-                type="button"
-                onClick={handleNextWeek}
-                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-                title={`Avançar ${periodDays} dias`}
-                aria-label="Período seguinte"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Date range label banner */}
-            <div className="px-3 py-1.5 bg-blue-50/80 border border-blue-100 rounded-xl text-xs font-bold text-blue-900 shadow-2xs">
-              {dateRangeLabel}
-            </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Fullscreen Button */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer"
+              title={isFullscreen ? "Sair do ecrã cheio" : "Abrir em ecrã cheio"}
+            >
+              {isFullscreen ? (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5" />
+                  <span>Sair do Ecrã Cheio</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>Ecrã Cheio</span>
+                </>
+              )}
+            </button>
 
             {/* Quick Create Task button in Header */}
             {canCreateTask && onQuickCreateTask && (
@@ -396,7 +372,7 @@ export default function OperationalUserCalendar({
                   const defaultDate = calendarDays[0]?.dateStr || formatDateToYYYYMMDD(new Date());
                   onQuickCreateTask(defaultUser, defaultDate);
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer ml-auto"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer"
                 title="Criar nova tarefa no calendário"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -406,62 +382,18 @@ export default function OperationalUserCalendar({
           </div>
         </div>
 
-        {/* Filters Row: User Search & Options */}
-        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-            <Filter className="w-3.5 h-3.5" />
-            <span>Filtros:</span>
-          </div>
-
-          {/* User Search Input */}
-          <div className="relative min-w-[200px]">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={userSearchTerm}
-              onChange={e => setUserSearchTerm(e.target.value)}
-              placeholder="Pesquisar utilizador..."
-              className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
-            {userSearchTerm && (
-              <button
-                type="button"
-                onClick={() => setUserSearchTerm('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                title="Limpar pesquisa"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-
-          {/* Checkbox: Show only users with scheduled tasks */}
-          <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-50 transition-colors">
-            <input
-              type="checkbox"
-              checked={showOnlyWithTasks}
-              onChange={e => setShowOnlyWithTasks(e.target.checked)}
-              className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300"
-            />
-            <span>Apenas com tarefas no período</span>
-          </label>
-
-          {(userSearchTerm || showOnlyWithTasks) && (
-            <button
-              type="button"
-              onClick={() => {
-                setUserSearchTerm('');
-                setShowOnlyWithTasks(false);
-              }}
-              className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1"
-            >
-              <X className="w-3 h-3" />
-              <span>Limpar filtros</span>
-            </button>
-          )}
+        {/* LINE 1: Datas de visualização (DateViewNavigator) */}
+        <div className="pt-3 border-t border-slate-100">
+          <DateViewNavigator
+            periodDays={periodDays}
+            onPeriodDaysChange={setPeriodDays}
+            onPrev={handlePrevWeek}
+            onNext={handleNextWeek}
+            onToday={handleToday}
+          />
         </div>
 
-        {/* USER SELECTION PILLS BAR */}
+        {/* LINE 2: Utilizadores no Calendário */}
         <div className="pt-3 border-t border-slate-100 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -503,7 +435,7 @@ export default function OperationalUserCalendar({
                       ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
                       : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   }`}
-                  title={`${user.name} (${user.email || 'Sem email'}) - Clique para alternar visibilidade`}
+                  title={`${user.name} - Clique para alternar visibilidade no calendário`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-slate-300'}`} />
                   <span>{user.name}</span>
@@ -590,19 +522,15 @@ export default function OperationalUserCalendar({
                         Nenhum utilizador visível no calendário
                       </span>
                       <span className="text-[11px] text-slate-500">
-                        {selectedUserIds.length === 0
-                          ? 'Não tem nenhum utilizador selecionado.'
-                          : 'Nenhum utilizador corresponde aos critérios de pesquisa ou filtros.'}
+                        Não tem nenhum utilizador selecionado.
                       </span>
-                      {selectedUserIds.length === 0 && (
-                        <button
-                          type="button"
-                          onClick={handleSelectAllUsers}
-                          className="mt-1 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                        >
-                          Selecionar Todos os Utilizadores
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={handleSelectAllUsers}
+                        className="mt-1 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                      >
+                        Selecionar Todos os Utilizadores
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -612,25 +540,26 @@ export default function OperationalUserCalendar({
 
                   return (
                     <tr key={user.id} className="hover:bg-slate-50/40 transition-colors">
-                      {/* Left: User Identity Column */}
+                      {/* Left: User Identity Column (Line 1: [iniciais] Nome, Line 2: N tarefas) */}
                       <td className="p-3 sticky left-0 bg-white z-10 border-r border-slate-100 shadow-[2px_0_4px_rgba(0,0,0,0.02)] align-top">
                         <div className="flex items-start justify-between gap-1">
-                          <div className="flex items-start gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-extrabold text-[11px] shrink-0 mt-0.5">
-                              {getUserInitials(user.name)}
-                            </div>
-                            <div className="min-w-0 flex-1">
+                          <div className="min-w-0 flex-1">
+                            {/* Line 1: Badge + Name */}
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-extrabold text-[11px] shrink-0">
+                                {getUserInitials(user.name)}
+                              </div>
                               <div className="font-extrabold text-slate-900 text-xs truncate" title={user.name}>
                                 {user.name}
                               </div>
-                              <div className="text-[10px] text-slate-400 truncate">
-                                {user.email || 'Técnico'}
-                              </div>
-                              <div className="mt-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded inline-block">
-                                {userPeriodTaskCount} {userPeriodTaskCount === 1 ? 'tarefa' : 'tarefas'}
-                              </div>
+                            </div>
+
+                            {/* Line 2: Independent line for total tasks */}
+                            <div className="mt-1.5 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded inline-block">
+                              {userPeriodTaskCount} {userPeriodTaskCount === 1 ? 'tarefa' : 'tarefas'}
                             </div>
                           </div>
+
                           <button
                             type="button"
                             onClick={() => toggleUserSelection(user.id)}
@@ -742,15 +671,13 @@ export default function OperationalUserCalendar({
                                 </div>
                               )}
 
-                              {/* Task Cards */}
+                              {/* Task Cards: 5 exact lines */}
                               {dayTasks.map(task => {
                                 const project = getProject(task.projectId);
                                 const projectLabel = getProjectLabel(task.projectId);
                                 const clientName = project ? getClientName(project.clientId) : '';
                                 const tStyle = getTaskStatusStyle(task.statusId, taskStatuses);
                                 const statusName = tStyle.name;
-                                const scale = getTaskScale(task.statusId);
-                                const hours = formatToOnlyHours(task.estimatedHours) || '0';
 
                                 // Color styling based on status color configuration
                                 const cardStyle = `border-l-4 ${tStyle.dotClass.replace('bg-', 'border-l-')} ${tStyle.bgClass} ${tStyle.borderClass} hover:brightness-95`;
@@ -777,41 +704,36 @@ export default function OperationalUserCalendar({
                                       e.dataTransfer.effectAllowed = 'move';
                                     }}
                                     onClick={() => onSelectTask(task)}
-                                    className={`p-2 bg-white rounded-xl shadow-2xs hover:shadow-xs transition-all space-y-1.5 text-left ${cardStyle} ${
+                                    className={`p-2 bg-white rounded-xl shadow-2xs hover:shadow-xs transition-all space-y-1 text-left ${cardStyle} ${
                                       canMoveTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                                     }`}
-                                    title={`Abrir tarefa: ${task.title}\nProjeto: ${projectLabel}\nHoras previstas: ${hours} h\nEstado: ${statusName}`}
+                                    title={`Abrir tarefa: ${task.title}\nCliente: ${clientName || 'Sem cliente'}\nProjeto: ${projectLabel}\nEstado: ${statusName}`}
                                   >
-                                    {/* Project / Client label */}
-                                    <div className="text-xs font-bold text-blue-700 truncate leading-tight flex items-center gap-1">
-                                      <Briefcase className="w-3 h-3 shrink-0" />
-                                      <span className="truncate">
-                                        {clientName ? `${clientName} • ` : ''}{projectLabel}
-                                      </span>
+                                    {/* Linha 1: Nome do cliente (Sem ícone) */}
+                                    <div className="text-[11px] font-bold text-slate-500 truncate leading-tight">
+                                      {clientName || 'Sem cliente'}
                                     </div>
 
-                                    {/* Task title */}
-                                    <div className="text-xs sm:text-sm font-extrabold text-slate-800 line-clamp-2 leading-tight group-hover/card:text-blue-600 transition-colors">
+                                    {/* Linha 2: Nome do projeto */}
+                                    <div className="text-xs font-bold text-blue-700 truncate leading-tight">
+                                      {projectLabel}
+                                    </div>
+
+                                    {/* Linha 3: Título da tarefa */}
+                                    <div className="text-xs sm:text-sm font-extrabold text-slate-900 line-clamp-2 leading-tight">
                                       {task.title}
                                     </div>
 
-                                    {/* Footer: Hours, Type & Status Badge */}
-                                    <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-slate-100">
-                                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
-                                        <Clock className="w-3 h-3 text-slate-400" />
-                                        <span>{hours} h</span>
-                                      </span>
+                                    {/* Linha 4: Tipo de tarefa */}
+                                    <div className="text-[11px] font-semibold text-slate-600 truncate">
+                                      {task.taskTypeId ? (getTaskTypeName(task.taskTypeId, taskTypes) || '—') : '—'}
+                                    </div>
 
-                                      <div className="flex items-center gap-1">
-                                        {task.taskTypeId && (
-                                          <span className="text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200/60 px-1.5 py-0.5 rounded truncate max-w-[90px]">
-                                            {getTaskTypeName(task.taskTypeId, taskTypes)}
-                                          </span>
-                                        )}
-                                        <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md truncate max-w-[90px] ${badgeStyle}`}>
-                                          {statusName}
-                                        </span>
-                                      </div>
+                                    {/* Linha 5: Estado da tarefa */}
+                                    <div>
+                                      <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md truncate max-w-full ${badgeStyle}`}>
+                                        {statusName}
+                                      </span>
                                     </div>
                                   </div>
                                 );
@@ -833,38 +755,6 @@ export default function OperationalUserCalendar({
               )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* FOOTER LEGEND */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-2xs text-xs text-slate-500 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 font-bold text-slate-700">
-          <span>Legenda Operacional:</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-4 text-[11px]">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded bg-blue-500" />
-            <span>Planeada</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded bg-amber-500" />
-            <span>Em Execução</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded bg-emerald-500" />
-            <span>Concluída</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded bg-rose-500" />
-            <span>Bloqueada</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-400" />
-            <span>Ausência do Técnico</span>
-          </span>
-          <span className="text-slate-400">
-            • Clique em qualquer tarefa para ver detalhes, editar ou registar a execução.
-          </span>
         </div>
       </div>
     </div>

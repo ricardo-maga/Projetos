@@ -76,11 +76,8 @@ export function TaskAnalytics({
     setIsMounted(true);
   }, []);
 
-  // Filter States for Drilldown
-  const [filterProject, setFilterProject] = useState<string>('all');
-  const [filterUser, setFilterUser] = useState<string>('all');
-  const [filterTaskType, setFilterTaskType] = useState<string>('all');
-  const [timeHorizon, setTimeHorizon] = useState<'30' | '60' | '90'>('30');
+  // Filter State
+  const [timeHorizon, setTimeHorizon] = useState<'7' | '30' | '60' | '90'>('30');
 
   // Helper to map status scale
   const getTaskScale = useMemo(() => {
@@ -94,20 +91,12 @@ export function TaskAnalytics({
     };
   }, [taskStatuses]);
 
-  // Non-deleted tasks base set
+  // Non-deleted tasks base set - worked on directly
   const activeTasks = useMemo(() => {
     return tasks.filter(t => !t.deleted);
   }, [tasks]);
 
-  // Filtered tasks based on interactive header filters
-  const filteredTasks = useMemo(() => {
-    return activeTasks.filter(t => {
-      if (filterProject !== 'all' && t.projectId !== filterProject) return false;
-      if (filterUser !== 'all' && (!t.assigneeIds || !t.assigneeIds.includes(filterUser))) return false;
-      if (filterTaskType !== 'all' && t.taskTypeId !== filterTaskType) return false;
-      return true;
-    });
-  }, [activeTasks, filterProject, filterUser, filterTaskType]);
+  const filteredTasks = activeTasks;
 
   // Date boundaries
   const now = useMemo(() => new Date(), []);
@@ -234,9 +223,12 @@ export function TaskAnalytics({
     const typeMap: Record<string, {
       typeId: string;
       typeName: string;
+      count7: number;
       count30: number;
       count60: number;
       count90: number;
+      estHours7: number;
+      actHours7: number;
       estHours30: number;
       actHours30: number;
       estHours60: number;
@@ -249,7 +241,8 @@ export function TaskAnalytics({
       typeMap[tt.id] = {
         typeId: tt.id,
         typeName: tt.name,
-        count30: 0, count60: 0, count90: 0,
+        count7: 0, count30: 0, count60: 0, count90: 0,
+        estHours7: 0, actHours7: 0,
         estHours30: 0, actHours30: 0,
         estHours60: 0, actHours60: 0,
         estHours90: 0, actHours90: 0
@@ -259,7 +252,8 @@ export function TaskAnalytics({
     typeMap['untyped'] = {
       typeId: 'untyped',
       typeName: 'Sem Tipo / Geral',
-      count30: 0, count60: 0, count90: 0,
+      count7: 0, count30: 0, count60: 0, count90: 0,
+      estHours7: 0, actHours7: 0,
       estHours30: 0, actHours30: 0,
       estHours60: 0, actHours60: 0,
       estHours90: 0, actHours90: 0
@@ -274,6 +268,11 @@ export function TaskAnalytics({
       const estH = parseTimeToHours(t.estimatedHours);
       const actH = parseTimeToHours(t.actualHours);
 
+      if (daysAgo <= 7) {
+        typeMap[key].count7 += 1;
+        typeMap[key].estHours7 += estH;
+        typeMap[key].actHours7 += actH;
+      }
       if (daysAgo <= 30) {
         typeMap[key].count30 += 1;
         typeMap[key].estHours30 += estH;
@@ -303,7 +302,11 @@ export function TaskAnalytics({
       let estHours = item.estHours30;
       let actHours = item.actHours30;
 
-      if (timeHorizon === '60') {
+      if (timeHorizon === '7') {
+        count = item.count7;
+        estHours = item.estHours7;
+        actHours = item.actHours7;
+      } else if (timeHorizon === '60') {
         count = item.count60;
         estHours = item.estHours60;
         actHours = item.actHours60;
@@ -318,6 +321,7 @@ export function TaskAnalytics({
         QtdTarefas: count,
         HorasEstimadas: Math.round(estHours * 10) / 10,
         HorasGastas: Math.round(actHours * 10) / 10,
+        count7: item.count7,
         count30: item.count30,
         count60: item.count60,
         count90: item.count90,
@@ -521,84 +525,56 @@ export function TaskAnalytics({
           </div>
         </div>
 
-        {/* Global Drilldown Filters */}
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-          {/* Project Filter */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Projeto
-            </label>
-            <div className="relative">
-              <Briefcase className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <select
-                value={filterProject}
-                onChange={e => setFilterProject(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+        {/* Global Controls Bar */}
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+          {/* Segmented Horizon Control */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700">Janela Temporal (Análise Histórica):</span>
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setTimeHorizon('7')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  timeHorizon === '7'
+                    ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <option value="all">Todos os Projetos ({projects.length})</option>
-                {projects.filter(p => !p.deleted).map(p => (
-                  <option key={p.id} value={p.id}>{p.title}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* User/Assignee Filter */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Colaborador / Técnico
-            </label>
-            <div className="relative">
-              <Users className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <select
-                value={filterUser}
-                onChange={e => setFilterUser(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                7 Dias
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimeHorizon('30')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  timeHorizon === '30'
+                    ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <option value="all">Todos os Colaboradores ({users.length})</option>
-                {users.filter(u => !u.deleted).map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Task Type Filter */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Tipo de Tarefa
-            </label>
-            <div className="relative">
-              <Layers className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <select
-                value={filterTaskType}
-                onChange={e => setFilterTaskType(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                30 Dias
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimeHorizon('60')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  timeHorizon === '60'
+                    ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <option value="all">Todos os Tipos ({taskTypes.length})</option>
-                {taskTypes.filter(tt => !tt.deleted).map(tt => (
-                  <option key={tt.id} value={tt.id}>{tt.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Horizon Window Filter */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Janela Temporal (Análise Histórica)
-            </label>
-            <div className="relative">
-              <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <select
-                value={timeHorizon}
-                onChange={e => setTimeHorizon(e.target.value as any)}
-                className="w-full pl-8 pr-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                60 Dias
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimeHorizon('90')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  timeHorizon === '90'
+                    ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <option value="30">Últimos 30 Dias</option>
-                <option value="60">Últimos 60 Dias</option>
-                <option value="90">Últimos 90 Dias</option>
-              </select>
+                90 Dias
+              </button>
             </div>
           </div>
         </div>
@@ -850,8 +826,16 @@ export function TaskAnalytics({
           {/* Time Horizon Selector Pills */}
           <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200/80 self-start sm:self-auto">
             <button
+              onClick={() => setTimeHorizon('7')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                timeHorizon === '7' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              7 Dias
+            </button>
+            <button
               onClick={() => setTimeHorizon('30')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 timeHorizon === '30' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -859,7 +843,7 @@ export function TaskAnalytics({
             </button>
             <button
               onClick={() => setTimeHorizon('60')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 timeHorizon === '60' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -867,7 +851,7 @@ export function TaskAnalytics({
             </button>
             <button
               onClick={() => setTimeHorizon('90')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 timeHorizon === '90' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -911,12 +895,14 @@ export function TaskAnalytics({
             <thead>
               <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider bg-slate-50/50">
                 <th className="py-2.5 px-3">Tipo de Tarefa</th>
-                <th className="py-2.5 px-3 text-center bg-indigo-50/40 text-indigo-800">Qtd (30d)</th>
-                <th className="py-2.5 px-3 text-center bg-indigo-50/40 text-indigo-800">Horas (30d)</th>
-                <th className="py-2.5 px-3 text-center bg-slate-100/50">Qtd (60d)</th>
-                <th className="py-2.5 px-3 text-center bg-slate-100/50">Horas (60d)</th>
-                <th className="py-2.5 px-3 text-center">Qtd (90d)</th>
-                <th className="py-2.5 px-3 text-center">Horas (90d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '7' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-slate-50'}`}>Qtd (7d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '7' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-slate-50'}`}>Horas (7d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '30' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-indigo-50/40 text-indigo-800'}`}>Qtd (30d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '30' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-indigo-50/40 text-indigo-800'}`}>Horas (30d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '60' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-slate-100/50'}`}>Qtd (60d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '60' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-slate-100/50'}`}>Horas (60d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '90' ? 'bg-indigo-100/60 text-indigo-900 font-black' : ''}`}>Qtd (90d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '90' ? 'bg-indigo-100/60 text-indigo-900 font-black' : ''}`}>Horas (90d)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -925,24 +911,31 @@ export function TaskAnalytics({
                   <td className="py-3 px-3 font-semibold text-slate-800">
                     {item.typeName}
                   </td>
-                  <td className="py-3 px-3 text-center font-bold text-indigo-900 bg-indigo-50/20">
+                  <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '7' ? 'bg-indigo-100/30 text-indigo-900 font-black' : ''}`}>
+                    {item.count7}
+                  </td>
+                  <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '7' ? 'bg-indigo-100/30' : ''}`}>
+                    <span className="font-semibold">{formatHoursToHHMM(item.estHours7)}h</span>
+                    <span className="text-[10px] text-slate-400 block">Real: {formatHoursToHHMM(item.actHours7)}h</span>
+                  </td>
+                  <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '30' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'bg-indigo-50/20 text-indigo-900'}`}>
                     {item.count30}
                   </td>
-                  <td className="py-3 px-3 text-center font-medium text-slate-700 bg-indigo-50/20">
+                  <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '30' ? 'bg-indigo-100/30' : 'bg-indigo-50/20'}`}>
                     <span className="font-semibold">{formatHoursToHHMM(item.estHours30)}h</span>
                     <span className="text-[10px] text-slate-400 block">Real: {formatHoursToHHMM(item.actHours30)}h</span>
                   </td>
-                  <td className="py-3 px-3 text-center font-bold text-slate-800 bg-slate-50/30">
+                  <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '60' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'bg-slate-50/30 text-slate-800'}`}>
                     {item.count60}
                   </td>
-                  <td className="py-3 px-3 text-center font-medium text-slate-700 bg-slate-50/30">
+                  <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '60' ? 'bg-indigo-100/30' : 'bg-slate-50/30'}`}>
                     <span className="font-semibold">{formatHoursToHHMM(item.estHours60)}h</span>
                     <span className="text-[10px] text-slate-400 block">Real: {formatHoursToHHMM(item.actHours60)}h</span>
                   </td>
-                  <td className="py-3 px-3 text-center font-bold text-slate-800">
+                  <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '90' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'text-slate-800'}`}>
                     {item.count90}
                   </td>
-                  <td className="py-3 px-3 text-center font-medium text-slate-700">
+                  <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '90' ? 'bg-indigo-100/30' : ''}`}>
                     <span className="font-semibold">{formatHoursToHHMM(item.estHours90)}h</span>
                     <span className="text-[10px] text-slate-400 block">Real: {formatHoursToHHMM(item.actHours90)}h</span>
                   </td>

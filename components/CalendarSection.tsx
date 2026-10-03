@@ -3075,6 +3075,7 @@ export default function CalendarSection({
           canMoveTask={canMoveTask}
           updateTask={updateTask}
           appConfig={appConfig}
+          currentUser={currentUser}
         />
       )}
 
