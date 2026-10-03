@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { Task, Project, Client, TaskType, User } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
 import { getTaskTypeName, formatToOnlyHours, getDefaultTaskStatusId } from '../lib/utils';
 import { getTaskConflictWarnings } from '../lib/taskConflicts';
 import { validateTaskExecutionTimes, parseTaskHoursToFloat } from '../lib/taskOperations';
@@ -540,14 +542,15 @@ export default function TaskDetailsModal({
             )}
           </div>
 
-          <button 
-            type="button"
+          <IconButton 
+            variant="ghost"
+            size="sm"
             onClick={onClose}
-            className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
             title="Fechar modal"
+            aria-label="Fechar modal"
           >
             <X className="w-5 h-5" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Read-only banner if in edit/view mode */}
@@ -927,39 +930,39 @@ export default function TaskDetailsModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-200">
+          <div className="flex items-center justify-between gap-2 pt-4 border-t border-border">
             <div>
               {effectiveMode !== 'create' && !isReadOnly && deleteTask && activeTask && (
-                <button
+                <Button
                   type="button"
+                  variant="danger"
+                  size="sm"
                   onClick={handleDelete}
-                  disabled={isSubmitting}
-                  className="h-10 px-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+                  isLoading={isSubmitting}
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-4 h-4" />
                   Eliminar Tarefa
-                </button>
+                </Button>
               )}
             </div>
 
             <div className="flex items-center gap-2">
-              <button 
+              <Button 
                 type="button" 
+                variant="secondary"
+                size="sm"
                 onClick={onClose}
-                className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors cursor-pointer text-xs sm:text-sm"
               >
                 {effectiveMode === 'view' ? 'Fechar' : 'Cancelar'}
-              </button>
+              </Button>
 
               {effectiveMode !== 'view' && canWrite && (
-                <button 
+                <Button 
                   type="submit" 
-                  disabled={isSubmitting}
-                  className={`h-10 px-5 text-white rounded-xl font-bold transition-all cursor-pointer text-xs sm:text-sm shadow-xs flex items-center gap-1.5 ${
-                    isDuplication
-                      ? 'bg-indigo-600 hover:bg-indigo-700'
-                      : 'bg-blue-600 hover:bg-blue-700 disabled:opacity-50'
-                  }`}
+                  variant="primary"
+                  size="sm"
+                  isLoading={isSubmitting}
+                  className={isDuplication ? 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800' : ''}
                 >
                   {isSubmitting 
                     ? 'A processar...' 
@@ -970,7 +973,7 @@ export default function TaskDetailsModal({
                     : effectiveMode === 'execute'
                     ? 'Registar Execução'
                     : 'Gravar Alterações'}
-                </button>
+                </Button>
               )}
             </div>
           </div>
