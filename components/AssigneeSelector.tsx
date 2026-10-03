@@ -89,9 +89,9 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
       </div>
 
       {/* Technician Checkboxes List */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 max-h-36 overflow-y-auto space-y-1">
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 max-h-48 overflow-y-auto space-y-1">
         {filteredUsers.length === 0 ? (
-          <p className="text-slate-400 italic text-[11px] text-center py-3">
+          <p className="text-slate-400 italic text-xs text-center py-3">
             {searchTerm ? 'Nenhum técnico encontrado' : 'Nenhum técnico disponível'}
           </p>
         ) : (

@@ -1536,15 +1536,15 @@ export default function ProjectSection({
           })()}
 
           {/* Project Separators Header (Tabs: Visão Geral / Tarefas / Material / Riscos / Análise) */}
-          <div className="border-b border-slate-200 bg-slate-50/80 px-3 sm:px-6 pt-2.5 sm:pt-3 overflow-x-auto w-full scrollbar-thin">
-            <div className="flex gap-2 min-w-max pb-0.5">
+          <div className="border-b border-slate-200 bg-white px-3 sm:px-6 pt-2 overflow-x-auto w-full scrollbar-thin">
+            <div className="flex gap-6 min-w-max">
               <button
                 type="button"
                 onClick={() => setActiveDetailTab('geral')}
-                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+                className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   activeDetailTab === 'geral'
-                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'border-blue-600 text-blue-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
                 }`}
               >
                 <FileText className="w-4 h-4 shrink-0" /> Visão Geral
@@ -1552,10 +1552,10 @@ export default function ProjectSection({
               <button
                 type="button"
                 onClick={() => setActiveDetailTab('tarefas')}
-                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+                className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   activeDetailTab === 'tarefas'
-                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'border-blue-600 text-blue-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
                 }`}
               >
                 <ListTodo className="w-4 h-4 shrink-0" /> Tarefas ({projTasks.length})
@@ -1563,10 +1563,10 @@ export default function ProjectSection({
               <button
                 type="button"
                 onClick={() => setActiveDetailTab('material')}
-                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+                className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   activeDetailTab === 'material'
-                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'border-blue-600 text-blue-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
                 }`}
               >
                 <Package className="w-4 h-4 shrink-0" /> Material ({projMaterials.length})
@@ -1580,10 +1580,10 @@ export default function ProjectSection({
                   setActiveDetailTab('riscos');
                   resetRiskForm();
                 }}
-                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+                className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   activeDetailTab === 'riscos'
-                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'border-blue-600 text-blue-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
                 }`}
               >
                 <ShieldAlert className="w-4 h-4 shrink-0" /> Riscos ({projRiskItems.length})
@@ -1594,10 +1594,10 @@ export default function ProjectSection({
               <button
                 type="button"
                 onClick={() => setActiveDetailTab('analise')}
-                className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+                className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   activeDetailTab === 'analise'
-                    ? 'border-blue-600 text-blue-700 bg-white rounded-t-xl shadow-2xs'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                    ? 'border-blue-600 text-blue-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
                 }`}
               >
                 <BarChart3 className="w-4 h-4 shrink-0" /> Análise

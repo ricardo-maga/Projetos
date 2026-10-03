@@ -703,7 +703,7 @@ export default function OperationalUserCalendar({
                               {/* Absence Banner */}
                               {conflictInfo.isAbsent && (
                                 <div 
-                                  className={`p-1.5 rounded-lg text-center font-extrabold text-[10px] border shadow-2xs ${
+                                  className={`p-1.5 rounded-lg text-center font-extrabold text-xs border shadow-2xs ${
                                     dayTasks.length > 0
                                       ? 'bg-rose-100 text-rose-800 border-rose-300 animate-pulse'
                                       : 'bg-slate-200/80 text-slate-700 border-slate-300'
@@ -711,11 +711,11 @@ export default function OperationalUserCalendar({
                                   title={conflictInfo.tooltipText}
                                 >
                                   <div className="flex items-center justify-center gap-1">
-                                    <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                                     <span>{conflictInfo.badgeText}</span>
                                   </div>
                                   {dayAbsence?.reason && (
-                                    <div className="text-[9px] font-semibold opacity-80 mt-0.5 truncate">
+                                    <div className="text-[11px] font-semibold opacity-85 mt-0.5 truncate">
                                       {dayAbsence.reason}
                                     </div>
                                   )}
@@ -725,10 +725,10 @@ export default function OperationalUserCalendar({
                               {/* Multiple Tasks Conflict Banner (if not absent) */}
                               {!conflictInfo.isAbsent && conflictInfo.hasMultipleTasks && (
                                 <div
-                                  className="px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-[9px] font-extrabold flex items-center gap-1 shadow-2xs"
+                                  className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-xs font-extrabold flex items-center gap-1 shadow-2xs"
                                   title={conflictInfo.tooltipText}
                                 >
-                                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                                   <span>{conflictInfo.badgeText}</span>
                                 </div>
                               )}
@@ -768,38 +768,38 @@ export default function OperationalUserCalendar({
                                       e.dataTransfer.effectAllowed = 'move';
                                     }}
                                     onClick={() => onSelectTask(task)}
-                                    className={`p-2 bg-white rounded-xl shadow-2xs hover:shadow-xs transition-all space-y-1 text-left ${cardStyle} ${
+                                    className={`p-2 bg-white rounded-xl shadow-2xs hover:shadow-xs transition-all space-y-1.5 text-left ${cardStyle} ${
                                       canMoveTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                                     }`}
                                     title={`Abrir tarefa: ${task.title}\nProjeto: ${projectLabel}\nHoras previstas: ${hours} h\nEstado: ${statusName}`}
                                   >
                                     {/* Project / Client label */}
-                                    <div className="text-[9px] font-bold text-blue-700 truncate leading-tight flex items-center gap-1">
-                                      <Briefcase className="w-2.5 h-2.5 shrink-0" />
+                                    <div className="text-xs font-bold text-blue-700 truncate leading-tight flex items-center gap-1">
+                                      <Briefcase className="w-3 h-3 shrink-0" />
                                       <span className="truncate">
                                         {clientName ? `${clientName} • ` : ''}{projectLabel}
                                       </span>
                                     </div>
 
                                     {/* Task title */}
-                                    <div className="text-[11px] font-extrabold text-slate-800 line-clamp-2 leading-tight group-hover/card:text-blue-600 transition-colors">
+                                    <div className="text-xs sm:text-sm font-extrabold text-slate-800 line-clamp-2 leading-tight group-hover/card:text-blue-600 transition-colors">
                                       {task.title}
                                     </div>
 
                                     {/* Footer: Hours, Type & Status Badge */}
                                     <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-slate-100">
-                                      <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-slate-600 bg-slate-100 px-1 py-0.5 rounded">
-                                        <Clock className="w-2.5 h-2.5 text-slate-400" />
+                                      <span className="inline-flex items-center gap-0.5 text-xs font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+                                        <Clock className="w-3 h-3 text-slate-400" />
                                         <span>{hours} h</span>
                                       </span>
 
                                       <div className="flex items-center gap-1">
                                         {task.taskTypeId && (
-                                          <span className="text-[9px] font-medium text-slate-500 bg-slate-50 border border-slate-200/60 px-1 py-0.5 rounded truncate max-w-[80px]">
+                                          <span className="text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200/60 px-1.5 py-0.5 rounded truncate max-w-[90px]">
                                             {getTaskTypeName(task.taskTypeId, taskTypes)}
                                           </span>
                                         )}
-                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md truncate max-w-[80px] ${badgeStyle}`}>
+                                        <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md truncate max-w-[90px] ${badgeStyle}`}>
                                           {statusName}
                                         </span>
                                       </div>

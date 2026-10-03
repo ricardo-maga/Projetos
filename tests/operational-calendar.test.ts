@@ -8,7 +8,8 @@ import {
   getUserDayTasks, 
   getUserDayAbsence, 
   getOperationalDayConflicts,
-  formatDateToYYYYMMDD
+  formatDateToYYYYMMDD,
+  computeTaskDropUpdates
 } from '../lib/operationalCalendar';
 import { Task, User, Project } from '../lib/types';
 
@@ -357,6 +358,114 @@ describe('FASE 29 — Calendário Operacional Semanal por Utilizador', () => {
       expect(activeUsers.length).toBe(1);
       expect(activeUsers[0].name).toBe('Pedro Correia');
       expect(activeUsers.some(u => u.email?.toLowerCase() === 'ricardo75@gmail.com')).toBe(false);
+    });
+  });
+
+  describe('6. Drag and Drop no Calendário Operacional (Alteração de Dia e Utilizadores)', () => {
+    it('altera apenas o dia quando a tarefa é arrastada para outra data do mesmo utilizador', () => {
+      const task: Task = {
+        id: 't-1',
+        title: 'Tarefa Teste',
+        projectId: 'p-1',
+        estimatedDate: '2026-09-21',
+        assigneeIds: ['user-1'],
+        version: 1,
+        deleted: false,
+      };
+
+      const res = computeTaskDropUpdates(task, 'user-1', 'user-1', '2026-09-23');
+      expect(res.hasChanges).toBe(true);
+      expect(res.updates.estimatedDate).toBe('2026-09-23');
+      expect(res.updates.assigneeIds).toBeUndefined();
+    });
+
+    it('substitui o utilizador único quando arrastada para outro utilizador', () => {
+      const task: Task = {
+        id: 't-1',
+        title: 'Tarefa Teste',
+        projectId: 'p-1',
+        estimatedDate: '2026-09-21',
+        assigneeIds: ['user-1'],
+        version: 1,
+        deleted: false,
+      };
+
+      const res = computeTaskDropUpdates(task, 'user-1', 'user-2', '2026-09-21');
+      expect(res.hasChanges).toBe(true);
+      expect(res.updates.assigneeIds).toEqual(['user-2']);
+      expect(res.updates.estimatedDate).toBeUndefined();
+    });
+
+    it('no caso de estarem mais que 1 utilizador associado e ocorrer mudança de utilizador, substitui o utilizador antigo pelo novo mantendo os outros', () => {
+      const task: Task = {
+        id: 't-multi',
+        title: 'Instalação em Equipa',
+        projectId: 'p-1',
+        estimatedDate: '2026-09-21',
+        assigneeIds: ['user-1', 'user-2', 'user-3'],
+        version: 1,
+        deleted: false,
+      };
+
+      // Arrastar a partir do card do user-2 para a linha do user-4 no mesmo dia
+      const res = computeTaskDropUpdates(task, 'user-2', 'user-4', '2026-09-21');
+      expect(res.hasChanges).toBe(true);
+      expect(res.updates.assigneeIds).toEqual(['user-1', 'user-4', 'user-3']);
+      expect(res.updates.estimatedDate).toBeUndefined();
+    });
+
+    it('ao arrastar para utilizador que já pertencia à lista de atribuídos, substitui e desduplica sem erros', () => {
+      const task: Task = {
+        id: 't-multi',
+        title: 'Instalação em Equipa',
+        projectId: 'p-1',
+        estimatedDate: '2026-09-21',
+        assigneeIds: ['user-1', 'user-2', 'user-3'],
+        version: 1,
+        deleted: false,
+      };
+
+      // Arrastar card do user-1 para user-2 (user-2 já é atribuído)
+      const res = computeTaskDropUpdates(task, 'user-1', 'user-2', '2026-09-21');
+      expect(res.hasChanges).toBe(true);
+      expect(res.updates.assigneeIds).toEqual(['user-2', 'user-3']);
+    });
+
+    it('permite alterar o dia e o utilizador simultaneamente com substituição correta', () => {
+      const task: Task = {
+        id: 't-multi',
+        title: 'Instalação em Equipa',
+        projectId: 'p-1',
+        estimatedDate: '2026-09-21',
+        startDate: '2026-09-21',
+        endDate: '2026-09-21',
+        assigneeIds: ['user-1', 'user-2'],
+        version: 1,
+        deleted: false,
+      };
+
+      const res = computeTaskDropUpdates(task, 'user-1', 'user-3', '2026-09-25');
+      expect(res.hasChanges).toBe(true);
+      expect(res.updates.assigneeIds).toEqual(['user-3', 'user-2']);
+      expect(res.updates.estimatedDate).toBe('2026-09-25');
+      expect(res.updates.startDate).toBe('2026-09-25');
+      expect(res.updates.endDate).toBe('2026-09-25');
+    });
+
+    it('retorna hasChanges=false quando solto na mesma célula do mesmo utilizador', () => {
+      const task: Task = {
+        id: 't-1',
+        title: 'Tarefa Teste',
+        projectId: 'p-1',
+        estimatedDate: '2026-09-21',
+        assigneeIds: ['user-1'],
+        version: 1,
+        deleted: false,
+      };
+
+      const res = computeTaskDropUpdates(task, 'user-1', 'user-1', '2026-09-21');
+      expect(res.hasChanges).toBe(false);
+      expect(res.updates).toEqual({});
     });
   });
 });

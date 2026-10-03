@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Task, Project, Client, TaskType, User } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
-import { getTaskTypeName, formatToOnlyHours, getDefaultTaskStatusId, matchId } from '../lib/utils';
+import { getTaskTypeName, formatToOnlyHours, getDefaultTaskStatusId } from '../lib/utils';
 import { getTaskConflictWarnings } from '../lib/taskConflicts';
 import { validateTaskExecutionTimes, parseTaskHoursToFloat } from '../lib/taskOperations';
 
@@ -133,7 +133,6 @@ export default function TaskDetailsModal({
   const [formAssignees, setFormAssignees] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const hasInitializedRef = useRef<string | null>(null);
 
   // Click outside to close project dropdown
   useEffect(() => {
@@ -151,23 +150,12 @@ export default function TaskDetailsModal({
 
   // Initialize form based on mode and task
   useEffect(() => {
-    if (!isModalOpen) {
-      hasInitializedRef.current = null;
-      return;
-    }
-
-    const sessionKey = `${effectiveMode}_${activeTask?.id || 'new'}`;
-    if (hasInitializedRef.current === sessionKey) {
-      return;
-    }
-    hasInitializedRef.current = sessionKey;
-
     if (effectiveMode === 'create') {
       if (activeTask) {
         // DADOS PRÉ-PREENCHIDOS PARA DUPLICAÇÃO
         const projId = activeTask.projectId || '';
         setFormProjectId(projId);
-        const pObj = projects.find(p => matchId(p.id, projId) || p.id === projId);
+        const pObj = projects.find(p => p.id === projId);
         setProjectSearchQuery(pObj ? getProjectDisplayLabel(pObj) : '');
 
         setFormTitle(activeTask.title || '');
@@ -189,7 +177,7 @@ export default function TaskDetailsModal({
         const defaultProj = initialProjectId || '';
         setFormProjectId(defaultProj);
         if (defaultProj) {
-          const pObj = projects.find(p => matchId(p.id, defaultProj) || p.id === defaultProj);
+          const pObj = projects.find(p => p.id === defaultProj);
           setProjectSearchQuery(pObj ? getProjectDisplayLabel(pObj) : '');
         } else {
           setProjectSearchQuery('');
@@ -218,7 +206,7 @@ export default function TaskDetailsModal({
       // EDIÇÃO / EXECUÇÃO / VISUALIZAÇÃO
       const projId = activeTask.projectId || '';
       setFormProjectId(projId);
-      const pObj = projects.find(p => matchId(p.id, projId) || p.id === projId);
+      const pObj = projects.find(p => p.id === projId);
       setProjectSearchQuery(pObj ? getProjectDisplayLabel(pObj) : '');
 
       setFormTitle(activeTask.title || '');
@@ -245,7 +233,7 @@ export default function TaskDetailsModal({
         }
       }
     }
-  }, [isModalOpen, effectiveMode, activeTask, initialProjectId, initialDate, initialAssigneeId, initialAssigneeIds, projects, taskStatuses, getProjectDisplayLabel]);
+  }, [effectiveMode, activeTask, initialProjectId, initialDate, initialAssigneeId, initialAssigneeIds, projects, taskStatuses, getProjectDisplayLabel]);
 
   // Fast suggestions filtering with early termination (designed for thousands of projects)
   const projectSuggestions = useMemo(() => {
@@ -374,8 +362,7 @@ export default function TaskDetailsModal({
     // If user cleared the selection or typed arbitrary text without selecting, projectId is null.
     let resolvedProjectId: string | null = null;
     if (formProjectId && formProjectId.trim()) {
-      const targetId = formProjectId.trim();
-      const matchedProject = projects.find(p => !p.deleted && (matchId(p.id, targetId) || p.id === targetId));
+      const matchedProject = projects.find(p => p.id === formProjectId.trim() && !p.deleted);
       if (matchedProject) {
         resolvedProjectId = matchedProject.id;
       }
@@ -947,7 +934,7 @@ export default function TaskDetailsModal({
                   type="button"
                   onClick={handleDelete}
                   disabled={isSubmitting}
-                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+                  className="h-10 px-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold transition-colors cursor-pointer text-xs flex items-center gap-1.5"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Eliminar Tarefa
@@ -959,7 +946,7 @@ export default function TaskDetailsModal({
               <button 
                 type="button" 
                 onClick={onClose}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors cursor-pointer text-xs"
+                className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors cursor-pointer text-xs sm:text-sm"
               >
                 {effectiveMode === 'view' ? 'Fechar' : 'Cancelar'}
               </button>
@@ -968,10 +955,10 @@ export default function TaskDetailsModal({
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className={`px-5 py-2 text-white rounded-xl font-bold transition-colors cursor-pointer text-xs shadow-md shadow-slate-100 flex items-center gap-1.5 ${
+                  className={`h-10 px-5 text-white rounded-xl font-bold transition-all cursor-pointer text-xs sm:text-sm shadow-xs flex items-center gap-1.5 ${
                     isDuplication
                       ? 'bg-indigo-600 hover:bg-indigo-700'
-                      : 'bg-slate-900 hover:bg-slate-800 disabled:opacity-50'
+                      : 'bg-blue-600 hover:bg-blue-700 disabled:opacity-50'
                   }`}
                 >
                   {isSubmitting 

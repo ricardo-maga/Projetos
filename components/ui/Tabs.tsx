@@ -18,7 +18,18 @@ export interface TabsProps {
   variant?: 'line' | 'pill';
 }
 
-export default function Tabs({ tabs, activeTabId, onChange, className, variant = 'line' }: TabsProps) {
+export function Tabs({ 
+  tabs, 
+  items, 
+  activeTabId, 
+  activeId, 
+  onChange, 
+  className, 
+  variant = 'line' 
+}: TabsProps & { items?: TabOption[]; activeId?: string }) {
+  const effectiveTabs = tabs || items || [];
+  const effectiveActiveId = activeTabId || activeId || '';
+
   return (
     <div 
       className={cn(
@@ -27,8 +38,8 @@ export default function Tabs({ tabs, activeTabId, onChange, className, variant =
         className
       )}
     >
-      {tabs.map((tab) => {
-        const isActive = tab.id === activeTabId;
+      {effectiveTabs.map((tab) => {
+        const isActive = tab.id === effectiveActiveId;
         return (
           <button
             key={tab.id}
@@ -65,3 +76,5 @@ export default function Tabs({ tabs, activeTabId, onChange, className, variant =
     </div>
   );
 }
+
+export default Tabs;

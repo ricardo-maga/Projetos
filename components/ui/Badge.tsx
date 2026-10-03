@@ -9,7 +9,7 @@ export interface BadgeProps {
   className?: string;
 }
 
-export default function Badge({ children, variant = 'neutral', className }: BadgeProps) {
+export function Badge({ children, variant = 'neutral', className }: BadgeProps) {
   return (
     <span
       className={cn(
@@ -29,3 +29,5 @@ export default function Badge({ children, variant = 'neutral', className }: Badg
     </span>
   );
 }
+
+export default Badge;

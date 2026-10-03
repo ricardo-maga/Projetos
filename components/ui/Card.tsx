@@ -1,47 +1,27 @@
-'use client';
-
 import React from 'react';
-import { cn } from '../../lib/utils';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   hoverable?: boolean;
 }
 
-export function Card({ className, hoverable = false, children, ...props }: CardProps) {
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(({
+  children,
+  hoverable = false,
+  className = '',
+  ...props
+}, ref) => {
+  const baseClasses = 'bg-white border border-slate-200 rounded-2xl shadow-2xs transition-all';
+  const hoverClasses = hoverable ? 'hover:border-slate-300 hover:shadow-xs cursor-pointer' : '';
+
   return (
     <div
-      className={cn(
-        "bg-surface border border-border rounded-card p-6 shadow-raised transition-all duration-200 text-left",
-        hoverable && "hover:border-text-disabled hover:shadow-overlay cursor-pointer",
-        className
-      )}
+      ref={ref}
+      className={`${baseClasses} ${hoverClasses} ${className}`}
       {...props}
     >
       {children}
     </div>
   );
-}
+});
 
-export function CardHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn("flex items-center justify-between gap-4 mb-4", className)} {...props}>
-      {children}
-    </div>
-  );
-}
-
-export function CardTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return (
-    <h3 className={cn("text-heading-sm font-bold text-text-primary tracking-tight", className)} {...props}>
-      {children}
-    </h3>
-  );
-}
-
-export function CardContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn("text-body-sm text-text-secondary leading-relaxed", className)} {...props}>
-      {children}
-    </div>
-  );
-}
+Card.displayName = 'Card';
