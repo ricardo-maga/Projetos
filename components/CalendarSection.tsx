@@ -3069,6 +3069,7 @@ export default function CalendarSection({
           taskStatuses={taskStatuses}
           taskTypes={taskTypes}
           specialDays={specialDays}
+          userGroups={userGroups}
           onSelectTask={openTaskDetailsModal}
           onQuickCreateTask={handleQuickCreateForUser}
           canCreateTask={canCreateTaskInCalendar}

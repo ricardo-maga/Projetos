@@ -143,9 +143,15 @@ async function handleUpdate(req: NextRequest, ctx: any) {
       }
     }
 
+    const dateParams = (updates.startDate !== undefined || updates.endDate !== undefined) ? {
+      startDate: mergedStartDate,
+      endDate: mergedEndDate,
+    } : {};
+
     // Delegate atomic update to taskService
     const updateRes = await updateTaskServer(sb, id, {
       ...updates,
+      ...dateParams,
       userId: user.id,
     });
 

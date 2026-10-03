@@ -55,6 +55,7 @@ interface OperationalUserCalendarProps {
   taskStatuses: any[];
   taskTypes?: TaskType[];
   specialDays?: SpecialDay[];
+  userGroups?: any[];
   onSelectTask: (task: Task) => void;
   onQuickCreateTask?: (userId: string, dateStr: string, projectId?: string) => void;
   canCreateTask?: boolean;
@@ -73,6 +74,7 @@ export default function OperationalUserCalendar({
   taskStatuses = [],
   taskTypes = [],
   specialDays = [],
+  userGroups = [],
   onSelectTask,
   onQuickCreateTask,
   canCreateTask = false,
@@ -287,6 +289,17 @@ export default function OperationalUserCalendar({
     return getOperationalCalendarDays(anchorDate, periodDays, true);
   }, [anchorDate, periodDays]);
 
+  const calendarRangeLabel = useMemo(() => {
+    if (!calendarDays || calendarDays.length === 0) return '';
+    const start = calendarDays[0];
+    const end = calendarDays[calendarDays.length - 1];
+    return `${start.dayNum} ${start.monthShort} - ${end.dayNum} ${end.monthShort}`;
+  }, [calendarDays]);
+
+  const isTodayInPeriod = useMemo(() => {
+    return (calendarDays || []).some(d => d.isToday);
+  }, [calendarDays]);
+
   // Pre-indexed lookup maps
   const { userDayTasksMap, userDayAbsenceMap, userTaskCountMap } = useMemo(() => {
     const tasksMap = new Map<string, Task[]>();
@@ -437,6 +450,8 @@ export default function OperationalUserCalendar({
             onPrev={handlePrevWeek}
             onNext={handleNextWeek}
             onToday={handleToday}
+            label={calendarRangeLabel}
+            isToday={isTodayInPeriod}
           />
         </div>
 
@@ -587,7 +602,7 @@ export default function OperationalUserCalendar({
 
                   return (
                     <tr key={user.id} className="hover:bg-slate-50/40 transition-colors">
-                      {/* Left: User Identity Column (Line 1: [iniciais] Nome, Line 2: N tarefas) */}
+                      {/* Left: User Identity Column (Line 1: [iniciais] Nome, Line 2: Cargo / Role) */}
                       <td className="p-3 sticky left-0 bg-white z-10 border-r border-slate-100 shadow-[2px_0_4px_rgba(0,0,0,0.02)] align-top">
                         <div className="flex items-start justify-between gap-1">
                           <div className="min-w-0 flex-1">
@@ -601,9 +616,9 @@ export default function OperationalUserCalendar({
                               </div>
                             </div>
 
-                            {/* Line 2: Independent line for total tasks */}
+                            {/* Line 2: Cargo / Role */}
                             <div className="mt-1.5 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded inline-block">
-                              {userPeriodTaskCount} {userPeriodTaskCount === 1 ? 'tarefa' : 'tarefas'}
+                              {userGroups?.find(g => g.id === user.roleId)?.name || (user.type === 'Team' ? 'Técnico' : user.type || 'Técnico')}
                             </div>
                           </div>
 
@@ -776,11 +791,28 @@ export default function OperationalUserCalendar({
                                       {task.taskTypeId ? (getTaskTypeName(task.taskTypeId, taskTypes) || '—') : '—'}
                                     </div>
 
-                                    {/* Linha 5: Estado da tarefa */}
-                                    <div>
-                                      <span className={`inline-block text-[11px] font-bold px-1.5 py-0.5 rounded-md truncate max-w-full ${badgeStyle}`}>
+                                    {/* Linha 5: Badge de estado da tarefa + Pessoa atribuída */}
+                                    <div className="flex items-center justify-between gap-1 pt-0.5">
+                                      <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-md truncate max-w-[110px] ${badgeStyle}`}>
                                         {statusName}
                                       </span>
+                                      {task.assigneeIds && task.assigneeIds.length > 0 && (
+                                        <div className="flex items-center -space-x-1 shrink-0" title={`Atribuído a: ${task.assigneeIds.map(id => users.find(u => u.id === id)?.name).filter(Boolean).join(', ')}`}>
+                                          {task.assigneeIds.slice(0, 2).map(id => {
+                                            const assignedUser = users.find(u => u.id === id);
+                                            return (
+                                              <span key={id} className="w-4 h-4 rounded-full bg-slate-700 text-white flex items-center justify-center text-[8px] font-black ring-1 ring-white">
+                                                {getUserInitials(assignedUser?.name || id)}
+                                              </span>
+                                            );
+                                          })}
+                                          {task.assigneeIds.length > 2 && (
+                                            <span className="text-[8px] font-bold text-slate-500 pl-0.5">
+                                              +{task.assigneeIds.length - 2}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 );
