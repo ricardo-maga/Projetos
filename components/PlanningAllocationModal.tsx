@@ -15,6 +15,12 @@ import {
 import { parseHoursToNumber, formatHoursDisplay, isAllocationOutsideTaskWindow } from '../lib/planning/summary';
 import { getAuthHeaders } from '../lib/clientAuth';
 
+// UI Foundation Components
+import Button from './ui/Button';
+import Input from './ui/Input';
+import Select from './ui/Select';
+import Checkbox from './ui/Checkbox';
+
 interface PlanningAllocationModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -491,28 +497,30 @@ export default function PlanningAllocationModal({
 
           {/* Associated Task */}
           <div>
-            <label htmlFor="planning-task-select" className="block text-xs font-medium text-slate-700 mb-1">
-              Tarefa Associada <span className="text-rose-500">*</span>
-            </label>
             {task ? (
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-slate-500" />
-                  {task.title}
-                </div>
-                {currentProject && (
-                  <div className="text-xs text-slate-500 mt-0.5 ml-6">
-                    Projeto: {currentProject.title}
+              <div className="space-y-1.5 text-left">
+                <span className="block text-label font-semibold text-text-secondary select-none">
+                  Tarefa Associada <span className="text-rose-500">*</span>
+                </span>
+                <div className="p-3 bg-surface-muted rounded-control border border-border">
+                  <div className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-text-secondary" />
+                    {task.title}
                   </div>
-                )}
+                  {currentProject && (
+                    <div className="text-xs text-text-secondary mt-0.5 ml-6">
+                      Projeto: {currentProject.title}
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
-              <select
+              <Select
                 id="planning-task-select"
                 disabled={isCancelled || submitting}
                 value={selectedTaskId}
                 onChange={e => setSelectedTaskId(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500"
+                label="Tarefa Associada *"
                 required
               >
                 <option value="">Selecione uma tarefa...</option>
@@ -526,88 +534,68 @@ export default function PlanningAllocationModal({
                     </option>
                   );
                 })}
-              </select>
+              </Select>
             )}
           </div>
 
           {/* Resource Selector */}
           <div>
-            <label htmlFor="planning-resource-select" className="block text-xs font-medium text-slate-700 mb-1">
-              Recurso / Técnico <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <select
-                id="planning-resource-select"
-                disabled={isCancelled || isEditing || submitting}
-                value={selectedResourceId}
-                onChange={e => setSelectedResourceId(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500"
-                required
-              >
-                <option value="">Selecione um recurso...</option>
-                {activeUsers.map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.email || u.type})
-                  </option>
-                ))}
-              </select>
-              {isEditing && (
-                <p className="text-[11px] text-slate-400 mt-1">
-                  O recurso está associado a esta reserva. Para planear outro técnico, crie uma nova alocação.
-                </p>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1">
+            <Select
+              id="planning-resource-select"
+              disabled={isCancelled || isEditing || submitting}
+              value={selectedResourceId}
+              onChange={e => setSelectedResourceId(e.target.value)}
+              label="Recurso / Técnico *"
+              required
+            >
+              <option value="">Selecione um recurso...</option>
+              {activeUsers.map(u => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.email || u.type})
+                </option>
+              ))}
+            </Select>
+            {isEditing && (
+              <p className="text-[11px] text-text-muted mt-1">
+                O recurso está associado a esta reserva. Para planear outro técnico, crie uma nova alocação.
+              </p>
+            )}
+            <p className="text-[11px] text-text-muted mt-1.5">
               Nota: O recurso alocado não necessita de ser assignee formal da tarefa.
             </p>
           </div>
 
           {/* Date & Time Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label htmlFor="planning-date-input" className="block text-xs font-medium text-slate-700 mb-1">
-                Data <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="planning-date-input"
-                type="date"
-                disabled={isCancelled || submitting}
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded-lg p-2 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-500"
-                required
-              />
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <Input
+              id="planning-date-input"
+              type="date"
+              disabled={isCancelled || submitting}
+              value={date}
+              onChange={e => setDate(e.target.value)}
+              label="Data *"
+              required
+            />
 
-            <div>
-              <label htmlFor="planning-start-time" className="block text-xs font-medium text-slate-700 mb-1">
-                Hora Início <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="planning-start-time"
-                type="time"
-                disabled={isCancelled || submitting}
-                value={startTime}
-                onChange={e => setStartTime(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded-lg p-2 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-500"
-                required
-              />
-            </div>
+            <Input
+              id="planning-start-time"
+              type="time"
+              disabled={isCancelled || submitting}
+              value={startTime}
+              onChange={e => setStartTime(e.target.value)}
+              label="Hora Início *"
+              required
+            />
 
-            <div>
-              <label htmlFor="planning-end-time" className="block text-xs font-medium text-slate-700 mb-1">
-                Hora Fim <span className="text-rose-500">*</span>
-              </label>
-              <input
-                id="planning-end-time"
-                type="time"
-                disabled={isCancelled || submitting}
-                value={endTime}
-                onChange={e => setEndTime(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded-lg p-2 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-500"
-                required
-              />
-            </div>
+            <Input
+              id="planning-end-time"
+              type="time"
+              disabled={isCancelled || submitting}
+              value={endTime}
+              onChange={e => setEndTime(e.target.value)}
+              label="Hora Fim *"
+              required
+            />
           </div>
 
           {/* Duration Feedback */}
