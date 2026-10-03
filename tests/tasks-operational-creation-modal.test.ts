@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { getTaskEffectiveDate } from '../lib/utils';
+import { getTaskEffectiveDate, matchId } from '../lib/utils';
 import { getTaskConflictWarnings } from '../lib/taskConflicts';
 
 describe('Tarefas — Janela de Criação de Tarefas & Lista Operacional', () => {
@@ -253,6 +253,25 @@ describe('Tarefas — Janela de Criação de Tarefas & Lista Operacional', () =>
       expect(warnings.length).toBe(1);
       expect(warnings[0]).toContain('João Técnico');
       expect(warnings[0]).toContain('Instalação de Módulos');
+    });
+  });
+
+  describe('6. Utilidade matchId (lib/utils)', () => {
+    it('faz correspondência exata de IDs idênticos', () => {
+      expect(matchId('abc-123', 'abc-123')).toBe(true);
+      expect(matchId('project-1', 'project-2')).toBe(false);
+    });
+
+    it('faz correspondência insensível a maiúsculas/minúsculas e hífens em UUIDs', () => {
+      expect(matchId('123e4567-e89b-12d3-a456-426614174000', '123E4567E89B12D3A456426614174000')).toBe(true);
+      expect(matchId('UUID-ABC-DEF', 'uuidabcdef')).toBe(true);
+    });
+
+    it('retorna false para valores nulos ou vazios', () => {
+      expect(matchId(null, 'abc')).toBe(false);
+      expect(matchId('abc', undefined)).toBe(false);
+      expect(matchId(null, null)).toBe(false);
+      expect(matchId('', '')).toBe(false);
     });
   });
 });

@@ -101,6 +101,22 @@ describe('Calendário Operacional de Tarefas — Drag & Drop (Alteração Rápid
       expect(result.updates.startDate).toBe('2026-10-09');
       expect(result.updates.endDate).toBe('2026-10-09');
     });
+
+    it('Caso 6b: Alteração de dia em tarefa multi-dia preserva a duração de execução (4 dias)', () => {
+      const task: Task = {
+        ...baseTask,
+        assigneeIds: ['user-1'],
+        estimatedDate: '2026-10-05',
+        startDate: '2026-10-05',
+        endDate: '2026-10-08', // 4 dias inclusivos
+      };
+
+      const result = computeTaskDropUpdates(task, 'user-1', 'user-1', '2026-10-12');
+      expect(result.hasChanges).toBe(true);
+      expect(result.updates.estimatedDate).toBe('2026-10-12');
+      expect(result.updates.startDate).toBe('2026-10-12');
+      expect(result.updates.endDate).toBe('2026-10-15');
+    });
   });
 
   describe('3. Alteração Simultânea de Dia e Utilizador', () => {

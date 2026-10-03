@@ -7,6 +7,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function matchId(idA?: string | null, idB?: string | null): boolean {
+  if (!idA || !idB) return false;
+  if (idA === idB) return true;
+  return idA.replace(/[-]/g, '').toLowerCase() === idB.replace(/[-]/g, '').toLowerCase();
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
@@ -27,12 +33,6 @@ export function getProjectCalculatedRisk(
   projectId: string,
   projectRiskItems: ProjectRiskItem[] = []
 ): CalculatedRiskDetails {
-  const matchId = (idA?: string | null, idB?: string | null) => {
-    if (!idA || !idB) return false;
-    if (idA === idB) return true;
-    return idA.replace(/[-]/g, '').toLowerCase() === idB.replace(/[-]/g, '').toLowerCase();
-  };
-
   const projectRisks = (projectRiskItems || []).filter(
     ri => !ri.deleted && matchId(ri.projectId, projectId)
   );
@@ -365,11 +365,6 @@ export function getProjectStatusStyle(
   if (!statusId) {
     return { ...PASTEL_COLOR_MAP.cinza, name: 'Sem Estado' };
   }
-  const matchId = (idA?: string | null, idB?: string | null) => {
-    if (!idA || !idB) return false;
-    if (idA === idB) return true;
-    return idA.replace(/[-]/g, '').toLowerCase() === idB.replace(/[-]/g, '').toLowerCase();
-  };
   const found = projectStatuses.find(s => s.id === statusId || matchId(s.id, statusId));
   if (found) {
     const colorInfo = getStatusColorInfo(found.color, found.scale || found.name);

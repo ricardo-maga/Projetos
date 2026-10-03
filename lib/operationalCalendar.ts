@@ -292,8 +292,50 @@ export interface TaskDropUpdatesResult {
 }
 
 /**
+ * Safely parses YYYY-MM-DD components into year, month, day numbers
+ */
+export function parseDateParts(dateStr: string): { year: number; month: number; day: number } | null {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr.trim());
+  if (!match) return null;
+  return {
+    year: parseInt(match[1], 10),
+    month: parseInt(match[2], 10),
+    day: parseInt(match[3], 10),
+  };
+}
+
+/**
+ * Adds an integer number of civil calendar days to a YYYY-MM-DD string.
+ * Uses UTC date calculations to prevent any daylight saving time (DST) shifts.
+ */
+export function addCivilDays(dateStr: string, days: number): string {
+  const parts = parseDateParts(dateStr);
+  if (!parts) return dateStr;
+  const utcDate = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days));
+  const y = utcDate.getUTCFullYear();
+  const m = String(utcDate.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(utcDate.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Calculates the civil days difference between two YYYY-MM-DD strings (end - start).
+ * E.g., 2026-10-05 and 2026-10-08 -> 3 days difference (4 inclusive days).
+ */
+export function getCivilDaysDifference(startDateStr: string, endDateStr: string): number {
+  const startParts = parseDateParts(startDateStr);
+  const endParts = parseDateParts(endDateStr);
+  if (!startParts || !endParts) return 0;
+  const startUtc = Date.UTC(startParts.year, startParts.month - 1, startParts.day);
+  const endUtc = Date.UTC(endParts.year, endParts.month - 1, endParts.day);
+  return Math.round((endUtc - startUtc) / 86400000);
+}
+
+/**
  * Computes updates for a task when dropped onto a calendar cell (targetUserId, targetDateStr).
  * When multiple assignees are present, substitutes sourceUserId with targetUserId, maintaining other assignees.
+ * Preserves the exact inclusive multi-day duration when moving tasks with real start/end dates.
  */
 export function computeTaskDropUpdates(
   task: Task,
@@ -308,11 +350,12 @@ export function computeTaskDropUpdates(
     : ((task as any).assignedTo ? [(task as any).assignedTo] : []);
 
   const userChanged = sourceUserId ? sourceUserId !== targetUserId : !currentAssigneeIds.includes(targetUserId);
-  const dateChanged = (
-    task.estimatedDate !== targetDateStr ||
-    (task.startDate && task.startDate !== targetDateStr) ||
-    (task.endDate && task.endDate !== targetDateStr)
-  );
+  const currentEffectiveDate = (task.startDate && task.endDate)
+    ? normalizeDateStr(task.startDate)
+    : (task.estimatedDate ? normalizeDateStr(task.estimatedDate) : normalizeDateStr(task.startDate));
+
+  const targetDateNormalized = normalizeDateStr(targetDateStr);
+  const dateChanged = currentEffectiveDate !== targetDateNormalized;
 
   if (!userChanged && !dateChanged) {
     return { hasChanges: false, updates: {} };
@@ -340,7 +383,30 @@ export function computeTaskDropUpdates(
 
   if (dateChanged) {
     updates.estimatedDate = targetDateStr;
-    if (task.startDate || task.endDate) {
+
+    const hasStartDate = Boolean(task.startDate && task.startDate.trim());
+    const hasEndDate = Boolean(task.endDate && task.endDate.trim());
+
+    if (hasStartDate && hasEndDate) {
+      const cleanStart = task.startDate!.trim();
+      const cleanEnd = task.endDate!.trim();
+      const durationDays = getCivilDaysDifference(cleanStart, cleanEnd);
+
+      if (durationDays > 0) {
+        // Multi-day task: preserve the exact duration (civil delta)
+        updates.startDate = targetDateStr;
+        updates.endDate = addCivilDays(targetDateStr, durationDays);
+      } else {
+        // Single-day execution task (startDate === endDate or inverted)
+        updates.startDate = targetDateStr;
+        updates.endDate = targetDateStr;
+      }
+    } else if (hasStartDate && !hasEndDate) {
+      // Partial start date only -> normalize to targetDateStr
+      updates.startDate = targetDateStr;
+      updates.endDate = targetDateStr;
+    } else if (!hasStartDate && hasEndDate) {
+      // Partial end date only -> normalize to targetDateStr
       updates.startDate = targetDateStr;
       updates.endDate = targetDateStr;
     }

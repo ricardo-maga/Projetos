@@ -110,7 +110,16 @@ export default function OperationalUserCalendar({
 
     const { hasChanges, updates } = computeTaskDropUpdates(taskObj, sourceUserId, targetUserId, targetDateStr);
     if (hasChanges && Object.keys(updates).length > 0) {
-      updateTask(taskId, updates);
+      try {
+        const res = updateTask(taskId, updates);
+        if (res && typeof (res as any).catch === 'function') {
+          (res as Promise<any>).catch((err: any) => {
+            console.error('[OperationalUserCalendar] Falha ao atualizar tarefa após arrastamento:', err);
+          });
+        }
+      } catch (err: any) {
+        console.error('[OperationalUserCalendar] Erro ao disparar atualização da tarefa:', err);
+      }
     }
   };
 
