@@ -22,6 +22,7 @@ import { Task, Project, Client, TaskType, User } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
+import { Dialog } from './ui/Dialog';
 import { getTaskTypeName, formatToOnlyHours, getDefaultTaskStatusId } from '../lib/utils';
 import { getTaskConflictWarnings } from '../lib/taskConflicts';
 import { validateTaskExecutionTimes, parseTaskHoursToFloat } from '../lib/taskOperations';
@@ -479,80 +480,17 @@ export default function TaskDetailsModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-all duration-300">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
-        
-        {/* Modal Header */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-start justify-between shrink-0">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className={`p-1 rounded-lg ${
-                isDuplication 
-                  ? 'bg-indigo-100 text-indigo-700' 
-                  : effectiveMode === 'create'
-                  ? 'bg-blue-100 text-blue-700'
-                  : effectiveMode === 'execute'
-                  ? 'bg-amber-100 text-amber-700'
-                  : 'bg-slate-100 text-slate-700'
-              }`}>
-                {isDuplication ? (
-                  <Copy className="w-4 h-4" />
-                ) : effectiveMode === 'create' ? (
-                  <PlusCircle className="w-4 h-4" />
-                ) : effectiveMode === 'execute' ? (
-                  <PlayCircle className="w-4 h-4" />
-                ) : effectiveMode === 'view' ? (
-                  <FileText className="w-4 h-4" />
-                ) : (
-                  <CheckSquare className="w-4 h-4" />
-                )}
-              </span>
-              <span className={`text-caption uppercase font-bold tracking-wider ${
-                isDuplication ? 'text-indigo-700' : 'text-primary'
-              }`}>
-                {isDuplication
-                  ? 'Duplicação de Tarefa'
-                  : effectiveMode === 'create'
-                  ? 'Criação Rápida de Tarefa'
-                  : effectiveMode === 'execute'
-                  ? 'Registo e Execução da Tarefa'
-                  : effectiveMode === 'view'
-                  ? 'Detalhes da Tarefa'
-                  : 'Edição de Tarefa'}
-              </span>
-            </div>
-
-            {effectiveMode !== 'create' && (
-              <div className="text-xs font-medium text-slate-500 mt-1">
-                Cliente: <strong className="text-slate-800 font-bold">{clientName}</strong> | Projeto: <strong className="text-slate-800 font-bold">{projectTitle}</strong>
-              </div>
-            )}
-
-            <h3 className="font-extrabold text-slate-900 text-base leading-snug mt-1">
-              {isDuplication 
-                ? `Nova Tarefa (Cópia de "${activeTask?.title}")` 
-                : effectiveMode === 'create' 
-                ? 'Nova Tarefa Operacional' 
-                : activeTask?.title}
-            </h3>
-            {isDuplication && (
-              <p className="text-xs text-slate-500 mt-0.5">
-                Os dados foram pré-preenchidos de acordo com a tarefa original. A nova tarefa só será criada ao clicar em Guardar.
-              </p>
-            )}
-          </div>
-
-          <IconButton 
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            title="Fechar modal"
-            aria-label="Fechar modal"
-          >
-            <X className="w-5 h-5" />
-          </IconButton>
-        </div>
-
+    <Dialog 
+      isOpen={isModalOpen} 
+      onClose={onClose} 
+      title={isDuplication 
+        ? `Nova Tarefa (Cópia de "${activeTask?.title}")` 
+        : effectiveMode === 'create' 
+        ? 'Nova Tarefa Operacional' 
+        : activeTask?.title || 'Detalhes da Tarefa'}
+      className="max-w-2xl"
+    >
+      <form onSubmit={handleSave} className="flex flex-col h-full">
         {/* Read-only banner if in edit/view mode */}
         {effectiveMode !== 'create' && activeTask && (
           <div className="px-6 py-3 bg-blue-50/50 border-b border-blue-100 text-xs text-slate-600 space-y-1.5 shrink-0">
@@ -595,7 +533,8 @@ export default function TaskDetailsModal({
         )}
 
         {/* Form Body */}
-        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          {/* ...existing form content... */}
           
           {/* Informative Conflict Warnings Banner */}
           {conflictWarnings.length > 0 && (
@@ -978,7 +917,6 @@ export default function TaskDetailsModal({
             </div>
           </div>
         </form>
-      </div>
-    </div>
+      </Dialog>
   );
 }

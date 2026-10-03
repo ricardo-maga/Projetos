@@ -30,7 +30,7 @@ import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { TaskAnalytics } from './TaskAnalytics';
 
 import { hasPermission } from '../lib/permissions';
-import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate, getTaskStatusStyle, getUserInitials } from '../lib/utils';
+import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate, getTaskStatusStyle, getUserInitials, cn } from '../lib/utils';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
 import { Button, IconButton, Badge, Tabs } from './ui';
 
@@ -492,16 +492,17 @@ export default function TaskSection({
             <button
               type="button"
               onClick={() => setFilterDatePreset(datePreset === 'today' ? 'all' : 'today')}
-              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+              className={cn(
+                "text-left p-3.5 rounded-card border transition-all cursor-pointer",
                 datePreset === 'today'
-                  ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-100'
-                  : 'bg-white border-slate-200 hover:border-slate-300'
-              }`}
+                  ? "border-primary bg-primary/10 ring-1 ring-primary"
+                  : "bg-surface border-border hover:border-border-primary"
+              )}
             >
-              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Para Hoje</div>
-              <div className="text-xl font-black text-slate-900 mt-1 flex items-center gap-2">
+              <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Para Hoje</div>
+              <div className="text-xl font-black text-text-primary mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums">{operationalStats.todayCount}</span>
-                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">tarefas</span>
+                <Badge variant="primary" className="text-xs">tarefas</Badge>
               </div>
             </button>
 
@@ -509,16 +510,17 @@ export default function TaskSection({
             <button
               type="button"
               onClick={() => setFilterDatePreset(datePreset === 'this_week' ? 'all' : 'this_week')}
-              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+              className={cn(
+                "text-left p-3.5 rounded-card border transition-all cursor-pointer",
                 datePreset === 'this_week'
-                  ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-100'
-                  : 'bg-white border-slate-200 hover:border-slate-300'
-              }`}
+                  ? "border-primary bg-primary/10 ring-1 ring-primary"
+                  : "bg-surface border-border hover:border-border-primary"
+              )}
             >
-              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Esta semana</div>
-              <div className="text-xl font-black text-slate-900 mt-1 flex items-center gap-2">
+              <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Esta semana</div>
+              <div className="text-xl font-black text-text-primary mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums">{operationalStats.thisWeekCount}</span>
-                <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">ativas</span>
+                <Badge variant="primary" className="text-xs">ativas</Badge>
               </div>
             </button>
 
@@ -526,19 +528,18 @@ export default function TaskSection({
             <button
               type="button"
               onClick={() => setFilterDatePreset(datePreset === 'overdue' ? 'all' : 'overdue')}
-              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+              className={cn(
+                "text-left p-3.5 rounded-card border transition-all cursor-pointer",
                 datePreset === 'overdue'
-                  ? 'border-rose-500 bg-rose-50/30 ring-2 ring-rose-100'
-                  : 'bg-white border-slate-200 hover:border-slate-300'
-              }`}
+                  ? "border-error bg-error/10 ring-1 ring-error"
+                  : "bg-surface border-border hover:border-border-primary"
+              )}
             >
-              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Atrasadas</div>
-              <div className="text-xl font-black text-rose-700 mt-1 flex items-center gap-2">
-                <span className="font-mono tabular-nums">{operationalStats.overdueCount}</span>
+              <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Atrasadas</div>
+              <div className="text-xl font-black text-text-primary mt-1 flex items-center gap-2">
+                <span className="font-mono tabular-nums text-error">{operationalStats.overdueCount}</span>
                 {operationalStats.overdueCount > 0 && (
-                  <span className="text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Atenção
-                  </span>
+                  <Badge variant="error" className="text-xs">atraso</Badge>
                 )}
               </div>
             </button>
@@ -547,16 +548,17 @@ export default function TaskSection({
             <button
               type="button"
               onClick={() => setFilterDatePreset(datePreset === 'completed_this_week' ? 'all' : 'completed_this_week')}
-              className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer shadow-2xs ${
+              className={cn(
+                "text-left p-3.5 rounded-card border transition-all cursor-pointer",
                 datePreset === 'completed_this_week'
-                  ? 'border-emerald-500 bg-emerald-50/30 ring-2 ring-emerald-100'
-                  : 'bg-white border-slate-200 hover:border-slate-300'
-              }`}
+                  ? "border-success bg-success/10 ring-1 ring-success"
+                  : "bg-surface border-border hover:border-border-primary"
+              )}
             >
-              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Concluídas esta semana</div>
-              <div className="text-xl font-black text-emerald-700 mt-1 flex items-center gap-2">
+              <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Concluídas esta semana</div>
+              <div className="text-xl font-black text-text-primary mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums">{operationalStats.completedThisWeekCount}</span>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">feitas</span>
+                <Badge variant="success" className="text-xs">feitas</Badge>
               </div>
             </button>
 
