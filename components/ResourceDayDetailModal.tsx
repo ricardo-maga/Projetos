@@ -524,29 +524,29 @@ export default function ResourceDayDetailModal({
           {/* Daily Capacity & Planning Summary Cards (Canonical metrics, no artificial hour grid) */}
           <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 space-y-3.5">
             <div className="flex items-center justify-between">
-              <div className="text-[11px] uppercase tracking-wider font-extrabold text-slate-500 flex items-center gap-1.5">
+              <div className="text-caption uppercase tracking-wider font-extrabold text-text-secondary flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-blue-600" />
                 Resumo Diário Operacional
               </div>
-              <div className="text-xs font-bold text-slate-600">
-                Utilização: <span className="font-extrabold text-slate-900">{utilizationPercent !== null ? `${utilizationPercent}%` : 'N/A'}</span>
+              <div className="text-xs font-bold text-text-secondary">
+                Utilização: <span className="font-extrabold text-text-primary">{utilizationPercent !== null ? `${utilizationPercent}%` : 'N/A'}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
               {/* Capacidade */}
               <div className="bg-white border border-slate-200/90 rounded-xl p-3 text-center shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                <span className="text-caption font-bold text-text-muted uppercase tracking-wider block">
                   Capacidade
                 </span>
-                <span className={`text-base font-black mt-1 block ${isZeroCap ? 'text-slate-400' : 'text-slate-900'}`}>
+                <span className={`text-base font-black mt-1 block ${isZeroCap ? 'text-text-muted' : 'text-text-primary'}`}>
                   {isZeroCap ? '0h (Indisp.)' : formatHoursDisplay(capacityMinutes / 60)}
                 </span>
               </div>
 
               {/* Confirmado */}
               <div className="bg-white border border-slate-200/90 rounded-xl p-3 text-center shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                <span className="text-caption font-bold text-text-muted uppercase tracking-wider block">
                   CONFIRMED
                 </span>
                 <span className="text-base font-black text-blue-700 mt-1 block">
@@ -556,31 +556,31 @@ export default function ResourceDayDetailModal({
 
               {/* DRAFT */}
               <div className="bg-white border border-slate-200/90 rounded-xl p-3 text-center shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                <span className="text-caption font-bold text-text-muted uppercase tracking-wider block">
                   DRAFT
                 </span>
-                <span className={`text-base font-black mt-1 block ${draftMinutes > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+                <span className={`text-base font-black mt-1 block ${draftMinutes > 0 ? 'text-amber-700' : 'text-text-muted'}`}>
                   {formatHoursDisplay(draftMinutes / 60)}
                 </span>
               </div>
 
               {/* Planeado */}
               <div className="bg-white border border-slate-200/90 rounded-xl p-3 text-center shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                <span className="text-caption font-bold text-text-muted uppercase tracking-wider block">
                   Planeado
                 </span>
-                <span className="text-base font-black text-slate-900 mt-1 block">
+                <span className="text-base font-black text-text-primary mt-1 block">
                   {formatHoursDisplay(plannedMinutes / 60)}
                 </span>
               </div>
 
               {/* Livre */}
               <div className="bg-white border border-slate-200/90 rounded-xl p-3 text-center shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                <span className="text-caption font-bold text-text-muted uppercase tracking-wider block">
                   Livre
                 </span>
                 <span className={`text-base font-black mt-1 block ${
-                  freeCapacityMinutes > 0 ? 'text-emerald-700' : 'text-slate-400'
+                  freeCapacityMinutes > 0 ? 'text-emerald-700' : 'text-text-muted'
                 }`}>
                   {formatHoursDisplay(freeCapacityMinutes / 60)}
                 </span>
@@ -775,37 +775,37 @@ export default function ResourceDayDetailModal({
                       {/* Resumo de Horas do Dia para a Tarefa (Secções 5 e 14) */}
                       <div className="flex items-center gap-2 flex-wrap">
                         {group.hasConfirmed && (
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-xs">
-                            <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-wider">CONFIRMADO</span>
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-control bg-blue-50 border border-blue-200 text-xs">
+                            <span className="text-caption font-bold text-blue-700 uppercase tracking-wider">CONFIRMADO</span>
                             <span className="font-black text-blue-900">{formatHoursDisplay(group.confirmedHours)}</span>
                           </div>
                         )}
 
                         {group.hasDraft && (
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-300 border-dashed text-xs">
-                            <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider">DRAFT</span>
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-control bg-amber-50 border border-amber-300 border-dashed text-xs">
+                            <span className="text-caption font-bold text-amber-800 uppercase tracking-wider">DRAFT</span>
                             <span className="font-black text-amber-900">{formatHoursDisplay(group.draftHours)}</span>
                           </div>
                         )}
 
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-xs">
-                          <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">PLANEADO</span>
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-control bg-slate-100 border border-slate-200 text-xs">
+                          <span className="text-caption font-bold text-slate-600 uppercase tracking-wider">PLANEADO</span>
                           <span className="font-black text-slate-900">{formatHoursDisplay(group.plannedHours)}</span>
                         </div>
 
                         {/* Número de alocações da tarefa no dia (Secção 5) */}
-                        <div className="text-[11px] font-semibold text-slate-500 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-md ml-auto">
+                        <div className="text-caption font-semibold text-text-secondary bg-surface border border-border px-2 py-0.5 rounded-badge ml-auto">
                           {group.allocations.length} {group.allocations.length === 1 ? 'alocação' : 'alocações'}
                         </div>
                       </div>
 
                       {/* Contexto de Pessoas: Técnico Planeado vs Responsável da Tarefa (Secção 5 e 8) */}
-                      <div className="flex items-center gap-2.5 text-[11px] text-slate-600 flex-wrap bg-slate-50/80 p-2 rounded-lg border border-slate-200/70">
-                        <div className="inline-flex items-center gap-1 text-slate-800 font-bold">
+                      <div className="flex items-center gap-2.5 text-caption text-text-secondary flex-wrap bg-surface-muted/80 p-2 rounded-control border border-border">
+                        <div className="inline-flex items-center gap-1 text-text-primary font-bold">
                           <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
                           <span>Técnico: {resource.name}</span>
                           {isResourceAssignee && (
-                            <span className="text-[9px] font-semibold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.2 rounded-md ml-0.5">
+                            <span className="text-caption font-semibold text-text-secondary bg-surface border border-border px-1.5 py-0.2 rounded-badge ml-0.5">
                               Responsável
                             </span>
                           )}

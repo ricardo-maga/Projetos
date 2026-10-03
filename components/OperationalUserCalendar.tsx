@@ -469,14 +469,14 @@ export default function OperationalUserCalendar({
               <button
                 type="button"
                 onClick={handleSelectAllUsers}
-                className="px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                className="px-2.5 py-1 text-caption font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-control transition-colors cursor-pointer"
               >
                 Selecionar Todos
               </button>
               <button
                 type="button"
                 onClick={handleClearUsers}
-                className="px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                className="px-2.5 py-1 text-caption font-bold text-text-secondary bg-surface-muted hover:bg-border rounded-control transition-colors cursor-pointer"
               >
                 Limpar
               </button>
@@ -520,7 +520,7 @@ export default function OperationalUserCalendar({
                 <th className="w-56 p-3 text-xs font-extrabold text-slate-700 sticky left-0 z-30 bg-slate-50 border-r border-slate-200 shadow-[2px_0_4px_rgba(0,0,0,0.02)]">
                   <div className="flex items-center justify-between">
                     <span>Utilizador</span>
-                    <span className="text-[10px] text-slate-400 font-semibold">
+                    <span className="text-caption text-text-muted font-semibold">
                       ({displayedUsers.length})
                     </span>
                   </div>
@@ -544,7 +544,7 @@ export default function OperationalUserCalendar({
                       }`}
                       title={specialDay ? specialDay.name : undefined}
                     >
-                      <div className="text-[10px] uppercase font-bold tracking-wider opacity-75">
+                      <div className="text-caption uppercase font-bold tracking-wider opacity-75">
                         {day.weekdayShort}
                       </div>
                       <div className="flex items-center justify-center gap-1 my-0.5">
@@ -555,12 +555,12 @@ export default function OperationalUserCalendar({
                         }`}>
                           {day.dayNum}
                         </span>
-                        <span className="text-[10px] uppercase font-bold text-slate-400">
+                        <span className="text-caption uppercase font-bold text-text-muted">
                           {day.monthShort}
                         </span>
                       </div>
                       {specialDay && (
-                        <div className="text-[9px] font-bold text-purple-700 truncate max-w-[80px] mx-auto mt-0.5">
+                        <div className="text-caption font-bold text-purple-700 truncate max-w-[80px] mx-auto mt-0.5">
                           {specialDay.name}
                         </div>
                       )}
@@ -583,7 +583,7 @@ export default function OperationalUserCalendar({
                       <span className="text-xs font-bold text-slate-700">
                         Nenhum utilizador visível no calendário
                       </span>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-caption text-text-secondary">
                         Não tem nenhum utilizador selecionado.
                       </span>
                       <button
@@ -608,7 +608,7 @@ export default function OperationalUserCalendar({
                           <div className="min-w-0 flex-1">
                             {/* Line 1: Badge + Name */}
                             <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-extrabold text-[11px] shrink-0">
+                              <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-extrabold text-caption shrink-0">
                                 {getUserInitials(user.name)}
                               </div>
                               <div className="font-extrabold text-slate-900 text-xs truncate" title={user.name}>
@@ -617,7 +617,7 @@ export default function OperationalUserCalendar({
                             </div>
 
                             {/* Line 2: Cargo / Role */}
-                            <div className="mt-1.5 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded inline-block">
+                            <div className="mt-1.5 text-caption font-bold text-text-secondary bg-surface-muted px-1.5 py-0.5 rounded inline-block">
                               {userGroups?.find(g => g.id === user.roleId)?.name || (user.type === 'Team' ? 'Técnico' : user.type || 'Técnico')}
                             </div>
                           </div>
@@ -715,7 +715,7 @@ export default function OperationalUserCalendar({
                                     <span>{conflictInfo.badgeText}</span>
                                   </div>
                                   {dayAbsence?.reason && (
-                                    <div className="text-[11px] font-semibold opacity-85 mt-0.5 truncate">
+                                    <div className="text-caption font-semibold opacity-85 mt-0.5 truncate">
                                       {dayAbsence.reason}
                                     </div>
                                   )}
@@ -772,7 +772,7 @@ export default function OperationalUserCalendar({
                                     title={`Abrir tarefa: ${task.title}\nCliente: ${clientName || 'Sem cliente'}\nProjeto: ${projectLabel}\nEstado: ${statusName}`}
                                   >
                                     {/* Linha 1: Nome do cliente (Sem ícone) */}
-                                    <div className="text-[11px] font-bold text-slate-500 truncate leading-tight">
+                                    <div className="text-caption font-bold text-text-secondary truncate leading-tight">
                                       {clientName || 'Sem cliente'}
                                     </div>
 
@@ -787,13 +787,13 @@ export default function OperationalUserCalendar({
                                     </div>
 
                                     {/* Linha 4: Tipo de tarefa */}
-                                    <div className="text-[11px] font-semibold text-slate-600 truncate">
+                                    <div className="text-caption font-semibold text-text-secondary truncate">
                                       {task.taskTypeId ? (getTaskTypeName(task.taskTypeId, taskTypes) || '—') : '—'}
                                     </div>
 
                                     {/* Linha 5: Badge de estado da tarefa + Pessoa atribuída */}
                                     <div className="flex items-center justify-between gap-1 pt-0.5">
-                                      <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-md truncate max-w-[110px] ${badgeStyle}`}>
+                                      <span className={`inline-block text-caption font-bold px-1.5 py-0.5 rounded-md truncate max-w-[110px] ${badgeStyle}`}>
                                         {statusName}
                                       </span>
                                       {task.assigneeIds && task.assigneeIds.length > 0 && (
@@ -820,7 +820,7 @@ export default function OperationalUserCalendar({
 
                               {/* Empty placeholder when no tasks & no absence */}
                               {dayTasks.length === 0 && !conflictInfo.isAbsent && (
-                                <div className="h-full flex items-center justify-center text-slate-300 text-[10px] italic py-3 select-none">
+                                <div className="h-full flex items-center justify-center text-text-muted text-caption italic py-3 select-none">
                                   —
                                 </div>
                               )}

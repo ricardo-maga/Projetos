@@ -1655,11 +1655,11 @@ export default function CalendarSection({
         {/* FASE 23E-C3E: Compact Operational Results & Filter Indicator Banner */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-extrabold text-slate-800 uppercase text-[10px] tracking-wider">Planeamento Operacional</span>
+            <span className="font-bold text-slate-800 uppercase text-caption tracking-wider">Planeamento Operacional</span>
             <span className="text-slate-300">•</span>
             {isKPIFilterActive ? (
               <>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 font-bold text-[11px]">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 font-bold text-caption">
                   Filtro ativo: {getResourceOperationalFilterLabel(resourceOperationalFilter)}
                 </span>
                 <span className="text-slate-300">•</span>
@@ -1675,28 +1675,28 @@ export default function CalendarSection({
 
             {/* FASE 23E-C3L: Acompanhamento agregado de situações no conjunto atualmente visível (sortedResources) */}
             <span className="text-slate-300 hidden sm:inline">•</span>
-            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-slate-600">
+            <div className="flex flex-wrap items-center gap-1.5 text-caption font-medium text-slate-600">
               <span className="font-bold text-slate-700">Situações a acompanhar:</span>
               {operationalAlertsSummary.excessCellsCount > 0 && (
-                <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 border border-rose-200/80 px-1.5 py-0.5 rounded text-[10px]">
+                <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 border border-rose-200/80 px-1.5 py-0.5 rounded text-caption">
                   <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
                   {operationalAlertsSummary.excessCellsCount} excesso
                 </span>
               )}
               {operationalAlertsSummary.draftCellsCount > 0 && (
-                <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded text-[10px]">
+                <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded text-caption">
                   <Clock className="w-3 h-3 text-amber-600 shrink-0" />
                   {operationalAlertsSummary.draftCellsCount} DRAFT
                 </span>
               )}
               {operationalAlertsSummary.noCapacityCellsCount > 0 && (
-                <span className="inline-flex items-center gap-1 font-bold text-rose-600 bg-rose-50/70 border border-rose-200/60 px-1.5 py-0.5 rounded text-[10px]">
+                <span className="inline-flex items-center gap-1 font-bold text-rose-600 bg-rose-50/70 border border-rose-200/60 px-1.5 py-0.5 rounded text-caption">
                   <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
                   {operationalAlertsSummary.noCapacityCellsCount} sem capacidade
                 </span>
               )}
               {operationalAlertsSummary.excessCellsCount === 0 && operationalAlertsSummary.draftCellsCount === 0 && operationalAlertsSummary.noCapacityCellsCount === 0 && (
-                <span className="inline-flex items-center gap-1 font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 text-[10px]">
+                <span className="inline-flex items-center gap-1 font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 text-caption">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
                   Nenhuma situação crítica
                 </span>
@@ -1709,7 +1709,7 @@ export default function CalendarSection({
               type="button"
               id="btn-remove-kpi-filter"
               onClick={() => setResourceOperationalFilter('all')}
-              className="text-[11px] font-bold text-blue-700 hover:text-blue-900 hover:underline cursor-pointer flex items-center gap-1"
+              className="text-caption font-bold text-blue-700 hover:text-blue-900 hover:underline cursor-pointer flex items-center gap-1"
               title="Remover filtro KPI"
               aria-label="Remover filtro operacional de KPI"
             >

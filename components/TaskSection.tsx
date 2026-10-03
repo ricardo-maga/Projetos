@@ -32,6 +32,8 @@ import { TaskAnalytics } from './TaskAnalytics';
 import { hasPermission } from '../lib/permissions';
 import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate, getTaskStatusStyle, getUserInitials } from '../lib/utils';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
+import { Button, IconButton, Badge, Tabs } from './ui';
+
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
   if (total <= 7) {
@@ -472,30 +474,16 @@ export default function TaskSection({
     <div className="space-y-6">
       <div className="space-y-6">
         {/* View Selection Tabs */}
-        <div className="flex border-b border-slate-200 gap-6 mb-2">
-          <button
-            onClick={() => setActiveTaskViewTab('lista')}
-            className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-              activeTaskViewTab === 'lista'
-                ? 'border-blue-600 text-blue-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <ListTodo className="w-4 h-4" />
-            <span>Lista Operacional de Tarefas</span>
-          </button>
-          <button
-            onClick={() => setActiveTaskViewTab('analise')}
-            className={`pb-3 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
-              activeTaskViewTab === 'analise'
-                ? 'border-blue-600 text-blue-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <BarChart2 className="w-4 h-4" />
-            <span>Análise de Tarefas</span>
-          </button>
-        </div>
+        <Tabs
+          tabs={[
+            { id: 'lista', label: 'Lista Operacional de Tarefas', icon: <ListTodo className="w-4.5 h-4.5" /> },
+            { id: 'analise', label: 'Análise de Tarefas', icon: <BarChart2 className="w-4.5 h-4.5" /> }
+          ]}
+          activeTabId={activeTaskViewTab}
+          onChange={(id) => setActiveTaskViewTab(id as 'lista' | 'analise')}
+          variant="line"
+          className="mb-4"
+        />
 
         {/* OPERATIONAL KPI CARDS */}
         {activeTaskViewTab === 'lista' && (
@@ -728,13 +716,15 @@ export default function TaskSection({
                   </p>
                 </div>
                 {canWriteTasks && (
-                  <button 
+                  <Button 
                     type="button"
                     onClick={() => openTaskModal(null, 'create')}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
+                    variant="primary"
+                    size="sm"
+                    className="shrink-0"
                   >
                     <Plus className="w-4 h-4" /> Criar Tarefa
-                  </button>
+                  </Button>
                 )}
               </div>
 
