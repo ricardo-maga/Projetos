@@ -280,3 +280,72 @@ export function getOperationalDayConflicts(
     taskCount,
   };
 }
+
+export interface TaskDropUpdatesResult {
+  hasChanges: boolean;
+  updates: {
+    assigneeIds?: string[];
+    estimatedDate?: string;
+    startDate?: string;
+    endDate?: string;
+  };
+}
+
+/**
+ * Computes updates for a task when dropped onto a calendar cell (targetUserId, targetDateStr).
+ * When multiple assignees are present, substitutes sourceUserId with targetUserId, maintaining other assignees.
+ */
+export function computeTaskDropUpdates(
+  task: Task,
+  sourceUserId: string,
+  targetUserId: string,
+  targetDateStr: string
+): TaskDropUpdatesResult {
+  if (!task) return { hasChanges: false, updates: {} };
+
+  const currentAssigneeIds: string[] = Array.isArray(task.assigneeIds)
+    ? [...task.assigneeIds]
+    : ((task as any).assignedTo ? [(task as any).assignedTo] : []);
+
+  const userChanged = sourceUserId ? sourceUserId !== targetUserId : !currentAssigneeIds.includes(targetUserId);
+  const dateChanged = (
+    task.estimatedDate !== targetDateStr ||
+    (task.startDate && task.startDate !== targetDateStr) ||
+    (task.endDate && task.endDate !== targetDateStr)
+  );
+
+  if (!userChanged && !dateChanged) {
+    return { hasChanges: false, updates: {} };
+  }
+
+  const updates: {
+    assigneeIds?: string[];
+    estimatedDate?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {};
+
+  if (userChanged) {
+    let updatedAssigneeIds: string[];
+    if (sourceUserId && currentAssigneeIds.includes(sourceUserId)) {
+      // Substitui o utilizador antigo pelo novo, mantendo os outros
+      updatedAssigneeIds = currentAssigneeIds.map(uid => uid === sourceUserId ? targetUserId : uid);
+    } else if (currentAssigneeIds.length === 0) {
+      updatedAssigneeIds = [targetUserId];
+    } else {
+      updatedAssigneeIds = [...currentAssigneeIds, targetUserId];
+    }
+    updates.assigneeIds = Array.from(new Set(updatedAssigneeIds));
+  }
+
+  if (dateChanged) {
+    updates.estimatedDate = targetDateStr;
+    if (task.startDate || task.endDate) {
+      updates.startDate = targetDateStr;
+      updates.endDate = targetDateStr;
+    }
+  }
+
+  return { hasChanges: true, updates };
+}
+

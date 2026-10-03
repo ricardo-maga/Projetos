@@ -3072,6 +3072,8 @@ export default function CalendarSection({
           onSelectTask={openTaskDetailsModal}
           onQuickCreateTask={handleQuickCreateForUser}
           canCreateTask={canCreateTaskInCalendar}
+          canMoveTask={canMoveTask}
+          updateTask={updateTask}
           appConfig={appConfig}
         />
       )}

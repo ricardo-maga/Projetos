@@ -26,7 +26,8 @@ import {
   getOperationalDayConflicts,
   formatDateToYYYYMMDD,
   isUserAssignedToTask,
-  isTaskOnDate
+  isTaskOnDate,
+  computeTaskDropUpdates
 } from '../lib/operationalCalendar';
 import { getTaskStatusName, matchTaskStatusId, formatToOnlyHours, getTaskTypeName, getTaskStatusStyle } from '../lib/utils';
 import { normalizeRoleId } from '../lib/permissions';
@@ -43,6 +44,8 @@ interface OperationalUserCalendarProps {
   onSelectTask: (task: Task) => void;
   onQuickCreateTask?: (userId: string, dateStr: string, projectId?: string) => void;
   canCreateTask?: boolean;
+  canMoveTask?: boolean;
+  updateTask?: (id: string, updates: any) => void;
   appConfig?: any;
 }
 
@@ -58,6 +61,8 @@ export default function OperationalUserCalendar({
   onSelectTask,
   onQuickCreateTask,
   canCreateTask = false,
+  canMoveTask = false,
+  updateTask,
   appConfig,
 }: OperationalUserCalendarProps) {
   // 1. Period state: 7 days (default) or 14 days
@@ -69,6 +74,45 @@ export default function OperationalUserCalendar({
   // 3. Filters
   const [userSearchTerm, setUserSearchTerm] = useState<string>('');
   const [showOnlyWithTasks, setShowOnlyWithTasks] = useState<boolean>(false);
+
+  // 4. Drag and Drop state
+  const [dragOverCell, setDragOverCell] = useState<string | null>(null);
+
+  const handleDropTask = (e: React.DragEvent, targetUserId: string, targetDateStr: string) => {
+    e.preventDefault();
+    setDragOverCell(null);
+    if (!canMoveTask || !updateTask) return;
+
+    let taskId = '';
+    let sourceUserId = '';
+    let sourceDateStr = '';
+
+    const jsonData = e.dataTransfer.getData('application/json');
+    if (jsonData) {
+      try {
+        const parsed = JSON.parse(jsonData);
+        taskId = parsed.taskId || '';
+        sourceUserId = parsed.sourceUserId || '';
+        sourceDateStr = parsed.sourceDateStr || '';
+      } catch (err) {}
+    }
+
+    if (!taskId) {
+      taskId = e.dataTransfer.getData('taskId') || '';
+      sourceUserId = e.dataTransfer.getData('sourceUserId') || '';
+      sourceDateStr = e.dataTransfer.getData('sourceDateStr') || '';
+    }
+
+    if (!taskId) return;
+
+    const taskObj = tasks.find(t => t.id === taskId);
+    if (!taskObj) return;
+
+    const { hasChanges, updates } = computeTaskDropUpdates(taskObj, sourceUserId, targetUserId, targetDateStr);
+    if (hasChanges && Object.keys(updates).length > 0) {
+      updateTask(taskId, updates);
+    }
+  };
 
   // Helper to resolve scale for task status (1: Planeada, 2: Em Execução, 3: Concluída, 4: Bloqueada)
   const getTaskScale = React.useCallback((statusId: string) => {
@@ -602,13 +646,40 @@ export default function OperationalUserCalendar({
                           day.dateStr.split('-').reverse().join('/')
                         );
 
+                        const isCellDragOver = dragOverCell === cellKey;
+
                         return (
                           <td
                             key={day.dateStr}
-                            className={`p-2 border-l border-slate-100 align-top transition-colors group relative ${
-                              (day.isWeekend || !!specialDays.find(sd => sd.date === day.dateStr))
-                                ? (day.isToday ? 'bg-slate-100/80 border-x border-amber-200/80' : 'bg-slate-50/70')
-                                : (day.isToday ? 'bg-amber-50/20' : '')
+                            onDragOver={(e) => {
+                              if (canMoveTask) {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'move';
+                              }
+                            }}
+                            onDragEnter={(e) => {
+                              if (canMoveTask) {
+                                e.preventDefault();
+                                setDragOverCell(cellKey);
+                              }
+                            }}
+                            onDragLeave={(e) => {
+                              if (canMoveTask && e.currentTarget.contains(e.relatedTarget as Node)) {
+                                return;
+                              }
+                              if (dragOverCell === cellKey) {
+                                setDragOverCell(null);
+                              }
+                            }}
+                            onDrop={(e) => {
+                              handleDropTask(e, user.id, day.dateStr);
+                            }}
+                            className={`p-2 border-l border-slate-100 align-top transition-all group relative ${
+                              isCellDragOver
+                                ? 'bg-blue-50/90 ring-2 ring-blue-400 ring-inset'
+                                : (day.isWeekend || !!specialDays.find(sd => sd.date === day.dateStr))
+                                  ? (day.isToday ? 'bg-slate-100/80 border-x border-amber-200/80' : 'bg-slate-50/70')
+                                  : (day.isToday ? 'bg-amber-50/20' : '')
                             }`}
                           >
                             <div className="min-h-[70px] space-y-1.5 flex flex-col justify-start">
@@ -679,8 +750,27 @@ export default function OperationalUserCalendar({
                                 return (
                                   <div
                                     key={task.id}
+                                    draggable={canMoveTask}
+                                    onDragStart={(e) => {
+                                      e.stopPropagation();
+                                      if (!canMoveTask) {
+                                        e.preventDefault();
+                                        return;
+                                      }
+                                      e.dataTransfer.setData('application/json', JSON.stringify({
+                                        taskId: task.id,
+                                        sourceUserId: user.id,
+                                        sourceDateStr: day.dateStr,
+                                      }));
+                                      e.dataTransfer.setData('taskId', task.id);
+                                      e.dataTransfer.setData('sourceUserId', user.id);
+                                      e.dataTransfer.setData('sourceDateStr', day.dateStr);
+                                      e.dataTransfer.effectAllowed = 'move';
+                                    }}
                                     onClick={() => onSelectTask(task)}
-                                    className={`p-2 bg-white rounded-xl shadow-2xs hover:shadow-xs transition-all cursor-pointer group/card space-y-1 text-left ${cardStyle}`}
+                                    className={`p-2 bg-white rounded-xl shadow-2xs hover:shadow-xs transition-all space-y-1 text-left ${cardStyle} ${
+                                      canMoveTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                                    }`}
                                     title={`Abrir tarefa: ${task.title}\nProjeto: ${projectLabel}\nHoras previstas: ${hours} h\nEstado: ${statusName}`}
                                   >
                                     {/* Project / Client label */}
