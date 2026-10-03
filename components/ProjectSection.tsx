@@ -815,6 +815,8 @@ export default function ProjectSection({
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [serverSelectedProj, setServerSelectedProj] = useState<Project | null>(null);
   const [serverTasks, setServerTasks] = useState<Task[]>([]);
+  const [loadedProjectIdForTasks, setLoadedProjectIdForTasks] = useState<string | null>(null);
+  const [isServerTasksLoading, setIsServerTasksLoading] = useState(false);
   
   useEffect(() => {
     if (selectedProjectId) return;
@@ -851,10 +853,20 @@ export default function ProjectSection({
     let isMounted = true;
     if (!selectedProjectId) {
       Promise.resolve().then(() => {
-        if (isMounted) setServerSelectedProj(null);
+        if (isMounted) {
+          setServerSelectedProj(null);
+          setServerTasks([]);
+          setLoadedProjectIdForTasks(null);
+          setIsServerTasksLoading(false);
+        }
       });
       return;
     }
+
+    setServerTasks([]);
+    setLoadedProjectIdForTasks(null);
+    setIsServerTasksLoading(true);
+
     const fetchDetails = async () => {
       try {
         const res = await fetch(`/api/v1/projects/${selectedProjectId}`, { headers: getAuthHeaders() });
@@ -872,27 +884,19 @@ export default function ProjectSection({
             const rawList = taskResult.data || [];
             const normalized = rawList.map((t: any) => normalizeTaskFromApiResponse(t));
             setServerTasks(normalized);
+            setLoadedProjectIdForTasks(selectedProjectId);
           }
         }
-      } catch (err) {}
+      } catch (err) {
+      } finally {
+        if (isMounted) {
+          setIsServerTasksLoading(false);
+        }
+      }
     };
     fetchDetails();
     return () => { isMounted = false; };
   }, [selectedProjectId, refreshTrigger]);
-
-  // Sync serverSelectedProj if projects prop changes
-  useEffect(() => {
-    if (!selectedProjectId) {
-      setServerSelectedProj(null);
-      return;
-    }
-    const localProj = projects.find(p => p.id === selectedProjectId && !p.deleted);
-    if (localProj && serverSelectedProj && serverSelectedProj.id === localProj.id) {
-      if (localProj.statusId !== serverSelectedProj.statusId) {
-        setServerSelectedProj(prev => prev ? { ...prev, statusId: localProj.statusId } : null);
-      }
-    }
-  }, [projects, selectedProjectId, serverSelectedProj]);
 
   // Fallback client-side filtering matching server logic
   const filteredLocalProjects = React.useMemo(() => {
@@ -959,7 +963,13 @@ export default function ProjectSection({
   const endProjectIndex = startProjectIndex + paginatedProjects.length;
   
   const selectedProj = serverSelectedProj || activeProjects.find(p => p.id === selectedProjectId);
-  const projTasks = serverTasks.length > 0 ? serverTasks : tasks.filter(t => t.projectId === selectedProjectId && !t.deleted);
+  const projTasks = React.useMemo(() => {
+    if (!selectedProjectId) return [];
+    if (loadedProjectIdForTasks === selectedProjectId) {
+      return serverTasks;
+    }
+    return tasks.filter(t => t.projectId === selectedProjectId && !t.deleted);
+  }, [selectedProjectId, loadedProjectIdForTasks, serverTasks, tasks]);
 
 
   const projComments = comments.filter(c => matchId(c.projectId, selectedProjectId));
@@ -1293,21 +1303,6 @@ export default function ProjectSection({
   };
 
 
-  const handleQuickProjectStatusChange = async (newStatusId: string) => {
-    if (!selectedProj) return;
-    if (!canWriteProjects) {
-      alert('Não tem permissão para alterar o estado do projeto.');
-      return;
-    }
-    setServerSelectedProj(prev => prev ? { ...prev, statusId: newStatusId } : null);
-    try {
-      await updateProject(selectedProj.id, { statusId: newStatusId });
-      setRefreshTrigger(prev => prev + 1);
-    } catch {
-      setRefreshTrigger(prev => prev + 1);
-    }
-  };
-
   const handleFlowStepClick = (levelIndex: number) => {
     if (!selectedProj) return;
     if (!canWriteProjects) {
@@ -1321,14 +1316,14 @@ export default function ProjectSection({
     });
     
     if (found) {
-      handleQuickProjectStatusChange(found.id);
+      updateProject(selectedProj.id, { statusId: found.id });
     } else {
       // Find status by name keyword
       const levelKeywords = ['iniciar', 'iniciado', 'preparação', 'ensaio', 'implementação', 'concluido'];
       const targetKeyword = levelKeywords[levelIndex];
       const foundByName = projectStatuses.find(s => s.name.toLowerCase().includes(targetKeyword));
       if (foundByName) {
-        handleQuickProjectStatusChange(foundByName.id);
+        updateProject(selectedProj.id, { statusId: foundByName.id });
       }
     }
   };
@@ -1524,11 +1519,7 @@ export default function ProjectSection({
                         className="relative z-10 flex flex-col items-center select-none"
                       >
                         {/* Step Circle */}
-                        <div 
-                          onClick={() => canWriteProjects && handleFlowStepClick(idx)}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 border-[2px] ${canWriteProjects ? 'cursor-pointer hover:opacity-80' : ''} ${circleClass}`}
-                          title={canWriteProjects ? `Mudar para estado: ${lvl.label}` : lvl.label}
-                        >
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 border-[2px] ${circleClass}`}>
                           {isPassed ? <Check className="w-4 h-4 stroke-[3]" /> : <span className="text-[11px] font-black">{idx + 1}</span>}
                         </div>
                         
@@ -2130,14 +2121,13 @@ export default function ProjectSection({
                                           {t.title}
                                         </div>
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          {(() => {
-                                            const tStyle = getTaskStatusStyle(t.statusId, taskStatuses);
-                                            return (
-                                              <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-extrabold border tracking-wider ${tStyle.badgeClass}`}>
-                                                {tStyle.name}
-                                              </span>
-                                            );
-                                          })()}
+                                          <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-extrabold border tracking-wider ${
+                                            t.statusId === 'ts-3' || t.statusId === '99999999-9999-9999-9999-999999999903'
+                                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' 
+                                              : t.statusId === 'ts-2' || t.statusId === '99999999-9999-9999-9999-999999999902'
+                                              ? 'bg-amber-50 text-amber-700 border-amber-200/50'
+                                              : 'bg-blue-50 text-blue-700 border-blue-200/50'
+                                          }`}>{getTaskStatusName(t.statusId, taskStatuses)}</span>
                                           
                                           <span className="text-[10px] text-slate-500 font-bold truncate max-w-[150px]">
                                             👤 {assigneesText}
@@ -2315,7 +2305,7 @@ export default function ProjectSection({
                   <h4 className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Estado</h4>
                   <select 
                     value={selectedProj.statusId}
-                    onChange={(e) => handleQuickProjectStatusChange(e.target.value)}
+                    onChange={(e) => updateProject(selectedProj.id, { statusId: e.target.value })}
                     className="px-2.5 py-1 bg-blue-50 border border-blue-200 rounded-full font-bold text-blue-700 text-[10px] uppercase tracking-wide cursor-pointer outline-none hover:bg-blue-100 transition-colors"
                   >
                     {sortedStatuses.filter(s => !s.deleted || s.id === selectedProj.statusId).map(s => (
@@ -2455,6 +2445,20 @@ export default function ProjectSection({
                   </div>
                 </div>
               
+              {/* Documents Attachments list */}
+              <div className="space-y-2">
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Documentação técnica</span>
+                {selectedProj.documents?.length > 0 ? (
+                  <div className="space-y-1 mt-1">
+                    {selectedProj.documents.map((doc, i) => (
+                      <div key={i} className="flex items-center gap-1.5 py-1 text-blue-600 hover:underline cursor-pointer">
+                        <FileText className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+                        <span className="font-semibold truncate max-w-[180px]">{doc}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <span className="text-slate-400 italic block mt-1">Sem esquemas ou PDFs anexados.</span>}
+              </div>
 
             </div>
 
@@ -2621,7 +2625,12 @@ export default function ProjectSection({
 
 
               {/* Tasks List */}
-              {projTasks.length === 0 ? (
+              {isServerTasksLoading ? (
+                <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs font-medium animate-pulse flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  A carregar tarefas do projeto...
+                </div>
+              ) : projTasks.length === 0 ? (
                 <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs font-medium">
                   Nenhuma tarefa ou lembrete associado a este projeto.
                 </div>
@@ -2643,14 +2652,9 @@ export default function ProjectSection({
                       <div className="flex justify-between items-start gap-2">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            {(() => {
-                              const tStyle = getTaskStatusStyle(task.statusId, taskStatuses);
-                              return (
-                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider border ${tStyle.badgeClass}`}>
-                                  {tStyle.name}
-                                </span>
-                              );
-                            })()}
+                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded">
+                              {getTaskStatusName(task.statusId, taskStatuses)}
+                            </span>
                             <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold rounded flex items-center gap-1">
                               {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Bell className="w-3 h-3 text-purple-600" />}
                               {getTaskTypeName(task.taskTypeId, taskTypes)}
@@ -4026,6 +4030,43 @@ export default function ProjectSection({
               </div>
             </div>
 
+            {/* Documents lists input */}
+            <div className="space-y-2 md:col-span-2">
+              <label className="block text-slate-500">Esquemas Técnicos / Documentos (Anexos)</label>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  value={newDocName}
+                  onChange={e => setNewDocName(e.target.value)}
+                  placeholder="Introduza o nome do ficheiro (ex: Esquema_Pneumatico_v1.pdf)"
+                  className="flex-1 p-2 border border-slate-200 rounded-xl"
+                />
+                <button 
+                  type="button"
+                  onClick={addDocument}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-xl font-bold"
+                >
+                  Adicionar
+                </button>
+              </div>
+              
+              {formDocs.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formDocs.map((doc, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg">
+                      <span className="font-semibold truncate max-w-[200px]">{doc}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => removeDocument(idx)}
+                        className="text-red-500 hover:text-red-700 font-extrabold ml-1"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Default Tasks Selection section */}
             {!editingId && defaultTasks && defaultTasks.length > 0 && (
@@ -4952,12 +4993,6 @@ export default function ProjectSection({
         }}
         updateTask={async (id: string, updates: any) => {
           const res = await updateTask(id, updates);
-          setServerTasks(prev => {
-            if (updates.projectId !== undefined && updates.projectId !== selectedProjectId) {
-              return prev.filter(t => t.id !== id);
-            }
-            return prev.map(t => t.id === id ? { ...t, ...updates } : t);
-          });
           setRefreshTrigger(prev => prev + 1);
           return res;
         }}

@@ -135,9 +135,12 @@ export function normalizeTaskFromApiResponse(data: any): Task {
   const rawVersion = data.version !== undefined && data.version !== null ? Number(data.version) : undefined;
   const version = rawVersion !== undefined && !isNaN(rawVersion) ? rawVersion : undefined;
 
+  const rawProjectId = data.projectId !== undefined ? data.projectId : data.project_id;
+  const projectId = rawProjectId && typeof rawProjectId === 'string' && rawProjectId.trim() ? rawProjectId.trim() : null;
+
   return {
     id: data.id,
-    projectId: data.projectId || data.project_id || '',
+    projectId,
     title: data.title || data.task_title || '',
     description: data.description !== undefined ? data.description : (data.task_description || ''),
     statusId: data.statusId || data.status_id || '',
