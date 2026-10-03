@@ -14,7 +14,7 @@ export interface DialogProps {
   className?: string;
 }
 
-export default function Dialog({ isOpen, onClose, title, children, className }: DialogProps) {
+export function Dialog({ isOpen, onClose, title, children, className }: DialogProps) {
   // Prevent body scroll when open
   useEffect(() => {
     if (isOpen) {
@@ -81,3 +81,5 @@ export default function Dialog({ isOpen, onClose, title, children, className }: 
     </AnimatePresence>
   );
 }
+
+export default Dialog;
