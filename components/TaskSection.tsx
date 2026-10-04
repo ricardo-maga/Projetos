@@ -32,7 +32,7 @@ import { TaskAnalytics } from './TaskAnalytics';
 import { hasPermission } from '../lib/permissions';
 import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate, getTaskStatusStyle, getUserInitials, cn } from '../lib/utils';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
-import { Button, IconButton, Badge, Tabs, Select, Checkbox } from './ui';
+import { Button, IconButton, Badge, Tabs, Select, Checkbox, Card, Input } from './ui';
 
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
@@ -431,7 +431,7 @@ export default function TaskSection({
 
   const renderAssignees = (assigneeIds?: string[]) => {
     if (!assigneeIds || assigneeIds.length === 0) {
-      return <span className="text-slate-400 italic text-xs">Sem atribuição</span>;
+      return <span className="text-text-muted italic text-caption">Sem atribuição</span>;
     }
 
     const maxVisible = 3;
@@ -445,22 +445,24 @@ export default function TaskSection({
           const userName = user ? user.name : uid;
           const initials = getUserInitials(userName);
           return (
-            <span 
+            <Badge 
               key={uid} 
-              className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-800 font-extrabold text-xs rounded-md shadow-2xs"
+              variant="neutral"
+              className="font-bold text-caption shadow-flat"
               title={userName}
             >
               {initials}
-            </span>
+            </Badge>
           );
         })}
         {remainingCount > 0 && (
-          <span 
-            className="px-1.5 py-0.5 bg-slate-200 border border-slate-300 text-slate-700 font-extrabold text-xs rounded-md shadow-2xs"
+          <Badge 
+            variant="neutral"
+            className="font-bold text-caption shadow-flat"
             title={`${remainingCount} outro(s) responsável(eis)`}
           >
             +{remainingCount}
-          </span>
+          </Badge>
         )}
       </div>
     );
@@ -489,11 +491,19 @@ export default function TaskSection({
         {activeTaskViewTab === 'lista' && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 select-none">
             {/* 1. Para Hoje */}
-            <button
-              type="button"
+            <Card
+              hoverable
+              role="button"
+              tabIndex={0}
               onClick={() => setFilterDatePreset(datePreset === 'today' ? 'all' : 'today')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setFilterDatePreset(datePreset === 'today' ? 'all' : 'today');
+                }
+              }}
               className={cn(
-                "text-left p-3.5 rounded-card border transition-all cursor-pointer",
+                "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'today'
                   ? "border-primary bg-primary/10 ring-1 ring-primary"
                   : "bg-surface border-border hover:border-border-primary"
@@ -502,16 +512,24 @@ export default function TaskSection({
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Para Hoje</div>
               <div className="text-xl font-black text-text-primary mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums">{operationalStats.todayCount}</span>
-                <Badge variant="primary" className="text-xs">tarefas</Badge>
+                <Badge variant="primary" className="text-caption">tarefas</Badge>
               </div>
-            </button>
+            </Card>
 
             {/* 2. Esta semana */}
-            <button
-              type="button"
+            <Card
+              hoverable
+              role="button"
+              tabIndex={0}
               onClick={() => setFilterDatePreset(datePreset === 'this_week' ? 'all' : 'this_week')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setFilterDatePreset(datePreset === 'this_week' ? 'all' : 'this_week');
+                }
+              }}
               className={cn(
-                "text-left p-3.5 rounded-card border transition-all cursor-pointer",
+                "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'this_week'
                   ? "border-primary bg-primary/10 ring-1 ring-primary"
                   : "bg-surface border-border hover:border-border-primary"
@@ -520,16 +538,24 @@ export default function TaskSection({
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Esta semana</div>
               <div className="text-xl font-black text-text-primary mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums">{operationalStats.thisWeekCount}</span>
-                <Badge variant="primary" className="text-xs">ativas</Badge>
+                <Badge variant="primary" className="text-caption">ativas</Badge>
               </div>
-            </button>
+            </Card>
 
             {/* 3. Atrasadas */}
-            <button
-              type="button"
+            <Card
+              hoverable
+              role="button"
+              tabIndex={0}
               onClick={() => setFilterDatePreset(datePreset === 'overdue' ? 'all' : 'overdue')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setFilterDatePreset(datePreset === 'overdue' ? 'all' : 'overdue');
+                }
+              }}
               className={cn(
-                "text-left p-3.5 rounded-card border transition-all cursor-pointer",
+                "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'overdue'
                   ? "border-error bg-error/10 ring-1 ring-error"
                   : "bg-surface border-border hover:border-border-primary"
@@ -539,17 +565,25 @@ export default function TaskSection({
               <div className="text-xl font-black text-text-primary mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums text-error">{operationalStats.overdueCount}</span>
                 {operationalStats.overdueCount > 0 && (
-                  <Badge variant="error" className="text-xs">atraso</Badge>
+                  <Badge variant="error" className="text-caption">atraso</Badge>
                 )}
               </div>
-            </button>
+            </Card>
 
             {/* 4. Concluídas esta semana */}
-            <button
-              type="button"
+            <Card
+              hoverable
+              role="button"
+              tabIndex={0}
               onClick={() => setFilterDatePreset(datePreset === 'completed_this_week' ? 'all' : 'completed_this_week')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setFilterDatePreset(datePreset === 'completed_this_week' ? 'all' : 'completed_this_week');
+                }
+              }}
               className={cn(
-                "text-left p-3.5 rounded-card border transition-all cursor-pointer",
+                "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'completed_this_week'
                   ? "border-success bg-success/10 ring-1 ring-success"
                   : "bg-surface border-border hover:border-border-primary"
@@ -558,122 +592,110 @@ export default function TaskSection({
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Concluídas esta semana</div>
               <div className="text-xl font-black text-text-primary mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums">{operationalStats.completedThisWeekCount}</span>
-                <Badge variant="success" className="text-xs">feitas</Badge>
+                <Badge variant="success" className="text-caption">feitas</Badge>
               </div>
-            </button>
+            </Card>
 
             {/* 5. Horas prev. semana */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
-              <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Horas prev. semana</div>
-              <div className="text-xl font-black text-slate-900 mt-1 flex items-center gap-1">
+            <Card className="p-3.5 col-span-2 sm:col-span-1 select-none">
+              <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Horas prev. semana</div>
+              <div className="text-xl font-black text-text-primary mt-1 flex items-center gap-1">
                 <span className="font-mono tabular-nums">{operationalStats.weekHoursSum}</span>
-                <span className="text-xs font-bold text-slate-500">h</span>
+                <span className="text-body-sm font-bold text-text-secondary">h</span>
               </div>
-            </div>
+            </Card>
           </div>
         )}
 
         {/* Shared Filters Bar */}
         {activeTaskViewTab === 'lista' && (
-          <div className="space-y-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+          <Card className="p-4 space-y-3 shadow-flat">
             {/* Quick Date Presets Row */}
-            <div className="flex flex-wrap items-center gap-1.5 pb-3 border-b border-slate-100">
-              <span className="text-xs font-extrabold text-slate-500 mr-1">Filtros Rápidos:</span>
+            <div className="flex flex-wrap items-center gap-1.5 pb-3 border-b border-border">
+              <span className="text-label font-bold text-text-secondary mr-1">Filtros Rápidos:</span>
 
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant={datePreset === 'all' ? 'primary' : 'secondary'}
                 onClick={() => setFilterDatePreset('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  datePreset === 'all'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
+                className="h-8 px-3 text-caption font-bold"
               >
                 Todas
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant={datePreset === 'today' ? 'primary' : 'secondary'}
                 onClick={() => setFilterDatePreset('today')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  datePreset === 'today'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
+                className="h-8 px-3 text-caption font-bold"
               >
                 Hoje
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant={datePreset === 'tomorrow' ? 'primary' : 'secondary'}
                 onClick={() => setFilterDatePreset('tomorrow')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  datePreset === 'tomorrow'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
+                className="h-8 px-3 text-caption font-bold"
               >
                 Amanhã
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant={datePreset === 'this_week' ? 'primary' : 'secondary'}
                 onClick={() => setFilterDatePreset('this_week')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  datePreset === 'this_week'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
+                className="h-8 px-3 text-caption font-bold"
               >
                 Esta Semana
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant={datePreset === 'overdue' ? 'danger' : 'secondary'}
                 onClick={() => setFilterDatePreset('overdue')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                  datePreset === 'overdue'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
+                className="h-8 px-3 text-caption font-bold gap-1"
               >
-                <AlertTriangle className={`w-3.5 h-3.5 ${datePreset === 'overdue' ? 'text-rose-200' : 'text-rose-600'}`} />
+                <AlertTriangle className={cn("w-3.5 h-3.5", datePreset === 'overdue' ? 'text-white' : 'text-error')} />
                 <span>Atrasadas</span>
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant={datePreset === 'completed_this_week' ? 'primary' : 'secondary'}
                 onClick={() => setFilterDatePreset('completed_this_week')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  datePreset === 'completed_this_week'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
+                className="h-8 px-3 text-caption font-bold"
               >
                 Concluídas esta semana
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant={datePreset === 'completed' ? 'primary' : 'secondary'}
                 onClick={() => setFilterDatePreset('completed')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  datePreset === 'completed'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
+                className="h-8 px-3 text-caption font-bold"
               >
                 Concluídas
-              </button>
+              </Button>
 
               {datePreset !== 'all' && (
-                <button
+                <Button
                   type="button"
+                  size="sm"
+                  variant="ghost"
                   onClick={() => setFilterDatePreset('all')}
-                  className="ml-auto text-xs font-bold text-slate-400 hover:text-slate-600 flex items-center gap-1 cursor-pointer"
+                  className="ml-auto text-caption font-bold text-text-muted hover:text-text-primary gap-1 h-8 px-2"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-3.5 h-3.5" />
                   <span>Limpar preset</span>
-                </button>
+                </Button>
               )}
             </div>
 
@@ -681,38 +703,40 @@ export default function TaskSection({
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Search Input - expands to fill space */}
               <div className="flex-1 min-w-[200px] relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
-                <input 
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-disabled w-4 h-4 pointer-events-none z-10" />
+                <Input 
                   type="text" 
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Pesquisar por título, cliente ou projeto..."
-                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                  className="pl-9 h-10 text-body-sm"
                 />
               </div>
 
               {/* Assignee Filter */}
-              <Select
-                value={filterAssignee}
-                onChange={e => setFilterAssignee(e.target.value)}
-                className="h-10 text-xs font-semibold w-full sm:w-auto min-w-[220px]"
-                options={[
-                  { value: '', label: 'Qualquer Responsável' },
-                  ...usersWithTasks.map(u => ({ value: u.id, label: u.name }))
-                ]}
-              />
+              <div className="w-full sm:w-auto min-w-[220px]">
+                <Select
+                  value={filterAssignee}
+                  onChange={e => setFilterAssignee(e.target.value)}
+                  className="h-10 text-body-sm font-semibold"
+                  options={[
+                    { value: '', label: 'Qualquer Responsável' },
+                    ...usersWithTasks.map(u => ({ value: u.id, label: u.name }))
+                  ]}
+                />
+              </div>
             </div>
-          </div>
+          </Card>
         )}
 
         {/* LISTA DE TAREFAS */}
         {activeTaskViewTab === 'lista' && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 space-y-3.5">
+          <Card className="overflow-hidden shadow-flat">
+            <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/50 space-y-3.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-extrabold text-slate-900">Lista Operacional de Tarefas</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <h2 className="text-heading-sm text-text-primary">Lista Operacional de Tarefas</h2>
+                  <p className="text-body-sm text-text-secondary mt-0.5">
                     Visualização rápida e direta das tarefas com controlo de datas, estado, horas previstas e horas reais consumidas.
                   </p>
                 </div>
@@ -730,51 +754,54 @@ export default function TaskSection({
               </div>
 
               {/* Controls: Page size, Sort & Group */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200/60">
-                <div className="flex flex-wrap items-center gap-3 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-slate-500 font-medium">Mostrar:</span>
-                    <Select
-                      value={String(pageSize)}
-                      onChange={e => {
-                        setPageSize(Number(e.target.value));
-                        setCurrentPage(1);
-                      }}
-                      className="h-9 py-1 px-2.5 text-xs font-semibold w-20"
-                      options={[
-                        { value: '10', label: '10' },
-                        { value: '25', label: '25' },
-                        { value: '50', label: '50' },
-                        { value: '100', label: '100' },
-                      ]}
-                    />
+                    <span className="text-text-secondary font-medium text-body-sm">Mostrar:</span>
+                    <div className="w-20">
+                      <Select
+                        value={String(pageSize)}
+                        onChange={e => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="h-9 py-1 px-2.5 text-body-sm font-semibold"
+                        options={[
+                          { value: '10', label: '10' },
+                          { value: '25', label: '25' },
+                          { value: '50', label: '50' },
+                          { value: '100', label: '100' },
+                        ]}
+                      />
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    <span className="text-slate-500 font-medium">Ordenar por:</span>
-                    <Select
-                      value={sortBy}
-                      onChange={e => setSortBy(e.target.value as 'estimatedDate' | 'status')}
-                      className="h-9 py-1 px-2.5 text-xs font-semibold w-auto min-w-[180px]"
-                      options={[
-                        { value: 'estimatedDate', label: 'Data prevista (padrão)' },
-                        { value: 'status', label: 'Estado' },
-                      ]}
-                    />
+                    <span className="text-text-secondary font-medium text-body-sm">Ordenar por:</span>
+                    <div className="w-auto min-w-[180px]">
+                      <Select
+                        value={sortBy}
+                        onChange={e => setSortBy(e.target.value as 'estimatedDate' | 'status')}
+                        className="h-9 py-1 px-2.5 text-body-sm font-semibold"
+                        options={[
+                          { value: 'estimatedDate', label: 'Data prevista (padrão)' },
+                          { value: 'status', label: 'Estado' },
+                        ]}
+                      />
+                    </div>
                   </div>
 
-                  <div className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-control flex items-center">
+                  <div className="px-2.5 py-1.5 bg-surface border border-border rounded-control flex items-center h-9">
                     <Checkbox
                       checked={groupByProject}
                       onChange={e => setGroupByProject(e.target.checked)}
                       label="Agrupar por Projeto"
-                      className="text-xs font-semibold"
                     />
                   </div>
                 </div>
 
-                <div className="text-xs text-slate-500 font-medium">
-                  Total: <span className="font-bold text-slate-800">{totalTasks}</span> {totalTasks === 1 ? 'tarefa' : 'tarefas'}
+                <div className="text-body-sm text-text-secondary font-medium">
+                  Total: <span className="font-bold text-text-primary">{totalTasks}</span> {totalTasks === 1 ? 'tarefa' : 'tarefas'}
                 </div>
               </div>
             </div>
@@ -782,14 +809,14 @@ export default function TaskSection({
             {/* Table List Output */}
             <div className="overflow-x-auto w-full">
               {paginatedTasks.length === 0 ? (
-                <div className="p-12 text-center text-slate-400 font-medium text-xs space-y-2">
-                  <ListTodo className="w-8 h-8 text-slate-300 mx-auto" />
-                  <p className="font-bold text-slate-700">Nenhuma tarefa encontrada.</p>
-                  <p className="text-slate-500 text-[11px]">Tente ajustar a pesquisa ou limpar os filtros operacionais selecionados.</p>
+                <div className="p-12 text-center text-text-muted font-medium text-body-sm space-y-2">
+                  <ListTodo className="w-8 h-8 text-text-disabled mx-auto" />
+                  <p className="font-bold text-text-primary">Nenhuma tarefa encontrada.</p>
+                  <p className="text-caption text-text-muted">Tente ajustar a pesquisa ou limpar os filtros operacionais selecionados.</p>
                 </div>
               ) : (
                 <table className="w-full min-w-[850px] text-left border-collapse">
-                  <thead className="bg-slate-50/90 text-xs font-bold text-slate-500 border-b border-slate-200/80 whitespace-nowrap select-none">
+                  <thead className="bg-surface-muted text-label font-bold text-text-secondary border-b border-border whitespace-nowrap select-none">
                     <tr>
                       <th className="px-3 py-3 text-center w-10"></th>
                       <th className="px-4 py-3 text-left">Data</th>
@@ -800,7 +827,7 @@ export default function TaskSection({
                       <th className="px-4 py-3 text-right">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="text-xs divide-y divide-slate-100">
+                  <tbody className="text-body-sm divide-y divide-border">
                     {paginatedTasks.map(t => {
                       const scale = getTaskScale(t.statusId);
                       const tStyle = getTaskStatusStyle(t.statusId, taskStatuses);
@@ -816,63 +843,66 @@ export default function TaskSection({
                         <tr 
                           key={t.id} 
                           onClick={() => openTaskModal(t, canWriteTasks ? 'edit' : 'view')}
-                          className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                          className="hover:bg-surface-muted/60 transition-colors cursor-pointer group"
                         >
                           {/* 1. Execução */}
                           <td className="px-3 py-3.5 text-center whitespace-nowrap w-10">
                             {canWriteTasks ? (
-                              <button
+                              <IconButton
                                 type="button"
+                                size="sm"
+                                variant="ghost"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   openTaskModal(t, 'execute');
                                 }}
-                                className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                                className="text-warning hover:text-warning hover:bg-warning/10"
                                 title="Registar execução da tarefa"
                                 aria-label="Registar execução da tarefa"
                               >
-                                <PlayCircle className="w-4 h-4 text-amber-600" />
-                              </button>
+                                <PlayCircle className="w-5 h-5" />
+                              </IconButton>
                             ) : (
-                              <button
+                              <IconButton
                                 type="button"
+                                size="sm"
+                                variant="ghost"
                                 disabled
-                                className="p-1.5 bg-slate-50 text-slate-300 rounded-lg cursor-not-allowed inline-flex items-center justify-center opacity-40"
                                 title="Não tem permissão para registar execução"
                                 aria-label="Registar execução da tarefa"
                               >
-                                <PlayCircle className="w-4 h-4 text-slate-400" />
-                              </button>
+                                <PlayCircle className="w-5 h-5 text-text-disabled" />
+                              </IconButton>
                             )}
                           </td>
 
                           {/* 2. Data (Linha 1: Data + Alerta atraso, Linha 2: Badge Estado) */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5 text-sm font-bold font-mono text-slate-800">
+                            <div className="flex items-center gap-1.5 text-body-sm font-bold font-mono text-text-primary">
                               <span>{targetDate ? targetDate.split('-').reverse().join('/') : '—'}</span>
                               {isOverdue && (
-                                <span className="p-0.5 rounded text-rose-600 bg-rose-50 inline-flex items-center" title="Tarefa atrasada">
+                                <Badge variant="error" className="p-0.5" title="Tarefa atrasada">
                                   <AlertTriangle className="w-3.5 h-3.5" />
-                                </span>
+                                </Badge>
                               )}
                             </div>
                             <div className="mt-1">
-                              <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider border ${statusBadgeStyle}`}>
+                              <Badge className={cn("uppercase tracking-wider font-bold text-caption", statusBadgeStyle)}>
                                 {statusName}
-                              </span>
+                              </Badge>
                             </div>
                           </td>
 
                           {/* 3. Tarefa (Linha 1: Cliente · Projeto, Linha 2: Título da Tarefa) */}
                           <td className="px-4 py-3.5">
-                            <div className="text-xs font-bold text-blue-700 truncate max-w-[340px]">
+                            <div className="text-caption font-bold text-primary truncate max-w-[340px]">
                               {getProjectTitle(t.projectId)}
                             </div>
-                            <div className="text-sm font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors mt-0.5">
+                            <div className="text-body font-bold text-text-primary group-hover:text-primary transition-colors mt-0.5">
                               {t.title}
                             </div>
                             {t.description && (
-                              <div className="text-xs text-slate-500 italic line-clamp-1 mt-0.5">
+                              <div className="text-caption text-text-muted italic line-clamp-1 mt-0.5">
                                 {t.description}
                               </div>
                             )}
@@ -884,22 +914,26 @@ export default function TaskSection({
                           </td>
 
                           {/* 5. Horas prev./Reais */}
-                          <td className="px-4 py-3.5 text-center font-bold text-xs whitespace-nowrap text-slate-800">
-                            <span className="text-slate-700">{estHours} h</span>
-                            <span className="text-slate-300 mx-1.5">/</span>
-                            <span className={parseTaskHoursToFloat(actHours) > 0 ? "text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-extrabold" : "text-slate-600"}>
-                              {actHours} h
-                            </span>
+                          <td className="px-4 py-3.5 text-center font-bold text-body-sm whitespace-nowrap text-text-primary">
+                            <span className="text-text-secondary">{estHours} h</span>
+                            <span className="text-text-muted mx-1.5">/</span>
+                            {parseTaskHoursToFloat(actHours) > 0 ? (
+                              <Badge variant="success" className="font-bold text-caption">
+                                {actHours} h
+                              </Badge>
+                            ) : (
+                              <span className="text-text-muted">{actHours} h</span>
+                            )}
                           </td>
 
                           {/* 6. Tipo */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
                             {t.taskTypeId ? (
-                              <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-md text-xs font-semibold">
+                              <Badge variant="neutral">
                                 {getTaskTypeName(t.taskTypeId, taskTypes)}
-                              </span>
+                              </Badge>
                             ) : (
-                              <span className="text-slate-400 text-xs">—</span>
+                              <span className="text-text-muted text-caption">—</span>
                             )}
                           </td>
 
@@ -908,40 +942,44 @@ export default function TaskSection({
                             <div className="flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
                               {/* Edit */}
                               {canWriteTasks && (
-                                <button 
+                                <IconButton 
                                   type="button"
+                                  size="sm"
+                                  variant="ghost"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     openTaskModal(t, 'edit');
                                   }}
-                                  className="p-1.5 hover:bg-blue-50 hover:text-blue-700 rounded-lg text-slate-400 transition-colors cursor-pointer"
                                   title="Editar Tarefa"
                                   aria-label="Editar Tarefa"
                                 >
                                   <Edit2 className="w-4 h-4" />
-                                </button>
+                                </IconButton>
                               )}
 
                               {/* Duplicar Tarefa */}
                               {canWriteTasks && (
-                                <button 
+                                <IconButton 
                                   type="button"
+                                  size="sm"
+                                  variant="ghost"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     openTaskModal(t, 'create');
                                   }}
-                                  className="p-1.5 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg text-slate-400 transition-colors cursor-pointer"
                                   title="Duplicar Tarefa"
                                   aria-label="Duplicar Tarefa"
                                 >
                                   <Copy className="w-4 h-4" />
-                                </button>
+                                </IconButton>
                               )}
 
                               {/* Delete */}
                               {canDeleteTasks && (
-                                <button 
+                                <IconButton 
                                   type="button"
+                                  size="sm"
+                                  variant="danger"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     askConfirmation(
@@ -950,12 +988,11 @@ export default function TaskSection({
                                       () => deleteTask(t.id)
                                     );
                                   }}
-                                  className="p-1.5 hover:bg-rose-50 hover:text-rose-700 rounded-lg text-slate-400 transition-colors cursor-pointer"
                                   title="Eliminar Tarefa"
                                   aria-label="Eliminar Tarefa"
                                 >
                                   <Trash2 className="w-4 h-4" />
-                                </button>
+                                </IconButton>
                               )}
                             </div>
                           </td>
@@ -969,59 +1006,65 @@ export default function TaskSection({
 
             {/* Pagination Controls */}
             {totalTasks > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50/70 border-t border-slate-200/80 text-xs gap-3 font-medium">
-                <div className="flex items-center gap-3 text-slate-500 font-medium">
+              <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-surface-muted/50 border-t border-border text-body-sm gap-3 font-medium">
+                <div className="flex items-center gap-3 text-text-secondary font-medium">
                   <span>
-                    A mostrar <span className="font-bold text-slate-700">{startIndex + 1}</span> a{' '}
-                    <span className="font-bold text-slate-700">{endIndex}</span> de{' '}
-                    <span className="font-bold text-slate-700">{totalTasks}</span> tarefas
+                    A mostrar <span className="font-bold text-text-primary">{startIndex + 1}</span> a{' '}
+                    <span className="font-bold text-text-primary">{endIndex}</span> de{' '}
+                    <span className="font-bold text-text-primary">{totalTasks}</span> tarefas
                   </span>
                 </div>
 
                 {totalPages > 1 && (
                   <div className="flex items-center gap-1">
-                    <button
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
                       onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                       disabled={validCurrentPage === 1}
-                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                      className="gap-1 h-9 px-3 text-caption font-bold"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                       <span>Anterior</span>
-                    </button>
+                    </Button>
                     
                     <div className="flex items-center gap-1 mx-1">
                       {getPaginationPages(validCurrentPage, totalPages).map((p, idx) => (
                         p === '...' ? (
-                          <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 font-bold">...</span>
+                          <span key={`ellipsis-${idx}`} className="px-1 text-text-muted font-bold">...</span>
                         ) : (
-                          <button
+                          <Button
                             key={`page-${p}`}
+                            type="button"
+                            size="sm"
+                            variant={validCurrentPage === p ? 'primary' : 'ghost'}
                             onClick={() => setCurrentPage(Number(p))}
-                            className={`min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg font-bold text-xs transition-colors ${
-                              validCurrentPage === p
-                                ? 'bg-slate-900 text-white'
-                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
+                            className="min-w-9 h-9 px-2 text-caption font-bold"
+                            aria-current={validCurrentPage === p ? 'page' : undefined}
                           >
                             {p}
-                          </button>
+                          </Button>
                         )
                       ))}
                     </div>
 
-                    <button
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
                       onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                       disabled={validCurrentPage === totalPages}
-                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                      className="gap-1 h-9 px-3 text-caption font-bold"
                     >
                       <span>Seguinte</span>
                       <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
             )}
-          </div>
+          </Card>
         )}
 
         {/* ANÁLISE DE TAREFAS */}
