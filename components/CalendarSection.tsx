@@ -25,6 +25,7 @@ import {
 } from '../lib/planning/types';
 import { formatHoursDisplay } from '../lib/planning/summary';
 import ResourceCapacityBar from './ResourceCapacityBar';
+import { M3SectionHeader, M3SegmentedControl } from './M3';
 
 // FASE 23E-C1: Operational Period & Temporal Management
 export type OperationalPeriod = 'today' | 'tomorrow' | '7days' | '14days';
@@ -2448,46 +2449,25 @@ export default function CalendarSection({
     <div className="space-y-6">
       
       {/* TIMELINE CONTROL HEADER */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+      <div className="m3-card p-4 sm:p-5 space-y-4">
         {/* Row 0: Full width Title, Subtitle and View Mode Toggles */}
-        <div className="flex flex-wrap items-center justify-between gap-4 w-full">
-          <div>
-            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
-              Calendário & Planeamento
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {calendarViewMode === 'users' 
-                ? 'Vista operacional semanal de tarefas por técnico e dia.' 
-                : 'Planeamento diário de projetos e linha de tempo.'}
-            </p>
-          </div>
-
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <button
-              type="button"
-              onClick={() => setCalendarViewMode('users')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                calendarViewMode === 'users'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Calendário semanal
-            </button>
-            <button
-              type="button"
-              onClick={() => setCalendarViewMode('projects')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                calendarViewMode === 'projects'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Timaline de projetos
-            </button>
-          </div>
-        </div>
+        <M3SectionHeader
+          title="Calendário & Planeamento"
+          description={calendarViewMode === 'users'
+            ? 'Vista operacional semanal de tarefas por técnico e dia.'
+            : 'Planeamento diário de projetos e linha de tempo.'}
+          actions={
+            <M3SegmentedControl<'users' | 'projects' | 'resources'>
+              label="Vista do calendário"
+              value={calendarViewMode}
+              onChange={setCalendarViewMode}
+              options={[
+                { value: 'users', label: 'Calendário semanal' },
+                { value: 'projects', label: 'Timeline de projetos' },
+              ]}
+            />
+          }
+        />
 
         {/* Row 1: Filters (Only for projects or resources mode) */}
         {calendarViewMode !== 'users' && (
@@ -3055,27 +3035,6 @@ export default function CalendarSection({
           </div>
         )}
           </>
-        )}
-        {calendarViewMode === 'users' && (
-          <OperationalUserCalendar
-            tasks={tasks}
-            users={users}
-            projects={projects}
-            clients={clients}
-            absences={absences}
-            taskStatuses={taskStatuses}
-            taskTypes={taskTypes}
-            specialDays={specialDays}
-            userGroups={userGroups}
-            onSelectTask={openTaskDetailsModal}
-            onQuickCreateTask={handleQuickCreateForUser}
-            canCreateTask={canCreateTaskInCalendar}
-            canMoveTask={canMoveTask}
-            updateTask={updateTask}
-            appConfig={appConfig}
-            currentUser={currentUser}
-            renderTopBarOnly={true}
-          />
         )}
       </div>
 

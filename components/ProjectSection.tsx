@@ -2693,7 +2693,7 @@ export default function ProjectSection({
 
           {/* TAB 3: MATERIAL */}
           {activeDetailTab === 'material' && (
-            <div className="p-6 space-y-6">
+            <div data-m3-exclude data-theme={appConfig?.theme || 'default'} className="p-6 space-y-6">
               {/* Red Warning Banner if material has warning */}
               {hasMaterialWarning ? (
                 <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 flex items-center justify-between text-rose-900 shadow-xs animate-fade-in">

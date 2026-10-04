@@ -3,6 +3,7 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { M3Button, M3IconButton, M3SegmentedControl } from '../M3';
 
 interface DateViewNavigatorProps {
   periodDays: 7 | 14;
@@ -28,79 +29,46 @@ export default function DateViewNavigator({
   return (
     <div className={cn("flex flex-wrap items-center justify-between gap-3", className)}>
       {/* 7 vs 14 days toggle on the Left */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-label font-bold text-text-primary">Período para visualização:</span>
-        <div className="flex items-center bg-surface-muted p-1 rounded-control border border-border">
-          <button
-            type="button"
-            onClick={() => onPeriodDaysChange(7)}
-            className={cn(
-              "px-3 py-1.5 rounded-control text-label font-bold transition-all cursor-pointer",
-              periodDays === 7 
-                ? 'bg-surface text-text-primary shadow-raised border border-border' 
-                : 'text-text-secondary hover:text-text-primary'
-            )}
-            title="Modo de 7 dias"
-          >
-            7 Dias
-          </button>
-          <button
-            type="button"
-            onClick={() => onPeriodDaysChange(14)}
-            className={cn(
-              "px-3 py-1.5 rounded-control text-label font-bold transition-all cursor-pointer",
-              periodDays === 14 
-                ? 'bg-surface text-text-primary shadow-raised border border-border' 
-                : 'text-text-secondary hover:text-text-primary'
-            )}
-            title="Modo de 14 dias"
-          >
-            14 Dias
-          </button>
-        </div>
+        <M3SegmentedControl<7 | 14>
+          label="Período de visualização"
+          value={periodDays}
+          onChange={onPeriodDaysChange}
+          options={[{ value: 7, label: '7 dias' }, { value: 14, label: '14 dias' }]}
+        />
       </div>
 
       {/* Centralized Date Range Label if provided */}
       {label && (
-        <div className="text-label font-bold text-text-primary bg-surface-muted/80 px-3 py-1.5 rounded-control border border-border">
+        <div aria-live="polite" aria-atomic="true" className="text-label font-semibold text-text-primary px-3 py-2">
           {label}
         </div>
       )}
 
       {/* Navigation buttons: Prev, Today, Next on the Right */}
-      <div className="flex items-center gap-1 bg-surface border border-border rounded-control p-0.5 shadow-flat">
-        <button
-          type="button"
+      <div role="group" aria-label="Navegação de datas" className="flex items-center gap-1">
+        <M3IconButton
           onClick={onPrev}
-          className="p-1.5 hover:bg-surface-muted rounded-control text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
           title={`Recuar ${periodDays} dias`}
-          aria-label="Período anterior"
+          label="Período anterior"
         >
           <ChevronLeft className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
+        </M3IconButton>
+        <M3Button tone="tonal"
           onClick={onToday}
           disabled={isToday}
-          className={cn(
-            "px-3 py-1 rounded-control text-label font-bold transition-colors",
-            isToday
-              ? 'bg-surface-muted text-text-disabled cursor-not-allowed opacity-70'
-              : 'hover:bg-surface-muted text-text-secondary hover:text-text-primary cursor-pointer'
-          )}
           title="Ir para a data atual"
         >
           Hoje
-        </button>
-        <button
-          type="button"
+        </M3Button>
+        <M3IconButton
           onClick={onNext}
-          className="p-1.5 hover:bg-surface-muted rounded-control text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
           title={`Avançar ${periodDays} dias`}
-          aria-label="Período seguinte"
+          label="Período seguinte"
         >
           <ChevronRight className="w-4 h-4" />
-        </button>
+        </M3IconButton>
       </div>
     </div>
   );

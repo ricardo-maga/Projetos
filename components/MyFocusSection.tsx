@@ -8,6 +8,7 @@ import { TASK_STATUS_ID_MAPPINGS, getTaskTypeName, formatToOnlyHours, getTaskSta
 import { AssigneeSelector } from './AssigneeSelector';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { hasPermission } from '../lib/permissions';
+import { M3Button, M3IconButton, M3SegmentedControl } from './M3';
 import { 
   CheckSquare, Briefcase, Bell, Calendar as CalendarIcon, ChevronLeft, 
   ChevronRight, Check, Sparkles, Clock, AlertCircle, ArrowRight, 
@@ -452,34 +453,33 @@ export default function MyFocusSection({
     <div className="space-y-6 animate-fade-in" id="my-focus-section">
       
       {/* MOTIVATIONAL BANNER */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden border border-slate-800">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="m3-focus-banner p-5 sm:p-6 relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 backdrop-blur-md rounded-full border border-blue-400/30 text-blue-300 text-xs font-bold">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <div className="m3-focus-banner__badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold">
+              <Sparkles className="w-3.5 h-3.5" />
               <span>Espaço pessoal</span>
             </div>
-            <h2 className="text-2xl md:text-3xl font-black tracking-tight font-sans">
-              Olá, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-amber-200">{currentUser.name}</span>!
+            <h2 className="text-2xl md:text-3xl font-medium tracking-tight font-sans">
+              Olá, <span className="m3-focus-banner__name">{currentUser.name}</span>!
             </h2>
-            <p className="text-slate-300 text-xs md:text-sm max-w-2xl font-medium">
+            <p className="m3-focus-banner__description text-sm max-w-2xl">
               Acompanha as tuas tarefas prioritárias, gere os teus projetos e organiza a tua agenda.
             </p>
           </div>
 
-          <div className="flex flex-wrap md:flex-nowrap items-center gap-3 bg-white/5 backdrop-blur-md p-3 rounded-xl border border-white/10">
-            <div className="text-center px-3 border-r border-white/10">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tarefas Pendentes</p>
-              <p className="text-xl font-extrabold text-amber-400">{pendingTasksCount}</p>
+          <div className="m3-focus-banner__stats flex flex-wrap md:flex-nowrap items-center gap-3 p-3 rounded-2xl">
+            <div className="m3-focus-banner__stat text-center px-3 border-r">
+              <p className="m3-focus-banner__label text-xs font-medium">Tarefas pendentes</p>
+              <p className="m3-focus-banner__value text-xl font-semibold">{pendingTasksCount}</p>
             </div>
-            <div className="text-center px-3 border-r border-white/10">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Projetos em Gestão</p>
-              <p className="text-xl font-extrabold text-blue-400">{myManagedProjects.length}</p>
+            <div className="m3-focus-banner__stat text-center px-3 border-r">
+              <p className="m3-focus-banner__label text-xs font-medium">Projetos em gestão</p>
+              <p className="m3-focus-banner__value text-xl font-semibold">{myManagedProjects.length}</p>
             </div>
             <div className="text-center px-3">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Notificações</p>
-              <p className="text-xl font-extrabold text-emerald-400">{unreadCount}</p>
+              <p className="m3-focus-banner__label text-xs font-medium">Notificações</p>
+              <p className="m3-focus-banner__value text-xl font-semibold">{unreadCount}</p>
             </div>
           </div>
         </div>
@@ -505,32 +505,16 @@ export default function MyFocusSection({
               </div>
 
               {/* FILTER BUTTONS */}
-              <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl text-xs font-bold self-start sm:self-auto">
-                <button
-                  onClick={() => setTaskFilter('pending')}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${
-                    taskFilter === 'pending' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Pendentes ({pendingTasksCount})
-                </button>
-                <button
-                  onClick={() => setTaskFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${
-                    taskFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Todas ({myAssignedTasks.length})
-                </button>
-                <button
-                  onClick={() => setTaskFilter('completed')}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${
-                    taskFilter === 'completed' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Concluídas
-                </button>
-              </div>
+              <M3SegmentedControl<'pending' | 'all' | 'completed'>
+                label="Filtrar as minhas tarefas"
+                value={taskFilter}
+                onChange={setTaskFilter}
+                options={[
+                  { value: 'pending', label: `Pendentes (${pendingTasksCount})` },
+                  { value: 'all', label: `Todas (${myAssignedTasks.length})` },
+                  { value: 'completed', label: 'Concluídas' },
+                ]}
+              />
             </div>
 
             {/* TASK LIST */}
@@ -662,32 +646,16 @@ export default function MyFocusSection({
               </div>
 
               {/* FILTER BUTTONS */}
-              <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl text-xs font-bold self-start sm:self-auto">
-                <button
-                  onClick={() => setProjectFilter('active')}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${
-                    projectFilter === 'active' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Ativos ({activeProjectsCount})
-                </button>
-                <button
-                  onClick={() => setProjectFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${
-                    projectFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Todos ({allUserManagedProjects.length})
-                </button>
-                <button
-                  onClick={() => setProjectFilter('completed')}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${
-                    projectFilter === 'completed' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Concluídos ({completedProjectsCount})
-                </button>
-              </div>
+              <M3SegmentedControl<'active' | 'all' | 'completed'>
+                label="Filtrar os meus projetos"
+                value={projectFilter}
+                onChange={setProjectFilter}
+                options={[
+                  { value: 'active', label: `Ativos (${activeProjectsCount})` },
+                  { value: 'all', label: `Todos (${allUserManagedProjects.length})` },
+                  { value: 'completed', label: `Concluídos (${completedProjectsCount})` },
+                ]}
+              />
             </div>
 
             {/* PROJECTS LIST */}
@@ -881,33 +849,30 @@ export default function MyFocusSection({
                 </div>
               </div>
 
-              <button
+              <M3Button tone="tonal"
                 onClick={handleTodayMonth}
-                className="text-xs font-bold text-slate-700 hover:bg-slate-200/70 bg-slate-100 px-2.5 py-1 rounded-lg transition-colors"
               >
                 Hoje
-              </button>
+              </M3Button>
             </div>
 
             <div className="p-4 space-y-4">
               
               {/* MONTH HEADER NAVIGATION */}
               <div className="flex items-center justify-between">
-                <button 
+                <M3IconButton label="Mês anterior"
                   onClick={handlePrevMonth}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
-                </button>
-                <span className="font-extrabold text-sm text-slate-800 capitalize font-sans">
+                </M3IconButton>
+                <span aria-live="polite" className="font-semibold text-sm text-slate-800 capitalize font-sans">
                   {monthName}
                 </span>
-                <button 
+                <M3IconButton label="Mês seguinte"
                   onClick={handleNextMonth}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
                 >
                   <ChevronRight className="w-5 h-5" />
-                </button>
+                </M3IconButton>
               </div>
 
               {/* CALENDAR GRID */}
