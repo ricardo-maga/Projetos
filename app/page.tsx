@@ -443,12 +443,6 @@ export default function Page() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="session-check-screen">
         <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-100 p-8 text-center space-y-6 animate-fade-in">
-          <AppLogo 
-            logoUrl={state?.appConfig?.logoImagePath || state?.appConfig?.logo} 
-            appName={state?.appConfig?.appName || ''}
-            className="w-72 max-w-full h-16 rounded-2xl bg-white p-2.5 flex items-center justify-center mx-auto shadow-sm border border-slate-100 animate-pulse"
-            fallbackIconClassName="w-8 h-8 text-blue-600"
-          />
           <div>
             <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">
               A carregar dados...
@@ -576,13 +570,7 @@ export default function Page() {
               )}
             </button>
 
-            {/* Instant feedback message immediately upon clicking */}
-            {isLoggingIn && (
-              <div className="p-3 bg-blue-50 border border-blue-200/70 rounded-xl flex items-center gap-2.5 text-xs text-blue-800 font-semibold animate-pulse">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
-                <span>{loginStatusMessage || 'A validar credenciais com o servidor...'}</span>
-              </div>
-            )}
+
             
             <div className="pt-4 text-center text-xs text-slate-400">
               <p>Acesso Restrito - Uso Interno</p>
@@ -627,12 +615,6 @@ export default function Page() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="loading-screen">
         <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-100 p-8 text-center space-y-6 animate-fade-in">
-          <AppLogo 
-            logoUrl={state?.appConfig?.logoImagePath || state?.appConfig?.logo} 
-            appName={state?.appConfig?.appName || ''}
-            className="w-72 max-w-full h-16 rounded-2xl bg-white p-2.5 flex items-center justify-center mx-auto shadow-sm border border-slate-100 animate-pulse"
-            fallbackIconClassName="w-8 h-8 text-blue-600"
-          />
           <div>
             <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">
               A carregar dados...
