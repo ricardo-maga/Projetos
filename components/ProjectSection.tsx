@@ -1,6 +1,6 @@
 'use client';
 
-import { M3Button } from './M3';
+import { M3FilterChip, M3SectionHeader, M3SegmentedControl } from './M3';
 import React, { useState, useEffect } from 'react';
 import { Project, Client, Comment, Task, TaskType, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '../lib/types';
 import { 
@@ -13,6 +13,12 @@ import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
+import { Card } from './ui/Card';
+import { Input } from './ui/Input';
+import { Select } from './ui/Select';
+import Textarea from './ui/Textarea';
 
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
@@ -792,7 +798,7 @@ export default function ProjectSection({
     setFilterStatusGroup(group);
     if (filterStatus) {
       const scale = getProjectStatusScale(filterStatus);
-      const matchesNewGroup = 
+      const matchesNewGroup =
         group === 'all' ? true :
         group === 'active' ? (scale >= 1 && scale <= 4) :
         group === 'implementation' ? (scale === 4) :
@@ -819,7 +825,7 @@ export default function ProjectSection({
   const [serverTasks, setServerTasks] = useState<Task[]>([]);
   const [loadedProjectIdForTasks, setLoadedProjectIdForTasks] = useState<string | null>(null);
   const [isServerTasksLoading, setIsServerTasksLoading] = useState(false);
-  
+
   useEffect(() => {
     if (selectedProjectId) return;
     let isMounted = true;
@@ -877,7 +883,7 @@ export default function ProjectSection({
           if (result.success && isMounted) setServerSelectedProj(result.data);
         }
       } catch (err) {}
-      
+
       try {
         const taskRes = await fetch(`/api/v1/tasks?projectId=${selectedProjectId}&pageSize=100`, { headers: getAuthHeaders() });
         if (taskRes.ok) {
@@ -914,7 +920,7 @@ export default function ProjectSection({
         const matchNo = (p.installProjectNo || '').toLowerCase().includes(q);
         const matchSf = (p.sfOpportunityNo || '').toLowerCase().includes(q);
         const matchDesc = (p.description || '').toLowerCase().includes(q);
-        
+
         const client = clients.find(c => matchId(c.id, p.clientId));
         const matchClient = client ? (client.clientName || '').toLowerCase().includes(q) || (client.shortName || '').toLowerCase().includes(q) : false;
 
@@ -942,7 +948,7 @@ export default function ProjectSection({
         const matchNo = (p.installProjectNo || '').toLowerCase().includes(q);
         const matchSf = (p.sfOpportunityNo || '').toLowerCase().includes(q);
         const matchDesc = (p.description || '').toLowerCase().includes(q);
-        
+
         const client = clients.find(c => matchId(c.id, p.clientId));
         const matchClient = client ? (client.clientName || '').toLowerCase().includes(q) || (client.shortName || '').toLowerCase().includes(q) : false;
 
@@ -963,7 +969,7 @@ export default function ProjectSection({
   const validProjectPage = Math.min(projectCurrentPage, totalProjectPages);
   const startProjectIndex = (validProjectPage - 1) * projectPageSize;
   const endProjectIndex = startProjectIndex + paginatedProjects.length;
-  
+
   const selectedProj = serverSelectedProj || activeProjects.find(p => p.id === selectedProjectId);
   const projTasks = React.useMemo(() => {
     if (!selectedProjectId) return [];
@@ -1316,7 +1322,7 @@ export default function ProjectSection({
       const norm = s.id.replace(/[-]/g, '').toLowerCase();
       return norm.endsWith(suffix) || s.id === `ps-${levelIndex + 1}`;
     });
-    
+
     if (found) {
       updateProject(selectedProj.id, { statusId: found.id });
     } else {
@@ -1331,43 +1337,43 @@ export default function ProjectSection({
   };
 
   return (
-    <div className="space-y-6">
-      
+    <div className="m3-projects space-y-6">
+
       {/* 1. If viewing detail & NOT editing */}
       {selectedProj && !isEditing ? (
-        <div className="bg-white rounded-2xl border border-slate-200 -sm overflow-hidden animate-fade-in">
-          
+        <Card className="bg-surface rounded-card border border-border -sm overflow-hidden animate-fade-in">
+
           {/* Header Action Row */}
-          <div className="p-5 border-b border-slate-200 bg-slate-50 flex flex-wrap gap-4 items-center justify-between">
-            <button 
+          <div className="p-5 border-b border-border bg-surface-muted flex flex-wrap gap-4 items-center justify-between">
+            <Button variant="ghost" size="sm"
               onClick={() => setSelectedProjectId(null)}
-              className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 font-semibold"
+              className="flex items-center gap-2 text-body-sm text-text-secondary hover:text-text-primary font-semibold"
             >
               <ArrowLeft className="w-4 h-4" /> Voltar
-            </button>
-            <div className="flex gap-2">
-              <button
+            </Button>
+            <div className="flex flex-wrap gap-2">
+              <IconButton variant="ghost" aria-label="Copiar link do projeto"
                 onClick={handleCopyLink}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                  copiedLink 
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
-                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900'
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-control text-body-sm font-bold transition-all border ${
+                  copiedLink
+                    ? 'bg-success/10 border-success/20 text-success-strong'
+                    : 'bg-surface border-border hover:bg-surface-muted text-text-secondary hover:text-text-primary'
                 }`}
                 title="Copiar link do projeto"
               >
                 <Link2 className="w-3.5 h-3.5" />
-                
-              </button>
+
+              </IconButton>
               {canWriteProjects && (
-                <M3Button tone="tonal" 
+                <Button variant="secondary" size="sm"
                   onClick={() => openForm(selectedProj)}
-                  className="flex items-center gap-1.5"
+                  className="bg-primary/10 border-primary/20 text-primary"
                 >
                   <Edit2 className="w-3.5 h-3.5" /> Editar Projeto
-                </M3Button>
+                </Button>
               )}
               {canDeleteProjects && (
-                <button 
+                <Button variant="ghost" size="sm"
                   onClick={() => {
                     if (!canDeleteProjects) {
                       alert('Não tem permissão para eliminar projetos.');
@@ -1392,52 +1398,52 @@ export default function ProjectSection({
                       }
                     );
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 font-bold text-xs rounded-xl transition-colors"
+                  className="text-error hover:text-error hover:bg-error/10"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Eliminar
-                </button>
+                </Button>
               )}
             </div>
           </div>
 
           {/* PROJECT BANNER HEADER (Client, Name, Risk, Priority, Material status) */}
-          <div className="p-6 bg-white border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="p-6 bg-surface border-b border-border-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">{getClientName(selectedProj.clientId)}</span>
-                {selectedProj.demo && <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Demo</span>}
+                <span className="text-label font-semibold text-primary">{getClientName(selectedProj.clientId)}</span>
+                {selectedProj.demo && <span className="text-caption font-bold uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary">Demo</span>}
               </div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">{selectedProj.title}</h1>
-              <p className="text-xs text-slate-500 font-mono">IP: {selectedProj.installProjectNo || 'S/N'} • Oportunidade SF: {selectedProj.sfOpportunityNo || 'S/N'}</p>
+              <h1 className="text-heading-lg text-text-primary tracking-tight">{selectedProj.title}</h1>
+              <p className="text-body-sm text-text-secondary font-mono">IP: {selectedProj.installProjectNo || 'S/N'} • Oportunidade SF: {selectedProj.sfOpportunityNo || 'S/N'}</p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
               {hasMaterialWarning && (
-                <span className="text-xs font-bold uppercase px-3 py-1.5 rounded-xl bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <span className="text-body-sm font-bold uppercase px-3 py-1.5 rounded-control bg-error/10 text-error border border-error/20 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-error shrink-0" />
                   <span>Material em falta ({warningMaterialsCount})</span>
                 </span>
               )}
               {(() => {
                 const calcRisk = getProjectCalculatedRisk(selectedProj.id, projectRiskItems);
                 return (
-                  <span className={`text-xs font-extrabold uppercase px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${calcRisk.color}`}>
+                  <span className={`text-body-sm font-extrabold uppercase px-3 py-1.5 rounded-control border flex items-center gap-1.5 ${calcRisk.color}`}>
                     <span>{calcRisk.dot}</span>
                     <span>Risco: {calcRisk.label}</span>
                   </span>
                 );
               })()}
-              <span className="text-xs font-bold uppercase px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+              <span className="text-body-sm font-bold uppercase px-3 py-1.5 rounded-control bg-surface-muted text-text-secondary border border-border">
                 Prioridade: {getPriorityName(selectedProj.priorityId)}
               </span>
             </div>
           </div>
-          
+
           {/* FLOW PIPELINE PROGRESS BAR */}
           {(() => {
             const currentStatus = projectStatuses.find(s => s.id === selectedProj.statusId);
             const rawScale = currentStatus ? (currentStatus.scale ?? 1) : 1;
-            
+
             // Map raw database scale directly to effective display scale (1 to 5)
             let displayScale = 1;
             if (rawScale === 1) displayScale = 1;
@@ -1455,29 +1461,25 @@ export default function ProjectSection({
             ];
 
             return (
-              <div className="overflow-x-auto w-full border-b border-slate-100">
-                <div className="relative flex w-full min-w-[560px] justify-between items-center px-6 sm:px-10 py-8 sm:py-10 bg-slate-50/50">
+              <div className="overflow-x-auto w-full border-b border-border-subtle">
+                <div className="relative flex w-full min-w-[680px] justify-between items-center px-10 pt-8 pb-14 sm:pt-10 bg-surface-muted/50">
                   {/* Connecting Lines */}
                   <div className="absolute left-[56px] right-[56px] top-[56px] flex items-center z-0">
                     {levels.slice(0, -1).map((_, idx) => {
                       const isPassed = displayScale > levels[idx + 1].targetScale;
                       const isCurrent = displayScale === levels[idx + 1].targetScale;
                       const isActive = displayScale >= levels[idx + 1].targetScale;
-                      
-                      let lineColor = "bg-slate-200";
+
+                      let lineColor = "bg-border";
                       if (isPassed) {
-                        lineColor = "bg-slate-400"; // cinza
+                        lineColor = "bg-border"; // cinza
                       } else if (isCurrent) {
-                        if (displayScale === 5) {
-                          lineColor = "bg-emerald-800"; // verde-escuro
-                        } else {
-                          lineColor = "bg-blue-500"; // azul
-                        }
+                        lineColor = getProjectStatusStyle(selectedProj.statusId, projectStatuses).dotClass;
                       }
 
                       return (
-                        <div key={idx} className="flex-1 h-[2px] bg-slate-200">
-                          <div 
+                        <div key={idx} className="flex-1 h-[2px] bg-border">
+                          <div
                             className={`h-full transition-all duration-700 ease-in-out ${isActive ? lineColor : 'bg-transparent'}`}
                             style={{ width: isActive ? '100%' : '0%' }}
                           />
@@ -1490,43 +1492,28 @@ export default function ProjectSection({
                   {levels.map((lvl, idx) => {
                     const isCurrent = lvl.targetScale === displayScale;
                     const isPassed = lvl.targetScale < displayScale;
-                    
-                    let circleClass = "";
-                    let labelColorClass = "";
 
-                    if (isCurrent) {
-                      if (lvl.targetScale === 1) {
-                        circleClass = "ring-red-100 bg-red-500 border-red-500 text-white ring-4 scale-110 font-bold";
-                        labelColorClass = "text-red-600 font-extrabold";
-                      } else if (lvl.targetScale === 5) {
-                        circleClass = "ring-emerald-200 bg-emerald-800 border-emerald-800 text-white ring-4 scale-110 font-bold";
-                        labelColorClass = "text-emerald-800 font-extrabold";
-                      } else {
-                        circleClass = "ring-blue-100 bg-blue-600 border-blue-600 text-white ring-4 scale-110 font-bold";
-                        labelColorClass = "text-blue-600 font-extrabold";
-                      }
-                    } else if (isPassed) {
-                      // cinza se já tiver num estado com escala superior
-                      circleClass = "bg-slate-400 border-slate-400 text-white";
-                      labelColorClass = "text-slate-500 font-semibold";
-                    } else {
-                      // cinza claro se estiver num estado de escala inferior
-                      circleClass = "bg-slate-100 border-slate-200 text-slate-300";
-                      labelColorClass = "text-slate-300";
-                    }
+                    const statusStyle = getProjectStatusStyle(selectedProj.statusId, projectStatuses);
+                    const circleClass = isCurrent
+                      ? `${statusStyle.badgeClass} ring-2 ring-primary/20 font-semibold`
+                      : isPassed
+                        ? "bg-surface-elevated border-border text-text-primary"
+                        : "bg-surface-muted border-border text-text-secondary";
+                    const labelColorClass = isCurrent ? `${statusStyle.textClass} font-semibold` : "text-text-secondary";
 
                     return (
                       <div
                         key={idx}
                         className="relative z-10 flex flex-col items-center select-none"
+                        aria-current={isCurrent ? 'step' : undefined}
                       >
                         {/* Step Circle */}
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 border-[2px] ${circleClass}`}>
-                          {isPassed ? <Check className="w-4 h-4 stroke-[3]" /> : <span className="text-[11px] font-black">{idx + 1}</span>}
+                          {isPassed ? <Check className="w-4 h-4 stroke-[3]" /> : <span className="text-caption font-black">{idx + 1}</span>}
                         </div>
-                        
+
                         {/* Label */}
-                        <span className={`absolute top-11 whitespace-nowrap text-[10px] uppercase tracking-widest font-extrabold transition-colors mt-1 ${labelColorClass}`}>
+                        <span className={`absolute top-11 whitespace-nowrap text-caption uppercase tracking-widest font-extrabold transition-colors mt-1 ${labelColorClass}`}>
                           {lvl.label}
                         </span>
                       </div>
@@ -1538,150 +1525,130 @@ export default function ProjectSection({
           })()}
 
           {/* Project Separators Header (Tabs: Visão Geral / Tarefas / Material / Riscos / Análise) */}
-          <div className="border-b border-slate-200 bg-white px-3 sm:px-6 pt-2 overflow-x-auto w-full scrollbar-thin">
-            <div className="flex gap-6 min-w-max">
-              <button
+          <nav aria-label="Secções do projeto" className="border-b border-border bg-surface px-3 sm:px-6 pt-2 overflow-x-auto w-full scrollbar-thin">
+            <div className="flex flex-wrap gap-2 py-3">
+              <M3FilterChip selected={activeDetailTab === 'geral'}
                 type="button"
                 onClick={() => setActiveDetailTab('geral')}
-                className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeDetailTab === 'geral'
-                    ? 'border-blue-600 text-blue-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                }`}
+                className="shrink-0"
               >
                 <FileText className="w-4 h-4 shrink-0" /> Visão Geral
-              </button>
-              <button
+              </M3FilterChip>
+              <M3FilterChip selected={activeDetailTab === 'tarefas'}
                 type="button"
                 onClick={() => setActiveDetailTab('tarefas')}
-                className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeDetailTab === 'tarefas'
-                    ? 'border-blue-600 text-blue-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                }`}
+                className="shrink-0"
               >
                 <ListTodo className="w-4 h-4 shrink-0" /> Tarefas ({projTasks.length})
-              </button>
-              <button
+              </M3FilterChip>
+              <M3FilterChip selected={activeDetailTab === 'material'}
                 type="button"
                 onClick={() => setActiveDetailTab('material')}
-                className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeDetailTab === 'material'
-                    ? 'border-blue-600 text-blue-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                }`}
+                className="shrink-0"
               >
                 <Package className="w-4 h-4 shrink-0" /> Material ({projMaterials.length})
                 {hasMissingMaterials && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping inline-block shrink-0" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-error animate-ping inline-block shrink-0" />
                 )}
-              </button>
-              <button
+              </M3FilterChip>
+              <M3FilterChip selected={activeDetailTab === 'riscos'}
                 type="button"
                 onClick={() => {
                   setActiveDetailTab('riscos');
                   resetRiskForm();
                 }}
-                className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeDetailTab === 'riscos'
-                    ? 'border-blue-600 text-blue-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                }`}
+                className="shrink-0"
               >
                 <ShieldAlert className="w-4 h-4 shrink-0" /> Riscos ({projRiskItems.length})
                 {projCriticalRisksCount > 0 && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping inline-block shrink-0" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-error animate-ping inline-block shrink-0" />
                 )}
-              </button>
-              <button
+              </M3FilterChip>
+              <M3FilterChip selected={activeDetailTab === 'analise'}
                 type="button"
                 onClick={() => setActiveDetailTab('analise')}
-                className={`pb-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeDetailTab === 'analise'
-                    ? 'border-blue-600 text-blue-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                }`}
+                className="shrink-0"
               >
                 <BarChart3 className="w-4 h-4 shrink-0" /> Análise
-              </button>
+              </M3FilterChip>
             </div>
-          </div>
+          </nav>
 
           {/* TAB 1: VISÃO GERAL */}
           {activeDetailTab === 'geral' && (
             <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
-              
+
               {/* Left Content Column (Main info) */}
               <div className="md:col-span-8 space-y-6">
- 
+
                 {/* Description Block */}
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <h3 className="font-bold text-xs uppercase text-slate-400 mb-2 flex items-center gap-1"><FileText className="w-3.5 h-3.5"/> Descrição do Projeto</h3>
-                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedProj.description || 'Sem descrição registada.'}</p>
+                <div className="bg-surface-muted p-4 rounded-control border border-border-subtle">
+                  <h3 className="font-bold text-body-sm uppercase text-text-muted mb-2 flex items-center gap-1"><FileText className="w-3.5 h-3.5"/> Descrição do Projeto</h3>
+                  <p className="text-body-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{selectedProj.description || 'Sem descrição registada.'}</p>
                 </div>
 
               {/* Tabs Switcher: Calendário vs Cronograma */}
               <div className="space-y-4">
-                <div className="overflow-x-auto w-full border-b border-slate-200 scrollbar-thin">
+                <div className="overflow-x-auto w-full border-b border-border scrollbar-thin">
                   <div className="flex gap-6 min-w-max pb-0.5">
-                    <button
+                    <Button variant="ghost" size="sm"
                       type="button"
                       onClick={() => setProjectViewTab('calendario')}
-                      className={`pb-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
+                      className={`pb-2.5 text-body-sm font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
                         projectViewTab === 'calendario'
-                          ? 'border-blue-600 text-blue-600'
-                          : 'border-transparent text-slate-400 hover:text-slate-700'
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-text-muted hover:text-text-secondary'
                       }`}
                     >
                       <Calendar className="w-4 h-4 shrink-0" />
                       Calendário Mensal
-                    </button>
-                    <button
+                    </Button>
+                    <Button variant="ghost" size="sm"
                       type="button"
                       onClick={() => setProjectViewTab('cronograma')}
-                      className={`pb-2.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
+                      className={`pb-2.5 text-body-sm font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
                         projectViewTab === 'cronograma'
-                          ? 'border-blue-600 text-blue-600'
-                          : 'border-transparent text-slate-400 hover:text-slate-700'
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-text-muted hover:text-text-secondary'
                       }`}
                       id="tab-cronograma-btn"
                     >
                       <Clock className="w-4 h-4 shrink-0" />
                       Cronograma
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 {projectViewTab === 'calendario' ? (
                   <div className="space-y-4 animate-fade-in">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">Calendário Mensal do Projeto</h3>
+                      <h3 className="font-bold text-text-primary text-body-sm uppercase tracking-wider flex items-center gap-2">Calendário Mensal do Projeto</h3>
                       <div className="flex items-center gap-1.5">
-                        <button 
+                        <IconButton variant="ghost" aria-label="Mês anterior"
                           type="button"
-                          onClick={() => setCalMonthOffset(o => o - 1)} 
-                          className="flex items-center justify-center p-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-600 cursor-pointer transition-colors"
+                          onClick={() => setCalMonthOffset(o => o - 1)}
+                          className="flex items-center justify-center p-1.5 bg-surface hover:bg-surface-muted border border-border rounded-lg text-text-secondary cursor-pointer transition-colors"
                           title="Mês anterior"
                         >
                           <ChevronLeft className="w-3.5 h-3.5" />
-                        </button>
-                        <button 
+                        </IconButton>
+                        <Button variant="ghost" size="sm" aria-label="Voltar para o mês atual"
                           type="button"
-                          onClick={resetCalMonthToToday} 
-                          className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 cursor-pointer transition-colors"
+                          onClick={resetCalMonthToToday}
+                          className="px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                           title="Voltar para o mês atual"
                         >
                           Hoje
-                        </button>
-                        <button 
+                        </Button>
+                        <IconButton variant="ghost" aria-label="Mês seguinte"
                           type="button"
-                          onClick={() => setCalMonthOffset(o => o + 1)} 
-                          className="flex items-center justify-center p-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-600 cursor-pointer transition-colors"
+                          onClick={() => setCalMonthOffset(o => o + 1)}
+                          className="flex items-center justify-center p-1.5 bg-surface hover:bg-surface-muted border border-border rounded-lg text-text-secondary cursor-pointer transition-colors"
                           title="Mês seguinte"
                         >
                           <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="text-xs font-bold text-slate-700 min-w-[120px] text-center my-auto ml-2 capitalize">
+                        </IconButton>
+                        <span className="text-body-sm font-bold text-text-secondary min-w-[120px] text-center my-auto ml-2 capitalize">
                           {(() => {
                             const targetDate = selectedProj.startDate ? new Date(selectedProj.startDate + 'T00:00:00') : new Date();
                             targetDate.setMonth(targetDate.getMonth() + calMonthOffset);
@@ -1690,28 +1657,28 @@ export default function ProjectSection({
                         </span>
                       </div>
                     </div>
-                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden -sm">
-                      <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase text-center">
+                    <div className="bg-surface border border-border rounded-control overflow-hidden -sm">
+                      <div className="grid grid-cols-7 border-b border-border-subtle bg-surface-muted text-caption font-bold text-text-secondary uppercase text-center">
                         {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-                          <div key={d} className="py-2 border-r border-slate-100 last:border-0">{d}</div>
+                          <div key={d} className="py-2 border-r border-border-subtle last:border-0">{d}</div>
                         ))}
                       </div>
-                      <div className="grid grid-cols-7 text-xs">
+                      <div className="grid grid-cols-7 text-body-sm">
                         {(() => {
                           const targetDate = selectedProj.startDate ? new Date(selectedProj.startDate + 'T00:00:00') : new Date();
                           targetDate.setMonth(targetDate.getMonth() + calMonthOffset);
                           const year = targetDate.getFullYear();
                           const month = targetDate.getMonth();
-                          
+
                           const firstDayOfMonth = new Date(year, month, 1);
                           const lastDayOfMonth = new Date(year, month + 1, 0);
                           const daysInMonth = lastDayOfMonth.getDate();
                           const startingDayOfWeek = firstDayOfMonth.getDay();
-                          
+
                           const cells = [];
-                          
+
                           for (let i = 0; i < startingDayOfWeek; i++) {
-                            cells.push(<div key={`empty-${i}`} className="min-h-[80px] p-2 border-b border-r border-slate-100 bg-slate-50/50"></div>);
+                            cells.push(<div key={`empty-${i}`} className="min-h-[80px] p-2 border-b border-r border-border-subtle bg-surface-muted/50"></div>);
                           }
 
                           for (let d = 1; d <= daysInMonth; d++) {
@@ -1725,7 +1692,7 @@ export default function ProjectSection({
                             const isProjDelivery = selectedProj.deliveryDate === dateStr;
                             const isProjEstimated = selectedProj.estimatedDate === dateStr;
                             const isProjScheduled = selectedProj.scheduledDate === dateStr;
-                            
+
                             const tasksOnDay = projTasks.filter(t => {
                               if (t.startDate && t.endDate) return dateStr >= t.startDate && dateStr <= t.endDate;
                               if (t.startDate) return dateStr === t.startDate;
@@ -1743,8 +1710,8 @@ export default function ProjectSection({
                             const risksOnDay = projRiskItems.filter(ri => ri.reviewDate === dateStr);
 
                             cells.push(
-                              <div 
-                                key={`day-${d}`} 
+                              <div
+                                key={`day-${d}`}
                                 onDragOver={(e) => e.preventDefault()}
                                 onDrop={(e) => {
                                   e.preventDefault();
@@ -1769,59 +1736,59 @@ export default function ProjectSection({
                                   openCreateTaskModal(dateStr);
                                   setShowImportTaskForm(false);
                                 }}
-                                className={`min-h-[110px] p-1.5 border-b border-r border-slate-100 last:border-r-0 relative group transition-colors hover:bg-slate-100/50 cursor-pointer flex flex-col justify-start ${
-                                  isWeekend || isSpecial ? 'bg-slate-100/60' : 'bg-white'
+                                className={`min-h-[110px] p-1.5 border-b border-r border-border-subtle last:border-r-0 relative group transition-colors hover:bg-surface-muted/50 cursor-pointer flex flex-col justify-start ${
+                                  isWeekend || isSpecial ? 'bg-surface-muted/60' : 'bg-surface'
                                 }`}
                                 title="Clique no dia para adicionar uma nova tarefa ou lembrete"
                               >
                                 <div className="flex justify-between items-start mb-1 flex-shrink-0">
-                                  <span className={`inline-block w-5 h-5 text-center leading-5 rounded-full font-bold text-[11px] ${
-                                    dateStr === new Date().toISOString().split('T')[0] ? 'bg-amber-500 text-white shadow-2xs' : 'text-slate-600'
+                                  <span className={`inline-block w-5 h-5 text-center leading-5 rounded-full font-bold text-caption ${
+                                    dateStr === new Date().toISOString().split('T')[0] ? 'bg-warning text-white shadow-2xs' : 'text-text-secondary'
                                   }`}>{d}</span>
-                                  {sd && <span className="text-[8px] font-bold text-slate-400 truncate max-w-[50px]" title={sd.name}>{sd.name.substring(0, 8)}...</span>}
+                                  {sd && <span className="text-caption font-bold text-text-muted truncate max-w-[50px]" title={sd.name}>{sd.name.substring(0, 8)}...</span>}
                                 </div>
-                                
+
                                 <div className="flex flex-col gap-1 overflow-y-auto max-h-[100px] pr-0.5 custom-scrollbar">
                                   {/* Início de Projeto */}
                                   {isProjStart && (
-                                    <div 
-                                      className="px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-extrabold flex items-center gap-1 truncate shadow-2xs"
+                                    <div
+                                      className="px-1.5 py-0.5 rounded-md bg-primary text-white text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Início / Adjudicação do projeto: ${selectedProj.title}`}
                                     >
-                                      <span className="shrink-0 text-[10px]">🚀</span>
+                                      <span className="shrink-0 text-caption">🚀</span>
                                       <span className="truncate">Início Proj.</span>
                                     </div>
                                   )}
 
                                   {/* Prazo de Entrega */}
                                   {isProjDelivery && (
-                                    <div 
-                                      className="px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[10px] font-extrabold flex items-center gap-1 truncate shadow-2xs"
+                                    <div
+                                      className="px-1.5 py-0.5 rounded-md bg-success-strong text-white text-caption font-semibold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Prazo de entrega do projeto: ${selectedProj.title}`}
                                     >
-                                      <span className="shrink-0 text-[10px]">🏁</span>
+                                      <span className="shrink-0 text-caption">🏁</span>
                                       <span className="truncate">Prazo Entrega</span>
                                     </div>
                                   )}
 
                                   {/* Previsão Real */}
                                   {isProjEstimated && !isProjDelivery && (
-                                    <div 
-                                      className="px-1.5 py-0.5 rounded-md bg-purple-100 border border-purple-200 text-purple-900 text-[10px] font-extrabold flex items-center gap-1 truncate shadow-2xs"
+                                    <div
+                                      className="px-1.5 py-0.5 rounded-md bg-purple-100 border border-purple-200 text-purple-900 text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Previsão real de entrega: ${selectedProj.title}`}
                                     >
-                                      <span className="shrink-0 text-[10px]">🔮</span>
+                                      <span className="shrink-0 text-caption">🔮</span>
                                       <span className="truncate">Prev. Entrega</span>
                                     </div>
                                   )}
 
                                   {/* Agendamento */}
                                   {isProjScheduled && !isProjStart && (
-                                    <div 
-                                      className="px-1.5 py-0.5 rounded-md bg-indigo-100 border border-indigo-200 text-indigo-900 text-[10px] font-extrabold flex items-center gap-1 truncate shadow-2xs"
+                                    <div
+                                      className="px-1.5 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Agendamento do projeto: ${selectedProj.title}`}
                                     >
-                                      <span className="shrink-0 text-[10px]">📅</span>
+                                      <span className="shrink-0 text-caption">📅</span>
                                       <span className="truncate">Agendamento</span>
                                     </div>
                                   )}
@@ -1840,10 +1807,10 @@ export default function ProjectSection({
                                         e.stopPropagation();
                                         openTaskDetailsModal(m);
                                       }}
-                                      className="px-1.5 py-0.5 rounded-md bg-amber-500 text-white text-[10px] font-black flex items-center gap-1 truncate cursor-pointer hover:bg-amber-600 transition-colors shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-md bg-warning text-white text-caption font-black flex items-center gap-1 truncate cursor-pointer hover:bg-warning transition-colors shadow-2xs"
                                       title={`Lembrete: ${m.title}\nClique para ver/editar`}
                                     >
-                                      <span className="shrink-0 text-[10px]">🔔</span>
+                                      <span className="shrink-0 text-caption">🔔</span>
                                       <span className="truncate">{m.title}</span>
                                     </div>
                                   ))}
@@ -1854,8 +1821,8 @@ export default function ProjectSection({
                                       ? t.assigneeIds.map(id => getUserName(id)).join(', ')
                                       : 'Não alocado';
                                     return (
-                                      <div 
-                                        key={t.id} 
+                                      <div
+                                        key={t.id}
                                         draggable={canWriteTasks}
                                         onDragStart={(e) => {
                                           e.stopPropagation();
@@ -1869,10 +1836,10 @@ export default function ProjectSection({
                                           e.stopPropagation();
                                           openTaskDetailsModal(t);
                                         }}
-                                        className="px-1.5 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-800 text-[10px] font-bold flex items-center gap-1.5 truncate cursor-grab active:cursor-grabbing hover:bg-slate-200 transition-colors shadow-2xs"
+                                        className="px-1.5 py-0.5 rounded-md bg-surface-muted border border-border text-text-primary text-caption font-bold flex items-center gap-1.5 truncate cursor-grab active:cursor-grabbing hover:bg-border transition-colors shadow-2xs"
                                         title={`Tarefa: ${t.title}\nTécnicos: ${assigneesText}\nClique para ver/editar`}
                                       >
-                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0"></span>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0"></span>
                                         <span className="truncate">{t.title}</span>
                                       </div>
                                     );
@@ -1882,10 +1849,10 @@ export default function ProjectSection({
                                   {materialsOnDay.map(pm => (
                                     <div
                                       key={pm.id}
-                                      className="px-1.5 py-0.5 rounded-md bg-sky-100 border border-sky-200 text-sky-900 text-[10px] font-bold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-md bg-sky-100 border border-sky-200 text-sky-900 text-caption font-bold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Receção Prevista de Material: ${pm.description}\nFornecedor: ${pm.supplier || '-'}\nQtd: ${pm.quantity}`}
                                     >
-                                      <span className="shrink-0 text-[10px]">📦</span>
+                                      <span className="shrink-0 text-caption">📦</span>
                                       <span className="truncate">{pm.description}</span>
                                     </div>
                                   ))}
@@ -1894,10 +1861,10 @@ export default function ProjectSection({
                                   {risksOnDay.map(ri => (
                                     <div
                                       key={ri.id}
-                                      className="px-1.5 py-0.5 rounded-md bg-rose-100 border border-rose-200 text-rose-900 text-[10px] font-bold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-md bg-error/10 border border-error/20 text-error text-caption font-bold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Revisão de Risco do Projeto: ${ri.title}`}
                                     >
-                                      <span className="shrink-0 text-[10px]">⚠️</span>
+                                      <span className="shrink-0 text-caption">⚠️</span>
                                       <span className="truncate">{ri.title}</span>
                                     </div>
                                   ))}
@@ -1910,33 +1877,33 @@ export default function ProjectSection({
                           const remainder = totalCells % 7;
                           if (remainder !== 0) {
                             for (let i = 0; i < (7 - remainder); i++) {
-                              cells.push(<div key={`empty-end-${i}`} className="min-h-[110px] p-2 border-b border-r border-slate-100 bg-slate-50/50"></div>);
+                              cells.push(<div key={`empty-end-${i}`} className="min-h-[110px] p-2 border-b border-r border-border-subtle bg-surface-muted/50"></div>);
                             }
                           }
 
                           return cells;
                         })()}
                       </div>
-                      <div className="bg-slate-50 p-2.5 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-1.5 justify-center text-[10px] font-bold text-slate-600">
-                        <span className="flex items-center gap-1"><span className="text-xs">🚀</span> Início Projeto</span>
-                        <span className="flex items-center gap-1"><span className="text-xs">🏁</span> Prazo Entrega</span>
-                        <span className="flex items-center gap-1"><span className="text-xs">🔮</span> Prev. Real</span>
-                        <span className="flex items-center gap-1"><span className="text-xs">📅</span> Agendamento</span>
-                        <span className="flex items-center gap-1"><span className="text-xs">🔔</span> Lembretes</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-600 inline-block"></span> Tarefas</span>
-                        <span className="flex items-center gap-1"><span className="text-xs">📦</span> Entrega Material</span>
-                        <span className="flex items-center gap-1"><span className="text-xs">⚠️</span> Revisão Risco</span>
-                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-slate-200 inline-block"></span> Fim-de-semana / Feriado</span>
+                      <div className="bg-surface-muted p-2.5 border-t border-border-subtle flex flex-wrap gap-x-4 gap-y-1.5 justify-center text-caption font-bold text-text-secondary">
+                        <span className="flex items-center gap-1"><span className="text-body-sm">🚀</span> Início Projeto</span>
+                        <span className="flex items-center gap-1"><span className="text-body-sm">🏁</span> Prazo Entrega</span>
+                        <span className="flex items-center gap-1"><span className="text-body-sm">🔮</span> Prev. Real</span>
+                        <span className="flex items-center gap-1"><span className="text-body-sm">📅</span> Agendamento</span>
+                        <span className="flex items-center gap-1"><span className="text-body-sm">🔔</span> Lembretes</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary inline-block"></span> Tarefas</span>
+                        <span className="flex items-center gap-1"><span className="text-body-sm">📦</span> Entrega Material</span>
+                        <span className="flex items-center gap-1"><span className="text-body-sm">⚠️</span> Revisão Risco</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-border inline-block"></span> Fim-de-semana / Feriado</span>
                       </div>
                     </div>
                   </div>
                 ) : (
                   // 30-Day Timeline (Cronograma)
                   <div className="space-y-4 animate-fade-in" id="project-timeline-container">
-                    <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+                    <div className="flex items-center justify-between bg-surface-muted p-3 rounded-control border border-border/60">
                       <div className="flex items-center gap-2">
-                        <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Cronograma</h4>
-                        <span className="text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-md px-2 py-0.5">
+                        <h4 className="font-extrabold text-text-primary text-body-sm uppercase tracking-wider">Cronograma</h4>
+                        <span className="text-caption font-bold text-primary bg-primary/10 border border-primary/20 rounded-md px-2 py-0.5">
                           {(() => {
                             const end = new Date(cronogramaStartDate);
                             end.setDate(end.getDate() + 29);
@@ -1945,48 +1912,48 @@ export default function ProjectSection({
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <button
+                        <IconButton variant="ghost" aria-label="Voltar 5 dias"
                           type="button"
                           onClick={shiftCronogramaPrev}
-                          className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 cursor-pointer transition-colors"
+                          className="flex items-center gap-1 px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                           title="Voltar 5 dias"
                         >
                           <ChevronLeft className="w-3.5 h-3.5" />
-                        </button>
-                        <button
+                        </IconButton>
+                        <Button variant="ghost" size="sm" aria-label="Voltar para a janela de 5 dias antes de hoje"
                           type="button"
                           onClick={resetCronogramaToDefault}
-                          className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 cursor-pointer transition-colors"
+                          className="px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                           title="Voltar para a janela de 5 dias antes de hoje"
                         >
                           Hoje
-                        </button>
-                        <button
+                        </Button>
+                        <IconButton variant="ghost" aria-label="Avançar 5 dias"
                           type="button"
                           onClick={shiftCronogramaNext}
-                          className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 cursor-pointer transition-colors"
+                          className="flex items-center gap-1 px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                           title="Avançar 5 dias"
                         >
                           <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                        <button
+                        </IconButton>
+                        <Button variant="ghost" size="sm" aria-label="Abrir cronograma em ecrã cheio"
                           type="button"
                           onClick={() => setIsFullTimelineModalOpen(true)}
-                          className="flex items-center gap-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 hover:text-blue-800 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ml-1"
+                          className="flex items-center gap-1 px-2.5 py-1 bg-primary/10 hover:bg-primary/10 border border-primary/20 text-primary hover:text-primary rounded-lg text-caption font-bold cursor-pointer transition-colors ml-1"
                           title="Abrir cronograma em ecrã cheio"
                           id="btn-ecra-cheio"
                         >
                           <Maximize2 className="w-3.5 h-3.5" /> Ecrã cheio
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
-                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                    <Card className="bg-surface border border-border rounded-card overflow-hidden shadow-2xs">
                       <div className="overflow-x-auto">
-                        <table className="w-full min-w-[1850px] text-xs text-left border-collapse table-fixed">
-                          <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200 whitespace-nowrap select-none">
-                            <tr className="bg-slate-50 border-b border-slate-200">
-                              <th className="p-3.5 sticky left-0 bg-slate-50 border-r border-slate-200 font-bold text-slate-700 w-56 min-w-[210px] shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-20 text-[11px] uppercase tracking-wider">
+                        <table className="w-full min-w-[1850px] text-body-sm text-left border-collapse table-fixed">
+                          <thead className="bg-surface-muted text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border whitespace-nowrap select-none">
+                            <tr className="bg-surface-muted border-b border-border">
+                              <th className="p-3.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary w-56 min-w-[210px] shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-20 text-caption uppercase tracking-wider">
                                 Tarefa
                               </th>
                               {(() => {
@@ -1997,25 +1964,25 @@ export default function ProjectSection({
                                   const dayStr = formatDateToString(d);
                                   const isToday = dayStr === formatDateToString(new Date());
                                   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                                  
+
                                   days.push(
-                                    <th 
-                                      key={dayStr} 
+                                    <th
+                                      key={dayStr}
                                       onClick={() => {
                                         openCreateTaskModal(dayStr);
                                         setShowImportTaskForm(false);
                                       }}
-                                      className={`p-2 border-r border-slate-200/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-slate-200/50 transition-colors ${
-                                        isToday ? 'bg-amber-100/60 text-amber-950 border-x border-amber-300' :
-                                        isWeekend ? 'bg-slate-100/70 text-slate-500 hover:bg-slate-200/40' : 'text-slate-600'
+                                      className={`p-2 border-r border-border/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-border/50 transition-colors ${
+                                        isToday ? 'bg-warning/60 text-warning border-x border-warning/20' :
+                                        isWeekend ? 'bg-surface-muted/70 text-text-secondary hover:bg-border/40' : 'text-text-secondary'
                                       }`}
                                       title="Clique para adicionar tarefa neste dia"
                                     >
-                                      <div className="text-[10px] uppercase font-semibold text-slate-400">
+                                      <div className="text-caption uppercase font-semibold text-text-muted">
                                         {d.toLocaleDateString('pt-PT', { weekday: 'short' }).charAt(0).toUpperCase()}
                                       </div>
-                                      <div className={`text-xs ${isToday ? 'font-extrabold text-amber-900' : ''}`}>{d.getDate()}</div>
-                                      <div className="text-[8px] font-normal text-slate-400">
+                                      <div className={`text-body-sm ${isToday ? 'font-extrabold text-warning' : ''}`}>{d.getDate()}</div>
+                                      <div className="text-caption font-normal text-text-muted">
                                         {d.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '')}
                                       </div>
                                     </th>
@@ -2027,11 +1994,11 @@ export default function ProjectSection({
                           </thead>
                           <tbody>
                             {/* Project Dates Summary Row */}
-                            <tr className="bg-slate-50/60 border-b border-slate-200">
-                              <td className="p-2.5 sticky left-0 bg-slate-100 border-r border-slate-200 font-bold text-slate-700 shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10">
-                                <div className="flex items-center gap-1.5 text-blue-800">
-                                  <Flag className="w-3.5 h-3.5 text-blue-600" />
-                                  <span className="text-[10px] uppercase font-bold tracking-wide">Lembretes do Projeto</span>
+                            <tr className="bg-surface-muted/60 border-b border-border">
+                              <td className="p-2.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10">
+                                <div className="flex items-center gap-1.5 text-primary">
+                                  <Flag className="w-3.5 h-3.5 text-primary" />
+                                  <span className="text-caption uppercase font-bold tracking-wide">Lembretes do Projeto</span>
                                 </div>
                               </td>
                               {(() => {
@@ -2042,7 +2009,7 @@ export default function ProjectSection({
                                   const dayStr = formatDateToString(d);
                                   const isToday = dayStr === formatDateToString(new Date());
                                   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                                  
+
                                   const isProjStart = selectedProj.startDate === dayStr;
                                   const isProjDelivery = selectedProj.deliveryDate === dayStr;
                                   const isProjEstimated = selectedProj.estimatedDate === dayStr;
@@ -2050,30 +2017,30 @@ export default function ProjectSection({
                                   const risksOnDay = projRiskItems.filter(ri => !ri.deleted && matchId(ri.projectId, selectedProj.id) && ri.reviewDate === dayStr);
 
                                   cells.push(
-                                    <td key={dayStr} className={`p-1 border-r border-slate-200/80 text-center align-middle ${isToday ? 'bg-amber-50/40' : isWeekend ? 'bg-slate-100/40' : ''}`}>
+                                    <td key={dayStr} className={`p-1 border-r border-border/80 text-center align-middle ${isToday ? 'bg-warning/40' : isWeekend ? 'bg-surface-muted/40' : ''}`}>
                                       <div className="flex flex-col gap-0.5 items-center justify-center">
                                         {isProjStart && (
-                                          <span className="px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Data de Início do Projeto">
+                                          <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Data de Início do Projeto">
                                             INÍCIO
                                           </span>
                                         )}
                                         {isProjDelivery && (
-                                          <span className="px-1.5 py-0.5 bg-emerald-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Data de Entrega do Projeto">
+                                          <span className="px-1.5 py-0.5 bg-success-strong text-white text-caption font-semibold rounded shadow-xs" title="Data de Entrega do Projeto">
                                             ENTREGA
                                           </span>
                                         )}
                                         {isProjEstimated && !isProjDelivery && (
-                                          <span className="px-1.5 py-0.5 bg-slate-700 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Previsão de Conclusão">
+                                          <span className="px-1.5 py-0.5 bg-surface-elevated text-text-primary text-caption font-semibold rounded shadow-xs" title="Previsão de Conclusão">
                                             PREVISTO
                                           </span>
                                         )}
                                         {isProjScheduled && !isProjStart && (
-                                          <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Instalação/Agendamento">
+                                          <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Instalação/Agendamento">
                                             AGENDADO
                                           </span>
                                         )}
                                         {risksOnDay.map(ri => (
-                                          <span key={ri.id} className="px-1 py-0.5 bg-rose-600 text-white text-[8px] font-extrabold rounded shadow-xs flex items-center gap-0.5 scale-90 truncate max-w-[50px]" title={`Revisão de Risco: ${ri.title}`}>
+                                          <span key={ri.id} className="px-1 py-0.5 bg-error text-white text-caption font-extrabold rounded shadow-xs flex items-center gap-0.5 scale-90 truncate max-w-[50px]" title={`Revisão de Risco: ${ri.title}`}>
                                             ⚠️ Rev. Risco
                                           </span>
                                         ))}
@@ -2096,7 +2063,7 @@ export default function ProjectSection({
                               if (sortedTasks.length === 0) {
                                 return (
                                   <tr>
-                                    <td colSpan={31} className="p-8 text-center text-slate-400 italic">
+                                    <td colSpan={31} className="p-8 text-center text-text-muted italic">
                                       Nenhuma tarefa ativa associada a este projeto. Crie ou importe tarefas acima.
                                     </td>
                                   </tr>
@@ -2108,30 +2075,30 @@ export default function ProjectSection({
                                 const assigneesText = t.assigneeIds && t.assigneeIds.length > 0
                                   ? t.assigneeIds.map(uid => getUserName(uid)).join(', ')
                                   : 'Não alocado';
-                                
+
                                 const conflicts = getTaskConflicts(t);
 
                                 return (
-                                  <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/20 group">
-                                    <td 
+                                  <tr key={t.id} className="border-b border-border-subtle hover:bg-surface-muted/20 group">
+                                    <td
                                       onClick={() => openTaskDetailsModal(t)}
-                                      className="p-3 sticky left-0 bg-white group-hover:bg-slate-50 hover:bg-slate-50 border-r border-slate-200 shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10 font-medium cursor-pointer transition-colors"
+                                      className="p-3 sticky left-0 bg-surface group-hover:bg-surface-muted hover:bg-surface-muted border-r border-border shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10 font-medium cursor-pointer transition-colors"
                                       title={`Clique para ver/editar: ${t.title}`}
                                     >
                                       <div className="space-y-1">
-                                        <div className="font-bold text-slate-800 text-xs truncate max-w-[190px] group-hover:text-blue-600 transition-colors" title={t.title}>
+                                        <div className="font-bold text-text-primary text-body-sm truncate max-w-[190px] group-hover:text-primary transition-colors" title={t.title}>
                                           {t.title}
                                         </div>
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-extrabold border tracking-wider ${
+                                          <span className={`px-1.5 py-0.5 rounded-full text-caption font-extrabold border tracking-wider ${
                                             t.statusId === 'ts-3' || t.statusId === '99999999-9999-9999-9999-999999999903'
-                                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' 
+                                              ? 'bg-success/10 text-success-strong border-success/50'
                                               : t.statusId === 'ts-2' || t.statusId === '99999999-9999-9999-9999-999999999902'
-                                              ? 'bg-amber-50 text-amber-700 border-amber-200/50'
-                                              : 'bg-blue-50 text-blue-700 border-blue-200/50'
+                                              ? 'bg-warning/10 text-warning border-warning/50'
+                                              : 'bg-primary/10 text-primary border-primary/50'
                                           }`}>{getTaskStatusName(t.statusId, taskStatuses)}</span>
-                                          
-                                          <span className="text-[10px] text-slate-500 font-bold truncate max-w-[150px]">
+
+                                          <span className="text-caption text-text-secondary font-bold truncate max-w-[150px]">
                                             👤 {assigneesText}
                                           </span>
                                         </div>
@@ -2140,12 +2107,12 @@ export default function ProjectSection({
                                         {conflicts.length > 0 && (
                                           <div className="space-y-1 pt-1">
                                             {conflicts.map((c, i) => (
-                                              <div 
-                                                key={i} 
-                                                className="flex items-start gap-1 p-1 bg-red-50 text-red-700 border border-red-200/60 rounded-md text-[9px] font-semibold leading-tight hover:bg-red-100 transition-colors"
+                                              <div
+                                                key={i}
+                                                className="flex items-start gap-1 p-1 bg-error/10 text-error border border-error/60 rounded-md text-caption font-semibold leading-tight hover:bg-error/10 transition-colors"
                                                 title={c.details}
                                               >
-                                                <ShieldAlert className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                                                <ShieldAlert className="w-3.5 h-3.5 text-error flex-shrink-0 mt-0.5" />
                                                 <span className="break-words">{c.details}</span>
                                               </div>
                                             ))}
@@ -2162,9 +2129,9 @@ export default function ProjectSection({
                                         const isToday = dayStr === formatDateToString(new Date());
                                         const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                                         const isActive = isTaskActiveOnDay(t, dayStr);
-                                        
+
                                         dayCells.push(
-                                          <td 
+                                          <td
                                             key={dayStr}
                                             onDragOver={(e) => e.preventDefault()}
                                             onDrop={(e) => {
@@ -2186,15 +2153,15 @@ export default function ProjectSection({
                                                 });
                                               }
                                             }}
-                                            className={`p-1 border-r border-slate-200/80 text-center align-middle relative min-w-[55px] ${
-                                              isActive ? 'bg-blue-50/10' : ''
+                                            className={`p-1 border-r border-border/80 text-center align-middle relative min-w-[55px] ${
+                                              isActive ? 'bg-primary/10' : ''
                                             } ${
-                                              isToday ? 'bg-amber-50/30' : 
-                                              isWeekend ? 'bg-slate-50/60' : ''
+                                              isToday ? 'bg-warning/30' :
+                                              isWeekend ? 'bg-surface-muted/60' : ''
                                             }`}
                                           >
                                             {isActive && (
-                                              <div 
+                                              <div
                                                 draggable={canWriteTasks}
                                                 onDragStart={(e) => {
                                                   e.stopPropagation();
@@ -2204,7 +2171,7 @@ export default function ProjectSection({
                                                   }
                                                   e.dataTransfer.setData('taskId', t.id);
                                                 }}
-                                                className={`py-1.5 px-1 rounded-lg text-[9px] font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
+                                                className={`py-1.5 px-1 rounded-lg text-caption font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
                                                   getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                                 }`}
                                                 title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}
@@ -2224,37 +2191,37 @@ export default function ProjectSection({
                           </tbody>
                         </table>
                       </div>
-                      <div className="bg-slate-50 p-2.5 border-t border-slate-150 flex flex-wrap gap-4 justify-center text-[10px] font-bold text-slate-500">
-                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Pendente</span>
-                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Em Progresso</span>
-                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Concluído</span>
-                        <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-red-200 bg-red-50 text-red-600 rounded flex items-center justify-center text-[8px]">⚠️</span> Alertas</span>
-                        <span className="text-[9px] text-slate-400 italic font-medium ml-2">Dica: Arraste as barras coloridas para reagendar as tarefas para novos dias no cronograma.</span>
+                      <div className="bg-surface-muted p-2.5 border-t border-slate-150 flex flex-wrap gap-4 justify-center text-caption font-bold text-text-secondary">
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-primary"></span> Pendente</span>
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-warning"></span> Em Progresso</span>
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-success"></span> Concluído</span>
+                        <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-error/20 bg-error/10 text-error rounded flex items-center justify-center text-caption">⚠️</span> Alertas</span>
+                        <span className="text-caption text-text-muted italic font-medium ml-2">Dica: Arraste as barras coloridas para reagendar as tarefas para novos dias no cronograma.</span>
                       </div>
-                    </div>
+                    </Card>
                   </div>
                 )}
               </div>
 
               {/* Comments Section */}
               <div className="space-y-4">
-                <h3 className="font-bold text-slate-800 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-blue-600" /> Notas & Comentários</h3>
-                
+                <h3 className="font-bold text-text-primary flex items-center gap-2"><MessageSquare className="w-4 h-4 text-primary" /> Notas & Comentários</h3>
+
                 {/* Comment list */}
                 {projComments.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">Sem comentários ou notas adicionadas.</p>
+                  <p className="text-body-sm text-text-muted italic">Sem comentários ou notas adicionadas.</p>
                 ) : (
                   <div className="space-y-3">
                     {projComments.map(c => (
-                      <div key={c.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-start text-xs">
+                      <div key={c.id} className="bg-surface-muted p-3 rounded-control border border-border-subtle flex justify-between items-start text-body-sm">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-800">{getUserName(c.authorId)}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">{new Date(c.createdDate).toLocaleDateString()}</span>
+                            <span className="font-bold text-text-primary">{getUserName(c.authorId)}</span>
+                            <span className="text-caption text-text-muted font-mono">{new Date(c.createdDate).toLocaleDateString()}</span>
                           </div>
-                          <p className="text-slate-600 italic">&quot;{c.comment}&quot;</p>
+                          <p className="text-text-secondary italic">&quot;{c.comment}&quot;</p>
                         </div>
-                        <button 
+                        <Button variant="ghost" size="sm"
                           type="button"
                           onClick={() => {
                             askConfirmation(
@@ -2263,10 +2230,10 @@ export default function ProjectSection({
                               () => deleteComment(c.id)
                             );
                           }}
-                          className="text-red-500 hover:text-red-700 font-semibold text-[11px] cursor-pointer"
+                          className="text-error hover:text-error font-semibold text-caption cursor-pointer"
                         >
                           Apagar
-                        </button>
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -2274,79 +2241,79 @@ export default function ProjectSection({
 
                 {/* Comment input form */}
                 <div className="flex gap-2">
-                  <input 
-                    type="text" 
+                  <Input aria-label="Adicione uma nota sobre o progresso ou alteração técnica..."
+                    type="text"
                     value={newCommentText}
                     onChange={(e) => setNewCommentText(e.target.value)}
                     placeholder="Adicione uma nota sobre o progresso ou alteração técnica..."
-                    className="flex-1 p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-100"
+                    className="flex-1 p-2 border border-border rounded-control text-body-sm focus:ring-2 focus:ring-primary/20"
                   />
-                  <button 
+                  <Button variant="primary" size="sm"
                     onClick={() => {
                       if (newCommentText.trim()) {
                         addComment(selectedProj.id, currentUser?.id || 'u-1', newCommentText.trim());
                         setNewCommentText('');
                       }
                     }}
-                    className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors"
+                    className="px-4 py-2 bg-primary text-white rounded-control text-body-sm font-bold hover:bg-primary transition-colors"
                   >
                     Enviar
-                  </button>
+                  </Button>
                 </div>
               </div>
 
             </div>
 
             {/* Right Meta Column (Fields) */}
-            <div className="md:col-span-4 bg-slate-50/70 rounded-2xl p-5 border border-slate-100 space-y-6 text-xs">
-              
+            <div className="md:col-span-4 bg-surface-muted/70 rounded-card p-5 border border-border-subtle space-y-6 text-body-sm">
+
               {/*  Status Overview */}
-              
-     
+
+
                 <div  className="space-y-2.5">
-                  <h4 className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Estado</h4>
-                  <select 
+                  <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Estado</h4>
+                  <Select aria-label="Estado"
                     value={selectedProj.statusId}
                     onChange={(e) => updateProject(selectedProj.id, { statusId: e.target.value })}
-                    className="px-2.5 py-1 bg-blue-50 border border-blue-200 rounded-full font-bold text-blue-700 text-[10px] uppercase tracking-wide cursor-pointer outline-none hover:bg-blue-100 transition-colors"
+                    className={getProjectStatusStyle(selectedProj.statusId, projectStatuses).badgeClass}
                   >
                     {sortedStatuses.filter(s => !s.deleted || s.id === selectedProj.statusId).map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 <div className="space-y-2.5">
-                  <h4 className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Categorias</h4>
+                  <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Categorias</h4>
                   <div className="flex flex-wrap gap-1">
                     {selectedProj.categoryIds && selectedProj.categoryIds.length > 0 ? (
                       selectedProj.categoryIds.map(catId => (
-                        <span key={catId} className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 font-semibold font-mono text-[10px]">
+                        <span key={catId} className="px-2 py-0.5 bg-surface-muted border border-border rounded text-text-secondary font-semibold font-mono text-caption">
                           {getCategoryName(catId)}
                         </span>
                       ))
                     ) : (
-                      <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 font-semibold font-mono text-[10px]">
+                      <span className="px-2 py-0.5 bg-surface-muted border border-border rounded text-text-secondary font-semibold font-mono text-caption">
                         {getCategoryName(selectedProj.categoryId)}
                       </span>
                     )}
                   </div>
                 </div>
-              
+
 
               {/* Governance & Team Contacts */}
               <div className="space-y-2.5">
-                <h4 className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Equipa</h4>
-                <div className="space-y-1.5 text-slate-700">
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Project Leader:</span>
+                <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Equipa</h4>
+                <div className="space-y-1.5 text-text-secondary">
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Project Leader:</span>
                     <span className="font-bold">{getUserName(selectedProj.projectManagerId)}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Técnico responsável:</span>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Técnico responsável:</span>
                     <span className="font-bold">{getUserName(selectedProj.fieldManagerId)}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Vendedor:</span>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Vendedor:</span>
                     <span className="font-bold">{getUserName(selectedProj.salesRepId)}</span>
                   </div>
                 </div>
@@ -2354,18 +2321,18 @@ export default function ProjectSection({
 
               {/* Client Contact Info */}
               <div className="space-y-2.5">
-                <h4 className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Contactos Cliente</h4>
-                  <div className="space-y-1.5 text-slate-700">
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Nome:</span>
+                <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Contactos Cliente</h4>
+                  <div className="space-y-1.5 text-text-secondary">
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Nome:</span>
                     <span className="font-bold">{selectedProj.clientContactName || '-'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Email:</span>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Email:</span>
                     <span className="font-bold">{selectedProj.clientContactEmail || '-'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Telefone:</span>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Telefone:</span>
                     <span className="font-bold">{selectedProj.clientContactPhone || '-'}</span>
                   </div>
                 </div>
@@ -2375,22 +2342,22 @@ export default function ProjectSection({
 
               {/* Timeline Dates */}
               <div className="space-y-2.5">
-                <h4 className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Datas importantes</h4>
-                <div className="space-y-1.5 text-slate-700">
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Data de adjudicação:</span>
+                <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Datas importantes</h4>
+                <div className="space-y-1.5 text-text-secondary">
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Data de adjudicação:</span>
                     <span className="font-bold">{selectedProj.startDate || '-'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Prazo de entrega:</span>
-                    <span className="font-bold text-blue-600">{selectedProj.deliveryDate || '-'}</span>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Prazo de entrega:</span>
+                    <span className="font-bold text-primary">{selectedProj.deliveryDate || '-'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Previsão de entrega real:</span>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Previsão de entrega real:</span>
                     <span className="font-bold">{selectedProj.estimatedDate || '-'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Data agendamento:</span>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Data agendamento:</span>
                     <span className="font-bold">{selectedProj.scheduledDate || '-'}</span>
                   </div>
                 </div>
@@ -2398,68 +2365,68 @@ export default function ProjectSection({
 
               {/* Systems / ERP Integration numbers */}
               <div className="space-y-2.5">
-                <h4 className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Dados internos</h4>
-                <div className="space-y-1.5 text-slate-700">
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Nº IP:</span>
-                    <span className="font-mono font-bold text-slate-800">{selectedProj.installProjectNo || 'S/N'}</span>
+                <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Dados internos</h4>
+                <div className="space-y-1.5 text-text-secondary">
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Nº IP:</span>
+                    <span className="font-mono font-bold text-text-primary">{selectedProj.installProjectNo || 'S/N'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Oportunidade SF:</span>
-                    <span className="font-mono font-bold text-slate-800">{selectedProj.sfOpportunityNo || 'S/N'}</span>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Oportunidade SF:</span>
+                    <span className="font-mono font-bold text-text-primary">{selectedProj.sfOpportunityNo || 'S/N'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="font-medium text-slate-500">Valor da venda:</span>
-                    <span className="font-mono font-bold text-slate-800">{new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(selectedProj.budgetValue)}</span>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Valor da venda:</span>
+                    <span className="font-mono font-bold text-text-primary">{new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(selectedProj.budgetValue)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Teams */}
               <div className="space-y-3">
-                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block mb-1">Equipas de apoio</span>
+                <span className="text-caption text-text-muted uppercase font-bold tracking-wider block mb-1">Equipas de apoio</span>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {selectedProj.teamsInvolvedIds?.length > 0 ? (
                       selectedProj.teamsInvolvedIds.map(tid => {
                         const team = projectTeams.find(t => matchId(t.id, tid));
                         return (
-                          <span key={tid} className="px-2 py-0.5 bg-slate-200 text-slate-700 font-bold rounded-md text-[10px]">
+                          <span key={tid} className="px-2 py-0.5 bg-border text-text-secondary font-bold rounded-md text-caption">
                             {team ? team.name : tid}
                           </span>
                         );
                       })
-                    ) : <span className="text-slate-400 italic">Sem outras equipas alocadas</span>}
+                    ) : <span className="text-text-muted italic">Sem outras equipas alocadas</span>}
                   </div>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block mb-1">Parceiros externos</span>
+                  <span className="text-caption text-text-muted uppercase font-bold tracking-wider block mb-1">Parceiros externos</span>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {selectedProj.partnersIds?.length > 0 ? (
                       selectedProj.partnersIds.map(pid => {
                         const partner = projectPartners.find(p => matchId(p.id, pid));
                         return (
-                          <span key={pid} className="px-2 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold rounded-md text-[10px]">
+                          <span key={pid} className="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary font-bold rounded-md text-caption">
                             {partner ? partner.name : pid}
                           </span>
                         );
                       })
-                    ) : <span className="text-slate-400 italic">Nenhum parceiro alocado</span>}
+                    ) : <span className="text-text-muted italic">Nenhum parceiro alocado</span>}
                   </div>
                 </div>
-              
+
               {/* Documents Attachments list */}
               <div className="space-y-2">
-                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Documentação técnica</span>
+                <span className="text-caption text-text-muted uppercase font-bold tracking-wider block">Documentação técnica</span>
                 {selectedProj.documents?.length > 0 ? (
                   <div className="space-y-1 mt-1">
                     {selectedProj.documents.map((doc, i) => (
-                      <div key={i} className="flex items-center gap-1.5 py-1 text-blue-600 hover:underline cursor-pointer">
-                        <FileText className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+                      <div key={i} className="flex items-center gap-1.5 py-1 text-primary hover:underline cursor-pointer">
+                        <FileText className="w-3.5 h-3.5 flex-shrink-0 text-text-muted" />
                         <span className="font-semibold truncate max-w-[180px]">{doc}</span>
                       </div>
                     ))}
                   </div>
-                ) : <span className="text-slate-400 italic block mt-1">Sem esquemas ou PDFs anexados.</span>}
+                ) : <span className="text-text-muted italic block mt-1">Sem esquemas ou PDFs anexados.</span>}
               </div>
 
             </div>
@@ -2472,35 +2439,35 @@ export default function ProjectSection({
             <div className="p-6 space-y-6">
               <div className="flex justify-between items-center flex-wrap gap-3">
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-                    <ListTodo className="w-5 h-5 text-blue-600" />
+                  <h3 className="font-extrabold text-text-primary text-base flex items-center gap-2">
+                    <ListTodo className="w-5 h-5 text-primary" />
                     Tarefas do Projeto ({projTasks.length})
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Gestão de tarefas técnicas, lembretes e prazos de execução</p>
+                  <p className="text-body-sm text-text-secondary mt-0.5">Gestão de tarefas técnicas, lembretes e prazos de execução</p>
                 </div>
                 <div className="flex gap-2">
                   {canWriteTasks && (
                     <>
-                      <button
+                      <Button variant="ghost" size="sm"
                         type="button"
                         onClick={() => {
                           setShowImportTaskForm(!showImportTaskForm);
                           setShowAddTaskForm(false);
                         }}
-                        className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 text-body-sm font-extrabold text-success-strong bg-success/10 hover:bg-success/10 border border-success/20 px-3 py-2 rounded-control transition-colors cursor-pointer"
                       >
-                        <Plus className="w-4 h-4 text-emerald-600" /> Importar Tarefas Modelo
-                      </button>
-                      <button
+                        <Plus className="w-4 h-4 text-success-strong" /> Importar Tarefas Modelo
+                      </Button>
+                      <Button variant="primary" size="sm"
                         type="button"
                         onClick={() => {
                           openCreateTaskModal();
                           setShowImportTaskForm(false);
                         }}
-                        className="flex items-center gap-1.5 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-xl transition-colors cursor-pointer shadow-xs"
+                        className="flex items-center gap-1.5 text-body-sm font-extrabold text-white bg-primary hover:bg-primary px-3.5 py-2 rounded-control transition-colors cursor-pointer shadow-xs"
                       >
                         <Plus className="w-4 h-4 text-white" /> Criar Tarefa / Lembrete
-                      </button>
+                      </Button>
                     </>
                   )}
                 </div>
@@ -2508,22 +2475,22 @@ export default function ProjectSection({
 
               {/* Inline Import Task Form */}
               {showImportTaskForm && (
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-xs font-bold text-slate-700 animate-fade-in shadow-xs" id="import-task-form-panel">
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                    <span className="text-slate-800 font-extrabold text-sm">Importar Tarefa(s) Modelo</span>
-                    <button 
-                      type="button" 
+                <div className="bg-surface-muted border border-border rounded-card p-5 space-y-4 text-body-sm font-bold text-text-secondary animate-fade-in shadow-xs" id="import-task-form-panel">
+                  <div className="flex justify-between items-center pb-2 border-b border-border">
+                    <span className="text-text-primary font-extrabold text-body-sm">Importar Tarefa(s) Modelo</span>
+                    <Button variant="ghost" size="sm"
+                      type="button"
                       onClick={() => {
                         setShowImportTaskForm(false);
                         setSelectedImportModelTaskIds([]);
                       }}
-                      className="text-slate-400 hover:text-slate-600 text-base font-normal px-1 cursor-pointer"
+                      className="text-text-muted hover:text-text-secondary text-base font-normal px-1 cursor-pointer"
                     >
                       ×
-                    </button>
+                    </Button>
                   </div>
 
-                  <p className="text-slate-500 text-xs font-normal leading-relaxed">
+                  <p className="text-text-secondary text-body-sm font-normal leading-relaxed">
                     Selecione um ou mais modelos de engenharia para clonar e adicionar de imediato a este projeto.
                   </p>
 
@@ -2534,30 +2501,30 @@ export default function ProjectSection({
                         return (
                           <label
                             key={dt.id}
-                            className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors ${
+                            className={`flex items-start gap-2.5 p-3 rounded-control border cursor-pointer transition-colors ${
                               isChecked
-                                ? "bg-emerald-50 border-emerald-300 text-emerald-900 shadow-2xs"
-                                : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
+                                ? "bg-success/10 border-success/20 text-success-strong shadow-2xs"
+                                : "bg-surface border-border hover:bg-surface-muted text-text-secondary"
                             }`}
                           >
-                            <input 
+                            <input
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => {
-                                setSelectedImportModelTaskIds(prev => 
+                                setSelectedImportModelTaskIds(prev =>
                                   prev.includes(dt.id) ? prev.filter(id => id !== dt.id) : [...prev, dt.id]
                                 );
                               }}
-                              className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                              className="mt-0.5 w-4 h-4 text-success-strong rounded border-border focus:ring-success"
                             />
-                            <div className="text-xs leading-tight font-semibold flex-1">
-                              <div className="flex justify-between items-center gap-1 font-bold text-slate-800">
+                            <div className="text-body-sm leading-tight font-semibold flex-1">
+                              <div className="flex justify-between items-center gap-1 font-bold text-text-primary">
                                 <span className="truncate max-w-[160px]" title={dt.title}>{dt.title}</span>
-                                <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 rounded text-slate-500 font-mono flex-shrink-0">
+                                <span className="text-caption px-1.5 py-0.5 bg-surface-muted rounded text-text-secondary font-mono flex-shrink-0">
                                   {dt.estimatedHours}
                                 </span>
                               </div>
-                              <div className="text-[11px] text-slate-500 font-normal mt-1 truncate max-w-[200px]" title={dt.description}>
+                              <div className="text-caption text-text-secondary font-normal mt-1 truncate max-w-[200px]" title={dt.description}>
                                 {dt.description || "Sem descrição."}
                               </div>
                             </div>
@@ -2566,22 +2533,22 @@ export default function ProjectSection({
                       })}
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-400 italic">Não existem tarefas modelo configuradas.</p>
+                    <p className="text-body-sm text-text-muted italic">Não existem tarefas modelo configuradas.</p>
                   )}
 
-                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 mt-2">
-                    <button 
-                      type="button" 
+                  <div className="flex justify-end gap-2 pt-3 border-t border-border mt-2">
+                    <Button variant="ghost" size="sm"
+                      type="button"
                       onClick={() => {
                         setShowImportTaskForm(false);
                         setSelectedImportModelTaskIds([]);
                       }}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors cursor-pointer"
+                      className="px-4 py-2 bg-surface-muted hover:bg-border text-text-secondary rounded-control font-bold transition-colors cursor-pointer"
                     >
                       Cancelar
-                    </button>
-                    <button 
-                      type="button" 
+                    </Button>
+                    <Button variant="ghost" size="sm"
+                      type="button"
                       disabled={selectedImportModelTaskIds.length === 0}
                       onClick={() => {
                         const tasksToImport = selectedImportModelTaskIds.map(dtId => {
@@ -2616,10 +2583,10 @@ export default function ProjectSection({
                         setSelectedImportModelTaskIds([]);
                         setShowImportTaskForm(false);
                       }}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                      className="bg-success-strong hover:bg-success-strong text-white"
                     >
                       <Plus className="w-4 h-4" /> Importar ({selectedImportModelTaskIds.length})
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -2628,12 +2595,12 @@ export default function ProjectSection({
 
               {/* Tasks List */}
               {isServerTasksLoading ? (
-                <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs font-medium animate-pulse flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="bg-surface-muted border border-dashed border-border rounded-card p-8 text-center text-text-muted text-body-sm font-medium animate-pulse flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                   A carregar tarefas do projeto...
                 </div>
               ) : projTasks.length === 0 ? (
-                <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs font-medium">
+                <div className="bg-surface-muted border border-dashed border-border rounded-card p-8 text-center text-text-muted text-body-sm font-medium">
                   Nenhuma tarefa ou lembrete associado a este projeto.
                 </div>
               ) : (
@@ -2646,10 +2613,19 @@ export default function ProjectSection({
                     if (!dateB) return -1;
                     return dateA.localeCompare(dateB);
                   }).map(task => (
-                    <div 
-                      key={task.id} 
+                    <Card
+                      key={task.id}
                       onClick={() => openTaskDetailsModal(task)}
-                      className="bg-white border border-slate-200 hover:border-blue-300 rounded-2xl p-4 shadow-xs space-y-2 cursor-pointer transition-all hover:shadow-md"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Abrir tarefa ${task.title}`}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openTaskDetailsModal(task);
+                        }
+                      }}
+                      className="bg-surface border border-border hover:border-primary/20 rounded-card p-4 space-y-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
                     >
                       <div className="flex justify-between items-start gap-2">
                         <div className="space-y-1">
@@ -2657,42 +2633,42 @@ export default function ProjectSection({
                             <Badge className={getTaskStatusStyle(task.statusId, taskStatuses).badgeClass}>
                               {getTaskStatusStyle(task.statusId, taskStatuses).name}
                             </Badge>
-                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold rounded flex items-center gap-1">
+                            <span className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 text-caption font-bold rounded flex items-center gap-1">
                               {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Bell className="w-3 h-3 text-purple-600" />}
                               {getTaskTypeName(task.taskTypeId, taskTypes)}
                             </span>
                           </div>
-                          <h4 className="font-extrabold text-slate-900 text-sm hover:text-blue-600 transition-colors">{task.title}</h4>
+                          <h4 className="font-extrabold text-text-primary text-body-sm hover:text-primary transition-colors">{task.title}</h4>
                         </div>
                       </div>
                       {task.description && (
-                        <p className="text-xs text-slate-600 line-clamp-2">{task.description}</p>
+                        <p className="text-body-sm text-text-secondary line-clamp-2">{task.description}</p>
                       )}
                       {/* Responsáveis */}
                       <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                        <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <Users className="w-3.5 h-3.5 text-text-muted shrink-0" />
                         {task.assigneeIds && task.assigneeIds.length > 0 ? (
                           task.assigneeIds.map(uid => (
-                            <span key={uid} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-bold rounded-md text-[10px]">
+                            <span key={uid} className="px-1.5 py-0.5 bg-surface-muted text-text-secondary font-bold rounded-md text-caption">
                               {getUserName(uid)}
                             </span>
                           ))
                         ) : (
-                          <span className="text-slate-400 italic text-[10px]">Sem atribuição</span>
+                          <span className="text-text-muted italic text-caption">Sem atribuição</span>
                         )}
                       </div>
-                      <div className="flex justify-between items-center text-[11px] text-slate-500 pt-2 border-t border-slate-100 font-medium">
+                      <div className="flex justify-between items-center text-caption text-text-secondary pt-2 border-t border-border-subtle font-medium">
                         <span>Previsão: {task.estimatedDate ? new Date(task.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Sem data'}</span>
                         {task.estimatedHours && <span>Est: {task.estimatedHours}h</span>}
                       </div>
-                    </div>
+                    </Card>
                   ))}
                 </div>
               )}
             </div>
           )}
 
-          {/* TAB 3: MATERIAL */}
+{/* TAB 3: MATERIAL */}
           {activeDetailTab === 'material' && (
             <div data-m3-exclude data-theme={appConfig?.theme || 'default'} className="p-6 space-y-6">
               {/* Red Warning Banner if material has warning */}
@@ -3101,43 +3077,43 @@ export default function ProjectSection({
             <div className="p-6 space-y-6">
               <div className="flex justify-between items-center flex-wrap gap-3">
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-                    <ShieldAlert className="w-5 h-5 text-blue-600" />
+                  <h3 className="font-extrabold text-text-primary text-base flex items-center gap-2">
+                    <ShieldAlert className="w-5 h-5 text-primary" />
                     Gestão e Mitigação de Riscos do Projeto
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Identificação, classificação e acompanhamento de riscos com planos de ação integrados</p>
+                  <p className="text-body-sm text-text-secondary mt-0.5">Identificação, classificação e acompanhamento de riscos com planos de ação integrados</p>
                 </div>
               </div>
 
               {/* Risks Statistics Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col justify-between">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Riscos Identificados</span>
-                  <span className="text-2xl font-extrabold text-slate-800 mt-1">{projRiskItems.length}</span>
+                <div className="bg-surface-muted border border-border-subtle rounded-card p-4 flex flex-col justify-between">
+                  <span className="text-caption text-text-muted font-bold uppercase tracking-wider">Riscos Identificados</span>
+                  <span className="text-2xl font-extrabold text-text-primary mt-1">{projRiskItems.length}</span>
                 </div>
-                <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 flex flex-col justify-between">
-                  <span className="text-[10px] text-rose-500 font-bold uppercase tracking-wider">Riscos Críticos</span>
+                <div className="bg-error/10 border border-error/20 rounded-card p-4 flex flex-col justify-between">
+                  <span className="text-caption text-error font-bold uppercase tracking-wider">Riscos Críticos</span>
                   <div className="flex justify-between items-center mt-1">
-                    <span className="text-2xl font-extrabold text-rose-700">
+                    <span className="text-2xl font-extrabold text-error">
                       {projRiskItems.filter(ri => (ri.probability * ri.impact) >= 16).length}
                     </span>
                     {projRiskItems.filter(ri => (ri.probability * ri.impact) >= 16).length > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping inline-block" />
+                      <span className="w-2 h-2 rounded-full bg-error animate-ping inline-block" />
                     )}
                   </div>
                 </div>
-                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex flex-col justify-between">
-                  <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Riscos Altos / Médios</span>
-                  <span className="text-2xl font-extrabold text-amber-700 mt-1">
+                <div className="bg-warning/10 border border-warning/20 rounded-card p-4 flex flex-col justify-between">
+                  <span className="text-caption text-warning font-bold uppercase tracking-wider">Riscos Altos / Médios</span>
+                  <span className="text-2xl font-extrabold text-warning mt-1">
                     {projRiskItems.filter(ri => {
                       const score = ri.probability * ri.impact;
                       return score >= 6 && score < 16;
                     }).length}
                   </span>
                 </div>
-                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between">
-                  <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Riscos Fechados</span>
-                  <span className="text-2xl font-extrabold text-emerald-700 mt-1">
+                <div className="bg-success/10 border border-success/20 rounded-card p-4 flex flex-col justify-between">
+                  <span className="text-caption text-success-strong font-bold uppercase tracking-wider">Riscos Fechados</span>
+                  <span className="text-2xl font-extrabold text-success-strong mt-1">
                     {projRiskItems.filter(ri => {
                       const st = riskStatuses.find(s => s.id === ri.statusId);
                       return (st?.name || '').toLowerCase() === 'fechado';
@@ -3147,76 +3123,76 @@ export default function ProjectSection({
               </div>
 
               {/* Filters & Actions Bar */}
-              <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-50 border border-slate-200 p-4 rounded-2xl">
+              <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-surface-muted border border-border p-4 rounded-card">
                 {/* Search */}
                 <div className="relative w-full sm:w-72">
-                  <input
+                  <Input aria-label="Pesquisar por título ou descrição..."
                     type="text"
                     placeholder="Pesquisar por título ou descrição..."
                     value={riskSearchQuery}
                     onChange={e => setRiskSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs font-semibold border border-slate-200 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-100 text-slate-800 placeholder-slate-400"
+                    className="w-full pl-9 pr-3 py-2 text-body-sm font-semibold border border-border rounded-control bg-surface focus:outline-hidden focus:ring-2 focus:ring-primary/20 text-text-primary placeholder-slate-400"
                   />
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                  <Search className="w-4 h-4 text-text-muted absolute left-3 top-2.5 pointer-events-none" />
                 </div>
 
                 {/* Filters */}
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
-                  <select
+                  <Select
                     value={riskFilterCategory}
                     onChange={e => setRiskFilterCategory(e.target.value)}
-                    className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-hidden text-slate-600 cursor-pointer"
+                    className="bg-surface border border-border rounded-control px-3 py-2 text-body-sm font-semibold focus:outline-hidden text-text-secondary cursor-pointer"
                   >
                     <option value="">Todas as Categorias</option>
                     {riskCategories.map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
-                  </select>
+                  </Select>
 
-                  <select
+                  <Select
                     value={riskFilterStatus}
                     onChange={e => setRiskFilterStatus(e.target.value)}
-                    className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-hidden text-slate-600 cursor-pointer"
+                    className="bg-surface border border-border rounded-control px-3 py-2 text-body-sm font-semibold focus:outline-hidden text-text-secondary cursor-pointer"
                   >
                     <option value="">Todos os Estados</option>
                     {riskStatuses.map(st => (
                       <option key={st.id} value={st.id}>{st.name}</option>
                     ))}
-                  </select>
+                  </Select>
 
                   {canWriteProjects && (
-                    <button
+                    <Button variant="primary" size="sm"
                       type="button"
                       onClick={() => {
                         resetRiskForm();
                         setShowRiskModal(true);
                       }}
-                      className="flex items-center gap-1.5 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition-colors cursor-pointer shadow-xs"
+                      className="flex items-center gap-1.5 text-body-sm font-extrabold text-white bg-primary hover:bg-primary px-4 py-2 rounded-control transition-colors cursor-pointer shadow-xs"
                     >
                       <Plus className="w-4 h-4" /> Identificar Risco
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
 
               {/* Risks List */}
               {projRiskItems.filter(ri => {
-                const matchesSearch = !riskSearchQuery.trim() || 
+                const matchesSearch = !riskSearchQuery.trim() ||
                   (ri.title || '').toLowerCase().includes(riskSearchQuery.toLowerCase()) ||
                   (ri.description || '').toLowerCase().includes(riskSearchQuery.toLowerCase());
                 const matchesCategory = !riskFilterCategory || ri.categoryId === riskFilterCategory;
                 const matchesStatus = !riskFilterStatus || ri.statusId === riskFilterStatus;
                 return matchesSearch && matchesCategory && matchesStatus;
               }).length === 0 ? (
-                <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-12 text-center text-slate-400 text-xs font-semibold flex flex-col items-center gap-3">
-                  <ShieldAlert className="w-8 h-8 text-slate-300" />
+                <div className="bg-surface-muted border border-dashed border-border rounded-card p-12 text-center text-text-muted text-body-sm font-semibold flex flex-col items-center gap-3">
+                  <ShieldAlert className="w-8 h-8 text-text-muted" />
                   <span>Não foram encontrados riscos com os critérios definidos.</span>
                 </div>
               ) : (
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                <Card className="bg-surface border border-border rounded-card overflow-hidden shadow-xs">
                   <div className="overflow-x-auto w-full">
-                    <table className="w-full min-w-[900px] text-left text-xs divide-y divide-slate-100">
-                      <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+                    <table className="w-full min-w-[900px] text-left text-body-sm divide-y divide-border-subtle">
+                      <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
                         <tr>
                           <th className="px-5 py-3.5">Título / Categoria</th>
                           <th className="px-3 py-3.5">Responsável</th>
@@ -3229,9 +3205,9 @@ export default function ProjectSection({
                           <th className="px-5 py-3.5 text-right">Ações</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      <tbody className="divide-y divide-border-subtle font-medium text-text-secondary">
                         {projRiskItems.filter(ri => {
-                          const matchesSearch = !riskSearchQuery.trim() || 
+                          const matchesSearch = !riskSearchQuery.trim() ||
                             (ri.title || '').toLowerCase().includes(riskSearchQuery.toLowerCase()) ||
                             (ri.description || '').toLowerCase().includes(riskSearchQuery.toLowerCase());
                           const matchesCategory = !riskFilterCategory || ri.categoryId === riskFilterCategory;
@@ -3244,65 +3220,65 @@ export default function ProjectSection({
 
                           return (
                             <React.Fragment key={item.id}>
-                              <tr className={`hover:bg-slate-50/50 transition-colors ${isExpanded ? 'bg-blue-50/20' : ''}`}>
+                              <tr className={`hover:bg-surface-muted/50 transition-colors ${isExpanded ? 'bg-primary/20' : ''}`}>
                                 <td className="px-5 py-3.5">
                                   <div className="flex flex-col gap-0.5">
-                                    <span className="font-bold text-slate-900 text-xs">{item.title}</span>
-                                    <span className="text-[10px] text-slate-400 font-semibold">{getRiskCategoryName(item.categoryId)}</span>
+                                    <span className="font-bold text-text-primary text-body-sm">{item.title}</span>
+                                    <span className="text-caption text-text-muted font-semibold">{getRiskCategoryName(item.categoryId)}</span>
                                   </div>
                                 </td>
-                                <td className="px-3 py-3.5 text-slate-600">
+                                <td className="px-3 py-3.5 text-text-secondary">
                                   <div className="flex items-center gap-1.5">
-                                    <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <Users className="w-3.5 h-3.5 text-text-muted shrink-0" />
                                     <span className="font-semibold">{ownerName}</span>
                                   </div>
                                 </td>
-                                <td className="px-3 py-3.5 text-center font-extrabold text-slate-800 text-[13px]">{item.probability}</td>
-                                <td className="px-3 py-3.5 text-center font-extrabold text-slate-800 text-[13px]">{item.impact}</td>
+                                <td className="px-3 py-3.5 text-center font-extrabold text-text-primary text-label">{item.probability}</td>
+                                <td className="px-3 py-3.5 text-center font-extrabold text-text-primary text-label">{item.impact}</td>
                                 <td className="px-3 py-3.5 text-center">
-                                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center justify-center gap-1 max-w-[130px] mx-auto ${level.color}`}>
+                                  <span className={`px-2.5 py-1 rounded-full text-caption font-black uppercase tracking-wider border flex items-center justify-center gap-1 max-w-[130px] mx-auto ${level.color}`}>
                                     <span>{level.dot}</span>
                                     <span>{level.label} ({level.score})</span>
                                   </span>
                                 </td>
                                 <td className="px-3 py-3.5 text-center">
-                                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-extrabold border border-slate-200">
+                                  <span className="px-2 py-0.5 rounded bg-surface-muted text-text-secondary text-caption font-extrabold border border-border">
                                     {getRiskPriorityName(item.priorityId)}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3.5 text-center">
-                                  <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-extrabold">
+                                  <span className="px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary text-caption font-extrabold">
                                     {getRiskStatusName(item.statusId)}
                                   </span>
                                 </td>
-                                <td className="px-3 py-3.5 text-center text-slate-500 font-semibold">{item.reviewDate || '-'}</td>
+                                <td className="px-3 py-3.5 text-center text-text-secondary font-semibold">{item.reviewDate || '-'}</td>
                                 <td className="px-5 py-3.5 text-right space-x-1.5">
-                                  <button
+                                  <IconButton variant="ghost" aria-label={isExpanded ? "Ocultar Detalhes" : "Ver Detalhes"}
                                     type="button"
                                     onClick={() => setExpandedRiskId(isExpanded ? null : item.id)}
-                                    className="p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                                    className="p-1 text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
                                     title={isExpanded ? "Ocultar Detalhes" : "Ver Detalhes"}
                                   >
                                     <Info className="w-4 h-4" />
-                                  </button>
+                                  </IconButton>
                                   {canWriteProjects && (
                                     <>
-                                      <button
+                                      <IconButton variant="ghost" aria-label="Editar Risco"
                                         type="button"
                                         onClick={() => handleEditRisk(item)}
-                                        className="p-1 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer"
+                                        className="p-1 text-text-muted hover:text-primary transition-colors cursor-pointer"
                                         title="Editar Risco"
                                       >
                                         <Edit2 className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
+                                      </IconButton>
+                                      <IconButton variant="ghost" aria-label="Eliminar Risco"
                                         type="button"
                                         onClick={() => handleDeleteRisk(item.id)}
-                                        className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                        className="p-1 text-text-muted hover:text-error transition-colors cursor-pointer"
                                         title="Eliminar Risco"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
+                                      </IconButton>
                                     </>
                                   )}
                                 </td>
@@ -3311,34 +3287,34 @@ export default function ProjectSection({
                               {/* Expanded Row */}
                               {isExpanded && (
                                 <tr>
-                                  <td colSpan={9} className="bg-slate-50/80 px-8 py-5 border-t border-b border-slate-100">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-700 font-medium leading-relaxed">
+                                  <td colSpan={9} className="bg-surface-muted/80 px-8 py-5 border-t border-b border-border-subtle">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-body-sm text-text-secondary font-medium leading-relaxed">
                                       <div className="space-y-3">
                                         <div>
-                                          <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Descrição do Risco</span>
-                                          <p className="bg-white p-3 rounded-xl border border-slate-100 text-slate-800 whitespace-pre-wrap shadow-2xs font-semibold">
-                                            {item.description || <span className="text-slate-400 italic">Sem descrição registada.</span>}
+                                          <span className="block text-caption uppercase font-bold text-text-muted tracking-wider mb-1">Descrição do Risco</span>
+                                          <p className="bg-surface p-3 rounded-control border border-border-subtle text-text-primary whitespace-pre-wrap shadow-2xs font-semibold">
+                                            {item.description || <span className="text-text-muted italic">Sem descrição registada.</span>}
                                           </p>
                                         </div>
                                         <div>
-                                          <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Consequência</span>
-                                          <p className="bg-white p-3 rounded-xl border border-slate-100 text-slate-800 whitespace-pre-wrap shadow-2xs font-semibold">
-                                            {item.consequence || <span className="text-slate-400 italic">Sem consequências registadas.</span>}
+                                          <span className="block text-caption uppercase font-bold text-text-muted tracking-wider mb-1">Consequência</span>
+                                          <p className="bg-surface p-3 rounded-control border border-border-subtle text-text-primary whitespace-pre-wrap shadow-2xs font-semibold">
+                                            {item.consequence || <span className="text-text-muted italic">Sem consequências registadas.</span>}
                                           </p>
                                         </div>
                                       </div>
 
                                       <div className="space-y-3">
                                         <div>
-                                          <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Plano de Mitigação</span>
-                                          <p className="bg-white p-3 rounded-xl border border-slate-100 text-slate-800 whitespace-pre-wrap shadow-2xs font-semibold">
-                                            {item.mitigationPlan || <span className="text-slate-400 italic">Sem plano de mitigação registado.</span>}
+                                          <span className="block text-caption uppercase font-bold text-text-muted tracking-wider mb-1">Plano de Mitigação</span>
+                                          <p className="bg-surface p-3 rounded-control border border-border-subtle text-text-primary whitespace-pre-wrap shadow-2xs font-semibold">
+                                            {item.mitigationPlan || <span className="text-text-muted italic">Sem plano de mitigação registado.</span>}
                                           </p>
                                         </div>
                                         <div>
-                                          <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Plano de Contingência</span>
-                                          <p className="bg-white p-3 rounded-xl border border-slate-100 text-slate-800 whitespace-pre-wrap shadow-2xs font-semibold">
-                                            {item.contingencyPlan || <span className="text-slate-400 italic">Sem plano de contingência registado.</span>}
+                                          <span className="block text-caption uppercase font-bold text-text-muted tracking-wider mb-1">Plano de Contingência</span>
+                                          <p className="bg-surface p-3 rounded-control border border-border-subtle text-text-primary whitespace-pre-wrap shadow-2xs font-semibold">
+                                            {item.contingencyPlan || <span className="text-text-muted italic">Sem plano de contingência registado.</span>}
                                           </p>
                                         </div>
                                       </div>
@@ -3352,7 +3328,7 @@ export default function ProjectSection({
                       </tbody>
                     </table>
                   </div>
-                </div>
+                </Card>
               )}
             </div>
           )}
@@ -3361,11 +3337,11 @@ export default function ProjectSection({
           {activeDetailTab === 'analise' && (
             <div className="p-6 space-y-6 animate-fade-in">
               <div>
-                <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                <h3 className="font-extrabold text-text-primary text-base flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-primary" />
                   Análise Geral do Projeto
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Estatísticas acumuladas de carga horária, técnicos, desvios de datas e distribuição de tarefas</p>
+                <p className="text-body-sm text-text-secondary mt-0.5">Estatísticas acumuladas de carga horária, técnicos, desvios de datas e distribuição de tarefas</p>
               </div>
 
               {/* Stats & Charts Content */}
@@ -3453,147 +3429,135 @@ export default function ProjectSection({
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       {/* Card 1: Carga Horária */}
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-1 shadow-2xs">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Carga horária</span>
-                        <div className="text-xl font-black text-slate-900">{formatMins(totalWorkloadMins)}h</div>
-                        <p className="text-[10px] text-slate-500 font-medium truncate">Soma de horas efetivas e estimativas pendentes</p>
+                      <div className="bg-surface-muted border border-border rounded-card p-4 space-y-1 shadow-2xs">
+                        <span className="text-caption uppercase font-bold text-text-muted tracking-wider">Carga horária</span>
+                        <div className="text-xl font-black text-text-primary">{formatMins(totalWorkloadMins)}h</div>
+                        <p className="text-caption text-text-secondary font-medium truncate">Soma de horas efetivas e estimativas pendentes</p>
                       </div>
 
                       {/* Card 2: Prazo Venda */}
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-1 shadow-2xs">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Prazo de Entrega (Venda)</span>
-                        <div className="text-xl font-black text-slate-900">{daysDiffAdjudicationToDelivery}</div>
-                        <div className="text-[10px] text-slate-500 font-medium">De {startDateStr} a {deliveryDateStr}</div>
+                      <div className="bg-surface-muted border border-border rounded-card p-4 space-y-1 shadow-2xs">
+                        <span className="text-caption uppercase font-bold text-text-muted tracking-wider">Prazo de Entrega (Venda)</span>
+                        <div className="text-xl font-black text-text-primary">{daysDiffAdjudicationToDelivery}</div>
+                        <div className="text-caption text-text-secondary font-medium">De {startDateStr} a {deliveryDateStr}</div>
                       </div>
 
                       {/* Card 3: Desvio Estimativa Real */}
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-1 shadow-2xs">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Desvio de Estimativa Real</span>
-                        <div className={`text-xl font-black ${daysDiffEstimatedToDelivery.includes('Atraso') ? 'text-amber-600' : 'text-slate-900'}`}>
+                      <div className="bg-surface-muted border border-border rounded-card p-4 space-y-1 shadow-2xs">
+                        <span className="text-caption uppercase font-bold text-text-muted tracking-wider">Desvio de Estimativa Real</span>
+                        <div className={`text-xl font-black ${daysDiffEstimatedToDelivery.includes('Atraso') ? 'text-warning' : 'text-text-primary'}`}>
                           {daysDiffEstimatedToDelivery}
                         </div>
-                        <div className="text-[10px] text-slate-500 font-medium">Estimada real: {estimatedDateStr}</div>
+                        <div className="text-caption text-text-secondary font-medium">Estimada real: {estimatedDateStr}</div>
                       </div>
                     </div>
 
                     {/* Contagem por Tipo de Tarefa */}
-                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-                      <div className="p-4 bg-slate-50 border-b border-slate-100 font-extrabold text-xs text-slate-800 uppercase tracking-wide">
+                    <Card className="bg-surface border border-border rounded-card overflow-hidden shadow-2xs">
+                      <div className="p-4 bg-surface-muted border-b border-border-subtle font-extrabold text-body-sm text-text-primary uppercase tracking-wide">
                         Contagem e Carga Horária por Tipo de Tarefa
                       </div>
                       <div className="overflow-x-auto w-full">
-                        <table className="w-full min-w-[420px] text-left border-collapse text-xs">
-                          <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+                        <table className="w-full min-w-[420px] text-left border-collapse text-body-sm">
+                          <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
                             <tr>
                               <th className="px-4 py-2.5">Tipo de Tarefa</th>
                               <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
                               <th className="px-4 py-2.5 text-right">Carga Horária</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                          <tbody className="divide-y divide-border-subtle font-semibold text-text-secondary">
                             {Object.keys(taskCountsByType).length === 0 ? (
                               <tr>
-                                <td colSpan={3} className="px-4 py-6 text-center text-slate-400 italic font-normal">Nenhuma tarefa registada para este projeto.</td>
+                                <td colSpan={3} className="px-4 py-6 text-center text-text-muted italic font-normal">Nenhuma tarefa registada para este projeto.</td>
                               </tr>
                             ) : (
                               Object.entries(taskCountsByType).map(([tName, data]) => (
-                                <tr key={tName} className="hover:bg-slate-50">
-                                  <td className="px-4 py-3 font-extrabold text-slate-800">{tName}</td>
+                                <tr key={tName} className="hover:bg-surface-muted">
+                                  <td className="px-4 py-3 font-extrabold text-text-primary">{tName}</td>
                                   <td className="px-4 py-3 text-center">
-                                    <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full font-extrabold">{data.count}</span>
+                                    <span className="px-2.5 py-0.5 bg-primary/10 text-primary rounded-full font-extrabold">{data.count}</span>
                                   </td>
-                                  <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{formatMins(data.workloadMins)}h</td>
+                                  <td className="px-4 py-3 text-right font-mono font-bold text-text-primary">{formatMins(data.workloadMins)}h</td>
                                 </tr>
                               ))
                             )}
                           </tbody>
                         </table>
                       </div>
-                    </div>
+                    </Card>
 
                     {/* Contagem e Carga Horária por Técnico */}
-                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-                      <div className="p-4 bg-slate-50 border-b border-slate-100 font-extrabold text-xs text-slate-800 uppercase tracking-wide">
+                    <Card className="bg-surface border border-border rounded-card overflow-hidden shadow-2xs">
+                      <div className="p-4 bg-surface-muted border-b border-border-subtle font-extrabold text-body-sm text-text-primary uppercase tracking-wide">
                         Contagem e Carga Horária por Técnico
                       </div>
                       <div className="overflow-x-auto w-full">
-                        <table className="w-full min-w-[420px] text-left border-collapse text-xs">
-                          <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+                        <table className="w-full min-w-[420px] text-left border-collapse text-body-sm">
+                          <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
                             <tr>
                               <th className="px-4 py-2.5">Técnico</th>
                               <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
                               <th className="px-4 py-2.5 text-right">Carga Horária</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                          <tbody className="divide-y divide-border-subtle font-semibold text-text-secondary">
                             {Object.keys(taskCountsByTech).length === 0 ? (
                               <tr>
-                                <td colSpan={3} className="px-4 py-6 text-center text-slate-400 italic font-normal">Nenhum técnico atribuído a tarefas deste projeto.</td>
+                                <td colSpan={3} className="px-4 py-6 text-center text-text-muted italic font-normal">Nenhum técnico atribuído a tarefas deste projeto.</td>
                               </tr>
                             ) : (
                               Object.entries(taskCountsByTech).map(([techName, data]) => (
-                                <tr key={techName} className="hover:bg-slate-50">
-                                  <td className="px-4 py-3 font-extrabold text-slate-800">{techName}</td>
+                                <tr key={techName} className="hover:bg-surface-muted">
+                                  <td className="px-4 py-3 font-extrabold text-text-primary">{techName}</td>
                                   <td className="px-4 py-3 text-center">
-                                    <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full font-extrabold">{data.count}</span>
+                                    <span className="px-2.5 py-0.5 bg-primary/10 text-primary rounded-full font-extrabold">{data.count}</span>
                                   </td>
-                                  <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{formatMins(data.workloadMins)}h</td>
+                                  <td className="px-4 py-3 text-right font-mono font-bold text-text-primary">{formatMins(data.workloadMins)}h</td>
                                 </tr>
                               ))
                             )}
                           </tbody>
                         </table>
                       </div>
-                    </div>
+                    </Card>
                   </div>
                 );
               })()}
             </div>
           )}
 
-        </div>
+        </Card>
       ) : isEditing ? (
-        
-        // 2. PROJECT EDIT OR CREATE FORM
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 -sm animate-fade-in">
-          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-            <h2 className="text-lg font-bold text-slate-800">
-              {editingId ? `Editar Projeto: ID ${editingId}` : 'Adicionar novo projeto'}
-            </h2>
-            <div className="flex items-center gap-2">
-              <button 
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="text-xs font-semibold text-slate-500 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200"
-              >
-                Cancelar
-              </button>
-              <button 
-                type="submit"
-                className="text-xs font-semibold text-white bg-black hover:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-900"
-              >
-                Gravar Alterações
-              </button>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs font-bold text-slate-700">
-            
+        // 2. PROJECT EDIT OR CREATE FORM
+        <form onSubmit={handleSubmit} className="bg-surface rounded-card border border-border p-6 space-y-6 -sm animate-fade-in">
+          <M3SectionHeader
+            title={editingId ? 'Editar projeto' : 'Adicionar novo projeto'}
+            description={editingId ? `ID ${editingId}` : undefined}
+            actions={<>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setIsEditing(false)}>Cancelar</Button>
+              <Button type="submit" size="sm">Gravar Alterações</Button>
+            </>}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-body-sm font-bold text-text-secondary">
+
             {/* Client Suggested Select */}
             <div className="space-y-1 relative" id="client-autocomplete-container">
-              <label className="block text-slate-500">Cliente *</label>
+              <label className="block text-text-secondary">Cliente *</label>
               <div className="relative">
-                <input 
-                  type="text" 
+                <Input aria-label="Cliente"
+                  type="text"
                   required
                   value={clientSearchQuery}
                   onChange={e => {
                     const val = e.target.value;
                     setClientSearchQuery(val);
                     setShowClientSuggestions(true);
-                    
+
                     // Match typed value dynamically to prevent losing client ID
-                    const matched = (clients || []).find(c => 
+                    const matched = (clients || []).find(c =>
                       c && !c.deleted && (
                         c.clientName.toLowerCase().trim() === val.toLowerCase().trim() ||
                         `${c.clientName} (${c.shortName})`.toLowerCase().trim() === val.toLowerCase().trim() ||
@@ -3607,18 +3571,18 @@ export default function ProjectSection({
                   onFocus={() => setShowClientSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowClientSuggestions(false), 250)}
                   placeholder="Pesquisar cliente por nome..."
-                  className="w-full p-2.5 pr-8 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none bg-white font-semibold text-slate-800"
+                  className="w-full p-2.5 pr-8 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-none bg-surface font-semibold text-text-primary"
                 />
-                <Search className="w-4 h-4 text-slate-400 absolute right-3 top-3.5 pointer-events-none" />
+                <Search className="w-4 h-4 text-text-muted absolute right-3 top-3.5 pointer-events-none" />
               </div>
 
               {showClientSuggestions && (
-                <div className="absolute z-50 left-0 right-0 max-h-60 overflow-y-auto bg-white border border-slate-200 rounded-xl -lg mt-1 p-1">
+                <div className="absolute z-50 left-0 right-0 max-h-60 overflow-y-auto bg-surface border border-border rounded-control -lg mt-1 p-1">
                   {autocompleteClients.length > 0 ? (
                     autocompleteClients.map(c => {
                       const isSelected = formClient === c.id;
                       return (
-                        <button
+                        <Button variant="ghost" size="sm"
                           key={c.id}
                           type="button"
                           onMouseDown={() => {
@@ -3626,19 +3590,19 @@ export default function ProjectSection({
                             setClientSearchQuery(`${c.clientName} (${c.shortName})`);
                             setShowClientSuggestions(false);
                           }}
-                          className={`w-full text-left p-2 rounded-lg text-xs transition-colors flex flex-col gap-0.5 cursor-pointer ${
-                            isSelected 
-                              ? 'bg-blue-50 text-blue-800 font-bold' 
-                              : 'hover:bg-slate-50 text-slate-700 font-semibold'
+                          className={`w-full text-left p-2 rounded-lg text-body-sm transition-colors flex flex-col gap-0.5 cursor-pointer ${
+                            isSelected
+                              ? 'bg-primary/10 text-primary font-bold'
+                              : 'hover:bg-surface-muted text-text-secondary font-semibold'
                           }`}
                         >
                           <span className="truncate">{c.clientName}</span>
-                          <span className="text-[10px] text-slate-400 font-normal">{c.shortName} • {c.location || 'Sem localização'}</span>
-                        </button>
+                          <span className="text-caption text-text-muted font-normal">{c.shortName} • {c.location || 'Sem localização'}</span>
+                        </Button>
                       );
                     })
                   ) : (
-                    <div className="p-3 text-center text-slate-400 italic text-[11px] font-medium">
+                    <div className="p-3 text-center text-text-muted italic text-caption font-medium">
                       Nenhum cliente encontrado
                     </div>
                   )}
@@ -3648,52 +3612,52 @@ export default function ProjectSection({
 
             {/* Title */}
             <div className="space-y-1 md:col-span-2">
-              <label className="block text-slate-500">Nome do projeto *</label>
-              <input 
-                type="text" 
+              <label className="block text-text-secondary">Nome do projeto *</label>
+              <Input aria-label="Nome do projeto"
+                type="text"
                 required
                 value={formTitle}
                 onChange={e => setFormTitle(e.target.value)}
                 placeholder="Ex: Instalação de Balança Multicabeçal e Tapete Rejeitor"
-                className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-sm font-semibold"
+                className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-none text-body-sm font-semibold"
               />
             </div>
 
             {/* Description */}
             <div className="space-y-1 md:col-span-2">
-              <label className="block text-slate-500">Descrição</label>
-              <textarea 
+              <label className="block text-text-secondary">Descrição</label>
+              <Textarea aria-label="Descrição"
                 value={formDesc}
                 onChange={e => setFormDesc(e.target.value)}
                 rows={4}
                 placeholder="Introduza os detalhes do projeto..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-xs font-medium"
+                className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-none text-body-sm font-medium"
               />
             </div>
 
             {/* Budget */}
             <div className="space-y-1">
-              <label className="block text-slate-500">Valor da venda (€)</label>
+              <label className="block text-text-secondary">Valor da venda (€)</label>
               <div className="relative">
-                <span className="absolute left-3 top-3 text-slate-400 font-bold">€</span>
-                <input 
-                  type="number" 
+                <span className="absolute left-3 top-3 text-text-muted font-bold">€</span>
+                <Input aria-label="Valor da venda (€)"
+                  type="number"
                   value={formBudget}
                   onChange={e => setFormBudget(Number(e.target.value))}
-                  className="w-full pl-8 pr-3 p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none font-semibold"
+                  className="w-full pl-8 pr-3 p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-none font-semibold"
                 />
               </div>
             </div>
 
             {/* Category */}
             <div className="space-y-1">
-              <label className="block text-slate-500 font-bold">Categorias</label>
-              <div className="border border-slate-200 rounded-xl p-3 max-h-[120px] overflow-y-auto bg-slate-50/50 space-y-1.5">
+              <label className="block text-text-secondary font-bold">Categorias</label>
+              <div className="border border-border rounded-control p-3 max-h-[120px] overflow-y-auto bg-surface-muted/50 space-y-1.5">
                 {projectCategories.filter(c => !c.deleted).map(c => {
                   const isChecked = formCategories.some(catId => matchId(catId, c.id));
                   return (
-                    <label key={c.id} className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
-                      <input 
+                    <label key={c.id} className="flex items-center gap-2 text-body-sm font-semibold text-text-secondary cursor-pointer select-none">
+                      <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => {
@@ -3711,7 +3675,7 @@ export default function ProjectSection({
                             }
                           }
                         }}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                        className="rounded border-border text-primary focus:ring-primary w-4 h-4"
                       />
                       {c.name}
                     </label>
@@ -3722,24 +3686,24 @@ export default function ProjectSection({
 
             {/* Project status */}
             <div className="space-y-1">
-              <label className="block text-slate-500">Estado do projeto</label>
-              <select 
+              <label className="block text-text-secondary">Estado do projeto</label>
+              <Select aria-label="Estado do projeto"
                 value={formStatus}
                 onChange={e => setFormStatus(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold"
+                className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
               >
                 {sortedStatuses.filter(s => !s.deleted || s.id === formStatus).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              </Select>
             </div>
 
             {/* Project Manager (Team Type Users) */}
             <div className="space-y-1">
-              <label className="block text-slate-500">Project Leader *</label>
-              <select 
+              <label className="block text-text-secondary">Project Leader *</label>
+              <Select aria-label="Project Leader"
                 required
                 value={formProjManager}
                 onChange={e => setFormProjManager(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold"
+                className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
               >
                 <option value="">Escolher utilizador</option>
                 {(() => {
@@ -3774,16 +3738,16 @@ export default function ProjectSection({
                     </>
                   );
                 })()}
-              </select>
+              </Select>
             </div>
 
             {/* Field Manager (Team Type Users) */}
             <div className="space-y-1">
-              <label className="block text-slate-500">Técnico responsável</label>
-              <select 
+              <label className="block text-text-secondary">Técnico responsável</label>
+              <Select aria-label="Técnico responsável"
                 value={formFieldManager}
                 onChange={e => setFormFieldManager(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold"
+                className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
               >
                 <option value="">Escolher utilizador</option>
                 {(() => {
@@ -3818,16 +3782,16 @@ export default function ProjectSection({
                     </>
                   );
                 })()}
-              </select>
+              </Select>
             </div>
 
             {/* Sales Representative */}
             <div className="space-y-1">
-              <label className="block text-slate-500">Gestor de vendas</label>
-              <select 
+              <label className="block text-text-secondary">Gestor de vendas</label>
+              <Select aria-label="Gestor de vendas"
                 value={formSales}
                 onChange={e => setFormSales(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold"
+                className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
               >
                 <option value="">Escolher utilizador</option>
                 {(() => {
@@ -3862,100 +3826,100 @@ export default function ProjectSection({
                     </>
                   );
                 })()}
-              </select>
+              </Select>
             </div>
 
             {/* Demo Checkbox */}
             <div className="space-y-1 flex items-center h-full pt-4 pl-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={formDemo}
                   onChange={e => setFormDemo(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
                 />
-                <span className="text-slate-700">Marcar como Projeto de Demonstração</span>
+                <span className="text-text-secondary">Marcar como Projeto de Demonstração</span>
               </label>
             </div>
 
             {/* Dates: Start & Delivery */}
             <div className="space-y-1">
-              <label className="block text-slate-500">Data de adjudicação *</label>
-              <input 
-                type="date" 
+              <label className="block text-text-secondary">Data de adjudicação *</label>
+              <Input aria-label="Data de adjudicação"
+                type="date"
                 required
                 value={formStartDate}
                 onChange={e => setFormStartDate(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold text-slate-800"
+                className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-slate-500">Pazo de entrega da venda</label>
-              <input 
-                type="date" 
+              <label className="block text-text-secondary">Pazo de entrega da venda</label>
+              <Input aria-label="Pazo de entrega da venda"
+                type="date"
                 value={formDeliveryDate}
                 onChange={e => setFormDeliveryDate(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold text-slate-800"
+                className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
               />
             </div>
 
             {/* Dates: Estimated & Scheduled */}
             <div className="space-y-1">
-              <label className="block text-slate-500">Data estimada real</label>
-              <input 
-                type="date" 
+              <label className="block text-text-secondary">Data estimada real</label>
+              <Input aria-label="Data estimada real"
+                type="date"
                 value={formEstimatedDate}
                 onChange={e => setFormEstimatedDate(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold text-slate-800"
+                className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-slate-500">Data agendada com cliente</label>
-              <input 
-                type="date" 
+              <label className="block text-text-secondary">Data agendada com cliente</label>
+              <Input aria-label="Data agendada com cliente"
+                type="date"
                 value={formScheduledDate}
                 onChange={e => setFormScheduledDate(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold text-slate-800"
+                className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
               />
             </div>
 
             {/* Client Contact Details */}
-            <div className="space-y-4 md:col-span-2 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <UserCheck className="w-5 h-5 text-slate-400" />
+            <div className="space-y-4 md:col-span-2 p-4 bg-surface-muted border border-border rounded-control">
+              <h3 className="font-bold text-text-primary flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-text-muted" />
                 Contactos do Cliente no Projeto
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
-                  <label className="block text-slate-500 text-xs">Nome</label>
-                  <input 
-                    type="text" 
+                  <label className="block text-text-secondary text-body-sm">Nome</label>
+                  <Input aria-label="Nome"
+                    type="text"
                     value={formClientContactName}
                     onChange={e => setFormClientContactName(e.target.value)}
                     placeholder="Nome completo"
-                    className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold"
+                    className="w-full p-2.5 border border-border rounded-control font-semibold"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-slate-500 text-xs">Email</label>
-                  <input 
-                    type="email" 
+                  <label className="block text-text-secondary text-body-sm">Email</label>
+                  <Input aria-label="Email"
+                    type="email"
                     value={formClientContactEmail}
                     onChange={e => setFormClientContactEmail(e.target.value)}
                     placeholder="email@cliente.pt"
-                    className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold"
+                    className="w-full p-2.5 border border-border rounded-control font-semibold"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-slate-500 text-xs">Telefone</label>
-                  <input 
-                    type="tel" 
+                  <label className="block text-text-secondary text-body-sm">Telefone</label>
+                  <Input aria-label="Telefone"
+                    type="tel"
                     value={formClientContactPhone}
                     onChange={e => setFormClientContactPhone(e.target.value)}
                     placeholder="+351 912345678"
-                    className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold"
+                    className="w-full p-2.5 border border-border rounded-control font-semibold"
                   />
                 </div>
               </div>
@@ -3963,52 +3927,52 @@ export default function ProjectSection({
 
             {/* Integration Fields: Install No & SF Opport No */}
             <div className="space-y-1">
-              <label className="block text-slate-500">Install Project</label>
-              <input 
-                type="text" 
+              <label className="block text-text-secondary">Install Project</label>
+              <Input aria-label="Install Project"
+                type="text"
                 value={formInstallNo}
                 onChange={e => setFormInstallNo(e.target.value)}
                 placeholder="Ex: IP-2026-092"
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold font-mono"
+                className="w-full p-2.5 border border-border rounded-control font-semibold font-mono"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-slate-500">Oportunidade SF</label>
-              <input 
-                type="text" 
+              <label className="block text-text-secondary">Oportunidade SF</label>
+              <Input aria-label="Oportunidade SF"
+                type="text"
                 value={formSFNo}
                 onChange={e => setFormSFNo(e.target.value)}
                 placeholder="Ex: SF-OPP-1044"
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold font-mono"
+                className="w-full p-2.5 border border-border rounded-control font-semibold font-mono"
               />
             </div>
 
             {/* Priority */}
             <div className="space-y-1">
-              <label className="block text-slate-500">Prioridade</label>
-              <select 
+              <label className="block text-text-secondary">Prioridade</label>
+              <Select aria-label="Prioridade"
                 value={formPriority}
                 onChange={e => setFormPriority(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold"
+                className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
               >
                 {projectPriorities.filter(p => !p.deleted || matchId(p.id, formPriority)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              </Select>
             </div>
 
             {/* Teams Involved (Multiple Choice checkbox list) */}
             <div className="space-y-1 md:col-span-2">
-              <label className="block text-slate-500 mb-1.5">Equipas envolvidas</label>
-              <div className="flex flex-wrap gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <label className="block text-text-secondary mb-1.5">Equipas envolvidas</label>
+              <div className="flex flex-wrap gap-4 bg-surface-muted p-3 rounded-control border border-border">
                 {projectTeams.filter(team => !team.deleted || formTeams.some(tid => matchId(tid, team.id))).map(team => (
                   <label key={team.id} className="flex items-center gap-1.5 cursor-pointer select-none">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       checked={formTeams.some(tid => matchId(tid, team.id))}
                       onChange={() => handleToggleTeam(team.id)}
-                      className="w-4 h-4 text-blue-600 rounded"
+                      className="w-4 h-4 text-primary rounded"
                     />
-                    <span className="text-slate-700">{team.name}</span>
+                    <span className="text-text-secondary">{team.name}</span>
                   </label>
                 ))}
               </div>
@@ -4016,17 +3980,17 @@ export default function ProjectSection({
 
             {/* Partners Involved (Multiple Choice checkbox list) */}
             <div className="space-y-1 md:col-span-2">
-              <label className="block text-slate-500 mb-1.5">Parceiros externos</label>
-              <div className="flex flex-wrap gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <label className="block text-text-secondary mb-1.5">Parceiros externos</label>
+              <div className="flex flex-wrap gap-4 bg-surface-muted p-3 rounded-control border border-border">
                 {projectPartners.filter(p => !p.deleted || formPartners.some(pid => matchId(pid, p.id))).map(p => (
                   <label key={p.id} className="flex items-center gap-1.5 cursor-pointer select-none">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       checked={formPartners.some(pid => matchId(pid, p.id))}
                       onChange={() => handleTogglePartner(p.id)}
-                      className="w-4 h-4 text-blue-600 rounded"
+                      className="w-4 h-4 text-primary rounded"
                     />
-                    <span className="text-slate-700">{p.name}</span>
+                    <span className="text-text-secondary">{p.name}</span>
                   </label>
                 ))}
               </div>
@@ -4034,36 +3998,36 @@ export default function ProjectSection({
 
             {/* Documents lists input */}
             <div className="space-y-2 md:col-span-2">
-              <label className="block text-slate-500">Esquemas Técnicos / Documentos (Anexos)</label>
+              <label className="block text-text-secondary">Esquemas Técnicos / Documentos (Anexos)</label>
               <div className="flex gap-2">
-                <input 
-                  type="text" 
+                <Input aria-label="Esquemas Técnicos / Documentos (Anexos)"
+                  type="text"
                   value={newDocName}
                   onChange={e => setNewDocName(e.target.value)}
                   placeholder="Introduza o nome do ficheiro (ex: Esquema_Pneumatico_v1.pdf)"
-                  className="flex-1 p-2 border border-slate-200 rounded-xl"
+                  className="flex-1 p-2 border border-border rounded-control"
                 />
-                <button 
+                <Button variant="ghost" size="sm"
                   type="button"
                   onClick={addDocument}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-xl font-bold"
+                  className="px-4 py-2 bg-surface-muted hover:bg-border border border-border text-text-secondary rounded-control font-bold"
                 >
                   Adicionar
-                </button>
+                </Button>
               </div>
-              
+
               {formDocs.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {formDocs.map((doc, idx) => (
-                    <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg">
+                    <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 border border-primary/20 text-primary rounded-lg">
                       <span className="font-semibold truncate max-w-[200px]">{doc}</span>
-                      <button 
-                        type="button" 
+                      <Button variant="ghost" size="sm"
+                        type="button"
                         onClick={() => removeDocument(idx)}
-                        className="text-red-500 hover:text-red-700 font-extrabold ml-1"
+                        className="text-error hover:text-error font-extrabold ml-1"
                       >
                         ×
-                      </button>
+                      </Button>
                     </span>
                   ))}
                 </div>
@@ -4072,38 +4036,38 @@ export default function ProjectSection({
 
             {/* Default Tasks Selection section */}
             {!editingId && defaultTasks && defaultTasks.length > 0 && (
-              <div className="space-y-2 md:col-span-2 border-t border-slate-100 pt-5 mt-2">
-                <label className="block text-slate-800 font-extrabold text-sm flex items-center gap-1.5 mb-1">
-                  <ListTodo className="w-4 h-4 text-emerald-600" />
+              <div className="space-y-2 md:col-span-2 border-t border-border-subtle pt-5 mt-2">
+                <label className="block text-text-primary font-extrabold text-body-sm flex items-center gap-1.5 mb-1">
+                  <ListTodo className="w-4 h-4 text-success-strong" />
                   Modelos de Tarefa por Defeito
                 </label>
-                <p className="text-slate-400 text-[10px] font-medium leading-relaxed mb-3">
+                <p className="text-text-muted text-caption font-medium leading-relaxed mb-3">
                   Selecione quais as tarefas padrão que deseja que sejam criadas automaticamente associadas a este novo projeto.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-surface-muted/50 p-3 rounded-card border border-border-subtle">
                   {defaultTasks.map(dt => (
-                    <label 
-                      key={dt.id} 
-                      className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-colors ${
+                    <label
+                      key={dt.id}
+                      className={`flex items-start gap-2.5 p-2.5 rounded-control border cursor-pointer transition-colors ${
                         selectedDefaultTaskIds.includes(dt.id)
-                          ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                          : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
+                          ? "bg-success/10 border-success/20 text-success-strong"
+                          : "bg-surface border-border hover:bg-surface-muted text-text-secondary"
                       }`}
                     >
-                      <input 
+                      <input
                         type="checkbox"
                         checked={selectedDefaultTaskIds.includes(dt.id)}
                         onChange={() => toggleDefaultTask(dt.id)}
-                        className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                        className="mt-0.5 w-4 h-4 text-success-strong rounded border-border focus:ring-success"
                       />
-                      <div className="text-[11px] leading-tight font-semibold flex-1">
-                        <div className="flex justify-between items-center gap-1 font-bold text-slate-800">
+                      <div className="text-caption leading-tight font-semibold flex-1">
+                        <div className="flex justify-between items-center gap-1 font-bold text-text-primary">
                           <span className="truncate max-w-[150px]">{dt.title}</span>
-                          <span className="text-[9px] px-1.5 py-0.5 bg-slate-100 rounded text-slate-500 font-mono flex-shrink-0">
+                          <span className="text-caption px-1.5 py-0.5 bg-surface-muted rounded text-text-secondary font-mono flex-shrink-0">
                             {dt.estimatedHours}
                           </span>
                         </div>
-                        <div className="text-[10px] text-slate-400 font-normal mt-0.5 truncate max-w-[200px]">
+                        <div className="text-caption text-text-muted font-normal mt-0.5 truncate max-w-[200px]">
                           {dt.description || "Sem descrição."}
                         </div>
                       </div>
@@ -4115,121 +4079,76 @@ export default function ProjectSection({
 
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
-            <button 
+          <div className="flex justify-end gap-3 pt-6 border-t border-border-subtle">
+            <Button variant="ghost" size="sm"
               type="button"
               onClick={() => setIsEditing(false)}
-              className="px-5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200"
+              className="px-5 py-2.5 bg-surface-muted hover:bg-surface-muted text-text-secondary font-bold rounded-control border border-border"
             >
               Cancelar
-            </button>
-            <button 
+            </Button>
+            <Button variant="primary" size="sm"
               type="submit"
-              className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors -sm"
+              className="px-6 py-2.5 bg-primary text-white rounded-control font-bold hover:bg-primary transition-colors -sm"
             >
               Gravar Alterações
-            </button>
+            </Button>
           </div>
         </form>
 
       ) : (
 
         // 3. MAIN PROJECTS PIPELINE DASHBOARD (LIST VIEW)
-        <div className="bg-white rounded-2xl border border-slate-200 -sm overflow-hidden animate-fade-in">
-          
+        <Card className="bg-surface rounded-card border border-border -sm overflow-hidden animate-fade-in">
+
           {/* List Header and Filter controls */}
-          <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 space-y-3.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-bold text-slate-800">Lista de projetos</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Consulta e pesquisa de projetos</p>
-              </div>
-              {canWriteProjects && (
-                <button 
-                  type="button"
-                  onClick={() => openForm(null)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
-                >
-                  <Plus className="w-4 h-4" /> Novo projeto
-                </button>
-              )}
-            </div>
+          <div className="p-4 sm:p-5 border-b border-border/80 bg-surface-muted/60 space-y-3.5">
+            <M3SectionHeader title="Lista de projetos" description="Consulta e pesquisa de projetos"
+              actions={canWriteProjects ? <Button type="button" onClick={() => openForm(null)}><Plus className="w-4 h-4" /> Novo projeto</Button> : undefined}
+            />
 
             {/* Filter inputs */}
             <div className="flex flex-wrap items-center gap-2.5">
               <div className="flex-1 min-w-[240px] relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
-                <input 
-                  type="text" 
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none z-10" />
+                <Input aria-label="Pesquisar projetos"
+                  type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Pesquisar por título, ID ou referência de instalação..."
-                  className="w-full pl-9 pr-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                  className="w-full pl-9 pr-3.5 py-2 bg-surface border border-border rounded-control text-body-sm font-medium text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                 />
               </div>
 
-              {/* Status Level Filter Buttons (Em curso | Implementação | Todos | Concluídos) */}
-              <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200/80">
-                <button
-                  type="button"
-                  onClick={() => handleStatusGroupChange('active')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    filterStatusGroup === 'active'
-                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Em curso
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStatusGroupChange('implementation')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    filterStatusGroup === 'implementation'
-                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Implementação
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStatusGroupChange('all')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    filterStatusGroup === 'all'
-                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Todos
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStatusGroupChange('completed')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    filterStatusGroup === 'completed'
-                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Concluídos
-                </button>
-              </div>
+              <M3SegmentedControl
+                label="Filtrar projetos por fase"
+                value={filterStatusGroup}
+                onChange={handleStatusGroupChange}
+                options={[
+                  { value: 'active', label: 'Em curso' },
+                  { value: 'implementation', label: 'Implementação' },
+                  { value: 'all', label: 'Todos' },
+                  { value: 'completed', label: 'Concluídos' },
+                ]}
+                className="m3-project-filters"
+              />
 
 
 
               {/* Manager dropdown */}
-              <select 
+              <div className="w-full sm:w-56 shrink-0">
+              <Select aria-label="Filtrar por gestor"
                 value={filterManager}
                 onChange={e => setFilterManager(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
+                className="px-3 py-2 bg-surface border border-border rounded-control text-body-sm font-semibold text-text-secondary outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer"
               >
                 <option value="">Todos os Gestores</option>
                 {users.filter(u => !u.deleted && projects.some(p => !p.deleted && (p.projectManagerId === u.id || matchId(p.projectManagerId, u.id))))
                   .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }))
                   .map(u => <option key={u.id} value={u.id}>{u.name}</option>)
                 }
-              </select>
+              </Select>
+              </div>
 
             </div>
           </div>
@@ -4237,10 +4156,10 @@ export default function ProjectSection({
           {/* Table list output */}
           <div className="overflow-x-auto w-full">
             {paginatedProjects.length === 0 ? (
-              <div className="p-10 text-center text-slate-400 font-medium text-xs">Nenhum projeto encontrado para os filtros selecionados.</div>
+              <div className="p-10 text-center text-text-muted font-medium text-body-sm">Nenhum projeto encontrado para os filtros selecionados.</div>
             ) : (
               <table className="w-full min-w-[700px] text-left border-collapse">
-                <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+                <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
                   <tr>
                     <th className="px-5 py-3.5 text-left">IP / Gestor</th>
                     <th className="px-5 py-3.5 text-left">Projeto</th>
@@ -4249,34 +4168,38 @@ export default function ProjectSection({
                     <th className="px-5 py-3.5 text-left">Risco / Prioridade</th>
                   </tr>
                 </thead>
-                <tbody className="text-xs divide-y divide-slate-100">
+                <tbody className="text-body-sm divide-y divide-border-subtle">
                   {paginatedProjects.map(proj => {
                     const calcRisk = getProjectCalculatedRisk(proj.id, projectRiskItems);
                     const isCritical = calcRisk.score >= 16;
                     return (
-                      <tr 
-                        key={proj.id} 
-                        className={`hover:bg-slate-50 cursor-pointer transition-colors ${
-                          isCritical ? 'border-l-4 border-l-rose-600 bg-rose-50/10' : ''
+                      <tr
+                        key={proj.id}
+                        className={`hover:bg-surface-muted cursor-pointer transition-colors ${
+                          isCritical ? 'border-l-4 border-l-error bg-error/10' : ''
                         }`}
                         onClick={() => setSelectedProjectId(proj.id)}
                       >
                         <td className="px-5 py-4">
-                          <div className="font-mono font-bold text-slate-800">{proj.installProjectNo || '-'}</div>
-                          <div className="text-[12px] text-slate-500 font-medium">{getUserName(proj.projectManagerId)}</div>
+                          <div className="font-mono font-bold text-text-primary">{proj.installProjectNo || '-'}</div>
+                          <div className="text-caption text-text-secondary font-medium">{getUserName(proj.projectManagerId)}</div>
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-2">
                             {isCritical && (
-                              <span className="w-1.5 h-7 bg-rose-600 rounded-full shrink-0" title="Risco Crítico do Projeto" />
+                              <span className="w-1.5 h-7 bg-error rounded-full shrink-0" title="Risco Crítico do Projeto" />
                             )}
                             <div>
-                              <div className="text-xs text-blue-600 font-medium">{getClientName(proj.clientId)}</div>
-                              <div className="font-extrabold text-slate-800 line-clamp-1 text-sm">{proj.title}</div>
+                              <div className="text-body-sm text-primary font-medium">{getClientName(proj.clientId)}</div>
+                              <Button type="button" variant="ghost" size="sm" className="h-auto min-h-9 px-0 text-left justify-start whitespace-normal text-text-primary"
+                                aria-label={`Abrir projeto ${proj.title}`}
+                                onClick={event => { event.stopPropagation(); setSelectedProjectId(proj.id); }}>
+                                {proj.title}
+                              </Button>
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-slate-500 font-medium">
+                        <td className="px-5 py-4 text-text-secondary font-medium">
                           <div>Venda: {proj.startDate || '-'}</div>
                           <div>Entrega: {proj.scheduledDate || proj.estimatedDate || proj.deliveryDate || '-'}</div>
                         </td>
@@ -4284,19 +4207,19 @@ export default function ProjectSection({
                           {(() => {
                             const pStyle = getProjectStatusStyle(proj.statusId, projectStatuses);
                             return (
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${pStyle.badgeClass}`}>
+                              <Badge className={pStyle.badgeClass}>
                                 {pStyle.name}
-                              </span>
+                              </Badge>
                             );
                           })()}
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex flex-col gap-1 items-start">
-                            <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border inline-flex items-center gap-1 ${calcRisk.color}`}>
+                            <span className={`text-caption font-extrabold uppercase px-2 py-0.5 rounded border inline-flex items-center gap-1 ${calcRisk.color}`}>
                               <span>{calcRisk.dot}</span>
                               <span>Risco: {calcRisk.label}</span>
                             </span>
-                            <span className="text-[10px] text-slate-500 font-medium pl-0.5">
+                            <span className="text-caption text-text-secondary font-medium pl-0.5">
                               Prioridade: {getPriorityName(proj.priorityId)}
                             </span>
                           </div>
@@ -4311,93 +4234,93 @@ export default function ProjectSection({
 
           {/* Project List Pagination Controls */}
           {totalProjects > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50/70 border-t border-slate-200/80 text-xs gap-3 font-medium">
-              <div className="flex items-center gap-3 text-slate-500 font-medium">
+            <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-surface-muted/70 border-t border-border/80 text-body-sm gap-3 font-medium">
+              <div className="flex items-center gap-3 text-text-secondary font-medium">
                 <span>
-                  A mostrar <span className="font-bold text-slate-700">{totalProjects === 0 ? 0 : startProjectIndex + 1}</span> a{' '}
-                  <span className="font-bold text-slate-700">{endProjectIndex}</span> de{' '}
-                  <span className="font-bold text-slate-700">{totalProjects}</span> projetos
+                  A mostrar <span className="font-bold text-text-secondary">{totalProjects === 0 ? 0 : startProjectIndex + 1}</span> a{' '}
+                  <span className="font-bold text-text-secondary">{endProjectIndex}</span> de{' '}
+                  <span className="font-bold text-text-secondary">{totalProjects}</span> projetos
                 </span>
-                <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
-                  <span className="text-slate-400">Por página:</span>
-                  <select
+                <div className="flex items-center gap-1.5 pl-3 border-l border-border">
+                  <span className="text-text-muted whitespace-nowrap">Por página:</span>
+                  <Select aria-label="Projetos por página"
                     value={projectPageSize}
                     onChange={e => {
                       setProjectPageSize(Number(e.target.value));
                       setProjectCurrentPage(1);
                     }}
-                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-blue-500"
+                    className="px-2 py-1 bg-surface border border-border rounded-lg text-body-sm font-semibold text-text-secondary outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option value={15}>15</option>
                     <option value={25}>25</option>
                     <option value={50}>50</option>
                     <option value={100}>100</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 
               {totalProjectPages > 1 && (
                 <div className="flex items-center gap-1">
-                  <button
+                  <Button variant="ghost" size="sm"
                     onClick={() => setProjectCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={validProjectPage === 1}
-                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-surface border border-border rounded-lg font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                     <span>Anterior</span>
-                  </button>
-                  
+                  </Button>
+
                   <div className="flex items-center gap-1 mx-1">
                     {getPaginationPages(validProjectPage, totalProjectPages).map((p, idx) => (
                       p === '...' ? (
-                        <span key={`ellipsis-proj-${idx}`} className="px-1 text-slate-400 font-bold">...</span>
+                        <span key={`ellipsis-proj-${idx}`} className="px-1 text-text-muted font-bold">...</span>
                       ) : (
-                        <button
+                        <Button variant="primary" size="sm"
                           key={`page-proj-${p}`}
                           onClick={() => setProjectCurrentPage(Number(p))}
-                          className={`min-w-[28px] h-7 px-1.5 flex items-center justify-center rounded-lg font-bold text-xs transition-colors ${
+                          className={`min-w-9 h-9 px-2 flex items-center justify-center rounded-control font-semibold text-body-sm transition-colors ${
                             validProjectPage === p
-                              ? 'bg-slate-900 text-white'
-                              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                              ? 'bg-primary text-white'
+                              : 'bg-surface border border-border text-text-secondary hover:bg-surface-muted'
                           }`}
                         >
                           {p}
-                        </button>
+                        </Button>
                       )
                     ))}
                   </div>
 
-                  <button
+                  <Button variant="ghost" size="sm"
                     onClick={() => setProjectCurrentPage(prev => Math.min(prev + 1, totalProjectPages))}
                     disabled={validProjectPage === totalProjectPages}
-                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-surface border border-border rounded-lg font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                   >
                     <span>Seguinte</span>
                     <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
           )}
-        </div>
+        </Card>
       )}
 
 
       {/* Modal do Cronograma em Ecrã Cheio */}
       {isFullTimelineModalOpen && selectedProj && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 md:p-6 transition-all duration-300">
-          <div className="w-full max-w-[95vw] h-[90vh] bg-white rounded-2xl -2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-primary/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 md:p-6 transition-all duration-300">
+          <div className="w-full max-w-[95vw] h-[90vh] bg-surface rounded-card -2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
             {/* Modal Header */}
-            <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+            <div className="bg-surface-muted border-b border-border px-6 py-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                <div className="p-2 bg-primary/10 text-primary rounded-lg">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-800 text-sm md:text-base uppercase tracking-wider">
+                  <h3 className="font-extrabold text-text-primary text-body-sm md:text-base uppercase tracking-wider">
                     Cronograma de 30 Dias: {selectedProj.title}
                   </h3>
-                  <p className="text-xs font-semibold text-slate-500">
+                  <p className="text-body-sm font-semibold text-text-secondary">
                     Navegue e reagende tarefas arrastando as barras coloridas
                   </p>
                 </div>
@@ -4405,60 +4328,60 @@ export default function ProjectSection({
 
               {/* Top Controls & Navigation */}
               <div className="flex items-center gap-3">
-                <span className="text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-md px-2.5 py-1 hidden sm:inline-block">
+                <span className="text-caption font-bold text-primary bg-primary/10 border border-primary/20 rounded-md px-2.5 py-1 hidden sm:inline-block">
                   {(() => {
                     const end = new Date(cronogramaStartDate);
                     end.setDate(end.getDate() + 29);
                     return `${cronogramaStartDate.toLocaleDateString('pt-PT')} a ${end.toLocaleDateString('pt-PT')}`;
                   })()}
                 </span>
-                
+
                 <div className="flex items-center gap-1">
-                  <button
+                  <Button variant="ghost" size="sm" aria-label="Voltar 5 dias"
                     type="button"
                     onClick={shiftCronogramaPrev}
-                    className="flex items-center gap-1 px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 cursor-pointer transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                     title="Voltar 5 dias"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" /> -5d
-                  </button>
-                  <button
+                  </Button>
+                  <Button variant="ghost" size="sm"
                     type="button"
                     onClick={resetCronogramaToDefault}
-                    className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 cursor-pointer transition-colors"
+                    className="px-2 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                   >
                     Hoje
-                  </button>
-                  <button
+                  </Button>
+                  <Button variant="ghost" size="sm" aria-label="Avançar 5 dias"
                     type="button"
                     onClick={shiftCronogramaNext}
-                    className="flex items-center gap-1 px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 cursor-pointer transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                     title="Avançar 5 dias"
                   >
                     +5d <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Close Button */}
-                <button
+                <IconButton variant="ghost" aria-label="Fechar modal"
                   type="button"
                   onClick={() => setIsFullTimelineModalOpen(false)}
-                  className="p-1.5 hover:bg-slate-200 border border-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-colors cursor-pointer flex items-center justify-center"
+                  className="p-1.5 hover:bg-border border border-border text-text-secondary hover:text-text-primary rounded-control transition-colors cursor-pointer flex items-center justify-center"
                   title="Fechar modal"
                 >
                   <X className="w-5 h-5" />
-                </button>
+                </IconButton>
               </div>
             </div>
 
             {/* Modal Body - Scrollable Timeline Table */}
-            <div className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50/50">
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs h-full flex flex-col">
+            <div className="flex-1 overflow-auto p-4 md:p-6 bg-surface-muted/50">
+              <Card className="bg-surface border border-border rounded-card overflow-hidden shadow-2xs h-full flex flex-col">
                 <div className="overflow-auto flex-1">
-                  <table className="w-full min-w-[1850px] text-xs text-left border-collapse table-fixed">
-                    <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200 whitespace-nowrap select-none">
-                      <tr className="bg-slate-50 border-b border-slate-200 sticky top-0 z-20">
-                        <th className="p-3.5 sticky left-0 bg-slate-50 border-r border-slate-200 font-bold text-slate-700 w-56 min-w-[210px] shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-30 text-[11px] uppercase tracking-wider">
+                  <table className="w-full min-w-[1850px] text-body-sm text-left border-collapse table-fixed">
+                    <thead className="bg-surface-muted text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border whitespace-nowrap select-none">
+                      <tr className="bg-surface-muted border-b border-border sticky top-0 z-20">
+                        <th className="p-3.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary w-56 min-w-[210px] shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-30 text-caption uppercase tracking-wider">
                           Tarefa
                         </th>
                         {(() => {
@@ -4469,26 +4392,26 @@ export default function ProjectSection({
                             const dayStr = formatDateToString(d);
                             const isToday = dayStr === formatDateToString(new Date());
                             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                            
+
                             days.push(
-                              <th 
-                                key={`modal-th-${dayStr}`} 
+                              <th
+                                key={`modal-th-${dayStr}`}
                                 onClick={() => {
                                   setIsFullTimelineModalOpen(false);
                                   openCreateTaskModal(dayStr);
                                   setShowImportTaskForm(false);
                                 }}
-                                className={`p-2 border-r border-slate-200/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-slate-200/50 transition-colors ${
-                                  isToday ? 'bg-amber-100/60 text-amber-950 border-x border-amber-300' :
-                                  isWeekend ? 'bg-slate-100/70 text-slate-500 hover:bg-slate-200/40' : 'text-slate-600'
+                                className={`p-2 border-r border-border/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-border/50 transition-colors ${
+                                  isToday ? 'bg-warning/60 text-warning border-x border-warning/20' :
+                                  isWeekend ? 'bg-surface-muted/70 text-text-secondary hover:bg-border/40' : 'text-text-secondary'
                                 }`}
                                 title="Clique para adicionar tarefa neste dia"
                               >
                                 <div className="text-caption uppercase font-semibold text-text-muted">
                                   {d.toLocaleDateString('pt-PT', { weekday: 'short' }).charAt(0).toUpperCase()}
                                 </div>
-                                <div className={`text-xs ${isToday ? 'font-extrabold text-amber-900' : ''}`}>{d.getDate()}</div>
-                                <div className="text-[8px] font-normal text-slate-400">
+                                <div className={`text-body-sm ${isToday ? 'font-extrabold text-warning' : ''}`}>{d.getDate()}</div>
+                                <div className="text-caption font-normal text-text-muted">
                                   {d.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '')}
                                 </div>
                               </th>
@@ -4500,11 +4423,11 @@ export default function ProjectSection({
                     </thead>
                     <tbody>
                       {/* Project Dates Summary Row */}
-                      <tr className="bg-slate-50/60 border-b border-slate-200">
-                        <td className="p-2.5 sticky left-0 bg-slate-100 border-r border-slate-200 font-bold text-slate-700 shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10">
-                          <div className="flex items-center gap-1.5 text-blue-800">
-                            <Flag className="w-3.5 h-3.5 text-blue-600" />
-                            <span className="text-[10px] uppercase font-bold tracking-wide">Lembretes do Projeto</span>
+                      <tr className="bg-surface-muted/60 border-b border-border">
+                        <td className="p-2.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10">
+                          <div className="flex items-center gap-1.5 text-primary">
+                            <Flag className="w-3.5 h-3.5 text-primary" />
+                            <span className="text-caption uppercase font-bold tracking-wide">Lembretes do Projeto</span>
                           </div>
                         </td>
                         {(() => {
@@ -4515,32 +4438,32 @@ export default function ProjectSection({
                             const dayStr = formatDateToString(d);
                             const isToday = dayStr === formatDateToString(new Date());
                             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                            
+
                             const isProjStart = selectedProj.startDate === dayStr;
                             const isProjDelivery = selectedProj.deliveryDate === dayStr;
                             const isProjEstimated = selectedProj.estimatedDate === dayStr;
                             const isProjScheduled = selectedProj.scheduledDate === dayStr;
 
                             cells.push(
-                              <td key={`modal-cell-proj-${dayStr}`} className={`p-1 border-r border-slate-200/80 text-center align-middle ${isToday ? 'bg-amber-50/40' : isWeekend ? 'bg-slate-100/40' : ''}`}>
+                              <td key={`modal-cell-proj-${dayStr}`} className={`p-1 border-r border-border/80 text-center align-middle ${isToday ? 'bg-warning/40' : isWeekend ? 'bg-surface-muted/40' : ''}`}>
                                 <div className="flex flex-col gap-0.5 items-center justify-center">
                                   {isProjStart && (
-                                    <span className="px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Data de Início do Projeto">
+                                    <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Data de Início do Projeto">
                                       INÍCIO
                                     </span>
                                   )}
                                   {isProjDelivery && (
-                                    <span className="px-1.5 py-0.5 bg-emerald-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Data de Entrega do Projeto">
+                                    <span className="px-1.5 py-0.5 bg-success-strong text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Data de Entrega do Projeto">
                                       ENTREGA
                                     </span>
                                   )}
                                   {isProjEstimated && !isProjDelivery && (
-                                    <span className="px-1.5 py-0.5 bg-slate-700 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Previsão de Conclusão">
+                                    <span className="px-1.5 py-0.5 bg-surface-elevated text-text-primary text-caption font-extrabold rounded shadow-xs scale-90" title="Previsão de Conclusão">
                                       PREVISTO
                                     </span>
                                   )}
                                   {isProjScheduled && !isProjStart && (
-                                    <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[8px] font-extrabold rounded shadow-xs scale-90" title="Instalação/Agendamento">
+                                    <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Instalação/Agendamento">
                                       AGENDADO
                                     </span>
                                   )}
@@ -4563,7 +4486,7 @@ export default function ProjectSection({
                         if (sortedTasks.length === 0) {
                           return (
                             <tr>
-                              <td colSpan={31} className="p-8 text-center text-slate-400 italic">
+                              <td colSpan={31} className="p-8 text-center text-text-muted italic">
                                 Nenhuma tarefa ativa associada a este projeto. Crie ou importe tarefas acima.
                               </td>
                             </tr>
@@ -4575,31 +4498,31 @@ export default function ProjectSection({
                           const assigneesText = t.assigneeIds && t.assigneeIds.length > 0
                             ? t.assigneeIds.map(uid => getUserName(uid)).join(', ')
                             : 'Não alocado';
-                          
+
                           const conflicts = getTaskConflicts(t);
 
                           return (
-                            <tr key={`modal-row-task-${t.id}`} className="border-b border-slate-100 hover:bg-slate-50/20 group">
-                              <td 
+                            <tr key={`modal-row-task-${t.id}`} className="border-b border-border-subtle hover:bg-surface-muted/20 group">
+                              <td
                                 onClick={() => openTaskDetailsModal(t)}
-                                className="p-3 sticky left-0 bg-white group-hover:bg-slate-50 hover:bg-slate-50 border-r border-slate-200 shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10 font-medium cursor-pointer transition-colors"
+                                className="p-3 sticky left-0 bg-surface group-hover:bg-surface-muted hover:bg-surface-muted border-r border-border shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10 font-medium cursor-pointer transition-colors"
                                 title={`Clique para ver/editar: ${t.title}`}
                               >
                                 <div className="space-y-1">
-                                  <div className="font-bold text-slate-800 text-xs truncate max-w-[190px] group-hover:text-blue-600 transition-colors" title={t.title}>
+                                  <div className="font-bold text-text-primary text-body-sm truncate max-w-[190px] group-hover:text-primary transition-colors" title={t.title}>
                                     {t.title}
                                   </div>
                                   <div className="flex items-center gap-2 flex-wrap">
                                     {(() => {
                                       const tStyle = getTaskStatusStyle(t.statusId, taskStatuses);
                                       return (
-                                        <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-extrabold border tracking-wider ${tStyle.badgeClass}`}>
+                                        <span className={`px-1.5 py-0.5 rounded-full text-caption font-extrabold border tracking-wider ${tStyle.badgeClass}`}>
                                           {tStyle.name}
                                         </span>
                                       );
                                     })()}
-                                    
-                                    <span className="text-[10px] text-slate-500 font-bold truncate max-w-[150px]">
+
+                                    <span className="text-caption text-text-secondary font-bold truncate max-w-[150px]">
                                       👤 {assigneesText}
                                     </span>
                                   </div>
@@ -4608,12 +4531,12 @@ export default function ProjectSection({
                                   {conflicts.length > 0 && (
                                     <div className="space-y-1 pt-1">
                                       {conflicts.map((c, idx) => (
-                                        <div 
-                                          key={`modal-conflict-${idx}`} 
-                                          className="flex items-start gap-1 p-1 bg-red-50 text-red-700 border border-red-200/60 rounded-md text-[9px] font-semibold leading-tight hover:bg-red-100 transition-colors"
+                                        <div
+                                          key={`modal-conflict-${idx}`}
+                                          className="flex items-start gap-1 p-1 bg-error/10 text-error border border-error/60 rounded-md text-caption font-semibold leading-tight hover:bg-error/10 transition-colors"
                                           title={c.details}
                                         >
-                                          <ShieldAlert className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                                          <ShieldAlert className="w-3.5 h-3.5 text-error flex-shrink-0 mt-0.5" />
                                           <span className="break-words">{c.details}</span>
                                         </div>
                                       ))}
@@ -4630,9 +4553,9 @@ export default function ProjectSection({
                                   const isToday = dayStr === formatDateToString(new Date());
                                   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                                   const isActive = isTaskActiveOnDay(t, dayStr);
-                                  
+
                                   dayCells.push(
-                                    <td 
+                                    <td
                                       key={`modal-daycell-${t.id}-${dayStr}`}
                                       onDragOver={(e) => e.preventDefault()}
                                       onDrop={(e) => {
@@ -4654,15 +4577,15 @@ export default function ProjectSection({
                                           });
                                         }
                                       }}
-                                      className={`p-1 border-r border-slate-200/80 text-center align-middle relative min-w-[55px] ${
-                                        isActive ? 'bg-blue-50/10' : ''
+                                      className={`p-1 border-r border-border/80 text-center align-middle relative min-w-[55px] ${
+                                        isActive ? 'bg-primary/10' : ''
                                       } ${
-                                        isToday ? 'bg-amber-50/30' : 
-                                        isWeekend ? 'bg-slate-50/60' : ''
+                                        isToday ? 'bg-warning/30' :
+                                        isWeekend ? 'bg-surface-muted/60' : ''
                                       }`}
                                     >
                                       {isActive && (
-                                        <div 
+                                        <div
                                           draggable={canWriteTasks}
                                           onDragStart={(e) => {
                                             e.stopPropagation();
@@ -4672,7 +4595,7 @@ export default function ProjectSection({
                                             }
                                             e.dataTransfer.setData('taskId', t.id);
                                           }}
-                                          className={`py-1.5 px-1 rounded-lg text-[9px] font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
+                                          className={`py-1.5 px-1 rounded-lg text-caption font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
                                             getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                           }`}
                                           title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}
@@ -4692,7 +4615,7 @@ export default function ProjectSection({
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </Card>
             </div>
 
             {/* Modal Footer */}
@@ -4704,86 +4627,86 @@ export default function ProjectSection({
                 <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-error/20 bg-error/10 text-error rounded flex items-center justify-center text-caption">⚠️</span> Alertas</span>
                 <span className="text-caption text-text-muted italic font-medium">Arraste as barras coloridas das tarefas no cronograma para reagendá-las em novos dias.</span>
               </div>
-              <button
+              <Button variant="primary" size="sm"
                 type="button"
                 onClick={() => setIsFullTimelineModalOpen(false)}
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-colors cursor-pointer text-xs -md -slate-100"
+                className="px-5 py-2 bg-primary hover:bg-primary text-white rounded-control font-bold transition-colors cursor-pointer text-body-sm -md -slate-100"
               >
                 Fechar
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
       {showRiskModal && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden text-xs font-bold text-slate-700">
+        <div className="fixed inset-0 bg-primary/60 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <Card className="bg-surface rounded-card border border-border shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden text-body-sm font-bold text-text-secondary">
             {/* Modal Header */}
-            <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-              <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-blue-600" />
+            <div className="bg-surface-muted border-b border-border-subtle px-6 py-4 flex items-center justify-between">
+              <h3 className="text-body-sm font-extrabold text-text-primary flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-primary" />
                 {editingRiskId ? 'Editar Risco Identificado' : 'Identificar Novo Risco de Projeto'}
               </h3>
-              <button
+              <IconButton aria-label="Fechar" variant="ghost" size="sm"
                 type="button"
                 onClick={() => setShowRiskModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer"
+                className="text-text-muted hover:text-text-secondary text-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
-              </button>
+              </IconButton>
             </div>
 
             {/* Modal Form */}
             <form onSubmit={handleSaveRisk} className="flex-1 overflow-y-auto p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-700">
-                
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-text-secondary">
+
                 {/* Title */}
                 <div className="space-y-1 md:col-span-2">
-                  <label className="block text-slate-500 font-bold">Título do Risco *</label>
-                  <input
+                  <label className="block text-text-secondary font-bold">Título do Risco *</label>
+                  <Input aria-label="Título do Risco"
                     type="text"
                     required
                     placeholder="Ex: Atraso na entrega de equipamentos críticos"
                     value={riskTitle}
                     onChange={e => setRiskTitle(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-hidden font-semibold text-slate-800"
+                    className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden font-semibold text-text-primary"
                   />
                 </div>
 
                 {/* Category & Owner */}
                 <div className="space-y-1">
-                  <label className="block text-slate-500 font-bold">Categoria do Risco *</label>
-                  <select
+                  <label className="block text-text-secondary font-bold">Categoria do Risco *</label>
+                  <Select aria-label="Categoria do Risco"
                     required
                     value={riskCategoryId}
                     onChange={e => setRiskCategoryId(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-hidden bg-white font-semibold text-slate-800 cursor-pointer"
+                    className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden bg-surface font-semibold text-text-primary cursor-pointer"
                   >
                     {riskCategories.map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-500 font-bold">Responsável / Proprietário do Risco</label>
-                  <select
+                  <label className="block text-text-secondary font-bold">Responsável / Proprietário do Risco</label>
+                  <Select aria-label="Responsável / Proprietário do Risco"
                     value={riskOwnerId}
                     onChange={e => setRiskOwnerId(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-hidden bg-white font-semibold text-slate-800 cursor-pointer"
+                    className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden bg-surface font-semibold text-text-primary cursor-pointer"
                   >
                     <option value="">Sem responsável (Geral)</option>
                     {users.map(u => (
                       <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 {/* Identification Date & suggested review date */}
                 <div className="space-y-1">
-                  <label className="block text-slate-500 font-bold">Data de Identificação *</label>
-                  <input
+                  <label className="block text-text-secondary font-bold">Data de Identificação *</label>
+                  <Input aria-label="Data de Identificação"
                     type="date"
                     required
                     value={riskIdentificationDate}
@@ -4794,7 +4717,7 @@ export default function ProjectSection({
                         setRiskReviewDate(calculateSuggestedReviewDate(riskProbability, riskImpact, val));
                       }
                     }}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-hidden font-semibold text-slate-800"
+                    className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden font-semibold text-text-primary"
                   />
                 </div>
 
@@ -4803,20 +4726,20 @@ export default function ProjectSection({
                     <label className="block text-text-secondary font-bold">Data da Próxima Revisão *</label>
                     <span className="text-caption text-primary font-bold uppercase bg-primary/10 px-1.5 py-0.5 rounded">Sugestão Automática</span>
                   </div>
-                  <input
+                  <Input
                     type="date"
                     required
                     value={riskReviewDate}
                     onChange={e => setRiskReviewDate(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-hidden font-semibold text-slate-800"
+                    className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden font-semibold text-text-primary"
                   />
                 </div>
 
                 {/* Probability & Impact */}
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                <div className="bg-surface-muted p-4 rounded-card border border-border space-y-3">
                   <span className="block text-caption uppercase font-bold text-text-secondary tracking-wider">Avaliação da Probabilidade</span>
                   <div className="flex items-center gap-3">
-                    <input
+                    <Input
                       type="range"
                       min="1"
                       max="5"
@@ -4829,20 +4752,20 @@ export default function ProjectSection({
                           setRiskReviewDate(calculateSuggestedReviewDate(val, riskImpact, riskIdentificationDate));
                         }
                       }}
-                      className="flex-1 accent-blue-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg appearance-none"
+                      className="flex-1 accent-blue-600 cursor-pointer h-1.5 bg-border rounded-lg appearance-none"
                     />
-                    <span className="w-10 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center font-black text-blue-800 text-sm">{riskProbability}</span>
+                    <span className="w-10 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center font-black text-primary text-body-sm">{riskProbability}</span>
                   </div>
-                  <div className="flex justify-between text-[9px] text-slate-400 font-bold uppercase tracking-wide">
+                  <div className="flex justify-between text-caption text-text-muted font-bold uppercase tracking-wide">
                     <span>Muito Baixo (1)</span>
                     <span>Muito Alto (5)</span>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                <div className="bg-surface-muted p-4 rounded-card border border-border space-y-3">
                   <span className="block text-caption uppercase font-bold text-text-secondary tracking-wider">Avaliação do Impacto</span>
                   <div className="flex items-center gap-3">
-                    <input
+                    <Input
                       type="range"
                       min="1"
                       max="5"
@@ -4855,26 +4778,26 @@ export default function ProjectSection({
                           setRiskReviewDate(calculateSuggestedReviewDate(riskProbability, val, riskIdentificationDate));
                         }
                       }}
-                      className="flex-1 accent-blue-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg appearance-none"
+                      className="flex-1 accent-blue-600 cursor-pointer h-1.5 bg-border rounded-lg appearance-none"
                     />
-                    <span className="w-10 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center font-black text-blue-800 text-sm">{riskImpact}</span>
+                    <span className="w-10 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center font-black text-primary text-body-sm">{riskImpact}</span>
                   </div>
-                  <div className="flex justify-between text-[9px] text-slate-400 font-bold uppercase tracking-wide">
+                  <div className="flex justify-between text-caption text-text-muted font-bold uppercase tracking-wide">
                     <span>Muito Baixo (1)</span>
                     <span>Muito Alto (5)</span>
                   </div>
                 </div>
 
                 {/* Auto Calculated Risk Score Badge */}
-                <div className="md:col-span-2 flex items-center justify-between p-4 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-xs">
+                <div className="md:col-span-2 flex items-center justify-between p-4 bg-primary text-white rounded-card border border-border shadow-xs">
                   <div className="flex flex-col gap-0.5">
                     <span className="text-caption text-text-muted font-bold uppercase tracking-wider">Nível de Risco Calculado</span>
-                    <span className="text-xs font-semibold text-slate-300">Fórmula: Probabilidade ({riskProbability}) × Impacto ({riskImpact})</span>
+                    <span className="text-body-sm font-semibold text-text-muted">Fórmula: Probabilidade ({riskProbability}) × Impacto ({riskImpact})</span>
                   </div>
                   {(() => {
                     const level = getRiskLevelDetails(riskProbability, riskImpact);
                     return (
-                      <span className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border shadow-sm ${level.color}`}>
+                      <span className={`px-4 py-2 rounded-control text-body-sm font-black uppercase tracking-widest border shadow-sm ${level.color}`}>
                         {level.dot} {level.label} ({level.score})
                       </span>
                     );
@@ -4883,100 +4806,100 @@ export default function ProjectSection({
 
                 {/* State & Priority */}
                 <div className="space-y-1">
-                  <label className="block text-slate-500 font-bold">Estado do Risco *</label>
-                  <select
+                  <label className="block text-text-secondary font-bold">Estado do Risco *</label>
+                  <Select aria-label="Estado do Risco"
                     required
                     value={riskStatusId}
                     onChange={e => setRiskStatusId(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-hidden bg-white font-semibold text-slate-800 cursor-pointer"
+                    className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden bg-surface font-semibold text-text-primary cursor-pointer"
                   >
                     {riskStatuses.map(st => (
                       <option key={st.id} value={st.id}>{st.name}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-500 font-bold">Prioridade *</label>
-                  <select
+                  <label className="block text-text-secondary font-bold">Prioridade *</label>
+                  <Select aria-label="Prioridade"
                     required
                     value={riskPriorityId}
                     onChange={e => setRiskPriorityId(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-hidden bg-white font-semibold text-slate-800 cursor-pointer"
+                    className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden bg-surface font-semibold text-text-primary cursor-pointer"
                   >
                     {riskPriorities.map(pr => (
                       <option key={pr.id} value={pr.id}>{pr.name}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 {/* Description & Consequence */}
                 <div className="space-y-1 md:col-span-2">
-                  <label className="block text-slate-500 font-bold">Descrição do Risco</label>
-                  <textarea
+                  <label className="block text-text-secondary font-bold">Descrição do Risco</label>
+                  <Textarea aria-label="Descrição do Risco"
                     rows={2}
                     placeholder="Descreva detalhadamente o risco e os fatores de ocorrência..."
                     value={riskDescription}
                     onChange={e => setRiskDescription(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-hidden font-semibold text-slate-800 placeholder-slate-400"
+                    className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden font-semibold text-text-primary placeholder-slate-400"
                   />
                 </div>
 
                 <div className="space-y-1 md:col-span-2">
-                  <label className="block text-slate-500 font-bold">Impacto / Consequência</label>
-                  <textarea
+                  <label className="block text-text-secondary font-bold">Impacto / Consequência</label>
+                  <Textarea aria-label="Impacto / Consequência"
                     rows={2}
                     placeholder="Quais as consequências reais para o projeto caso este risco se materialize?"
                     value={riskConsequence}
                     onChange={e => setRiskConsequence(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-hidden font-semibold text-slate-800 placeholder-slate-400"
+                    className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden font-semibold text-text-primary placeholder-slate-400"
                   />
                 </div>
 
                 {/* Action Plans */}
                 <div className="space-y-1 md:col-span-2">
-                  <label className="block text-slate-500 font-bold">Plano de Mitigação (Ações Preventivas)</label>
-                  <textarea
+                  <label className="block text-text-secondary font-bold">Plano de Mitigação (Ações Preventivas)</label>
+                  <Textarea aria-label="Plano de Mitigação (Ações Preventivas)"
                     rows={2}
                     placeholder="Quais as ações preventivas para reduzir a probabilidade de ocorrência?"
                     value={riskMitigationPlan}
                     onChange={e => setRiskMitigationPlan(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-hidden font-semibold text-slate-800 placeholder-slate-400"
+                    className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden font-semibold text-text-primary placeholder-slate-400"
                   />
                 </div>
 
                 <div className="space-y-1 md:col-span-2">
-                  <label className="block text-slate-500 font-bold">Plano de Contingência (Ações Corretivas)</label>
-                  <textarea
+                  <label className="block text-text-secondary font-bold">Plano de Contingência (Ações Corretivas)</label>
+                  <Textarea aria-label="Plano de Contingência (Ações Corretivas)"
                     rows={2}
                     placeholder="Qual o plano de ação caso o risco se materialize de facto?"
                     value={riskContingencyPlan}
                     onChange={e => setRiskContingencyPlan(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-hidden font-semibold text-slate-800 placeholder-slate-400"
+                    className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden font-semibold text-text-primary placeholder-slate-400"
                   />
                 </div>
 
               </div>
 
               {/* Form Actions */}
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
-                <button
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-border-subtle">
+                <Button variant="ghost" size="sm"
                   type="button"
                   onClick={() => setShowRiskModal(false)}
-                  className="px-5 py-2.5 text-xs font-extrabold text-slate-600 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+                  className="px-5 py-2.5 text-body-sm font-extrabold text-text-secondary hover:text-text-primary bg-surface-muted hover:bg-surface-muted rounded-control border border-border transition-colors cursor-pointer"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button variant="primary" size="sm"
                   type="submit"
-                  className="px-6 py-2.5 text-xs font-extrabold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-6 py-2.5 text-body-sm font-extrabold text-white bg-primary hover:bg-primary rounded-control shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />
                   {editingRiskId ? 'Gravar Alterações' : 'Adicionar Item de Risco'}
-                </button>
+                </Button>
               </div>
             </form>
-          </div>
+          </Card>
         </div>
       )}
 
