@@ -602,7 +602,7 @@ export default function TaskDetailsModal({
             {/* Title */}
             <div className="space-y-1">
               <label htmlFor="task-formTitle" className="block text-body-sm font-bold text-text-primary">
-                Título da Tarefa <span className="text-error">*</span>
+                Título da tarefa <span className="text-error">*</span>
               </label>
               <Input id="task-formTitle"
                 type="text"
@@ -610,7 +610,7 @@ export default function TaskDetailsModal({
                 readOnly={isPlanningReadOnly}
                 value={formTitle}
                 onChange={e => setFormTitle(e.target.value)}
-                placeholder="Ex: Instalação de painéis, Visita técnica, Configuração de rede..."
+                placeholder="Ex: Preparação de sistema, Programação PLC, Eletrificar sistema..."
                 className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary/20 read-only:bg-surface-muted"
               />
             </div>
@@ -619,7 +619,7 @@ export default function TaskDetailsModal({
             <div className="space-y-1 relative" ref={projectDropdownRef}>
               <div className="flex items-center justify-between">
                 <label htmlFor="task-projectSearchQuery" className="block text-label font-bold text-text-primary">
-                  Projeto (Cliente) <span className="text-caption text-text-muted font-normal">(Opcional)</span>
+                  Projeto 
                 </label>
                 {selectedProject && (
                   <span className="text-caption text-success bg-success/10 px-2 py-0.5 rounded-badge font-bold border border-success/20 flex items-center gap-1">
@@ -641,7 +641,7 @@ export default function TaskDetailsModal({
                   onFocus={() => {
                     if (!isPlanningReadOnly) setIsProjectDropdownOpen(true);
                   }}
-                  placeholder="Pesquisar por título de projeto ou nome de cliente (completo ou abreviado)..."
+                  placeholder="Pesquisar por nome de projeto ou cliente..."
                   className={`w-full pl-9 pr-8 py-2.5 border rounded-control text-body-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:outline-none transition-colors ${
                     formProjectId 
                       ? 'border-primary/20 bg-primary/5 text-text-primary font-bold'
@@ -665,7 +665,7 @@ export default function TaskDetailsModal({
               {!isPlanningReadOnly && isProjectDropdownOpen && (
                 <div className="absolute left-0 right-0 top-full mt-1.5 bg-surface border border-border rounded-control shadow-xl z-50 max-h-60 overflow-y-auto divide-y divide-border animate-in fade-in zoom-in-95 duration-100">
                   <div className="p-2 bg-surface-muted text-caption uppercase font-bold text-text-muted tracking-wider flex items-center justify-between">
-                    <span>Projetos Sugeridos ({projectSuggestions.length})</span>
+                    <span>Projetos sugeridos ({projectSuggestions.length})</span>
                     <span className="font-normal lowercase">opcional</span>
                   </div>
                   {projectSuggestions.length === 0 ? (
@@ -719,7 +719,7 @@ export default function TaskDetailsModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label htmlFor="task-formEstimatedDate" className="block text-label font-bold text-text-primary">
-                  Data Planeada <span className="text-caption text-text-muted font-normal">(Prevalece até existirem datas reais)</span>
+                  Data planeada <span className="text-caption text-text-muted font-normal"></span>
                 </label>
                 <Input id="task-formEstimatedDate"
                   type="date"
@@ -731,7 +731,7 @@ export default function TaskDetailsModal({
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="task-formEstimatedHours" className="block text-body-sm font-bold text-text-primary">Horas Previstas (h)</label>
+                <label htmlFor="task-formEstimatedHours" className="block text-body-sm font-bold text-text-primary">Horas previstas (h)</label>
                 <Input id="task-formEstimatedHours"
                   type="text"
                   readOnly={isPlanningReadOnly}
@@ -746,7 +746,7 @@ export default function TaskDetailsModal({
             {/* Task type (status is the first functional field above planning) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label htmlFor="task-formTypeId" className="block text-body-sm font-bold text-text-primary">Tipo de Tarefa</label>
+                <label htmlFor="task-formTypeId" className="block text-body-sm font-bold text-text-primary">Tipo de tarefa</label>
                 <Select id="task-formTypeId"
                   disabled={isPlanningReadOnly}
                   value={formTypeId}
@@ -763,13 +763,13 @@ export default function TaskDetailsModal({
 
             {/* Description (Instructions) */}
             <div className="space-y-1">
-              <label htmlFor="task-formDescription" className="block text-body-sm font-bold text-text-primary">Descrição / Instruções de Planeamento</label>
+              <label htmlFor="task-formDescription" className="block text-body-sm font-bold text-text-primary">Descrição</label>
               <Textarea id="task-formDescription"
                 rows={2}
                 readOnly={isPlanningReadOnly}
                 value={formDescription}
                 onChange={e => setFormDescription(e.target.value)}
-                placeholder="Detalhes adicionais, escopo ou instruções..."
+                placeholder="Detalhes adicionais ou instruções..."
                 className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 read-only:bg-surface-muted"
               />
             </div>
@@ -814,7 +814,7 @@ export default function TaskDetailsModal({
             {/* Consumed Real Hours */}
             <div className="space-y-1">
               <label htmlFor="task-formActualHours" className="block text-body-sm font-bold text-text-primary">
-                Horas Reais Consumidas (h)
+                Horas consumidas (h)
               </label>
               <Input id="task-formActualHours"
                 type="number" 
@@ -826,15 +826,13 @@ export default function TaskDetailsModal({
                 placeholder="Ex: 6"
                 className="w-full p-2.5 border border-border rounded-control text-body-sm font-semibold bg-surface text-text-primary focus:ring-2 focus:ring-warning/20 read-only:bg-surface-muted"
               />
-              <p className="text-caption text-text-muted font-medium">
-                As horas reais representam o tempo efetivamente despendido na tarefa.
-              </p>
+
             </div>
 
             {/* Execution Dates and Times */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label htmlFor="task-formStartDate" className="block text-label font-bold text-text-primary">Data de Início</label>
+                <label htmlFor="task-formStartDate" className="block text-label font-bold text-text-primary">Data de início</label>
                 <Input id="task-formStartDate"
                   type="date" 
                   readOnly={isReadOnly}
@@ -844,7 +842,7 @@ export default function TaskDetailsModal({
                 />
               </div>
               <div className="space-y-1">
-                <label htmlFor="task-formStartTime" className="block text-label font-bold text-text-primary">Hora de Início</label>
+                <label htmlFor="task-formStartTime" className="block text-label font-bold text-text-primary">Hora de início</label>
                 <Input id="task-formStartTime"
                   type="time" 
                   readOnly={isReadOnly}
@@ -857,7 +855,7 @@ export default function TaskDetailsModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label htmlFor="task-formEndDate" className="block text-label font-bold text-text-primary">Data de Fim</label>
+                <label htmlFor="task-formEndDate" className="block text-label font-bold text-text-primary">Data de fim</label>
                 <Input id="task-formEndDate"
                   type="date" 
                   readOnly={isReadOnly}
@@ -868,7 +866,7 @@ export default function TaskDetailsModal({
                 />
               </div>
               <div className="space-y-1">
-                <label htmlFor="task-formEndTime" className="block text-label font-bold text-text-primary">Hora de Fim</label>
+                <label htmlFor="task-formEndTime" className="block text-label font-bold text-text-primary">Hora de fim</label>
                 <Input id="task-formEndTime"
                   type="time" 
                   readOnly={isReadOnly}
@@ -881,7 +879,7 @@ export default function TaskDetailsModal({
 
             {/* Execution Description / Notes */}
             <div className="space-y-1">
-              <label htmlFor="task-formNotes" className="block text-body-sm font-bold text-text-primary">Descrição / Notas de Execução</label>
+              <label htmlFor="task-formNotes" className="block text-body-sm font-bold text-text-primary">Descrição de execução</label>
               <Textarea id="task-formNotes"
                 rows={2}
                 readOnly={isReadOnly}
@@ -932,12 +930,12 @@ export default function TaskDetailsModal({
                   {isSubmitting 
                     ? 'A processar...' 
                     : isDuplication
-                    ? 'Criar Tarefa Duplicada'
+                    ? 'Criar tarefa duplicada'
                     : effectiveMode === 'create' 
-                    ? 'Criar Tarefa' 
+                    ? 'Criar tarefa' 
                     : effectiveMode === 'execute'
-                    ? 'Registar Execução'
-                    : 'Gravar Alterações'}
+                    ? 'Gravar execução'
+                    : 'Gravar alterações'}
                 </Button>
               )}
             </div>

@@ -386,9 +386,6 @@ export default function BentoDashboard({
   return (
     <div className="m3-dashboard grid grid-cols-1 md:grid-cols-12 gap-5 auto-rows-min animate-fade-in">
       
-      <div className="md:col-span-12">
-        <M3SectionHeader title="Dashboard" description="Projetos, trabalho da semana e atividade da equipa num só lugar." />
-      </div>
 
       {/* Top Summary Cards Section */}
       <div className="md:col-span-12 grid grid-cols-1 sm:grid-cols-3 gap-5">
@@ -641,10 +638,8 @@ export default function BentoDashboard({
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-caption font-bold text-primary truncate">{clientName}</span>
-                          <Badge className={pStyle.badgeClass}>
-                            {pStyle.name}
-                          </Badge>
+                          <span className="font-medium text-caption font-bold text-primary truncate">{clientName}</span>
+
                         </div>
                         <div className="text-body-sm font-semibold text-text-primary truncate">{project.title}</div>
                       </div>
@@ -687,7 +682,7 @@ export default function BentoDashboard({
                 Pág. {currentWorkloadPage}/{totalWorkloadPages}
               </span>
             </div>
-            <p className="text-caption text-text-secondary mb-4 font-medium">Contabilização de horas consumidas e estimadas de tarefas ativas.</p>
+            <p className="text-caption text-text-secondary mb-4 font-medium">Contagem de horas consumidas e estimadas de tarefas.</p>
           </div>
 
           <div className="flex-1 flex flex-col gap-2.5">
@@ -718,10 +713,8 @@ export default function BentoDashboard({
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-caption font-bold text-primary truncate">{clientName}</span>
-                            <Badge className={pStyle.badgeClass}>
-                              {pStyle.name}
-                            </Badge>
+                            <span className="font-medium text-caption font-bold text-primary truncate">{clientName}</span>
+                            
                           </div>
                           <div className="text-body-sm font-semibold text-text-primary truncate">{project.title}</div>
                         </div>

@@ -610,7 +610,7 @@ export default function TaskSection({
           <Card className="p-4 space-y-3 shadow-flat">
             {/* Quick Date Presets Row */}
             <div className="flex flex-wrap items-center gap-1.5 pb-3 border-b border-border">
-              <span className="text-label font-bold text-text-secondary mr-1">Filtros Rápidos:</span>
+              <span className="text-label font-bold text-text-secondary mr-1">Filtros rápidos:</span>
 
               <Button
                 type="button"
