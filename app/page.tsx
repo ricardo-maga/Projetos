@@ -47,7 +47,6 @@ export default function Page() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [loginStatusMessage, setLoginStatusMessage] = useState('');
   
   // Change password state
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -291,7 +290,6 @@ export default function Page() {
     e.preventDefault();
     setLoginError('');
     setIsLoggingIn(true);
-    setLoginStatusMessage('A validar credenciais com o servidor...');
     
     try {
       const res = await fetch('/api/auth/login', {
@@ -321,7 +319,6 @@ export default function Page() {
       }
 
       if (res.ok && data?.success) {
-        setLoginStatusMessage('Autenticado com sucesso! A carregar sistema...');
         
         // Save bearer token for robust cross-origin, iframe and API requests
         if (data.token) {
@@ -340,7 +337,6 @@ export default function Page() {
         } finally {
           setIsTransitioning(false);
           setIsLoggingIn(false);
-          setLoginStatusMessage('');
         }
       } else {
         let errorMessage = 
@@ -365,13 +361,11 @@ export default function Page() {
 
         setLoginError(errorMessage);
         setIsLoggingIn(false);
-        setLoginStatusMessage('');
       }
     } catch (err) {
       console.error('Error logging in:', err);
       setLoginError('Ocorreu um erro ao ligar ao servidor de autenticação. Por favor, tente novamente.');
       setIsLoggingIn(false);
-      setLoginStatusMessage('');
     }
   };
 
