@@ -621,9 +621,9 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       taskAssigneeGroupIds: parseStringArray(configRow.taskAssigneeGroupIds ?? configRow.task_assignee_group_id),
       taskAssigneeGroupId: configRow.task_assignee_group_id || configRow.taskAssigneeGroupId || '',
     } : {
-      appName: 'Gestão de Projetos Planeamento',
-      appDescription: 'Plataforma integrada de planeamento, orçamentação e gestão de projetos.',
-      footerText: '© 2026 Gestão de projetos e planeamento. Todos os direitos reservados.',
+      appName: 'Gestão de projetos',
+      appDescription: 'Plataforma integrada de gestão de projetos, tarefas e planeamento.',
+      footerText: '© 2026 Gestão de projetos. Todos os direitos reservados.',
       logo: '',
       footerCopyrightText: '© 2026 Gestão de projetos e planeamento. Todos os direitos reservados.',
       logoImagePath: '',

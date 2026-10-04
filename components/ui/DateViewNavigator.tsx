@@ -29,7 +29,7 @@ export default function DateViewNavigator({
     <div className={cn("flex flex-wrap items-center justify-between gap-3", className)}>
       {/* 7 vs 14 days toggle on the Left */}
       <div className="flex items-center gap-2">
-        <span className="text-label font-bold text-text-primary">Datas de visualização:</span>
+        <span className="text-label font-bold text-text-primary">Período para visualização:</span>
         <div className="flex items-center bg-surface-muted p-1 rounded-control border border-border">
           <button
             type="button"

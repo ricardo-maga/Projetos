@@ -393,12 +393,7 @@ export default function OperationalUserCalendar({
               <CalendarDays className="w-5 h-5" />
             </span>
             <div>
-              <h3 className="text-base font-extrabold text-slate-900 leading-tight">
-                Calendário Operacional das Tarefas — {periodDays} dias
-              </h3>
-              <p className="text-xs text-slate-500">
-                Visão e gestão semanal direta por técnico e por dia. Clique nas tarefas para editar ou registar execução.
-              </p>
+ 
             </div>
           </div>
 
@@ -461,7 +456,7 @@ export default function OperationalUserCalendar({
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-slate-500" />
               <span className="text-xs font-bold text-slate-700">
-                Utilizadores no Calendário ({selectedUserIds.length}/{activeEligibleUsers.length}):
+                Utilizadores ({selectedUserIds.length}/{activeEligibleUsers.length}):
               </span>
             </div>
 
@@ -608,9 +603,7 @@ export default function OperationalUserCalendar({
                           <div className="min-w-0 flex-1">
                             {/* Line 1: Badge + Name */}
                             <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-extrabold text-caption shrink-0">
-                                {getUserInitials(user.name)}
-                              </div>
+
                               <div className="font-extrabold text-slate-900 text-xs truncate" title={user.name}>
                                 {user.name}
                               </div>
@@ -618,7 +611,7 @@ export default function OperationalUserCalendar({
 
                             {/* Line 2: Cargo / Role */}
                             <div className="mt-1.5 text-caption font-bold text-text-secondary bg-surface-muted px-1.5 py-0.5 rounded inline-block">
-                              {userGroups?.find(g => g.id === user.roleId)?.name || (user.type === 'Team' ? 'Técnico' : user.type || 'Técnico')}
+                              {`${userPeriodTaskCount} ${userPeriodTaskCount === 1 ? 'tarefa' : 'tarefas'}`}
                             </div>
                           </div>
 

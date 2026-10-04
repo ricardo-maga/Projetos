@@ -2473,7 +2473,7 @@ export default function CalendarSection({
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              👥 Calendário por Utilizador
+              Calendário semanal
             </button>
             <button
               type="button"
@@ -2484,7 +2484,7 @@ export default function CalendarSection({
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              📅 Linha de Tempo de Projetos
+              Timaline de projetos
             </button>
           </div>
         </div>
@@ -3055,6 +3055,27 @@ export default function CalendarSection({
           </div>
         )}
           </>
+        )}
+        {calendarViewMode === 'users' && (
+          <OperationalUserCalendar
+            tasks={tasks}
+            users={users}
+            projects={projects}
+            clients={clients}
+            absences={absences}
+            taskStatuses={taskStatuses}
+            taskTypes={taskTypes}
+            specialDays={specialDays}
+            userGroups={userGroups}
+            onSelectTask={openTaskDetailsModal}
+            onQuickCreateTask={handleQuickCreateForUser}
+            canCreateTask={canCreateTaskInCalendar}
+            canMoveTask={canMoveTask}
+            updateTask={updateTask}
+            appConfig={appConfig}
+            currentUser={currentUser}
+            renderTopBarOnly={true}
+          />
         )}
       </div>
 
