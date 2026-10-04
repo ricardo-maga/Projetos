@@ -448,10 +448,9 @@ export default function TaskSection({
             <Badge 
               key={uid} 
               variant="neutral"
-              className="font-bold text-caption shadow-flat"
-              title={userName}
+              className="w-8 h-8 p-0 justify-center rounded-full font-bold text-caption shadow-flat"
             >
-              {initials}
+              <span title={userName} aria-label={userName}>{initials}</span>
             </Badge>
           );
         })}
@@ -459,9 +458,8 @@ export default function TaskSection({
           <Badge 
             variant="neutral"
             className="font-bold text-caption shadow-flat"
-            title={`${remainingCount} outro(s) responsável(eis)`}
           >
-            +{remainingCount}
+            <span title={`${remainingCount} outro(s) responsável(eis)`}>+{remainingCount}</span>
           </Badge>
         )}
       </div>
@@ -478,7 +476,7 @@ export default function TaskSection({
         {/* View Selection Tabs */}
         <Tabs
           tabs={[
-            { id: 'lista', label: 'Lista Operacional de Tarefas', icon: <ListTodo className="w-4.5 h-4.5" /> },
+            { id: 'lista', label: 'Lista de tarefas', icon: <ListTodo className="w-4.5 h-4.5" /> },
             { id: 'analise', label: 'Análise de Tarefas', icon: <BarChart2 className="w-4.5 h-4.5" /> }
           ]}
           activeTabId={activeTaskViewTab}
@@ -735,7 +733,7 @@ export default function TaskSection({
             <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/50 space-y-3.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-heading-sm text-text-primary">Lista Operacional de Tarefas</h2>
+                  <h2 className="text-heading-sm text-text-primary">Lista de tarefas</h2>
                   <p className="text-body-sm text-text-secondary mt-0.5">
                     Visualização rápida e direta das tarefas com controlo de datas, estado, horas previstas e horas reais consumidas.
                   </p>
@@ -979,7 +977,8 @@ export default function TaskSection({
                                 <IconButton 
                                   type="button"
                                   size="sm"
-                                  variant="danger"
+                                  variant="ghost"
+                                  className="hover:text-error focus-visible:text-error"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     askConfirmation(

@@ -12,6 +12,7 @@ import {
 import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
+import { Badge } from './ui/Badge';
 
 import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
@@ -2653,9 +2654,9 @@ export default function ProjectSection({
                       <div className="flex justify-between items-start gap-2">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded">
-                              {getTaskStatusName(task.statusId, taskStatuses)}
-                            </span>
+                            <Badge className={getTaskStatusStyle(task.statusId, taskStatuses).badgeClass}>
+                              {getTaskStatusStyle(task.statusId, taskStatuses).name}
+                            </Badge>
                             <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold rounded flex items-center gap-1">
                               {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Bell className="w-3 h-3 text-purple-600" />}
                               {getTaskTypeName(task.taskTypeId, taskTypes)}

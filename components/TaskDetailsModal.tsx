@@ -23,11 +23,31 @@ import { AssigneeSelector } from './AssigneeSelector';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
 import { Dialog } from './ui/Dialog';
-import { getTaskTypeName, formatToOnlyHours, getDefaultTaskStatusId } from '../lib/utils';
+import { Input } from './ui/Input';
+import { Select } from './ui/Select';
+import Textarea from './ui/Textarea';
+import { SingleChoice } from './ui/SingleChoice';
+import { getTaskTypeName, formatToOnlyHours, getDefaultTaskStatusId, getTaskStatusStyle, matchTaskStatusId } from '../lib/utils';
 import { getTaskConflictWarnings } from '../lib/taskConflicts';
 import { validateTaskExecutionTimes, parseTaskHoursToFloat } from '../lib/taskOperations';
+import type { TaskUpdateInput } from '../lib/taskOperations';
 
 export type TaskModalMode = 'create' | 'edit' | 'execute' | 'view';
+
+// UI operation allowlist: execution must never resend the locked planning values.
+export function getTaskUpdatePayload(mode: TaskModalMode, values: TaskUpdateInput): TaskUpdateInput {
+  if (mode !== 'execute') return values;
+  return {
+    statusId: values.statusId,
+    assigneeIds: values.assigneeIds,
+    actualHours: values.actualHours,
+    startDate: values.startDate,
+    startTime: values.startTime,
+    endDate: values.endDate,
+    endTime: values.endTime,
+    notes: values.notes,
+  };
+}
 
 export interface TaskDetailsModalProps {
   task?: Task | null;
@@ -356,7 +376,9 @@ export default function TaskDetailsModal({
       return;
     }
 
-    if (!formTitle.trim()) {
+    if (!canWrite || isSubmitting) return;
+
+    if (effectiveMode !== 'execute' && !formTitle.trim()) {
       setFormError('O título da tarefa é obrigatório.');
       return;
     }
@@ -427,7 +449,7 @@ export default function TaskDetailsModal({
         }
         onClose();
       } else if (activeTask && updateTask) {
-        const payload = {
+        const payload = getTaskUpdatePayload(effectiveMode, {
           projectId: resolvedProjectId,
           title: formTitle.trim(),
           description: formDescription.trim(),
@@ -442,7 +464,7 @@ export default function TaskDetailsModal({
           endTime: formEndTime || '',
           notes: formNotes.trim() || '',
           assigneeIds: formAssignees,
-        };
+        });
 
         const result = await updateTask(activeTask.id, payload);
         if (onSaveSuccess && result) onSaveSuccess(result);
@@ -474,6 +496,7 @@ export default function TaskDetailsModal({
   };
 
   const isReadOnly = effectiveMode === 'view' || !canWrite;
+  const isPlanningReadOnly = isReadOnly || effectiveMode === 'execute';
 
   if (!isModalOpen) {
     return null;
@@ -493,16 +516,16 @@ export default function TaskDetailsModal({
       <form onSubmit={handleSave} className="flex flex-col h-full">
         {/* Read-only banner if in edit/view mode */}
         {effectiveMode !== 'create' && activeTask && (
-          <div className="px-6 py-3 bg-blue-50/50 border-b border-blue-100 text-xs text-slate-600 space-y-1.5 shrink-0">
+          <div className="px-6 py-3 bg-primary/5 border-b border-primary/20 text-body-sm text-text-secondary space-y-1.5 shrink-0">
             {activeTask.description && (
-              <p className="font-medium text-slate-700 italic bg-white p-2 rounded-xl border border-slate-100">
+              <p className="font-medium text-text-primary italic bg-surface p-2 rounded-control border border-border">
                 &quot;{activeTask.description}&quot;
               </p>
             )}
             <div className="flex flex-wrap gap-4 text-caption font-semibold text-text-secondary">
               <span className="flex items-center gap-1">
-                <Users className="w-3.5 h-3.5 text-slate-400" />
-                Responsáveis: <span className="text-slate-900 font-bold">
+                <Users className="w-3.5 h-3.5 text-text-muted" />
+                Responsáveis: <span className="text-text-primary font-bold">
                   {getEffectiveAssignees(activeTask).length > 0
                     ? getEffectiveAssignees(activeTask).map(id => getUserName(id)).join(', ')
                     : 'Sem utilizadores'}
@@ -510,14 +533,14 @@ export default function TaskDetailsModal({
               </span>
               {activeTask.estimatedDate && (
                 <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  Data Planeada: <span className="text-slate-900 font-bold">{activeTask.estimatedDate.split('-').reverse().join('/')}</span>
+                  <Calendar className="w-3.5 h-3.5 text-text-muted" />
+                  Data Planeada: <span className="text-text-primary font-bold">{activeTask.estimatedDate.split('-').reverse().join('/')}</span>
                 </span>
               )}
               {Boolean(activeTask.estimatedHours) && (
                 <span className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  Horas Previstas: <span className="text-slate-900 font-bold">{activeTask.estimatedHours} h</span>
+                  <Clock className="w-3.5 h-3.5 text-text-muted" />
+                  Horas Previstas: <span className="text-text-primary font-bold">{activeTask.estimatedHours} h</span>
                 </span>
               )}
             </div>
@@ -526,33 +549,47 @@ export default function TaskDetailsModal({
 
         {/* Form Error Banner */}
         {formError && (
-          <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+          <div className="mx-6 mt-4 p-3 bg-error/10 border border-error/20 rounded-control text-body-sm text-error font-medium flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-error shrink-0" />
             <span>{formError}</span>
           </div>
         )}
 
         {/* Form Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          <div className="space-y-2">
+            <p className="text-label font-bold text-text-primary">Estado da tarefa</p>
+            <SingleChoice
+              label="Estado da tarefa"
+              value={taskStatuses.find(s => s.id === formStatusId || matchTaskStatusId(s.id, formStatusId))?.id || formStatusId}
+              options={taskStatuses.filter(s => !s.deleted).map(s => ({
+                value: s.id,
+                label: s.name,
+                className: getTaskStatusStyle(s.id, taskStatuses).badgeClass,
+              }))}
+              onChange={setFormStatusId}
+              disabled={isReadOnly || isSubmitting}
+            />
+          </div>
           
           {/* Informative Conflict Warnings Banner */}
           {conflictWarnings.length > 0 && (
-            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-xs text-amber-900 font-medium whitespace-pre-line shadow-2xs">
-              <div className="font-bold flex items-center gap-1.5 text-amber-800 text-xs">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-control space-y-1 text-body-sm text-warning font-medium whitespace-pre-line shadow-2xs">
+              <div className="font-bold flex items-center gap-1.5 text-warning text-body-sm">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
                 Aviso Informativo de Conflitos / Indisponibilidade
               </div>
               {conflictWarnings.map((warn, idx) => (
-                <p key={idx} className="text-xs leading-relaxed">{warn}</p>
+                <p key={idx} className="text-body-sm leading-relaxed">{warn}</p>
               ))}
             </div>
           )}
 
           {/* ================= SECTION 1: PLANEAMENTO ================= */}
-          <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3.5">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <ListTodo className="w-4 h-4 text-blue-600" />
+          <div className="bg-surface-muted p-4 rounded-card border border-border space-y-3.5">
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <span className="text-body-sm font-extrabold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
+                <ListTodo className="w-4 h-4 text-primary" />
                 Dados de Planeamento
               </span>
               {effectiveMode === 'create' && (
@@ -564,24 +601,24 @@ export default function TaskDetailsModal({
 
             {/* Title */}
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-800">
-                Título da Tarefa <span className="text-rose-500">*</span>
+              <label htmlFor="task-formTitle" className="block text-body-sm font-bold text-text-primary">
+                Título da Tarefa <span className="text-error">*</span>
               </label>
-              <input 
+              <Input id="task-formTitle"
                 type="text"
                 required
-                readOnly={isReadOnly}
+                readOnly={isPlanningReadOnly}
                 value={formTitle}
                 onChange={e => setFormTitle(e.target.value)}
                 placeholder="Ex: Instalação de painéis, Visita técnica, Configuração de rede..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 read-only:bg-slate-100"
+                className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary/20 read-only:bg-surface-muted"
               />
             </div>
 
             {/* Project Selection with Autocomplete and Suggestions */}
             <div className="space-y-1 relative" ref={projectDropdownRef}>
               <div className="flex items-center justify-between">
-                <label className="block text-label font-bold text-text-primary">
+                <label htmlFor="task-projectSearchQuery" className="block text-label font-bold text-text-primary">
                   Projeto (Cliente) <span className="text-caption text-text-muted font-normal">(Opcional)</span>
                 </label>
                 {selectedProject && (
@@ -592,46 +629,47 @@ export default function TaskDetailsModal({
               </div>
 
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 z-10 pl-3 flex items-center pointer-events-none text-text-muted">
                   <Search className="w-3.5 h-3.5" />
                 </div>
-                <input
+                <Input id="task-projectSearchQuery"
                   ref={projectInputRef}
                   type="text"
-                  readOnly={isReadOnly}
+                  readOnly={isPlanningReadOnly}
                   value={projectSearchQuery}
                   onChange={handleProjectInputChange}
                   onFocus={() => {
-                    if (!isReadOnly) setIsProjectDropdownOpen(true);
+                    if (!isPlanningReadOnly) setIsProjectDropdownOpen(true);
                   }}
                   placeholder="Pesquisar por título de projeto ou nome de cliente (completo ou abreviado)..."
-                  className={`w-full pl-9 pr-8 py-2.5 border rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-100 focus:outline-none transition-colors ${
+                  className={`w-full pl-9 pr-8 py-2.5 border rounded-control text-body-sm font-semibold focus:ring-2 focus:ring-primary/20 focus:outline-none transition-colors ${
                     formProjectId 
-                      ? 'border-blue-300 bg-blue-50/20 text-slate-900 font-bold' 
-                      : 'border-slate-200 bg-white text-slate-800'
-                  } read-only:bg-slate-100 read-only:text-slate-500`}
+                      ? 'border-primary/20 bg-primary/5 text-text-primary font-bold'
+                      : 'border-border bg-surface text-text-primary'
+                  } read-only:bg-surface-muted read-only:text-text-muted`}
                 />
-                {!isReadOnly && projectSearchQuery && (
-                  <button
+                {!isPlanningReadOnly && projectSearchQuery && (
+                  <IconButton
                     type="button"
                     onClick={handleClearProject}
-                    className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="absolute top-1 right-1 text-text-muted hover:text-text-secondary"
                     title="Limpar seleção"
+                    aria-label="Limpar seleção"
                   >
                     <X className="w-3.5 h-3.5" />
-                  </button>
+                  </IconButton>
                 )}
               </div>
 
               {/* Suggestions Dropdown */}
-              {!isReadOnly && isProjectDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100">
+              {!isPlanningReadOnly && isProjectDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-surface border border-border rounded-control shadow-xl z-50 max-h-60 overflow-y-auto divide-y divide-border animate-in fade-in zoom-in-95 duration-100">
                   <div className="p-2 bg-surface-muted text-caption uppercase font-bold text-text-muted tracking-wider flex items-center justify-between">
                     <span>Projetos Sugeridos ({projectSuggestions.length})</span>
                     <span className="font-normal lowercase">opcional</span>
                   </div>
                   {projectSuggestions.length === 0 ? (
-                    <div className="p-3 text-xs text-slate-500 italic text-center">
+                    <div className="p-3 text-body-sm text-text-muted italic text-center">
                       Nenhum projeto encontrado com &quot;{projectSearchQuery}&quot;
                     </div>
                   ) : (
@@ -643,16 +681,17 @@ export default function TaskDetailsModal({
                       const clDisplay = hasBoth ? `${fullName} (${shortName})` : (fullName || shortName || 'Sem cliente');
                       const isSelected = p.id === formProjectId;
                       return (
-                        <button
+                        <Button
                           key={p.id}
+                          variant="ghost"
                           type="button"
                           onClick={() => handleSelectProject(p)}
-                          className={`w-full text-left px-3.5 py-2.5 hover:bg-blue-50/80 transition-colors flex items-center justify-between text-xs cursor-pointer ${
-                            isSelected ? 'bg-blue-50 text-blue-900 font-bold' : 'text-slate-800 font-medium'
+                          className={`h-auto min-h-11 w-full text-left px-3.5 py-2.5 hover:bg-primary/10 transition-colors flex items-center justify-between text-body-sm cursor-pointer ${
+                            isSelected ? 'bg-primary/10 text-primary font-bold' : 'text-text-primary font-medium'
                           }`}
                         >
                           <div className="min-w-0 pr-2">
-                            <div className="font-bold text-slate-900 truncate">
+                            <div className="font-bold text-text-primary truncate">
                               {p.title}
                               {p.installProjectNo && (
                                 <span className="ml-1 text-caption text-text-muted font-normal">
@@ -661,14 +700,14 @@ export default function TaskDetailsModal({
                               )}
                             </div>
                             <div className="text-caption text-text-secondary flex items-center gap-1 truncate mt-0.5">
-                              <Briefcase className="w-3 h-3 text-slate-400 shrink-0" />
+                              <Briefcase className="w-3 h-3 text-text-muted shrink-0" />
                               <span>{clDisplay}</span>
                             </div>
                           </div>
                           {isSelected && (
-                            <Check className="w-4 h-4 text-blue-600 shrink-0 ml-2" />
+                            <Check className="w-4 h-4 text-primary shrink-0 ml-2" />
                           )}
-                        </button>
+                        </Button>
                       );
                     })
                   )}
@@ -679,78 +718,66 @@ export default function TaskDetailsModal({
             {/* Planned Date & Estimated Hours */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-label font-bold text-text-primary">
+                <label htmlFor="task-formEstimatedDate" className="block text-label font-bold text-text-primary">
                   Data Planeada <span className="text-caption text-text-muted font-normal">(Prevalece até existirem datas reais)</span>
                 </label>
-                <input 
+                <Input id="task-formEstimatedDate"
                   type="date"
-                  readOnly={isReadOnly}
+                  readOnly={isPlanningReadOnly}
                   value={formEstimatedDate}
                   onChange={e => setFormEstimatedDate(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-100"
+                  className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 read-only:bg-surface-muted"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-800">Horas Previstas (h)</label>
-                <input 
+                <label htmlFor="task-formEstimatedHours" className="block text-body-sm font-bold text-text-primary">Horas Previstas (h)</label>
+                <Input id="task-formEstimatedHours"
                   type="text"
-                  readOnly={isReadOnly}
+                  readOnly={isPlanningReadOnly}
                   value={formEstimatedHours}
                   onChange={e => setFormEstimatedHours(e.target.value)}
                   placeholder="Ex: 08:00 ou 8"
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-100"
+                  className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 read-only:bg-surface-muted"
                 />
               </div>
             </div>
 
-            {/* Status & Type */}
+            {/* Task type (status is the first functional field above planning) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-800">Estado da Tarefa <span className="text-rose-500">*</span></label>
-                <select 
-                  disabled={isReadOnly}
-                  value={formStatusId}
-                  onChange={e => setFormStatusId(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 cursor-pointer"
-                >
-                  {taskStatuses.filter(s => !s.deleted).map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-800">Tipo de Tarefa</label>
-                <select
-                  disabled={isReadOnly}
+                <label htmlFor="task-formTypeId" className="block text-body-sm font-bold text-text-primary">Tipo de Tarefa</label>
+                <Select id="task-formTypeId"
+                  disabled={isPlanningReadOnly}
                   value={formTypeId}
                   onChange={e => setFormTypeId(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 cursor-pointer"
+                  className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface-muted cursor-pointer"
                 >
                   <option value="">Selecione o tipo de tarefa...</option>
                   {taskTypes.filter(tt => !tt.deleted).map(tt => (
                     <option key={tt.id} value={tt.id}>{getTaskTypeName(tt.id, taskTypes)}</option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
 
             {/* Description (Instructions) */}
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-800">Descrição / Instruções de Planeamento</label>
-              <textarea 
+              <label htmlFor="task-formDescription" className="block text-body-sm font-bold text-text-primary">Descrição / Instruções de Planeamento</label>
+              <Textarea id="task-formDescription"
                 rows={2}
-                readOnly={isReadOnly}
+                readOnly={isPlanningReadOnly}
                 value={formDescription}
                 onChange={e => setFormDescription(e.target.value)}
                 placeholder="Detalhes adicionais, escopo ou instruções..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-100"
+                className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 read-only:bg-surface-muted"
               />
             </div>
 
-            {/* Assignees Selector */}
-            <div className="pt-2">
+          </div>
+
+            {/* Native fieldset disables the existing selector in read-only modes. */}
+            <fieldset disabled={isReadOnly || isSubmitting} className="min-w-0">
               <AssigneeSelector
                 users={users}
                 userGroups={userGroups}
@@ -759,18 +786,17 @@ export default function TaskDetailsModal({
                 onChange={isReadOnly ? () => {} : setFormAssignees}
                 filterTeamOnly
               />
-            </div>
-          </div>
+            </fieldset>
 
           {/* ================= SECTION 2: EXECUÇÃO (Available in all modes) ================= */}
-          <div className={`p-4 rounded-2xl border space-y-3.5 transition-all ${
+          <div className={`p-4 rounded-card border space-y-3.5 transition-all ${
             effectiveMode === 'execute' 
-              ? 'bg-amber-50/50 border-amber-300 ring-2 ring-amber-200/60' 
-              : 'bg-white border-slate-200'
+              ? 'bg-warning/5 border-warning/30 ring-2 ring-warning/20'
+              : 'bg-surface border-border'
           }`}>
-            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <PlayCircle className="w-4 h-4 text-amber-600" />
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <span className="text-body-sm font-extrabold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
+                <PlayCircle className="w-4 h-4 text-warning" />
                 Dados de Execução Real
               </span>
               {effectiveMode === 'create' ? (
@@ -787,10 +813,10 @@ export default function TaskDetailsModal({
 
             {/* Consumed Real Hours */}
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-800">
+              <label htmlFor="task-formActualHours" className="block text-body-sm font-bold text-text-primary">
                 Horas Reais Consumidas (h)
               </label>
-              <input 
+              <Input id="task-formActualHours"
                 type="number" 
                 min="0"
                 step="0.5"
@@ -798,7 +824,7 @@ export default function TaskDetailsModal({
                 value={formActualHours}
                 onChange={e => setFormActualHours(e.target.value)}
                 placeholder="Ex: 6"
-                className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 focus:ring-2 focus:ring-amber-200 read-only:bg-slate-100"
+                className="w-full p-2.5 border border-border rounded-control text-body-sm font-semibold bg-surface text-text-primary focus:ring-2 focus:ring-warning/20 read-only:bg-surface-muted"
               />
               <p className="text-caption text-text-muted font-medium">
                 As horas reais representam o tempo efetivamente despendido na tarefa.
@@ -808,8 +834,8 @@ export default function TaskDetailsModal({
             {/* Execution Dates and Times */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-label font-bold text-text-primary">Data de Início</label>
-                <input 
+                <label htmlFor="task-formStartDate" className="block text-label font-bold text-text-primary">Data de Início</label>
+                <Input id="task-formStartDate"
                   type="date" 
                   readOnly={isReadOnly}
                   value={formStartDate}
@@ -818,8 +844,8 @@ export default function TaskDetailsModal({
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-label font-bold text-text-primary">Hora de Início</label>
-                <input 
+                <label htmlFor="task-formStartTime" className="block text-label font-bold text-text-primary">Hora de Início</label>
+                <Input id="task-formStartTime"
                   type="time" 
                   readOnly={isReadOnly}
                   value={formStartTime}
@@ -831,8 +857,8 @@ export default function TaskDetailsModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-label font-bold text-text-primary">Data de Fim</label>
-                <input 
+                <label htmlFor="task-formEndDate" className="block text-label font-bold text-text-primary">Data de Fim</label>
+                <Input id="task-formEndDate"
                   type="date" 
                   readOnly={isReadOnly}
                   min={formStartDate || undefined}
@@ -842,8 +868,8 @@ export default function TaskDetailsModal({
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-label font-bold text-text-primary">Hora de Fim</label>
-                <input 
+                <label htmlFor="task-formEndTime" className="block text-label font-bold text-text-primary">Hora de Fim</label>
+                <Input id="task-formEndTime"
                   type="time" 
                   readOnly={isReadOnly}
                   value={formEndTime}
@@ -855,14 +881,14 @@ export default function TaskDetailsModal({
 
             {/* Execution Description / Notes */}
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-800">Descrição / Notas de Execução</label>
-              <textarea 
+              <label htmlFor="task-formNotes" className="block text-body-sm font-bold text-text-primary">Descrição / Notas de Execução</label>
+              <Textarea id="task-formNotes"
                 rows={2}
                 readOnly={isReadOnly}
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 placeholder="Relatório do trabalho efetuado, registos de campo ou observações..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 read-only:bg-slate-100"
+                className="w-full p-2.5 border border-border rounded-control text-body-sm font-semibold bg-surface text-text-primary read-only:bg-surface-muted"
               />
             </div>
           </div>
@@ -902,7 +928,6 @@ export default function TaskDetailsModal({
                   variant="primary"
                   size="sm"
                   isLoading={isSubmitting}
-                  className={isDuplication ? 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800' : ''}
                 >
                   {isSubmitting 
                     ? 'A processar...' 
