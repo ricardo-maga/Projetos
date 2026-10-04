@@ -5,26 +5,35 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
 import { createAdminClient } from '@/lib/supabase/server';
 
 export async function GET() {
-  let appConfig: any = null;
-  if (isSupabaseConfigured) {
-    try {
-      const client = createAdminClient() || supabase;
-      if (client) {
-        const { data } = await client.from('app_configuration').select('*').limit(1);
-        if (data && data.length > 0) {
-          const configRow = data[0];
-          appConfig = {
-            appName: configRow.app_name || 'Gestão de projetos e planeamento',
-            appDescription: configRow.app_description || '',
-            footerText: configRow.footer_text || '',
-            logo: configRow.logo_image_path || configRow.logo_url || '',
-            footerCopyrightText: configRow.footer_copyright_text || configRow.footer_text || '',
-            logoImagePath: configRow.logo_image_path || configRow.logo_url || '',
-            theme: configRow.theme_name || 'default',
-          };
-        }
-      }
-    } catch {}
+  if (!isSupabaseConfigured || !supabase) {
+    return NextResponse.json({ isConfigured: false, appConfig: null, error: 'SUPABASE_NOT_CONFIGURED' }, { status: 503 });
   }
-  return NextResponse.json({ isConfigured: isSupabaseConfigured, appConfig });
+
+  const client = createAdminClient() || supabase;
+  const { data, error } = await client
+    .from('app_configuration')
+    .select('app_name, app_description, footer_text, footer_copyright_text, logo_url, logo_image_path, theme_name')
+    .limit(1);
+
+  if (error) {
+    console.error('[PUBLIC CONFIG] Failed to read app_configuration:', error.message);
+    return NextResponse.json({ isConfigured: true, appConfig: null, error: 'APP_CONFIGURATION_UNAVAILABLE' }, { status: 503 });
+  }
+
+  const configRow = data?.[0];
+  if (!configRow) return NextResponse.json({ isConfigured: true, appConfig: null, error: 'APP_CONFIGURATION_EMPTY' });
+
+  const logo = configRow.logo_image_path || configRow.logo_url || '';
+  return NextResponse.json({
+    isConfigured: true,
+    appConfig: {
+      appName: configRow.app_name || 'Gestão de projetos e planeamento',
+      appDescription: configRow.app_description || '',
+      footerText: configRow.footer_text || '',
+      footerCopyrightText: configRow.footer_copyright_text || configRow.footer_text || '',
+      logo,
+      logoImagePath: logo,
+      theme: configRow.theme_name || 'default',
+    },
+  });
 }
