@@ -1,5 +1,6 @@
 'use client';
 
+import { M3Button } from './M3';
 import React, { useState, useEffect } from 'react';
 import { Project, Client, Comment, Task, TaskType, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '../lib/types';
 import { 
@@ -1357,12 +1358,12 @@ export default function ProjectSection({
                 
               </button>
               {canWriteProjects && (
-                <button 
+                <M3Button tone="tonal" 
                   onClick={() => openForm(selectedProj)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-colors"
+                  className="flex items-center gap-1.5"
                 >
                   <Edit2 className="w-3.5 h-3.5" /> Editar Projeto
-                </button>
+                </M3Button>
               )}
               {canDeleteProjects && (
                 <button 

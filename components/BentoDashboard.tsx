@@ -1,5 +1,6 @@
 'use client';
 
+import { M3Card, M3Button } from './M3';
 import React, { useState, useMemo } from 'react';
 import { Project, Task, Comment, UserAbsence, Material, Quote, Client, ProjectMaterial, ProjectRiskItem } from '../lib/types';
 import { Briefcase, CheckSquare, Users, MessageSquare, CalendarClock, CalendarDays, Activity, ChevronLeft, ChevronRight, AlertTriangle, Package, CheckCircle2, Clock, BarChart2, Search } from 'lucide-react';
@@ -26,7 +27,7 @@ interface BentoDashboardProps {
 }
 
 const SummaryCard = ({ title, value, subtext, icon: Icon, colorClass }: { title: string, value: string | number, subtext?: string, icon: React.ElementType, colorClass: string }) => (
-  <div className="bg-surface rounded-container border border-border p-5 shadow-raised flex items-start gap-4 transition-all hover:shadow-overlay hover:-translate-y-0.5">
+  <M3Card className="p-5 flex items-start gap-4 transition-all hover:shadow-overlay hover:-translate-y-0.5">
     <div className={`p-3 rounded-control ${colorClass}`}>
       <Icon className="w-6 h-6" />
     </div>
@@ -35,7 +36,7 @@ const SummaryCard = ({ title, value, subtext, icon: Icon, colorClass }: { title:
       <div className="text-2xl font-bold text-text-primary mt-1 tabular-nums">{value}</div>
       {subtext && <div className="text-body-sm text-text-muted mt-1">{subtext}</div>}
     </div>
-  </div>
+  </M3Card>
 );
 
 export default function BentoDashboard({
@@ -642,12 +643,12 @@ export default function BentoDashboard({
             )}
           </div>
 
-          <button 
+          <M3Button tone="text" 
             onClick={() => onNavigate('tarefas')}
-            className="mt-4 w-full text-center py-2 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl transition-all cursor-pointer"
+            className="mt-4 w-full text-center"
           >
             Ver todas as tarefas
-          </button>
+          </M3Button>
         </div>
 
         {/* Widget 2: Projetos com Maior Carga Horária (Paginated 10 by 10) */}

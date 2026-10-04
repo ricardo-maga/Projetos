@@ -169,7 +169,7 @@ export default function ClientSection({
   return (
     <div className="space-y-6">
       {isEditing ? (
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 -sm animate-fade-in text-xs font-bold text-slate-700">
+        <form onSubmit={handleSubmit} className="m3-card p-6 space-y-6 animate-fade-in text-xs font-bold text-slate-700">
           <div className="flex justify-between items-center pb-4 border-b border-slate-100">
             <h2 className="text-base font-bold text-slate-800">
               {editingId ? 'Editar Registo de Cliente' : 'Adicionar Novo Cliente (Entidade)'}

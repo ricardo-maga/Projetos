@@ -630,10 +630,10 @@ export default function Page() {
   const appConfig = state?.appConfig || {};
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-text-primary" id="main-root" data-theme={appConfig.theme || 'default'}>
+    <div className="min-h-screen flex flex-col bg-background text-text-primary" id="main-root" data-active-tab={activeTab} data-theme={appConfig.theme || 'default'}>
       
       {/* HEADER BAR (Gmail / Material inspired contract: exactly 3 zones) */}
-      <header className="bg-surface border-b border-border sticky top-0 z-50 h-16 px-4 shadow-raised flex items-center justify-between shrink-0" id="app-header">
+      <header className="m3-top-app-bar sticky top-0 z-50 h-16 px-4 flex items-center justify-between shrink-0" id="app-header">
         {/* Zone 1: Burger + Brand logo wordmark */}
         <div className="flex items-center gap-3 min-w-0">
           <IconButton
@@ -751,7 +751,7 @@ export default function Page() {
             sidebarOpen ? 'translate-x-0 shadow-overlay' : '-translate-x-full'
           } md:static md:top-auto md:bottom-auto md:h-auto md:translate-x-0 md:shadow-none md:flex flex-col ${
             isCollapsed ? 'md:w-20' : 'md:w-64'
-          } w-72 max-w-[85vw] bg-surface border-r border-border transition-all duration-200 ease-in-out`}
+          } w-72 max-w-[85vw] m3-nav-rail transition-all duration-200 ease-in-out`}
           id="sidebar-nav"
         >
           <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
@@ -783,12 +783,12 @@ export default function Page() {
                         }
                       }}
                       className={cn(
-                        "w-full flex items-center gap-3 py-3 rounded-control text-body-sm font-semibold transition-all duration-150 cursor-pointer select-none border-l-[3px]",
+                        "m3-nav-item w-full flex items-center gap-3 py-3 text-body-sm font-semibold transition-all duration-150 cursor-pointer select-none",
                         isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-4',
                         isDisabled 
                           ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent' 
                           : isActive 
-                            ? 'bg-primary/10 text-primary border-primary font-bold' 
+                            ? 'is-active font-bold' 
                             : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
                       )}
                       id={`tab-${tab.id}`}
@@ -847,12 +847,12 @@ export default function Page() {
                     }
                   }}
                   className={cn(
-                    "w-full flex items-center gap-3 py-3 rounded-control text-body-sm font-semibold transition-all duration-150 cursor-pointer select-none border-l-[3px]",
+                    "m3-nav-item w-full flex items-center gap-3 py-3 text-body-sm font-semibold transition-all duration-150 cursor-pointer select-none",
                     isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-4',
                     isDisabled 
                       ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent' 
                       : isActive 
-                        ? 'bg-primary/10 text-primary border-primary font-bold' 
+                        ? 'is-active font-bold' 
                         : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
                   )}
                   id={`tab-${tab.id}`}

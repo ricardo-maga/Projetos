@@ -272,3 +272,103 @@ body[data-theme="rose"],
   font-weight: 700;
 }
 
+
+/* Material Design 3 foundations.  These tokens deliberately sit above the
+   existing Tailwind palette so every module inherits the same visual language. */
+#main-root {
+  --m3-primary: var(--primary-600);
+  --m3-on-primary: #ffffff;
+  --m3-primary-container: var(--primary-100);
+  --m3-on-primary-container: var(--primary-900);
+  --m3-surface: #fbf8ff;
+  --m3-surface-container: #f3f0f7;
+  --m3-surface-container-high: #ece8f0;
+  --m3-on-surface: #1d1b20;
+  --m3-on-surface-variant: #49454f;
+  --m3-outline: #79747e;
+  --m3-outline-variant: #cac4d0;
+  --m3-error: #ba1a1a;
+  --m3-radius-sm: 12px;
+  --m3-radius-md: 16px;
+  --m3-radius-lg: 28px;
+  background: var(--m3-surface);
+  color: var(--m3-on-surface);
+}
+
+/* Gmail-inspired application shell */
+.m3-top-app-bar { background: var(--m3-surface); border-color: transparent; box-shadow: none; }
+.m3-nav-rail { background: var(--m3-surface-container); border-color: transparent; }
+.m3-nav-item { border-radius: 999px; min-height: 48px; transition: background-color .18s ease, color .18s ease; }
+.m3-nav-item[aria-current="page"], .m3-nav-item.is-active { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+.m3-search { background: var(--m3-surface-container-high); border: 0; border-radius: 999px; height: 44px; }
+.m3-card { background: var(--m3-surface); border: 1px solid var(--m3-outline-variant); border-radius: var(--m3-radius-md); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+.m3-button { min-height: 40px; padding: 0 20px; border: 0; border-radius: 999px !important; font-weight: 700; font-size: .8125rem; transition: box-shadow .18s ease, background-color .18s ease; }
+.m3-button:hover { box-shadow: 0 2px 5px rgb(0 0 0 / .18); }
+.m3-button--filled { background: var(--m3-primary); color: var(--m3-on-primary); }
+.m3-button--tonal { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+.m3-button--text { background: transparent; color: var(--m3-primary); }
+.m3-icon-button { width: 40px; height: 40px; align-items: center; justify-content: center; border-radius: 999px !important; color: var(--m3-on-surface-variant); }
+.m3-icon-button:hover { background: var(--m3-surface-container-high); }
+.m3-section-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 8px 4px 20px; }
+.m3-section-header h2 { margin: 0; font-size: 1.375rem; line-height: 1.75rem; font-weight: 650; letter-spacing: -.02em; color: var(--m3-on-surface); }
+.m3-section-header p { margin: 4px 0 0; font-size: .8125rem; color: var(--m3-on-surface-variant); font-weight: 500; }
+.m3-section-header__actions { display: flex; gap: 8px; align-items: center; }
+
+/* Transversal control normalization for modules outside Materials/BOM/Tickets. */
+#main-root:not([data-active-tab="tickets"]) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-color: var(--m3-outline) !important;
+  border-radius: var(--m3-radius-sm) !important;
+  background: var(--m3-surface) !important;
+  min-height: 44px;
+}
+#main-root:not([data-active-tab="tickets"]) :is(input, select, textarea):focus {
+  border-color: var(--m3-primary) !important;
+  outline: 2px solid color-mix(in srgb, var(--m3-primary) 22%, transparent) !important;
+  outline-offset: 1px;
+}
+#main-root:not([data-active-tab="tickets"]) button:not(.m3-nav-item) { border-radius: var(--m3-radius-sm); }
+#main-root:not([data-active-tab="tickets"]) table { border-collapse: separate; border-spacing: 0; overflow: hidden; border-radius: var(--m3-radius-md); }
+#main-root:not([data-active-tab="tickets"]) th { background: var(--m3-surface-container); color: var(--m3-on-surface-variant); }
+#main-root:not([data-active-tab="tickets"]) tr { transition: background-color .15s ease; }
+#main-root:not([data-active-tab="tickets"]) tbody tr:hover { background: color-mix(in srgb, var(--m3-primary-container) 42%, transparent); }
+
+/* Module surfaces: Dashboard, Projects, Tasks, Calendar, Clients, Absences and
+   Settings retain their domain markup while inheriting a consistent M3 card. */
+#main-root:not([data-active-tab="tickets"]) #active-tab-content .bg-white.rounded-2xl.border {
+  background: var(--m3-surface) !important;
+  border-color: var(--m3-outline-variant) !important;
+  border-radius: var(--m3-radius-md) !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .08) !important;
+}
+#main-root:not([data-active-tab="tickets"]) #active-tab-content .bg-slate-50,
+#main-root:not([data-active-tab="tickets"]) #active-tab-content .bg-slate-50\/50,
+#main-root:not([data-active-tab="tickets"]) #active-tab-content .bg-slate-50\/60,
+#main-root:not([data-active-tab="tickets"]) #active-tab-content .bg-slate-50\/70 {
+  background-color: var(--m3-surface-container) !important;
+}
+#main-root:not([data-active-tab="tickets"]) #active-tab-content :is(.border-slate-100, .border-slate-150, .border-slate-200, .border-slate-200\/80) {
+  border-color: var(--m3-outline-variant) !important;
+}
+#main-root:not([data-active-tab="tickets"]) #active-tab-content .bg-slate-900 {
+  background-color: var(--m3-on-primary-container) !important;
+}
+#main-root:not([data-active-tab="tickets"]) #active-tab-content .text-slate-900 { color: var(--m3-on-surface) !important; }
+
+/* Shared action hierarchy: primary blue actions become Material filled buttons,
+   while pale actions remain tonal buttons. */
+#main-root:not([data-active-tab="tickets"]) #active-tab-content :is(.bg-blue-600, .bg-blue-700) {
+  background-color: var(--m3-primary) !important;
+  color: var(--m3-on-primary) !important;
+}
+#main-root:not([data-active-tab="tickets"]) #active-tab-content :is(.bg-blue-50, .bg-indigo-50) {
+  background-color: var(--m3-primary-container) !important;
+  color: var(--m3-on-primary-container) !important;
+}
+#main-root:not([data-active-tab="tickets"]) #active-tab-content [role="dialog"], #main-root:not([data-active-tab="tickets"]) #active-tab-content .fixed.inset-0 > .bg-white {
+  border-radius: var(--m3-radius-lg) !important;
+}
+
+@media (max-width: 767px) {
+  .m3-nav-rail { border-radius: 0 var(--m3-radius-lg) var(--m3-radius-lg) 0; }
+}
+
