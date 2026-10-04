@@ -1,6 +1,11 @@
 'use client';
 
-import { M3Card, M3Button } from './M3';
+import { M3SectionHeader } from './M3';
+import { Card } from './ui/Card';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
+import { Input } from './ui/Input';
+import { Badge } from './ui/Badge';
 import React, { useState, useMemo } from 'react';
 import { Project, Task, Comment, UserAbsence, Material, Quote, Client, ProjectMaterial, ProjectRiskItem } from '../lib/types';
 import { Briefcase, CheckSquare, Users, MessageSquare, CalendarClock, CalendarDays, Activity, ChevronLeft, ChevronRight, AlertTriangle, Package, CheckCircle2, Clock, BarChart2, Search } from 'lucide-react';
@@ -27,7 +32,7 @@ interface BentoDashboardProps {
 }
 
 const SummaryCard = ({ title, value, subtext, icon: Icon, colorClass }: { title: string, value: string | number, subtext?: string, icon: React.ElementType, colorClass: string }) => (
-  <M3Card className="p-5 flex items-start gap-4 transition-all hover:shadow-overlay hover:-translate-y-0.5">
+  <Card className="p-5 flex items-start gap-4 border-t-2 border-t-primary/30">
     <div className={`p-3 rounded-control ${colorClass}`}>
       <Icon className="w-6 h-6" />
     </div>
@@ -36,7 +41,7 @@ const SummaryCard = ({ title, value, subtext, icon: Icon, colorClass }: { title:
       <div className="text-2xl font-bold text-text-primary mt-1 tabular-nums">{value}</div>
       {subtext && <div className="text-body-sm text-text-muted mt-1">{subtext}</div>}
     </div>
-  </M3Card>
+  </Card>
 );
 
 export default function BentoDashboard({
@@ -379,101 +384,109 @@ export default function BentoDashboard({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 auto-rows-min animate-fade-in">
+    <div className="m3-dashboard grid grid-cols-1 md:grid-cols-12 gap-5 auto-rows-min animate-fade-in">
       
+      <div className="md:col-span-12">
+        <M3SectionHeader title="Dashboard" description="Projetos, trabalho da semana e atividade da equipa num só lugar." />
+      </div>
+
       {/* Top Summary Cards Section */}
       <div className="md:col-span-12 grid grid-cols-1 sm:grid-cols-3 gap-5">
         <SummaryCard 
           title="Projetos Ativos" 
           value={activeProjectsCount} 
           icon={Activity} 
-          colorClass="bg-blue-50 text-blue-600" 
+          colorClass="bg-primary/5 text-primary"
         />
         <SummaryCard 
           title={`Projetos ${currentMonthName}`} 
           value={currentMonthProjectsCount} 
           icon={CalendarClock} 
-          colorClass="bg-emerald-50 text-emerald-600" 
+          colorClass="bg-brand-green/10 text-brand-green"
         />
         <SummaryCard 
           title={`Projetos ${nextMonthName}`} 
           value={nextMonthProjectsCount} 
           icon={CalendarDays} 
-          colorClass="bg-amber-50 text-amber-600" 
+          colorClass="bg-brand-accent/10 text-brand-accent"
         />
       </div>
 
       {/* 1. Full-Width Box: Sorted Active Project Pipeline */}
-      <div className="md:col-span-12 bg-white rounded-2xl border border-slate-200 flex flex-col overflow-hidden shadow-2xs">
-        <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col lg:flex-row justify-between lg:items-center gap-4 bg-slate-50/60">
+      <Card className="md:col-span-12 flex flex-col overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-border/80 flex flex-col lg:flex-row justify-between lg:items-center gap-4 bg-surface-muted/60">
           <div>
-            <h2 className="font-bold text-slate-800 flex items-center gap-2 text-base">
-              <Briefcase className="w-5 h-5 text-blue-600" />
+            <h2 className="text-heading-sm text-text-primary flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-primary" />
               Projetos Ativos
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">Ordenados por data de entrega</p>
+            <p className="text-body-sm text-text-secondary mt-0.5">Ordenados por data de entrega</p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-3 text-body-sm">
             {/* Search Box */}
             <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
+              <Search className="w-4 h-4 text-text-muted z-10 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Input
+                type="search"
+                aria-label="Pesquisar projetos por cliente, título, IP ou gestor"
                 value={projectSearchQuery}
                 onChange={(e) => {
                   setProjectSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
                 placeholder="Pesquisar..."
-                className="w-full pl-9 pr-7 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+                className="pl-9 pr-11 text-body-sm"
               />
               {projectSearchQuery && (
-                <button
+                <IconButton variant="ghost" size="sm"
+                  aria-label="Limpar pesquisa de projetos"
                   type="button"
                   onClick={() => {
                     setProjectSearchQuery('');
                     setCurrentPage(1);
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                  className="absolute right-1 top-1/2 -translate-y-1/2"
                 >
                   ×
-                </button>
+                </IconButton>
               )}
             </div>
 
-            <span className="font-medium text-slate-500">
-              Página <strong className="text-slate-800 font-bold">{page}</strong> de <strong className="text-slate-800 font-bold">{totalPages}</strong> ({totalProjects} projetos)
+            <span className="font-medium text-text-secondary">
+              Página <strong className="text-text-primary font-bold">{page}</strong> de <strong className="text-text-primary font-bold">{totalPages}</strong> ({totalProjects} projetos)
             </span>
             <div className="flex items-center gap-1">
-              <button
+              <Button variant="outline" size="sm"
                 type="button"
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={page <= 1}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                className="shrink-0"
+                aria-label="Página anterior de projetos"
                 title="Recua 10 projetos"
               >
                 <ChevronLeft className="w-3.5 h-3.5" /> 
-              </button>
-              <button
+              </Button>
+              <Button variant="outline" size="sm"
                 type="button"
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={page >= totalPages}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                className="shrink-0"
+                aria-label="Página seguinte de projetos"
                 title="Avança 10 projetos"
               >
                  <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
 
         <div className="overflow-x-auto w-full">
           {displayedProjects.length === 0 ? (
-            <div className="p-10 text-center text-slate-400 text-xs font-medium">Nenhum projeto ativo registado.</div>
+            <div className="p-10 text-center text-text-muted text-body-sm font-medium">Nenhum projeto ativo registado.</div>
           ) : (
-            <table className="w-full min-w-[620px] text-left border-collapse text-xs">
-              <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+            <table aria-label="Projetos ativos" className="w-full min-w-[620px] text-left border-collapse text-body-sm">
+              <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
                 <tr>
                   <th className="px-5 py-3.5 text-left">IP / Gestor</th>
                   <th className="px-5 py-3.5 text-left">Projeto</th>
@@ -481,7 +494,7 @@ export default function BentoDashboard({
                   <th className="px-5 py-3.5 text-left">Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
+              <tbody className="divide-y divide-border-subtle font-medium">
                 {displayedProjects.map((project) => {
                   const deliveryDate = project.scheduledDate || project.estimatedDate || project.deliveryDate;
                   const overdueOrToday = isOverdueOrToday(deliveryDate);
@@ -496,31 +509,39 @@ export default function BentoDashboard({
                   return (
                     <tr 
                       key={project.id} 
-                      className={`hover:bg-slate-50/80 cursor-pointer transition-colors ${
-                        isCritical ? 'border-l-4 border-l-rose-600 bg-rose-50/10' : ''
+                      className={`hover:bg-surface-muted/80 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 ${
+                        isCritical ? 'border-l-4 border-l-error bg-error/5' : ''
                       }`}
                       onClick={() => onSelectProject(project.id)}
                     >
                       <td className="px-5 py-3.5">
-                        <div className="font-mono text-slate-800 font-bold text-xs">{project.installProjectNo || '-'}</div>
-                        <div className="text-[10px] text-slate-500 font-medium truncate max-w-[150px]">{getUserName(project.projectManagerId) || 'Sem gestor'}</div>
+                        <div className="font-mono text-text-primary font-bold text-body-sm">{project.installProjectNo || '-'}</div>
+                        <div className="text-caption text-text-secondary font-medium truncate max-w-[150px]">{getUserName(project.projectManagerId) || 'Sem gestor'}</div>
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
                           {isCritical && (
-                            <span className="w-1.5 h-7 bg-rose-600 rounded-full shrink-0" title="Risco Crítico do Projeto" />
+                            <span className="w-1.5 h-7 bg-error rounded-full shrink-0" title="Risco Crítico do Projeto" />
                           )}
                           <div>
-                            <div className="text-xs text-blue-600 font-medium flex items-center gap-1.5 flex-wrap">
+                            <div className="text-body-sm text-primary font-medium flex items-center gap-1.5 flex-wrap">
                               <span>{getClientName(project.clientId)}</span>
                               {hasMissingMat && (
-                                <span title="Material em falta no projeto" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 text-[10px] font-extrabold border border-rose-200">
-                                  <Package className="w-3 h-3 text-rose-600" />
+                                <span title="Material em falta no projeto" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-error/10 text-error text-caption font-semibold border border-error/20">
+                                  <Package className="w-3 h-3 text-error" />
                                   Material em falta
                                 </span>
                               )}
                             </div>
-                            <div className="font-extrabold text-slate-800 line-clamp-1 text-sm">{project.title}</div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Abrir projeto ${project.title}`}
+                              onClick={event => { event.stopPropagation(); onSelectProject(project.id); }}
+                              className="h-auto p-0 justify-start text-left whitespace-normal font-semibold text-text-primary hover:bg-transparent"
+                            >
+                              {project.title}
+                            </Button>
                           </div>
                         </div>
                       </td>
@@ -528,22 +549,22 @@ export default function BentoDashboard({
                         {deliveryDate ? (
                           <span className={
                             overdueOrToday
-                              ? 'text-red-600 font-extrabold bg-red-50 border border-red-200 px-2 py-0.5 rounded inline-block shadow-2xs'
-                              : 'text-slate-600'
+                              ? 'text-error font-semibold bg-error/5 border border-error/20 px-2 py-0.5 rounded inline-block shadow-2xs'
+                              : 'text-text-secondary'
                           }>
                             {deliveryDate}
                           </span>
                         ) : (
-                          <span className="text-slate-400 font-mono">Sem data</span>
+                          <span className="text-text-muted font-mono">Sem data</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5">
                         {(() => {
                           const pStyle = getProjectStatusStyle(project.statusId, projectStatuses);
                           return (
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${pStyle.badgeClass}`}>
+                            <Badge className={pStyle.badgeClass}>
                               {pStyle.name}
-                            </span>
+                            </Badge>
                           );
                         })()}
                       </td>
@@ -556,52 +577,52 @@ export default function BentoDashboard({
         </div>
 
         {totalProjects > 0 && (
-          <div className="px-5 py-3.5 bg-slate-50/70 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 font-medium">
+          <div className="px-5 py-3.5 bg-surface-muted/70 border-t border-border/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-body-sm text-text-secondary font-medium">
             <div>
-              A mostrar <strong className="text-slate-700">{Math.min((page - 1) * 10 + 1, totalProjects)}</strong> - <strong className="text-slate-700">{Math.min(page * 10, totalProjects)}</strong> de <strong className="text-slate-700">{totalProjects}</strong> projetos ativos
+              A mostrar <strong className="text-text-primary">{Math.min((page - 1) * 10 + 1, totalProjects)}</strong> - <strong className="text-text-primary">{Math.min(page * 10, totalProjects)}</strong> de <strong className="text-text-primary">{totalProjects}</strong> projetos ativos
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button variant="outline" size="sm"
                 type="button"
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={page <= 1}
-                className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 font-bold text-slate-700 rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                className="shrink-0"
               >
                 <ChevronLeft className="w-3.5 h-3.5" /> Anterior
-              </button>
-              <button
+              </Button>
+              <Button variant="outline" size="sm"
                 type="button"
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={page >= totalPages}
-                className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 font-bold text-slate-700 rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                className="shrink-0"
               >
                 Seguinte<ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Row: Projetos Ativos Esta Semana + Projetos com Maior Carga Horária */}
       <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-5">
         
         {/* Widget 1: Projetos ativos esta semana (Next 7 days) */}
-        <div className="bg-slate-900 rounded-2xl p-5 text-white flex flex-col justify-between -sm min-h-[360px]">
+        <Card className="p-5 flex flex-col justify-between min-h-[360px]">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <CalendarClock className="w-4 h-4 text-blue-400" /> Projetos ativos esta semana
+              <h3 className="text-heading-sm text-text-primary flex items-center gap-1.5">
+                <CalendarClock className="w-4 h-4 text-primary" /> Projetos ativos esta semana
               </h3>
-              <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-extrabold text-[11px] border border-blue-500/30">
+              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold text-caption border border-primary/20">
                 {activeProjectsThisWeek.length} projeto{activeProjectsThisWeek.length !== 1 ? 's' : ''}
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 mb-4 font-medium">Projetos com tarefas planeadas para os próximos 7 dias</p>
+            <p className="text-body-sm text-text-secondary mb-4 font-medium">Projetos com tarefas planeadas para os próximos 7 dias</p>
           </div>
           
           <div className="flex-1 flex flex-col gap-3">
             {activeProjectsThisWeek.length === 0 ? (
-              <div className="text-center py-10 text-slate-500 text-xs font-medium">
+              <div className="text-center py-10 text-text-secondary text-body-sm font-medium">
                 Nenhum projeto com tarefas planeadas para os próximos 7 dias.
               </div>
             ) : (
@@ -611,28 +632,32 @@ export default function BentoDashboard({
                   <div 
                     key={project.id}
                     onClick={() => onSelectProject(project.id)}
-                    className="bg-slate-800/80 hover:bg-slate-800 p-3 rounded-xl border border-slate-700/80 cursor-pointer transition-all space-y-2"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Abrir projeto ${project.title}`}
+                    onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectProject(project.id); } }}
+                    className="bg-surface-muted hover:bg-surface-elevated p-3 rounded-control border border-border/80 cursor-pointer transition-all focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 space-y-2"
                   >
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[11px] font-bold text-blue-400 truncate">{clientName}</span>
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase border ${pStyle.badgeClass}`}>
+                          <span className="text-caption font-bold text-primary truncate">{clientName}</span>
+                          <Badge className={pStyle.badgeClass}>
                             {pStyle.name}
-                          </span>
+                          </Badge>
                         </div>
-                        <div className="text-xs font-extrabold text-white truncate">{project.title}</div>
+                        <div className="text-body-sm font-semibold text-text-primary truncate">{project.title}</div>
                       </div>
-                      <span className="text-[11px] font-mono font-bold text-slate-300 shrink-0">
+                      <span className="text-caption font-mono font-bold text-text-secondary shrink-0">
                         {projTasksCount} de {totalTasksThisWeek} tarefas
                       </span>
                     </div>
                     
                     {/* Progress bar */}
-                    <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
                       <div 
                         className={`h-full rounded-full transition-all duration-500 ${
-                          progressPct === 100 ? 'bg-emerald-400' : 'bg-blue-500'
+                          progressPct === 100 ? 'bg-success' : 'bg-primary'
                         }`}
                         style={{ width: `${progressPct}%` }}
                       />
@@ -643,31 +668,31 @@ export default function BentoDashboard({
             )}
           </div>
 
-          <M3Button tone="text" 
+          <Button variant="primary"
             onClick={() => onNavigate('tarefas')}
             className="mt-4 w-full text-center"
           >
             Ver todas as tarefas
-          </M3Button>
-        </div>
+          </Button>
+        </Card>
 
         {/* Widget 2: Projetos com Maior Carga Horária (Paginated 10 by 10) */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between -sm min-h-[360px]">
+        <Card className="p-5 flex flex-col justify-between min-h-[360px]">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <BarChart2 className="w-4 h-4 text-blue-500" /> Projetos com maior carga horária
+              <h3 className="text-heading-sm text-text-primary flex items-center gap-1.5">
+                <BarChart2 className="w-4 h-4 text-primary" /> Projetos com maior carga horária
               </h3>
-              <span className="text-xs font-bold text-slate-500">
+              <span className="text-body-sm font-bold text-text-secondary">
                 Pág. {currentWorkloadPage}/{totalWorkloadPages}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 mb-4 font-medium">Contabilização de horas consumidas e estimadas de tarefas ativas.</p>
+            <p className="text-caption text-text-secondary mb-4 font-medium">Contabilização de horas consumidas e estimadas de tarefas ativas.</p>
           </div>
 
           <div className="flex-1 flex flex-col gap-2.5">
             {displayedWorkloadProjects.length === 0 ? (
-              <div className="text-center py-10 text-slate-400 text-xs font-medium">
+              <div className="text-center py-10 text-text-muted text-body-sm font-medium">
                 Nenhum projeto ativo registado.
               </div>
             ) : (
@@ -680,33 +705,37 @@ export default function BentoDashboard({
                   <div 
                     key={project.id}
                     onClick={() => onSelectProject(project.id)}
-                    className="p-2.5 rounded-xl border border-slate-100 hover:border-slate-200 bg-slate-50/60 hover:bg-slate-50 cursor-pointer transition-all space-y-1.5"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Abrir projeto ${project.title}`}
+                    onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectProject(project.id); } }}
+                    className="p-2.5 rounded-control border border-border-subtle hover:border-border bg-surface-muted/60 hover:bg-surface-muted cursor-pointer transition-all focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 space-y-1.5"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-black shrink-0">
+                        <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-caption font-bold shrink-0">
                           {globalIndex}
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[10px] font-bold text-blue-600 truncate">{clientName}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase border ${pStyle.badgeClass}`}>
+                            <span className="text-caption font-bold text-primary truncate">{clientName}</span>
+                            <Badge className={pStyle.badgeClass}>
                               {pStyle.name}
-                            </span>
+                            </Badge>
                           </div>
-                          <div className="text-xs font-extrabold text-slate-800 truncate">{project.title}</div>
+                          <div className="text-body-sm font-semibold text-text-primary truncate">{project.title}</div>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="text-xs font-black text-slate-900 font-mono">{totalHours}h</div>
-                        <div className="text-[10px] text-slate-400">{tasksCount} tarefa{tasksCount !== 1 ? 's' : ''}</div>
+                        <div className="text-body-sm font-bold text-text-primary font-mono">{totalHours}h</div>
+                        <div className="text-caption text-text-muted">{tasksCount} tarefa{tasksCount !== 1 ? 's' : ''}</div>
                       </div>
                     </div>
 
                     {/* Progress bar representing workload */}
-                    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                        className="h-full bg-primary rounded-full transition-all duration-500"
                         style={{ width: `${barWidth}%` }}
                       />
                     </div>
@@ -718,40 +747,40 @@ export default function BentoDashboard({
 
           {/* Workload Pagination Controls */}
           {totalWorkloadPages > 1 && (
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-500 mt-2">
+            <div className="pt-3 border-t border-border-subtle flex items-center justify-between text-body-sm font-medium text-text-secondary mt-2">
               <span>{totalWorkloadProjects} projetos ativos</span>
               <div className="flex items-center gap-1.5">
-                <button
+                <Button variant="outline" size="sm"
                   onClick={() => setWorkloadPage(prev => Math.max(1, prev - 1))}
                   disabled={currentWorkloadPage <= 1}
-                  className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                  className="shrink-0"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" /> Anterior
-                </button>
-                <button
+                </Button>
+                <Button variant="outline" size="sm"
                   onClick={() => setWorkloadPage(prev => Math.min(totalWorkloadPages, prev + 1))}
                   disabled={currentWorkloadPage >= totalWorkloadPages}
-                  className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-50 font-bold text-slate-700 rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                  className="shrink-0"
                 >
                   Seguinte <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </div>
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Row: Notas & Comentários Recentes + Ausências e Férias da Equipa */}
       <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Left: Recent Comments */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col -sm min-h-[320px]">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-            <MessageSquare className="w-4 h-4 text-blue-500" /> Comentários recentes
-          </div>
+        <Card className="p-5 flex flex-col min-h-[320px]">
+          <h3 className="text-heading-sm text-text-primary mb-4 flex items-center gap-1.5">
+            <MessageSquare className="w-4 h-4 text-primary" /> Comentários recentes
+          </h3>
           {activeComments.length === 0 ? (
-            <p className="text-xs text-slate-400 py-8 text-center font-medium">Nenhum comentário adicionado recentemente.</p>
+            <p className="text-body-sm text-text-muted py-8 text-center font-medium">Nenhum comentário adicionado recentemente.</p>
           ) : (
-            <div className="flex flex-col gap-3 text-xs max-h-[380px] overflow-y-auto pr-1">
+            <div className="flex flex-col gap-3 text-body-sm max-h-[380px] overflow-y-auto pr-1">
               {activeComments.map((com) => {
                 const proj = projects.find(p => matchId(p.id, com.projectId));
                 const commentDate = com.createdDate ? new Date(com.createdDate) : null;
@@ -759,18 +788,18 @@ export default function BentoDashboard({
                   ? `${commentDate.toLocaleDateString('pt-PT')} ${commentDate.toLocaleTimeString('pt-PT', {hour: '2-digit', minute:'2-digit'})}`
                   : 'Data N/A';
                 return (
-                  <div key={com.id} className="border-l-2 border-blue-500 pl-3.5 py-2 bg-slate-50/60 rounded-r-xl border-y border-r border-slate-100 flex flex-col justify-between hover:bg-slate-50 transition-colors">
+                  <div key={com.id} className="border-l-2 border-primary pl-3.5 py-2 bg-surface-muted/60 rounded-r-control border-y border-r border-border-subtle flex flex-col justify-between hover:bg-surface-muted transition-colors">
                     <div>
                       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                        <span className="font-extrabold text-slate-800">{getUserName(com.authorId)}</span>
-                        <span className="text-slate-400 text-[10px]">no projeto</span>
-                        <span className="font-bold text-blue-600 truncate max-w-[200px]" title={proj ? `${getClientName(proj.clientId)} - ${proj.title}` : 'Desconhecido'}>
+                        <span className="font-semibold text-text-primary">{getUserName(com.authorId)}</span>
+                        <span className="text-text-muted text-caption">no projeto</span>
+                        <span className="font-bold text-primary truncate max-w-[200px]" title={proj ? `${getClientName(proj.clientId)} - ${proj.title}` : 'Desconhecido'}>
                           {proj ? `${getClientName(proj.clientId)} - ${proj.title}` : 'Desconhecido'}
                         </span>
                       </div>
-                      <p className="text-slate-700 italic mt-0.5 font-medium whitespace-pre-wrap">&quot;{com.comment}&quot;</p>
+                      <p className="text-text-primary italic mt-0.5 font-medium whitespace-pre-wrap">&quot;{com.comment}&quot;</p>
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-2 font-bold font-mono">
+                    <div className="text-caption text-text-muted mt-2 font-bold font-mono">
                       {formattedDate}
                     </div>
                   </div>
@@ -778,16 +807,16 @@ export default function BentoDashboard({
               })}
             </div>
           )}
-        </div>
+        </Card>
 
         {/* Right: Team Absences */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between -sm min-h-[320px]">
+        <Card className="p-5 flex flex-col justify-between min-h-[320px]">
           <div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-blue-500" /> Ausências da equipa
-            </div>
+            <h3 className="text-heading-sm text-text-primary mb-4 flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-primary" /> Ausências da equipa
+            </h3>
             {displayedAbsences.length === 0 ? (
-              <p className="text-xs text-slate-400 py-8 text-center font-medium">Nenhuma ausência registada.</p>
+              <p className="text-body-sm text-text-muted py-8 text-center font-medium">Nenhuma ausência registada.</p>
             ) : (
               <div className="flex flex-col gap-2.5 max-h-[380px] overflow-y-auto pr-1">
                 {displayedAbsences.map((abs) => {
@@ -795,21 +824,21 @@ export default function BentoDashboard({
                   const endDate = safeParseDate(abs.absenceEndDate);
                   const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24)) + 1;
                   return (
-                    <div key={abs.id} className="flex items-center justify-between bg-slate-50/70 p-2.5 rounded-xl border border-slate-100 text-xs hover:bg-slate-50 transition-all">
+                    <div key={abs.id} className="flex items-center justify-between bg-surface-muted/70 p-2.5 rounded-control border border-border-subtle text-body-sm hover:bg-surface-muted transition-all">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-body-sm font-bold shrink-0">
                           {getUserInitials(abs.userId)}
                         </div>
                         <div>
-                          <div className="font-extrabold text-slate-800 text-xs">{getUserName(abs.userId)}</div>
-                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                          <div className="font-semibold text-text-primary text-body-sm">{getUserName(abs.userId)}</div>
+                          <div className="text-caption text-text-muted font-bold uppercase tracking-tight">
                             Registo de ausência
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[10px] text-slate-700 font-bold">{startDate.toLocaleDateString('pt-PT')}</div>
-                        <div className="text-[9px] text-slate-500 font-mono mt-0.5">{days} dia{days !== 1 ? 's' : ''}</div>
+                        <div className="text-caption text-text-primary font-bold">{startDate.toLocaleDateString('pt-PT')}</div>
+                        <div className="text-caption text-text-secondary font-mono mt-0.5">{days} dia{days !== 1 ? 's' : ''}</div>
                       </div>
                     </div>
                   );
@@ -817,13 +846,13 @@ export default function BentoDashboard({
               </div>
             )}
           </div>
-          <button 
+          <Button variant="secondary"
             onClick={() => onNavigate('ausencias')}
-            className="mt-6 text-center py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100/75 rounded-lg transition-colors cursor-pointer"
+            className="mt-6 w-full"
           >
             Ver todas as ausências
-          </button>
-        </div>
+          </Button>
+        </Card>
       </div>
 
     </div>

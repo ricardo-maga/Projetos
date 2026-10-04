@@ -3,6 +3,7 @@
 import React, { forwardRef } from 'react';
 import { cn } from '../../lib/utils';
 import { Loader2 } from 'lucide-react';
+import { hasFilledButtonBackground } from './buttonAppearance';
 
 export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
@@ -35,6 +36,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
           className
         )}
         {...props}
+        data-filled={hasFilledButtonBackground(className, variant === 'primary' || variant === 'danger') ? 'true' : undefined}
       >
         {isLoading ? (
           <Loader2 className="w-5 h-5 animate-spin shrink-0" />

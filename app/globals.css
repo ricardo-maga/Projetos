@@ -32,6 +32,9 @@
   --color-primary-hover: var(--primary-700);
   --color-primary-active: var(--primary-800);
   --color-success: #16a34a;
+  --color-success-strong: #007a2e;
+  --color-brand-green: #009639;
+  --color-brand-accent: #4298b5;
   --color-warning: #d97706;
   --color-error: #dc2626;
   --color-info: var(--primary-600);
@@ -273,60 +276,100 @@ body[data-theme="rose"],
 }
 
 
-/* Gmail / Google Workspace light palette. UI-only: no persisted settings change.
-   Explicit scope avoids recoloring Tickets and Materials/BOM content. */
-#main-root {
-  --m3-primary: #0b57d0;
+/* Domino brand palette. Shared presentation only: configured status colors,
+   persisted settings and domain behavior are unchanged. */
+:root,
+html,
+body,
+html[data-theme],
+body[data-theme],
+[data-theme],
+#main-root,
+#main-root[data-theme] {
+  --brand-domino-blue: #003b5c;
+  --brand-domino-blue-60: #66899d;
+  --brand-domino-blue-30: #b2c4ce;
+  --brand-domino-blue-10: #e5ebef;
+  --brand-domino-green: #009639;
+  --brand-domino-green-60: #66c088;
+  --brand-domino-green-30: #b2dfc3;
+  --brand-domino-green-10: #e5f4eb;
+  --brand-do-more-blue: #4298b5;
+  --brand-do-more-blue-60: #8ec1d3;
+  --brand-do-more-blue-30: #c6e0e9;
+  --brand-do-more-blue-10: #ecf5f8;
+  --brand-charcoal: #1a1a1a;
+  /* Darker derived green supports normal white button labels (5.49:1). */
+  --color-success-strong: #007a2e;
+  --color-brand-green: var(--brand-domino-green);
+  --color-brand-accent: var(--brand-do-more-blue);
+  --m3-primary: var(--brand-domino-blue);
   --m3-on-primary: #ffffff;
-  --m3-primary-container: #d3e3fd;
-  --m3-on-primary-container: #041e49;
+  --m3-primary-container: var(--brand-do-more-blue-30);
+  --m3-on-primary-container: var(--brand-domino-blue);
   --m3-surface: #ffffff;
-  --m3-surface-container: #f6f8fc;
-  --m3-surface-container-high: #eaf1fb;
-  --m3-on-surface: #1f1f1f;
+  --m3-surface-container: var(--brand-do-more-blue-10);
+  --m3-surface-container-high: var(--brand-domino-blue-10);
+  --m3-on-surface: var(--brand-charcoal);
   --m3-on-surface-variant: #444746;
-  --m3-outline: #747775;
-  --m3-outline-variant: #c4c7c5;
+  --m3-outline: var(--brand-domino-blue-60);
+  --m3-outline-variant: var(--brand-domino-blue-30);
   --m3-error: #b3261e;
   --m3-radius-sm: 12px;
   --m3-radius-md: 16px;
   --m3-radius-lg: 28px;
-  background: var(--m3-surface-container);
-  color: var(--m3-on-surface);
-}
-
-#main-root:not([data-active-tab="tickets"])[data-theme] {
-  --primary-50: #f2f6fc;
-  --primary-100: #d3e3fd;
-  --primary-200: #a8c7fa;
-  --primary-300: #7cacf8;
-  --primary-400: #5b95f4;
-  --primary-500: #1a73e8;
-  --primary-600: #0b57d0;
-  --primary-700: #0842a0;
-  --primary-800: #073477;
-  --primary-900: #041e49;
-  --primary-950: #001533;
-  --color-blue-50: #f2f6fc !important;
-  --color-blue-100: #d3e3fd !important;
-  --color-blue-200: #a8c7fa !important;
-  --color-blue-300: #7cacf8 !important;
-  --color-blue-400: #5b95f4 !important;
-  --color-blue-500: #1a73e8 !important;
-  --color-blue-600: #0b57d0 !important;
-  --color-blue-700: #0842a0 !important;
-  --color-blue-800: #073477 !important;
-  --color-blue-900: #041e49 !important;
-  --color-blue-950: #001533 !important;
-  --color-background-token: #f6f8fc;
+  --primary-50: var(--brand-do-more-blue-10);
+  --primary-100: var(--brand-domino-blue-10);
+  --primary-200: var(--brand-domino-blue-30);
+  --primary-300: var(--brand-domino-blue-60);
+  --primary-400: #33718c;
+  --primary-500: #1a5674;
+  --primary-600: var(--brand-domino-blue);
+  --primary-700: #00324e;
+  --primary-800: #002a42;
+  --primary-900: #002136;
+  --primary-950: #001827;
+  --color-blue-50: var(--primary-50) !important;
+  --color-blue-100: var(--primary-100) !important;
+  --color-blue-200: var(--primary-200) !important;
+  --color-blue-300: var(--primary-300) !important;
+  --color-blue-400: var(--primary-400) !important;
+  --color-blue-500: var(--primary-500) !important;
+  --color-blue-600: var(--primary-600) !important;
+  --color-blue-700: var(--primary-700) !important;
+  --color-blue-800: var(--primary-800) !important;
+  --color-blue-900: var(--primary-900) !important;
+  --color-blue-950: var(--primary-950) !important;
+  --color-background-token: var(--brand-do-more-blue-10);
   --color-surface-token: #ffffff;
-  --color-surface-muted-token: #f6f8fc;
-  --color-surface-elevated-token: #eaf1fb;
-  --color-text-primary-token: #1f1f1f;
+  --color-surface-muted-token: var(--brand-do-more-blue-10);
+  --color-surface-elevated-token: var(--brand-domino-blue-10);
+  --color-text-primary-token: var(--brand-charcoal);
   --color-text-secondary-token: #444746;
   --color-text-muted-token: #5e5e5e;
-  --color-border-token: #c4c7c5;
-  --color-border-subtle-token: #e1e3e1;
+  --color-text-disabled-token: #66899d;
+  --color-border-token: var(--brand-domino-blue-30);
+  --color-border-subtle-token: var(--brand-domino-blue-10);
+  /* Rebind aliases at the theme boundary, not just their inherited inputs. */
+  --color-primary: var(--primary-600);
+  --color-primary-hover: var(--primary-700);
+  --color-primary-active: var(--primary-800);
+  --color-info: var(--primary-600);
+  --color-background: var(--color-background-token);
+  --color-surface: var(--color-surface-token);
+  --color-surface-muted: var(--color-surface-muted-token);
+  --color-surface-elevated: var(--color-surface-elevated-token);
+  --color-text-primary: var(--color-text-primary-token);
+  --color-text-secondary: var(--color-text-secondary-token);
+  --color-text-muted: var(--color-text-muted-token);
+  --color-text-disabled: var(--color-text-disabled-token);
+  --color-border: var(--color-border-token);
+  --color-border-subtle: var(--color-border-subtle-token);
+}
+
+#main-root {
+  background: var(--m3-surface-container);
+  color: var(--m3-on-surface);
 }
 
 /* Shell and shared primitives; all interactive states are explicit. */
@@ -335,7 +378,7 @@ body[data-theme="rose"],
 .m3-nav-item { border-radius: 999px; min-height: 48px; transition: background-color .18s ease, color .18s ease; }
 .m3-nav-item[aria-current="page"], .m3-nav-item.is-active { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
 .m3-search { background: var(--m3-surface-container-high); border: 0; border-radius: 999px; height: 44px; }
-.m3-card { background: var(--m3-surface); border: 1px solid #e1e3e1; border-radius: var(--m3-radius-md); box-shadow: none; }
+.m3-card { background: var(--m3-surface); border: 1px solid var(--m3-outline-variant); border-radius: var(--m3-radius-md); box-shadow: none; }
 .m3-button { min-height: 40px; padding: 0 20px; border: 1px solid transparent; border-radius: 999px; font-weight: 600; font-size: .875rem; cursor: pointer; transition: box-shadow .18s ease, background-color .18s ease; }
 .m3-button--filled { background: var(--m3-primary); color: var(--m3-on-primary); }
 .m3-button--tonal { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
@@ -369,15 +412,15 @@ body[data-theme="rose"],
 /* Opt-in migration of legacy cards, without changing status colors or table
    geometry, and respecting nested modules excluded from this phase. */
 :where(#main-root:not([data-active-tab="tickets"]) #active-tab-content) .bg-white.rounded-2xl.border:not(:where([data-m3-exclude], [data-m3-exclude] *)) {
-  border-color: #e1e3e1;
+  border-color: var(--m3-outline-variant);
   box-shadow: none;
 }
 .m3-focus-banner { background: var(--m3-surface-container-high); color: var(--m3-on-surface); border: 1px solid transparent; border-radius: var(--m3-radius-lg); }
 .m3-focus-banner__badge { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
 .m3-focus-banner__name, .m3-focus-banner__value { color: var(--m3-primary); }
 .m3-focus-banner__description, .m3-focus-banner__label { color: var(--m3-on-surface-variant); }
-.m3-focus-banner__stats { background: var(--m3-surface); border: 1px solid #e1e3e1; }
-.m3-focus-banner__stat { border-color: #e1e3e1; }
+.m3-focus-banner__stats { background: var(--m3-surface); border: 1px solid var(--m3-outline-variant); }
+.m3-focus-banner__stat { border-color: var(--m3-outline-variant); }
 
 @media (max-width: 767px) {
   .m3-nav-rail { border-radius: 0 var(--m3-radius-lg) var(--m3-radius-lg) 0; }
@@ -387,4 +430,16 @@ body[data-theme="rose"],
 @media (prefers-reduced-motion: reduce) {
   :is(.m3-nav-item, .m3-button, .m3-icon-button, .m3-segment, .m3-filter-chip) { transition: none; }
 }
+
+/* Filled actions have an explicit on-color contract. Keep this outside Tailwind
+   layers so local text utilities cannot undo contrast, including nested labels
+   and icons. Tonal/outline/ghost and selected tinted actions are not targeted. */
+button[data-filled="true"],
+button[data-filled="true"] :where(span, svg) {
+  color: #ffffff;
+}
+
+/* Dashboard uses existing Foundation surfaces, modest radii and readable type. */
+.m3-dashboard .m3-section-header { align-items: flex-start; }
+.m3-dashboard [role="button"] { scroll-margin-block: 24px; }
 

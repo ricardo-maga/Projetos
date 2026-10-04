@@ -74,10 +74,10 @@ describe('Material 3 / Workspace primitives', () => {
 
 describe('Workspace visual migration boundaries', () => {
   const css = readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8');
-  const migratedCSS = css.slice(css.indexOf('/* Gmail / Google Workspace'));
+  const migratedCSS = css.slice(css.indexOf('/* Domino brand palette'));
 
-  it('uses Workspace blue, white cards and neutral light shell instead of purple surfaces', () => {
-    for (const color of ['#0b57d0', '#d3e3fd', '#f6f8fc', '#ffffff', '#1f1f1f']) expect(migratedCSS).toContain(color);
+  it('uses Domino brand blue, white cards and brand tints instead of purple surfaces', () => {
+    for (const color of ['#003b5c', '#c6e0e9', '#ecf5f8', '#ffffff', '#1a1a1a']) expect(migratedCSS).toContain(color);
     expect(migratedCSS).not.toContain('#fbf8ff');
   });
 

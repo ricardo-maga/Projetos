@@ -4,6 +4,7 @@ import React, { forwardRef } from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Check, Loader2 } from 'lucide-react';
+import { hasFilledButtonBackground } from './ui/buttonAppearance';
 
 const classes = (...values: Parameters<typeof clsx>) => twMerge(clsx(...values));
 type Tone = 'filled' | 'tonal' | 'outlined' | 'text';
@@ -26,6 +27,7 @@ export const M3Button = forwardRef<HTMLButtonElement, M3ButtonProps>(function M3
       {...props}
       ref={ref}
       type={type}
+      data-filled={hasFilledButtonBackground(className, tone === 'filled') ? 'true' : undefined}
       disabled={disabled || isLoading}
       aria-busy={isLoading || props['aria-busy']}
       className={classes('m3-button inline-flex items-center justify-center gap-2', `m3-button--${tone}`, danger && 'm3-button--danger', className)}
