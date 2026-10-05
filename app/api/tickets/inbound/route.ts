@@ -1,5 +1,7 @@
 export const dynamic = 'force-dynamic';
 
+import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   getActiveStateFromSupabase, 
@@ -8,7 +10,7 @@ import {
 } from '@/lib/supabaseSync';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { Ticket } from '@/lib/types';
-import { genId } from '@/lib/utils';
+import { reserveTicketNumber } from '@/lib/supabase/ticketNumber';
 import crypto from 'crypto';
 import { checkRateLimit } from '@/lib/rateLimit';
 
@@ -36,17 +38,16 @@ export async function POST(req: NextRequest) {
     const requesterEmail = body.requesterEmail || body.from || body.sender || '';
     const requesterName = body.requesterName || (requesterEmail ? requesterEmail.split('@')[0].replace('.', ' ') : 'Contacto Externo');
 
-    const result = await getActiveStateFromSupabase();
+    const databaseClient = requireServerDbClient();
+    const result = await getActiveStateFromSupabase(databaseClient);
     if (!result.success || !result.data) {
       return NextResponse.json(result, { status: 500 });
     }
 
     const state = result.data;
     const now = new Date().toISOString();
-    const id = genId('tck');
-    const count = (state.tickets || []).length + 1;
-    const year = new Date().getFullYear();
-    const ticketNumber = `TCK-${year}-${String(count).padStart(3, '0')}`;
+    const id = crypto.randomUUID();
+    const ticketNumber = await reserveTicketNumber(databaseClient);
 
     // Always put inbound external tickets in validation stage
     const newTicket: Ticket = {
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
       tickets: [newTicket, ...(state.tickets || [])]
     };
 
-    const saveRes = await saveActiveStateToSupabase(newState);
+    const saveRes = await saveActiveStateToSupabase(newState, databaseClient, { tickets: [newTicket] });
     if (!saveRes.success) {
       return NextResponse.json(saveRes, { status: 500 });
     }

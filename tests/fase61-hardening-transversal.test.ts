@@ -67,10 +67,9 @@ describe('FASE 61 — Hardening Transversal Pós-Contenção do Supabase Sync', 
       expect(saveFn).not.toContain('delete().neq(\'id\', \'00000000-0000-0000-0000-000000000000\')');
 
       // Deve exigir Array.isArray(...) e length > 0 antes de acionar deleções
-      expect(saveFn).toContain('if (Array.isArray(state.comments) && state.comments.length > 0)');
-      expect(saveFn).toContain('if (Array.isArray(state.userAbsences) && state.userAbsences.length > 0)');
-      expect(saveFn).toContain('if (Array.isArray(state.specialDays) && state.specialDays.length > 0)');
-      expect(saveFn).toContain('if (Array.isArray(state.defaultTasks) && state.defaultTasks.length > 0)');
+      for (const table of ['comments', 'user_absences', 'special_days', 'default_tasks']) {
+        expect(saveFn).not.toContain(`supabase.from('${table}').delete()`);
+      }
     });
   });
 

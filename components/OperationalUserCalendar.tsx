@@ -64,7 +64,7 @@ interface OperationalUserCalendarProps {
   onQuickCreateTask?: (userId: string, dateStr: string, projectId?: string) => void;
   canCreateTask?: boolean;
   canMoveTask?: boolean;
-  updateTask?: (id: string, updates: any) => void;
+  updateTask?: (id: string, updates: any) => void | Promise<unknown>;
   appConfig?: any;
   currentUser?: User | any;
 }

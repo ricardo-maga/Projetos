@@ -398,7 +398,7 @@ describe('FASE 66-B — Tasks Persistence Boundary & Project Decoupling', () => 
       expect(msg).toContain('Conflito de concorrência');
     });
 
-    it('rejeita DELETE de tarefa com alocações de planeamento ativas (409 Conflict)', async () => {
+    it('DELETE canónico preserva alocações históricas sem bloquear o soft-delete', async () => {
       mockDbData.planning_allocations.push({
         id: 'alloc-active-1',
         task_id: 'task-com-projeto-1',
@@ -410,10 +410,11 @@ describe('FASE 66-B — Tasks Persistence Boundary & Project Decoupling', () => 
       });
 
       const res = await deleteTask(req, { params: Promise.resolve({ id: 'task-com-projeto-1' }) });
-      expect(res.status).toBe(409);
+      expect(res.status).toBe(200);
       const json = await res.json();
-      const msg = json.error?.message || json.message || '';
-      expect(msg).toContain('alocação(ões) de planeamento ativa(s)');
+      expect(json.success).toBe(true);
+      expect(mockDbData.tasks.find((t: any) => t.id === 'task-com-projeto-1').deleted).toBe(true);
+      expect(mockDbData.planning_allocations.find((a: any) => a.id === 'alloc-active-1').status).toBe('CONFIRMED');
     });
 
     it('permite DELETE de tarefa quando alocações são CANCELLED (200)', async () => {

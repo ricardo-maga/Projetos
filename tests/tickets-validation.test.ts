@@ -4,6 +4,7 @@ import { GET as getTicket, PATCH as updateTicket, DELETE as deleteTicket } from 
 import * as authModule from '../lib/auth/authorization';
 import * as syncModule from '../lib/supabaseSync';
 import { NextRequest, NextResponse } from 'next/server';
+import { installLegacyRouteHarness } from './helpers/legacyRouteHarness';
 
 const mockAuthenticatedUser: authModule.AuthenticatedUser = {
   id: 'user-auth-100',
@@ -62,8 +63,10 @@ describe('Fase 26-A — Validação do Módulo de Tickets (Comportamento Autenti
   let authSpy: any;
   let getSyncSpy: any;
   let saveSyncSpy: any;
+  let restoreHarness: () => void;
 
   beforeEach(() => {
+    restoreHarness = installLegacyRouteHarness();
     getSyncSpy = spyOn(syncModule, 'getActiveStateFromSupabase').mockImplementation(async () => {
       return { success: true, data: JSON.parse(JSON.stringify(mockState)) };
     });
@@ -74,6 +77,7 @@ describe('Fase 26-A — Validação do Módulo de Tickets (Comportamento Autenti
   });
 
   afterEach(() => {
+    restoreHarness?.();
     getSyncSpy?.mockRestore();
     saveSyncSpy?.mockRestore();
     authSpy?.mockRestore();

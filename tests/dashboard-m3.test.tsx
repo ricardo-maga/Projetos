@@ -19,7 +19,8 @@ describe('Dashboard M3 presentation', () => {
   it('renders Foundation cards, readable sections and accessible search without data', () => {
     const html = renderToStaticMarkup(<Dashboard {...props} />);
     expect(html).toContain('m3-dashboard');
-    expect(html).toContain('<h2>Dashboard</h2>');
+    // The page shell owns the Dashboard title; cards retain semantic headings.
+    expect(html).toMatch(/<h2\b[^>]*>/);
     for (const title of ['Projetos Ativos', 'Projetos ativos esta semana', 'Projetos com maior carga horária', 'Comentários recentes', 'Ausências da equipa']) expect(html).toContain(title);
     expect(html).toContain('aria-label="Pesquisar projetos por cliente, título, IP ou gestor"');
     expect(html).toContain('Nenhum projeto ativo registado.');

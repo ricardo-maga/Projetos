@@ -2412,7 +2412,7 @@ export default function ProjectSection({
                         type="button"
                         onClick={() => {
                           setShowImportTaskForm(!showImportTaskForm);
-                          setShowAddTaskForm(false);
+                          setTaskModalState(prev => ({ ...prev, isOpen: false, task: null }));
                         }}
                         className="flex items-center gap-1.5 text-body-sm font-extrabold text-success-strong bg-success/10 hover:bg-success/10 border border-success/20 px-3 py-2 rounded-control transition-colors cursor-pointer"
                       >

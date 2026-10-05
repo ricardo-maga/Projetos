@@ -1,6 +1,6 @@
 import { describe, it, expect, spyOn, beforeEach } from 'bun:test';
 import { readFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
+import { join, relative } from 'path';
 import { saveActiveStateToSupabase, getActiveStateFromSupabase } from '../lib/supabaseSync';
 import * as projectServiceModule from '../lib/projects/projectService';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
@@ -146,7 +146,7 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
       const unauthorizedCallers: string[] = [];
 
       for (const file of allSourceFiles) {
-        const relativePath = file.replace(`${process.cwd()}/`, '');
+        const relativePath = relative(process.cwd(), file).replaceAll('\\', '/');
         if (relativePath === 'lib/supabaseSync.ts') continue; // Definição da função
 
         const content = readFileSync(file, 'utf-8');
@@ -186,7 +186,7 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
   });
 
   describe('4. Auditoria de Deletes Globais Implícitos (delete().in)', () => {
-    it('identifica entidades sujeitas a hard-delete implícito por ausência no snapshot do frontend', () => {
+    it('omissões de snapshot nunca executam hard-delete implícito', () => {
       const content = readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8');
       const saveFnBody = content.substring(
         content.indexOf('export async function saveActiveStateToSupabase'),
@@ -194,10 +194,11 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
       );
 
       // Tabelas onde um array incompleto enviado pelo frontend provoca DELETE na base de dados
-      expect(saveFnBody).toContain('await supabase.from(\'comments\').delete().in(\'id\', commentIdsToDelete)');
-      expect(saveFnBody).toContain('await supabase.from(\'user_absences\').delete().in(\'id\', absenceIdsToDelete)');
-      expect(saveFnBody).toContain('await supabase.from(\'special_days\').delete().in(\'id\', specialDayIdsToDelete)');
-      expect(saveFnBody).toContain('await supabase.from(\'default_tasks\').delete().in(\'id\', defaultTaskIdsToDelete)');
+      for (const table of ['comments', 'user_absences', 'special_days', 'default_tasks']) {
+        expect(saveFnBody).not.toContain(`supabase.from('${table}').delete()`);
+      }
+      const explicitDelete = readFileSync(join(process.cwd(), 'app/api/supabase/sync/entity/route.ts'), 'utf8');
+      expect(explicitDelete).toContain('.delete().eq(\'id\', body.id)');
     });
   });
 

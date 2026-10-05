@@ -1,0 +1,10 @@
+.git
+.env*
+.staging-transfer
+.next*
+supabase/.temp
+*.tsbuildinfo
+node_modules
+.npm-cache
+coverage
+*.log

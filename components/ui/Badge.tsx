@@ -7,11 +7,13 @@ export interface BadgeProps {
   children: React.ReactNode;
   variant?: 'neutral' | 'primary' | 'success' | 'warning' | 'error' | 'info';
   className?: string;
+  title?: string;
 }
 
-export function Badge({ children, variant = 'neutral', className }: BadgeProps) {
+export function Badge({ children, variant = 'neutral', className, title }: BadgeProps) {
   return (
     <span
+      title={title}
       className={cn(
         "inline-flex items-center px-2 py-0.5 text-caption font-semibold rounded-badge border whitespace-nowrap",
         

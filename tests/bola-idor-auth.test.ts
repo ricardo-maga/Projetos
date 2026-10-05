@@ -9,6 +9,7 @@ import * as authModule from '../lib/auth/authorization';
 import * as serverDbModule from '../lib/supabase/server';
 import * as syncModule from '../lib/supabaseSync';
 import { NextRequest } from 'next/server';
+import { installLegacyRouteHarness } from './helpers/legacyRouteHarness';
 
 const mockUser: authModule.AuthenticatedUser = {
   id: '00000000-0000-0000-0000-000000000099',
@@ -25,8 +26,10 @@ describe('FASE 25-B — Auditoria e Correção BOLA/IDOR (Resource Authorization
   let permSpy: any;
   let serverDbSpy: any;
   let syncSpy: any;
+  let restoreHarness: () => void;
 
   beforeEach(() => {
+    restoreHarness = installLegacyRouteHarness();
     authSpy = spyOn(authModule, 'requireAuth').mockResolvedValue({
       success: true,
       user: mockUser,
@@ -78,6 +81,7 @@ describe('FASE 25-B — Auditoria e Correção BOLA/IDOR (Resource Authorization
   });
 
   afterEach(() => {
+    restoreHarness?.();
     if (authSpy) authSpy.mockRestore();
     if (permSpy) permSpy.mockRestore();
     if (serverDbSpy) serverDbSpy.mockRestore();

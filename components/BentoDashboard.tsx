@@ -181,7 +181,7 @@ export default function BentoDashboard({
   const activeTasks = useMemo(() => {
     return tasks.filter(t => {
       if (t.deleted) return false;
-      const proj = projectMap.get(t.projectId);
+      const proj = t.projectId ? projectMap.get(t.projectId) : undefined;
       if (!proj || proj.deleted) return false;
       return true;
     });

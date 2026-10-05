@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/server';
-import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
 export type AuditAction =
   | 'LOGIN'
@@ -62,7 +61,7 @@ function sanitizeDetails(details?: Record<string, any>): Record<string, any> | u
 export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
   try {
     const adminSb = createAdminClient();
-    const sb = adminSb || defaultSupabase;
+    const sb = adminSb;
     if (!sb) {
       console.warn('[AUDIT LOG SKIP] Supabase client not available for audit log:', entry.action);
       return;
@@ -71,11 +70,9 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
     const payload = {
       action: entry.action,
       user_id: entry.userId || null,
-      entity: entry.entity || null,
+      entity_type: entry.entity || 'SYSTEM',
       entity_id: entry.entityId || null,
-      ip: entry.ip || null,
-      user_agent: entry.userAgent || null,
-      details: sanitizeDetails(entry.details),
+      details: JSON.stringify(sanitizeDetails(entry.details) || {}),
       created_at: new Date().toISOString(),
     };
 

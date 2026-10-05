@@ -9,6 +9,7 @@ import * as authModule from '../lib/auth/authorization';
 import * as serverDbModule from '../lib/supabase/server';
 import * as supabaseSyncModule from '../lib/supabaseSync';
 import { NextRequest } from 'next/server';
+import { installLegacyRouteHarness } from './helpers/legacyRouteHarness';
 
 const mockAuthenticatedUser: authModule.AuthenticatedUser = {
   id: '00000000-0000-0000-0000-000000000099',
@@ -31,8 +32,10 @@ describe('FASE 27 — Integridade CRUD Transversal', () => {
   let syncSaveSpy: any;
   let mockDbData: any;
   let mockTableErrors: Record<string, any>;
+  let restoreHarness: () => void;
 
   beforeEach(() => {
+    restoreHarness = installLegacyRouteHarness();
     mockTableErrors = {};
 
     mockDbData = {
@@ -231,6 +234,7 @@ describe('FASE 27 — Integridade CRUD Transversal', () => {
   });
 
   afterEach(() => {
+    restoreHarness?.();
     authSpy?.mockRestore();
     serverDbSpy?.mockRestore();
     syncGetSpy?.mockRestore();
@@ -260,18 +264,17 @@ describe('FASE 27 — Integridade CRUD Transversal', () => {
       expect(createdTask).toBeUndefined();
     });
 
-    it('Bloqueia eliminação de Task com alocações de planeamento ativas (409 Conflict)', async () => {
+    it('Alocações históricas não bloqueiam o soft-delete canónico de Task', async () => {
       const req = new NextRequest('http://localhost:3000/api/v1/tasks/task-alloc-1', {
         method: 'DELETE',
       });
 
       const res = await deleteTask(req, { params: Promise.resolve({ id: 'task-alloc-1' }) });
-      expect(res.status).toBe(409);
+      expect(res.status).toBe(200);
       const json = await res.json();
-      const msg = json.message || json.error?.message || '';
-      expect(msg).toContain('alocação(ões) de planeamento ativa(s)');
-      // Garante que a tarefa não foi eliminada
-      expect(mockDbData.tasks.find((t: any) => t.id === 'task-alloc-1').deleted).toBe(false);
+      expect(json.success).toBe(true);
+      expect(mockDbData.tasks.find((t: any) => t.id === 'task-alloc-1').deleted).toBe(true);
+      expect(mockDbData.planning_allocations[0].status).not.toBe('CANCELLED');
     });
 
     it('Permite eliminação de Task quando as alocações associadas foram canceladas ou não existem (200)', async () => {
@@ -353,16 +356,17 @@ describe('FASE 27 — Integridade CRUD Transversal', () => {
   });
 
   describe('4. Planning Allocations — Regras Estritas de Eliminação', () => {
-    it('Impede DELETE de alocação de planeamento em estado CONFIRMED (400 Bad Request com CANNOT_DELETE_CONFIRMED)', async () => {
+    it('Endpoint de alocações retirado devolve 410 sem mutar histórico', async () => {
       const req = new NextRequest('http://localhost:3000/api/v1/planning-allocations/alloc-confirmed-1', {
         method: 'DELETE',
       });
 
-      const res = await deletePlanningAllocation(req, { params: Promise.resolve({ id: 'alloc-confirmed-1' }) });
-      expect(res.status).toBe(400);
+      const before = JSON.stringify(mockDbData.planning_allocations);
+      const res = await deletePlanningAllocation(req);
+      expect(res.status).toBe(410);
       const json = await res.json();
-      const msg = json.message || json.error?.message || '';
-      expect(msg).toContain('Alocações confirmadas não podem ser eliminadas');
+      expect(json.error.code).toBe('PLANNING_RETIRED');
+      expect(JSON.stringify(mockDbData.planning_allocations)).toBe(before);
     });
   });
 });

@@ -249,6 +249,7 @@ export interface Material {
 }
 
 export interface ProjectMaterial {
+  syncVersion?: number;
   id: string;
   projectId: string;
   description: string; // Obrigatório
@@ -383,6 +384,7 @@ export interface TicketStatus {
 }
 
 export interface Ticket {
+  syncVersion?: number;
   id: string;
   ticketNumber: string; // e.g. "TCK-2026-001"
   title: string;
