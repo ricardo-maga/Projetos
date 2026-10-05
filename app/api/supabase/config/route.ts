@@ -5,11 +5,12 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
 import { createAdminClient } from '@/lib/supabase/server';
 
 export async function GET() {
-  if (!isSupabaseConfigured || !supabase) {
+  // Public branding uses a server-only key; it must not depend on a legacy browser key.
+  const client = createAdminClient() || (isSupabaseConfigured ? supabase : null);
+  if (!client) {
     return NextResponse.json({ isConfigured: false, appConfig: null, error: 'SUPABASE_NOT_CONFIGURED' }, { status: 503 });
   }
 
-  const client = createAdminClient() || supabase;
   const { data, error } = await client
     .from('app_configuration')
     .select('app_name, app_description, footer_text, footer_copyright_text, logo_url, logo_image_path, theme_name')
@@ -35,5 +36,5 @@ export async function GET() {
       logoImagePath: logo,
       theme: configRow.theme_name || 'default',
     },
-  });
+  }, { headers: { 'Cache-Control': 'no-store' } });
 }

@@ -157,7 +157,7 @@ export function useERP() {
       let configured = isSupabaseConfigured;
 
       try {
-        const configRes = await fetch('/api/supabase/config');
+        const configRes = await fetch('/api/supabase/config', { cache: 'no-store' });
         if (configRes.ok) {
           const configData = await configRes.json();
           if (configData && typeof configData.isConfigured === 'boolean') {
