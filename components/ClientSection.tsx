@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Client } from '../lib/types';
 import { Plus, Search, Edit2, Trash2, Building, Mail, Phone, MapPin, Hash, X, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
 import { hasPermission } from '../lib/permissions';
-import { getAuthHeaders } from '../lib/clientAuth';
+import { M3SectionHeader } from './M3';
+import { Card } from './ui/Card';
+import { Select } from './ui/Select';
+import { Dialog } from './ui/Dialog';
 
 // UI Foundation Components
 import Button from './ui/Button';
@@ -93,7 +96,7 @@ export default function ClientSection({
     const shortName = c.shortName || '';
     const contactPerson = c.contactPerson || '';
     const notes = c.notes || '';
-    return clientName.toLowerCase().includes(search.toLowerCase()) || 
+    return clientName.toLowerCase().includes(search.toLowerCase()) ||
            shortName.toLowerCase().includes(search.toLowerCase()) ||
            contactPerson.toLowerCase().includes(search.toLowerCase()) ||
            notes.toLowerCase().includes(search.toLowerCase());
@@ -169,144 +172,139 @@ export default function ClientSection({
   return (
     <div className="space-y-6">
       {isEditing ? (
-        <form onSubmit={handleSubmit} className="m3-card p-6 space-y-6 animate-fade-in text-xs font-bold text-slate-700">
-          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-            <h2 className="text-base font-bold text-slate-800">
-              {editingId ? 'Editar Registo de Cliente' : 'Adicionar Novo Cliente (Entidade)'}
-            </h2>
+        <form onSubmit={handleSubmit} className="m3-card p-6 space-y-6 animate-fade-in text-body-sm font-bold text-text-secondary">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-border-subtle">
+            <M3SectionHeader title={editingId ? 'Editar cliente' : 'Novo cliente'} />
             <div className="flex items-center gap-2">
-              <button 
-                type="button" 
+              <Button variant="outline" size="sm"
+                type="button"
                 onClick={() => setIsEditing(false)}
-                className="px-3 py-1.5 text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl font-semibold transition-colors"
+                className="px-3 py-1.5 text-text-muted bg-surface hover:bg-surface-muted border border-border-subtle rounded-control font-semibold transition-colors"
               >
                 Cancelar
-              </button>
-              <button 
-                type="submit" 
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-slate-900 text-white hover:bg-slate-800 font-bold rounded-xl text-xs shadow-sm transition-colors"
+              </Button>
+              <Button variant="primary" size="sm"
+                type="submit"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-white hover:bg-primary font-bold rounded-control text-body-sm shadow-sm transition-colors"
               >
                 <Save className="w-3.5 h-3.5" /> Gravar Cliente
-              </button>
+              </Button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1">
-              <label className="block text-slate-500">Nome da Empresa / Cliente *</label>
-              <input 
-                type="text" 
+              <Input label="Nome da Empresa / Cliente *"
+
+                type="text"
                 required
                 value={formName}
                 onChange={e => setFormName(e.target.value)}
                 placeholder="Ex: Alimentos Gourmet, S.A."
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold"
+                className=""
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-slate-500">Abreviatura / Nome Curto *</label>
-              <input 
-                type="text" 
+              <Input label="Abreviatura / Nome Curto *"
+
+                type="text"
                 required
                 value={formShortName}
                 onChange={e => setFormShortName(e.target.value)}
                 placeholder="Ex: AGourmet"
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold"
+                className=""
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-slate-500">NIF / Número Contribuinte (Tax ID)</label>
-              <input 
-                type="text" 
+              <Input label="NIF / Número Contribuinte (Tax ID)"
+
+                type="text"
                 value={formTaxId}
                 onChange={e => setFormTaxId(e.target.value)}
                 placeholder="Ex: PT 502948293"
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-mono font-bold"
+                className="font-mono"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-slate-500">Localização / Morada Principal</label>
-              <input 
-                type="text" 
+              <Input label="Localização / Morada Principal"
+
+                type="text"
                 value={formLocation}
                 onChange={e => setFormLocation(e.target.value)}
                 placeholder="Ex: Zona Industrial de Aveiro, Lote 4"
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold"
+                className=""
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-slate-500">Pessoa de Contacto (Gestor de Compras)</label>
-              <input 
-                type="text" 
+              <Input label="Pessoa de Contacto (Gestor de Compras)"
+
+                type="text"
                 value={formContactPerson}
                 onChange={e => setFormContactPerson(e.target.value)}
                 placeholder="Ex: Eng. Carlos Gomes"
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold"
+                className=""
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-slate-500">E-mail de Contacto</label>
-              <input 
-                type="email" 
+              <Input label="E-mail de Contacto"
+
+                type="email"
                 value={formContactEmail}
                 onChange={e => setFormContactEmail(e.target.value)}
                 placeholder="Ex: compras@agourmet.pt"
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold font-mono"
+                className="font-mono"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-slate-500">Telemóvel / Telefone Contacto</label>
-              <input 
-                type="text" 
+              <Input label="Telemóvel / Telefone Contacto"
+
+                type="text"
                 value={formContactPhone}
                 onChange={e => setFormContactPhone(e.target.value)}
                 placeholder="Ex: +351 912 345 678"
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold"
+                className=""
               />
             </div>
 
             <div className="space-y-1 md:col-span-2">
-              <label className="block text-slate-500">Notas / Observações</label>
-              <textarea 
+              <Textarea label="Notas / Observações"
+
                 rows={3}
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 placeholder="Observações internas, especificações ou acordos com o cliente..."
-                className="w-full p-2.5 border border-slate-200 rounded-xl font-medium text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className=""
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
-            <button 
-              type="button" 
+          <div className="flex justify-end gap-3 pt-6 border-t border-border-subtle">
+            <Button variant="outline" size="sm"
+              type="button"
               onClick={() => setIsEditing(false)}
-              className="px-5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200"
+              className="px-5 py-2.5 bg-surface hover:bg-surface-muted text-text-secondary font-bold rounded-control border border-border-subtle"
             >
               Cancelar
-            </button>
-            <button 
+            </Button>
+            <Button variant="primary" size="sm"
               type="submit"
-              className="px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 -sm"
+              className="px-6 py-2.5 bg-primary text-white font-bold rounded-control hover:bg-primary -sm"
             >
               Gravar Cliente
-            </button>
+            </Button>
           </div>
         </form>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden animate-fade-in">
-          <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 space-y-3.5">
+        <Card className="overflow-hidden animate-fade-in">
+          <div className="p-4 sm:p-5 border-b border-border/80 bg-surface-muted/60 space-y-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-bold text-slate-800">Diretório de Clientes</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Gestão de entidades clientes, contactos fiscais e operacionais.</p>
-              </div>
+              <M3SectionHeader title="Lista de clientes" description="Consulta e pesquisa de clientes, contactos fiscais e operacionais." />
               <div className="flex items-center gap-2 self-start sm:self-auto">
                 <Button
                   type="button"
@@ -320,7 +318,7 @@ export default function ClientSection({
                   {showDeleted ? 'Ver Clientes Ativos' : 'Reciclagem'}
                 </Button>
                 {canWriteClients && (
-                  <Button 
+                  <Button
                     type="button"
                     variant="primary"
                     size="sm"
@@ -334,27 +332,28 @@ export default function ClientSection({
 
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none z-10" />
-              <Input 
-                type="text" 
+              <Input
+                type="text"
                 value={search}
                 onChange={e => {
                   setSearch(e.target.value);
                   setCurrentPage(1);
                 }}
                 placeholder="Pesquisar por nome, abreviatura, contacto ou notas..."
-                className="pl-10 h-10 text-xs"
+                aria-label="Pesquisar clientes"
+                className="pl-10 text-body-sm"
               />
             </div>
           </div>
 
           <div className="overflow-x-auto w-full">
             {filteredClients.length === 0 ? (
-              <div className="p-10 text-center text-slate-400 font-medium text-xs">
+              <div className="p-10 text-center text-text-muted font-medium text-body-sm">
                 {showDeleted ? 'Nenhum cliente eliminado encontrado.' : 'Nenhum cliente registado ou encontrado.'}
               </div>
             ) : (
               <table className="w-full min-w-[750px] text-left border-collapse">
-                <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+                <thead className="bg-surface/90 text-caption uppercase tracking-wider text-text-muted font-bold border-b border-border-subtle/80 whitespace-nowrap select-none">
                   <tr>
                     <th className="px-5 py-3.5 text-left">Cliente</th>
                     <th className="px-5 py-3.5 text-left">NIF / Tax ID</th>
@@ -364,87 +363,85 @@ export default function ClientSection({
                     <th className="px-5 py-3.5 text-right">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="text-xs divide-y divide-slate-100 font-medium text-slate-700">
+                <tbody className="text-body-sm divide-y divide-border-subtle font-medium text-text-secondary">
                   {paginatedClients.map(c => (
-                    <tr key={c.id} className={`hover:bg-slate-50/50 transition-colors ${c.deleted ? 'bg-amber-50/30' : ''}`}>
+                    <tr key={c.id} className={`hover:bg-surface/50 transition-colors ${c.deleted ? 'bg-warning/10' : ''}`}>
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${c.deleted ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600'}`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${c.deleted ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'}`}>
                             <Building className="w-4 h-4" />
                           </div>
                           <div>
-                            <button
+                            <Button variant="ghost" size="sm"
                               type="button"
                               onClick={() => {
                                 setSelectedClientForModal(c);
                                 setProjectsCurrentPage(1);
                               }}
-                              className="font-extrabold text-slate-800 text-sm hover:text-blue-600 hover:underline transition-colors cursor-pointer text-left focus:outline-none"
+                              className="font-extrabold text-text-primary text-body hover:text-primary hover:underline px-0 h-auto min-h-9 whitespace-normal text-left justify-start"
                             >
                               {c.clientName}
-                            </button>
+                            </Button>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] text-slate-400 uppercase tracking-tight font-mono">{c.shortName}</span>
+                              <span className="text-caption text-text-muted uppercase tracking-tight font-mono">{c.shortName}</span>
                               {c.deleted && (
-                                <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold uppercase">
-                                  Eliminado
-                                </span>
+                                <Badge variant="warning">Eliminado</Badge>
                               )}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4 font-mono font-bold text-slate-700">
+                      <td className="px-5 py-4 font-mono font-bold text-text-secondary">
                         {c.taxId || 'S/NIF'}
                       </td>
-                      <td className="px-5 py-4 text-slate-500">
+                      <td className="px-5 py-4 text-text-muted">
                         <div className="flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <MapPin className="w-3.5 h-3.5 text-text-muted flex-shrink-0" />
                           <span className="truncate max-w-[180px]">{c.location || 'Sem Morada'}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-slate-600 font-medium">
+                      <td className="px-5 py-4 text-text-secondary font-medium">
                         <div>{c.contactPerson || 'Sem Contacto'}</div>
-                        <div className="text-[10px] text-slate-400 mt-1 flex flex-col gap-0.5">
+                        <div className="text-caption text-text-muted mt-1 flex flex-col gap-0.5">
                           {c.contactEmail && <span className="font-mono flex items-center gap-1"><Mail className="w-3 h-3" /> {c.contactEmail}</span>}
                           {c.contactPhone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {c.contactPhone}</span>}
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-slate-500 max-w-[200px]">
+                      <td className="px-5 py-4 text-text-muted max-w-[200px]">
                         {c.notes ? (
-                          <div className="text-[11px] bg-slate-50 border border-slate-100 p-2 rounded-lg line-clamp-2 italic text-slate-600" title={c.notes}>
+                          <div className="text-caption bg-surface border border-border-subtle p-2 rounded-lg line-clamp-2 italic text-text-secondary" title={c.notes}>
                             {c.notes}
                           </div>
                         ) : (
-                          <span className="text-slate-300 italic text-[10px]">Sem notas</span>
+                          <span className="text-text-disabled italic text-caption">Sem notas</span>
                         )}
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex gap-2 justify-end">
                           {canWriteClients && (
-                            <button 
+                            <IconButton variant="ghost" size="sm" aria-label="Editar cliente"
                               onClick={() => openForm(c)}
-                              className="p-1.5 hover:bg-blue-50 hover:text-blue-700 rounded-md text-slate-500"
+                              className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-md text-text-muted"
                               title="Editar"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
-                            </button>
+                            </IconButton>
                           )}
                           {c.deleted ? (
                             canWriteClients && (
-                              <button
+                              <Button variant="outline" size="sm"
                                 onClick={async () => {
                                   await updateClient(c.id, { deleted: false });
                                 }}
-                                className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-md text-[10px] font-bold cursor-pointer"
+                                className="px-2 py-1 bg-success/10 text-success hover:bg-success/10 rounded-md text-caption font-bold cursor-pointer"
                                 title="Restaurar Cliente"
                               >
                                 Restaurar
-                              </button>
+                              </Button>
                             )
                           ) : (
                             canDeleteClients && (
-                              <button 
+                              <IconButton variant="ghost" size="sm" aria-label="Eliminar cliente"
                                 onClick={() => {
                                   if (!canDeleteClients) {
                                     alert('Não tem permissão para eliminar clientes.');
@@ -462,11 +459,11 @@ export default function ClientSection({
                                     }
                                   );
                                 }}
-                                className="p-1.5 hover:bg-red-50 hover:text-red-700 rounded-md text-slate-500 cursor-pointer"
+                                className="p-1.5 hover:bg-error/10 hover:text-error rounded-md text-text-muted cursor-pointer"
                                 title="Eliminar (Soft Delete)"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              </IconButton>
                             )
                           )}
                         </div>
@@ -480,59 +477,59 @@ export default function ClientSection({
 
           {/* Pagination Controls */}
           {filteredClients.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50/70 border-t border-slate-200/80 text-xs gap-3 font-medium">
-              <div className="flex items-center gap-3 text-slate-500">
+            <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-surface/70 border-t border-border-subtle/80 text-body-sm gap-3 font-medium">
+              <div className="flex items-center gap-3 text-text-muted">
                 <span>
-                  A mostrar <span className="font-bold text-slate-700">{Math.min(startIndex + 1, totalFiltered)}</span> a{' '}
-                  <span className="font-bold text-slate-700">{Math.min(startIndex + pageSize, totalFiltered)}</span> de{' '}
-                  <span className="font-bold text-slate-700">{totalFiltered}</span> clientes
+                  A mostrar <span className="font-bold text-text-secondary">{Math.min(startIndex + 1, totalFiltered)}</span> a{' '}
+                  <span className="font-bold text-text-secondary">{Math.min(startIndex + pageSize, totalFiltered)}</span> de{' '}
+                  <span className="font-bold text-text-secondary">{totalFiltered}</span> clientes
                 </span>
-                <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
-                  <span className="text-slate-400">Por página:</span>
-                  <select 
+                <div className="flex items-center gap-1.5 pl-3 border-l border-border-subtle">
+                  <span className="text-text-muted">Por página:</span>
+                  <Select aria-label="Clientes por página"
                     value={pageSize}
                     onChange={(e) => {
                       setPageSize(Number(e.target.value));
                       setCurrentPage(1);
                     }}
-                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                    className="px-2 py-1 bg-surface border border-border-subtle rounded-lg text-body-sm font-semibold text-text-secondary outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                   >
                     <option value={15}>15</option>
                     <option value={25}>25</option>
                     <option value={50}>50</option>
                     <option value={100}>100</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 
               {totalPages > 1 && (
                 <div className="flex items-center gap-1">
-                  <button
+                  <Button variant="outline" size="sm"
                     type="button"
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1.5 bg-surface border border-border-subtle rounded-lg font-bold text-text-secondary hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                     <span>Anterior</span>
-                  </button>
-                  <div className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-700 text-xs">
+                  </Button>
+                  <div className="px-3 py-1.5 bg-surface border border-border-subtle rounded-lg font-bold text-text-secondary text-body-sm">
                     {currentPage} / {totalPages || 1}
                   </div>
-                  <button
+                  <Button variant="outline" size="sm"
                     type="button"
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages || totalPages === 0}
-                    className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1.5 bg-surface border border-border-subtle rounded-lg font-bold text-text-secondary hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <span>Seguinte</span>
                     <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
           )}
-        </div>
+        </Card>
       )}
 
       <ConfirmModal
@@ -545,38 +542,19 @@ export default function ClientSection({
 
       {/* PROJECTS MODAL */}
       {selectedClientForModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in p-4" id="client-projects-modal">
-          <div className="bg-white rounded-2xl border border-slate-200 -xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Building className="w-4 h-4 text-slate-500" />
-                  Projetos de {selectedClientForModal.clientName}
-                </h3>
-                <p className="text-[10px] text-slate-400 font-medium">Selecione um projeto para abrir os seus detalhes.</p>
-              </div>
-              <button 
-                onClick={() => setSelectedClientForModal(null)}
-                className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
-                id="close-client-projects-modal"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body / Projects List */}
-            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+        <Dialog isOpen onClose={() => setSelectedClientForModal(null)} title={`Projetos de ${selectedClientForModal.clientName}`} className="max-w-2xl">
+          <div id="client-projects-modal" className="space-y-4">
+            <p className="text-caption text-text-secondary">Selecione um projeto para abrir os seus detalhes.</p>
               {/* Client Info Summary */}
-              <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl space-y-2 text-xs">
-                <div className="flex flex-wrap items-center justify-between gap-2 font-medium text-slate-600">
-                  <div><span className="text-slate-400 font-normal">NIF:</span> <span className="font-mono font-bold text-slate-700">{selectedClientForModal.taxId || 'S/NIF'}</span></div>
-                  <div><span className="text-slate-400 font-normal">Pessoa Contacto:</span> <span className="font-bold text-slate-700">{selectedClientForModal.contactPerson || 'S/Contacto'}</span></div>
-                  {selectedClientForModal.contactPhone && <div><span className="text-slate-400 font-normal">Tel:</span> <span className="font-bold text-slate-700">{selectedClientForModal.contactPhone}</span></div>}
+              <div className="p-3.5 bg-surface border border-border-subtle rounded-control space-y-2 text-body-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 font-medium text-text-secondary">
+                  <div><span className="text-text-muted font-normal">NIF:</span> <span className="font-mono font-bold text-text-secondary">{selectedClientForModal.taxId || 'S/NIF'}</span></div>
+                  <div><span className="text-text-muted font-normal">Pessoa Contacto:</span> <span className="font-bold text-text-secondary">{selectedClientForModal.contactPerson || 'S/Contacto'}</span></div>
+                  {selectedClientForModal.contactPhone && <div><span className="text-text-muted font-normal">Tel:</span> <span className="font-bold text-text-secondary">{selectedClientForModal.contactPhone}</span></div>}
                 </div>
                 {selectedClientForModal.notes && (
-                  <div className="pt-2 border-t border-slate-200/60 text-slate-600 italic">
-                    <span className="font-bold not-italic text-slate-500">Notas:</span> {selectedClientForModal.notes}
+                  <div className="pt-2 border-t border-border-subtle/60 text-text-secondary italic">
+                    <span className="font-bold not-italic text-text-muted">Notas:</span> {selectedClientForModal.notes}
                   </div>
                 )}
               </div>
@@ -587,7 +565,7 @@ export default function ClientSection({
 
                 if (totalProjects === 0) {
                   return (
-                    <div className="text-center py-8 text-slate-400 font-medium text-xs">
+                    <div className="text-center py-8 text-text-muted font-medium text-body-sm">
                       Este cliente não tem nenhum projeto associado.
                     </div>
                   );
@@ -599,10 +577,10 @@ export default function ClientSection({
                 const paginatedProjects = clientProjects.slice(startIndex, startIndex + itemsPerPage);
 
                 return (
-                  <div className="space-y-4 text-xs">
-                    <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50/20">
+                  <div className="space-y-4 text-body-sm">
+                    <div className="divide-y divide-border-subtle border border-border-subtle rounded-control overflow-hidden bg-surface/20">
                       {paginatedProjects.map(proj => (
-                        <button
+                        <Button variant="outline" size="sm"
                           key={proj.id}
                           onClick={() => {
                             if (onSelectProject) {
@@ -610,65 +588,64 @@ export default function ClientSection({
                             }
                             setSelectedClientForModal(null);
                           }}
-                          className="w-full p-3.5 text-left hover:bg-slate-50 flex items-center justify-between transition-colors group"
+                          className="w-full p-3.5 text-left hover:bg-surface flex items-center justify-between transition-colors group"
                         >
                           <div className="space-y-0.5">
-                            <div className="font-extrabold text-slate-800 text-xs group-hover:text-blue-600 transition-colors">
+                            <div className="font-extrabold text-text-primary text-body-sm group-hover:text-primary transition-colors">
                               {proj.title}
                             </div>
-                            <div className="text-[10px] text-slate-400 truncate max-w-md font-medium">
+                            <div className="text-caption text-text-muted truncate max-w-md font-medium">
                               {proj.description || 'Sem descrição'}
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold uppercase font-mono tracking-tight">
+                            <span className="text-caption bg-surface-muted text-text-secondary px-2 py-0.5 rounded font-bold uppercase font-mono tracking-tight">
                               {proj.startDate ? new Date(proj.startDate).toLocaleDateString('pt-PT') : 'S/Data'}
                             </span>
-                            <span className="text-[10px] text-slate-300 group-hover:text-blue-600 transition-colors font-bold">→</span>
+                            <span className="text-caption text-text-disabled group-hover:text-primary transition-colors font-bold">→</span>
                           </div>
-                        </button>
+                        </Button>
                       ))}
                     </div>
 
                     {/* Pagination Controls */}
                     {totalPages > 1 && (
-                      <div className="flex items-center justify-between pt-3 text-xs font-semibold text-slate-500">
+                      <div className="flex items-center justify-between pt-3 text-body-sm font-semibold text-text-muted">
                         <div>
-                          A mostrar <span className="font-bold text-slate-700">{startIndex + 1}</span> a{' '}
-                          <span className="font-bold text-slate-700">
+                          A mostrar <span className="font-bold text-text-secondary">{startIndex + 1}</span> a{' '}
+                          <span className="font-bold text-text-secondary">
                             {Math.min(startIndex + itemsPerPage, totalProjects)}
                           </span>{' '}
-                          de <span className="font-bold text-slate-700">{totalProjects}</span> projetos
+                          de <span className="font-bold text-text-secondary">{totalProjects}</span> projetos
                         </div>
                         <div className="flex items-center gap-1">
-                          <button
+                          <Button variant="outline" size="sm"
                             type="button"
                             disabled={projectsCurrentPage === 1}
                             onClick={() => setProjectsCurrentPage(prev => Math.max(1, prev - 1))}
-                            className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold"
+                            className="px-2.5 py-1 bg-surface border border-border-subtle rounded-lg hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold"
                           >
                             Anterior
-                          </button>
-                          <span className="px-2 font-bold text-slate-700">
+                          </Button>
+                          <span className="px-2 font-bold text-text-secondary">
                             {projectsCurrentPage} / {totalPages}
                           </span>
-                          <button
+                          <Button variant="outline" size="sm"
                             type="button"
                             disabled={projectsCurrentPage === totalPages}
                             onClick={() => setProjectsCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold"
+                            className="px-2.5 py-1 bg-surface border border-border-subtle rounded-lg hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold"
                           >
                             Seguinte
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     )}
                   </div>
                 );
               })()}
-            </div>
           </div>
-        </div>
+        </Dialog>
       )}
     </div>
   );

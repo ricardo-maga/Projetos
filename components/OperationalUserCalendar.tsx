@@ -1,20 +1,20 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { 
-  Users, 
-  Plus, 
-  AlertTriangle, 
-  X, 
+import {
+  Users,
+  Plus,
+  AlertTriangle,
+  X,
   CalendarDays,
   Maximize2,
   Minimize2
 } from 'lucide-react';
 import { Task, Project, Client, User, UserAbsence, SpecialDay, TaskType } from '../lib/types';
-import { 
-  CalendarDayItem, 
-  getOperationalCalendarDays, 
-  getUserDayAbsence, 
+import {
+  CalendarDayItem,
+  getOperationalCalendarDays,
+  getUserDayAbsence,
   getOperationalDayConflicts,
   formatDateToYYYYMMDD,
   isUserAssignedToTask,
@@ -24,7 +24,10 @@ import {
 import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, getTaskStatusStyle, getUserInitials } from '../lib/utils';
 import { normalizeRoleId } from '../lib/permissions';
 import DateViewNavigator from './ui/DateViewNavigator';
-import { M3Button, M3FilterChip } from './M3';
+import { M3Button, M3FilterChip, M3SectionHeader } from './M3';
+import { IconButton } from './ui/IconButton';
+import { Button } from './ui/Button';
+import { Card } from './ui/Card';
 
 export function sanitizeUserIds(rawIds: any, eligibleUsers: User[] = []): string[] {
   if (!Array.isArray(rawIds)) return [];
@@ -357,7 +360,7 @@ export default function OperationalUserCalendar({
   };
 
   const toggleUserSelection = (userId: string) => {
-    setSelectedUserIds(prev => 
+    setSelectedUserIds(prev =>
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
   };
@@ -381,12 +384,12 @@ export default function OperationalUserCalendar({
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={isFullscreen ? 'm3-calendar-fullscreen fixed inset-0 z-50 overflow-y-auto p-4 space-y-4' : 'space-y-4'}
     >
       {/* TOP CONTROL BAR */}
-      <div className="m3-card p-4 space-y-4">
+      <Card className="p-4 sm:p-5 bg-surface-muted/60 space-y-4">
         {/* Title & Actions */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -394,7 +397,7 @@ export default function OperationalUserCalendar({
               <CalendarDays className="w-5 h-5" />
             </span>
             <div>
-              <h3 className="text-base font-semibold text-text-primary">Agenda da equipa</h3>
+              <M3SectionHeader title="Calendário semanal" description="Planeamento diário de tarefas, técnicos e horas previstas." />
             </div>
           </div>
 
@@ -437,7 +440,7 @@ export default function OperationalUserCalendar({
         </div>
 
         {/* LINE 1: Datas de visualização (DateViewNavigator) */}
-        <div className="pt-3 border-t border-slate-100">
+        <div className="pt-3 border-t border-border-subtle">
           <DateViewNavigator
             periodDays={periodDays}
             onPeriodDaysChange={setPeriodDays}
@@ -450,11 +453,11 @@ export default function OperationalUserCalendar({
         </div>
 
         {/* LINE 2: Utilizadores no Calendário */}
-        <div className="pt-3 border-t border-slate-100 space-y-2">
+        <div className="pt-3 border-t border-border-subtle space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-slate-500" />
-              <span className="text-xs font-bold text-slate-700">
+              <Users className="w-4 h-4 text-text-muted" />
+              <span className="text-body-sm font-bold text-text-secondary">
                 Utilizadores ({selectedUserIds.length}/{activeEligibleUsers.length}):
               </span>
             </div>
@@ -493,17 +496,17 @@ export default function OperationalUserCalendar({
             })}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* OPERATIONAL CALENDAR TABLE */}
-      <div className="m3-card overflow-hidden">
+      <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] border-collapse text-left table-fixed">
             {/* Header: Days */}
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-20">
+            <thead className="bg-surface border-b border-border-subtle sticky top-0 z-20">
               <tr>
                 {/* User Column Header */}
-                <th className="w-56 p-3 text-xs font-extrabold text-slate-700 sticky left-0 z-30 bg-slate-50 border-r border-slate-200 shadow-[2px_0_4px_rgba(0,0,0,0.02)]">
+                <th className="w-56 p-3 text-body-sm font-extrabold text-text-secondary sticky left-0 z-30 bg-surface border-r border-border-subtle shadow-[2px_0_4px_rgba(0,0,0,0.02)]">
                   <div className="flex items-center justify-between">
                     <span>Utilizador</span>
                     <span className="text-caption text-text-muted font-semibold">
@@ -519,14 +522,14 @@ export default function OperationalUserCalendar({
                   return (
                     <th
                       key={day.dateStr}
-                      className={`p-2.5 text-center text-xs font-bold border-l border-slate-200 transition-colors ${
+                      className={`p-2.5 text-center text-body-sm font-bold border-l border-border-subtle transition-colors ${
                         (day.isWeekend || !!specialDay)
                           ? (day.isToday
-                              ? 'bg-slate-100 text-amber-950 border-x-2 border-amber-400'
-                              : 'bg-slate-100/70 text-slate-500')
+                              ? 'bg-surface-muted text-warning border-x-2 border-warning'
+                              : 'bg-surface-muted/70 text-text-muted')
                           : (day.isToday
-                              ? 'bg-amber-50/90 text-amber-950 border-amber-200'
-                              : 'bg-slate-50 text-slate-700')
+                              ? 'bg-warning/10 text-warning border-warning/20'
+                              : 'bg-surface text-text-secondary')
                       }`}
                       title={specialDay ? specialDay.name : undefined}
                     >
@@ -534,10 +537,10 @@ export default function OperationalUserCalendar({
                         {day.weekdayShort}
                       </div>
                       <div className="flex items-center justify-center gap-1 my-0.5">
-                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black ${
-                          day.isToday 
-                            ? 'bg-amber-500 text-white shadow-2xs' 
-                            : 'text-slate-800'
+                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-body-sm font-black ${
+                          day.isToday
+                            ? 'bg-warning text-white shadow-2xs'
+                            : 'text-text-primary'
                         }`}>
                           {day.dayNum}
                         </span>
@@ -557,28 +560,28 @@ export default function OperationalUserCalendar({
             </thead>
 
             {/* Body: One Row Per User */}
-            <tbody className="divide-y divide-slate-100 text-xs">
+            <tbody className="divide-y divide-border-subtle text-body-sm">
               {displayedUsers.length === 0 ? (
                 <tr>
                   <td
                     colSpan={calendarDays.length + 1}
-                    className="p-12 text-center text-slate-400 font-medium"
+                    className="p-12 text-center text-text-muted font-medium"
                   >
                     <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
-                      <Users className="w-8 h-8 text-slate-300" />
-                      <span className="text-xs font-bold text-slate-700">
+                      <Users className="w-8 h-8 text-text-disabled" />
+                      <span className="text-body-sm font-bold text-text-secondary">
                         Nenhum utilizador visível no calendário
                       </span>
                       <span className="text-caption text-text-secondary">
                         Não tem nenhum utilizador selecionado.
                       </span>
-                      <button
+                      <Button variant="secondary" size="sm"
                         type="button"
                         onClick={handleSelectAllUsers}
-                        className="mt-1 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                        className="mt-1 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/10 rounded-lg text-body-sm font-bold transition-colors cursor-pointer"
                       >
                         Selecionar Todos os Utilizadores
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -587,15 +590,15 @@ export default function OperationalUserCalendar({
                   const userPeriodTaskCount = userTaskCountMap.get(user.id) || 0;
 
                   return (
-                    <tr key={user.id} className="hover:bg-slate-50/40 transition-colors">
+                    <tr key={user.id} className="hover:bg-surface/40 transition-colors">
                       {/* Left: User Identity Column (Line 1: [iniciais] Nome, Line 2: Cargo / Role) */}
-                      <td className="p-3 sticky left-0 bg-white z-10 border-r border-slate-100 shadow-[2px_0_4px_rgba(0,0,0,0.02)] align-top">
+                      <td className="p-3 sticky left-0 bg-surface z-10 border-r border-border-subtle shadow-[2px_0_4px_rgba(0,0,0,0.02)] align-top">
                         <div className="flex items-start justify-between gap-1">
                           <div className="min-w-0 flex-1">
                             {/* Line 1: Badge + Name */}
                             <div className="flex items-center gap-2 min-w-0">
 
-                              <div className="font-extrabold text-slate-900 text-xs truncate" title={user.name}>
+                              <div className="font-extrabold text-text-primary text-body-sm truncate" title={user.name}>
                                 {user.name}
                               </div>
                             </div>
@@ -606,15 +609,15 @@ export default function OperationalUserCalendar({
                             </div>
                           </div>
 
-                          <button
+                          <IconButton size="sm"
                             type="button"
                             onClick={() => toggleUserSelection(user.id)}
-                            className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors opacity-40 hover:opacity-100 cursor-pointer shrink-0"
+                            className="p-1 hover:bg-surface-muted rounded text-text-muted hover:text-text-secondary transition-colors opacity-40 hover:opacity-100 cursor-pointer shrink-0"
                             title={`Ocultar ${user.name} do calendário`}
                             aria-label={`Ocultar ${user.name}`}
                           >
                             <X className="w-3.5 h-3.5" />
-                          </button>
+                          </IconButton>
                         </div>
                       </td>
 
@@ -658,44 +661,45 @@ export default function OperationalUserCalendar({
                             onDrop={(e) => {
                               handleDropTask(e, user.id, day.dateStr);
                             }}
-                            className={`p-2 border-l border-slate-100 align-top transition-all group relative ${
+                            className={`p-2 border-l border-border-subtle align-top transition-all group relative ${
                               isCellDragOver
-                                ? 'bg-blue-50/90 ring-2 ring-blue-400 ring-inset'
+                                ? 'bg-primary/10 ring-2 ring-primary ring-inset'
                                 : (day.isWeekend || !!specialDays.find(sd => sd.date === day.dateStr))
-                                  ? (day.isToday ? 'bg-slate-100/80 border-x border-amber-200/80' : 'bg-slate-50/70')
-                                  : (day.isToday ? 'bg-amber-50/20' : '')
+                                  ? (day.isToday ? 'bg-surface-muted/80 border-x border-warning/20' : 'bg-surface/70')
+                                  : (day.isToday ? 'bg-warning/10' : '')
                             }`}
                           >
                             <div className="min-h-[70px] space-y-1.5 flex flex-col justify-start">
                               {/* Quick Add button on top corner */}
                               {canCreateTask && onQuickCreateTask && (
                                 <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button
+                                  <IconButton size="sm"
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onQuickCreateTask(user.id, day.dateStr);
                                     }}
-                                    className="p-1 hover:bg-blue-100 text-blue-600 rounded-md transition-colors cursor-pointer"
+                                    className="p-1 hover:bg-primary/10 text-primary rounded-md transition-colors cursor-pointer"
                                     title={`Adicionar nova tarefa para ${user.name} em ${day.dateStr}`}
+                                    aria-label={`Adicionar nova tarefa para ${user.name} em ${day.dateStr}`}
                                   >
                                     <Plus className="w-3.5 h-3.5" />
-                                  </button>
+                                  </IconButton>
                                 </div>
                               )}
 
                               {/* Absence Banner */}
                               {conflictInfo.isAbsent && (
-                                <div 
-                                  className={`p-1.5 rounded-lg text-center font-extrabold text-xs border shadow-2xs ${
+                                <div
+                                  className={`p-1.5 rounded-lg text-center font-extrabold text-body-sm border shadow-2xs ${
                                     dayTasks.length > 0
-                                      ? 'bg-rose-100 text-rose-800 border-rose-300 animate-pulse'
-                                      : 'bg-slate-200/80 text-slate-700 border-slate-300'
+                                      ? 'bg-error/10 text-error border-error/20 animate-pulse'
+                                      : 'bg-surface-muted/80 text-text-secondary border-border-subtle'
                                   }`}
                                   title={conflictInfo.tooltipText}
                                 >
                                   <div className="flex items-center justify-center gap-1">
-                                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                    <AlertTriangle className="w-3.5 h-3.5 text-error shrink-0" />
                                     <span>{conflictInfo.badgeText}</span>
                                   </div>
                                   {dayAbsence?.reason && (
@@ -709,10 +713,10 @@ export default function OperationalUserCalendar({
                               {/* Multiple Tasks Conflict Banner (if not absent) */}
                               {!conflictInfo.isAbsent && conflictInfo.hasMultipleTasks && (
                                 <div
-                                  className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-xs font-extrabold flex items-center gap-1 shadow-2xs"
+                                  className="px-2 py-0.5 bg-warning/10 text-warning border border-warning/20 rounded-md text-body-sm font-extrabold flex items-center gap-1 shadow-2xs"
                                   title={conflictInfo.tooltipText}
                                 >
-                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
                                   <span>{conflictInfo.badgeText}</span>
                                 </div>
                               )}
@@ -750,7 +754,7 @@ export default function OperationalUserCalendar({
                                       e.dataTransfer.effectAllowed = 'move';
                                     }}
                                     onClick={() => onSelectTask(task)}
-                                    className={`p-2 bg-white rounded-xl shadow-2xs hover:shadow-xs transition-all space-y-1 text-left ${cardStyle} ${
+                                    className={`p-2 bg-surface rounded-xl shadow-2xs hover:shadow-xs transition-all space-y-1 text-left ${cardStyle} ${
                                       canMoveTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                                     }`}
                                     title={`Abrir tarefa: ${task.title}\nCliente: ${clientName || 'Sem cliente'}\nProjeto: ${projectLabel}\nEstado: ${statusName}`}
@@ -761,12 +765,12 @@ export default function OperationalUserCalendar({
                                     </div>
 
                                     {/* Linha 2: Nome do projeto */}
-                                    <div className="text-xs font-bold text-blue-700 truncate leading-tight">
+                                    <div className="text-body-sm font-bold text-primary truncate leading-tight">
                                       {projectLabel}
                                     </div>
 
                                     {/* Linha 3: Título da tarefa */}
-                                    <div className="text-xs sm:text-sm font-extrabold text-slate-900 line-clamp-2 leading-tight">
+                                    <div className="text-body-sm sm:text-body font-extrabold text-text-primary line-clamp-2 leading-tight">
                                       {task.title}
                                     </div>
 
@@ -785,13 +789,13 @@ export default function OperationalUserCalendar({
                                           {task.assigneeIds.slice(0, 2).map(id => {
                                             const assignedUser = users.find(u => u.id === id);
                                             return (
-                                              <span key={id} className="w-4 h-4 rounded-full bg-slate-700 text-white flex items-center justify-center text-[8px] font-black ring-1 ring-white">
+                                              <span key={id} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-black ring-1 ring-white">
                                                 {getUserInitials(assignedUser?.name || id)}
                                               </span>
                                             );
                                           })}
                                           {task.assigneeIds.length > 2 && (
-                                            <span className="text-[8px] font-bold text-slate-500 pl-0.5">
+                                            <span className="text-caption font-bold text-text-muted pl-0.5">
                                               +{task.assigneeIds.length - 2}
                                             </span>
                                           )}
@@ -819,7 +823,7 @@ export default function OperationalUserCalendar({
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }
