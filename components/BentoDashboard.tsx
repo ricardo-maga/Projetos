@@ -2,13 +2,15 @@
 
 import { M3SectionHeader } from './M3';
 import { Card } from './ui/Card';
+import { MetricCard } from './ui/MetricCard';
+import { buildDashboardSummary } from '../lib/dashboardSummary';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import React, { useState, useMemo } from 'react';
 import { Project, Task, Comment, UserAbsence, Material, Quote, Client, ProjectMaterial, ProjectRiskItem } from '../lib/types';
-import { Briefcase, CheckSquare, Users, MessageSquare, CalendarClock, CalendarDays, Activity, ChevronLeft, ChevronRight, AlertTriangle, Package, CheckCircle2, Clock, BarChart2, Search } from 'lucide-react';
+import { Briefcase, CheckSquare, Users, MessageSquare, CalendarClock, ChevronLeft, ChevronRight, AlertTriangle, Package, CheckCircle2, Clock, BarChart2, Search } from 'lucide-react';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getProjectCalculatedRisk, matchTaskStatusId, parseTimeToHours, getProjectStatusStyle } from '../lib/utils';
 
@@ -30,19 +32,6 @@ interface BentoDashboardProps {
   onNavigate: (tab: string) => void;
   onSelectProject: (id: string) => void;
 }
-
-const SummaryCard = ({ title, value, subtext, icon: Icon, colorClass }: { title: string, value: string | number, subtext?: string, icon: React.ElementType, colorClass: string }) => (
-  <Card className="p-5 flex items-start gap-4 border-t-2 border-t-primary/30">
-    <div className={`p-3 rounded-control ${colorClass}`}>
-      <Icon className="w-6 h-6" />
-    </div>
-    <div>
-      <div className="text-caption font-semibold text-text-secondary uppercase tracking-wider">{title}</div>
-      <div className="text-2xl font-bold text-text-primary mt-1 tabular-nums">{value}</div>
-      {subtext && <div className="text-body-sm text-text-muted mt-1">{subtext}</div>}
-    </div>
-  </Card>
-);
 
 export default function BentoDashboard({
   projects,
@@ -188,34 +177,7 @@ export default function BentoDashboard({
   }, [tasks, projectMap]);
 
   // Stats
-  const activeProjectsCount = sortedProjects.length;
-  
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  const nextMonth = (currentMonth + 1) % 12;
-  const nextMonthYear = currentMonth === 11 ? currentYear + 1 : currentYear;
-  
-  const isDateInMonth = (dateStr: string | null | undefined, month: number, year: number) => {
-    if (!dateStr) return false;
-    const d = safeParseDate(dateStr);
-    return d.getMonth() === month && d.getFullYear() === year;
-  };
-  
-  const currentMonthProjectsCount = sortedProjects.filter(p => 
-    isDateInMonth(p.deliveryDate, currentMonth, currentYear) || 
-    isDateInMonth(p.estimatedDate, currentMonth, currentYear) ||
-    isDateInMonth(p.scheduledDate, currentMonth, currentYear)
-  ).length;
-
-  const nextMonthProjectsCount = sortedProjects.filter(p => 
-    isDateInMonth(p.deliveryDate, nextMonth, nextMonthYear) || 
-    isDateInMonth(p.estimatedDate, nextMonth, nextMonthYear) ||
-    isDateInMonth(p.scheduledDate, nextMonth, nextMonthYear)
-  ).length;
-  
-  const currentMonthName = now.toLocaleString('pt-PT', { month: 'long' });
-  const nextMonthName = new Date(nextMonthYear, nextMonth).toLocaleString('pt-PT', { month: 'long' });
+  const summary = buildDashboardSummary(projects, tasks, projectStatuses, taskStatuses);
 
   const getTaskScale = React.useCallback((statusId: string) => {
     const found = (taskStatuses || []).find((s: any) => s.id === statusId || matchTaskStatusId(s.id, statusId));
@@ -388,25 +350,11 @@ export default function BentoDashboard({
       
 
       {/* Top Summary Cards Section */}
-      <div className="md:col-span-12 grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <SummaryCard 
-          title="Projetos Ativos" 
-          value={activeProjectsCount} 
-          icon={Activity} 
-          colorClass="bg-primary/5 text-primary"
-        />
-        <SummaryCard 
-          title={`Projetos ${currentMonthName}`} 
-          value={currentMonthProjectsCount} 
-          icon={CalendarClock} 
-          colorClass="bg-brand-green/10 text-brand-green"
-        />
-        <SummaryCard 
-          title={`Projetos ${nextMonthName}`} 
-          value={nextMonthProjectsCount} 
-          icon={CalendarDays} 
-          colorClass="bg-brand-accent/10 text-brand-accent"
-        />
+      <div className="md:col-span-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores do dashboard">
+        <MetricCard title="Projetos ativos" value={summary.activeProjects} />
+        <MetricCard title={`Projetos ${summary.currentMonthName}`} value={summary.currentMonthProjects} />
+        <MetricCard title={`Projetos ${summary.nextMonthName}`} value={summary.nextMonthProjects} />
+        <MetricCard title="Tarefas abertas" value={summary.openTasks} />
       </div>
 
       {/* 1. Full-Width Box: Sorted Active Project Pipeline */}

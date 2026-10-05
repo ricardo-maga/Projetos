@@ -26,7 +26,9 @@ describe('Dashboard M3 presentation', () => {
     expect(html).toContain('Nenhum projeto ativo registado.');
     expect(html).toContain('Nenhuma ausência registada.');
     expect(html).not.toContain('bg-slate-900');
-    expect(html.match(/rounded-card/g)).toHaveLength(8);
+    expect(html.match(/rounded-card/g)).toHaveLength(9);
+    expect(html).toContain('Tarefas abertas');
+    expect(html).toContain('sm:grid-cols-2 xl:grid-cols-4');
   });
 
   it('retains active-project filtering, canonical status and workload totals', () => {

@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import type { Client, Project, ProjectMaterial } from '../lib/types';
 import { buildProjectAnalytics } from '../lib/projectAnalytics';
 import { Card } from './ui/Card';
+import { MetricCard } from './ui/MetricCard';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { M3SectionHeader, M3SegmentedControl } from './M3';
@@ -12,7 +13,7 @@ export default function ProjectAnalytics({ projects, projectStatuses, categories
   const [windowDays, setWindowDays] = useState(30);
   const data = useMemo(() => buildProjectAnalytics(projects, projectStatuses, materials, windowDays), [projects, projectStatuses, materials, windowDays]);
   const userName = (id: string) => users.find(u => u.id === id)?.name || 'Sem responsável';
-  const panel = (title: string, count: number, note?: string) => <Card className="p-5 space-y-2"><h3 className="text-label text-text-secondary">{title}</h3><p className="text-heading-lg text-text-primary">{count}</p>{note && <p className="text-caption text-text-secondary">{note}</p>}</Card>;
+  const panel = (title: string, count: number, note?: string) => <MetricCard title={title} value={count} note={note} />;
   const bars = (rows: { id: string; count: number }[], name: (id: string) => string, emptyMessage = 'Sem projetos nesta janela.') => rows.length ? <ul className="space-y-3">{rows.map(row => <li key={row.id} className="space-y-1">
     <div className="flex justify-between gap-3 text-body-sm"><span>{name(row.id)}</span><span>{row.count}</span></div>
     <div className="h-2 rounded-control bg-surface-muted"><div className="h-2 rounded-control bg-primary" style={{ width: `${row.count / Math.max(...rows.map(r => r.count), 1) * 100}%` }} /></div>
