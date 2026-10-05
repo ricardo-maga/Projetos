@@ -74,7 +74,7 @@ export default function ProjectTimeline({ projects, clients, tasks, projectStatu
             {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}{fullscreen ? 'Sair do ecrã cheio' : 'Ecrã cheio'}
           </Button>} />
         <DateViewNavigator periodDays={periodDays} onPeriodDaysChange={setPeriodDays} onPrev={() => shift(-periodDays)} onNext={() => shift(periodDays)}
-          onToday={() => setAnchor(new Date())} label={formatOperationalDateRange(days)} />
+          onToday={() => setAnchor(new Date())} />
         <div className="space-y-3">
           <p className="text-label font-semibold text-text-secondary">Mostrar projetos com eventos nos próximos dias</p>
           <M3SegmentedControl<TimelineHorizon> label="Projetos com eventos nos próximos dias" value={horizon}

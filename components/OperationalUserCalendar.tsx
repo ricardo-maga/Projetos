@@ -293,13 +293,6 @@ export default function OperationalUserCalendar({
     return getOperationalCalendarDays(anchorDate, periodDays, true);
   }, [anchorDate, periodDays]);
 
-  const calendarRangeLabel = useMemo(() => {
-    if (!calendarDays || calendarDays.length === 0) return '';
-    const start = calendarDays[0];
-    const end = calendarDays[calendarDays.length - 1];
-    return `${start.dayNum} ${start.monthShort} - ${end.dayNum} ${end.monthShort}`;
-  }, [calendarDays]);
-
   const isTodayInPeriod = useMemo(() => {
     return (calendarDays || []).some(d => d.isToday);
   }, [calendarDays]);
@@ -447,7 +440,6 @@ export default function OperationalUserCalendar({
             onPrev={handlePrevWeek}
             onNext={handleNextWeek}
             onToday={handleToday}
-            label={calendarRangeLabel}
             isToday={isTodayInPeriod}
           />
         </div>

@@ -407,7 +407,8 @@ export default function Page() {
       { id: 'clientes', label: 'Clientes', icon: Building, permission: 'clients_read' },
       { id: 'ausencias', label: 'Registo de ausências', icon: Users, permission: 'absences_read' },
       { id: 'configuracoes', label: 'Configurações', icon: Settings, permission: 'config_read' },
-    ].filter(tab => !tab.permission || hasPermission(currentUser, tab.permission as any, state?.userGroups || []));
+    // Tickets is temporarily hidden from navigation; its APIs and data remain intact.
+    ].filter(tab => tab.id !== 'tickets' && (!tab.permission || hasPermission(currentUser, tab.permission as any, state?.userGroups || [])));
   }, [state, currentUser]);
 
   // Fallback if active tab is not allowed
@@ -770,12 +771,12 @@ export default function Page() {
                         }
                       }}
                       className={cn(
-                        "m3-nav-item w-full flex items-center gap-3 py-3 text-body-sm font-semibold transition-all duration-150 cursor-pointer select-none",
+                        "m3-nav-item w-full flex items-center gap-3 py-3 font-semibold transition-all duration-150 cursor-pointer select-none",
                         isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-4',
                         isDisabled 
                           ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent' 
                           : isActive 
-                            ? 'is-active font-bold' 
+                            ? 'is-active'
                             : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
                       )}
                       id={`tab-${tab.id}`}
@@ -785,7 +786,7 @@ export default function Page() {
                         "w-5 h-5 flex-shrink-0 transition-colors",
                         isDisabled ? 'text-text-disabled' : isActive ? 'text-primary' : 'text-text-muted'
                       )} />
-                      <span className={cn("truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
+                      <span className={cn("text-body truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
                     </button>
 
                     {/* Submenu under Configurações */}
@@ -834,12 +835,12 @@ export default function Page() {
                     }
                   }}
                   className={cn(
-                    "m3-nav-item w-full flex items-center gap-3 py-3 text-body-sm font-semibold transition-all duration-150 cursor-pointer select-none",
+                    "m3-nav-item w-full flex items-center gap-3 py-3 font-semibold transition-all duration-150 cursor-pointer select-none",
                     isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-4',
                     isDisabled 
                       ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent' 
                       : isActive 
-                        ? 'is-active font-bold' 
+                        ? 'is-active'
                         : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
                   )}
                   id={`tab-${tab.id}`}
@@ -849,7 +850,7 @@ export default function Page() {
                     "w-5 h-5 flex-shrink-0 transition-colors",
                     isDisabled ? 'text-text-disabled' : isActive ? 'text-primary' : 'text-text-muted'
                   )} />
-                  <span className={cn("truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
+                  <span className={cn("text-body truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
                 </button>
               );
             })}
@@ -960,7 +961,7 @@ export default function Page() {
                 />
               )}
 
-              {activeTab === 'tickets' && (
+              {activeTab === 'tickets' && tabs.some(tab => tab.id === 'tickets') && (
                 <TicketSection 
                   tickets={state.tickets || []}
                   users={state.users || []}
@@ -1093,6 +1094,7 @@ export default function Page() {
                   updateUser={updateUser}
                   deleteUser={deleteUser}
                   hideUsers={true}
+                  appConfig={state.appConfig}
                   specialDays={state.specialDays}
                   updateAuxRecord={updateAuxRecord}
                   currentUser={currentUser}

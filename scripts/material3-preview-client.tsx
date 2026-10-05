@@ -4,6 +4,7 @@ import { CalendarDays, Menu } from 'lucide-react';
 import { M3Button, M3IconButton, M3SectionHeader, M3SegmentedControl } from '../components/M3';
 import MyFocusSection from '../components/MyFocusSection';
 import OperationalUserCalendar from '../components/OperationalUserCalendar';
+import UserSection from '../components/UserSection';
 import type { User } from '../lib/types';
 
 const user: User = { id: 'qa-synthetic-user', name: 'Ana Exemplo', email: 'qa@example.invalid', deleted: false, type: 'Team', roleId: 'admin', approved: true, createdDate: '2026-10-04' };
@@ -12,17 +13,21 @@ const focusProjects: any[] = Array.from({ length: 7 }, (_, i) => ({ id: `preview
 const focusTasks: any[] = Array.from({ length: 12 }, (_, i) => ({ id: `preview-task-${i}`, projectId: focusProjects[0].id, title: `Preparar equipamento ${i + 1}`, assigneeIds: [user.id], estimatedHours: '02:00:00', estimatedDate: '2026-12-01', statusId: 'preview-pending', deleted: false }));
 
 function Preview() {
-  const [tab, setTab] = useState<'focus' | 'calendar'>('focus');
+  const [tab, setTab] = useState<'focus' | 'calendar' | 'absences'>('focus');
   const [view, setView] = useState<'weekly' | 'timeline'>('weekly');
   const [createCount, setCreateCount] = useState(0);
   return (
-    <div id="main-root" data-active-tab={tab === 'focus' ? 'meu-foco' : 'calendario'} data-theme="violet" className="min-h-screen p-3 sm:p-6">
+    <div id="main-root" data-active-tab={tab === 'focus' ? 'meu-foco' : tab === 'absences' ? 'ausencias' : 'calendario'} data-theme="violet" className="min-h-screen p-3 sm:p-6">
       <header className="m3-top-app-bar flex flex-wrap items-center justify-between gap-3 pb-5">
         <div className="flex items-center gap-3"><M3IconButton label="Menu"><Menu className="h-5 w-5" /></M3IconButton><h1 className="text-lg font-medium">Gestão de projetos</h1></div>
-        <M3SegmentedControl label="Módulo da pré-visualização" value={tab} onChange={setTab} options={[{ value: 'focus', label: 'O meu foco' }, { value: 'calendar', label: 'Calendário' }]} />
+        <M3SegmentedControl label="Módulo da pré-visualização" value={tab} onChange={setTab} options={[{ value: 'focus', label: 'O meu foco' }, { value: 'calendar', label: 'Calendário' }, { value: 'absences', label: 'Ausências' }]} />
       </header>
       <main id="active-tab-content" className="max-w-7xl mx-auto space-y-4">
-        {tab === 'focus' ? (
+        {tab === 'absences' ? <UserSection currentUser={{ ...user, roleId: 'ug-1' }} hideUsers users={[{ ...user, roleId: 'preview-team' }, { ...user, id: 'qa-second', name: 'Bruno Exemplo', roleId: 'preview-team' }]}
+          userGroups={[{ id: 'preview-team', name: 'Equipa de exemplo' }]} appConfig={{ taskAssigneeGroupIds: ['preview-team'] } as any}
+          absences={[{ id: 'qa-absence', userId: user.id, absenceStartDate: '2026-10-05', absenceEndDate: '2026-10-09', reason: 'Vacation', createdDate: '2026-10-01' }]}
+          specialDays={[{ id: 'qa-special', date: '2026-10-05', name: 'Feriado' } as any]}
+          addAbsence={noop} deleteAbsence={noop} addUser={noop} updateUser={noop} deleteUser={noop} /> : tab === 'focus' ? (
           <MyFocusSection currentUser={user} users={[user]} tasks={focusTasks} projects={focusProjects} clients={[{ id: 'preview-client', clientName: 'Cliente de exemplo' } as any]}
             taskStatuses={[{ id: 'preview-pending', name: 'Por iniciar', scale: 1, color: 'azul' }]} projectStatuses={[{ id: 'preview-active', name: 'Em curso', scale: 2, color: 'verde' }]}
             projectRiskItems={[{ id: 'preview-risk', projectId: focusProjects[0].id, ownerId: user.id, title: 'Atraso de fornecimento', reviewDate: '2026-12-01', statusId: 'preview-open' } as any]}

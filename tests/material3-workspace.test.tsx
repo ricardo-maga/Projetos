@@ -62,12 +62,15 @@ describe('Material 3 / Workspace primitives', () => {
     expect(html).toContain('Nova tarefa');
   });
 
-  it('date navigation keeps labels, selected period and Today disabled state', () => {
-    const html = renderToStaticMarkup(<DateViewNavigator periodDays={14} onPeriodDaysChange={() => {}} onPrev={() => {}} onNext={() => {}} onToday={() => {}} label="1–14 outubro" isToday />);
+  it('date navigation places navigation after the period without a date range and preserves selected/disabled states', () => {
+    const html = renderToStaticMarkup(<DateViewNavigator periodDays={14} onPeriodDaysChange={() => {}} onPrev={() => {}} onNext={() => {}} onToday={() => {}} isToday />);
     expect(html).toContain('aria-label="Período anterior"');
     expect(html).toContain('aria-label="Período seguinte"');
     expect(html).toContain('disabled=""');
-    expect(html).toContain('aria-live="polite"');
+    expect(html).not.toContain('aria-live="polite"');
+    expect(html).toContain('justify-start');
+    expect(html).not.toContain('justify-between');
+    expect(html.indexOf('Navegação de datas')).toBeGreaterThan(html.indexOf('14 dias'));
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
   });
 });

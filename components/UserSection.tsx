@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserAbsence, SpecialDay } from '../lib/types';
+import { UserAbsence, SpecialDay, AppConfiguration } from '../lib/types';
 import { Plus, Trash2, Calendar, Users, UserCheck, AlertCircle, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, Filter, Shield } from 'lucide-react';
 import { hashPassword } from '../lib/utils';
 import ConfirmModal from './ConfirmModal';
@@ -12,6 +12,10 @@ import Button from './ui/Button';
 import IconButton from './ui/IconButton';
 import Input from './ui/Input';
 import Select from './ui/Select';
+import Card from './ui/Card';
+import Badge from './ui/Badge';
+import { M3SectionHeader } from './M3';
+import { getAbsenceVisibility } from '../lib/absenceVisibility';
 
 const CANONICAL_ROLES_LIST = [
   { id: CANONICAL_ROLE_IDS.SUPER_ADMIN, name: 'Super Administrador', type: 'Admin' as const },
@@ -37,6 +41,7 @@ interface UserSectionProps {
   specialDays?: SpecialDay[];
   updateAuxRecord?: (tableName: any, id: string, updates: any) => void;
   currentUser?: any;
+  appConfig?: AppConfiguration;
 }
 
 export default function UserSection({
@@ -53,6 +58,7 @@ export default function UserSection({
   specialDays = [],
   updateAuxRecord,
   currentUser,
+  appConfig,
 }: UserSectionProps) {
   const canReadAbsences = hasPermission(currentUser, 'absences_read', userGroups);
   const canWriteAbsences = hasPermission(currentUser, 'absences_write', userGroups);
@@ -93,11 +99,25 @@ export default function UserSection({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('Vacation');
+  const absenceVisibility = useMemo(() => getAbsenceVisibility(users, userGroups, appConfig), [users, userGroups, appConfig]);
+  const absenceUsers = absenceVisibility.users;
+  const absenceUserIds = useMemo(() => new Set(absenceUsers.map(user => user.id)), [absenceUsers]);
+  const visibleAbsences = useMemo(() => absences.filter(absence => absenceUserIds.has(absence.userId)), [absences, absenceUserIds]);
 
   // Absence Filters & Sorting States
   const [filterYear, setFilterYear] = useState<string>('all');
   const [filterUserId, setFilterUserId] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  useEffect(() => {
+    if (userId && !absenceUserIds.has(userId)) setUserId('');
+    if (filterUserId !== 'all' && !absenceUserIds.has(filterUserId)) setFilterUserId('all');
+  }, [absenceUserIds, userId, filterUserId]);
+  const absenceUserOptions = absenceVisibility.groups.map(group => (
+    <optgroup key={group.id} label={group.name}>
+      {absenceUsers.filter(user => (normalizeRoleId(user.roleId) || user.roleId?.trim()) === (normalizeRoleId(group.id) || group.id.trim()))
+        .map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+    </optgroup>
+  ));
 
   // Calendar State
   const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(() => new Date());
@@ -120,7 +140,7 @@ export default function UserSection({
       return;
     }
     const activeUserId = userId;
-    if (!activeUserId || !startDate || !endDate) {
+    if (!activeUserId || !absenceUserIds.has(activeUserId) || !startDate || !endDate) {
       alert('Por favor, selecione um utilizador e preencha todos os campos da ausência.');
       return;
     }
@@ -304,14 +324,9 @@ export default function UserSection({
 
   const getUserColorClass = (uid: string) => {
     const colors = [
-      'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
-      'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
-      'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100',
-      'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
-      'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100',
-      'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100',
-      'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
-      'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100',
+      'bg-primary/10 text-primary border-primary/20',
+      'bg-brand-green/10 text-success-strong border-brand-green/20',
+      'bg-surface-muted text-text-primary border-border',
     ];
     let hash = 0;
     for (let i = 0; i < uid.length; i++) {
@@ -325,7 +340,7 @@ export default function UserSection({
     const yearsSet = new Set<string>();
     const currentYear = new Date().getFullYear().toString();
     yearsSet.add(currentYear);
-    absences.forEach(abs => {
+    visibleAbsences.forEach(abs => {
       if (abs.absenceStartDate) {
         const startYear = abs.absenceStartDate.split('-')[0];
         if (startYear && startYear.length === 4) yearsSet.add(startYear);
@@ -336,10 +351,10 @@ export default function UserSection({
       }
     });
     return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
-  }, [absences]);
+  }, [visibleAbsences]);
 
   const processedAbsences = useMemo(() => {
-    let list = [...absences];
+    let list = [...visibleAbsences];
 
     // Filter by User
     if (filterUserId !== 'all') {
@@ -374,7 +389,7 @@ export default function UserSection({
     });
 
     return limitedList;
-  }, [absences, filterUserId, filterYear, sortOrder]);
+  }, [visibleAbsences, filterUserId, filterYear, sortOrder]);
 
   const activeGroups = useMemo(() => userGroups.filter(g => !g.deleted), [userGroups]);
   const activeSelectedGroupId = selectedGroupId || activeGroups[0]?.id || '';
@@ -465,127 +480,104 @@ export default function UserSection({
 
       {subTab === 'absences' && (
         <div className="space-y-6">
+          <Card className="p-4 sm:p-5 bg-surface-muted/60"><M3SectionHeader title="Registo de ausências" description="Planeamento de ausências dos grupos associados às tarefas." /></Card>
           {/* Top Row: Form & Calendar */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
             
             {/* Add Absence Form */}
-            <div className="xl:col-span-4 bg-white rounded-2xl border border-slate-200 p-5 -sm h-fit">
-              <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-1.5">
-                <Plus className="w-4 h-4 text-blue-600" />
-                Marcar Ausência
-              </h3>
+            <Card className="xl:col-span-4 p-4 sm:p-5 h-fit">
+              <div className="mb-4"><M3SectionHeader title="Marcar ausência" /></div>
               
-              <form onSubmit={handleAddAbsenceSubmit} className="space-y-4 text-xs font-bold text-slate-700">
+              <form onSubmit={handleAddAbsenceSubmit} className="space-y-4 text-body-sm font-bold text-text-secondary">
                 <div className="space-y-1">
-                  <label className="block text-slate-500">Utilizador *</label>
-                  <select 
+                  <Select label="Utilizador *"
                     required
                     value={userId}
                     onChange={e => setUserId(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    disabled={!canWriteAbsences || !absenceUsers.length}
                   >
                     <option value="">-- Selecione um utilizador --</option>
-                    {users
-                      .filter(u => !u.deleted)
-                      .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }))
-                      .map(u => (
-                      <option key={u.id} value={u.id}>{u.name} ({getGroupName(u.roleId)})</option>
-                    ))}
-                  </select>
+                    {absenceUserOptions}
+                  </Select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-500">Data de Início *</label>
-                  <input 
+                  <Input label="Data de Início *"
                     type="date" 
                     required
                     value={startDate}
                     onChange={e => setStartDate(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold text-slate-800"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-500">Data de fim *</label>
-                  <input 
+                  <Input label="Data de fim *"
                     type="date" 
                     required
                     value={endDate}
                     onChange={e => setEndDate(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold text-slate-800"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-500">Motivo *</label>
-                  <select 
+                  <Select label="Motivo *"
                     value={reason}
                     onChange={e => setReason(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold text-xs"
                   >
                     <option value="Vacation">Ausente</option>
                     <option value="Other">Outro</option>
-                  </select>
+                  </Select>
                 </div>
 
-                <button 
+                <Button variant="primary"
                   type="submit"
-                  className="w-full py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors -sm mt-2"
+                  disabled={!canWriteAbsences || !absenceUsers.length}
+                  className="w-full mt-2"
                 >
                   Gravar Ausência
-                </button>
+                </Button>
               </form>
-            </div>
+              {!absenceVisibility.groups.length && <p role="status" className="mt-3 text-body-sm text-text-secondary">Defina os Grupos Associados Tarefas nas Configurações para registar ausências.</p>}
+            </Card>
 
             {/* Monthly Calendar View */}
-            <div className="xl:col-span-8 bg-white rounded-2xl border border-slate-200 -sm p-6 space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-blue-600" />
-                  Calendário Mensal de Ausências Completo
-                </h3>
-                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                  Visualização geral do pessoal ausente por dia de trabalho
-                </p>
-              </div>
+            <Card className="xl:col-span-8 p-4 sm:p-5 space-y-4 min-w-0">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">
+              <M3SectionHeader title="Calendário mensal" description="Ausências dos grupos associados às tarefas." />
 
               {/* Calendar Navigator */}
-              <div className="flex items-center gap-2 select-none">
-                <button
+              <div className="flex flex-wrap items-center gap-2 select-none">
+                <IconButton size="sm" aria-label="Mês anterior"
                   onClick={() => setCurrentCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg border border-slate-200 text-slate-600 transition-colors cursor-pointer"
                   title="Mês anterior"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-xs font-bold text-slate-700 min-w-[130px] text-center uppercase tracking-wider">
+                </IconButton>
+                <span className="text-body-sm font-bold text-text-secondary min-w-[130px] text-center uppercase tracking-wider">
                   {new Intl.DateTimeFormat('pt', { month: 'long', year: 'numeric' }).format(currentCalendarDate)}
                 </span>
-                <button
+                <IconButton size="sm" aria-label="Mês seguinte"
                   onClick={() => setCurrentCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                  className="p-1.5 hover:bg-slate-100 rounded-lg border border-slate-200 text-slate-600 transition-colors cursor-pointer"
                   title="Mês seguinte"
                 >
                   <ChevronRight className="w-4 h-4" />
-                </button>
-                <button
+                </IconButton>
+                <Button variant="secondary" size="sm"
                   onClick={() => setCurrentCalendarDate(new Date())}
-                  className="px-2.5 py-1 hover:bg-slate-100 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-500 transition-colors ml-1 cursor-pointer"
                 >
                   Hoje
-                </button>
+                </Button>
               </div>
             </div>
 
             {/* Continuous, table-like Calendar Grid */}
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden -sm">
-              <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase text-center select-none">
+            <div className="bg-surface border border-border rounded-control overflow-hidden">
+              <div className="grid grid-cols-7 border-b border-border bg-surface-muted text-caption font-bold text-text-secondary uppercase text-center select-none">
                 {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-                  <div key={d} className="py-2 border-r border-slate-100 last:border-0">{d}</div>
+                  <div key={d} className="py-2 border-r border-border last:border-0">{d}</div>
                 ))}
               </div>
-              <div className="grid grid-cols-7 text-xs">
+              <div className="grid grid-cols-7 text-body-sm">
                 {(() => {
                   const year = currentCalendarDate.getFullYear();
                   const month = currentCalendarDate.getMonth();
@@ -599,7 +591,7 @@ export default function UserSection({
                   // Empty cells for the start of the month (preceding month empty slots)
                   for (let i = 0; i < startingDayOfWeek; i++) {
                     cells.push(
-                      <div key={`empty-${i}`} className="min-h-[80px] p-2 border-b border-r border-slate-100 bg-slate-50/50"></div>
+                      <div key={`empty-${i}`} className="min-h-[80px] p-2 border-b border-r border-border bg-surface-muted/50"></div>
                     );
                   }
 
@@ -613,7 +605,7 @@ export default function UserSection({
                     const specialDay = specialDays.find(sd => sd.date === dateStr);
                     const isSpecial = !!specialDay;
 
-                    const dayAbsences = absences.filter(abs => {
+                    const dayAbsences = visibleAbsences.filter(abs => {
                       return abs.absenceStartDate <= dateStr && abs.absenceEndDate >= dateStr;
                     });
                     const isToday = dateStr === todayStr;
@@ -621,20 +613,20 @@ export default function UserSection({
                     cells.push(
                       <div 
                         key={`day-${d}`} 
-                        className={`min-h-[80px] p-1.5 border-b border-r border-slate-100 relative transition-colors hover:bg-slate-100/50 flex flex-col justify-between ${
-                          isWeekend || isSpecial ? 'bg-slate-100/60' : 'bg-white'
+                        className={`min-h-[80px] p-1.5 border-b border-r border-border relative transition-colors hover:bg-surface-muted/50 flex flex-col justify-between ${
+                          isWeekend || isSpecial ? 'bg-surface-muted/60' : 'bg-surface'
                         }`}
                       >
                         {/* Cell Header */}
                         <div className="flex justify-between items-start mb-1 select-none">
-                          <span className={`inline-block w-5 h-5 text-center leading-5 rounded-full font-bold text-[11px] ${
-                            isToday ? 'bg-amber-500 text-white -sm font-black' : 'text-slate-650'
+                          <span className={`inline-flex items-center justify-center w-7 h-7 text-center rounded-full font-bold text-caption ${
+                            isToday ? 'bg-primary text-white font-black' : 'text-text-secondary'
                           }`}>
                             {d}
                           </span>
                           {specialDay && (
                             <span 
-                              className="text-[8px] font-extrabold text-rose-700 bg-rose-50 border border-rose-100/50 px-1 py-0.5 rounded truncate max-w-[50px]" 
+                              className="text-caption font-extrabold text-text-primary bg-warning/10 border border-warning/20 px-1 py-0.5 rounded truncate max-w-[50px]"
                               title={specialDay.name}
                             >
                               {specialDay.name}
@@ -650,7 +642,7 @@ export default function UserSection({
                             return (
                               <span
                                 key={abs.id}
-                                className={`inline-flex items-center justify-center w-5 h-5 text-[9px] font-bold rounded-full border -sm transition-all cursor-help ${colorClass}`}
+                                className={`inline-flex items-center justify-center w-5 h-5 text-caption font-bold rounded-full border transition-all cursor-help ${colorClass}`}
                                 title={`${getUserName(abs.userId)} (Ausente: ${abs.absenceStartDate} a ${abs.absenceEndDate})`}
                               >
                                 {initials}
@@ -667,7 +659,7 @@ export default function UserSection({
                   const remainingPadding = totalGridCells % 7 === 0 ? 0 : 7 - (totalGridCells % 7);
                   for (let i = 0; i < remainingPadding; i++) {
                     cells.push(
-                      <div key={`empty-end-${i}`} className="min-h-[80px] p-2 border-b border-r border-slate-100 bg-slate-50/50"></div>
+                      <div key={`empty-end-${i}`} className="min-h-[80px] p-2 border-b border-r border-border bg-surface-muted/50"></div>
                     );
                   }
 
@@ -675,78 +667,70 @@ export default function UserSection({
                 })()}
               </div>
             </div>
-          </div>
+          </Card>
           </div>
 
           {/* Absences List Table with Filters & Sorting */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden text-xs animate-fade-in">
-              <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                  <h2 className="text-base font-bold text-slate-800">Registo de ausências</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Últimos 25 registos guardados</p>
-                </div>
+          <Card className="overflow-hidden text-body-sm animate-fade-in">
+              <div className="p-4 sm:p-5 border-b border-border/80 bg-surface-muted/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <M3SectionHeader title="Ausências registadas" description="Últimos 25 registos guardados dos grupos configurados." />
                 
                 {/* Filters Row */}
                 <div className="flex flex-wrap items-center gap-2.5">
                   {/* User Filter */}
                   <div className="relative">
-                    <select
+                    <Select
+                      aria-label="Filtrar ausências por utilizador"
                       value={filterUserId}
                       onChange={e => setFilterUserId(e.target.value)}
-                      className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
                     >
                       <option value="all">Todos os utilizadores</option>
-                      {users
-                        .filter(u => !u.deleted)
-                        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }))
-                        .map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                      ))}
-                    </select>
+                      {absenceUserOptions}
+                    </Select>
                   </div>
 
                   {/* Year Filter */}
                   <div className="relative">
-                    <select
+                    <Select
+                      aria-label="Filtrar ausências por ano"
                       value={filterYear}
                       onChange={e => setFilterYear(e.target.value)}
-                      className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
                     >
                       <option value="all">Todos os anos</option>
                       {years.map(y => (
                         <option key={y} value={y}>{y} {y === new Date().getFullYear().toString() ? '(Atual)' : ''}</option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
                 </div>
               </div>
 
               {processedAbsences.length === 0 ? (
                 <div className="p-10 text-center space-y-2">
-                  <p className="text-slate-400 font-medium">Nenhuma ausência encontrada com os filtros selecionados.</p>
+                  <p className="text-text-secondary font-medium">Nenhuma ausência encontrada com os filtros selecionados.</p>
                   {(filterUserId !== 'all' || filterYear !== 'all') && (
-                    <button 
+                    <Button variant="ghost" size="sm"
                       type="button"
                       onClick={() => { setFilterUserId('all'); setFilterYear('all'); }}
-                      className="text-blue-600 hover:underline font-bold text-xs cursor-pointer"
+                      className="text-primary hover:underline font-bold text-body-sm cursor-pointer"
                     >
                       Limpar filtros
-                    </button>
+                    </Button>
                   )}
                 </div>
               ) : (
                 <div className="overflow-x-auto w-full">
                   <table className="w-full min-w-[650px] text-left border-collapse">
-                    <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+                    <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
                       <tr>
                         <th className="px-5 py-3.5 text-left">Utilizador</th>
                         <th 
-                          className="px-5 py-3.5 cursor-pointer hover:text-slate-800 transition-colors"
+                          className="px-5 py-3.5 cursor-pointer hover:text-text-primary transition-colors"
                           onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                         >
                           <div className="flex items-center gap-1.5">
                             Data início
-                            <ArrowUpDown className={`w-3.5 h-3.5 ${sortOrder === 'asc' ? 'text-blue-600' : 'text-slate-400'}`} />
+                            <ArrowUpDown className={`w-3.5 h-3.5 ${sortOrder === 'asc' ? 'text-primary' : 'text-text-secondary'}`} />
                           </div>
                         </th>
                         <th className="px-5 py-3.5 text-left">Data fim</th>
@@ -755,50 +739,50 @@ export default function UserSection({
                         <th className="px-5 py-3.5 text-right">Ação</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                    <tbody className="divide-y divide-border font-medium text-text-secondary">
                       {processedAbsences.map(abs => {
                         const totalDays = calculateDays(abs.absenceStartDate, abs.absenceEndDate);
                         return (
-                          <tr key={abs.id} className="hover:bg-slate-50/50 transition-colors">
+                          <tr key={abs.id} className="hover:bg-surface-muted/50 transition-colors">
                             <td className="px-5 py-3.5">
-                              <span className="font-bold text-slate-900">{getUserName(abs.userId)}</span>
+                              <span className="font-bold text-text-primary">{getUserName(abs.userId)}</span>
                             </td>
-                            <td className="px-5 py-3.5 font-mono text-slate-600">{abs.absenceStartDate}</td>
-                            <td className="px-5 py-3.5 font-mono text-blue-600 font-bold">{abs.absenceEndDate}</td>
+                            <td className="px-5 py-3.5 font-mono text-text-secondary whitespace-nowrap">{abs.absenceStartDate}</td>
+                            <td className="px-5 py-3.5 font-mono text-primary font-bold whitespace-nowrap">{abs.absenceEndDate}</td>
                             <td className="px-5 py-3.5">
-                              <span className="inline-block px-2.5 py-0.5 bg-slate-100 border border-slate-200/80 rounded-md text-slate-600 text-[11px] font-semibold">
+                              <Badge>
                                 {getTranslatedReason(abs.reason || 'Other')}
-                              </span>
+                              </Badge>
                             </td>
                             <td className="px-5 py-3.5 text-center">
-                              <span className="inline-block px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-full text-[10px]">
+                              <Badge>
                                 {totalDays} {totalDays === 1 ? 'dia' : 'dias'}
-                              </span>
+                              </Badge>
                             </td>
                             <td className="px-5 py-3.5 text-right">
-                              <button 
+                              <Button variant="ghost" size="sm"
                                 type="button"
                                 onClick={() => askConfirmation(
                                   'Confirmar Eliminação de Ausência',
                                   `Aviso: Isto irá remover permanentemente o registo de ausência de ${getUserName(abs.userId)} (${abs.absenceStartDate} a ${abs.absenceEndDate}). Pretende continuar?`,
                                   () => deleteAbsence(abs.id)
                                 )}
-                                className="text-red-500 hover:text-red-700 font-bold cursor-pointer transition-colors"
+                                className="text-error hover:text-error font-bold cursor-pointer transition-colors"
                               >
                                 Eliminar
-                              </button>
+                              </Button>
                             </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
-                  <div className="px-5 py-3.5 border-t border-slate-200/80 bg-slate-50/70 text-right text-xs text-slate-500 font-medium">
-                    A mostrar <span className="font-bold text-slate-800">{processedAbsences.length}</span> {processedAbsences.length === 1 ? 'resultado' : 'resultados'}
+                  <div className="px-5 py-3.5 border-t border-border/80 bg-surface-muted/70 text-right text-body-sm text-text-secondary font-medium">
+                    A mostrar <span className="font-bold text-text-primary">{processedAbsences.length}</span> {processedAbsences.length === 1 ? 'resultado' : 'resultados'}
                   </div>
                 </div>
               )}
-            </div>
+            </Card>
         </div>
       )}
 

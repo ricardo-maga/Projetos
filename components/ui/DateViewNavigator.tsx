@@ -11,7 +11,6 @@ interface DateViewNavigatorProps {
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
-  label?: string;
   isToday?: boolean;
   className?: string;
 }
@@ -22,12 +21,11 @@ export default function DateViewNavigator({
   onPrev,
   onNext,
   onToday,
-  label,
   isToday = false,
   className = '',
 }: DateViewNavigatorProps) {
   return (
-    <div className={cn("flex flex-wrap items-center justify-between gap-3", className)}>
+    <div className={cn("flex flex-wrap items-center justify-start gap-3", className)}>
       {/* 7 vs 14 days toggle on the Left */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-label font-bold text-text-primary">Período para visualização:</span>
@@ -39,14 +37,7 @@ export default function DateViewNavigator({
         />
       </div>
 
-      {/* Centralized Date Range Label if provided */}
-      {label && (
-        <div aria-live="polite" aria-atomic="true" className="text-label font-semibold text-text-primary px-3 py-2">
-          {label}
-        </div>
-      )}
-
-      {/* Navigation buttons: Prev, Today, Next on the Right */}
+      {/* Navigation immediately follows the period selection. */}
       <div role="group" aria-label="Navegação de datas" className="flex items-center gap-1">
         <M3IconButton
           onClick={onPrev}
