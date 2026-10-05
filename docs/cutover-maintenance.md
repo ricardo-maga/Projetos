@@ -1,7 +1,15 @@
 # Manutenção e bloqueio de escritas — 2026-10-05
 
-Preparação validada; nenhuma janela de produção aberta nesta etapa.
-Utilizador confirmou login e listagens Projects/Tasks após revogação legacy.
+Janela de produção executada e encerrada em 2026-10-05.
+Release de produção: dpl_5Q5gq87Pm5PGTDuPk8T2UuNhfseC / commit 36a169b.
+Migrations/RLS aplicados, backup novo privado sob freeze concluído e
+55 triggers temporários removidos; schema cutover_control ausente.
+Página/configuração 200 e acesso protegido/login inválido 401 após reabertura.
+Utilizador confirmou login válido, listas de projetos/tarefas e edição/gravação
+de projeto após o cutover. Validação funcional final concluída.
+Ver evidência e versões remotas em docs/production-readiness.md.
+Utilizador confirmou login e listagens Projects/Tasks após revogação legacy,
+antes deste cutover; essa confirmação não valida a nova release.
 
 ## Mecanismos
 
@@ -64,3 +72,4 @@ Não usar a página de manutenção como prova de isolamento da base de dados.
 
 Backups durante manutenção continuam snapshots lógicos public/auth, não snapshots
 físicos de todos os serviços nem backup de binários Storage. Storage não é alterado.
+

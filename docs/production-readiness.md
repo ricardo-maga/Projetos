@@ -145,3 +145,72 @@ Controlo utilizado: API Keys > Legacy > Disable JWT-based API keys.
 Não reativar a chave exposta como rollback. Deployments históricos e cópias de
 bundles só deixam de ter acesso privilegiado após a revogação efetiva.
 Referências: https://supabase.com/docs/guides/platform/backups e docs/rls-cutover.md.
+
+### Cutover de produção executado — 2026-10-05
+
+Commit 36a169be7422348766eb7eba27e6a731a232e200 compilado pela Vercel
+em preview e novamente para production. Release promovida:
+dpl_5Q5gq87Pm5PGTDuPk8T2UuNhfseC,
+https://projex-an2z9ygpx-gestao-de-projetos.vercel.app.
+Alterações locais novas do Dashboard foram preservadas e excluídas do release.
+
+Manutenção estática de produção dpl_3ohzDMLDV2cZig9eMtHEG6oeybAa foi
+validada com 503/no-store/Retry-After e promovida antes do freeze.
+A primeira promoção do preview estático falhou (NEXT_NO_VERSION), sem alterar
+o site público; build production com parâmetros estáticos explícitos corrigiu.
+Freeze de 55 tabelas confirmado, incluindo rejeição PT503 de DELETE WHERE false
+com contexto REST simulado, sem alterar linhas.
+
+Backup NOVO sob freeze, privado fora de Git/OneDrive, pasta final-20261005:
+schema.sql 184895 bytes / SHA256 D8BD1147646112EC0B74CBF24856C865A55D8CC08531D516A5F8CFDFF9501B45;
+data.sql 256444 bytes / SHA256 AA80C4E7E48C0EB7889F52FD6342C69BF50F2B38B866D5D46212F688F2AB4DCC;
+roles.sql 297 bytes / SHA256 25873CEC56A2CC6514E204F420231777F85C03DA818CAA7090CDCDFA89776ECD.
+Inclui public/auth/cutover_control. Recuperação sob freeze ensaiada anteriormente
+offline; este novo dump não foi restaurado durante a janela.
+
+Migrations remotas aplicadas, por ordem:
+20261005194702 production_temporary_write_freeze_enable;
+20261005194930 legacy_atomic_writes;
+20261005194935 security_function_hardening;
+20261005194942 legacy_conflict_http_status;
+20261005194958 backend_only_rls;
+20261005195004 backend_rpc_access;
+20261005195358 production_temporary_write_freeze_disable.
+
+Verificado: zero tabelas public sem RLS (55 totais), 40 políticas backend-only,
+zero privilégios efetivos browser nessas 40 tabelas, 28 sync_version,
+oito RPCs de escrita com execute apenas service_role, quatro RPCs OCC com
+FOR UPDATE, PT409 no writer e btree_gist em extensions.
+Contagens preservadas: projects 61, tasks 86, users 29, comments 17, risks 10.
+Após promover release: página 200, configuração 200/isConfigured=true,
+tasks sem sessão 401. Onze bundles públicos: zero JWT service_role e nenhuma
+chave sb_secret; uma ocorrência literal somente do prefixo sb_secret_ (10 chars)
+é código de validação, não credencial. Publishable aparece em dois bundles.
+Freeze removido com sucesso: zero triggers e schema cutover_control ausente;
+RLS permanece ativo. Sem reativação de chaves legacy ou grants públicos.
+
+Avisos residuais: três helpers SECURITY DEFINER usados por políticas existentes
+e leaked-password protection no Free (limitação expressamente aceite).
+Validação funcional pós-cutover CONFIRMADA pelo utilizador: login válido,
+listas de projetos e tarefas, edição e gravação de projeto. Não foram usados
+utilizadores reais pelo agente para testes de escrita. Esta confirmação refere-se
+à release nova, não apenas ao hotfix anterior.
+
+## Relatório final — PASS WITH FINDINGS
+
+Entrada em produção concluída; manutenção encerrada. Relatório publicado no
+PR #1 para integração da branch security/staging-cutover-20261005 na main.
+Esta atualização é exclusivamente documental; não altera código runtime,
+migrations, permissões ou dados. Alterações locais do Dashboard excluídas.
+
+Validação técnica anteriormente executada no commit de segurança: 1003 testes
+pass, quatro skip, zero fail; typecheck runtime, lint e build PASS.
+Build Vercel production do commit 36a169b READY e promovido. Não foram repetidos
+testes de código para esta atualização exclusivamente documental.
+
+Findings aceites/documentados: três helpers de políticas SECURITY DEFINER;
+leaked-password protection indisponível no Free (aceite pelo utilizador);
+aviso não fatal de autopatch SWC do Next. Não há novo SQL a executar para fechar
+esta promoção. A integração na main pode desencadear um rebuild automático
+Vercel; não deve executar novamente migrations de produção.
+
