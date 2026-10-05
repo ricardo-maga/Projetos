@@ -1712,15 +1712,14 @@ export function useERP() {
       deleted: false,
       createdDate: new Date().toISOString()
     };
-    saveState(prev => ({
+    return saveState(prev => ({
       ...prev,
       projectRiskItems: [newRisk, ...(prev.projectRiskItems || [])]
     }));
-    return newRisk;
   };
 
   const updateProjectRiskItem = (id: string, updates: Partial<Omit<import('../lib/types').ProjectRiskItem, 'id' | 'createdDate'>>) => {
-    saveState(prev => ({
+    return saveState(prev => ({
       ...prev,
       projectRiskItems: (prev.projectRiskItems || []).map(r => matchId(r.id, id) ? { ...r, ...updates } as import('../lib/types').ProjectRiskItem : r)
     }));

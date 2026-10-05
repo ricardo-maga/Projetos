@@ -1631,6 +1631,18 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
     // Save Project Risk Items
     if (state.projectRiskItems && state.projectRiskItems.length > 0) {
+      // Projects are deliberately stripped by the sync API. Validate risk links
+      // against PostgreSQL, never against the (empty) global-sync project list.
+      const riskProjectIds = [...new Set(state.projectRiskItems.map(pri => stringToUUID(pri.projectId)))];
+      const { data: riskProjects, error: riskProjectError } = await supabase
+        .from('projects').select('id').in('id', riskProjectIds);
+      if (riskProjectError) {
+        return { success: false, message: `Erro ao validar projetos dos riscos: ${formatSupabaseError(riskProjectError)}` };
+      }
+      const persistedRiskProjectIds = new Set((riskProjects || []).map(p => p.id));
+      if (riskProjectIds.some(id => !persistedRiskProjectIds.has(id))) {
+        return { success: false, message: 'Não foi possível gravar riscos: um projeto associado não existe na base de dados.' };
+      }
       const validRiskCatIds = new Set((state.riskCategories || []).map((rc: any) => stringToUUID(rc.id)));
       const validRiskStatIds = new Set((state.riskStatuses || []).map((rs: any) => stringToUUID(rs.id)));
       const validRiskPrioIds = new Set((state.riskPriorities || []).map((rp: any) => stringToUUID(rp.id)));
@@ -1644,7 +1656,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
 
         return {
           id: stringToUUID(pri.id),
-          project_id: (pId && validProjectIds.has(pId)) ? pId : null,
+          project_id: pId,
           title: pri.title || 'Risco sem título',
           category_id: (catId && validRiskCatIds.has(catId)) ? catId : null,
           identification_date: formatDbDate(pri.identificationDate) || new Date().toISOString().split('T')[0],
@@ -1662,7 +1674,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           created_at: pri.createdDate || new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
-      }).filter(item => item.project_id);
+      });
 
       if (priUpserts.length > 0) {
         try {

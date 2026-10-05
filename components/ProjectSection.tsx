@@ -94,8 +94,8 @@ interface ProjectSectionProps {
   riskCategories?: RiskCategory[];
   riskStatuses?: RiskStatus[];
   riskPriorities?: RiskPriority[];
-  addProjectRiskItem?: (item: any) => void;
-  updateProjectRiskItem?: (id: string, updates: any) => void;
+  addProjectRiskItem?: (item: any) => Promise<{ success: boolean; message?: string }>;
+  updateProjectRiskItem?: (id: string, updates: any) => Promise<{ success: boolean; message?: string }>;
   deleteProjectRiskItem?: (id: string) => void;
 }
 
@@ -156,6 +156,8 @@ export default function ProjectSection({
 
   // Risk Form State
   const [showRiskModal, setShowRiskModal] = useState(false);
+  const [isSavingRisk, setIsSavingRisk] = useState(false);
+  const riskSaveInFlight = React.useRef(false);
   const [editingRiskId, setEditingRiskId] = useState<string | null>(null);
   const [riskTitle, setRiskTitle] = useState('');
   const [riskCategoryId, setRiskCategoryId] = useState('');
@@ -1225,8 +1227,9 @@ export default function ProjectSection({
   };
 
   // ==================== PROJECT RISK ITEMS HANDLERS ====================
-  const handleSaveRisk = (e: React.FormEvent) => {
+  const handleSaveRisk = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (riskSaveInFlight.current) return;
     if (!selectedProj || !riskTitle.trim()) {
       alert('O título do risco é obrigatório.');
       return;
@@ -1253,15 +1256,24 @@ export default function ProjectSection({
       priorityId: riskPriorityId || (riskPriorities[1]?.id || ''),
     };
 
-    if (editingRiskId && updateProjectRiskItem) {
-      updateProjectRiskItem(editingRiskId, riskData);
-    } else if (addProjectRiskItem) {
-      addProjectRiskItem(riskData);
+    riskSaveInFlight.current = true;
+    setIsSavingRisk(true);
+    try {
+      const result = editingRiskId
+        ? await updateProjectRiskItem?.(editingRiskId, riskData)
+        : await addProjectRiskItem?.(riskData);
+      if (!result?.success) {
+        alert(result?.message || 'Não foi possível gravar o risco. Tente novamente.');
+        return;
+      }
+      resetRiskForm();
+      setShowRiskModal(false);
+    } catch {
+      alert('Não foi possível gravar o risco. Tente novamente.');
+    } finally {
+      riskSaveInFlight.current = false;
+      setIsSavingRisk(false);
     }
-
-    // Reset form & close modal
-    resetRiskForm();
-    setShowRiskModal(false);
   };
 
   const resetRiskForm = () => {
@@ -4892,6 +4904,7 @@ export default function ProjectSection({
                 </Button>
                 <Button variant="primary" size="sm"
                   type="submit"
+                  disabled={isSavingRisk}
                   className="px-6 py-2.5 text-body-sm font-extrabold text-white bg-primary hover:bg-primary rounded-control shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />

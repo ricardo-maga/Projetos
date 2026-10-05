@@ -28,6 +28,7 @@ export function createProjectHarness(initialState: Record<string, any> = {}) {
       return [state[name], (value: any) => { state[name] = typeof value === 'function' ? value(state[name]) : value; }];
     },
     useEffect(effect: () => any) { effects.push(effect); },
+    useRef: (initial: any) => ({ current: initial }),
     useMemo: (calculate: () => any) => calculate(),
     useCallback: (callback: any) => callback,
   };
