@@ -1930,7 +1930,9 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           const aid = c.authorId ? stringToUUID(c.authorId) : null;
           return {
             id: c.id,
-            project_id: (pid && validProjIds.has(pid)) ? pid : null,
+            // The API strips projects from global sync. Keep the supplied link;
+            // PostgreSQL's foreign key validates it instead of silently orphaning it.
+            project_id: pid,
             author_id: (aid && validUsrIds.has(aid)) ? aid : null,
             comment: c.comment,
             created_at: c.createdDate || new Date().toISOString()

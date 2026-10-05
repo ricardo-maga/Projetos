@@ -7,7 +7,7 @@ import {
   Plus, Search, Edit2, Trash2, ArrowLeft, Calendar, FileText, 
   Sparkles, DollarSign, Users, ShieldAlert, PlusCircle, MessageSquare, ListTodo, CheckSquare, BrainCircuit,
   X, Clock, ChevronLeft, ChevronRight, AlertTriangle, AlertCircle, Info, Flag, Bell, Maximize2, Link2, UserCheck, Check,
-  Package, Truck, CheckCircle2, Boxes, Tag, ShoppingBag, BarChart3
+  Package, Truck, CheckCircle2, Boxes, Tag, ShoppingBag, BarChart3, Loader2
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import { AssigneeSelector } from './AssigneeSelector';
@@ -819,17 +819,22 @@ export default function ProjectSection({
   const [serverProjects, setServerProjects] = useState<Project[]>([]);
   const [totalServerProjects, setTotalServerProjects] = useState(0);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [settledProjectsKey, setSettledProjectsKey] = useState<string | null>(null);
+  const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [serverSelectedProj, setServerSelectedProj] = useState<Project | null>(null);
   const [serverTasks, setServerTasks] = useState<Task[]>([]);
   const [loadedProjectIdForTasks, setLoadedProjectIdForTasks] = useState<string | null>(null);
   const [isServerTasksLoading, setIsServerTasksLoading] = useState(false);
+  const projectsQueryKey = JSON.stringify([projectCurrentPage, projectPageSize, search, filterCategory, filterStatus, filterManager, filterStatusGroup, refreshTrigger]);
+  const projectsListPending = isLoadingProjects || settledProjectsKey !== projectsQueryKey;
 
   useEffect(() => {
     if (selectedProjectId) return;
     let isMounted = true;
     const fetchProj = async () => {
       setIsLoadingProjects(true);
+      setProjectsLoadError(null);
       try {
         const query = new URLSearchParams({
           page: projectCurrentPage.toString(),
@@ -842,19 +847,25 @@ export default function ProjectSection({
         });
         const res = await fetch(`/api/v1/projects?${query.toString()}`, { headers: getAuthHeaders() });
         const result = await res.json();
-        if (result.success && isMounted) {
+        if (!res.ok || !result.success || !Array.isArray(result.data)) {
+          throw new Error(result.message || 'Não foi possível carregar os projetos.');
+        }
+        if (isMounted) {
           setServerProjects(result.data);
           setTotalServerProjects(result.total ?? result.count ?? 0);
         }
       } catch (err) {
-        console.error(err);
+        if (isMounted) setProjectsLoadError('Não foi possível carregar os projetos. Tente novamente.');
       } finally {
-        if (isMounted) setIsLoadingProjects(false);
+        if (isMounted) {
+          setSettledProjectsKey(projectsQueryKey);
+          setIsLoadingProjects(false);
+        }
       }
     };
     fetchProj();
     return () => { isMounted = false; };
-  }, [projectCurrentPage, projectPageSize, search, filterCategory, filterStatus, filterManager, filterStatusGroup, selectedProjectId, projects, refreshTrigger]); // Re-run if 'projects' prop changes as a fallback refresh
+  }, [projectCurrentPage, projectPageSize, search, filterCategory, filterStatus, filterManager, filterStatusGroup, selectedProjectId, projects, refreshTrigger, projectsQueryKey]); // Refresh after canonical project mutations.
 
   useEffect(() => {
     let isMounted = true;
@@ -962,8 +973,10 @@ export default function ProjectSection({
 
   // Use server data if available, fallback to props
   const activeProjects = filteredProjects;
-  const paginatedProjects = filteredProjects.slice((projectCurrentPage - 1) * projectPageSize, projectCurrentPage * projectPageSize);
-  const totalProjects = filteredProjects.length;
+  // The API already filters and paginates. Never re-slice its page or fall
+  // back to the global snapshot after a legitimate empty response.
+  const paginatedProjects = serverProjects;
+  const totalProjects = totalServerProjects;
   const totalProjectPages = Math.max(1, Math.ceil(totalProjects / projectPageSize));
   const validProjectPage = Math.min(projectCurrentPage, totalProjectPages);
   const startProjectIndex = (validProjectPage - 1) * projectPageSize;
@@ -1448,88 +1461,46 @@ export default function ProjectSection({
             </div>
           </div>
 
-          {/* FLOW PIPELINE PROGRESS BAR */}
+          {/* Project lifecycle: labels represent database status scale, not task completion. */}
           {(() => {
             const currentStatus = projectStatuses.find(s => s.id === selectedProj.statusId);
             const rawScale = currentStatus ? (currentStatus.scale ?? 1) : 1;
-
-            // Map raw database scale directly to effective display scale (1 to 5)
-            let displayScale = 1;
-            if (rawScale === 1) displayScale = 1;
-            else if (rawScale === 2) displayScale = 2;
-            else if (rawScale === 3) displayScale = 3;
-            else if (rawScale === 4) displayScale = 4;
-            else if (rawScale >= 5) displayScale = 5;
-
-            const levels = [
-              { label: 'Por iniciar', targetScale: 1 },
-              { label: 'Iniciado', targetScale: 2 },
-              { label: 'Preparação', targetScale: 3 },
-              { label: 'Implementação', targetScale: 4 },
-              { label: 'Concluído', targetScale: 5 },
-            ];
+            const displayScale = [1, 2, 3, 4].includes(rawScale) ? rawScale : rawScale >= 5 ? 5 : 1;
+            const statusStyle = getProjectStatusStyle(selectedProj.statusId, projectStatuses);
+            const levels = ['Iniciado', 'Preparação', 'FAT', 'Instalação', 'Concluído'];
 
             return (
-              <div className="overflow-x-auto w-full border-b border-border-subtle">
-                <div className="relative flex w-full min-w-[680px] justify-between items-center px-10 pt-8 pb-14 sm:pt-10 bg-surface-muted/50">
-                  {/* Connecting Lines */}
-                  <div className="absolute left-[56px] right-[56px] top-[56px] flex items-center z-0">
-                    {levels.slice(0, -1).map((_, idx) => {
-                      const isPassed = displayScale > levels[idx + 1].targetScale;
-                      const isCurrent = displayScale === levels[idx + 1].targetScale;
-                      const isActive = displayScale >= levels[idx + 1].targetScale;
-
-                      let lineColor = "bg-border";
-                      if (isPassed) {
-                        lineColor = "bg-border"; // cinza
-                      } else if (isCurrent) {
-                        lineColor = getProjectStatusStyle(selectedProj.statusId, projectStatuses).dotClass;
-                      }
-
-                      return (
-                        <div key={idx} className="flex-1 h-[2px] bg-border">
-                          <div
-                            className={`h-full transition-all duration-700 ease-in-out ${isActive ? lineColor : 'bg-transparent'}`}
-                            style={{ width: isActive ? '100%' : '0%' }}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Step Indicators */}
-                  {levels.map((lvl, idx) => {
-                    const isCurrent = lvl.targetScale === displayScale;
-                    const isPassed = lvl.targetScale < displayScale;
-
-                    const statusStyle = getProjectStatusStyle(selectedProj.statusId, projectStatuses);
-                    const circleClass = isCurrent
-                      ? `${statusStyle.badgeClass} ring-2 ring-primary/20 font-semibold`
-                      : isPassed
-                        ? "bg-surface-elevated border-border text-text-primary"
-                        : "bg-surface-muted border-border text-text-secondary";
-                    const labelColorClass = isCurrent ? `${statusStyle.textClass} font-semibold` : "text-text-secondary";
-
-                    return (
-                      <div
-                        key={idx}
-                        className="relative z-10 flex flex-col items-center select-none"
-                        aria-current={isCurrent ? 'step' : undefined}
-                      >
-                        {/* Step Circle */}
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 border-[2px] ${circleClass}`}>
-                          {isPassed ? <Check className="w-4 h-4 stroke-[3]" /> : <span className="text-caption font-black">{idx + 1}</span>}
-                        </div>
-
-                        {/* Label */}
-                        <span className={`absolute top-11 whitespace-nowrap text-caption uppercase tracking-widest font-extrabold transition-colors mt-1 ${labelColorClass}`}>
-                          {lvl.label}
+              <ol aria-label="Fases do projeto" className="grid grid-cols-1 md:grid-cols-5 p-4 border-b border-border-subtle bg-surface-muted/50">
+                {levels.map((label, idx) => {
+                  const scale = idx + 1;
+                  const isCurrent = scale === displayScale;
+                  const isPassed = scale < displayScale;
+                  const circleClass = isCurrent
+                    ? `${statusStyle.badgeClass} ring-2 ring-primary/20`
+                    : isPassed
+                      ? 'bg-surface-elevated border-border text-text-primary'
+                      : 'bg-surface-muted border-border text-text-secondary';
+                  return (
+                    <li key={scale} aria-current={isCurrent ? 'step' : undefined}
+                      className="relative min-w-0 flex items-center gap-3 p-3 md:flex-col md:text-center">
+                      {idx < levels.length - 1 && (
+                        <span aria-hidden="true"
+                          className={`absolute left-7 top-7 bottom-[-28px] w-0.5 md:left-1/2 md:right-auto md:bottom-auto md:h-0.5 md:w-full ${scale + 1 === displayScale ? statusStyle.dotClass : 'bg-border'}`} />
+                      )}
+                      <span aria-hidden="true" className={`relative z-10 flex shrink-0 items-center justify-center w-8 h-8 rounded-full border-2 text-label font-semibold ${circleClass}`}>
+                        {isPassed ? <Check className="w-4 h-4" /> : scale}
+                      </span>
+                      <div className="relative z-10 min-w-0 flex flex-wrap items-center gap-2 md:flex-col md:gap-1">
+                        <span className={`text-body-sm break-words ${isCurrent ? statusStyle.textClass + ' font-semibold' : 'text-text-secondary'}`}>
+                          <span className="sr-only">Nível {scale}: </span>{label}
                         </span>
+                        {isCurrent && <span className={`text-caption rounded-badge border px-2 py-0.5 ${statusStyle.badgeClass}`}>Atual</span>}
+                        {isPassed && <span className="sr-only">Etapa anterior à atual</span>}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    </li>
+                  );
+                })}
+              </ol>
             );
           })()}
 
@@ -4069,7 +4040,16 @@ export default function ProjectSection({
 
           {/* Table list output */}
           <div className="overflow-x-auto w-full">
-            {paginatedProjects.length === 0 ? (
+            {projectsListPending ? (
+              <div role="status" aria-live="polite" className="p-10 flex items-center justify-center gap-2 text-body-sm text-text-secondary">
+                <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" /> A carregar projetos…
+              </div>
+            ) : projectsLoadError ? (
+              <div role="alert" className="p-10 text-center space-y-3 text-body-sm text-text-secondary">
+                <p>{projectsLoadError}</p>
+                <Button variant="secondary" size="sm" onClick={() => setRefreshTrigger(value => value + 1)}>Tentar novamente</Button>
+              </div>
+            ) : paginatedProjects.length === 0 ? (
               <div className="p-10 text-center text-text-muted font-medium text-body-sm">Nenhum projeto encontrado para os filtros selecionados.</div>
             ) : (
               <table className="w-full min-w-[700px] text-left border-collapse">
@@ -4147,7 +4127,7 @@ export default function ProjectSection({
           </div>
 
           {/* Project List Pagination Controls */}
-          {totalProjects > 0 && (
+          {!projectsListPending && !projectsLoadError && totalProjects > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-surface-muted/70 border-t border-border/80 text-body-sm gap-3 font-medium">
               <div className="flex items-center gap-3 text-text-secondary font-medium">
                 <span>

@@ -26,6 +26,78 @@ export const projectPreviewProps: React.ComponentProps<typeof ProjectSection> = 
 };
 
 describe('Projects M3 presentation', () => {
+  it('ignores obsolete request responses and settles the current filter only after its response', async () => {
+    const originalFetch = globalThis.fetch;
+    const responses: ((value: any) => void)[] = [];
+    globalThis.fetch = (() => new Promise(resolve => responses.push(resolve))) as any;
+    try {
+      const h = createProjectHarness();
+      h.render(projectPreviewProps);
+      const cleanup = h.effects.find(effect => effect.toString().includes('fetchProj'))!();
+      h.state.filterStatusGroup = 'completed';
+      cleanup();
+      h.render(projectPreviewProps);
+      h.effects.find(effect => effect.toString().includes('fetchProj'))!();
+      responses[0]({ ok: true, json: async () => ({ success: true, data: [project], total: 1 }) });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(h.state.settledProjectsKey).toBeNull();
+      expect(h.state.serverProjects).toEqual([]);
+      responses[1]({ ok: true, json: async () => ({ success: true, data: [], total: 0 }) });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(h.state.settledProjectsKey).toBe(JSON.stringify([1, 25, '', '', '', '', 'completed', 0]));
+      expect(h.state.isLoadingProjects).toBe(false);
+      const html = renderToStaticMarkup(h.render(projectPreviewProps));
+      expect(html).toContain('Nenhum projeto encontrado');
+      expect(html).not.toContain('A carregar projetos');
+    } finally { globalThis.fetch = originalFetch; }
+  });
+  it('shows loading on entry and filter changes, not a premature empty result', () => {
+    const h = createProjectHarness();
+    let html = renderToStaticMarkup(h.render(projectPreviewProps));
+    expect(html).toContain('A carregar projetos');
+    expect(html).not.toContain('Nenhum projeto encontrado');
+    h.state.settledProjectsKey = JSON.stringify([1, 25, '', '', '', '', 'active', 0]);
+    html = renderToStaticMarkup(h.render(projectPreviewProps));
+    expect(html).toContain('Nenhum projeto encontrado');
+    h.state.filterStatusGroup = 'completed';
+    html = renderToStaticMarkup(h.render(projectPreviewProps));
+    expect(html).toContain('A carregar projetos');
+    expect(html).not.toContain('Nenhum projeto encontrado');
+  });
+  it('does not paginate server pages twice or fall back to local projects after empty/error results', () => {
+    const h = createProjectHarness({ projectCurrentPage: 2, serverProjects: [project], totalServerProjects: 26,
+      settledProjectsKey: JSON.stringify([2, 25, '', '', '', '', 'active', 0]) });
+    let html = renderToStaticMarkup(h.render(projectPreviewProps));
+    expect(html).toContain('Abrir projeto Projeto M3 de exemplo');
+    h.state.serverProjects = [];
+    html = renderToStaticMarkup(h.render(projectPreviewProps));
+    expect(html).toContain('Nenhum projeto encontrado');
+    expect(html).not.toContain('Abrir projeto Projeto M3 de exemplo');
+    h.state.projectsLoadError = 'Falha de rede';
+    html = renderToStaticMarkup(h.render(projectPreviewProps));
+    expect(html).toContain('Falha de rede');
+    expect(html).not.toContain('Nenhum projeto encontrado');
+  });
+  it('maps lifecycle labels to database scale with one current step and responsive semantic layout', () => {
+    const labels = ['Iniciado', 'Preparação', 'FAT', 'Instalação', 'Concluído'];
+    for (const scale of [1, 2, 3, 4, 5, 6]) {
+      const h = createProjectHarness({ filterStatusGroup: 'all' });
+      const tree = h.render({ ...projectPreviewProps, selectedProjectId: project.id,
+        projectStatuses: [{ ...statuses[0], scale }] });
+      const pipeline = findProjectElement(tree, e => e.type === 'ol' && e.props['aria-label'] === 'Fases do projeto');
+      expect(pipeline.props.className).toContain('grid-cols-1 md:grid-cols-5');
+      const html = renderToStaticMarkup(pipeline);
+      expect(html.match(/aria-current="step"/g)).toHaveLength(1);
+      expect(html).not.toContain('min-w-[680px]');
+      expect(html).not.toContain('uppercase');
+      const current = findProjectElement(pipeline, e => e.props?.['aria-current'] === 'step');
+      const currentHtml = renderToStaticMarkup(current);
+      expect(currentHtml).toContain(labels[Math.min(scale, 5) - 1]);
+      expect(currentHtml).toContain('Atual');
+      expect(currentHtml).toContain(getProjectStatusStyle('qa-status', [{ ...statuses[0], scale }]).badgeClass);
+      for (const label of labels) expect(html).toContain(label);
+    }
+  });
   it('uses white text for the calculated risk heading and formula on the dark primary background', () => {
     const h = createProjectHarness({ showRiskModal: true, riskProbability: 3, riskImpact: 3 });
     const html = renderToStaticMarkup(h.render({ ...projectPreviewProps, selectedProjectId: project.id }));
@@ -49,7 +121,9 @@ describe('Projects M3 presentation', () => {
     expect(h.state.showRiskModal).toBe(true);
   });
   it('renders the list with Foundation surfaces, configured badges and accessible project actions', () => {
-    const html = renderToStaticMarkup(<ProjectSection {...projectPreviewProps} />);
+    const h = createProjectHarness({ serverProjects: [project], totalServerProjects: 1,
+      settledProjectsKey: JSON.stringify([1, 25, '', '', '', '', 'active', 0]) });
+    const html = renderToStaticMarkup(h.render(projectPreviewProps));
     expect(html).toContain('m3-projects');
     expect(html).toContain('<h2>Lista de projetos</h2>');
     expect(html).toContain('rounded-card');
@@ -63,8 +137,9 @@ describe('Projects M3 presentation', () => {
   });
 
   it('retains empty filters, soft-delete filtering and write permissions', () => {
-    const html = renderToStaticMarkup(<ProjectSection {...projectPreviewProps}
-      projects={[{ ...project, deleted: true }] as any} currentUser={undefined} />);
+    const h = createProjectHarness({ settledProjectsKey: JSON.stringify([1, 25, '', '', '', '', 'active', 0]) });
+    const html = renderToStaticMarkup(h.render({ ...projectPreviewProps,
+      projects: [{ ...project, deleted: true }], currentUser: undefined }));
     expect(html).toContain('Nenhum projeto encontrado para os filtros selecionados.');
     expect(html).not.toContain('Novo projeto');
     expect(html).not.toContain('Abrir projeto Projeto M3');
