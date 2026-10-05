@@ -1,18 +1,24 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
-  Task, Project, Client, Notification, TaskStatus, ProjectStatus, User, SpecialDay, TaskType
+  Task, Project, Client, TaskStatus, ProjectStatus, User, SpecialDay, TaskType, ProjectRiskItem, RiskStatus
 } from '../lib/types';
-import { TASK_STATUS_ID_MAPPINGS, getTaskTypeName, formatToOnlyHours, getTaskStatusStyle, getProjectStatusStyle } from '../lib/utils';
-import { AssigneeSelector } from './AssigneeSelector';
+import { TASK_STATUS_ID_MAPPINGS, getTaskStatusStyle, getProjectStatusStyle } from '../lib/utils';
+import { Card } from './ui/Card';
+import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
+import { Input } from './ui/Input';
+import { assignedFocusRisks, focusHours, paginateFocus } from '../lib/myFocus';
+import { FocusPagination, useFocusPagination, FOCUS_TASK_SIZES, FOCUS_PROJECT_SIZES } from './FocusPagination';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { hasPermission } from '../lib/permissions';
 import { M3Button, M3IconButton, M3SegmentedControl } from './M3';
 import { 
-  CheckSquare, Briefcase, Bell, Calendar as CalendarIcon, ChevronLeft, 
-  ChevronRight, Check, Sparkles, Clock, AlertCircle, ArrowRight, 
-  CheckCircle2, Circle, CircleDot, StickyNote, Plus, Trash2, FolderKanban, Flag, UserCheck, X, PartyPopper
+  CheckSquare, Briefcase, Play, ShieldAlert, Calendar as CalendarIcon, ChevronLeft,
+  ChevronRight, Sparkles, Clock, ArrowRight,
+  StickyNote, Plus, Trash2, FolderKanban, Flag, PartyPopper
 } from 'lucide-react';
 
 interface MyFocusSectionProps {
@@ -23,18 +29,16 @@ interface MyFocusSectionProps {
   projects: Project[];
   clients: Client[];
   specialDays?: SpecialDay[];
-  notifications: Notification[];
+  projectRiskItems?: ProjectRiskItem[];
+  riskStatuses?: RiskStatus[];
   taskStatuses: TaskStatus[];
   taskTypes?: TaskType[];
   userAbsences?: any[];
   projectStatuses: ProjectStatus[];
-  markNotificationAsRead: (id: string) => void;
-  markAllNotificationsAsRead: (userId: string) => void;
   addTask?: (t: any) => void;
   updateTask: (id: string, updates: any) => void;
   deleteTask?: (id: string) => void;
   onSelectProject: (id: string) => void;
-  onNavigateTab: (tabId: string) => void;
   appConfig?: any;
 }
 
@@ -46,18 +50,16 @@ export default function MyFocusSection({
   projects = [],
   clients = [],
   specialDays = [],
-  notifications = [],
+  projectRiskItems = [],
+  riskStatuses = [],
   taskStatuses = [],
   taskTypes = [],
   userAbsences = [],
   projectStatuses = [],
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
   addTask,
   updateTask,
   deleteTask,
   onSelectProject,
-  onNavigateTab,
   appConfig
 }: MyFocusSectionProps) {
   // Task filter state
@@ -86,9 +88,6 @@ export default function MyFocusSection({
     });
   };
 
-  // Notification filter state
-  const [notifFilter, setNotifFilter] = useState<'all' | 'unread'>('all');
-
   // Calendar state
   const [currentMonthDate, setCurrentMonthDate] = useState(() => new Date());
   
@@ -104,17 +103,14 @@ export default function MyFocusSection({
   const [selectedDateStr, setSelectedDateStr] = useState<string>(todayStr);
 
   // Personal calendar notes state (stored per user in localStorage)
-  const [userNotes, setUserNotes] = useState<Record<string, string[]>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(`focus_notes_${currentUser.id}`);
-        if (saved) return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error loading focus notes:', e);
-      }
-    }
-    return {};
-  });
+  const [userNotes, setUserNotes] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`focus_notes_${currentUser.id}`) || '{}');
+      setUserNotes(saved && typeof saved === 'object' && !Array.isArray(saved)
+        ? Object.fromEntries(Object.entries(saved).filter(([, value]) => Array.isArray(value) && value.every(n => typeof n === 'string'))) as Record<string, string[]> : {});
+    } catch { setUserNotes({}); }
+  }, [currentUser.id]);
 
   const [newNoteText, setNewNoteText] = useState('');
 
@@ -187,21 +183,10 @@ export default function MyFocusSection({
     const tStyle = getTaskStatusStyle(statusId, taskStatuses);
     return {
       scale,
-      circleClass: `${tStyle.textClass} ${tStyle.bgClass} hover:brightness-95 border ${tStyle.borderClass} shadow-2xs`,
       badgeClass: `${tStyle.badgeClass} border`,
       statusName: tStyle.name,
     };
   }, [taskStatusMap, sortedTaskStatuses, taskStatuses]);
-
-  const handleCycleStatus = (task: Task) => {
-    if (!sortedTaskStatuses || sortedTaskStatuses.length === 0) return;
-    const currentIdx = sortedTaskStatuses.findIndex(s => s.id === task.statusId);
-    const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % sortedTaskStatuses.length : 0;
-    const nextStatus = sortedTaskStatuses[nextIdx];
-    if (nextStatus && updateTask) {
-      updateTask(task.id, { statusId: nextStatus.id });
-    }
-  };
 
   const projectStatusMap = useMemo(() => {
     const map = new Map<string, ProjectStatus>();
@@ -216,7 +201,7 @@ export default function MyFocusSection({
     const assigned = tasks.filter(t => {
       if (t.deleted) return false;
       if (!t.assigneeIds || !t.assigneeIds.includes(currentUser.id)) return false;
-      const proj = projectMap.get(t.projectId);
+      const proj = t.projectId ? projectMap.get(t.projectId) : undefined;
       if (!proj || proj.deleted) return false;
       return true;
     });
@@ -300,21 +285,13 @@ export default function MyFocusSection({
     return filtered;
   }, [allUserManagedProjects, projectFilter, isLevel5Project, getProjectEffectiveDeliveryDate]);
 
-  // 3. User Notifications
-  const myNotifications = useMemo(() => {
-    const list = (notifications || []).filter(n => !n.userId || n.userId === currentUser.id || n.userId === 'all');
-    list.sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
-    return list;
-  }, [notifications, currentUser.id]);
-
-  const filteredNotifications = useMemo(() => {
-    if (notifFilter === 'unread') {
-      return myNotifications.filter(n => !n.isRead);
-    }
-    return myNotifications;
-  }, [myNotifications, notifFilter]);
-
-  const unreadCount = useMemo(() => myNotifications.filter(n => !n.isRead).length, [myNotifications]);
+  const taskPagination = useFocusPagination(currentUser.id, 'tasks', 10, FOCUS_TASK_SIZES);
+  const projectPagination = useFocusPagination(currentUser.id, 'projects', 5, FOCUS_PROJECT_SIZES);
+  const riskPagination = useFocusPagination(currentUser.id, 'risks', 10, FOCUS_TASK_SIZES);
+  const taskPage = paginateFocus(filteredTasks, taskPagination.preference);
+  const projectPage = paginateFocus(myManagedProjects, projectPagination.preference);
+  const myRisks = useMemo(() => assignedFocusRisks(projectRiskItems, projects, currentUser.id), [projectRiskItems, projects, currentUser.id]);
+  const riskPage = paginateFocus(myRisks, riskPagination.preference);
 
   // 4. Monthly Calendar Calculations
   const year = currentMonthDate.getFullYear();
@@ -456,30 +433,30 @@ export default function MyFocusSection({
       <div className="m3-focus-banner p-5 sm:p-6 relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
-            <div className="m3-focus-banner__badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold">
+            <div className="m3-focus-banner__badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-caption font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Espaço pessoal</span>
             </div>
-            <h2 className="text-2xl md:text-3xl font-medium tracking-tight font-sans">
+            <h2 className="text-heading-lg md:text-heading-lg font-medium tracking-tight font-sans">
               Olá, <span className="m3-focus-banner__name">{currentUser.name}</span>!
             </h2>
-            <p className="m3-focus-banner__description text-sm max-w-2xl">
+            <p className="m3-focus-banner__description text-body-sm max-w-2xl">
               Acompanha as tuas tarefas prioritárias, gere os teus projetos e organiza a tua agenda.
             </p>
           </div>
 
-          <div className="m3-focus-banner__stats flex flex-wrap md:flex-nowrap items-center gap-3 p-3 rounded-2xl">
+          <div className="m3-focus-banner__stats flex flex-wrap md:flex-nowrap items-center gap-3 p-3 rounded-card">
             <div className="m3-focus-banner__stat text-center px-3 border-r">
-              <p className="m3-focus-banner__label text-xs font-medium">Tarefas pendentes</p>
-              <p className="m3-focus-banner__value text-xl font-semibold">{pendingTasksCount}</p>
+              <p className="m3-focus-banner__label text-caption font-medium">Tarefas pendentes</p>
+              <p className="m3-focus-banner__value text-heading-md font-semibold">{pendingTasksCount}</p>
             </div>
             <div className="m3-focus-banner__stat text-center px-3 border-r">
-              <p className="m3-focus-banner__label text-xs font-medium">Projetos em gestão</p>
-              <p className="m3-focus-banner__value text-xl font-semibold">{myManagedProjects.length}</p>
+              <p className="m3-focus-banner__label text-caption font-medium">Projetos em gestão</p>
+              <p className="m3-focus-banner__value text-heading-md font-semibold">{myManagedProjects.length}</p>
             </div>
             <div className="text-center px-3">
-              <p className="m3-focus-banner__label text-xs font-medium">Notificações</p>
-              <p className="m3-focus-banner__value text-xl font-semibold">{unreadCount}</p>
+              <p className="m3-focus-banner__label text-caption font-medium">Riscos atribuídos</p>
+              <p className="m3-focus-banner__value text-heading-md font-semibold">{myRisks.length}</p>
             </div>
           </div>
         </div>
@@ -492,15 +469,15 @@ export default function MyFocusSection({
         <div className="lg:col-span-7 space-y-6">
           
           {/* SECTION 1: ASSIGNED TASKS */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden" id="card-my-tasks">
-            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+          <Card className="overflow-hidden" id="card-my-tasks">
+            <div className="p-4 border-b border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface/50">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-blue-100 text-blue-700 rounded-xl">
+                <div className="p-2 bg-primary/10 text-primary rounded-card">
                   <CheckSquare className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-base tracking-tight">As minhas tarefas</h3>
-                  <p className="text-xs text-slate-500 font-medium">Ordenadas por data</p>
+                  <h3 className="font-extrabold text-text-primary text-body tracking-tight">As minhas tarefas</h3>
+                  <p className="text-caption text-text-muted font-medium">Ordenadas por data</p>
                 </div>
               </div>
 
@@ -508,7 +485,7 @@ export default function MyFocusSection({
               <M3SegmentedControl<'pending' | 'all' | 'completed'>
                 label="Filtrar as minhas tarefas"
                 value={taskFilter}
-                onChange={setTaskFilter}
+                onChange={value => { setTaskFilter(value); taskPagination.update({ ...taskPagination.preference, page: 1 }); }}
                 options={[
                   { value: 'pending', label: `Pendentes (${pendingTasksCount})` },
                   { value: 'all', label: `Todas (${myAssignedTasks.length})` },
@@ -518,21 +495,21 @@ export default function MyFocusSection({
             </div>
 
             {/* TASK LIST */}
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-border-subtle">
               {filteredTasks.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
-                  <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+                  <div className="w-12 h-12 bg-surface-muted text-text-muted rounded-card flex items-center justify-center mx-auto">
                     <CheckSquare className="w-6 h-6" />
                   </div>
-                  <p className="text-sm font-bold text-slate-700">Nenhuma tarefa encontrada</p>
-                  <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                  <p className="text-body-sm font-bold text-text-secondary">Nenhuma tarefa encontrada</p>
+                  <p className="text-caption text-text-muted max-w-xs mx-auto">
                     {taskFilter === 'pending' 
                       ? 'Parabéns! Não tens tarefas pendentes no teu plano de trabalho.' 
                       : 'Não existem tarefas atribuídas com o filtro selecionado.'}
                   </p>
                 </div>
               ) : (
-                filteredTasks.map(task => {
+                taskPage.items.map(task => {
                   const proj = projects.find(p => p.id === task.projectId);
                   const client = proj ? clientsMap.get(proj.clientId) : null;
                   const scaleInfo = getTaskScaleInfo(task.statusId);
@@ -541,81 +518,70 @@ export default function MyFocusSection({
 
                   return (
                     <div 
-                      key={task.id} 
+                      key={task.id}
+                      tabIndex={0} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openTaskDetailsModal(task); } }}
                       onClick={() => openTaskDetailsModal(task)}
-                      className={`p-4 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer group ${
-                        isDone ? 'opacity-75 bg-slate-50/40' : ''
+                      className={`p-4 hover:bg-surface/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer group ${
+                        isDone ? 'opacity-75 bg-surface/40' : ''
                       }`}
                       title="Clique para preencher ou editar a tarefa"
                     >
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCycleStatus(task);
-                            }}
-                            className={`p-1.5 rounded-full transition-all flex items-center justify-center cursor-pointer ${scaleInfo.circleClass}`}
-                            title={`Escala ${scaleInfo.scale}: ${scaleInfo.statusName}. Clique para alterar para a próxima escala.`}
-                          >
-                            {scaleInfo.scale === 3 ? (
-                              <CheckCircle2 className="w-4 h-4" />
-                            ) : scaleInfo.scale === 2 ? (
-                              <CircleDot className="w-4 h-4" />
-                            ) : (
-                              <Circle className="w-4 h-4" />
-                            )}
-                          </button>
+                          <IconButton size="sm" aria-label={`Executar tarefa ${task.title}`}
+                            title="Executar tarefa" disabled={!hasPermission(currentUser, 'tasks_write', userGroups)}
+                            onClick={e => { e.stopPropagation(); openTaskDetailsModal(task, 'execute'); }}>
+                            <Play className="w-4 h-4" />
+                          </IconButton>
 
-                          <span className={`text-sm font-bold tracking-tight group-hover:text-blue-600 transition-colors ${isDone ? 'line-through text-slate-500' : 'text-slate-900'}`}>
+                          <span className={`text-body-sm font-bold tracking-tight group-hover:text-primary transition-colors ${isDone ? 'line-through text-text-muted' : 'text-text-primary'}`}>
                             {task.title}
                           </span>
 
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${scaleInfo.badgeClass}`}>
+                          <Badge className={scaleInfo.badgeClass}>
                             {scaleInfo.statusName}
-                          </span>
+                          </Badge>
                         </div>
 
-                        <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap pl-7">
+                        <div className="flex items-center gap-3 text-body-sm text-text-secondary flex-wrap pl-7">
                           {proj && (
-                            <span 
+                            <Button variant="ghost" size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onSelectProject(proj.id);
                               }}
-                              className="font-semibold text-blue-600 hover:underline cursor-pointer flex items-center gap-1"
+                              className="h-auto min-h-9 px-0 whitespace-normal text-left justify-start text-body-sm font-semibold text-primary hover:underline flex items-center gap-1"
                               title={`Aceder ao projeto ${proj.title}`}
                             >
                               <Briefcase className="w-3 h-3" />
                               {client && `${client.shortName || client.clientName}`} {proj.title}
-                            </span>
+                            </Button>
                           )}
                           
                           {task.estimatedHours && (
-                            <span className="text-slate-400 flex items-center gap-0.5">
+                            <span className="text-text-muted flex items-center gap-0.5">
                               <Clock className="w-3 h-3" />
-                              {task.estimatedHours}h
+                              {focusHours(task.estimatedHours)}
                             </span>
                           )}
                         </div>
 
                         {task.notes && (
-                          <p className="text-xs text-slate-500 bg-amber-50/60 p-2 rounded-lg border border-amber-100/80 italic pl-7 mt-1">
+                          <p className="text-caption text-text-muted bg-warning/10 p-2 rounded-lg border border-warning/20 italic pl-7 mt-1">
                             &quot;{task.notes}&quot;
                           </p>
                         )}
                       </div>
 
                       {/* DUE DATE TAG */}
-                      <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-slate-100 pt-2 sm:pt-0 pl-7 sm:pl-0">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Data Prevista</span>
-                        <div className={`text-xs font-black flex items-center gap-1 mt-0.5 ${
+                      <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-border-subtle pt-2 sm:pt-0 pl-7 sm:pl-0">
+                        <span className="text-caption text-text-muted font-bold uppercase tracking-wider">Data Prevista</span>
+                        <div className={`text-caption font-black flex items-center gap-1 mt-0.5 ${
                           dateVal === todayStr 
-                            ? 'text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200' 
+                            ? 'text-warning bg-warning/10 px-2 py-0.5 rounded-md border border-warning/20'
                             : dateVal && dateVal < todayStr && !isDone
-                              ? 'text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-200'
-                              : 'text-slate-700'
+                              ? 'text-error bg-error/10 px-2 py-0.5 rounded-md border border-error/20'
+                              : 'text-text-secondary'
                         }`}>
                           <CalendarIcon className="w-3.5 h-3.5" />
                           <span>
@@ -630,18 +596,19 @@ export default function MyFocusSection({
                 })
               )}
             </div>
-          </div>
+            <FocusPagination label="tarefas" total={filteredTasks.length} {...taskPage} {...taskPagination} allowed={FOCUS_TASK_SIZES} />
+          </Card>
 
           {/* SECTION 2: MANAGED PROJECTS */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden" id="card-managed-projects">
-            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+          <Card className="overflow-hidden" id="card-managed-projects">
+            <div className="p-4 border-b border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface/50">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl">
+                <div className="p-2 bg-primary/10 text-primary rounded-card">
                   <FolderKanban className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-base tracking-tight">Os meus projetos</h3>
-                  <p className="text-xs text-slate-500 font-medium">Ordenados por data de entrega</p>
+                  <h3 className="font-extrabold text-text-primary text-body tracking-tight">Os meus projetos</h3>
+                  <p className="text-caption text-text-muted font-medium">Ordenados por data de entrega</p>
                 </div>
               </div>
 
@@ -649,7 +616,7 @@ export default function MyFocusSection({
               <M3SegmentedControl<'active' | 'all' | 'completed'>
                 label="Filtrar os meus projetos"
                 value={projectFilter}
-                onChange={setProjectFilter}
+                onChange={value => { setProjectFilter(value); projectPagination.update({ ...projectPagination.preference, page: 1 }); }}
                 options={[
                   { value: 'active', label: `Ativos (${activeProjectsCount})` },
                   { value: 'all', label: `Todos (${allUserManagedProjects.length})` },
@@ -659,14 +626,14 @@ export default function MyFocusSection({
             </div>
 
             {/* PROJECTS LIST */}
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-border-subtle">
               {myManagedProjects.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
-                  <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+                  <div className="w-12 h-12 bg-surface-muted text-text-muted rounded-card flex items-center justify-center mx-auto">
                     <Briefcase className="w-6 h-6" />
                   </div>
-                  <p className="text-sm font-bold text-slate-700">Sem projetos</p>
-                  <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                  <p className="text-body-sm font-bold text-text-secondary">Sem projetos</p>
+                  <p className="text-caption text-text-muted max-w-xs mx-auto">
                     {projectFilter === 'completed'
                       ? 'Atualmente não figura como Project Leader em nenhum projeto concluído.'
                       : projectFilter === 'active'
@@ -675,67 +642,51 @@ export default function MyFocusSection({
                   </p>
                 </div>
               ) : (
-                myManagedProjects.map(proj => {
+                projectPage.items.map(proj => {
                   const client = clientsMap.get(proj.clientId);
                   const pStatus = projectStatusMap.get(proj.statusId);
                   
-                  const projTasks = tasks.filter(t => {
-                    if (t.projectId !== proj.id || t.deleted) return false;
-                    const st = taskStatusMap.get(t.statusId) || (TASK_STATUS_ID_MAPPINGS[t.statusId] ? taskStatusMap.get(TASK_STATUS_ID_MAPPINGS[t.statusId]) : undefined);
-                    if (st) {
-                      if (st.scale === 0) return false;
-                      const lower = (st.name || '').toLowerCase();
-                      if (lower.includes('susp') || lower.includes('canc')) return false;
-                    }
-                    return true;
-                  });
-                  const completedTasks = projTasks.filter(t => {
-                    const st = taskStatusMap.get(t.statusId) || (TASK_STATUS_ID_MAPPINGS[t.statusId] ? taskStatusMap.get(TASK_STATUS_ID_MAPPINGS[t.statusId]) : undefined);
-                    return st ? st.name.toLowerCase().includes('conclu') || st.scale === 3 || st.scale === 100 : false;
-                  }).length;
-
-                  const progressPct = projTasks.length > 0 ? Math.round((completedTasks / projTasks.length) * 100) : 0;
-
                   const deliveryDateVal = getProjectEffectiveDeliveryDate(proj);
                   const deliveryDateType = getProjectDeliveryDateType(proj);
 
                   return (
                     <div 
                       key={proj.id}
+                      tabIndex={0} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onSelectProject(proj.id); } }}
                       onClick={() => {
                         onSelectProject(proj.id);
                       }}
-                      className="p-4 hover:bg-slate-50 transition-colors cursor-pointer space-y-3 group"
+                      className="p-4 hover:bg-surface transition-colors cursor-pointer space-y-3 group"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-extrabold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
+                            <h4 className="font-extrabold text-text-primary text-body-sm group-hover:text-primary transition-colors">
                               {client?.clientName || 'N/D'}
                             </h4>
                             {pStatus && (() => {
                               const pStyle = getProjectStatusStyle(proj.statusId, projectStatuses);
                               return (
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${pStyle.badgeClass}`}>
+                                <Badge className={pStyle.badgeClass}>
                                   {pStyle.name}
-                                </span>
+                                </Badge>
                               );
                             })()}
                           </div>
-                          <p className="text-xs text-slate-500 font-medium">
-                            <strong className="text-slate-700">{proj.title}</strong>
-                            {proj.installProjectNo && <span className="ml-2 text-slate-400">• N.º {proj.installProjectNo}</span>}
+                          <p className="text-body-sm text-text-secondary font-medium">
+                            <strong className="text-text-secondary">{proj.title}</strong>
+                            {proj.installProjectNo && <span className="ml-2 text-text-muted">• N.º {proj.installProjectNo}</span>}
                           </p>
                         </div>
 
                         <div className="text-right flex-shrink-0">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block" title="Data prioritária: Agendada -> Estimada Real -> Prazo">
+                          <span className="text-caption text-text-muted font-bold uppercase tracking-wider block" title="Data prioritária: Agendada -> Estimada Real -> Prazo">
                             {deliveryDateType}
                           </span>
-                          <span className={`text-xs font-black inline-flex items-center gap-1 ${
+                          <span className={`text-caption font-black inline-flex items-center gap-1 ${
                             deliveryDateVal && deliveryDateVal < todayStr
-                              ? 'text-red-600 font-bold'
-                              : 'text-emerald-700'
+                              ? 'text-error font-bold'
+                              : 'text-success'
                           }`}>
                             <Flag className="w-3 h-3" />
                             {deliveryDateVal 
@@ -745,107 +696,53 @@ export default function MyFocusSection({
                         </div>
                       </div>
 
-                      {/* PROGRESS BAR */}
-                      <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                        <div className="flex justify-between items-center text-[11px] font-bold text-slate-600">
-                          <span>Progresso das Tarefas ({completedTasks}/{projTasks.length})</span>
-                          <span>{progressPct}%</span>
-                        </div>
-                        <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                          <div 
-                            className="bg-blue-600 h-full rounded-full transition-all duration-300"
-                            style={{ width: `${progressPct}%` }}
-                          ></div>
-                        </div>
-                      </div>
                     </div>
                   );
                 })
               )}
             </div>
-          </div>
+            <FocusPagination label="projetos" total={myManagedProjects.length} {...projectPage} {...projectPagination} allowed={FOCUS_PROJECT_SIZES} />
+          </Card>
+          <Card className="overflow-hidden" id="card-my-risks">
+            <div className="p-4 border-b border-border-subtle bg-surface-muted flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-primary" />
+              <div><h3 className="text-heading-sm">Os meus riscos</h3><p className="text-caption text-text-secondary">Riscos atribuídos a ti, ordenados por data de revisão</p></div>
+            </div>
+            <ul className="divide-y divide-border-subtle">
+              {riskPage.items.map(risk => {
+                const proj = projectMap.get(risk.projectId);
+                const client = proj ? clientsMap.get(proj.clientId) : undefined;
+                return <li key={risk.id} className="p-4 flex flex-col sm:flex-row justify-between gap-3 hover:bg-surface-muted/50">
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2"><ShieldAlert className="w-4 h-4 text-primary" /><span className="text-body-sm font-semibold">{risk.title}</span><Badge>{riskStatuses.find(s => s.id === risk.statusId)?.name || 'Sem estado'}</Badge></div>
+                    <Button variant="ghost" size="sm" className="h-auto min-h-9 px-0 text-body-sm whitespace-normal text-left justify-start" onClick={() => onSelectProject(risk.projectId)}>
+                      {client?.shortName || client?.clientName || 'Cliente N/D'} · {proj?.title}{proj?.installProjectNo && ` (${proj.installProjectNo})`}
+                    </Button>
+                    {risk.description && <p className="text-body-sm text-text-secondary">{risk.description}</p>}
+                  </div>
+                  <div className="text-caption text-text-secondary sm:text-right"><p>Data de revisão</p><Badge>{risk.reviewDate ? new Date(risk.reviewDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Sem data'}</Badge></div>
+                </li>;
+              })}
+            </ul>
+            {!myRisks.length && <p className="p-6 text-body-sm text-text-secondary">Sem riscos atribuídos.</p>}
+            <FocusPagination label="riscos" total={myRisks.length} {...riskPage} {...riskPagination} allowed={FOCUS_TASK_SIZES} />
+          </Card>
 
         </div>
 
-        {/* RIGHT COLUMN: NOTIFICATIONS + MONTHLY CALENDAR (5 cols) */}
+        {/* RIGHT COLUMN: MONTHLY CALENDAR (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
           
-          {/* SECTION 1: NOTIFICATIONS */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden" id="card-my-notifications">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-amber-100 text-amber-700 rounded-xl relative">
-                  <Bell className="w-5 h-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-base tracking-tight">Notificações</h3>
-                  <p className="text-xs text-slate-500 font-medium">Alertas e avisos do sistema</p>
-                </div>
-              </div>
-
-              {unreadCount > 0 && (
-                <button
-                  onClick={() => markAllNotificationsAsRead(currentUser.id)}
-                  className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100 transition-colors"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  Limpar
-                </button>
-              )}
-            </div>
-
-            {/* NOTIFICATION LIST */}
-            <div className="p-3 space-y-2 max-h-[220px] overflow-y-auto">
-              {filteredNotifications.length === 0 ? (
-                <div className="p-6 text-center text-slate-400 text-xs">
-                  Não tem notificações recentes.
-                </div>
-              ) : (
-                filteredNotifications.slice(0, 5).map(notif => (
-                  <div 
-                    key={notif.id}
-                    className={`p-3 rounded-xl text-xs flex items-start gap-2.5 transition-all ${
-                      notif.isRead ? 'bg-slate-50 text-slate-600' : 'bg-blue-50/70 text-slate-900 border border-blue-100 shadow-xs'
-                    }`}
-                  >
-                    <div className="flex-1 space-y-0.5">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="font-bold">{notif.title}</span>
-                        <span className="text-[9px] text-slate-400 font-medium">
-                          {new Date(notif.createdDate).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-slate-500 text-[11px] leading-tight">{notif.message}</p>
-                    </div>
-
-                    {!notif.isRead && (
-                      <button 
-                        onClick={() => markNotificationAsRead(notif.id)}
-                        className="p-1 text-blue-600 hover:bg-blue-100 rounded-lg"
-                        title="Marcar como lida"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
           {/* SECTION 2: MONTHLY CALENDAR & NOTES */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden" id="card-monthly-calendar">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <Card className="overflow-hidden" id="card-monthly-calendar">
+            <div className="p-4 border-b border-border-subtle flex items-center justify-between bg-surface/50">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                <div className="p-2 bg-success/10 text-success rounded-card">
                   <CalendarIcon className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-base tracking-tight">Calendário Mensal</h3>
-                  <p className="text-xs text-slate-500 font-medium">Tarefas e lembretes de projetos em agenda</p>
+                  <h3 className="font-extrabold text-text-primary text-body tracking-tight">Calendário Mensal</h3>
+                  <p className="text-caption text-text-muted font-medium">Tarefas e lembretes de projetos em agenda</p>
                 </div>
               </div>
 
@@ -865,7 +762,7 @@ export default function MyFocusSection({
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </M3IconButton>
-                <span aria-live="polite" className="font-semibold text-sm text-slate-800 capitalize font-sans">
+                <span aria-live="polite" className="font-semibold text-body-sm text-text-primary capitalize font-sans">
                   {monthName}
                 </span>
                 <M3IconButton label="Mês seguinte"
@@ -876,20 +773,20 @@ export default function MyFocusSection({
               </div>
 
               {/* CALENDAR GRID */}
-              <div className="space-y-1.5">
+              <div className="border border-border rounded-control overflow-hidden">
                 {/* DAYS OF WEEK HEADER */}
-                <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-extrabold uppercase select-none">
-                  <span className="text-slate-500 py-0.5">Seg</span>
-                  <span className="text-slate-500 py-0.5">Ter</span>
-                  <span className="text-slate-500 py-0.5">Qua</span>
-                  <span className="text-slate-500 py-0.5">Qui</span>
-                  <span className="text-slate-500 py-0.5">Sex</span>
-                  <span className="text-slate-500 bg-slate-100/70 py-0.5 rounded-md font-bold">Sáb</span>
-                  <span className="text-slate-500 bg-slate-100/70 py-0.5 rounded-md font-bold">Dom</span>
+                <div className="grid grid-cols-7 bg-surface-muted border-b border-border-subtle text-center text-caption font-semibold uppercase select-none">
+                  <span className="text-text-muted py-0.5">Seg</span>
+                  <span className="text-text-muted py-0.5">Ter</span>
+                  <span className="text-text-muted py-0.5">Qua</span>
+                  <span className="text-text-muted py-0.5">Qui</span>
+                  <span className="text-text-muted py-0.5">Sex</span>
+                  <span className="text-text-muted bg-surface-muted/70 py-0.5 rounded-md font-bold">Sáb</span>
+                  <span className="text-text-muted bg-surface-muted/70 py-0.5 rounded-md font-bold">Dom</span>
                 </div>
 
                 {/* DAYS MATRIX */}
-                <div className="grid grid-cols-7 gap-1">
+                <div className="grid grid-cols-7">
                   {calendarDays.map((cell, idx) => {
                     const dayTasks = tasksByDate.get(cell.dateStr) || [];
                     const dayProjects = projectsByDate.get(cell.dateStr) || [];
@@ -905,20 +802,11 @@ export default function MyFocusSection({
 
                     const hasEvents = dayTasks.length > 0 || dayProjects.length > 0 || dayNotes.length > 0;
 
-                    let cellStyleClass = '';
-                    if (!cell.isCurrentMonth) {
-                      cellStyleClass = 'text-slate-300 bg-slate-50/30 opacity-40 hover:opacity-80';
-                    } else if (isSelected) {
-                      cellStyleClass = 'bg-slate-900 text-white shadow-md ring-2 ring-slate-900 font-bold z-10';
-                    } else if (isToday) {
-                      cellStyleClass = 'bg-amber-100/90 text-amber-950 font-black border border-amber-300 ring-1 ring-amber-400/50 shadow-2xs hover:bg-amber-200/80';
-                    } else if (isSpecial) {
-                      cellStyleClass = 'bg-rose-50 text-rose-900 border border-rose-200 font-bold hover:bg-rose-100/80 shadow-2xs';
-                    } else if (isWeekend) {
-                      cellStyleClass = 'bg-slate-100/80 text-slate-500 font-semibold hover:bg-slate-200/60 border border-slate-200/50';
-                    } else {
-                      cellStyleClass = 'bg-white text-slate-800 font-bold hover:bg-slate-50 border border-slate-200/60 shadow-2xs';
-                    }
+                    const cellStyleClass = isSelected
+                      ? 'bg-primary/10 text-text-primary ring-2 ring-inset ring-primary z-10'
+                      : !cell.isCurrentMonth ? 'bg-surface-muted/50 text-text-disabled'
+                      : isSpecial ? 'bg-error/5 text-error'
+                      : isWeekend ? 'bg-surface-muted/50 text-text-secondary' : 'bg-surface text-text-primary';
 
                     const tooltipText = specialDay 
                       ? `${specialDay.name} (${cell.dateStr})`
@@ -927,19 +815,21 @@ export default function MyFocusSection({
                         : cell.dateStr;
 
                     return (
-                      <button
+                      <Button variant="ghost" size="sm"
                         key={idx}
                         onClick={() => setSelectedDateStr(cell.dateStr)}
-                        className={`p-1.5 rounded-xl text-center flex flex-col items-center justify-between min-h-[46px] transition-all relative ${cellStyleClass}`}
+                        className={`p-2 rounded-none border-b border-r border-border-subtle text-center flex flex-col items-start justify-between min-h-20 h-auto transition-colors relative ${cellStyleClass}`}
                         title={tooltipText}
+                        aria-pressed={isSelected}
+                        aria-label={`${tooltipText} · ${dayTasks.length} tarefas · ${dayProjects.length} projetos · ${dayNotes.length} notas`}
                       >
                         <div className="flex items-center justify-center w-full relative">
-                          <span className={`text-xs ${isSpecial && !isSelected ? 'text-rose-900 font-extrabold' : ''}`}>
+                          <span className={`text-body-sm ${isToday ? 'underline font-bold' : ''} ${isSpecial && !isSelected ? 'text-error font-extrabold' : ''}`}>
                             {cell.dayNum}
                           </span>
                           {isSpecial && cell.isCurrentMonth && !isSelected && (
                             <span 
-                              className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-rose-500" 
+                              className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-error"
                               title={`Feriado / Dia Especial: ${specialDay?.name}`}
                             />
                           )}
@@ -949,49 +839,49 @@ export default function MyFocusSection({
                         {hasEvents && (
                           <div className="flex items-center gap-0.5 mt-0.5">
                             {dayTasks.length > 0 && (
-                              <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-blue-300' : 'bg-blue-600'}`}></span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
                             )}
                             {dayProjects.length > 0 && (
-                              <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-300' : 'bg-amber-500'}`}></span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-warning"></span>
                             )}
                             {dayNotes.length > 0 && (
-                              <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-300' : 'bg-emerald-500'}`}></span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
                             )}
                           </div>
                         )}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
 
                 {/* CALENDAR LEGEND */}
-                <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 text-[10px] text-slate-500 font-medium flex-wrap px-0.5">
+                <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-border-subtle text-caption text-text-muted font-medium flex-wrap px-0.5">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-slate-100 border border-slate-200"></span>
+                    <span className="w-2.5 h-2.5 rounded bg-surface-muted border border-border-subtle"></span>
                     <span>Fim de semana</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-rose-50 border border-rose-200 flex items-center justify-center text-[7px] text-rose-600">●</span>
-                    <span className="text-rose-700 font-semibold">Dia Especial / Feriado</span>
+                    <span className="w-2.5 h-2.5 rounded bg-error/10 border border-error/20 flex items-center justify-center text-caption text-error">●</span>
+                    <span className="text-error font-semibold">Dia Especial / Feriado</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-amber-100 border border-amber-300"></span>
-                    <span className="text-amber-900 font-semibold">Hoje</span>
+                    <span className="w-2.5 h-2.5 rounded bg-warning/10 border border-warning/20"></span>
+                    <span className="text-warning font-semibold">Hoje</span>
                   </div>
                 </div>
               </div>
 
               {/* SELECTED DATE DETAIL / NOTES PANEL */}
-              <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200/80 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                    <StickyNote className="w-4 h-4 text-blue-600" />
+              <div className="bg-surface rounded-card p-3.5 border border-border-subtle/80 space-y-3">
+                <div className="flex items-center justify-between border-b border-border-subtle/60 pb-2">
+                  <div className="flex items-center gap-1.5 text-caption font-bold text-text-primary">
+                    <StickyNote className="w-4 h-4 text-primary" />
                     <span>
                       Atividades & Notas de {new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })}
                     </span>
                   </div>
                   {selectedDateStr === todayStr && (
-                    <span className="text-[10px] font-extrabold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                    <span className="text-caption font-extrabold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                       Hoje
                     </span>
                   )}
@@ -1005,12 +895,12 @@ export default function MyFocusSection({
 
                   if (selSpecial) {
                     return (
-                      <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between text-xs text-rose-900 font-medium">
+                      <div className="p-2.5 bg-error/10 border border-error/20 rounded-card flex items-center justify-between text-caption text-error font-medium">
                         <div className="flex items-center gap-2 font-bold">
-                          <PartyPopper className="w-4 h-4 text-rose-600 shrink-0" />
+                          <PartyPopper className="w-4 h-4 text-error shrink-0" />
                           <span>{selSpecial.name}</span>
                         </div>
-                        <span className="text-[9px] uppercase tracking-wider bg-rose-200/80 text-rose-800 px-2 py-0.5 rounded-full font-extrabold">
+                        <span className="text-caption uppercase tracking-wider bg-error/10 text-error px-2 py-0.5 rounded-full font-extrabold">
                           Dia Especial / Feriado
                         </span>
                       </div>
@@ -1019,12 +909,12 @@ export default function MyFocusSection({
 
                   if (isSelWknd) {
                     return (
-                      <div className="p-2 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between text-xs text-slate-600">
+                      <div className="p-2 bg-surface-muted border border-border-subtle rounded-card flex items-center justify-between text-caption text-text-secondary">
                         <div className="flex items-center gap-1.5 font-semibold">
                           <span>☕</span>
                           <span>Fim de Semana ({selDate.getDay() === 6 ? 'Sábado' : 'Domingo'})</span>
                         </div>
-                        <span className="text-[9px] uppercase tracking-wider bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                        <span className="text-caption uppercase tracking-wider bg-surface-muted text-text-secondary px-2 py-0.5 rounded-full font-bold">
                           Não Útil
                         </span>
                       </div>
@@ -1037,35 +927,37 @@ export default function MyFocusSection({
                 {/* EVENTS & TASKS ON SELECTED DAY */}
                 <div className="space-y-2">
                   {selectedDateTasks.length === 0 && selectedDateProjects.length === 0 && selectedDateUserNotes.length === 0 ? (
-                    <p className="text-xs text-slate-400 italic text-center py-2">
+                    <p className="text-caption text-text-muted italic text-center py-2">
                       Nenhum compromisso ou nota gravada para este dia.
                     </p>
                   ) : (
                     <>
                       {/* TASKS */}
                       {selectedDateTasks.map(t => {
-                        const proj = projectMap.get(t.projectId);
+                        const proj = t.projectId ? projectMap.get(t.projectId) : undefined;
                         const client = proj ? clientsMap.get(proj.clientId) : null;
                         const scaleInfo = getTaskScaleInfo(t.statusId);
 
                         return (
                           <div 
-                            key={t.id} 
+                            key={t.id}
+                            tabIndex={0}
+                            onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openTaskDetailsModal(t); } }}
                             onClick={() => openTaskDetailsModal(t)}
-                            className="p-2.5 bg-white rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition-all cursor-pointer text-xs space-y-1 group shadow-2xs"
+                            className="p-2.5 bg-surface rounded-card border border-border-subtle hover:border-primary/20 hover:bg-primary/10 transition-all cursor-pointer text-caption space-y-1 group shadow-2xs"
                             title="Clique para preencher ou editar a tarefa"
                           >
                             <div className="flex justify-between items-start gap-2">
                               <div className="space-y-0.5 flex-1 min-w-0">
-                                <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-1.5 truncate">
-                                  <CheckSquare className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                <span className="font-bold text-text-primary group-hover:text-primary transition-colors flex items-center gap-1.5 truncate">
+                                  <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0" />
                                   <span className="truncate">{t.title}</span>
                                 </span>
-                                <div className="text-[11px] font-medium text-slate-600 flex items-center gap-1 flex-wrap pl-5">
-                                  <span className="text-slate-800 font-bold">{client?.clientName || client?.shortName || 'Cliente N/D'}</span>
-                                  <span className="text-slate-300">•</span>
-                                  <span 
-                                    className="text-blue-700 font-semibold hover:underline"
+                                <div className="text-caption font-medium text-text-secondary flex items-center gap-1 flex-wrap pl-5">
+                                  <span className="text-text-primary font-bold">{client?.clientName || client?.shortName || 'Cliente N/D'}</span>
+                                  <span className="text-text-disabled">•</span>
+                                  <Button variant="ghost" size="sm"
+                                    className="h-auto min-h-9 px-0 text-caption whitespace-normal text-left justify-start text-primary font-semibold hover:underline"
                                     onClick={(e) => {
                                       if (proj) {
                                         e.stopPropagation();
@@ -1075,18 +967,18 @@ export default function MyFocusSection({
                                     title={proj ? `Aceder ao projeto ${proj.title}` : undefined}
                                   >
                                     {proj?.title || 'Projeto N/D'}
-                                  </span>
+                                  </Button>
                                   {proj?.installProjectNo && (
                                     <>
-                                      <span className="text-slate-300">•</span>
-                                      <span className="text-slate-400">N.º {proj.installProjectNo}</span>
+                                      <span className="text-text-disabled">•</span>
+                                      <span className="text-text-muted">N.º {proj.installProjectNo}</span>
                                     </>
                                   )}
                                 </div>
                               </div>
-                              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-extrabold shrink-0 ${scaleInfo.badgeClass}`}>
+                              <Badge className={scaleInfo.badgeClass}>
                                 {scaleInfo.statusName}
-                              </span>
+                              </Badge>
                             </div>
                           </div>
                         );
@@ -1101,37 +993,39 @@ export default function MyFocusSection({
                         return (
                           <div 
                             key={`proj-milestone-${p.id}-${idx}`}
+                            tabIndex={0}
+                            onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onSelectProject(p.id); } }}
                             onClick={() => onSelectProject(p.id)}
-                            className="p-2.5 bg-white rounded-xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50/40 transition-all cursor-pointer text-xs space-y-1 group shadow-2xs"
+                            className="p-2.5 bg-surface rounded-card border border-border-subtle hover:border-warning hover:bg-warning/10 transition-all cursor-pointer text-caption space-y-1 group shadow-2xs"
                             title={`Clique para aceder ao projeto: ${p.title}`}
                           >
                             <div className="flex justify-between items-start gap-2">
                               <div className="space-y-0.5 flex-1 min-w-0">
-                                <span className="font-bold text-slate-900 group-hover:text-amber-800 transition-colors flex items-center gap-1.5 truncate">
-                                  <Flag className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span className="font-bold text-text-primary group-hover:text-warning transition-colors flex items-center gap-1.5 truncate">
+                                  <Flag className="w-3.5 h-3.5 text-warning shrink-0" />
                                   <span className="truncate">{item.milestoneLabel}: {p.title}</span>
                                 </span>
-                                <div className="text-[11px] font-medium text-slate-600 flex items-center gap-1 flex-wrap pl-5">
-                                  <span className="text-slate-800 font-bold">{client?.clientName || client?.shortName || 'Cliente N/D'}</span>
-                                  <span className="text-slate-300">•</span>
-                                  <span className="text-amber-800 font-semibold group-hover:underline">{p.title}</span>
+                                <div className="text-caption font-medium text-text-secondary flex items-center gap-1 flex-wrap pl-5">
+                                  <span className="text-text-primary font-bold">{client?.clientName || client?.shortName || 'Cliente N/D'}</span>
+                                  <span className="text-text-disabled">•</span>
+                                  <span className="text-warning font-semibold group-hover:underline">{p.title}</span>
                                   {p.installProjectNo && (
                                     <>
-                                      <span className="text-slate-300">•</span>
-                                      <span className="text-slate-400">N.º {p.installProjectNo}</span>
+                                      <span className="text-text-disabled">•</span>
+                                      <span className="text-text-muted">N.º {p.installProjectNo}</span>
                                     </>
                                   )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
                                 {pStatus && (
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded-full font-extrabold bg-slate-100 text-slate-700 border border-slate-200">
+                                  <Badge className={getProjectStatusStyle(p.statusId, projectStatuses).badgeClass}>
                                     {pStatus.name}
-                                  </span>
+                                  </Badge>
                                 )}
-                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-extrabold bg-amber-100 text-amber-900 border border-amber-200 flex items-center gap-1">
+                                <span className="text-caption px-1.5 py-0.5 rounded-full font-extrabold bg-warning/10 text-warning border border-warning/20 flex items-center gap-1">
                                   <span>Projeto</span>
-                                  <ArrowRight className="w-2.5 h-2.5 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
+                                  <ArrowRight className="w-2.5 h-2.5 text-warning group-hover:translate-x-0.5 transition-transform" />
                                 </span>
                               </div>
                             </div>
@@ -1141,15 +1035,15 @@ export default function MyFocusSection({
 
                       {/* PERSONAL NOTES */}
                       {selectedDateUserNotes.map((note, idx) => (
-                        <div key={idx} className="p-2 bg-emerald-50 rounded-lg border border-emerald-200 text-xs flex items-start justify-between gap-2">
-                          <p className="text-emerald-950 font-medium leading-tight flex-1">{note}</p>
-                          <button
+                        <div key={idx} className="p-2 bg-success/10 rounded-lg border border-success/20 text-caption flex items-start justify-between gap-2">
+                          <p className="text-success font-medium leading-tight flex-1">{note}</p>
+                          <Button variant="ghost" size="sm"
                             onClick={() => handleDeleteNote(selectedDateStr, idx)}
-                            className="text-emerald-700 hover:text-red-600 p-0.5"
+                            className="text-success hover:text-error p-0.5"
                             title="Eliminar nota"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </>
@@ -1158,25 +1052,26 @@ export default function MyFocusSection({
 
                 {/* ADD PERSONAL NOTE FORM */}
                 <form onSubmit={handleAddNote} className="flex gap-1.5 pt-1">
-                  <input
+                  <Input
+                    aria-label="Nota pessoal para o dia selecionado"
                     type="text"
                     value={newNoteText}
                     onChange={e => setNewNoteText(e.target.value)}
                     placeholder="Adicionar nota para este dia..."
-                    className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-1 focus:ring-blue-500 font-medium"
+                    className="flex-1 p-2 bg-surface border border-border-subtle rounded-lg text-caption outline-none focus:ring-1 focus:ring-primary font-medium"
                   />
-                  <button
+                  <Button variant="primary" size="sm"
                     type="submit"
-                    className="p-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center"
+                    className="p-2 bg-primary hover:bg-primary text-white rounded-lg text-caption font-bold transition-colors flex items-center justify-center"
                     title="Adicionar Nota"
                   >
                     <Plus className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </form>
               </div>
 
             </div>
-          </div>
+          </Card>
 
         </div>
 

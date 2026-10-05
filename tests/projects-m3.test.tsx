@@ -26,6 +26,13 @@ export const projectPreviewProps: React.ComponentProps<typeof ProjectSection> = 
 };
 
 describe('Projects M3 presentation', () => {
+  it('provides an icon for each project list and analytics tab', () => {
+    const h = createProjectHarness();
+    const tree = h.render({ ...projectPreviewProps, selectedProjectId: null });
+    const tabs = findProjectElement(tree, e => e.props?.tabs?.some((tab: any) => tab.id === 'analise'));
+    expect(tabs.props.tabs.map((tab: any) => tab.label)).toEqual(['Lista de projetos', 'Análise de projetos']);
+    expect(tabs.props.tabs.every((tab: any) => React.isValidElement(tab.icon))).toBe(true);
+  });
   it('uses updated canonical status instead of the stale detail cache', () => {
     const h = createProjectHarness({ serverSelectedProj: { ...project, version: 1 } });
     const next = { ...project, statusId: 'next-status', version: 2 };

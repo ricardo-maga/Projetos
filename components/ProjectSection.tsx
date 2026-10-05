@@ -3965,10 +3965,10 @@ export default function ProjectSection({
 
         // Project list and analysis share the existing Foundation tab pattern.
         <div className="space-y-4">
-        <Tabs tabs={[{ id: 'lista', label: 'Lista de projetos' }, { id: 'analise', label: 'Análise de projetos' }]}
+        <Tabs tabs={[{ id: 'lista', label: 'Lista de projetos', icon: <ListTodo className="w-4 h-4" /> }, { id: 'analise', label: 'Análise de projetos', icon: <BarChart3 className="w-4 h-4" /> }]}
           activeTabId={projectListView} onChange={id => setProjectListView(id as 'lista' | 'analise')} variant="line" />
         {projectListView === 'analise' ? <ProjectAnalytics projects={projects} projectStatuses={projectStatuses}
-          categories={projectCategories} users={users} materials={projectMaterials} onSelectProject={setSelectedProjectId} /> : (
+          categories={projectCategories} users={users} clients={clients} materials={projectMaterials} onSelectProject={setSelectedProjectId} /> : (
         <Card className="bg-surface rounded-card border border-border -sm overflow-hidden animate-fade-in">
 
           {/* List Header and Filter controls */}

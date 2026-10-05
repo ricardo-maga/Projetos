@@ -8,6 +8,8 @@ import type { User } from '../lib/types';
 
 const user: User = { id: 'qa-synthetic-user', name: 'Ana Exemplo', email: 'qa@example.invalid', deleted: false, type: 'Team', roleId: 'admin', approved: true, createdDate: '2026-10-04' };
 const noop = () => {};
+const focusProjects: any[] = Array.from({ length: 7 }, (_, i) => ({ id: `preview-project-${i}`, clientId: 'preview-client', title: `Linha de produção ${i + 1}`, installProjectNo: `IP-${i + 1}`, projectManagerId: user.id, statusId: 'preview-active', deliveryDate: '2026-12-01', deleted: false }));
+const focusTasks: any[] = Array.from({ length: 12 }, (_, i) => ({ id: `preview-task-${i}`, projectId: focusProjects[0].id, title: `Preparar equipamento ${i + 1}`, assigneeIds: [user.id], estimatedHours: '02:00:00', estimatedDate: '2026-12-01', statusId: 'preview-pending', deleted: false }));
 
 function Preview() {
   const [tab, setTab] = useState<'focus' | 'calendar'>('focus');
@@ -21,7 +23,10 @@ function Preview() {
       </header>
       <main id="active-tab-content" className="max-w-7xl mx-auto space-y-4">
         {tab === 'focus' ? (
-          <MyFocusSection currentUser={user} users={[user]} tasks={[]} projects={[]} clients={[]} notifications={[]} taskStatuses={[]} projectStatuses={[]} markNotificationAsRead={noop} markAllNotificationsAsRead={noop} updateTask={noop} onSelectProject={noop} onNavigateTab={noop} />
+          <MyFocusSection currentUser={user} users={[user]} tasks={focusTasks} projects={focusProjects} clients={[{ id: 'preview-client', clientName: 'Cliente de exemplo' } as any]}
+            taskStatuses={[{ id: 'preview-pending', name: 'Por iniciar', scale: 1, color: 'azul' }]} projectStatuses={[{ id: 'preview-active', name: 'Em curso', scale: 2, color: 'verde' }]}
+            projectRiskItems={[{ id: 'preview-risk', projectId: focusProjects[0].id, ownerId: user.id, title: 'Atraso de fornecimento', reviewDate: '2026-12-01', statusId: 'preview-open' } as any]}
+            riskStatuses={[{ id: 'preview-open', name: 'Ativo' }]} updateTask={noop} onSelectProject={noop} />
         ) : (
           <>
             <div className="m3-card p-4 sm:p-5">

@@ -938,6 +938,7 @@ export default function Page() {
 
               {activeTab === 'meu-foco' && (
                 <MyFocusSection 
+                  key={currentUser.id}
                   currentUser={currentUser}
                   users={state.users}
                   userGroups={state.userGroups}
@@ -945,18 +946,16 @@ export default function Page() {
                   projects={state.projects}
                   clients={state.clients}
                   specialDays={state.specialDays || []}
-                  notifications={state.notifications || []}
                   taskStatuses={state.taskStatuses}
                   taskTypes={state.taskTypes}
                   userAbsences={state.userAbsences}
                   projectStatuses={state.projectStatuses}
-                  markNotificationAsRead={markNotificationAsRead}
-                  markAllNotificationsAsRead={markAllNotificationsAsRead}
+                  projectRiskItems={state.projectRiskItems || []}
+                  riskStatuses={state.riskStatuses || []}
                   updateTask={updateTask}
                   addTask={addTask}
                   deleteTask={deleteTask}
                   onSelectProject={handleSelectProject}
-                  onNavigateTab={handleTabChange}
                   appConfig={state.appConfig}
                 />
               )}
