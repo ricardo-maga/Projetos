@@ -1,6 +1,8 @@
 'use client';
 
 import { M3FilterChip, M3SectionHeader, M3SegmentedControl } from './M3';
+import { Tabs } from './ui/Tabs';
+import ProjectAnalytics from './ProjectAnalytics';
 import React, { useState, useEffect } from 'react';
 import { Project, Client, Comment, Task, TaskType, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '../lib/types';
 import { 
@@ -191,6 +193,7 @@ export default function ProjectSection({
   const [pendingMaterialStatuses, setPendingMaterialStatuses] = useState<Record<string, string>>({});
 
   const [search, setSearch] = useState('');
+  const [projectListView, setProjectListView] = useState<'lista' | 'analise'>('lista');
   const [filterStatusGroup, setFilterStatusGroup] = useState<'active' | 'implementation' | 'all' | 'completed'>('active');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -982,7 +985,11 @@ export default function ProjectSection({
   const startProjectIndex = (validProjectPage - 1) * projectPageSize;
   const endProjectIndex = startProjectIndex + paginatedProjects.length;
 
-  const selectedProj = serverSelectedProj || activeProjects.find(p => p.id === selectedProjectId);
+  // Canonical mutations refresh the parent snapshot. Prefer its newer version
+  // over the detail fetch cache so status controls and lifecycle never lag.
+  const canonicalSelectedProj = projects.find(p => p.id === selectedProjectId);
+  const selectedProj = canonicalSelectedProj && (!serverSelectedProj || (canonicalSelectedProj.version ?? 0) >= (serverSelectedProj.version ?? 0))
+    ? canonicalSelectedProj : serverSelectedProj || activeProjects.find(p => p.id === selectedProjectId);
   const projTasks = React.useMemo(() => {
     if (!selectedProjectId) return [];
     if (loadedProjectIdForTasks === selectedProjectId) {
@@ -1432,7 +1439,7 @@ export default function ProjectSection({
           <div className="p-6 bg-surface border-b border-border-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-body font-semibold text-primary">{getClientName(selectedProj.clientId)}</span>
+                <span className="text-heading-md font-semibold text-primary">{getClientName(selectedProj.clientId)}</span>
                 {selectedProj.demo && <span className="text-caption font-bold uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary">Demo</span>}
               </div>
               <h1 className="text-heading-lg text-text-primary tracking-tight">{selectedProj.title}</h1>
@@ -1494,7 +1501,6 @@ export default function ProjectSection({
                         <span className={`text-body-sm break-words ${isCurrent ? statusStyle.textClass + ' font-semibold' : 'text-text-secondary'}`}>
                           <span className="sr-only">Nível {scale}: </span>{label}
                         </span>
-                        {isCurrent && <span className={`text-caption rounded-badge border px-2 py-0.5 ${statusStyle.badgeClass}`}>Atual</span>}
                         {isPassed && <span className="sr-only">Etapa anterior à atual</span>}
                       </div>
                     </li>
@@ -1569,35 +1575,9 @@ export default function ProjectSection({
 
               {/* Tabs Switcher: Calendário vs Cronograma */}
               <div className="space-y-4">
-                <div className="overflow-x-auto w-full border-b border-border scrollbar-thin">
-                  <div className="flex gap-6 min-w-max pb-0.5">
-                    <Button variant="ghost" size="sm"
-                      type="button"
-                      onClick={() => setProjectViewTab('calendario')}
-                      className={`pb-2.5 text-body-sm font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
-                        projectViewTab === 'calendario'
-                          ? 'border-primary text-primary'
-                          : 'border-transparent text-text-muted hover:text-text-secondary'
-                      }`}
-                    >
-                      <Calendar className="w-4 h-4 shrink-0" />
-                      Calendário Mensal
-                    </Button>
-                    <Button variant="ghost" size="sm"
-                      type="button"
-                      onClick={() => setProjectViewTab('cronograma')}
-                      className={`pb-2.5 text-body-sm font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
-                        projectViewTab === 'cronograma'
-                          ? 'border-primary text-primary'
-                          : 'border-transparent text-text-muted hover:text-text-secondary'
-                      }`}
-                      id="tab-cronograma-btn"
-                    >
-                      <Clock className="w-4 h-4 shrink-0" />
-                      Cronograma
-                    </Button>
-                  </div>
-                </div>
+                <Tabs tabs={[{ id: 'calendario', label: 'Calendário mensal', icon: <Calendar className="w-4 h-4" /> },
+                  { id: 'cronograma', label: 'Cronograma', icon: <Clock className="w-4 h-4" /> }]}
+                  activeTabId={projectViewTab} onChange={id => setProjectViewTab(id as 'calendario' | 'cronograma')} variant="line" />
 
                 {projectViewTab === 'calendario' ? (
                   <div className="space-y-4 animate-fade-in">
@@ -3983,7 +3963,12 @@ export default function ProjectSection({
 
       ) : (
 
-        // 3. MAIN PROJECTS PIPELINE DASHBOARD (LIST VIEW)
+        // Project list and analysis share the existing Foundation tab pattern.
+        <div className="space-y-4">
+        <Tabs tabs={[{ id: 'lista', label: 'Lista de projetos' }, { id: 'analise', label: 'Análise de projetos' }]}
+          activeTabId={projectListView} onChange={id => setProjectListView(id as 'lista' | 'analise')} variant="line" />
+        {projectListView === 'analise' ? <ProjectAnalytics projects={projects} projectStatuses={projectStatuses}
+          categories={projectCategories} users={users} materials={projectMaterials} onSelectProject={setSelectedProjectId} /> : (
         <Card className="bg-surface rounded-card border border-border -sm overflow-hidden animate-fade-in">
 
           {/* List Header and Filter controls */}
@@ -4085,7 +4070,7 @@ export default function ProjectSection({
                             )}
                             <div>
                               <div className="text-body-sm text-primary font-medium">{getClientName(proj.clientId)}</div>
-                              <Button type="button" variant="ghost" size="sm" className="h-auto min-h-9 px-0 text-left justify-start whitespace-normal text-text-primary"
+                              <Button type="button" variant="ghost" size="sm" className="h-auto min-h-9 px-0 text-body text-left justify-start whitespace-normal text-text-primary"
                                 aria-label={`Abrir projeto ${proj.title}`}
                                 onClick={event => { event.stopPropagation(); setSelectedProjectId(proj.id); }}>
                                 {proj.title}
@@ -4197,6 +4182,8 @@ export default function ProjectSection({
             </div>
           )}
         </Card>
+        )}
+        </div>
       )}
 
 

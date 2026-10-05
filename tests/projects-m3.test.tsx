@@ -26,6 +26,17 @@ export const projectPreviewProps: React.ComponentProps<typeof ProjectSection> = 
 };
 
 describe('Projects M3 presentation', () => {
+  it('uses updated canonical status instead of the stale detail cache', () => {
+    const h = createProjectHarness({ serverSelectedProj: { ...project, version: 1 } });
+    const next = { ...project, statusId: 'next-status', version: 2 };
+    const tree = h.render({ ...projectPreviewProps, projects: [next], selectedProjectId: project.id,
+      projectStatuses: [...statuses, { id: 'next-status', name: 'Novo estado', scale: 4, color: 'verde' }] });
+    const pipeline = findProjectElement(tree, e => e.type === 'ol');
+    const current = findProjectElement(pipeline, e => e.props?.['aria-current'] === 'step');
+    expect(renderToStaticMarkup(current)).toContain('Instalação');
+    const status = findProjectElement(tree, e => e.props?.value === 'next-status' && e.props?.onChange);
+    expect(status).toBeDefined();
+  });
   it('ignores obsolete request responses and settles the current filter only after its response', async () => {
     const originalFetch = globalThis.fetch;
     const responses: ((value: any) => void)[] = [];
@@ -93,7 +104,7 @@ describe('Projects M3 presentation', () => {
       const current = findProjectElement(pipeline, e => e.props?.['aria-current'] === 'step');
       const currentHtml = renderToStaticMarkup(current);
       expect(currentHtml).toContain(labels[Math.min(scale, 5) - 1]);
-      expect(currentHtml).toContain('Atual');
+      expect(currentHtml).not.toContain('>Atual<');
       expect(currentHtml).toContain(getProjectStatusStyle('qa-status', [{ ...statuses[0], scale }]).badgeClass);
       for (const label of labels) expect(html).toContain(label);
     }
@@ -115,7 +126,7 @@ describe('Projects M3 presentation', () => {
     expect(html).toContain('Identificar Risco');
     const copy = findProjectElement(tree, e => e.props?.['aria-label'] === 'Copiar link do projeto');
     expect(copy.props.size).toBe('sm');
-    expect(html).toContain('text-body font-semibold text-primary');
+    expect(html).toContain('text-heading-md font-semibold text-primary');
     const add = findProjectElement(tree, e => e.props?.onClick && e.props.children?.[1] === ' Identificar Risco');
     add.props.onClick();
     expect(h.state.showRiskModal).toBe(true);

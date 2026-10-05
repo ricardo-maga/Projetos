@@ -891,24 +891,6 @@ export default function Page() {
         <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 overflow-y-auto bg-background" id="main-content">
           <div className="max-w-7xl mx-auto space-y-6">
             
-            {/* Header info */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4" id="main-section-title">
-              <div>
-                <h2 className="text-heading-lg font-bold text-text-primary tracking-tight">
-                  {tabs.find(t => t.id === activeTab)?.label}
-                </h2>
-                <p className="text-body-sm text-text-secondary mt-1">
-                  {activeTab === 'dashboard' && 'Visão global e indicadores de performance.'}
-                  {activeTab === 'meu-foco' && 'O teu plano de trabalho, tarefas e projetos atribuídos.'}
-                  {activeTab === 'projetos' && 'Gestão global e análise de projetos.'}
-                  {activeTab === 'tarefas' && 'Gestão global e análise de tarefas.'}
-                  {activeTab === 'calendario' && 'Planeamento de tarefas e agendamento técnico.'}
-                  {activeTab === 'clientes' && 'Diretório de clientes.'}
-                  {activeTab === 'ausencias' && 'Registo e escala de ausências da equipa.'}
-                  {activeTab === 'configuracoes' && 'Definições da aplicação.'}
-                </p>
-              </div>
-            </div>
 
             {/* Error or Rollback Notification */}
             {syncStatus === 'error' && (
