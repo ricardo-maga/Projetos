@@ -26,6 +26,28 @@ export const projectPreviewProps: React.ComponentProps<typeof ProjectSection> = 
 };
 
 describe('Projects M3 presentation', () => {
+  it('uses white text for the calculated risk heading and formula on the dark primary background', () => {
+    const h = createProjectHarness({ showRiskModal: true, riskProbability: 3, riskImpact: 3 });
+    const html = renderToStaticMarkup(h.render({ ...projectPreviewProps, selectedProjectId: project.id }));
+    expect(html).toContain('text-caption text-white font-bold uppercase tracking-wider">Nível de Risco Calculado');
+    expect(html).toContain('text-body-sm font-semibold text-white">Fórmula: Probabilidade (3)');
+    expect(html).toContain('Médio (9)');
+  });
+  it('removes risk summary and filters while preserving risk creation and compact project actions', () => {
+    const h = createProjectHarness({ activeDetailTab: 'riscos' });
+    const tree = h.render({ ...projectPreviewProps, selectedProjectId: project.id });
+    const html = renderToStaticMarkup(tree);
+    expect(html).not.toContain('Riscos Identificados');
+    expect(html).not.toContain('Todas as Categorias');
+    expect(html).not.toContain('Todos os Estados');
+    expect(html).toContain('Identificar Risco');
+    const copy = findProjectElement(tree, e => e.props?.['aria-label'] === 'Copiar link do projeto');
+    expect(copy.props.size).toBe('sm');
+    expect(html).toContain('text-body font-semibold text-primary');
+    const add = findProjectElement(tree, e => e.props?.onClick && e.props.children?.[1] === ' Identificar Risco');
+    add.props.onClick();
+    expect(h.state.showRiskModal).toBe(true);
+  });
   it('renders the list with Foundation surfaces, configured badges and accessible project actions', () => {
     const html = renderToStaticMarkup(<ProjectSection {...projectPreviewProps} />);
     expect(html).toContain('m3-projects');
