@@ -1,5 +1,7 @@
 export const dynamic = 'force-dynamic';
 
+import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
@@ -18,7 +20,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get('projectId');
 
-    const result = await getActiveStateFromSupabase();
+    const databaseClient = requireServerDbClient();
+    const result = await getActiveStateFromSupabase(databaseClient);
     if (!result.success || !result.data) {
       return NextResponse.json(result, { status: 500 });
     }
@@ -52,7 +55,8 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const result = await getActiveStateFromSupabase();
+    const databaseClient = requireServerDbClient();
+    const result = await getActiveStateFromSupabase(databaseClient);
     if (!result.success || !result.data) {
       return NextResponse.json(result, { status: 500 });
     }
@@ -87,13 +91,13 @@ export async function POST(req: NextRequest) {
     };
 
     currentState.projectMaterials = [newMaterial, ...(currentState.projectMaterials || [])];
-    const saveResult = await saveActiveStateToSupabase(currentState);
+    const saveResult = await saveActiveStateToSupabase(currentState, databaseClient, { projectMaterials: [newMaterial] });
 
     if (!saveResult.success) {
-      return NextResponse.json(saveResult, { status: 500 });
+      return NextResponse.json(saveResult, { status: saveResult.status || 500 });
     }
 
-    return NextResponse.json({ success: true, message: 'Linha de material criada.', data: newMaterial }, { status: 201 });
+    return NextResponse.json({ success: true, message: 'Linha de material criada.', data: { ...newMaterial, syncVersion: saveResult.versions?.projectMaterials?.[newMaterial.id] } }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
   }

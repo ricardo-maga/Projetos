@@ -4,9 +4,17 @@ import { join } from 'path';
 import { createClient } from '@supabase/supabase-js';
 import { deleteProject, updateProject } from '@/lib/projects/projectService';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const sb = createClient(url, key);
+const runStagingIntegrity = process.env.RUN_STAGING_INTEGRITY === 'true';
+const stagingIt = runStagingIntegrity ? it : it.skip;
+function stagingClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!runStagingIntegrity || url !== 'https://caaiydcycrnwcqefdldz.supabase.co' || !key)
+    throw new Error('Testes destrutivos requerem opt-in e staging explicitamente identificado.');
+  const claims = JSON.parse(Buffer.from(key.split('.')[1], 'base64url').toString());
+  if (claims.ref !== 'caaiydcycrnwcqefdldz' || claims.role !== 'service_role') throw new Error('Chave fora de staging.');
+  return createClient(url, key, { auth: { persistSession:false, autoRefreshToken:false } });
+}
 
 describe('FASE 79 — Hardening da Integridade Física Projects → Tasks + Consolidação do Project Persistence Boundary', () => {
   const migrationPath = join(
@@ -57,7 +65,8 @@ describe('FASE 79 — Hardening da Integridade Física Projects → Tasks + Cons
   });
 
   describe('2. Testes de Cenários Destrutivos e Integridade Física na BD', () => {
-    it('Item 3: DELETE físico de Task com planning_allocations é rejeitado com foreign_key_violation (23503)', async () => {
+    stagingIt('Item 3: DELETE físico de Task com planning_allocations é rejeitado com foreign_key_violation (23503)', async () => {
+      const sb = stagingClient();
       const { data: users } = await sb.from('users').select('id').eq('deleted', false).limit(1);
       const testUserId = users?.[0]?.id;
       expect(testUserId).toBeDefined();
@@ -92,7 +101,8 @@ describe('FASE 79 — Hardening da Integridade Física Projects → Tasks + Cons
       await sb.from('tasks').delete().eq('id', dummyTaskId);
     });
 
-    it('Item 2 & 4: DELETE físico de Project sem Tasks e DELETE de Task sem allocations são permitidos', async () => {
+    stagingIt('Item 2 & 4: DELETE físico de Project sem Tasks e DELETE de Task sem allocations são permitidos', async () => {
+      const sb = stagingClient();
       const dummyProjId = crypto.randomUUID();
       const dummyTaskId = crypto.randomUUID();
 
@@ -107,7 +117,8 @@ describe('FASE 79 — Hardening da Integridade Física Projects → Tasks + Cons
       expect(delT).toBeNull();
     });
 
-    it('Item 11: Tasks com project_id = NULL são perfeitamente válidas e operacionais', async () => {
+    stagingIt('Item 11: Tasks com project_id = NULL são perfeitamente válidas e operacionais', async () => {
+      const sb = stagingClient();
       const dummyTaskId = crypto.randomUUID();
 
       const { error: insErr } = await sb.from('tasks').insert({
@@ -128,7 +139,8 @@ describe('FASE 79 — Hardening da Integridade Física Projects → Tasks + Cons
   });
 
   describe('3. Auditoria do Project Persistence Boundary & Eliminação Aplicacional', () => {
-    it('Item 6: Project com Tasks ativas — delete aplicacional é bloqueado com erro dependency', async () => {
+    stagingIt('Item 6: Project com Tasks ativas — delete aplicacional é bloqueado com erro dependency', async () => {
+      const sb = stagingClient();
       const dummyProjId = crypto.randomUUID();
       const dummyTaskId = crypto.randomUUID();
 

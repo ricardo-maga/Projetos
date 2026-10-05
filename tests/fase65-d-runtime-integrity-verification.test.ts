@@ -15,7 +15,7 @@ describe('FASE 65-D — PostgreSQL Runtime Integrity Verification', () => {
       function findWriters(dir: string, writersList: Array<{ file: string; line: number; match: string }>) {
         const entries = readdirSync(dir);
         for (const entry of entries) {
-          if (entry === 'node_modules' || entry === '.next' || entry === '.git' || entry === 'tests') continue;
+          if (entry === 'node_modules' || entry.startsWith('.next') || entry === '.staging-transfer' || entry === '.git' || entry === 'tests') continue;
           const fullPath = join(dir, entry);
           const stat = statSync(fullPath);
           if (stat.isDirectory()) {
@@ -31,7 +31,7 @@ describe('FASE 65-D — PostgreSQL Runtime Integrity Verification', () => {
                 ) {
                   // If this line or block is writing to planning_allocations
                   if (line.includes('planning_allocations') || content.slice(Math.max(0, content.indexOf(line) - 200), content.indexOf(line) + 200).includes('planning_allocations')) {
-                    writersList.push({ file: fullPath.replace(process.cwd(), ''), line: idx + 1, match: line.trim() });
+                    writersList.push({ file: fullPath.replace(process.cwd(), '').replaceAll('\\', '/'), line: idx + 1, match: line.trim() });
                   }
                 }
               });

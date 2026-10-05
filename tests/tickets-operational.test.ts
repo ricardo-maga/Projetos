@@ -5,6 +5,7 @@ import * as authModule from '../lib/auth/authorization';
 import * as syncModule from '../lib/supabaseSync';
 import { NextRequest, NextResponse } from 'next/server';
 import { Ticket } from '../lib/types';
+import { installLegacyRouteHarness } from './helpers/legacyRouteHarness';
 
 const mockAuthenticatedUser: authModule.AuthenticatedUser = {
   id: 'user-op-100',
@@ -102,8 +103,10 @@ describe('Fase 27 — Modelo Operacional de Tickets / Pendências / Problemas', 
   let getSyncSpy: any;
   let saveSyncSpy: any;
   let dbState: any;
+  let restoreHarness: () => void;
 
   beforeEach(() => {
+    restoreHarness = installLegacyRouteHarness();
     dbState = JSON.parse(JSON.stringify(mockInitialState));
 
     getSyncSpy = spyOn(syncModule, 'getActiveStateFromSupabase').mockImplementation(async () => {
@@ -121,6 +124,7 @@ describe('Fase 27 — Modelo Operacional de Tickets / Pendências / Problemas', 
   });
 
   afterEach(() => {
+    restoreHarness?.();
     getSyncSpy?.mockRestore();
     saveSyncSpy?.mockRestore();
     authSpy?.mockRestore();
@@ -181,7 +185,8 @@ describe('Fase 27 — Modelo Operacional de Tickets / Pendências / Problemas', 
       expect(json.success).toBe(true);
       expect(json.data.title).toBe('Manutenção de Emergência Gerador');
       expect(json.data.createdById).toBe(mockAuthenticatedUser.id);
-      expect(json.data.ticketNumber).toMatch(/^TCK-\d{4}-\d{3}$/);
+      // Sequence-backed numbering keeps the prefix and does not truncate large numbers.
+      expect(json.data.ticketNumber).toMatch(/^TCK-\d{4}-\d{3,}$/);
     });
 
     it('Rejeita criação de ticket com título composto por apenas espaços (400)', async () => {

@@ -1,8 +1,23 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import { GET, POST } from '../app/api/supabase/sync/route';
 import { NextRequest } from 'next/server';
+import { installLegacyRouteHarness } from './helpers/legacyRouteHarness';
+import * as dbBoundary from '../lib/supabase/requireServerDbClient';
+import * as syncBoundary from '../lib/supabaseSync';
+import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 
 describe('FASE 25-A — Correção do acesso ao endpoint de Sync (/api/supabase/sync)', () => {
+  let restoreHarness: () => void;
+  let readSpy: any;
+  beforeEach(() => {
+    restoreHarness = installLegacyRouteHarness();
+    spyOn(dbBoundary, 'requireServerDbClient').mockReturnValue({
+      rpc: async () => ({data:true,error:null}),
+      from: () => ({select: () => ({in: () => ({eq: async () => ({data:[{id:'p-valid'}],error:null})})})}),
+    } as any);
+    readSpy = spyOn(syncBoundary, 'getActiveStateFromSupabase').mockResolvedValue({success:true,data:{...CLEAN_BASELINE_STATE,comments:[]}});
+  });
+  afterEach(() => { readSpy?.mockRestore(); restoreHarness?.(); });
   describe('Teste A: GET sem autenticação', () => {
     it('deve devolver HTTP 401 e não devolver quaisquer dados internos da aplicação', async () => {
       const req = new NextRequest('http://localhost:3000/api/supabase/sync', {
@@ -167,7 +182,7 @@ describe('FASE 25-A — Correção do acesso ao endpoint de Sync (/api/supabase/
             tasks: [{ id: 't-1', title: 'Tentativa de Escrita Global Tarefa' }],
             clients: [{ id: 'c-1', clientName: 'Tentativa de Escrita Global Cliente' }],
             planningAllocations: [{ id: 'pa-1' }],
-            comments: [{ id: 'com-1', text: 'Comentário legítimo' }],
+            comments: [{ id: 'com-1', projectId:'p-valid', comment: 'Comentário legítimo' }],
           }),
         });
 

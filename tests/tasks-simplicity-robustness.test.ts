@@ -267,7 +267,7 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
       expect(json.error?.message || json.message).toContain('projeto');
     });
 
-    it('bloqueia eliminação de tarefa com alocações de planeamento ativas com HTTP 409', async () => {
+    it('soft-delete canónico não modifica nem bloqueia alocações históricas', async () => {
       const mockTask = { id: 'task-alloc-1', project_id: validProjectId, task_title: 'Tarefa com Alocação', deleted: false, version: 1 };
       const mockAllocations = [{ id: 'alloc-1', task_id: 'task-alloc-1', status: 'CONFIRMED' }];
 
@@ -285,6 +285,13 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
       };
 
       const mockDb: any = {
+        rpc: async (name: string, args: any) => {
+          expect(name).toBe('delete_task_atomic');
+          expect(args.p_expected_version).toBe(1);
+          mockTask.deleted = true;
+          mockTask.version++;
+          return { data: mockTask, error: null };
+        },
         from: (table: string) => {
           if (table === 'tasks') return createChain([mockTask]);
           if (table === 'planning_allocations') return createChain(mockAllocations);
@@ -299,9 +306,12 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
       });
 
       const res = await deleteTask(req, { params: Promise.resolve({ id: 'task-alloc-1' }) });
-      expect(res.status).toBe(409);
+      expect(res.status).toBe(200);
       const json = await res.json();
-      expect(json.error?.message || json.message).toContain('alocação');
+      expect(json.success).toBe(true);
+      expect(mockTask.deleted).toBe(true);
+      expect(mockTask.version).toBe(2);
+      expect(mockAllocations[0].status).toBe('CONFIRMED');
     });
   });
 });

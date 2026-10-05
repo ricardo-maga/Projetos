@@ -1,5 +1,7 @@
 export const dynamic = 'force-dynamic';
 
+import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   getActiveStateFromSupabase, 
@@ -33,7 +35,8 @@ export async function GET(req: NextRequest, ctx: any) {
   }
 
   try {
-    const result = await getActiveStateFromSupabase();
+    const databaseClient = requireServerDbClient();
+    const result = await getActiveStateFromSupabase(databaseClient);
     if (!result.success || !result.data) {
       return NextResponse.json(result, { status: 500 });
     }
@@ -74,7 +77,8 @@ async function handleUpdate(req: NextRequest, ctx: any) {
 
   try {
     const updates = await req.json();
-    const result = await getActiveStateFromSupabase();
+    const databaseClient = requireServerDbClient();
+    const result = await getActiveStateFromSupabase(databaseClient);
     if (!result.success || !result.data) {
       return NextResponse.json(result, { status: 500 });
     }
@@ -137,6 +141,9 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     }
 
     const existingTicket = tickets[index];
+    if (updates.syncVersion !== undefined && updates.syncVersion !== existingTicket.syncVersion) {
+      return NextResponse.json({ success: false, message: 'O ticket foi alterado entretanto. Atualize antes de repetir.' }, { status: 409 });
+    }
     const updatedTicket: Ticket = {
       ...existingTicket,
       ...(updates.title !== undefined ? { title: updates.title.trim() } : {}),
@@ -170,15 +177,15 @@ async function handleUpdate(req: NextRequest, ctx: any) {
 
     state.tickets[index] = updatedTicket;
 
-    const saveRes = await saveActiveStateToSupabase(state);
+    const saveRes = await saveActiveStateToSupabase(state, databaseClient, { tickets: [state.tickets[index]] });
     if (!saveRes.success) {
-      return NextResponse.json(saveRes, { status: 500 });
+      return NextResponse.json(saveRes, { status: saveRes.status || 500 });
     }
 
     return NextResponse.json({
       success: true,
       message: 'Ticket atualizado com sucesso.',
-      data: state.tickets[index]
+      data: { ...state.tickets[index], syncVersion: saveRes.versions?.tickets?.[id] }
     });
   } catch (err: any) {
     return NextResponse.json(
@@ -198,7 +205,8 @@ export async function DELETE(req: NextRequest, ctx: any) {
   }
 
   try {
-    const result = await getActiveStateFromSupabase();
+    const databaseClient = requireServerDbClient();
+    const result = await getActiveStateFromSupabase(databaseClient);
     if (!result.success || !result.data) {
       return NextResponse.json(result, { status: 500 });
     }
@@ -218,9 +226,9 @@ export async function DELETE(req: NextRequest, ctx: any) {
       updatedDate: new Date().toISOString()
     };
 
-    const saveRes = await saveActiveStateToSupabase(state);
+    const saveRes = await saveActiveStateToSupabase(state, databaseClient, { tickets: [state.tickets[index]] });
     if (!saveRes.success) {
-      return NextResponse.json(saveRes, { status: 500 });
+      return NextResponse.json(saveRes, { status: saveRes.status || 500 });
     }
 
     return NextResponse.json({

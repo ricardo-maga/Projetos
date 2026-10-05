@@ -1,5 +1,7 @@
 export const dynamic = 'force-dynamic';
 
+import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   getActiveStateFromSupabase, 
@@ -10,6 +12,7 @@ import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { Ticket } from '@/lib/types';
 import { genId } from '@/lib/utils';
 import { requirePermission } from '@/lib/auth/authorization';
+import { reserveTicketNumber } from '@/lib/supabase/ticketNumber';
 
 export async function GET(req: NextRequest) {
   const auth = await requirePermission(req, 'tickets_read');
@@ -26,7 +29,8 @@ export async function GET(req: NextRequest) {
     const assignedToId = searchParams.get('assignedToId');
     const clientId = searchParams.get('clientId');
 
-    const result = await getActiveStateFromSupabase();
+    const databaseClient = requireServerDbClient();
+    const result = await getActiveStateFromSupabase(databaseClient);
     if (!result.success || !result.data) {
       return NextResponse.json(result, { status: 500 });
     }
@@ -82,7 +86,8 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const result = await getActiveStateFromSupabase();
+    const databaseClient = requireServerDbClient();
+    const result = await getActiveStateFromSupabase(databaseClient);
     if (!result.success || !result.data) {
       return NextResponse.json(result, { status: 500 });
     }
@@ -124,10 +129,9 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date().toISOString();
-    const id = genId('tck');
-    const count = (state.tickets || []).length + 1;
-    const year = new Date().getFullYear();
-    const ticketNumber = `TCK-${year}-${String(count).padStart(3, '0')}`;
+    // Return the same canonical ID that PostgreSQL persists and GET/PATCH use.
+    const id = crypto.randomUUID();
+    const ticketNumber = await reserveTicketNumber(databaseClient);
 
     const isExternal = body.source === 'email' || body.source === 'teams' || body.source === 'portal';
     const status = isExternal ? 'validacao' : (body.status || 'aberto');
@@ -176,15 +180,18 @@ export async function POST(req: NextRequest) {
       notifications
     };
 
-    const saveRes = await saveActiveStateToSupabase(newState);
+    const saveRes = await saveActiveStateToSupabase(newState, databaseClient, {
+      tickets: [newTicket],
+      notifications: notifications.filter(notification => !(state.notifications || []).some(existing => existing.id === notification.id))
+    });
     if (!saveRes.success) {
-      return NextResponse.json(saveRes, { status: 500 });
+      return NextResponse.json(saveRes, { status: saveRes.status || 500 });
     }
 
     return NextResponse.json({
       success: true,
       message: 'Ticket criado com sucesso.',
-      data: newTicket
+      data: { ...newTicket, syncVersion: saveRes.versions?.tickets?.[newTicket.id] }
     }, { status: 201 });
   } catch (err: any) {
     return NextResponse.json(

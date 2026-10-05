@@ -16,6 +16,8 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { applyLegacyVersions } from '../lib/supabase/legacyWriteBatch';
+import { buildLegacySyncPayload } from '../lib/supabase/syncPayload';
 import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, Ticket } from '../lib/types';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
@@ -221,12 +223,13 @@ export function useERP() {
       const res = await fetch('/api/supabase/sync', {
         method: 'POST',
         headers,
-        body: JSON.stringify(nextState),
+        body: JSON.stringify(buildLegacySyncPayload(prevState, nextState)),
       });
 
       const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
 
       if (res.ok && result.success) {
+        if (result.versions) setState(prev => prev ? applyLegacyVersions(prev, result.versions) : prev);
         setSyncStatus('synced');
         setSyncError(null);
         return { success: true };
@@ -235,6 +238,7 @@ export function useERP() {
         const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a gravação (${res.status}). A alteração foi revertida para garantir que apenas dados válidos da base de dados são mantidos.`);
         console.error('Falha na gravação na base de dados. A reverter estado local:', errMsg);
         setState(prevState);
+        if (res.status === 409) await refreshFromDatabase();
         setSyncStatus('error');
         setSyncError(errMsg);
 
@@ -1129,12 +1133,26 @@ export function useERP() {
     }));
   };
 
-  const deleteComment = (id: string) => {
-    saveState(prev => ({
-      ...prev,
-      comments: prev.comments.filter(c => c.id !== id)
-    }));
+  const deleteSyncedEntity = async (entity: 'comments' | 'userAbsences' | 'specialDays' | 'defaultTasks', id: string) => {
+    setSyncStatus('syncing');
+    setSyncError(null);
+    try {
+      const response = await fetch('/api/supabase/sync/entity', {
+        method: 'DELETE', headers: getAuthHeaders(), body: JSON.stringify({ entity, id }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(getApiErrorMessage(result, 'Não foi possível eliminar o registo.'));
+      // Update presentation only after authoritative confirmation; no snapshot save.
+      setState(prev => prev ? { ...prev, [entity]: (prev[entity] || []).filter(row => row.id !== id) } : prev);
+      setSyncStatus('synced');
+      return { success: true };
+    } catch (error: any) {
+      setSyncStatus('error');
+      setSyncError(error.message || 'Erro ao eliminar o registo.');
+      return { success: false, message: error.message };
+    }
   };
+  const deleteComment = (id: string) => deleteSyncedEntity('comments', id);
 
   // ==================== ABSENCES CRUD ====================
   const addAbsence = (absence: Omit<UserAbsence, 'id' | 'createdDate'>) => {
@@ -1149,12 +1167,7 @@ export function useERP() {
     }));
   };
 
-  const deleteAbsence = (id: string) => {
-    saveState(prev => ({
-      ...prev,
-      userAbsences: prev.userAbsences.filter(a => a.id !== id)
-    }));
-  };
+  const deleteAbsence = (id: string) => deleteSyncedEntity('userAbsences', id);
 
   // ==================== USERS CRUD ====================
   const addUser = (user: Omit<User, 'id' | 'deleted' | 'createdDate'>) => {
@@ -1756,12 +1769,7 @@ export function useERP() {
     }));
   };
 
-  const deleteSpecialDay = (id: string) => {
-    saveState(prev => ({
-      ...prev,
-      specialDays: (prev.specialDays || []).filter(sd => sd.id !== id)
-    }));
-  };
+  const deleteSpecialDay = (id: string) => deleteSyncedEntity('specialDays', id);
 
   // ==================== DEFAULT TASKS ====================
   const addDefaultTask = (title: string, description: string, estimatedHours: string, taskTypeId?: string) => {
@@ -1785,12 +1793,7 @@ export function useERP() {
     }));
   };
 
-  const deleteDefaultTask = (id: string) => {
-    saveState(prev => ({
-      ...prev,
-      defaultTasks: (prev.defaultTasks || []).filter(dt => dt.id !== id)
-    }));
-  };
+  const deleteDefaultTask = (id: string) => deleteSyncedEntity('defaultTasks', id);
 
     // ==================== NOTIFICATIONS ====================
   const updateNotificationSetting = (id: string, updates: any) => {
@@ -2016,7 +2019,7 @@ export function useERP() {
       const res = await fetch(`/api/v1/tickets/${id}`, {
         method: 'PATCH',
         headers,
-        body: JSON.stringify(updates),
+        body: JSON.stringify({ ...updates, syncVersion: state?.tickets?.find(ticket => ticket.id === id)?.syncVersion }),
       });
 
       const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));

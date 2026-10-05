@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, setSystemTime } from 'bun:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
@@ -7,8 +7,8 @@ import ts from 'typescript';
 import CalendarSection from '../components/CalendarSection';
 import { isTaskOnDate } from '../lib/operationalCalendar';
 
-const props: any = { projects: [{ id: 'project', title: 'Projeto diário' }], tasks: [], users: [], clients: [], absences: [],
-  taskStatuses: [], currentUser: { id: 'qa-user', roleId: 'ug-1' }, userGroups: [] };
+const props: any = { projects: [{ id: 'project', title: 'Projeto diário', statusId: 'active-project' }], tasks: [], users: [], clients: [], absences: [],
+  projectStatuses: [{ id: 'active-project', scale: 1 }], taskStatuses: [], currentUser: { id: 'qa-user', roleId: 'ug-1' }, userGroups: [] };
 
 describe('Daily planning without allocation UI', () => {
   it('keeps the operational weekly calendar and two visible views', () => {
@@ -27,13 +27,18 @@ describe('Daily planning without allocation UI', () => {
     const url = new URL('../components/CalendarSection.tsx', import.meta.url);
     const source = readFileSync(url, 'utf8');
     const js = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true } }).outputText;
-    const states = ['projects', new Date(2026, 9, 5), '', null];
+    const states = ['projects', null];
     let cursor = 0;
     const requireActual = createRequire(url);
     const exports: any = {};
     const react = { ...React, useState: () => [states[cursor++], () => {}], useMemo: (callback: any) => callback() };
     new Function('require', 'exports', js)((name: string) => name === 'react' ? react : requireActual(name), exports);
-    const html = renderToStaticMarkup(exports.default({ ...props, tasks: [{ id: 'task', title: 'Tarefa diária', projectId: 'project', estimatedDate: '2026-10-05', estimatedHours: '02:30', deleted: false }] }));
+    // ProjectTimeline now owns its date state: fix the clock, not CalendarSection's old hook order.
+    let html: string;
+    setSystemTime(new Date(2026, 9, 5, 12));
+    try {
+      html = renderToStaticMarkup(exports.default({ ...props, tasks: [{ id: 'task', title: 'Tarefa diária', projectId: 'project', estimatedDate: '2026-10-05', estimatedHours: '02:30', deleted: false }] }));
+    } finally { setSystemTime(); }
     expect(html).toContain('Tarefa diária');
     expect(html).toContain('2.5 h previstas');
     expect(html).toContain('Criar tarefa em Projeto diário no dia 2026-10-05');

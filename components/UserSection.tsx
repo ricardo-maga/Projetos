@@ -129,7 +129,7 @@ export default function UserSection({
   const [uEmail, setUEmail] = useState('');
   const [uPassword, setUPassword] = useState('');
   const [uPasswordConfirm, setUPasswordConfirm] = useState('');
-  const [uRoleId, setURoleId] = useState(CANONICAL_ROLE_IDS.TECHNICIAN);
+  const [uRoleId, setURoleId] = useState<string>(CANONICAL_ROLE_IDS.TECHNICIAN);
   const [uType, setUType] = useState<'Team' | 'Sales' | 'Admin' | 'External' | 'Other'>('Team');
   const [uIsAdmin, setUIsAdmin] = useState(false);
 

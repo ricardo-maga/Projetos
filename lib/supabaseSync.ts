@@ -21,9 +21,12 @@
  */
 
 import { supabase, isSupabaseConfigured } from './supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem, AuditLog } from './types';
 import { getProjectsServerData } from './projects/projectService';
 import { normalizeRoleId } from './permissions';
+import { getAuthHeaders } from './clientAuth';
+import { createLegacyWriteBatch, type LegacyVersions } from './supabase/legacyWriteBatch';
 
 export interface SupabaseBackup {
   id: string;
@@ -644,7 +647,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       const finalTeamIds = teamsMap[p.id] || [];
       const finalPartnerIds = partnersMap[p.id] || [];
 
-      let versionVal: number | null | undefined = p.version;
+      let versionVal: number | undefined = p.version ?? undefined;
       if (typeof p.version === 'string' && p.version.trim() !== '' && !isNaN(Number(p.version))) {
         versionVal = Number(p.version);
       } else if (typeof p.version === 'number') {
@@ -888,9 +891,11 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     }));
 
     let tickets: any[] = [];
+    let ticketRows: any[] = [];
     try {
       const resTickets = await client.from('tickets').select('*').order('created_at', { ascending: false });
       if (!resTickets.error && resTickets.data) {
+        ticketRows = resTickets.data;
         tickets = resTickets.data.map((t: any) => ({
           id: t.id,
           ticketNumber: t.ticket_number || t.ticketNumber || `TCK-${t.id.slice(0, 4)}`,
@@ -1021,6 +1026,29 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       return { success: true, data: undefined };
     }
 
+    // Carry database revisions from the SAME queries as the mapped records.
+    // A second revision query would race with those reads.
+    const revisionSources: Record<string, any[]> = {
+      userGroups: resUserGroups.data || [], projectStatuses: resProjectStatuses.data || [],
+      projectCategories: resProjectCategories.data || [], projectRisks: resProjectRisks.data || [],
+      projectPriorities: resProjectPriorities.data || [], projectTeams: resProjectTeams.data || [],
+      projectPartners: resProjectPartners.data || [], taskStatuses: resTaskStatuses.data || [],
+      taskTypes: resTaskTypes.data || [], users: resUsers.data || [], materials: resMaterials.data || [],
+      projectMaterials: projectMaterialsRows || [], projectRiskItems: resProjectRiskItems.data || [],
+      comments: resComments.data || [], userAbsences: resUserAbsences.data || [], quotes: resQuotes.data || [],
+      billOfMaterials: resBOMs.data || [], equipmentList: resEquipment.data || [], specialDays: resSpecialDays.data || [],
+      defaultTasks: resDefaultTasks.data || [], riskCategories: resRiskCategories.data || [],
+      riskStatuses: resRiskStatuses.data || [], riskPriorities: resRiskPriorities.data || [],
+      ticketStatuses: resTicketStatuses.data || [], notifications: resNotifications.data || [],
+      automationRules: resAutomationRules.data || [], tickets: ticketRows,
+    };
+    for (const [field, rows] of Object.entries(revisionSources)) {
+      const versions = new Map(rows.map(row => [row.id, row.sync_version]));
+      for (const record of (loadedState as any)[field] || []) {
+        if (versions.has(record.id)) record.syncVersion = versions.get(record.id);
+      }
+    }
+    if (configRow?.sync_version) (loadedState.appConfig as any).syncVersion = configRow.sync_version;
     return { success: true, data: loadedState };
   } catch (error: any) {
     console.error('Relational load error from Supabase:', error);
@@ -1245,14 +1273,29 @@ async function safeUpsertRef(
  * 5. app/api/v1/project-materials/route.ts (Migração futura)
  * 6. app/api/v1/project-materials/[id]/route.ts (Migração futura)
  */
-export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ success: boolean; message?: string }> {
-  if (!isSupabaseConfigured || !supabase) {
-    return { success: false, message: 'Supabase não está configurado.' };
+export type OperationalWriteScope = Partial<Pick<ERPState, 'tickets' | 'notifications' | 'projectMaterials'>>;
+
+export function isolateOperationalWrite(state: ERPState, scope: OperationalWriteScope): ERPState {
+  // Keep the normalizer's collection shape, but never copy unrelated records or config.
+  const emptyState = Object.fromEntries(Object.entries(state)
+    .filter(([key]) => key !== 'appConfig')
+    .map(([key, value]) => [key, Array.isArray(value) ? [] : value]));
+  return { ...emptyState, ...scope } as ERPState;
+}
+
+export async function saveActiveStateToSupabase(rawState: ERPState, databaseClient?: SupabaseClient | null, scope?: OperationalWriteScope): Promise<{ success: boolean; message?: string; status?: number; versions?: LegacyVersions }> {
+  // Explicit server injection: never fall back to the module's public client.
+  const supabase = databaseClient;
+  if (typeof window !== 'undefined' || !supabase) {
+    return { success: false, message: 'Cliente de base de dados do servidor indisponível.' };
   }
 
   try {
     // 1. Ensure all IDs and keys in state are formatted as valid UUIDs for PostgreSQL compatibility
-    const state = mapStateToUUIDs(rawState);
+    const state = mapStateToUUIDs(scope ? isolateOperationalWrite(rawState, scope) : rawState);
+    const batch = createLegacyWriteBatch(databaseClient, state);
+    // Mapping and validation stay here; mutations commit together in PostgreSQL.
+    const supabase = batch.client as SupabaseClient;
 
     // 1.5. Perform parallel upserts for reference tables to prevent foreign key errors in primary tables
     const refUpserts = [
@@ -1352,7 +1395,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     // 2. Perform parallel upserts for primary entities
     const upserts = [
       // App Configuration with theme, sales_rep_group_id, proj_manager_group_id and field_manager_group_id support with backward compatibility fallbacks
-      supabase.from('app_configuration').upsert([{
+      state.appConfig ? supabase.from('app_configuration').upsert([{
         id: '33333333-4444-5555-6666-777777777777',
         app_name: state.appConfig.appName,
         app_description: state.appConfig.appDescription,
@@ -1413,7 +1456,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           }]);
         }
         return res;
-      }),
+      }) : Promise.resolve({ error: null }),
 
       // 3. Clients (FASE 26: Clients are persistent ONLY via dedicated /api/v1/clients REST APIs)
       // Therefore, database write operations (insert, update, upsert) for clients are disabled in this global sync.
@@ -1449,7 +1492,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       */
 
       // Users
-      supabase.from('users').upsert(state.users.map((u: any) => ({
+      state.users.length ? supabase.from('users').upsert(state.users.map((u: any) => ({
         id: u.id,
         type: u.type,
         name: u.name,
@@ -1459,10 +1502,10 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         deleted: u.deleted,
         created_at: u.createdDate || new Date().toISOString(),
         is_admin: u.isAdmin || false
-      }))),
+      }))) : Promise.resolve({ error: null }),
 
       // Materials (table: material)
-      supabase.from('material').upsert(state.materials.map((m: any) => ({
+      state.materials.length ? supabase.from('material').upsert(state.materials.map((m: any) => ({
         id: m.id,
         name: m.name,
         reference: m.reference || null,
@@ -1472,7 +1515,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
         supplier: m.supplier || null,
         deleted: m.deleted,
         created_at: m.createdDate || new Date().toISOString()
-      }))),
+      }))) : Promise.resolve({ error: null }),
     ];
 
     const initialResults = await Promise.all(upserts);
@@ -1658,9 +1701,9 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           id: stringToUUID(pri.id),
           project_id: pId,
           title: pri.title || 'Risco sem título',
-          category_id: (catId && validRiskCatIds.has(catId)) ? catId : null,
+          category_id: catId,
           identification_date: formatDbDate(pri.identificationDate) || new Date().toISOString().split('T')[0],
-          owner_id: (ownerId && validUserIds.has(ownerId)) ? ownerId : null,
+          owner_id: ownerId,
           description: pri.description || null,
           consequence: pri.consequence || null,
           probability: Math.min(5, Math.max(1, Number(pri.probability) || 1)),
@@ -1668,8 +1711,8 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           mitigation_plan: pri.mitigationPlan || null,
           contingency_plan: pri.contingencyPlan || null,
           review_date: formatDbDate(pri.reviewDate) || null,
-          status_id: (statusId && validRiskStatIds.has(statusId)) ? statusId : null,
-          priority_id: (priorityId && validRiskPrioIds.has(priorityId)) ? priorityId : null,
+          status_id: statusId,
+          priority_id: priorityId,
           deleted: Boolean(pri.deleted),
           created_at: pri.createdDate || new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -1840,84 +1883,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
     */
 
     // 6. Comments, User Absences, Quotes, BOMs, Equipment List, Special Days, Default Tasks
-    // Safe hard-deletes: Only attempt targeted deletion if state is explicitly defined as a non-empty array,
-    // and DB query succeeds without error. If state list is empty or omitted, skip deletion to prevent mass accidental wipes.
-
-    if (Array.isArray(state.comments) && state.comments.length > 0) {
-      const stateCommentIds = state.comments.map((c: any) => c.id);
-      const { data: dbComments, error: dbCommentsErr } = await supabase.from('comments').select('id');
-      if (dbCommentsErr) {
-        console.error('Error querying comments for sync deletion:', dbCommentsErr.message);
-        return { success: false, message: `Erro ao consultar comentários: ${formatSupabaseError(dbCommentsErr)}` };
-      }
-      if (dbComments && dbComments.length > 0) {
-        const commentIdsToDelete = dbComments.map((d: any) => d.id).filter(id => !stateCommentIds.includes(id));
-        if (commentIdsToDelete.length > 0) {
-          const resDel = await supabase.from('comments').delete().in('id', commentIdsToDelete);
-          if (resDel.error) {
-            console.error('Error deleting comments:', resDel.error.message);
-            return { success: false, message: `Erro ao eliminar comentários: ${formatSupabaseError(resDel.error)}` };
-          }
-        }
-      }
-    }
-
-    if (Array.isArray(state.userAbsences) && state.userAbsences.length > 0) {
-      const stateAbsenceIds = state.userAbsences.map((a: any) => a.id);
-      const { data: dbAbsences, error: dbAbsencesErr } = await supabase.from('user_absences').select('id');
-      if (dbAbsencesErr) {
-        console.error('Error querying user_absences for sync deletion:', dbAbsencesErr.message);
-        return { success: false, message: `Erro ao consultar ausências: ${formatSupabaseError(dbAbsencesErr)}` };
-      }
-      if (dbAbsences && dbAbsences.length > 0) {
-        const absenceIdsToDelete = dbAbsences.map((d: any) => d.id).filter(id => !stateAbsenceIds.includes(id));
-        if (absenceIdsToDelete.length > 0) {
-          const resDel = await supabase.from('user_absences').delete().in('id', absenceIdsToDelete);
-          if (resDel.error) {
-            console.error('Error deleting user_absences:', resDel.error.message);
-            return { success: false, message: `Erro ao eliminar ausências: ${formatSupabaseError(resDel.error)}` };
-          }
-        }
-      }
-    }
-
-    if (Array.isArray(state.specialDays) && state.specialDays.length > 0) {
-      const stateSpecialDayIds = state.specialDays.map((sd: any) => sd.id);
-      const { data: dbSpecialDays, error: dbSpecialDaysErr } = await supabase.from('special_days').select('id');
-      if (dbSpecialDaysErr) {
-        console.error('Error querying special_days for sync deletion:', dbSpecialDaysErr.message);
-        return { success: false, message: `Erro ao consultar dias especiais: ${formatSupabaseError(dbSpecialDaysErr)}` };
-      }
-      if (dbSpecialDays && dbSpecialDays.length > 0) {
-        const specialDayIdsToDelete = dbSpecialDays.map((d: any) => d.id).filter(id => !stateSpecialDayIds.includes(id));
-        if (specialDayIdsToDelete.length > 0) {
-          const resDel = await supabase.from('special_days').delete().in('id', specialDayIdsToDelete);
-          if (resDel.error) {
-            console.error('Error deleting special_days:', resDel.error.message);
-            return { success: false, message: `Erro ao eliminar dias especiais: ${formatSupabaseError(resDel.error)}` };
-          }
-        }
-      }
-    }
-
-    if (Array.isArray(state.defaultTasks) && state.defaultTasks.length > 0) {
-      const stateDefaultTaskIds = state.defaultTasks.map((dt: any) => dt.id);
-      const { data: dbDefaultTasks, error: dbDefaultTasksErr } = await supabase.from('default_tasks').select('id');
-      if (dbDefaultTasksErr) {
-        console.error('Error querying default_tasks for sync deletion:', dbDefaultTasksErr.message);
-        return { success: false, message: `Erro ao consultar tarefas padrão: ${formatSupabaseError(dbDefaultTasksErr)}` };
-      }
-      if (dbDefaultTasks && dbDefaultTasks.length > 0) {
-        const defaultTaskIdsToDelete = dbDefaultTasks.map((d: any) => d.id).filter(id => !stateDefaultTaskIds.includes(id));
-        if (defaultTaskIdsToDelete.length > 0) {
-          const resDel = await supabase.from('default_tasks').delete().in('id', defaultTaskIdsToDelete);
-          if (resDel.error) {
-            console.error('Error deleting default_tasks:', resDel.error.message);
-            return { success: false, message: `Erro ao eliminar tarefas padrão: ${formatSupabaseError(resDel.error)}` };
-          }
-        }
-      }
-    }
+    // Omission in a cached snapshot never authorizes a database deletion.
 
     const validProjIds = new Set(state.projects.map((p: any) => p.id));
     const validUsrIds = new Set(state.users.map((u: any) => u.id));
@@ -1933,7 +1899,9 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
             // The API strips projects from global sync. Keep the supplied link;
             // PostgreSQL's foreign key validates it instead of silently orphaning it.
             project_id: pid,
-            author_id: (aid && validUsrIds.has(aid)) ? aid : null,
+            // Users are removed from non-admin snapshots. Preserve the server-
+            // validated identity; PostgreSQL validates the foreign key.
+            author_id: aid,
             comment: c.comment,
             created_at: c.createdDate || new Date().toISOString()
           };
@@ -1947,7 +1915,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           const uid = a.userId ? stringToUUID(a.userId) : null;
           return {
             id: a.id,
-            user_id: (uid && validUsrIds.has(uid)) ? uid : null,
+            user_id: uid,
             absence_start_date: formatDbDate(a.absenceStartDate),
             absence_end_date: formatDbDate(a.absenceEndDate),
             reason: a.reason,
@@ -1964,12 +1932,12 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           const rid = q.responsibleId ? stringToUUID(q.responsibleId) : null;
           return {
             id: q.id,
-            project_id: (pid && validProjIds.has(pid)) ? pid : null,
+            project_id: pid,
             status: q.status,
             version: Number(q.version) || 1,
             total_value: q.totalValue || 0,
             valid_until: q.validUntil || null,
-            responsible_id: (rid && validUsrIds.has(rid)) ? rid : null,
+            responsible_id: rid,
             deleted: q.deleted,
             created_at: q.createdDate || new Date().toISOString()
           };
@@ -1986,7 +1954,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
             serial_number: e.serialNumber,
             brand: e.brand,
             model: e.model,
-            project_id: (pid && validProjIds.has(pid)) ? pid : null,
+            project_id: pid,
             status: e.status,
             installation_date: formatDbDate(e.installationDate) || null,
             deleted: e.deleted,
@@ -2028,8 +1996,8 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
           const mid = b.materialId ? stringToUUID(b.materialId) : null;
           return {
             id: b.id,
-            quote_id: (qid && validQuoteIds.has(qid)) ? qid : null,
-            material_id: (mid && validMaterialIds.has(mid)) ? mid : null,
+            quote_id: qid,
+            material_id: mid,
             quantity: b.quantity || 1,
             deleted: b.deleted,
             created_at: b.createdDate || new Date().toISOString()
@@ -2156,7 +2124,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState): Promise<{ s
       }
     }
 
-    return { success: true };
+    return await batch.commit();
   } catch (error: any) {
     console.error('Supabase relational save state error:', error);
     return { success: false, message: `Erro ao gravar no Supabase SQL: ${formatSupabaseError(error)}` };
@@ -2631,86 +2599,18 @@ export async function logAuditEventToSupabase(log: {
   entityName?: string;
   details: string;
 }): Promise<{ success: boolean; data?: AuditLog; message?: string }> {
-  if (!isSupabaseConfigured || !supabase) return { success: false, message: 'Supabase não está configurado.' };
-
   try {
-    const payload = {
-      user_id: log.userId && isUUID(log.userId) ? log.userId : null,
-      user_name: log.userName || 'Sistema',
-      user_email: log.userEmail || '',
-      action: log.action || 'UPDATE',
-      entity_type: log.entityType || 'SYSTEM',
-      entity_id: log.entityId && isUUID(log.entityId) ? log.entityId : null,
-      entity_name: log.entityName || '',
-      details: log.details || '',
-      created_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .insert([payload])
-      .select()
-      .single();
-
-    if (error) {
-      console.warn('Aviso: Erro ao gravar registo de auditoria no Supabase:', error.message);
-      return { success: false, message: error.message };
-    }
-
-    return {
-      success: true,
-      data: {
-        id: data.id,
-        timestamp: data.created_at || data.timestamp,
-        userId: data.user_id,
-        userName: data.user_name,
-        userEmail: data.user_email,
-        action: data.action,
-        entityType: data.entity_type,
-        entityId: data.entity_id,
-        entityName: data.entity_name,
-        details: data.details,
-        createdDate: data.created_at
-      }
-    };
-  } catch (err: any) {
-    return { success: false, message: formatSupabaseError(err) };
-  }
+    const response = await fetch('/api/audit', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ action: log.action }), credentials: 'same-origin' });
+    return await response.json();
+  } catch (err: any) { return { success: false, message: formatSupabaseError(err) }; }
 }
 
 /**
  * Fetches recent audit logs from Supabase
  */
 export async function fetchAuditLogsFromSupabase(limit = 100): Promise<{ success: boolean; data?: AuditLog[]; message?: string }> {
-  if (!isSupabaseConfigured || !supabase) return { success: false, message: 'Supabase não está configurado.' };
-
   try {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      return { success: false, message: error.message };
-    }
-
-    const formatted: AuditLog[] = (data || []).map((item: any) => ({
-      id: item.id,
-      timestamp: item.created_at || item.timestamp,
-      userId: item.user_id,
-      userName: item.user_name,
-      userEmail: item.user_email,
-      action: item.action,
-      entityType: item.entity_type,
-      entityId: item.entity_id,
-      entityName: item.entity_name,
-      details: item.details,
-      createdDate: item.created_at
-    }));
-
-    return { success: true, data: formatted };
-  } catch (err: any) {
-    return { success: false, message: formatSupabaseError(err) };
-  }
+    const response = await fetch(`/api/audit?limit=${encodeURIComponent(limit)}`, { headers: getAuthHeaders(), credentials: 'same-origin' });
+    return await response.json();
+  } catch (err: any) { return { success: false, message: formatSupabaseError(err) }; }
 }

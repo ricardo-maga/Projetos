@@ -1,12 +1,14 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
+  distDir: process.env.ERP_STAGING === 'true' ? '.next-staging' : '.next',
   reactStrictMode: true,
   typescript: {
-    ignoreBuildErrors: true,
+    tsconfigPath: './tsconfig.application.json',
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts', 'motion'],

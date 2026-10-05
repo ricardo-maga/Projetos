@@ -101,7 +101,7 @@ export default function TaskSection({
   // Filters state
   const [search, setSearch] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('');
-  const [datePreset, setFilterDatePreset] = useState<'all' | 'today' | 'tomorrow' | 'this_week' | 'overdue' | 'completed'>('all');
+  const [datePreset, setFilterDatePreset] = useState<'all' | 'today' | 'tomorrow' | 'this_week' | 'overdue' | 'completed' | 'completed_this_week'>('all');
 
   // Pagination & Sorting state
   const [pageSize, setPageSize] = useState<number>(25);
