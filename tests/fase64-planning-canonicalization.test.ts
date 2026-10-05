@@ -60,14 +60,17 @@ describe('FASE 64 — Auditoria e Canonicalização do Domínio Planning', () =>
         'utf-8'
       );
 
-      expect(allocationsRoute).toContain("requirePermission(req, 'calendar_read')");
-      expect(allocationsRoute).toContain("requirePermission(req, 'calendar_write')");
+      expect(allocationsRoute).toContain("retiredPlanning(req, 'calendar_read')");
+      expect(allocationsRoute).toContain("retiredPlanning(req, 'calendar_write')");
 
-      expect(allocationIdRoute).toContain("requirePermission(req, 'calendar_read')");
-      expect(allocationIdRoute).toContain("requirePermission(req, 'calendar_write')");
+      expect(allocationIdRoute).toContain("retiredPlanning(req, 'calendar_read')");
+      expect(allocationIdRoute).toContain("retiredPlanning(req, 'calendar_write')");
 
-      expect(capacityRoute).toContain("requirePermission(req, 'calendar_read')");
-      expect(availabilityRoute).toContain("requirePermission(req, 'calendar_read')");
+      expect(capacityRoute).toContain("retiredPlanning(req, 'calendar_read')");
+      expect(availabilityRoute).toContain("retiredPlanning(req, 'calendar_read')");
+      const retiredCode = readFileSync(join(process.cwd(), 'lib/planning/retired.ts'), 'utf-8');
+      expect(retiredCode).toContain('requirePermission(req, permission)');
+      expect(retiredCode).toContain('if (!auth.success) return auth.response');
     });
   });
 

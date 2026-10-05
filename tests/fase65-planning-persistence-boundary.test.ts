@@ -17,7 +17,7 @@ describe('FASE 65 — Planning Persistence Boundary', () => {
       expect(code).toContain('export async function deletePlanningAllocation');
     });
 
-    it('confirma que as rotas de API delegam estritamente no allocationService', () => {
+    it('confirma que as rotas antigas estão descontinuadas sem acesso ao allocationService', () => {
       const routeAllocations = readFileSync(
         join(process.cwd(), 'app/api/v1/planning-allocations/route.ts'),
         'utf-8'
@@ -27,15 +27,12 @@ describe('FASE 65 — Planning Persistence Boundary', () => {
         'utf-8'
       );
 
-      // Main route delegates to service
-      expect(routeAllocations).toContain('queryPlanningAllocations');
-      expect(routeAllocations).toContain('createPlanningAllocation');
+      expect(routeAllocations).toContain('retiredPlanning');
+      expect(routeAllocations).not.toContain('allocationService');
       expect(routeAllocations).not.toContain(".from('planning_allocations')");
 
-      // Id route delegates to service
-      expect(routeAllocationsId).toContain('getPlanningAllocationById');
-      expect(routeAllocationsId).toContain('updatePlanningAllocation');
-      expect(routeAllocationsId).toContain('deletePlanningAllocation');
+      expect(routeAllocationsId).toContain('retiredPlanning');
+      expect(routeAllocationsId).not.toContain('allocationService');
       expect(routeAllocationsId).not.toContain(".from('planning_allocations')");
     });
   });
@@ -103,11 +100,12 @@ describe('FASE 65 — Planning Persistence Boundary', () => {
       expect(syncCode).not.toContain(".from('non_project_work').insert");
     });
 
-    it('confirma que o frontend useERP.ts utiliza exclusivamente as rotas de API REST de Planning', () => {
+    it('confirma que o frontend deixou de operar alocações no planeamento diário', () => {
       const hookCode = readFileSync(join(process.cwd(), 'hooks/useERP.ts'), 'utf-8');
 
-      expect(hookCode).toContain("fetch('/api/v1/planning-allocations'");
-      expect(hookCode).toContain("fetch(`/api/v1/planning-allocations/${id}`");
+      expect(hookCode).not.toContain('/api/v1/planning-allocations');
+      expect(hookCode).not.toContain('createPlanningAllocation');
+      expect(hookCode).toContain('apiUpdateTask');
       expect(hookCode).not.toContain("saveState(prev => ({ ...prev, planningAllocations");
     });
   });

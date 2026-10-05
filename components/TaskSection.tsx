@@ -62,11 +62,6 @@ interface TaskSectionProps {
   currentUser?: any;
   userGroups?: any[];
   appConfig?: any;
-  planningAllocations?: any[];
-  createPlanningAllocation?: (data: any) => Promise<any>;
-  updatePlanningAllocation?: (id: string, updates: any) => Promise<any>;
-  cancelPlanningAllocation?: (id: string, version: number) => Promise<any>;
-  deletePlanningAllocation?: (id: string) => Promise<any>;
 }
 
 const matchUserId = (idA: string, idB: string) => {

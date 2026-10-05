@@ -176,19 +176,6 @@ export default function Page() {
     syncError,
     isDbConfigured,
     refreshFromDatabase,
-    // Planning Allocations & Capacity (FASE 23C / 23D)
-    planningAllocations,
-    planningLoading,
-    fetchPlanningAllocations,
-    createPlanningAllocation,
-    updatePlanningAllocation,
-    cancelPlanningAllocation,
-    deletePlanningAllocation,
-    planningCapacity,
-    planningResourceLoad,
-    planningCapacityLoading,
-    fetchPlanningCapacity,
-    fetchPlanningResourceLoad,
   } = useERP();
 
   const hasProcessedDeepLink = React.useRef(false);
@@ -1077,11 +1064,6 @@ export default function Page() {
                   currentUser={currentUser}
                   userGroups={state.userGroups}
                   appConfig={state.appConfig}
-                  planningAllocations={planningAllocations}
-                  createPlanningAllocation={createPlanningAllocation}
-                  updatePlanningAllocation={updatePlanningAllocation}
-                  cancelPlanningAllocation={cancelPlanningAllocation}
-                  deletePlanningAllocation={deletePlanningAllocation}
                 />
               )}
 
@@ -1103,18 +1085,6 @@ export default function Page() {
                   currentUser={currentUser}
                   userGroups={state.userGroups}
                   appConfig={state.appConfig}
-                  planningAllocations={planningAllocations}
-                  planningLoading={planningLoading}
-                  fetchPlanningAllocations={fetchPlanningAllocations}
-                  createPlanningAllocation={createPlanningAllocation}
-                  updatePlanningAllocation={updatePlanningAllocation}
-                  cancelPlanningAllocation={cancelPlanningAllocation}
-                  deletePlanningAllocation={deletePlanningAllocation}
-                  planningCapacity={planningCapacity}
-                  planningResourceLoad={planningResourceLoad}
-                  planningCapacityLoading={planningCapacityLoading}
-                  fetchPlanningCapacity={fetchPlanningCapacity}
-                  fetchPlanningResourceLoad={fetchPlanningResourceLoad}
                 />
               )}
 
