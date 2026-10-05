@@ -424,7 +424,9 @@ export default function Page() {
     }
   }, [activeTab, tabs, mounted, state, currentUser]);
 
-  const loginBranding = state?.appConfig || publicAppConfig;
+  // useERP exposes a clean baseline before authenticated data loads; never let
+  // its default branding override the public configuration on a fresh login.
+  const loginBranding = publicAppConfig || (isInitialDataLoaded ? state?.appConfig : null);
 
   if (!mounted) {
     return (
