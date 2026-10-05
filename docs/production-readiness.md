@@ -213,4 +213,3 @@ leaked-password protection indisponível no Free (aceite pelo utilizador);
 aviso não fatal de autopatch SWC do Next. Não há novo SQL a executar para fechar
 esta promoção. A integração na main pode desencadear um rebuild automático
 Vercel; não deve executar novamente migrations de produção.
-
