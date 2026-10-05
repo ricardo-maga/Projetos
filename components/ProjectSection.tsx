@@ -1904,7 +1904,1905 @@ export default function ProjectSection({
                         <span className="flex items-center gap-1"><span className="text-body-sm">⚠️</span> Revisão Risco</span>
                         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-border inline-block"></span> Fim-de-semana / Feriado</span>
                       </div>
-                    <ed" />
+                    </div>
+                  </div>
+                ) : (
+                  // 30-Day Timeline (Cronograma)
+                  <div className="space-y-4 animate-fade-in" id="project-timeline-container">
+                    <div className="flex items-center justify-between bg-surface-muted p-3 rounded-control border border-border/60">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-extrabold text-text-primary text-body-sm uppercase tracking-wider">Cronograma</h4>
+                        <span className="text-caption font-bold text-primary bg-primary/10 border border-primary/20 rounded-md px-2 py-0.5">
+                          {(() => {
+                            const end = new Date(cronogramaStartDate);
+                            end.setDate(end.getDate() + 29);
+                            return `${cronogramaStartDate.toLocaleDateString('pt-PT')} a ${end.toLocaleDateString('pt-PT')}`;
+                          })()}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <IconButton variant="ghost" aria-label="Voltar 5 dias"
+                          type="button"
+                          onClick={shiftCronogramaPrev}
+                          className="flex items-center gap-1 px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
+                          title="Voltar 5 dias"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </IconButton>
+                        <Button variant="ghost" size="sm" aria-label="Voltar para a janela de 5 dias antes de hoje"
+                          type="button"
+                          onClick={resetCronogramaToDefault}
+                          className="px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
+                          title="Voltar para a janela de 5 dias antes de hoje"
+                        >
+                          Hoje
+                        </Button>
+                        <IconButton variant="ghost" aria-label="Avançar 5 dias"
+                          type="button"
+                          onClick={shiftCronogramaNext}
+                          className="flex items-center gap-1 px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
+                          title="Avançar 5 dias"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </IconButton>
+                        <Button variant="ghost" size="sm" aria-label="Abrir cronograma em ecrã cheio"
+                          type="button"
+                          onClick={() => setIsFullTimelineModalOpen(true)}
+                          className="flex items-center gap-1 px-2.5 py-1 bg-primary/10 hover:bg-primary/10 border border-primary/20 text-primary hover:text-primary rounded-lg text-caption font-bold cursor-pointer transition-colors ml-1"
+                          title="Abrir cronograma em ecrã cheio"
+                          id="btn-ecra-cheio"
+                        >
+                          <Maximize2 className="w-3.5 h-3.5" /> Ecrã cheio
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Card className="bg-surface border border-border rounded-card overflow-hidden shadow-2xs">
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[1850px] text-body-sm text-left border-collapse table-fixed">
+                          <thead className="bg-surface-muted text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border whitespace-nowrap select-none">
+                            <tr className="bg-surface-muted border-b border-border">
+                              <th className="p-3.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary w-56 min-w-[210px] shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-20 text-caption uppercase tracking-wider">
+                                Tarefa
+                              </th>
+                              {(() => {
+                                const days = [];
+                                for (let i = 0; i < 30; i++) {
+                                  const d = new Date(cronogramaStartDate);
+                                  d.setDate(cronogramaStartDate.getDate() + i);
+                                  const dayStr = formatDateToString(d);
+                                  const isToday = dayStr === formatDateToString(new Date());
+                                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+                                  days.push(
+                                    <th
+                                      key={dayStr}
+                                      onClick={() => {
+                                        openCreateTaskModal(dayStr);
+                                        setShowImportTaskForm(false);
+                                      }}
+                                      className={`p-2 border-r border-border/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-border/50 transition-colors ${
+                                        isToday ? 'bg-warning/60 text-warning border-x border-warning/20' :
+                                        isWeekend ? 'bg-surface-muted/70 text-text-secondary hover:bg-border/40' : 'text-text-secondary'
+                                      }`}
+                                      title="Clique para adicionar tarefa neste dia"
+                                    >
+                                      <div className="text-caption uppercase font-semibold text-text-muted">
+                                        {d.toLocaleDateString('pt-PT', { weekday: 'short' }).charAt(0).toUpperCase()}
+                                      </div>
+                                      <div className={`text-body-sm ${isToday ? 'font-extrabold text-warning' : ''}`}>{d.getDate()}</div>
+                                      <div className="text-caption font-normal text-text-muted">
+                                        {d.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '')}
+                                      </div>
+                                    </th>
+                                  );
+                                }
+                                return days;
+                              })()}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {/* Project Dates Summary Row */}
+                            <tr className="bg-surface-muted/60 border-b border-border">
+                              <td className="p-2.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10">
+                                <div className="flex items-center gap-1.5 text-primary">
+                                  <Flag className="w-3.5 h-3.5 text-primary" />
+                                  <span className="text-caption uppercase font-bold tracking-wide">Lembretes do Projeto</span>
+                                </div>
+                              </td>
+                              {(() => {
+                                const cells = [];
+                                for (let i = 0; i < 30; i++) {
+                                  const d = new Date(cronogramaStartDate);
+                                  d.setDate(cronogramaStartDate.getDate() + i);
+                                  const dayStr = formatDateToString(d);
+                                  const isToday = dayStr === formatDateToString(new Date());
+                                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+                                  const isProjStart = selectedProj.startDate === dayStr;
+                                  const isProjDelivery = selectedProj.deliveryDate === dayStr;
+                                  const isProjEstimated = selectedProj.estimatedDate === dayStr;
+                                  const isProjScheduled = selectedProj.scheduledDate === dayStr;
+                                  const risksOnDay = projRiskItems.filter(ri => !ri.deleted && matchId(ri.projectId, selectedProj.id) && ri.reviewDate === dayStr);
+
+                                  cells.push(
+                                    <td key={dayStr} className={`p-1 border-r border-border/80 text-center align-middle ${isToday ? 'bg-warning/40' : isWeekend ? 'bg-surface-muted/40' : ''}`}>
+                                      <div className="flex flex-col gap-0.5 items-center justify-center">
+                                        {isProjStart && (
+                                          <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Data de Início do Projeto">
+                                            INÍCIO
+                                          </span>
+                                        )}
+                                        {isProjDelivery && (
+                                          <span className="px-1.5 py-0.5 bg-success-strong text-white text-caption font-semibold rounded shadow-xs" title="Data de Entrega do Projeto">
+                                            ENTREGA
+                                          </span>
+                                        )}
+                                        {isProjEstimated && !isProjDelivery && (
+                                          <span className="px-1.5 py-0.5 bg-surface-elevated text-text-primary text-caption font-semibold rounded shadow-xs" title="Previsão de Conclusão">
+                                            PREVISTO
+                                          </span>
+                                        )}
+                                        {isProjScheduled && !isProjStart && (
+                                          <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Instalação/Agendamento">
+                                            AGENDADO
+                                          </span>
+                                        )}
+                                        {risksOnDay.map(ri => (
+                                          <span key={ri.id} className="px-1 py-0.5 bg-error text-white text-caption font-extrabold rounded shadow-xs flex items-center gap-0.5 scale-90 truncate max-w-[50px]" title={`Revisão de Risco: ${ri.title}`}>
+                                            ⚠️ Rev. Risco
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </td>
+                                  );
+                                }
+                                return cells;
+                              })()}
+                            </tr>
+
+                            {/* Sorted Task Rows */}
+                            {(() => {
+                              const sortedTasks = [...projTasks].sort((a, b) => {
+                                const dateA = a.startDate || a.estimatedDate || a.endDate || '';
+                                const dateB = b.startDate || b.estimatedDate || b.endDate || '';
+                                return dateA.localeCompare(dateB);
+                              });
+
+                              if (sortedTasks.length === 0) {
+                                return (
+                                  <tr>
+                                    <td colSpan={31} className="p-8 text-center text-text-muted italic">
+                                      Nenhuma tarefa ativa associada a este projeto. Crie ou importe tarefas acima.
+                                    </td>
+                                  </tr>
+                                );
+                              }
+
+                              return sortedTasks.map(t => {
+                                const stat = taskStatuses.find(s => s.id === t.statusId);
+                                const assigneesText = t.assigneeIds && t.assigneeIds.length > 0
+                                  ? t.assigneeIds.map(uid => getUserName(uid)).join(', ')
+                                  : 'Não alocado';
+
+                                const conflicts = getTaskConflicts(t);
+
+                                return (
+                                  <tr key={t.id} className="border-b border-border-subtle hover:bg-surface-muted/20 group">
+                                    <td
+                                      onClick={() => openTaskDetailsModal(t)}
+                                      className="p-3 sticky left-0 bg-surface group-hover:bg-surface-muted hover:bg-surface-muted border-r border-border shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10 font-medium cursor-pointer transition-colors"
+                                      title={`Clique para ver/editar: ${t.title}`}
+                                    >
+                                      <div className="space-y-1">
+                                        <div className="font-bold text-text-primary text-body-sm truncate max-w-[190px] group-hover:text-primary transition-colors" title={t.title}>
+                                          {t.title}
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className={`px-1.5 py-0.5 rounded-full text-caption font-extrabold border tracking-wider ${
+                                            t.statusId === 'ts-3' || t.statusId === '99999999-9999-9999-9999-999999999903'
+                                              ? 'bg-success/10 text-success-strong border-success/50'
+                                              : t.statusId === 'ts-2' || t.statusId === '99999999-9999-9999-9999-999999999902'
+                                              ? 'bg-warning/10 text-warning border-warning/50'
+                                              : 'bg-primary/10 text-primary border-primary/50'
+                                          }`}>{getTaskStatusName(t.statusId, taskStatuses)}</span>
+
+                                          <span className="text-caption text-text-secondary font-bold truncate max-w-[150px]">
+                                            👤 {assigneesText}
+                                          </span>
+                                        </div>
+
+                                        {/* Task Alerts & Warnings in the Row Headers */}
+                                        {conflicts.length > 0 && (
+                                          <div className="space-y-1 pt-1">
+                                            {conflicts.map((c, i) => (
+                                              <div
+                                                key={i}
+                                                className="flex items-start gap-1 p-1 bg-error/10 text-error border border-error/60 rounded-md text-caption font-semibold leading-tight hover:bg-error/10 transition-colors"
+                                                title={c.details}
+                                              >
+                                                <ShieldAlert className="w-3.5 h-3.5 text-error flex-shrink-0 mt-0.5" />
+                                                <span className="break-words">{c.details}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                    {(() => {
+                                      const dayCells = [];
+                                      for (let i = 0; i < 30; i++) {
+                                        const d = new Date(cronogramaStartDate);
+                                        d.setDate(cronogramaStartDate.getDate() + i);
+                                        const dayStr = formatDateToString(d);
+                                        const isToday = dayStr === formatDateToString(new Date());
+                                        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                        const isActive = isTaskActiveOnDay(t, dayStr);
+
+                                        dayCells.push(
+                                          <td
+                                            key={dayStr}
+                                            onDragOver={(e) => e.preventDefault()}
+                                            onDrop={(e) => {
+                                              e.preventDefault();
+                                              if (!canWriteTasks) {
+                                                alert('Não tem permissão para alterar tarefas.');
+                                                return;
+                                              }
+                                              const taskId = e.dataTransfer.getData('taskId');
+                                              if (taskId && updateTask) {
+                                                const existingTask = tasks.find(t => t.id === taskId);
+                                                if (existingTask && existingTask.startDate === dayStr && existingTask.endDate === dayStr && existingTask.estimatedDate === dayStr) {
+                                                  return;
+                                                }
+                                                updateTask(taskId, {
+                                                  startDate: dayStr,
+                                                  endDate: dayStr,
+                                                  estimatedDate: dayStr,
+                                                });
+                                              }
+                                            }}
+                                            className={`p-1 border-r border-border/80 text-center align-middle relative min-w-[55px] ${
+                                              isActive ? 'bg-primary/10' : ''
+                                            } ${
+                                              isToday ? 'bg-warning/30' :
+                                              isWeekend ? 'bg-surface-muted/60' : ''
+                                            }`}
+                                          >
+                                            {isActive && (
+                                              <div
+                                                draggable={canWriteTasks}
+                                                onDragStart={(e) => {
+                                                  e.stopPropagation();
+                                                  if (!canWriteTasks) {
+                                                    e.preventDefault();
+                                                    return;
+                                                  }
+                                                  e.dataTransfer.setData('taskId', t.id);
+                                                }}
+                                                className={`py-1.5 px-1 rounded-lg text-caption font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
+                                                  getTaskStatusStyle(t.statusId, taskStatuses).dotClass
+                                                }`}
+                                                title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}
+                                              >
+                                                {t.title.substring(0, 5)}..
+                                              </div>
+                                            )}
+                                          </td>
+                                        );
+                                      }
+                                      return dayCells;
+                                    })()}
+                                  </tr>
+                                );
+                              });
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="bg-surface-muted p-2.5 border-t border-slate-150 flex flex-wrap gap-4 justify-center text-caption font-bold text-text-secondary">
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-primary"></span> Pendente</span>
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-warning"></span> Em Progresso</span>
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-success"></span> Concluído</span>
+                        <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-error/20 bg-error/10 text-error rounded flex items-center justify-center text-caption">⚠️</span> Alertas</span>
+                        <span className="text-caption text-text-muted italic font-medium ml-2">Dica: Arraste as barras coloridas para reagendar as tarefas para novos dias no cronograma.</span>
+                      </div>
+                    </Card>
+                  </div>
+                )}
+              </div>
+
+              {/* Comments Section */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-text-primary flex items-center gap-2"><MessageSquare className="w-4 h-4 text-primary" /> Notas & Comentários</h3>
+
+                {/* Comment list */}
+                {projComments.length === 0 ? (
+                  <p className="text-body-sm text-text-muted italic">Sem comentários ou notas adicionadas.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {projComments.map(c => (
+                      <div key={c.id} className="bg-surface-muted p-3 rounded-control border border-border-subtle flex justify-between items-start text-body-sm">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-text-primary">{getUserName(c.authorId)}</span>
+                            <span className="text-caption text-text-muted font-mono">{new Date(c.createdDate).toLocaleDateString()}</span>
+                          </div>
+                          <p className="text-text-secondary italic">&quot;{c.comment}&quot;</p>
+                        </div>
+                        <Button variant="ghost" size="sm"
+                          type="button"
+                          onClick={() => {
+                            askConfirmation(
+                              'Eliminar comentário',
+                              'Tem a certeza de que pretende eliminar este comentário/nota?',
+                              () => deleteComment(c.id)
+                            );
+                          }}
+                          className="text-error hover:text-error font-semibold text-caption cursor-pointer"
+                        >
+                          Apagar
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Comment input form */}
+                <div className="flex gap-2">
+                  <Input aria-label="Adicione uma nota sobre o progresso ou alteração técnica..."
+                    type="text"
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    placeholder="Adicione uma nota sobre o progresso ou alteração técnica..."
+                    className="flex-1 p-2 border border-border rounded-control text-body-sm focus:ring-2 focus:ring-primary/20"
+                  />
+                  <Button variant="primary" size="sm"
+                    onClick={() => {
+                      if (newCommentText.trim()) {
+                        addComment(selectedProj.id, currentUser?.id || 'u-1', newCommentText.trim());
+                        setNewCommentText('');
+                      }
+                    }}
+                    className="px-4 py-2 bg-primary text-white rounded-control text-body-sm font-bold hover:bg-primary transition-colors"
+                  >
+                    Enviar
+                  </Button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Right Meta Column (Fields) */}
+            <div className="md:col-span-4 bg-surface-muted/70 rounded-card p-5 border border-border-subtle space-y-6 text-body-sm">
+
+              {/*  Status Overview */}
+
+
+                <div  className="space-y-2.5">
+                  <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Estado</h4>
+                  <Select aria-label="Estado"
+                    value={selectedProj.statusId}
+                    onChange={(e) => updateProject(selectedProj.id, { statusId: e.target.value })}
+                    className={getProjectStatusStyle(selectedProj.statusId, projectStatuses).badgeClass}
+                  >
+                    {sortedStatuses.filter(s => !s.deleted || s.id === selectedProj.statusId).map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-2.5">
+                  <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Categorias</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedProj.categoryIds && selectedProj.categoryIds.length > 0 ? (
+                      selectedProj.categoryIds.map(catId => (
+                        <span key={catId} className="px-2 py-0.5 bg-surface-muted border border-border rounded text-text-secondary font-semibold font-mono text-caption">
+                          {getCategoryName(catId)}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="px-2 py-0.5 bg-surface-muted border border-border rounded text-text-secondary font-semibold font-mono text-caption">
+                        {getCategoryName(selectedProj.categoryId)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+
+              {/* Governance & Team Contacts */}
+              <div className="space-y-2.5">
+                <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Equipa</h4>
+                <div className="space-y-1.5 text-text-secondary">
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Project Leader:</span>
+                    <span className="font-bold">{getUserName(selectedProj.projectManagerId)}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Técnico responsável:</span>
+                    <span className="font-bold">{getUserName(selectedProj.fieldManagerId)}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Vendedor:</span>
+                    <span className="font-bold">{getUserName(selectedProj.salesRepId)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Client Contact Info */}
+              <div className="space-y-2.5">
+                <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Contactos Cliente</h4>
+                  <div className="space-y-1.5 text-text-secondary">
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Nome:</span>
+                    <span className="font-bold">{selectedProj.clientContactName || '-'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Email:</span>
+                    <span className="font-bold">{selectedProj.clientContactEmail || '-'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Telefone:</span>
+                    <span className="font-bold">{selectedProj.clientContactPhone || '-'}</span>
+                  </div>
+                </div>
+
+
+              </div>
+
+              {/* Timeline Dates */}
+              <div className="space-y-2.5">
+                <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Datas importantes</h4>
+                <div className="space-y-1.5 text-text-secondary">
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Data de adjudicação:</span>
+                    <span className="font-bold">{selectedProj.startDate || '-'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Prazo de entrega:</span>
+                    <span className="font-bold text-primary">{selectedProj.deliveryDate || '-'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Previsão de entrega real:</span>
+                    <span className="font-bold">{selectedProj.estimatedDate || '-'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Data agendamento:</span>
+                    <span className="font-bold">{selectedProj.scheduledDate || '-'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Systems / ERP Integration numbers */}
+              <div className="space-y-2.5">
+                <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Dados internos</h4>
+                <div className="space-y-1.5 text-text-secondary">
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Nº IP:</span>
+                    <span className="font-mono font-bold text-text-primary">{selectedProj.installProjectNo || 'S/N'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Oportunidade SF:</span>
+                    <span className="font-mono font-bold text-text-primary">{selectedProj.sfOpportunityNo || 'S/N'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border-subtle">
+                    <span className="font-medium text-text-secondary">Valor da venda:</span>
+                    <span className="font-mono font-bold text-text-primary">{new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(selectedProj.budgetValue)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Teams */}
+              <div className="space-y-3">
+                <span className="text-caption text-text-muted uppercase font-bold tracking-wider block mb-1">Equipas de apoio</span>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {selectedProj.teamsInvolvedIds?.length > 0 ? (
+                      selectedProj.teamsInvolvedIds.map(tid => {
+                        const team = projectTeams.find(t => matchId(t.id, tid));
+                        return (
+                          <span key={tid} className="px-2 py-0.5 bg-border text-text-secondary font-bold rounded-md text-caption">
+                            {team ? team.name : tid}
+                          </span>
+                        );
+                      })
+                    ) : <span className="text-text-muted italic">Sem outras equipas alocadas</span>}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-caption text-text-muted uppercase font-bold tracking-wider block mb-1">Parceiros externos</span>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {selectedProj.partnersIds?.length > 0 ? (
+                      selectedProj.partnersIds.map(pid => {
+                        const partner = projectPartners.find(p => matchId(p.id, pid));
+                        return (
+                          <span key={pid} className="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary font-bold rounded-md text-caption">
+                            {partner ? partner.name : pid}
+                          </span>
+                        );
+                      })
+                    ) : <span className="text-text-muted italic">Nenhum parceiro alocado</span>}
+                  </div>
+                </div>
+
+              {/* Documents Attachments list */}
+              <div className="space-y-2">
+                <span className="text-caption text-text-muted uppercase font-bold tracking-wider block">Documentação técnica</span>
+                {selectedProj.documents?.length > 0 ? (
+                  <div className="space-y-1 mt-1">
+                    {selectedProj.documents.map((doc, i) => (
+                      <div key={i} className="flex items-center gap-1.5 py-1 text-primary hover:underline cursor-pointer">
+                        <FileText className="w-3.5 h-3.5 flex-shrink-0 text-text-muted" />
+                        <span className="font-semibold truncate max-w-[180px]">{doc}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <span className="text-text-muted italic block mt-1">Sem esquemas ou PDFs anexados.</span>}
+              </div>
+
+            </div>
+
+          </div>
+          )}
+
+          {/* TAB 2: TAREFAS */}
+          {activeDetailTab === 'tarefas' && (
+            <div className="p-6 space-y-6">
+              <div className="flex justify-between items-center flex-wrap gap-3">
+                <div>
+                  <h3 className="font-extrabold text-text-primary text-base flex items-center gap-2">
+                    <ListTodo className="w-5 h-5 text-primary" />
+                    Tarefas do Projeto ({projTasks.length})
+                  </h3>
+                  <p className="text-body-sm text-text-secondary mt-0.5">Gestão de tarefas técnicas, lembretes e prazos de execução</p>
+                </div>
+                <div className="flex gap-2">
+                  {canWriteTasks && (
+                    <>
+                      <Button variant="ghost" size="sm"
+                        type="button"
+                        onClick={() => {
+                          setShowImportTaskForm(!showImportTaskForm);
+                          setShowAddTaskForm(false);
+                        }}
+                        className="flex items-center gap-1.5 text-body-sm font-extrabold text-success-strong bg-success/10 hover:bg-success/10 border border-success/20 px-3 py-2 rounded-control transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4 text-success-strong" /> Importar Tarefas Modelo
+                      </Button>
+                      <Button variant="primary" size="sm"
+                        type="button"
+                        onClick={() => {
+                          openCreateTaskModal();
+                          setShowImportTaskForm(false);
+                        }}
+                        className="flex items-center gap-1.5 text-body-sm font-extrabold text-white bg-primary hover:bg-primary px-3.5 py-2 rounded-control transition-colors cursor-pointer shadow-xs"
+                      >
+                        <Plus className="w-4 h-4 text-white" /> Criar Tarefa / Lembrete
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Inline Import Task Form */}
+              {showImportTaskForm && (
+                <div className="bg-surface-muted border border-border rounded-card p-5 space-y-4 text-body-sm font-bold text-text-secondary animate-fade-in shadow-xs" id="import-task-form-panel">
+                  <div className="flex justify-between items-center pb-2 border-b border-border">
+                    <span className="text-text-primary font-extrabold text-body-sm">Importar Tarefa(s) Modelo</span>
+                    <Button variant="ghost" size="sm"
+                      type="button"
+                      onClick={() => {
+                        setShowImportTaskForm(false);
+                        setSelectedImportModelTaskIds([]);
+                      }}
+                      className="text-text-muted hover:text-text-secondary text-base font-normal px-1 cursor-pointer"
+                    >
+                      ×
+                    </Button>
+                  </div>
+
+                  <p className="text-text-secondary text-body-sm font-normal leading-relaxed">
+                    Selecione um ou mais modelos de engenharia para clonar e adicionar de imediato a este projeto.
+                  </p>
+
+                  {defaultTasks && defaultTasks.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto pr-1">
+                      {defaultTasks.map(dt => {
+                        const isChecked = selectedImportModelTaskIds.includes(dt.id);
+                        return (
+                          <label
+                            key={dt.id}
+                            className={`flex items-start gap-2.5 p-3 rounded-control border cursor-pointer transition-colors ${
+                              isChecked
+                                ? "bg-success/10 border-success/20 text-success-strong shadow-2xs"
+                                : "bg-surface border-border hover:bg-surface-muted text-text-secondary"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setSelectedImportModelTaskIds(prev =>
+                                  prev.includes(dt.id) ? prev.filter(id => id !== dt.id) : [...prev, dt.id]
+                                );
+                              }}
+                              className="mt-0.5 w-4 h-4 text-success-strong rounded border-border focus:ring-success"
+                            />
+                            <div className="text-body-sm leading-tight font-semibold flex-1">
+                              <div className="flex justify-between items-center gap-1 font-bold text-text-primary">
+                                <span className="truncate max-w-[160px]" title={dt.title}>{dt.title}</span>
+                                <span className="text-caption px-1.5 py-0.5 bg-surface-muted rounded text-text-secondary font-mono flex-shrink-0">
+                                  {dt.estimatedHours}
+                                </span>
+                              </div>
+                              <div className="text-caption text-text-secondary font-normal mt-1 truncate max-w-[200px]" title={dt.description}>
+                                {dt.description || "Sem descrição."}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-body-sm text-text-muted italic">Não existem tarefas modelo configuradas.</p>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-3 border-t border-border mt-2">
+                    <Button variant="ghost" size="sm"
+                      type="button"
+                      onClick={() => {
+                        setShowImportTaskForm(false);
+                        setSelectedImportModelTaskIds([]);
+                      }}
+                      className="px-4 py-2 bg-surface-muted hover:bg-border text-text-secondary rounded-control font-bold transition-colors cursor-pointer"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button variant="ghost" size="sm"
+                      type="button"
+                      disabled={selectedImportModelTaskIds.length === 0}
+                      onClick={() => {
+                        const tasksToImport = selectedImportModelTaskIds.map(dtId => {
+                          const dt = defaultTasks.find(item => item.id === dtId);
+                          return dt ? {
+                            projectId: selectedProj.id,
+                            title: dt.title,
+                            statusId: getDefaultTaskStatusId(taskStatuses),
+                            taskTypeId: dt.taskTypeId || getDefaultTaskTypeId(taskTypes),
+                            assigneeIds: [],
+                            estimatedDate: '',
+                            description: dt.description || '',
+                            estimatedHours: dt.estimatedHours || '08:00',
+                            actualHours: '00:00',
+                            startDate: '',
+                            startTime: '',
+                            endDate: '',
+                            endTime: '',
+                            notes: 'Importada a partir do modelo de tarefas por defeito.'
+                          } : null;
+                        }).filter(Boolean);
+
+                        if (tasksToImport.length > 0) {
+                          if (addTasks) {
+                            addTasks(tasksToImport);
+                          } else {
+                            tasksToImport.forEach(t => addTask(t));
+                          }
+                          alert(`Sucesso! Foram importadas ${tasksToImport.length} tarefas com sucesso para o projeto.`);
+                        }
+
+                        setSelectedImportModelTaskIds([]);
+                        setShowImportTaskForm(false);
+                      }}
+                      className="bg-success-strong hover:bg-success-strong text-white"
+                    >
+                      <Plus className="w-4 h-4" /> Importar ({selectedImportModelTaskIds.length})
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+
+
+              {/* Tasks List */}
+              {isServerTasksLoading ? (
+                <div className="bg-surface-muted border border-dashed border-border rounded-card p-8 text-center text-text-muted text-body-sm font-medium animate-pulse flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  A carregar tarefas do projeto...
+                </div>
+              ) : projTasks.length === 0 ? (
+                <div className="bg-surface-muted border border-dashed border-border rounded-card p-8 text-center text-text-muted text-body-sm font-medium">
+                  Nenhuma tarefa ou lembrete associado a este projeto.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[...projTasks].sort((a, b) => {
+                    const dateA = a.startDate || a.estimatedDate || a.endDate || '';
+                    const dateB = b.startDate || b.estimatedDate || b.endDate || '';
+                    if (!dateA && !dateB) return 0;
+                    if (!dateA) return 1;
+                    if (!dateB) return -1;
+                    return dateA.localeCompare(dateB);
+                  }).map(task => (
+                    <Card
+                      key={task.id}
+                      onClick={() => openTaskDetailsModal(task)}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Abrir tarefa ${task.title}`}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          openTaskDetailsModal(task);
+                        }
+                      }}
+                      className="bg-surface border border-border hover:border-primary/20 rounded-card p-4 space-y-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className={getTaskStatusStyle(task.statusId, taskStatuses).badgeClass}>
+                              {getTaskStatusStyle(task.statusId, taskStatuses).name}
+                            </Badge>
+                            <span className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 text-caption font-bold rounded flex items-center gap-1">
+                              {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Bell className="w-3 h-3 text-purple-600" />}
+                              {getTaskTypeName(task.taskTypeId, taskTypes)}
+                            </span>
+                          </div>
+                          <h4 className="font-extrabold text-text-primary text-body-sm hover:text-primary transition-colors">{task.title}</h4>
+                        </div>
+                      </div>
+                      {task.description && (
+                        <p className="text-body-sm text-text-secondary line-clamp-2">{task.description}</p>
+                      )}
+                      {/* Responsáveis */}
+                      <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                        <Users className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                        {task.assigneeIds && task.assigneeIds.length > 0 ? (
+                          task.assigneeIds.map(uid => (
+                            <span key={uid} className="px-1.5 py-0.5 bg-surface-muted text-text-secondary font-bold rounded-md text-caption">
+                              {getUserName(uid)}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-text-muted italic text-caption">Sem atribuição</span>
+                        )}
+                      </div>
+                      <div className="flex justify-between items-center text-caption text-text-secondary pt-2 border-t border-border-subtle font-medium">
+                        <span>Previsão: {task.estimatedDate ? new Date(task.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Sem data'}</span>
+                        {task.estimatedHours && <span>Est: {task.estimatedHours}h</span>}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+{/* TAB 3: MATERIAL */}
+          {activeDetailTab === 'material' && (
+            <div data-m3-exclude data-theme={appConfig?.theme || 'default'} className="p-6 space-y-6">
+              {/* Red Warning Banner if material has warning */}
+              {hasMaterialWarning ? (
+                <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 flex items-center justify-between text-rose-900 shadow-xs animate-fade-in">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="w-6 h-6 text-rose-600 shrink-0" />
+                    <div>
+                      <h4 className="font-extrabold text-sm uppercase tracking-wide text-rose-800">Aviso: Material em falta</h4>
+                      <p className="text-xs font-semibold text-rose-700 mt-0.5">
+                        Este projeto possui {warningMaterialsCount} {warningMaterialsCount === 1 ? 'linha de material com aviso' : 'linhas de material com aviso'} (por encomendar ou com data de entrega ultrapassada).
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-3 py-1 bg-rose-200 text-rose-900 rounded-full text-xs font-black uppercase tracking-wider shrink-0">
+                    Material em Falta
+                  </span>
+                </div>
+              ) : (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between text-emerald-900 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+                    <div>
+                      <h4 className="font-extrabold text-sm uppercase tracking-wide text-emerald-800">Sem Avisos de Material em Falta</h4>
+                      <p className="text-xs font-semibold text-emerald-700 mt-0.5">
+                        Não existem materiais por encomendar nem encomendas com data prevista de entrega ultrapassada.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Header with Registar material button */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                    <Boxes className="w-4 h-4 text-blue-600" />
+                    Lista de Material Necessário ({projMaterials.length} {projMaterials.length === 1 ? 'linha' : 'linhas'})
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Acompanhamento de encomendas e stock de materiais do projeto
+                  </p>
+                </div>
+                {canWriteProjects && (
+                  <button
+                    type="button"
+                    onClick={handleOpenAddMaterialModal}
+                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2 shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Registar material</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Material lines grouped by Supplier */}
+              <div className="space-y-6">
+                {projMaterials.length === 0 ? (
+                  <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs font-medium">
+                    Nenhum material ou encomenda registada para este projeto.
+                  </div>
+                ) : (
+                  projMaterialsGrouped.map(([supplierName, items]) => {
+                    const groupMissing = items.filter(i => {
+                      const st = pendingMaterialStatuses[i.id] || i.status;
+                      return st !== 'em_armazem' && st !== 'em_stock';
+                    }).length;
+
+                      return (
+                        <div key={supplierName} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                          {/* Supplier Group Header */}
+                          <div className="bg-slate-50 border-b border-slate-200 px-5 py-3.5 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <Truck className="w-4 h-4 text-blue-600 shrink-0" />
+                              <h4 className="font-extrabold text-slate-900 text-sm">{supplierName}</h4>
+                              <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-extrabold">
+                                {items.length} {items.length === 1 ? 'item' : 'itens'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs font-bold">
+                              {groupMissing > 0 ? (
+                                <span className="px-2.5 py-1 bg-rose-100 text-rose-800 border border-rose-200 rounded-full text-[10px] uppercase tracking-wide flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                  {groupMissing} em falta
+                                </span>
+                              ) : (
+                                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full text-[10px] uppercase tracking-wide flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  Tudo em armazém
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Table of items */}
+                          <div className="overflow-x-auto w-full">
+                            <table className="w-full min-w-[850px] text-left text-xs divide-y divide-slate-100">
+                              <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+                                <tr>
+                                  <th className="px-4 py-3">Descrição</th>
+                                  <th className="px-3 py-3">Ref.</th>
+                                  <th className="px-3 py-3 text-center">Qtd</th>
+                                  <th className="px-3 py-3">Data Prevista</th>
+                                  <th className="px-3 py-3 text-left">N° de orçamento</th>
+                                  <th className="px-3 py-3 text-right">P. Custo</th>
+                                  <th className="px-3 py-3 text-right">P. Venda</th>
+                                  <th className="px-4 py-3 text-center">Estado do Material</th>
+                                  {canWriteProjects && <th className="px-3 py-3 text-center">Ações</th>}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 font-medium">
+                                {items.map(item => {
+                                  const effectiveStatus = pendingMaterialStatuses[item.id] || item.status;
+                                  const isEmArmazem = effectiveStatus === 'em_armazem' || effectiveStatus === 'em_stock';
+                                  const isEncomendado = effectiveStatus === 'encomendado';
+
+                                  return (
+                                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                                      <td className="px-4 py-3 font-bold text-slate-900">{item.description}</td>
+                                      <td className="px-3 py-3 text-slate-500 font-mono text-[11px]">{item.reference || '-'}</td>
+                                      <td className="px-3 py-3 text-center font-bold text-slate-800">{item.quantity}</td>
+                                      <td className="px-3 py-3 text-slate-600">{item.expectedDeliveryDate || '-'}</td>
+                                      <td className="px-3 py-3 text-left font-semibold text-slate-700">{item.budget ? String(item.budget) : '-'}</td>
+                                      <td className="px-3 py-3 text-right text-slate-600">{item.costPrice ? `${item.costPrice} €` : '-'}</td>
+                                      <td className="px-3 py-3 text-right font-bold text-emerald-700">{item.salePrice ? `${item.salePrice} €` : '-'}</td>
+                                      <td className="px-4 py-3 text-center">
+                                        <button
+                                          type="button"
+                                          disabled={!canWriteProjects}
+                                          onClick={() => handleToggleMaterialStatus(item)}
+                                          className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 mx-auto cursor-pointer ${
+                                            isEmArmazem
+                                              ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300'
+                                              : isEncomendado
+                                              ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+                                          }`}
+                                          title={canWriteProjects ? 'Clique para alterar estado (Por encomendar / Encomendado / Em armazém)' : ''}
+                                        >
+                                          {isEmArmazem ? (
+                                            <>
+                                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                              <span>Em armazém</span>
+                                            </>
+                                          ) : isEncomendado ? (
+                                            <>
+                                              <Truck className="w-3.5 h-3.5 text-amber-600" />
+                                              <span>Encomendado</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <ShoppingBag className="w-3.5 h-3.5 text-slate-500" />
+                                              <span>Por encomendar</span>
+                                            </>
+                                          )}
+                                        </button>
+                                      </td>
+                                      {canWriteProjects && (
+                                        <td className="px-3 py-3 text-center space-x-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleEditMaterial(item)}
+                                            className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                                            title="Editar"
+                                          >
+                                            <Edit2 className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteMaterial(item.id)}
+                                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                                            title="Eliminar"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </td>
+                                      )}
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+
+              {/* MODAL FORM: Registar material */}
+              {isMaterialModalOpen && canWriteProjects && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+                  <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 border border-slate-100 my-8">
+                    {/* Modal Header */}
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                      <h3 className="font-extrabold text-slate-900 flex items-center gap-2.5 text-base">
+                        <Package className="w-5 h-5 text-blue-600" />
+                        {editingMaterialId ? 'Editar Material' : 'Registar material'}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleCloseMaterialModal}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* Modal Form */}
+                    <form onSubmit={handleSaveMaterial} className="space-y-4 text-xs font-medium">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        
+                        {/* Descrição (Required) */}
+                        <div className="sm:col-span-2 space-y-1">
+                          <label className="block font-bold text-slate-700">Descrição *</label>
+                          <input
+                            type="text"
+                            required
+                            value={matDesc}
+                            onChange={e => setMatDesc(e.target.value)}
+                            placeholder="Ex: Sensor indutivo IFM 24V M12"
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+
+                        {/* Fornecedor (Required + Autocomplete) */}
+                        <div className="sm:col-span-2 space-y-1 relative">
+                          <label className="block font-bold text-slate-700">Fornecedor *</label>
+                          <input
+                            type="text"
+                            required
+                            value={matSupplier}
+                            onChange={e => {
+                              setMatSupplier(e.target.value);
+                              setIsSupplierAutocompleteOpen(true);
+                            }}
+                            onFocus={() => setIsSupplierAutocompleteOpen(true)}
+                            placeholder="Comece a escrever o fornecedor..."
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                          {/* Autocomplete Suggestions */}
+                          {isSupplierAutocompleteOpen && matSupplier.trim() !== '' && (
+                            (() => {
+                              const matches = allSuppliers.filter(s => s.toLowerCase().includes(matSupplier.toLowerCase().trim()));
+                              if (matches.length === 0) return null;
+                              return (
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                  {matches.map((s, idx) => (
+                                    <div
+                                      key={idx}
+                                      onClick={() => {
+                                        setMatSupplier(s);
+                                        setIsSupplierAutocompleteOpen(false);
+                                      }}
+                                      className="p-2.5 hover:bg-blue-50 text-slate-800 font-semibold cursor-pointer text-xs flex justify-between items-center"
+                                    >
+                                      <span>{s}</span>
+                                      <span className="text-[10px] text-slate-400">Sugestão</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()
+                          )}
+                        </div>
+
+                        {/* Quantidade */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">Quantidade</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={matQty}
+                            onChange={e => setMatQty(Number(e.target.value))}
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+
+                        {/* Referência */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">Referência</label>
+                          <input
+                            type="text"
+                            value={matRef}
+                            onChange={e => setMatRef(e.target.value)}
+                            placeholder="Ex: REF-88231"
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+
+                        {/* N° de orçamento */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">N° de orçamento</label>
+                          <input
+                            type="text"
+                            value={matBudget}
+                            onChange={e => setMatBudget(e.target.value)}
+                            placeholder="Ex: ORÇ-2026/01"
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+
+                        {/* Preço Custo */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">Preço Custo (€)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={matCostPrice}
+                            onChange={e => setMatCostPrice(Number(e.target.value))}
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+
+                        {/* Preço Venda */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">Preço Venda (€)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={matSalePrice}
+                            onChange={e => setMatSalePrice(Number(e.target.value))}
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+
+                        {/* Data Prevista de Entrega */}
+                        <div className="space-y-1">
+                          <label className="block font-bold text-slate-700">Data Prevista de Entrega</label>
+                          <input
+                            type="date"
+                            value={matDeliveryDate}
+                            onChange={e => setMatDeliveryDate(e.target.value)}
+                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+
+                        {/* Estado Inicial */}
+                        <div className="space-y-1 sm:col-span-2">
+                          <label className="block font-bold text-slate-700">Estado do Material</label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setMatStatus('por_encomendar')}
+                              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                                matStatus === 'por_encomendar'
+                                  ? 'bg-blue-100 text-blue-900 border-blue-300'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                              }`}
+                            >
+                              <ShoppingBag className="w-3.5 h-3.5 text-blue-600" /> Por encomendar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMatStatus('encomendado')}
+                              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                                matStatus === 'encomendado'
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                              }`}
+                            >
+                              <Truck className="w-3.5 h-3.5 text-amber-600" /> Encomendado
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMatStatus('em_armazem')}
+                              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                                matStatus === 'em_armazem' || matStatus === 'em_stock'
+                                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                              }`}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Em armazém
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Modal Footer */}
+                      <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={handleCloseMaterialModal}
+                          className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-xl transition-colors cursor-pointer text-xs"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2 text-xs"
+                        >
+                          <Plus className="w-4 h-4" />
+                          {editingMaterialId ? 'Atualizar Linha' : 'Registar material'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: GESTÃO DE RISCOS */}
+          {activeDetailTab === 'riscos' && (
+            <div className="p-6 space-y-6">
+              <div className="flex justify-between items-center flex-wrap gap-3">
+                <div>
+                  <h3 className="font-extrabold text-text-primary text-base flex items-center gap-2">
+                    <ShieldAlert className="w-5 h-5 text-primary" />
+                    Gestão e Mitigação de Riscos do Projeto
+                  </h3>
+                  <p className="text-body-sm text-text-secondary mt-0.5">Identificação, classificação e acompanhamento de riscos com planos de ação integrados</p>
+                </div>
+              </div>
+
+              {canWriteProjects && (
+                <div className="flex justify-end">
+                  <Button variant="primary" size="sm" type="button"
+                    onClick={() => { resetRiskForm(); setShowRiskModal(true); }}>
+                    <Plus className="w-4 h-4" /> Identificar Risco
+                  </Button>
+                </div>
+              )}
+
+              {/* Risks List */}
+              {projRiskItems.length === 0 ? (
+                <div className="bg-surface-muted border border-dashed border-border rounded-card p-12 text-center text-text-muted text-body-sm font-semibold flex flex-col items-center gap-3">
+                  <ShieldAlert className="w-8 h-8 text-text-muted" />
+                  <span>Não existem riscos identificados neste projeto.</span>
+                </div>
+              ) : (
+                <Card className="bg-surface border border-border rounded-card overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full min-w-[900px] text-left text-body-sm divide-y divide-border-subtle">
+                      <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
+                        <tr>
+                          <th className="px-5 py-3.5">Título / Categoria</th>
+                          <th className="px-3 py-3.5">Responsável</th>
+                          <th className="px-3 py-3.5 text-center">Probabilidade</th>
+                          <th className="px-3 py-3.5 text-center">Impacto</th>
+                          <th className="px-3 py-3.5 text-center">Nível de Risco</th>
+                          <th className="px-3 py-3.5 text-center">Prioridade</th>
+                          <th className="px-4 py-3.5 text-center">Estado</th>
+                          <th className="px-3 py-3.5 text-center">Próx. Revisão</th>
+                          <th className="px-5 py-3.5 text-right">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border-subtle font-medium text-text-secondary">
+                        {projRiskItems.map(item => {
+                          const level = getRiskLevelDetails(item.probability, item.impact);
+                          const isExpanded = expandedRiskId === item.id;
+                          const ownerName = item.ownerId ? getUserName(item.ownerId) : 'Sem responsável';
+
+                          return (
+                            <React.Fragment key={item.id}>
+                              <tr className={`hover:bg-surface-muted/50 transition-colors ${isExpanded ? 'bg-primary/20' : ''}`}>
+                                <td className="px-5 py-3.5">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-bold text-text-primary text-body-sm">{item.title}</span>
+                                    <span className="text-caption text-text-muted font-semibold">{getRiskCategoryName(item.categoryId)}</span>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3.5 text-text-secondary">
+                                  <div className="flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                                    <span className="font-semibold">{ownerName}</span>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3.5 text-center font-extrabold text-text-primary text-label">{item.probability}</td>
+                                <td className="px-3 py-3.5 text-center font-extrabold text-text-primary text-label">{item.impact}</td>
+                                <td className="px-3 py-3.5 text-center">
+                                  <span className={`px-2.5 py-1 rounded-full text-caption font-black uppercase tracking-wider border flex items-center justify-center gap-1 max-w-[130px] mx-auto ${level.color}`}>
+                                    <span>{level.dot}</span>
+                                    <span>{level.label} ({level.score})</span>
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3.5 text-center">
+                                  <span className="px-2 py-0.5 rounded bg-surface-muted text-text-secondary text-caption font-extrabold border border-border">
+                                    {getRiskPriorityName(item.priorityId)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3.5 text-center">
+                                  <span className="px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary text-caption font-extrabold">
+                                    {getRiskStatusName(item.statusId)}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3.5 text-center text-text-secondary font-semibold">{item.reviewDate || '-'}</td>
+                                <td className="px-5 py-3.5 text-right space-x-1.5">
+                                  <IconButton variant="ghost" aria-label={isExpanded ? "Ocultar Detalhes" : "Ver Detalhes"}
+                                    type="button"
+                                    onClick={() => setExpandedRiskId(isExpanded ? null : item.id)}
+                                    className="p-1 text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+                                    title={isExpanded ? "Ocultar Detalhes" : "Ver Detalhes"}
+                                  >
+                                    <Info className="w-4 h-4" />
+                                  </IconButton>
+                                  {canWriteProjects && (
+                                    <>
+                                      <IconButton variant="ghost" aria-label="Editar Risco"
+                                        type="button"
+                                        onClick={() => handleEditRisk(item)}
+                                        className="p-1 text-text-muted hover:text-primary transition-colors cursor-pointer"
+                                        title="Editar Risco"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </IconButton>
+                                      <IconButton variant="ghost" aria-label="Eliminar Risco"
+                                        type="button"
+                                        onClick={() => handleDeleteRisk(item.id)}
+                                        className="p-1 text-text-muted hover:text-error transition-colors cursor-pointer"
+                                        title="Eliminar Risco"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </IconButton>
+                                    </>
+                                  )}
+                                </td>
+                              </tr>
+
+                              {/* Expanded Row */}
+                              {isExpanded && (
+                                <tr>
+                                  <td colSpan={9} className="bg-surface-muted/80 px-8 py-5 border-t border-b border-border-subtle">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-body-sm text-text-secondary font-medium leading-relaxed">
+                                      <div className="space-y-3">
+                                        <div>
+                                          <span className="block text-caption uppercase font-bold text-text-muted tracking-wider mb-1">Descrição do Risco</span>
+                                          <p className="bg-surface p-3 rounded-control border border-border-subtle text-text-primary whitespace-pre-wrap shadow-2xs font-semibold">
+                                            {item.description || <span className="text-text-muted italic">Sem descrição registada.</span>}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <span className="block text-caption uppercase font-bold text-text-muted tracking-wider mb-1">Consequência</span>
+                                          <p className="bg-surface p-3 rounded-control border border-border-subtle text-text-primary whitespace-pre-wrap shadow-2xs font-semibold">
+                                            {item.consequence || <span className="text-text-muted italic">Sem consequências registadas.</span>}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div className="space-y-3">
+                                        <div>
+                                          <span className="block text-caption uppercase font-bold text-text-muted tracking-wider mb-1">Plano de Mitigação</span>
+                                          <p className="bg-surface p-3 rounded-control border border-border-subtle text-text-primary whitespace-pre-wrap shadow-2xs font-semibold">
+                                            {item.mitigationPlan || <span className="text-text-muted italic">Sem plano de mitigação registado.</span>}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <span className="block text-caption uppercase font-bold text-text-muted tracking-wider mb-1">Plano de Contingência</span>
+                                          <p className="bg-surface p-3 rounded-control border border-border-subtle text-text-primary whitespace-pre-wrap shadow-2xs font-semibold">
+                                            {item.contingencyPlan || <span className="text-text-muted italic">Sem plano de contingência registado.</span>}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* TAB 5: ANÁLISE DO PROJETO */}
+          {activeDetailTab === 'analise' && (
+            <div className="p-6 space-y-6 animate-fade-in">
+              <div>
+                <h3 className="font-extrabold text-text-primary text-base flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                  Análise Geral do Projeto
+                </h3>
+                <p className="text-body-sm text-text-secondary mt-0.5">Estatísticas acumuladas de carga horária, técnicos, desvios de datas e distribuição de tarefas</p>
+              </div>
+
+              {/* Stats & Charts Content */}
+              {(() => {
+                let totalWorkloadMins = 0;
+                let totalEstMins = 0;
+                let totalActMins = 0;
+                const technicianIds = new Set<string>();
+                const taskCountsByType: Record<string, { count: number; workloadMins: number; estMins: number; actMins: number }> = {};
+                const taskCountsByTech: Record<string, { count: number; workloadMins: number }> = {};
+
+                const parseMins = (timeStr?: string) => {
+                  if (!timeStr) return 0;
+                  const parts = timeStr.split(':').map(Number);
+                  if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                    return parts[0] * 60 + parts[1];
+                  }
+                  return 0;
+                };
+
+                projTasks.forEach(t => {
+                  const estM = parseMins(t.estimatedHours);
+                  const actM = parseMins(t.actualHours);
+                  const taskWorkload = actM > 0 ? actM : estM;
+
+                  totalWorkloadMins += taskWorkload;
+                  totalEstMins += estM;
+                  totalActMins += actM;
+
+                  if (t.assigneeIds && t.assigneeIds.length > 0) {
+                    t.assigneeIds.forEach(id => {
+                      technicianIds.add(id);
+                      const uName = getUserName(id) || 'Técnico';
+                      if (!taskCountsByTech[uName]) {
+                        taskCountsByTech[uName] = { count: 0, workloadMins: 0 };
+                      }
+                      taskCountsByTech[uName].count += 1;
+                      taskCountsByTech[uName].workloadMins += taskWorkload;
+                    });
+                  } else {
+                    const unassigned = 'Sem Técnico Atribuído';
+                    if (!taskCountsByTech[unassigned]) {
+                      taskCountsByTech[unassigned] = { count: 0, workloadMins: 0 };
+                    }
+                    taskCountsByTech[unassigned].count += 1;
+                    taskCountsByTech[unassigned].workloadMins += taskWorkload;
+                  }
+
+                  const typeName = getTaskTypeName(t.taskTypeId, taskTypes) || 'Geral';
+                  if (!taskCountsByType[typeName]) {
+                    taskCountsByType[typeName] = { count: 0, workloadMins: 0, estMins: 0, actMins: 0 };
+                  }
+                  taskCountsByType[typeName].count += 1;
+                  taskCountsByType[typeName].workloadMins += taskWorkload;
+                  taskCountsByType[typeName].estMins += estM;
+                  taskCountsByType[typeName].actMins += actM;
+                });
+
+                const formatMins = (m: number) => {
+                  const hrs = Math.floor(m / 60);
+                  const mins = m % 60;
+                  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                };
+
+                const startDateStr = selectedProj.startDate ? new Date(selectedProj.startDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
+                const deliveryDateStr = selectedProj.deliveryDate ? new Date(selectedProj.deliveryDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
+                const estimatedDateStr = selectedProj.estimatedDate ? new Date(selectedProj.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
+                const scheduledDateStr = selectedProj.scheduledDate ? new Date(selectedProj.scheduledDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
+
+                let daysDiffAdjudicationToDelivery = '-';
+                if (selectedProj.startDate && selectedProj.deliveryDate) {
+                  const diffTime = new Date(selectedProj.deliveryDate).getTime() - new Date(selectedProj.startDate).getTime();
+                  const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
+                  daysDiffAdjudicationToDelivery = `${diffDays} dias`;
+                }
+
+                let daysDiffEstimatedToDelivery = '-';
+                if (selectedProj.deliveryDate && selectedProj.estimatedDate) {
+                  const diffTime = new Date(selectedProj.estimatedDate).getTime() - new Date(selectedProj.deliveryDate).getTime();
+                  const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
+                  daysDiffEstimatedToDelivery = diffDays > 0 ? `+${diffDays}d (Atraso)` : `${diffDays}d`;
+                }
+
+                return (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* Card 1: Carga Horária */}
+                      <div className="bg-surface-muted border border-border rounded-card p-4 space-y-1 shadow-2xs">
+                        <span className="text-caption uppercase font-bold text-text-muted tracking-wider">Carga horária</span>
+                        <div className="text-xl font-black text-text-primary">{formatMins(totalWorkloadMins)}h</div>
+                        <p className="text-caption text-text-secondary font-medium truncate">Soma de horas efetivas e estimativas pendentes</p>
+                      </div>
+
+                      {/* Card 2: Prazo Venda */}
+                      <div className="bg-surface-muted border border-border rounded-card p-4 space-y-1 shadow-2xs">
+                        <span className="text-caption uppercase font-bold text-text-muted tracking-wider">Prazo de Entrega (Venda)</span>
+                        <div className="text-xl font-black text-text-primary">{daysDiffAdjudicationToDelivery}</div>
+                        <div className="text-caption text-text-secondary font-medium">De {startDateStr} a {deliveryDateStr}</div>
+                      </div>
+
+                      {/* Card 3: Desvio Estimativa Real */}
+                      <div className="bg-surface-muted border border-border rounded-card p-4 space-y-1 shadow-2xs">
+                        <span className="text-caption uppercase font-bold text-text-muted tracking-wider">Desvio de Estimativa Real</span>
+                        <div className={`text-xl font-black ${daysDiffEstimatedToDelivery.includes('Atraso') ? 'text-warning' : 'text-text-primary'}`}>
+                          {daysDiffEstimatedToDelivery}
+                        </div>
+                        <div className="text-caption text-text-secondary font-medium">Estimada real: {estimatedDateStr}</div>
+                      </div>
+                    </div>
+
+                    {/* Contagem por Tipo de Tarefa */}
+                    <Card className="bg-surface border border-border rounded-card overflow-hidden shadow-2xs">
+                      <div className="p-4 bg-surface-muted border-b border-border-subtle font-extrabold text-body-sm text-text-primary uppercase tracking-wide">
+                        Contagem e Carga Horária por Tipo de Tarefa
+                      </div>
+                      <div className="overflow-x-auto w-full">
+                        <table className="w-full min-w-[420px] text-left border-collapse text-body-sm">
+                          <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
+                            <tr>
+                              <th className="px-4 py-2.5">Tipo de Tarefa</th>
+                              <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
+                              <th className="px-4 py-2.5 text-right">Carga Horária</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border-subtle font-semibold text-text-secondary">
+                            {Object.keys(taskCountsByType).length === 0 ? (
+                              <tr>
+                                <td colSpan={3} className="px-4 py-6 text-center text-text-muted italic font-normal">Nenhuma tarefa registada para este projeto.</td>
+                              </tr>
+                            ) : (
+                              Object.entries(taskCountsByType).map(([tName, data]) => (
+                                <tr key={tName} className="hover:bg-surface-muted">
+                                  <td className="px-4 py-3 font-extrabold text-text-primary">{tName}</td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className="px-2.5 py-0.5 bg-primary/10 text-primary rounded-full font-extrabold">{data.count}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right font-mono font-bold text-text-primary">{formatMins(data.workloadMins)}h</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </Card>
+
+                    {/* Contagem e Carga Horária por Técnico */}
+                    <Card className="bg-surface border border-border rounded-card overflow-hidden shadow-2xs">
+                      <div className="p-4 bg-surface-muted border-b border-border-subtle font-extrabold text-body-sm text-text-primary uppercase tracking-wide">
+                        Contagem e Carga Horária por Técnico
+                      </div>
+                      <div className="overflow-x-auto w-full">
+                        <table className="w-full min-w-[420px] text-left border-collapse text-body-sm">
+                          <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
+                            <tr>
+                              <th className="px-4 py-2.5">Técnico</th>
+                              <th className="px-4 py-2.5 text-center">N.º de Tarefas</th>
+                              <th className="px-4 py-2.5 text-right">Carga Horária</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border-subtle font-semibold text-text-secondary">
+                            {Object.keys(taskCountsByTech).length === 0 ? (
+                              <tr>
+                                <td colSpan={3} className="px-4 py-6 text-center text-text-muted italic font-normal">Nenhum técnico atribuído a tarefas deste projeto.</td>
+                              </tr>
+                            ) : (
+                              Object.entries(taskCountsByTech).map(([techName, data]) => (
+                                <tr key={techName} className="hover:bg-surface-muted">
+                                  <td className="px-4 py-3 font-extrabold text-text-primary">{techName}</td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className="px-2.5 py-0.5 bg-primary/10 text-primary rounded-full font-extrabold">{data.count}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right font-mono font-bold text-text-primary">{formatMins(data.workloadMins)}h</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </Card>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+        </Card>
+      ) : isEditing ? (
+
+        // 2. PROJECT EDIT OR CREATE FORM
+        <form onSubmit={handleSubmit} className="bg-surface rounded-card border border-border p-6 space-y-6 -sm animate-fade-in">
+          <M3SectionHeader
+            title={editingId ? 'Editar projeto' : 'Adicionar novo projeto'}
+            description={editingId ? `ID ${editingId}` : undefined}
+            actions={<>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setIsEditing(false)}>Cancelar</Button>
+              <Button type="submit" size="sm">Gravar Alterações</Button>
+            </>}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-body-sm font-bold text-text-secondary">
+
+            {/* Client Suggested Select */}
+            <div className="space-y-1 relative" id="client-autocomplete-container">
+              <label className="block text-text-secondary">Cliente *</label>
+              <div className="relative">
+                <Input aria-label="Cliente"
+                  type="text"
+                  required
+                  value={clientSearchQuery}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setClientSearchQuery(val);
+                    setShowClientSuggestions(true);
+
+                    // Match typed value dynamically to prevent losing client ID
+                    const matched = (clients || []).find(c =>
+                      c && !c.deleted && (
+                        c.clientName.toLowerCase().trim() === val.toLowerCase().trim() ||
+                        `${c.clientName} (${c.shortName})`.toLowerCase().trim() === val.toLowerCase().trim() ||
+                        (c.shortName && c.shortName.toLowerCase().trim() === val.toLowerCase().trim())
+                      )
+                    );
+                    if (matched) {
+                      setFormClient(matched.id);
+                    }
+                  }}
+                  onFocus={() => setShowClientSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowClientSuggestions(false), 250)}
+                  placeholder="Pesquisar cliente por nome..."
+                  className="w-full p-2.5 pr-8 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-none bg-surface font-semibold text-text-primary"
+                />
+                <Search className="w-4 h-4 text-text-muted absolute right-3 top-3.5 pointer-events-none" />
+              </div>
+
+              {showClientSuggestions && (
+                <div className="absolute z-50 left-0 right-0 max-h-60 overflow-y-auto bg-surface border border-border rounded-control -lg mt-1 p-1">
+                  {autocompleteClients.length > 0 ? (
+                    autocompleteClients.map(c => {
+                      const isSelected = formClient === c.id;
+                      return (
+                        <Button variant="ghost" size="sm"
+                          key={c.id}
+                          type="button"
+                          onMouseDown={() => {
+                            setFormClient(c.id);
+                            setClientSearchQuery(`${c.clientName} (${c.shortName})`);
+                            setShowClientSuggestions(false);
+                          }}
+                          className={`w-full text-left p-2 rounded-lg text-body-sm transition-colors flex flex-col gap-0.5 cursor-pointer ${
+                            isSelected
+                              ? 'bg-primary/10 text-primary font-bold'
+                              : 'hover:bg-surface-muted text-text-secondary font-semibold'
+                          }`}
+                        >
+                          <span className="truncate">{c.clientName}</span>
+                          <span className="text-caption text-text-muted font-normal">{c.shortName} • {c.location || 'Sem localização'}</span>
+                        </Button>
+                      );
+                    })
+                  ) : (
+                    <div className="p-3 text-center text-text-muted italic text-caption font-medium">
+                      Nenhum cliente encontrado
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Title */}
+            <div className="space-y-1 md:col-span-2">
+              <label className="block text-text-secondary">Nome do projeto *</label>
+              <Input aria-label="Nome do projeto"
+                type="text"
+                required
+                value={formTitle}
+                onChange={e => setFormTitle(e.target.value)}
+                placeholder="Ex: Instalação de Balança Multicabeçal e Tapete Rejeitor"
+                className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-none text-body-sm font-semibold"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1 md:col-span-2">
+              <label className="block text-text-secondary">Descrição</label>
+              <Textarea aria-label="Descrição"
+                value={formDesc}
+                onChange={e => setFormDesc(e.target.value)}
+                rows={4}
+                placeholder="Introduza os detalhes do projeto..."
+                className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-none text-body-sm font-medium"
+              />
+            </div>
+
+            {/* Budget */}
+            <div className="space-y-1">
+              <label className="block text-text-secondary">Valor da venda (€)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-3 text-text-muted font-bold">€</span>
+                <Input aria-label="Valor da venda (€)"
+                  type="number"
+                  value={formBudget}
+                  onChange={e => setFormBudget(Number(e.target.value))}
+                  className="w-full pl-8 pr-3 p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-none font-semibold"
+                />
+              </div>
+            </div>
+
+            {/* Category */}
+            <div className="space-y-1">
+              <label className="block text-text-secondary font-bold">Categorias</label>
+              <div className="border border-border rounded-control p-3 max-h-[120px] overflow-y-auto bg-surface-muted/50 space-y-1.5">
+                {projectCategories.filter(c => !c.deleted).map(c => {
+                  const isChecked = formCategories.some(catId => matchId(catId, c.id));
+                  return (
+                    <label key={c.id} className="flex items-center gap-2 text-body-sm font-semibold text-text-secondary cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          if (isChecked) {
+                            const next = formCategories.filter(id => !matchId(id, c.id));
+                            setFormCategories(next);
+                            if (matchId(formCategory, c.id)) {
+                              setFormCategory(next[0] || '');
+                            }
+                          } else {
+                            const next = [...formCategories, c.id];
+                            setFormCategories(next);
+                            if (!formCategory) {
+                              setFormCategory(c.id);
+                            }
+                          }
+                        }}
+                        className="rounded border-border text-primary focus:ring-primary w-4 h-4"
+                      />
+                      {c.name}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Project status */}
+            <div className="space-y-1">
+              <label className="block text-text-secondary">Estado do projeto</label>
+              <Select aria-label="Estado do projeto"
+                value={formStatus}
+                onChange={e => setFormStatus(e.target.value)}
+                className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
+              >
+                {sortedStatuses.filter(s => !s.deleted || s.id === formStatus).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </Select>
+            </div>
+
+            {/* Project Manager (Team Type Users) */}
+            <div className="space-y-1">
+              <label className="block text-text-secondary">Project Leader *</label>
+              <Select aria-label="Project Leader"
+                required
+                value={formProjManager}
+                onChange={e => setFormProjManager(e.target.value)}
+                className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
+              >
+                <option value="">Escolher utilizador</option>
+                {(() => {
+                  const projGroupIds = appConfig?.projManagerGroupIds || (appConfig?.projManagerGroupId ? [appConfig.projManagerGroupId] : []);
+                  const canonicalRoleIds = translateToCanonicalRoleIds(projGroupIds);
+                  let filteredUsers = canonicalRoleIds.length > 0
+                    ? users.filter(u => canonicalRoleIds.some(cid => matchId(cid, u.roleId)) && !u.deleted)
+                    : [];
+
+                  // Keep currently selected user even if deleted or not in the group to preserve existing data
+                  if (formProjManager && !filteredUsers.some(u => matchId(u.id, formProjManager))) {
+                    const currentMgr = users.find(u => matchId(u.id, formProjManager));
+                    if (currentMgr) {
+                      filteredUsers.push(currentMgr);
+                    }
+                  }
+
+                  filteredUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }));
+
+                  return (
+                    <>
+                      {filteredUsers.length === 0 && (
+                        <option disabled value="">
+                          (Nenhum utilizador elegível / Configuração inconsistente)
+                        </option>
+                      )}
+                      {filteredUsers.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name}
+                        </option>
+                      ))}
+                    </>
+                  );
+                })()}
+              </Select>
+            </div>
+
+            {/* Field Manager (Team Type Users) */}
+            <div className="space-y-1">
+              <label className="block text-text-secondary">Técnico responsável</label>
+              <Select aria-label="Técnico responsável"
+                value={formFieldManager}
+                onChange={e => setFormFieldManager(e.target.value)}
+                className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
+              >
+                <option value="">Escolher utilizador</option>
+                {(() => {
+                  const fieldGroupIds = appConfig?.fieldManagerGroupIds || (appConfig?.fieldManagerGroupId ? [appConfig.fieldManagerGroupId] : []);
+                  const canonicalRoleIds = translateToCanonicalRoleIds(fieldGroupIds);
+                  let filteredUsers = canonicalRoleIds.length > 0
+                    ? users.filter(u => canonicalRoleIds.some(cid => matchId(cid, u.roleId)) && !u.deleted)
+                    : [];
+
+                  // Keep currently selected user even if deleted or not in the group to preserve existing data
+                  if (formFieldManager && !filteredUsers.some(u => matchId(u.id, formFieldManager))) {
+                    const currentMgr = users.find(u => matchId(u.id, formFieldManager));
+                    if (currentMgr) {
+                      filteredUsers.push(currentMgr);
+                    }
+                  }
+
+                  filteredUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }));
+
+                  return (
+                    <>
+                      {filteredUsers.length === 0 && (
+                        <option disabled value="">
+                          (Nenhum utilizador elegível / Configuração inconsistente)
+                        </option>
+                      )}
+                      {filteredUsers.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name}
+                        </option>
+                      ))}
+                    </>
+                  );
+                })()}
+              </Select>
+            </div>
+
+            {/* Sales Representative */}
+            <div className="space-y-1">
+              <label className="block text-text-secondary">Gestor de vendas</label>
+              <Select aria-label="Gestor de vendas"
+                value={formSales}
+                onChange={e => setFormSales(e.target.value)}
+                className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
+              >
+                <option value="">Escolher utilizador</option>
+                {(() => {
+                  const salesGroupIds = appConfig?.salesRepGroupIds || (appConfig?.salesRepGroupId ? [appConfig.salesRepGroupId] : []);
+                  const canonicalRoleIds = translateToCanonicalRoleIds(salesGroupIds);
+                  let filteredUsers = canonicalRoleIds.length > 0
+                    ? users.filter(u => canonicalRoleIds.some(cid => matchId(cid, u.roleId)) && !u.deleted)
+                    : [];
+
+                  // Keep currently selected user even if deleted or not in the group to preserve existing data
+                  if (formSales && !filteredUsers.some(u => matchId(u.id, formSales))) {
+                    const currentSales = users.find(u => matchId(u.id, formSales));
+                    if (currentSales) {
+                      filteredUsers.push(currentSales);
+                    }
+                  }
+
+                  filteredUsers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }));
+
+                  return (
+                    <>
+                      {filteredUsers.length === 0 && (
+                        <option disabled value="">
+                          (Nenhum utilizador elegível / Configuração inconsistente)
+                        </option>
+                      )}
+                      {filteredUsers.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name}
+                        </option>
+                      ))}
+                    </>
+                  );
+                })()}
+              </Select>
+            </div>
+
+            {/* Demo Checkbox */}
+            <div className="space-y-1 flex items-center h-full pt-4 pl-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={formDemo}
+                  onChange={e => setFormDemo(e.target.checked)}
+                  className="w-4 h-4 text-primary border-border rounded focus:ring-primary"
+                />
+                <span className="text-text-secondary">Marcar como Projeto de Demonstração</span>
+              </label>
+            </div>
+
+            {/* Dates: Start & Delivery */}
+            <div className="space-y-1">
+              <label className="block text-text-secondary">Data de adjudicação *</label>
+              <Input aria-label="Data de adjudicação"
+                type="date"
+                required
+                value={formStartDate}
+                onChange={e => setFormStartDate(e.target.value)}
+                className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-text-secondary">Pazo de entrega da venda</label>
+              <Input aria-label="Pazo de entrega da venda"
+                type="date"
+                value={formDeliveryDate}
+                onChange={e => setFormDeliveryDate(e.target.value)}
+                className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
+              />
+            </div>
+
+            {/* Dates: Estimated & Scheduled */}
+            <div className="space-y-1">
+              <label className="block text-text-secondary">Data estimada real</label>
+              <Input aria-label="Data estimada real"
+                type="date"
+                value={formEstimatedDate}
+                onChange={e => setFormEstimatedDate(e.target.value)}
+                className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-text-secondary">Data agendada com cliente</label>
+              <Input aria-label="Data agendada com cliente"
+                type="date"
+                value={formScheduledDate}
+                onChange={e => setFormScheduledDate(e.target.value)}
+                className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
+              />
+            </div>
+
+            {/* Client Contact Details */}
+            <div className="space-y-4 md:col-span-2 p-4 bg-surface-muted border border-border rounded-control">
+              <h3 className="font-bold text-text-primary flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-text-muted" />
                 Contactos do Cliente no Projeto
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
