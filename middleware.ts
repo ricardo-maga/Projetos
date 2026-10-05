@@ -1,7 +1,10 @@
 import { type NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
+import { cutoverMaintenanceResponse } from './lib/cutoverMaintenance';
 
 export async function middleware(request: NextRequest) {
+  const maintenance = cutoverMaintenanceResponse(request.nextUrl.pathname, process.env.ERP_CUTOVER_MAINTENANCE);
+  if (maintenance) return maintenance;
   return await updateSession(request);
 }
 

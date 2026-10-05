@@ -1,9 +1,10 @@
 # Preparação dos cinco requisitos de promoção — 2026-10-05
 
-Estado: preparação técnica validada; cutover NÃO iniciado. A janela foi autorizada
-pelo utilizador apenas depois de todas as verificações. Falta autenticar o CLI
-Vercel e confirmar a ligação ao projeto/deploy/env antes de suspender escritas.
-Produção continua sem mutações de schema/dados/configuração.
+Estado: hotfix de credenciais e revogação legacy concluídos e verificados.
+Cutover RLS NÃO iniciado. A janela foi autorizada pelo
+utilizador apenas depois de todas as verificações.
+Schema/RLS de produção continuam sem mutações. Variáveis Vercel corrigidas com
+autorização explícita; hotfix de credenciais separado da promoção de RLS.
 
 ## 1. Tipos, lint e testes
 
@@ -38,8 +39,7 @@ public/extensions não é writable por anon/authenticated. Não há views públi
 
 Work tem plano Free. Leaked-password protection exige Pro ou superior segundo
 documentação atual. Limitação registada; NÃO feito upgrade pago nem alteração de
-Auth. Este risco residual deve ser aceite explicitamente no fecho do cutover ou
-resolvido mediante decisão sobre plano, não falsamente marcado como corrigido.
+Auth. O utilizador aceitou explicitamente manter Free e esta limitação por agora.
 https://supabase.com/docs/guides/auth/password-security
 
 ## 3. Comparação de produção/staging
@@ -92,10 +92,56 @@ Branch de preparação: security/staging-cutover-20261005, baseada em main
 backend depende de migrations ainda ausentes em produção. A identificação exata
 do commit é entregue no relatório da execução.
 
-CLI Vercel 62.2.0 verificado: Logged out. Utilizador recebeu pedido de executar
-login sem fornecer passwords/tokens na conversa. Sem confirmar autenticação,
-projeto/env, suspensão dos writers/jobs/inbound e mecanismo de promoção/rollback
-do deploy, NÃO aplicar as migrations em produção nem abrir manutenção.
+CLI Vercel 62.2.0 autenticado; projeto projex, organização gestao-de-projetos.
+Deployment atual Ready: dpl_9Cy3mCo5m3Pp68TRHyMNBZPJJ1no.
+Exportação privada de ambiente autorizada pelo utilizador, fora de Git/OneDrive:
+URL e ref correspondem a ProjectTool. Contudo NEXT_PUBLIC_SUPABASE_ANON_KEY
+contém JWT com role service_role, confirmado sem imprimir a chave. O código
+lib/supabase/client.ts e lib/supabaseClient.ts consome esta variável no cliente.
+Exposição de credencial privilegiada confirmada posteriormente nos bundles
+públicos do deployment anterior, conforme o registo do hotfix abaixo.
+SUPABASE_SERVICE_ROLE_KEY é Sensitive e não exportável; não se tentou contornar.
+O finding exigiu autorização própria para corrigir a variável pública e revogar
+a chave exposta. Autorização recebida e correção descrita no registo abaixo;
+revogação efetiva concluída pelo utilizador e verificada abaixo.
+Preparação posterior de manutenção/freeze/recuperação validada em
+`docs/cutover-maintenance.md`; execução da janela e promoção RLS ainda pendentes.
+Dry-run de upload passou com .vercelignore excluindo env, dumps e caches.
 
-Leaked-password protection indisponível no Free continua uma decisão de risco/plano.
+### Hotfix de credenciais autorizado
+
+O utilizador autorizou a correção/revogação após o finding. A inspeção dos 11
+bundles públicos do site confirmou uma ocorrência da chave legacy service_role.
+Foram configuradas as chaves modernas já existentes do projeto: publishable em
+NEXT_PUBLIC_SUPABASE_ANON_KEY e secret em SUPABASE_SERVICE_ROLE_KEY (Sensitive).
+As variáveis são partilhadas entre production/preview/development; a atualização
+Vercel preservou os targets, afetando futuros builds nesses três ambientes.
+Nenhum valor foi publicado; os exports temporários foram eliminados.
+
+Rebuild isolado do MESMO commit de produção 3954daf:
+dpl_CUjZHwJpgu4fCwHJMgC9ZwABmtRr,
+https://projex-eeed2x77v-gestao-de-projetos.vercel.app.
+READY; autoAssignCustomDomains=false. Verificação autenticada vercel curl:
+página 200; 11 assets; zero JWT service_role; zero sb_secret; uma publishable;
+API branding 200/configured=true; login fictício inválido 401.
+Login válido com conta de produção não testado pelo agente.
+Posteriormente o utilizador confirmou login normal e listagens Projects/Tasks.
+Sem alterações de código da aplicação/migrations neste rebuild.
+Promoção oficial Vercel concluída com sucesso. Validação no domínio público
+solprojetos.vercel.app: página 200, 11 assets, zero service_role/secret, uma
+publishable, API branding 200/configured=true. Hotfix está ativo em produção.
+
+Inventário de consumidores conhecidos: zero Edge Functions, cron.job ausente,
+zero triggers de webhook HTTP e zero funções públicas com net.http/chave em URL.
+Isto não prova ausência de integrações externas desconhecidas.
+Revogação legacy CONCLUÍDA pelo utilizador no Dashboard.
+Verificação posterior: plugin reporta anon legacy disabled=true e publishable
+disabled=false. Pedido REST usando a chave service_role antiga, com apikey e
+Authorization Bearer, select=id&limit=0, devolveu HTTP 401. Nenhuma linha lida.
+Site público HTTP 200; API branding HTTP 200/configured=true com as novas chaves.
+O CLI não forneceu o campo disabled da service_role; a rejeição real HTTP 401
+é a confirmação funcional da invalidação. Nenhum valor de chave foi impresso.
+Controlo utilizado: API Keys > Legacy > Disable JWT-based API keys.
+Não reativar a chave exposta como rollback. Deployments históricos e cópias de
+bundles só deixam de ter acesso privilegiado após a revogação efetiva.
 Referências: https://supabase.com/docs/guides/platform/backups e docs/rls-cutover.md.
