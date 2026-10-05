@@ -11,6 +11,7 @@ import InventorySection from '../components/InventorySection';
 import UserSection from '../components/UserSection';
 import ConfigSection from '../components/ConfigSection';
 import NotificationDropdown from '../components/NotificationDropdown';
+import DatabaseStatusIndicator from '../components/DatabaseStatusIndicator';
 import CalendarSection from '../components/CalendarSection';
 import MyFocusSection from '../components/MyFocusSection';
 import { TicketSection } from '../components/TicketSection';
@@ -18,6 +19,7 @@ import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { logAuditEventToSupabase } from '../lib/supabaseSync';
 import { hasPermission } from '../lib/permissions';
 import AppLogo from '../components/AppLogo';
+import AppLoadingScreen from '../components/AppLoadingScreen';
 import Dialog from '../components/ui/Dialog';
 import IconButton from '../components/ui/IconButton';
 import { cn } from '../lib/utils';
@@ -173,6 +175,7 @@ export default function Page() {
     toggleAutomationRule,
     runAutomationRule,
     syncStatus,
+    publicAppConfig,
     syncError,
     isDbConfigured,
     refreshFromDatabase,
@@ -421,25 +424,11 @@ export default function Page() {
     }
   }, [activeTab, tabs, mounted, state, currentUser]);
 
+  const loginBranding = state?.appConfig || publicAppConfig;
+
   if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="session-check-screen">
-        <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-100 p-8 text-center space-y-6 animate-fade-in">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">
-              A carregar dados...
-            </h1>
-            <p className="text-slate-400 text-xs mt-1.5 font-medium">
-              A aguardar dados da base de dados.
-            </p>
-          </div>
-          <div className="flex justify-center items-center gap-1.5">
-            <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-            <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-            <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce"></span>
-          </div>
-        </div>
-      </div>
+      <AppLoadingScreen id="session-check-screen" />
     );
   }
 
@@ -449,16 +438,16 @@ export default function Page() {
         <div className="w-full max-w-md bg-white rounded-2xl -xl border border-slate-100 overflow-hidden">
           <div className="p-8 pb-6 bg-slate-800 text-white text-center flex flex-col items-center">
             <AppLogo 
-              logoUrl={state?.appConfig?.logoImagePath || state?.appConfig?.logo} 
-              appName={state?.appConfig?.appName || ''}
+              logoUrl={loginBranding?.logoImagePath || loginBranding?.logo}
+              appName={loginBranding?.appName || ''}
               className="w-72 max-w-full h-16 rounded-2xl bg-white p-2.5 mb-4 shadow-md mx-auto"
               fallbackIconClassName="w-8 h-8 text-blue-600"
             />
-            {state?.appConfig?.appName ? (
-              <h1 className="text-2xl font-bold font-sans tracking-tight">{state.appConfig.appName}</h1>
+            {loginBranding?.appName ? (
+              <h1 className="text-2xl font-bold font-sans tracking-tight">{loginBranding.appName}</h1>
             ) : null}
-            {state?.appConfig?.appDescription ? (
-              <p className="text-slate-400 text-sm mt-1">{state.appConfig.appDescription}</p>
+            {loginBranding?.appDescription ? (
+              <p className="text-slate-400 text-sm mt-1">{loginBranding.appDescription}</p>
             ) : null}
           </div>
           
@@ -595,23 +584,7 @@ export default function Page() {
   // 4. Authenticated user: Authoritative data not yet loaded or transition in progress
   if (!isInitialDataLoaded || isTransitioning) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="loading-screen">
-        <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-100 p-8 text-center space-y-6 animate-fade-in">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">
-              A carregar dados...
-            </h1>
-            <p className="text-slate-400 text-xs mt-1.5 font-medium">
-              A aguardar dados da base de dados.
-            </p>
-          </div>
-          <div className="flex justify-center items-center gap-1.5">
-            <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-            <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-            <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce"></span>
-          </div>
-        </div>
-      </div>
+      <AppLoadingScreen id="loading-screen" />
     );
   }
 
@@ -670,6 +643,7 @@ export default function Page() {
             markAsRead={markNotificationAsRead}
             markAllAsRead={() => markAllNotificationsAsRead(currentUser.id)}
           />
+          <DatabaseStatusIndicator status={syncStatus} configured={isDbConfigured} loaded={isInitialDataLoaded} error={syncError} />
           
           <div
             onClick={() => {
@@ -856,36 +830,6 @@ export default function Page() {
             })}
           </div>
 
-          {/* System metadata line in sidebar footer */}
-          {!isCollapsed && (
-            <div className="p-4 border-t border-border bg-surface-muted/30 text-caption text-text-secondary space-y-2">
-              <div className="flex justify-between items-center">
-                <span>Nível de Acesso:</span>
-                <span className="font-bold text-text-primary font-mono bg-surface-muted px-2 py-0.5 rounded-badge border border-border">
-                  {state.userGroups?.find(g => g.id === currentUser?.roleId)?.name || currentUser?.type || 'Utilizador'}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1.5 w-full">
-                <div className="flex justify-between items-center w-full">
-                  <span>Sincronização:</span>
-                  {!isDbConfigured ? (
-                    <span className="font-bold text-error flex items-center gap-1">● Desativada</span>
-                  ) : syncStatus === 'syncing' ? (
-                    <span className="font-bold text-warning flex items-center gap-1 animate-pulse">● Gravando...</span>
-                  ) : syncStatus === 'error' ? (
-                    <span className="font-bold text-error flex items-center gap-1 cursor-help" title={syncError || 'Erro de sincronização'}>● Erro</span>
-                  ) : (
-                    <span className="font-bold text-success flex items-center gap-1">● Ativa (Live)</span>
-                  )}
-                </div>
-                {syncError && (
-                  <div className="text-caption text-error font-mono leading-tight break-words bg-error/5 p-2.5 rounded-control border border-error/10 max-h-24 overflow-y-auto">
-                    {syncError}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </aside>
 
         {/* MAIN PANEL CONTENT */}

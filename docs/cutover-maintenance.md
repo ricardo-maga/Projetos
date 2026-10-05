@@ -72,4 +72,3 @@ Não usar a página de manutenção como prova de isolamento da base de dados.
 
 Backups durante manutenção continuam snapshots lógicos public/auth, não snapshots
 físicos de todos os serviços nem backup de binários Storage. Storage não é alterado.
-

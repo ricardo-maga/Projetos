@@ -18,7 +18,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { applyLegacyVersions } from '../lib/supabase/legacyWriteBatch';
 import { buildLegacySyncPayload } from '../lib/supabase/syncPayload';
-import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, Ticket } from '../lib/types';
+import { ERPState, AppConfiguration, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, Ticket } from '../lib/types';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
@@ -54,6 +54,8 @@ const getEmptyState = (): ERPState => ({
 export function useERP() {
   // Start with null so that only authoritative data from the database is rendered
   const [state, setState] = useState<ERPState | null>(null);
+  // Public branding must remain available before authenticated ERP data exists.
+  const [publicAppConfig, setPublicAppConfig] = useState<Partial<AppConfiguration> | null>(null);
   const [isInitialDataLoaded, setIsInitialDataLoaded] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -162,6 +164,7 @@ export function useERP() {
             configured = configData.isConfigured;
           }
           if (configData?.appConfig) {
+            setPublicAppConfig(configData.appConfig);
             setState(prev => {
               if (!prev) return null; // Never use CLEAN_BASELINE_STATE during boot
               return {
@@ -2197,6 +2200,7 @@ export function useERP() {
 
   return {
     isInitialDataLoaded,
+    publicAppConfig,
     loading: !isInitialDataLoaded,
     state: sortedState,
     resetToDefault,
