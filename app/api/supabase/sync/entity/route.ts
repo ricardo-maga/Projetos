@@ -25,7 +25,7 @@ export async function DELETE(req: NextRequest) {
     const target = targets[body.entity as keyof typeof targets];
     const db = requireServerDbClient();
     const can = async (code: string) => {
-      const { data, error } = await db.rpc('has_permission', { p_permission_code: code, p_user_id: user.id });
+      const { data, error } = await db.rpc('has_permission', { p_permission_code: code, p_user_id: user.auth_user_id });
       if (error) throw new AuthError('Serviço de autorização indisponível.', 503);
       return data === true;
     };

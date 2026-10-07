@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const user = await requireAuth(req);
     const client = requireServerDbClient();
     const { data: permitted, error: permissionError } = await client.rpc('has_permission', {
-      p_permission_code: 'admin:access', p_user_id: user.id,
+      p_permission_code: 'admin:access', p_user_id: user.auth_user_id,
     });
     if (permissionError) throw new AuthError('Serviço de autorização indisponível.', 503);
     if (permitted !== true) throw new ForbiddenError();
