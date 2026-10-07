@@ -729,11 +729,11 @@ export default function Page() {
 
               if (tab.id === 'configuracoes') {
                 const configSubItems = [
-                  { id: 'clientes', label: 'Clientes', icon: Building, permission: 'clients_read' },
-                  { id: 'ausencias', label: 'Registo de ausências', icon: Users, permission: 'absences_read' },
-                  { id: 'sistema', label: 'Configurações do Sistema', icon: Settings },
+                  { id: 'sistema', label: 'Configurações da aplicação', icon: Settings },
                   { id: 'campos', label: 'Campos Auxiliares', icon: ListTodo },
                   { id: 'dias', label: 'Dias Especiais', icon: Calendar },
+                  { id: 'clientes', label: 'Clientes', icon: Building, permission: 'clients_read' },
+                  { id: 'ausencias', label: 'Registo de ausências', icon: Users, permission: 'absences_read' },
                   { id: 'tarefas', label: 'Tarefas Modelo', icon: CheckSquare },
                   { id: 'utilizadores', label: 'Utilizadores e Equipas', icon: Users },
                   { id: 'notificacoes', label: 'Notificações', icon: Bell },

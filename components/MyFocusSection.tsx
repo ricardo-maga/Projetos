@@ -17,7 +17,7 @@ import { hasPermission } from '../lib/permissions';
 import { M3Button, M3IconButton, M3SegmentedControl } from './M3';
 import { 
   CheckSquare, Briefcase, Play, ShieldAlert, Calendar as CalendarIcon, ChevronLeft,
-  ChevronRight, Sparkles, Clock, ArrowRight,
+  ChevronRight, Sparkles, ArrowRight,
   StickyNote, Plus, Trash2, FolderKanban, Flag, PartyPopper
 } from 'lucide-react';
 
@@ -526,51 +526,38 @@ export default function MyFocusSection({
                       }`}
                       title="Clique para preencher ou editar a tarefa"
                     >
-                      <div className="space-y-1.5 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
                           <IconButton size="sm" aria-label={`Executar tarefa ${task.title}`}
+                            className={`rounded-full shrink-0 ${scaleInfo.badgeClass}`}
                             title="Executar tarefa" disabled={!hasPermission(currentUser, 'tasks_write', userGroups)}
                             onClick={e => { e.stopPropagation(); openTaskDetailsModal(task, 'execute'); }}>
                             <Play className="w-4 h-4" />
                           </IconButton>
-
-                          <span className={`text-body-sm font-bold tracking-tight group-hover:text-primary transition-colors ${isDone ? 'line-through text-text-muted' : 'text-text-primary'}`}>
-                            {task.title}
-                          </span>
-
-                          <Badge className={scaleInfo.badgeClass}>
-                            {scaleInfo.statusName}
-                          </Badge>
-                        </div>
-
-                        <div className="flex items-center gap-3 text-body-sm text-text-secondary flex-wrap pl-7">
+                        <div className="space-y-1.5 min-w-0 flex-1">
                           {proj && (
                             <Button variant="ghost" size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onSelectProject(proj.id);
                               }}
-                              className="h-auto min-h-9 px-0 whitespace-normal text-left justify-start text-body-sm font-semibold text-primary hover:underline flex items-center gap-1"
+                              className="h-auto min-h-0 p-0 whitespace-normal text-left justify-start text-body-sm font-normal text-text-secondary hover:underline"
                               title={`Aceder ao projeto ${proj.title}`}
                             >
-                              <Briefcase className="w-3 h-3" />
-                              {client && `${client.shortName || client.clientName}`} {proj.title}
+                              {client && `${client.shortName || client.clientName} - `}{proj.title}
                             </Button>
                           )}
-                          
-                          {task.estimatedHours && (
-                            <span className="text-text-muted flex items-center gap-0.5">
-                              <Clock className="w-3 h-3" />
-                              {focusHours(task.estimatedHours)}
+                          <div className="flex items-baseline gap-2 flex-wrap">
+                            <span className={`text-body-sm font-bold tracking-tight group-hover:text-primary transition-colors ${isDone ? 'line-through text-text-muted' : 'text-text-primary'}`}>
+                              {task.title}
                             </span>
-                          )}
-                        </div>
-
+                            <span className="text-body-sm text-text-muted shrink-0">{focusHours(task.estimatedHours)}</span>
+                          </div>
                         {task.notes && (
                           <p className="text-caption text-text-muted bg-warning/10 p-2 rounded-lg border border-warning/20 italic pl-7 mt-1">
                             &quot;{task.notes}&quot;
                           </p>
                         )}
+                        </div>
                       </div>
 
                       {/* DUE DATE TAG */}

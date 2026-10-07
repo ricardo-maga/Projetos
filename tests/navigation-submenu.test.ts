@@ -8,6 +8,17 @@ const allowedBlock = source.match(/const nestedPagePermission = ([\s\S]*?)\n    
 const items = [{ id: 'clientes' }, { id: 'ausencias' }, { id: 'tarefas' }, { id: 'sistema' }];
 
 describe('Configuration navigation regression', () => {
+  it('keeps the requested primary and configuration menu order', () => {
+    const primary = source.slice(source.indexOf('const tabs = React.useMemo'), source.indexOf('// Fallback if active tab'));
+    const ids = [...primary.matchAll(/id: '([^']+)'/g)].map(m => m[1]).filter(id => id !== 'tickets');
+    expect(ids).toEqual(['dashboard', 'meu-foco', 'projetos', 'tarefas', 'calendario', 'configuracoes']);
+    const submenu = source.match(/const configSubItems = \[([\s\S]*?)\];/)![1];
+    expect([...submenu.matchAll(/id: '([^']+)'/g)].map(m => m[1])).toEqual([
+      'sistema', 'campos', 'dias', 'clientes', 'ausencias', 'tarefas', 'utilizadores',
+      'notificacoes', 'automacoes', 'auditoria', 'importacao',
+    ]);
+    expect(submenu).toContain('Configurações da aplicação');
+  });
   it('does not expand configuration for Tasks despite the template identifier', () => {
     const section = new Function('isActive', 'visibleConfigSubItems', 'activeTab', `return ${sectionExpression}`);
     expect(section(false, items, 'tarefas')).toBe(false);

@@ -46,6 +46,25 @@ export const focusPreviewProps: any = {
   riskStatuses: [{ id: 'open', name: 'Ativo' }], updateTask: () => {}, onSelectProject: () => {},
 };
 describe('My Focus M3', () => {
+  it('puts client/project above task and hours, with a canonical circular execute action instead of a status badge', () => {
+    const h = harness(), tree = h.render(focusPreviewProps);
+    const card = find(tree, e => e.props?.id === 'card-my-tasks');
+    const html = renderToStaticMarkup(card);
+    expect(html).toContain('Cliente de exemplo - Projeto 0');
+    expect(html.indexOf('Cliente de exemplo - Projeto 0')).toBeLessThan(html.indexOf('Tarefa 0</span>'));
+    expect(html).not.toContain('Por iniciar');
+    const action = find(card, e => e.props?.['aria-label'] === 'Executar tarefa Tarefa 0');
+    expect(action.props.className).toContain('rounded-full');
+    const projectLink = find(card, e => e.props?.title === 'Aceder ao projeto Projeto 0');
+    expect(projectLink.props.className).toContain('font-normal');
+    expect(renderToStaticMarkup(projectLink)).not.toContain('<svg');
+  });
+  it('keeps pagination count on one line with ten extra pixels of spacing', () => {
+    const html = renderToStaticMarkup(<FocusPagination label="tarefas" total={2} page={1} pages={1}
+      preference={{ size: 10, page: 1 }} allowed={FOCUS_TASK_SIZES} update={() => {}} />);
+    expect(html).toContain('whitespace-nowrap shrink-0 pr-[10px]');
+    expect(html).toContain('2 tarefas');
+  });
   it('uses default limits, whole-hour labels, assigned risks and no notifications or task progress', () => {
     const h = harness(), tree = h.render(focusPreviewProps);
     const tasks = find(tree, e => e.props?.id === 'card-my-tasks');

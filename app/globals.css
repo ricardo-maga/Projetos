@@ -415,10 +415,21 @@ body[data-theme],
   border-color: var(--m3-outline-variant);
   box-shadow: none;
 }
-.m3-focus-banner { background: var(--m3-surface-container-high); color: var(--m3-on-surface); border: 1px solid transparent; border-radius: var(--m3-radius-lg); }
+.m3-focus-banner {
+  background-color: var(--m3-primary);
+  background-image:
+    radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--brand-domino-green) 70%, transparent), transparent 65%),
+    repeating-linear-gradient(135deg, transparent 0 48px, rgb(255 255 255 / 5%) 48px 49px),
+    linear-gradient(120deg, var(--m3-primary), color-mix(in srgb, var(--m3-primary) 85%, black));
+  color: var(--m3-on-primary);
+  border: 1px solid transparent;
+  border-radius: var(--m3-radius-lg);
+}
 .m3-focus-banner__badge { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
-.m3-focus-banner__name, .m3-focus-banner__value { color: var(--m3-primary); }
-.m3-focus-banner__description, .m3-focus-banner__label { color: var(--m3-on-surface-variant); }
+.m3-focus-banner__name { color: var(--m3-on-primary); }
+.m3-focus-banner__description { color: var(--m3-on-primary); }
+.m3-focus-banner__value { color: var(--m3-primary); }
+.m3-focus-banner__label { color: var(--m3-on-surface-variant); }
 .m3-focus-banner__stats { background: var(--m3-surface); border: 1px solid var(--m3-outline-variant); }
 .m3-focus-banner__stat { border-color: var(--m3-outline-variant); }
 

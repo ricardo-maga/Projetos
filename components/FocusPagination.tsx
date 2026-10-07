@@ -25,7 +25,7 @@ export function FocusPagination({ label, total, page, pages, preference, allowed
   update: (next: FocusPaginationPreference) => void;
 }) {
   return <div className="p-4 border-t border-border-subtle flex flex-wrap items-center justify-between gap-3">
-    <div className="flex items-center gap-3"><span className="text-caption text-text-secondary">{total} {label}</span>
+    <div className="flex items-center gap-3"><span className="text-caption text-text-secondary whitespace-nowrap shrink-0 pr-[10px]">{total} {label}</span>
       <Select aria-label={`Número de ${label} por página`} className="h-9" value={String(preference.size)}
         onChange={e => update({ size: e.target.value === 'all' ? 'all' : Number(e.target.value) as FocusPageSize, page: 1 })}
         options={allowed.map(size => ({ value: String(size), label: size === 'all' ? 'Todos' : String(size) }))} />
