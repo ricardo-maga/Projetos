@@ -674,9 +674,17 @@ export default function OperationalUserCalendar({
                             }`}
                           >
                             <div className="min-h-[70px] space-y-1.5 flex flex-col justify-start">
-                              {/* Quick Add button on top corner */}
-                              {canCreateTask && onQuickCreateTask && (
-                                <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                              {/* Conflict and quick creation share the same compact action row. */}
+                              {((!conflictInfo.isAbsent && conflictInfo.hasMultipleTasks) || (canCreateTask && onQuickCreateTask)) && (
+                                <div className="flex items-center justify-end gap-1">
+                                  {!conflictInfo.isAbsent && conflictInfo.hasMultipleTasks && (
+                                    <div className="px-2 py-0.5 bg-warning/10 text-warning border border-warning/20 rounded-md text-body-sm font-extrabold flex items-center gap-1 shadow-2xs"
+                                      title={conflictInfo.tooltipText}>
+                                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                                      <span>{conflictInfo.badgeText.replace(/^⚠\uFE0F?\s*/, '')}</span>
+                                    </div>
+                                  )}
+                                  {canCreateTask && onQuickCreateTask && (
                                   <IconButton size="sm"
                                     type="button"
                                     onClick={(e) => {
@@ -689,6 +697,7 @@ export default function OperationalUserCalendar({
                                   >
                                     <Plus className="w-3.5 h-3.5" />
                                   </IconButton>
+                                  )}
                                 </div>
                               )}
 
@@ -704,24 +713,13 @@ export default function OperationalUserCalendar({
                                 >
                                   <div className="flex items-center justify-center gap-1">
                                     <AlertTriangle className="w-3.5 h-3.5 text-error shrink-0" />
-                                    <span>{conflictInfo.badgeText}</span>
+                                    <span>{conflictInfo.badgeText.replace(/^⚠\uFE0F?\s*/, '')}</span>
                                   </div>
                                   {dayAbsence?.reason && (
                                     <div className="text-caption font-semibold opacity-85 mt-0.5 truncate">
                                       {dayAbsence.reason}
                                     </div>
                                   )}
-                                </div>
-                              )}
-
-                              {/* Multiple Tasks Conflict Banner (if not absent) */}
-                              {!conflictInfo.isAbsent && conflictInfo.hasMultipleTasks && (
-                                <div
-                                  className="px-2 py-0.5 bg-warning/10 text-warning border border-warning/20 rounded-md text-body-sm font-extrabold flex items-center gap-1 shadow-2xs"
-                                  title={conflictInfo.tooltipText}
-                                >
-                                  <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
-                                  <span>{conflictInfo.badgeText}</span>
                                 </div>
                               )}
 
