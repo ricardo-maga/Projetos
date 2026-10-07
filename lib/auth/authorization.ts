@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unauthorized, forbidden } from '@/lib/apiErrors';
-import { GroupPermissions, getGroupPermissions, normalizeRoleId, CANONICAL_ROLE_IDS } from '@/lib/permissions';
+import { GroupPermissions, normalizeRoleId, CANONICAL_ROLE_IDS } from '@/lib/permissions';
 import {
   requireAuth as requireCentralAuth,
   requirePermission as requireCentralPermission,
@@ -21,7 +21,8 @@ export interface AuthenticatedUser {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   approved: boolean;
-  permissions?: GroupPermissions;
+  permissions?: GroupPermissions | string[];
+  roleIds?: string[];
 }
 
 export type AuthResult = 
@@ -37,18 +38,17 @@ export async function requireAuth(req?: NextRequest): Promise<AuthResult> {
 
   try {
     const centralUser = await requireCentralAuth(req);
-    const permissions = getGroupPermissions(centralUser.role_id);
-
     const user: AuthenticatedUser = {
       id: centralUser.id,
       email: centralUser.email,
       name: centralUser.name,
       type: centralUser.type,
-      roleId: centralUser.role_id,
+      roleId: centralUser.role_id || centralUser.role_ids[0] || '',
+      roleIds: centralUser.role_ids,
       isAdmin: centralUser.is_admin,
-      isSuperAdmin: centralUser.is_admin,
+      isSuperAdmin: centralUser.is_super_admin,
       approved: true,
-      permissions,
+      permissions: centralUser.permissions,
     };
 
     return { success: true, user, requestId };
@@ -94,18 +94,17 @@ export async function requirePermission(
 
   try {
     const centralUser = await requireCentralPermission(req, permCode);
-    const permissions = getGroupPermissions(centralUser.role_id);
-
     const user: AuthenticatedUser = {
       id: centralUser.id,
       email: centralUser.email,
       name: centralUser.name,
       type: centralUser.type,
-      roleId: centralUser.role_id,
+      roleId: centralUser.role_id || centralUser.role_ids[0] || '',
+      roleIds: centralUser.role_ids,
       isAdmin: centralUser.is_admin,
-      isSuperAdmin: centralUser.is_admin,
+      isSuperAdmin: centralUser.is_super_admin,
       approved: true,
-      permissions,
+      permissions: centralUser.permissions,
     };
 
     return { success: true, user, requestId };
@@ -134,7 +133,7 @@ export async function requireAdmin(req?: NextRequest): Promise<AuthResult> {
   try {
     const centralUser = await requireCentralAuth(req);
     const userNormalizedRole = normalizeRoleId(centralUser.role_id);
-    const isExplicitAdmin = centralUser.is_admin ||
+    const isExplicitAdmin = centralUser.is_admin || centralUser.is_super_admin ||
       userNormalizedRole === CANONICAL_ROLE_IDS.SUPER_ADMIN ||
       userNormalizedRole === CANONICAL_ROLE_IDS.ADMIN;
 
@@ -145,17 +144,17 @@ export async function requireAdmin(req?: NextRequest): Promise<AuthResult> {
       };
     }
 
-    const permissions = getGroupPermissions(centralUser.role_id);
     const user: AuthenticatedUser = {
       id: centralUser.id,
       email: centralUser.email,
       name: centralUser.name,
       type: centralUser.type,
-      roleId: centralUser.role_id,
+      roleId: centralUser.role_id || centralUser.role_ids[0] || '',
+      roleIds: centralUser.role_ids,
       isAdmin: centralUser.is_admin,
-      isSuperAdmin: centralUser.is_admin,
+      isSuperAdmin: centralUser.is_super_admin,
       approved: true,
-      permissions,
+      permissions: centralUser.permissions,
     };
 
     return { success: true, user, requestId };
@@ -182,17 +181,17 @@ export async function authenticateRequest(req?: NextRequest): Promise<{ authenti
   const requestId = req?.headers?.get('x-request-id') || crypto.randomUUID();
   try {
     const centralUser = await requireCentralAuth(req);
-    const permissions = getGroupPermissions(centralUser.role_id);
     const user: AuthenticatedUser = {
       id: centralUser.id,
       email: centralUser.email,
       name: centralUser.name,
       type: centralUser.type,
-      roleId: centralUser.role_id,
+      roleId: centralUser.role_id || centralUser.role_ids[0] || '',
+      roleIds: centralUser.role_ids,
       isAdmin: centralUser.is_admin,
-      isSuperAdmin: centralUser.is_admin,
+      isSuperAdmin: centralUser.is_super_admin,
       approved: true,
-      permissions,
+      permissions: centralUser.permissions,
     };
     return { authenticated: true, user, requestId };
   } catch {

@@ -53,4 +53,3 @@ INSERT INTO public.role_permissions (role_id, permission_id)
 SELECT role.id, permission.id FROM public.roles role CROSS JOIN public.permissions permission
 WHERE role.code IN ('SUPER_ADMIN', 'ADMIN') AND permission.code = 'reports:read'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
-

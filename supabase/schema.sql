@@ -878,4 +878,3 @@ BEGIN
     RETURN next_v;
 END;
 $$ LANGUAGE plpgsql;
-

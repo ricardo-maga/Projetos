@@ -738,6 +738,7 @@ export default function Page() {
                   { id: 'ausencias', label: 'Registo de ausências', icon: Users, permission: 'absences_read' },
                   { id: 'tarefas', label: 'Tarefas Modelo', icon: CheckSquare },
                   { id: 'utilizadores', label: 'Utilizadores e Equipas', icon: Users },
+                  { id: 'permissoes', label: 'Funções e Permissões', icon: ShieldCheck, permission: 'roles_read' },
                   { id: 'notificacoes', label: 'Notificações', icon: Bell },
                   { id: 'automacoes', label: 'Automações', icon: Zap },
                   { id: 'auditoria', label: 'Registo de Auditoria', icon: ShieldCheck },
@@ -1215,4 +1216,3 @@ export default function Page() {
     </div>
   );
 }
-

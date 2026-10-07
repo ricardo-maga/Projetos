@@ -63,4 +63,3 @@ export function buildReport(id: ReportId, input: ReportsInput) {
   const rows = [...buckets.values()].sort((a, b) => b.actual - a.actual || b.estimated - a.estimated || a.name.localeCompare(b.name));
   return { rows, total: rows.length, details: rows.map(row => ({ id: row.technicianId, primary: row.name, secondary: `${row.tasks} tarefas atribuídas`, date: '', projectId: '', value: `${row.estimated.toFixed(1)} h / ${row.actual.toFixed(1)} h` })) };
 }
-

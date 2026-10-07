@@ -2618,4 +2618,3 @@ export async function fetchAuditLogsFromSupabase(limit = 100): Promise<{ success
     return await response.json();
   } catch (err: any) { return { success: false, message: formatSupabaseError(err) }; }
 }
-

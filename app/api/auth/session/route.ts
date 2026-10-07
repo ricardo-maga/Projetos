@@ -12,8 +12,12 @@ async function getAuthenticatedUserSession(req?: NextRequest) {
       name: user.name,
       type: user.type,
       email: user.email,
-      roleId: user.role_id || 'ug-5',
+      roleId: user.role_id || user.role_ids[0] || '',
+      roleIds: user.role_ids,
+      roleNames: user.role_names,
       isAdmin: !!user.is_admin,
+      isSuperAdmin: user.is_super_admin,
+      permissions: user.permissions,
     };
   } catch {
     return null;

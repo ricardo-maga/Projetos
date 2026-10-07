@@ -452,4 +452,3 @@ export interface ERPState {
 
 export type { PlanningAllocationStatus, PlanningAllocationDTO, PlanningAllocationCreateInput, PlanningAllocationUpdateInput, PlanningAllocationFilters } from './planning/types';
 
-

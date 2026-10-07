@@ -1181,4 +1181,3 @@ export default function UserSection({
     </div>
   );
 }
-

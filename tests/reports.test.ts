@@ -28,4 +28,3 @@ describe('Reports catalog', () => {
     expect(hours.rows.map((row: any) => [row.name, row.estimated, row.actual])).toEqual([['Ana', 8, 6], ['Bruno', 8, 6]]);
   });
 });
-

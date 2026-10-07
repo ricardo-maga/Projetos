@@ -34,4 +34,3 @@ export default function ReportsSection({ projects, tasks, projectMaterials, clie
     {reportId === 'technician-hours' && <p className="text-caption text-text-secondary">As horas de uma tarefa com vários técnicos são contabilizadas integralmente para cada técnico atribuído. O período usa a data operacional da tarefa.</p>}
   </div>;
 }
-
