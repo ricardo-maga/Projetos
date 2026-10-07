@@ -729,8 +729,7 @@ export default function Page() {
                   { id: 'clientes', label: 'Clientes', icon: Building, permission: 'clients_read' },
                   { id: 'ausencias', label: 'Registo de ausências', icon: Users, permission: 'absences_read' },
                   { id: 'tarefas', label: 'Tarefas Modelo', icon: CheckSquare },
-                  { id: 'utilizadores', label: 'Utilizadores e Equipas', icon: Users },
-                  { id: 'permissoes', label: 'Funções e Permissões', icon: ShieldCheck, permission: 'roles_read' },
+                  { id: 'utilizadores', label: 'Utilizadores', icon: Users },
                   { id: 'notificacoes', label: 'Notificações', icon: Bell },
                   { id: 'automacoes', label: 'Automações', icon: Zap },
                   { id: 'auditoria', label: 'Registo de Auditoria', icon: ShieldCheck },
@@ -1045,7 +1044,6 @@ export default function Page() {
                   hideUsers={true}
                   appConfig={state.appConfig}
                   specialDays={state.specialDays}
-                  updateAuxRecord={updateAuxRecord}
                   currentUser={currentUser}
                 />
               )}

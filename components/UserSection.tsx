@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserAbsence, SpecialDay, AppConfiguration } from '../lib/types';
-import { Plus, Trash2, Calendar, Users, UserCheck, AlertCircle, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, Filter, Shield } from 'lucide-react';
+import { Plus, Trash2, Calendar, Users, UserCheck, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, Filter, ShieldCheck } from 'lucide-react';
 import { hashPassword } from '../lib/utils';
 import ConfirmModal from './ConfirmModal';
-import { getGroupPermissions, hasPermission, CANONICAL_ROLE_IDS, normalizeRoleId } from '../lib/permissions';
+import { hasPermission, normalizeRoleId } from '../lib/permissions';
 
 // UI Foundation Components
 import Button from './ui/Button';
@@ -14,18 +14,10 @@ import Input from './ui/Input';
 import Select from './ui/Select';
 import Card from './ui/Card';
 import Badge from './ui/Badge';
-import { M3SectionHeader } from './M3';
+import { M3SectionHeader, M3SegmentedControl } from './M3';
 import { getAbsenceVisibility } from '../lib/absenceVisibility';
-
-const CANONICAL_ROLES_LIST = [
-  { id: CANONICAL_ROLE_IDS.SUPER_ADMIN, name: 'Super Administrador', type: 'Admin' as const },
-  { id: CANONICAL_ROLE_IDS.ADMIN, name: 'Administrador', type: 'Admin' as const },
-  { id: CANONICAL_ROLE_IDS.PROJECT_MANAGER, name: 'Gestor de Projetos', type: 'Team' as const },
-  { id: CANONICAL_ROLE_IDS.TECHNICIAN, name: 'Técnico', type: 'Team' as const },
-  { id: CANONICAL_ROLE_IDS.COMMERCIAL, name: 'Comercial', type: 'Sales' as const },
-  { id: CANONICAL_ROLE_IDS.SOLUTIONS, name: 'Soluções', type: 'Team' as const },
-  { id: CANONICAL_ROLE_IDS.VIEWER, name: 'Visualizador', type: 'Team' as const },
-];
+import { getClientToken } from '../lib/clientAuth';
+import RolePermissionSection from './RolePermissionSection';
 
 interface UserSectionProps {
   absences: UserAbsence[];
@@ -33,13 +25,12 @@ interface UserSectionProps {
   userGroups: any[];
   addAbsence: (abs: any) => void;
   deleteAbsence: (id: string) => void;
-  addUser: (user: any) => void;
-  updateUser: (id: string, updates: any) => void;
+  addUser: (user: any) => Promise<string | null> | string | null | void;
+  updateUser: (id: string, updates: any) => Promise<boolean> | boolean | void;
   deleteUser: (id: string) => void;
   hideAbsences?: boolean;
   hideUsers?: boolean;
   specialDays?: SpecialDay[];
-  updateAuxRecord?: (tableName: any, id: string, updates: any) => void;
   currentUser?: any;
   appConfig?: AppConfiguration;
 }
@@ -56,7 +47,6 @@ export default function UserSection({
   hideAbsences = false,
   hideUsers = false,
   specialDays = [],
-  updateAuxRecord,
   currentUser,
   appConfig,
 }: UserSectionProps) {
@@ -68,10 +58,10 @@ export default function UserSection({
   const canWriteUsers = hasPermission(currentUser, 'users_write', userGroups);
   const canDeleteUsers = hasPermission(currentUser, 'users_delete', userGroups);
 
-  const canWriteConfig = hasPermission(currentUser, 'config_write', userGroups);
-  const [subTab, setSubTab] = useState<'absences' | 'users' | 'permissions'>(hideAbsences ? 'users' : 'absences');
-  const [filterGroupId, setFilterGroupId] = useState<string>('all');
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+  const [subTab, setSubTab] = useState<'absences' | 'users' | 'roles'>(hideAbsences ? 'users' : 'absences');
+  const [filterRoleId, setFilterRoleId] = useState<string>('all');
+  const [rbacRoles, setRbacRoles] = useState<Array<{ id: string; name: string; code: string }>>([]);
+  const [rbacUserRoles, setRbacUserRoles] = useState<Array<{ user_id: string; role_id: string }>>([]);
 
   const [confirmState, setConfirmState] = useState<{
     isOpen: boolean;
@@ -129,9 +119,22 @@ export default function UserSection({
   const [uEmail, setUEmail] = useState('');
   const [uPassword, setUPassword] = useState('');
   const [uPasswordConfirm, setUPasswordConfirm] = useState('');
-  const [uRoleId, setURoleId] = useState<string>(CANONICAL_ROLE_IDS.TECHNICIAN);
   const [uType, setUType] = useState<'Team' | 'Sales' | 'Admin' | 'External' | 'Other'>('Team');
-  const [uIsAdmin, setUIsAdmin] = useState(false);
+  const [uRoleIds, setURoleIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!hasPermission(currentUser, 'roles_read' as any, userGroups)) return;
+    const token = getClientToken();
+    fetch('/api/rbac/catalog', {
+      credentials: 'same-origin',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then(async response => {
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível carregar as funções.');
+      setRbacRoles((result.roles || []).filter((role: any) => role.is_active));
+      setRbacUserRoles(result.userRoles || []);
+    }).catch(error => console.error('Falha ao carregar funções RBAC:', error));
+  }, [currentUser, userGroups]);
 
   const handleAddAbsenceSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,9 +184,8 @@ export default function UserSection({
     setUEmail('');
     setUPassword('');
     setUPasswordConfirm('');
-    setURoleId(CANONICAL_ROLE_IDS.TECHNICIAN);
     setUType('Team');
-    setUIsAdmin(false);
+    setURoleIds([]);
     setIsAddingUser(true);
   };
 
@@ -194,9 +196,21 @@ export default function UserSection({
     setUEmail(user.email);
     setUPassword('');
     setUPasswordConfirm('');
-    setURoleId(normalizeRoleId(user.roleId) || user.roleId || CANONICAL_ROLE_IDS.TECHNICIAN);
     setUType(user.type || 'Team');
-    setUIsAdmin(!!user.isAdmin);
+    setURoleIds(rbacUserRoles.filter(assignment => assignment.user_id === user.id).map(assignment => assignment.role_id));
+  };
+
+  const assignUserRoles = async (targetUserId: string, roleIds: string[]) => {
+    const token = getClientToken();
+    const response = await fetch(`/api/rbac/users/${targetUserId}/roles`, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ roleIds }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível guardar as funções atribuídas.');
+    setRbacUserRoles(current => [...current.filter(assignment => assignment.user_id !== targetUserId), ...roleIds.map(role_id => ({ user_id: targetUserId, role_id }))]);
   };
 
   const handleAddUserSubmit = async (e: React.FormEvent) => {
@@ -217,21 +231,32 @@ export default function UserSection({
       alert('As passwords introduzidas não coincidem.');
       return;
     }
+    if (canManageRoleAssignments && !uRoleIds.length) {
+      alert('Atribua pelo menos uma função ao utilizador.');
+      return;
+    }
     const hashedPassword = await hashPassword(uPassword);
-    addUser({
+    const newUserId = await addUser({
       name: uName,
       email: uEmail,
       password: hashedPassword,
-      roleId: uRoleId,
+      roleId: '',
       type: uType,
       approved: true,
-      isAdmin: uIsAdmin,
     });
+    if (!newUserId) {
+      alert('Não foi possível gravar o utilizador na base de dados.');
+      return;
+    }
+    if (canManageRoleAssignments && uRoleIds.length) {
+      try { await assignUserRoles(newUserId, uRoleIds); }
+      catch (error) { alert(error instanceof Error ? `Utilizador criado, mas não foi possível atribuir funções: ${error.message}` : 'Utilizador criado, mas a atribuição de funções falhou.'); }
+    }
     setUName('');
     setUEmail('');
     setUPassword('');
     setUPasswordConfirm('');
-    setUIsAdmin(false);
+    setURoleIds([]);
     setIsAddingUser(false);
   };
 
@@ -246,13 +271,15 @@ export default function UserSection({
       alert('Por favor, preencha o nome e email do utilizador.');
       return;
     }
+    if (canManageRoleAssignments && !uRoleIds.length) {
+      alert('Atribua pelo menos uma função ao utilizador.');
+      return;
+    }
 
     const updates: any = {
       name: uName,
       email: uEmail,
-      roleId: uRoleId,
       type: uType,
-      isAdmin: uIsAdmin,
     };
 
     if (uPassword) {
@@ -263,7 +290,15 @@ export default function UserSection({
       updates.password = await hashPassword(uPassword);
     }
 
-    updateUser(editingUser.id, updates);
+    const userUpdated = await updateUser(editingUser.id, updates);
+    if (userUpdated === false) {
+      alert('Não foi possível guardar as alterações do utilizador.');
+      return;
+    }
+    if (canManageRoleAssignments) {
+      try { await assignUserRoles(editingUser.id, uRoleIds); }
+      catch (error) { alert(error instanceof Error ? `Dados atualizados, mas não foi possível guardar as funções: ${error.message}` : 'Dados atualizados, mas a atribuição de funções falhou.'); }
+    }
     setUName('');
     setUEmail('');
     setUPassword('');
@@ -291,12 +326,10 @@ export default function UserSection({
     return name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
   };
 
-  const getGroupName = (roleId: string) => {
-    const normalized = normalizeRoleId(roleId);
-    const canonicalRole = CANONICAL_ROLES_LIST.find(r => r.id === normalized || r.id === roleId);
-    if (canonicalRole) return canonicalRole.name;
-    return userGroups?.find(g => g.id === roleId)?.name || 'Sem Grupo';
-  };
+  const getAssignedRoleNames = (targetUserId: string) => rbacUserRoles
+    .filter(assignment => assignment.user_id === targetUserId)
+    .map(assignment => rbacRoles.find(role => role.id === assignment.role_id)?.name)
+    .filter((name): name is string => !!name);
 
   const getTranslatedReason = (r: string) => {
     switch (r) {
@@ -391,93 +424,24 @@ export default function UserSection({
     return limitedList;
   }, [visibleAbsences, filterUserId, filterYear, sortOrder]);
 
-  const activeGroups = useMemo(() => userGroups.filter(g => !g.deleted), [userGroups]);
-  const activeSelectedGroupId = selectedGroupId || activeGroups[0]?.id || '';
-
-  const group = activeGroups.find(g => g.id === activeSelectedGroupId);
-  const permissions = group ? getGroupPermissions(group.id, userGroups) : null;
-
-  const handleTogglePermission = (key: string) => {
-    if (!canWriteConfig) {
-      alert('Não tem permissão para alterar as permissões de grupo.');
-      return;
-    }
-    if (!updateAuxRecord || !group) return;
-    const currentPerms = group.permissions ? (typeof group.permissions === 'string' ? JSON.parse(group.permissions) : group.permissions) : {};
-    const updated = {
-      ...currentPerms,
-      [key]: !currentPerms[key]
-    };
-    updateAuxRecord('userGroups', group.id, { permissions: updated });
-  };
+  const canManageRoleAssignments = hasPermission(currentUser, 'roles_manage' as any, userGroups);
+  const canReadRoleAdmin = canManageRoleAssignments;
+  const managementTabs: Array<{ value: 'absences' | 'users' | 'roles'; label: string }> = [
+    ...(!hideAbsences ? [{ value: 'absences' as const, label: 'Ausências' }] : []),
+    ...(!hideUsers ? [{ value: 'users' as const, label: 'Utilizadores' }] : []),
+    ...(canReadRoleAdmin ? [{ value: 'roles' as const, label: 'Funções e permissões' }] : []),
+  ];
 
   return (
     <div className="space-y-6">
       
-      {/* Sub Tabs */}
-      {!hideAbsences && !hideUsers ? (
-        <div className="flex border-b border-border">
-          <button 
-            type="button"
-            onClick={() => setSubTab('absences')}
-            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
-              subTab === 'absences' 
-                ? 'border-primary text-primary bg-primary/10' 
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            <Calendar className="w-4 h-4" /> Registo de ausências
-          </button>
-          <button 
-            type="button"
-            onClick={() => setSubTab('users')}
-            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
-              subTab === 'users' 
-                ? 'border-primary text-primary bg-primary/10' 
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            <Users className="w-4 h-4" /> Utilizadores
-          </button>
-          <button 
-            type="button"
-            onClick={() => setSubTab('permissions')}
-            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
-              subTab === 'permissions' 
-                ? 'border-primary text-primary bg-primary/10' 
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            <Shield className="w-4 h-4" /> Grupos e Permissões
-          </button>
-        </div>
-      ) : hideAbsences ? (
-        <div className="flex border-b border-border">
-          <button 
-            type="button"
-            onClick={() => setSubTab('users')}
-            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
-              subTab === 'users' 
-                ? 'border-primary text-primary bg-primary/10' 
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            <Users className="w-4 h-4" /> Utilizadores
-          </button>
-          <button 
-            type="button"
-            onClick={() => setSubTab('permissions')}
-            className={`px-5 py-3 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
-              subTab === 'permissions' 
-                ? 'border-primary text-primary bg-primary/10' 
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            <Shield className="w-4 h-4" /> Grupos e Permissões
-          </button>
-        </div>
-      ) : null}
-
+      {managementTabs.length > 1 && <M3SegmentedControl
+        label="Secção de administração"
+        value={subTab}
+        options={managementTabs}
+        onChange={value => setSubTab(value)}
+        className="w-fit"
+      />}
       {subTab === 'absences' && (
         <div className="space-y-6">
           <Card className="p-4 sm:p-5 bg-surface-muted/60"><M3SectionHeader title="Registo de ausências" description="Planeamento de ausências dos grupos associados às tarefas." /></Card>
@@ -790,9 +754,9 @@ export default function UserSection({
         // USERS DIRECTORY SECTION
         <div className="space-y-6">
           {isAddingUser || editingUser ? (
-            <form onSubmit={isAddingUser ? handleAddUserSubmit : handleEditUserSubmit} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 -sm animate-fade-in text-xs font-bold text-slate-700">
-              <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-                <h2 className="text-base font-bold text-slate-800">
+            <form onSubmit={isAddingUser ? handleAddUserSubmit : handleEditUserSubmit} className="m3-card p-5 space-y-6 animate-fade-in text-sm text-text-primary">
+              <div className="flex justify-between items-center pb-4 border-b border-border">
+                <h2 className="text-heading-sm font-semibold text-text-primary">
                   {isAddingUser ? 'Adicionar utilizador' : 'Editar utilizador'}
                 </h2>
                 <button 
@@ -801,7 +765,7 @@ export default function UserSection({
                     setIsAddingUser(false);
                     setEditingUser(null);
                   }}
-                  className="px-3 py-1.5 text-slate-500 bg-slate-50 border border-slate-200 rounded-xl"
+                  className="rounded-control border border-border bg-surface-muted px-3 py-1.5 text-text-secondary hover:text-text-primary"
                 >
                   Cancelar
                 </button>
@@ -816,7 +780,7 @@ export default function UserSection({
                     value={uName}
                     onChange={e => setUName(e.target.value)}
                     placeholder="Ex: António Pereira"
-                    className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold"
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2.5 text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   />
                 </div>
 
@@ -828,7 +792,7 @@ export default function UserSection({
                     value={uEmail}
                     onChange={e => setUEmail(e.target.value)}
                     placeholder="Ex: apereira@email.pt"
-                    className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold font-mono"
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2.5 font-mono text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   />
                 </div>
 
@@ -840,7 +804,7 @@ export default function UserSection({
                     value={uPassword}
                     onChange={e => setUPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold font-mono"
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2.5 font-mono text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   />
                 </div>
 
@@ -852,101 +816,84 @@ export default function UserSection({
                     value={uPasswordConfirm}
                     onChange={e => setUPasswordConfirm(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold font-mono"
+                    className="w-full rounded-control border border-border bg-surface px-3 py-2.5 font-mono text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-slate-500">Role Canónica / Grupo *</label>
-                  <select 
-                    value={normalizeRoleId(uRoleId) || uRoleId}
-                    onChange={e => {
-                      const selectedRole = CANONICAL_ROLES_LIST.find(r => r.id === e.target.value);
-                      setURoleId(e.target.value);
-                      if (selectedRole) {
-                        setUType(selectedRole.type);
-                      }
-                    }}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-white font-semibold"
-                  >
-                    {CANONICAL_ROLES_LIST.map(role => (
-                      <option key={role.id} value={role.id}>{role.name}</option>
+                {canManageRoleAssignments ? <fieldset className="md:col-span-2 rounded-xl border border-border bg-surface-muted/50 p-4 space-y-3">
+                  <legend className="px-1 text-sm font-semibold text-text-primary">Funções do novo sistema</legend>
+                  <p className="text-xs font-normal text-text-secondary">As permissões efetivas são a união das funções selecionadas. A atribuição é auditada.</p>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {rbacRoles.map(role => (
+                      <label key={role.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${uRoleIds.includes(role.id) ? 'border-primary bg-primary/5' : 'border-border bg-surface hover:bg-surface-muted'}`}>
+                        <input type="checkbox" checked={uRoleIds.includes(role.id)} onChange={event => setURoleIds(ids => event.target.checked ? [...new Set([...ids, role.id])] : ids.filter(id => id !== role.id))} className="mt-0.5 accent-primary" />
+                        <span className="min-w-0"><span className="block text-sm font-semibold text-text-primary">{role.name}</span><span className="block text-[11px] font-normal text-text-muted">{role.code}</span></span>
+                      </label>
                     ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2.5 md:pt-6 h-fit min-h-[42px]">
-                  <input 
-                    type="checkbox" 
-                    id="userIsAdmin"
-                    checked={uIsAdmin}
-                    onChange={e => setUIsAdmin(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                  />
-                  <label htmlFor="userIsAdmin" className="text-slate-700 font-bold select-none cursor-pointer text-xs uppercase tracking-wider">
-                    Administrador
-                  </label>
-                </div>
+                  </div>
+                  {!rbacRoles.length && <p className="text-sm font-medium text-warning">Não foi possível carregar as funções disponíveis.</p>}
+                </fieldset> : <div className="md:col-span-2 rounded-xl border border-border bg-surface-muted/50 p-4">
+                  <p className="text-sm font-semibold text-text-primary">Funções atribuídas</p>
+                  <div className="mt-2 flex flex-wrap gap-2">{getAssignedRoleNames(editingUser?.id || '').length ? getAssignedRoleNames(editingUser?.id || '').map(name => <span key={name} className="rounded-md border border-primary/15 bg-primary/5 px-2 py-1 text-xs text-primary">{name}</span>) : <span className="text-sm text-text-secondary">Sem função atribuída. Solicite a um Super Administrador que configure o acesso.</span>}</div>
+                </div>}
               </div>
 
-              <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
-                <button 
-                  type="button" 
+              <div className="flex justify-end gap-3 border-t border-border pt-5">
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setIsAddingUser(false);
                     setEditingUser(null);
                   }}
-                  className="px-5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200"
                 >
                   Cancelar
-                </button>
-                <button 
+                </Button>
+                <Button
                   type="submit"
-                  className="px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 -sm"
                 >
                   {isAddingUser ? 'Adicionar Recurso' : 'Gravar Alterações'}
-                </button>
+                </Button>
               </div>
             </form>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden text-xs animate-fade-in">
+            <div className="m3-card overflow-hidden text-sm animate-fade-in">
               
-              <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-col justify-between gap-3 border-b border-border bg-surface-muted/50 p-4 sm:flex-row sm:items-center sm:p-5">
                 <div>
-                  <h2 className="text-base font-bold text-slate-800">Utilizadores</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Utilizadores ativos na plataforma</p>
+                  <h2 className="text-heading-sm font-semibold text-text-primary">Utilizadores</h2>
+                  <p className="mt-0.5 text-sm text-text-secondary">Utilizadores ativos na plataforma</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2.5">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-slate-500 font-medium whitespace-nowrap">Grupo:</span>
+                    <span className="whitespace-nowrap text-sm font-medium text-text-secondary">Função:</span>
                     <select
-                      value={filterGroupId}
-                      onChange={e => setFilterGroupId(e.target.value)}
-                      className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
+                      value={filterRoleId}
+                      onChange={e => setFilterRoleId(e.target.value)}
+                      className="cursor-pointer rounded-control border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/15"
                     >
-                      <option value="all">Todos os grupos</option>
-                      {userGroups?.filter(g => !g.deleted).map(g => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
+                      <option value="all">Todas as funções</option>
+                      {rbacRoles.map(role => (
+                        <option key={role.id} value={role.id}>{role.name}</option>
                       ))}
                     </select>
                   </div>
-                  <button 
+                  <Button
                     type="button"
                     onClick={startAddUser}
-                    className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer shrink-0"
                   >
                     <Plus className="w-4 h-4" /> Novo utilizador
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               <div className="overflow-x-auto w-full">
                 <table className="w-full min-w-[700px] text-left border-collapse">
-                  <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+                  <thead className="select-none whitespace-nowrap border-b border-border bg-surface-muted/70 text-xs font-semibold uppercase tracking-wider text-text-secondary">
                   <tr>
                     <th className="px-5 py-3.5 text-left">Nome</th>
                     <th className="px-5 py-3.5 text-left">E-mail</th>
-                    <th className="px-5 py-3.5 text-left">Grupo / Permissão</th>
+                    <th className="px-5 py-3.5 text-left">Funções / Permissões</th>
                     <th className="px-5 py-3.5 text-left">Estado</th>
                     <th className="px-5 py-3.5 text-right">Ações</th>
                   </tr>
@@ -954,10 +901,7 @@ export default function UserSection({
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                   {users
                     .filter(u => !u.deleted)
-                    .filter(u => filterGroupId === 'all' || (
-                      (normalizeRoleId(u.roleId) || u.roleId?.trim()) ===
-                      (normalizeRoleId(filterGroupId) || filterGroupId.trim())
-                    ))
+                    .filter(u => filterRoleId === 'all' || rbacUserRoles.some(assignment => assignment.user_id === u.id && assignment.role_id === filterRoleId))
                     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }))
                     .map(u => (
                     <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
@@ -974,14 +918,9 @@ export default function UserSection({
                       <td className="px-5 py-4 font-mono text-slate-500">{u.email}</td>
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-1.5 items-center">
-                          <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono text-slate-700 font-bold">
-                            {getGroupName(u.roleId)}
-                          </span>
-                          {u.isAdmin && (
-                            <span className="px-2 py-0.5 bg-red-50 border border-red-200 text-red-700 rounded text-[10px] font-sans font-bold uppercase tracking-wide">
-                              Admin
-                            </span>
-                          )}
+                          {getAssignedRoleNames(u.id).length ? getAssignedRoleNames(u.id).map(name => (
+                            <span key={name} className="px-2 py-1 bg-primary/5 border border-primary/15 rounded-md text-[11px] font-medium text-primary">{name}</span>
+                          )) : <span className="text-xs text-text-muted">Sem função atribuída</span>}
                         </div>
                       </td>
                       <td className="px-5 py-4">
@@ -1021,156 +960,7 @@ export default function UserSection({
         </div>
       )}
 
-      {subTab === 'permissions' && (
-        <div className="bg-white rounded-2xl border border-slate-200 -sm p-6 space-y-6 animate-fade-in text-xs font-bold text-slate-700">
-          <div>
-            <h2 className="text-base font-bold text-slate-800">Grupos e Permissões</h2>
-            <p className="text-xs text-slate-500">Gira as permissões de acesso às funcionalidades por grupo de utilizadores</p>
-          </div>
-
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Left side: Group Selection list */}
-            <div className="md:w-1/3 space-y-2 border-r border-slate-150 pr-6">
-              <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Grupos Disponíveis:</span>
-              <div className="space-y-1.5">
-                {activeGroups.map(groupItem => {
-                  const isSelected = activeSelectedGroupId === groupItem.id;
-                  return (
-                    <button
-                      key={groupItem.id}
-                      onClick={() => setSelectedGroupId(groupItem.id)}
-                      className={`w-full text-left px-4 py-3 rounded-xl border font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                        isSelected 
-                          ? 'bg-slate-900 border-slate-900 text-white -sm'
-                          : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <span>{groupItem.name}</span>
-                      <Shield className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Right side: Checkbox Permissions Tree */}
-            <div className="flex-1 space-y-6">
-              {group ? (
-                <>
-                  <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-800">
-                        Permissões para o grupo: <span className="text-blue-600 underline">{group.name}</span>
-                      </h3>
-                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">As alterações são guardadas e aplicadas imediatamente</p>
-                    </div>
-                  </div>
-
-                  {!updateAuxRecord ? (
-                    <div className="p-4 bg-amber-50 text-amber-800 rounded-xl flex items-center gap-2 border border-amber-200 font-bold">
-                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                      <span>Modo de visualização. Para alterar as permissões, utilize a área de administração com direitos suficientes.</span>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      {[
-                        {
-                          title: 'Projetos',
-                          keys: ['projects_read', 'projects_write', 'projects_delete']
-                        },
-                        {
-                          title: 'Tarefas',
-                          keys: ['tasks_read', 'tasks_write', 'tasks_delete']
-                        },
-                        {
-                          title: 'Calendário e Agendamento',
-                          keys: ['calendar_read', 'calendar_write']
-                        },
-                        {
-                          title: 'Clientes',
-                          keys: ['clients_read', 'clients_write', 'clients_delete']
-                        },
-                        {
-                          title: 'Ausências',
-                          keys: ['absences_read', 'absences_write', 'absences_delete']
-                        },
-                        {
-                          title: 'Configurações',
-                          keys: ['config_read', 'config_write']
-                        },
-                        {
-                          title: 'Relatórios',
-                          keys: ['reports_read']
-                        },
-                        {
-                          title: 'Administração de Utilizadores',
-                          keys: ['users_read', 'users_write', 'users_delete']
-                        }
-                      ].map(cat => (
-                        <div key={cat.title} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-3.5">
-                          <h4 className="text-xs font-bold text-slate-850 border-b border-slate-200 pb-1.5 flex items-center gap-1.5 uppercase tracking-wide">
-                            <Shield className="w-3.5 h-3.5 text-slate-500" />
-                            {cat.title}
-                          </h4>
-                          <div className="space-y-2">
-                            {cat.keys.map(key => {
-                              const friendlyName: Record<string, string> = {
-                                projects_read: 'Ver Projetos',
-                                projects_write: 'Criar / Editar Projetos',
-                                projects_delete: 'Eliminar Projetos',
-                                tasks_read: 'Ver Tarefas',
-                                tasks_write: 'Criar / Editar Tarefas',
-                                tasks_delete: 'Eliminar Tarefas',
-                                calendar_read: 'Ver Calendário',
-                                calendar_write: 'Criar / Editar Agendamentos',
-                                clients_read: 'Ver Clientes',
-                                clients_write: 'Criar / Editar Clientes',
-                                clients_delete: 'Eliminar Clientes',
-                                absences_read: 'Ver Ausências',
-                                absences_write: 'Criar / Editar Ausências',
-                                absences_delete: 'Eliminar Ausências',
-                                config_read: 'Ver Configurações',
-                                config_write: 'Editar Configurações',
-                                reports_read: 'Ver Relatórios',
-                                users_read: 'Ver Utilizadores',
-                                users_write: 'Criar / Editar Utilizadores',
-                                users_delete: 'Eliminar Utilizadores',
-                              };
-                              const labelText = friendlyName[key] || key;
-
-                              const isChecked = !!(permissions as any)?.[key];
-
-                              return (
-                                <label
-                                  key={key}
-                                  className="flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-200/80 hover:bg-slate-50 cursor-pointer select-none transition-colors"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={() => handleTogglePermission(key)}
-                                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                                  />
-                                  <span className="text-slate-700 font-bold text-xs">{labelText}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="p-8 text-center text-slate-400 font-medium">
-                  Selecione um grupo na lista lateral para gerir as suas permissões.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
+      {subTab === 'roles' && canReadRoleAdmin && <RolePermissionSection />}
       <ConfirmModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}

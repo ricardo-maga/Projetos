@@ -41,7 +41,6 @@ import {
 } from '../lib/supabaseSync';
 // import Papa from 'papaparse';
 import UserSection from './UserSection';
-import RolePermissionSection from './RolePermissionSection';
 
 import { hasPermission } from '../lib/permissions';
 
@@ -2223,10 +2222,6 @@ export default function ConfigSection({
         <AuditLogSection auditLogs={state.auditLogs || []} currentUser={currentUser} />
       )}
 
-      {activeConfigTab === 'permissoes' && hasPermission(currentUser, 'roles_read' as any, userGroups) && (
-        <RolePermissionSection />
-      )}
-
       {/* UTILIZADORES TAB */}
       {activeConfigTab === 'utilizadores' && (
         <div className="bg-white rounded-2xl border border-slate-200 -sm animate-fade-in text-xs" id="users-tab">
@@ -2242,7 +2237,6 @@ export default function ConfigSection({
               deleteUser={deleteUser!}
               hideAbsences={true}
               specialDays={state.specialDays || []}
-              updateAuxRecord={updateAuxRecord}
               currentUser={currentUser}
             />
           )}

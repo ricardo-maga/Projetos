@@ -10,6 +10,11 @@ SET search_path = public, pg_temp
 AS $function$
 DECLARE v_role public.roles%ROWTYPE;
 BEGIN
+  IF auth.role() <> 'service_role' OR NOT EXISTS (
+    SELECT 1 FROM public.users WHERE id=p_actor_id AND approved IS TRUE AND deleted IS NOT TRUE AND COALESCE(type,'') <> 'External'
+  ) THEN
+    RAISE EXCEPTION 'Executor inválido ou operação apenas de serviço.' USING ERRCODE = '42501';
+  END IF;
   IF auth.role() <> 'service_role' OR NOT public.has_permission('roles.manage',(SELECT auth_user_id FROM public.users WHERE id=p_actor_id)) THEN
     RAISE EXCEPTION 'Apenas o Super Administrador pode criar funções.' USING ERRCODE = '42501';
   END IF;
@@ -40,6 +45,11 @@ SET search_path = public, pg_temp
 AS $function$
 DECLARE v_before public.roles%ROWTYPE; v_after public.roles%ROWTYPE;
 BEGIN
+  IF auth.role() <> 'service_role' OR NOT EXISTS (
+    SELECT 1 FROM public.users WHERE id=p_actor_id AND approved IS TRUE AND deleted IS NOT TRUE AND COALESCE(type,'') <> 'External'
+  ) THEN
+    RAISE EXCEPTION 'Executor inválido ou operação apenas de serviço.' USING ERRCODE = '42501';
+  END IF;
   IF auth.role() <> 'service_role' OR NOT public.has_permission('roles.manage',(SELECT auth_user_id FROM public.users WHERE id=p_actor_id)) THEN
     RAISE EXCEPTION 'Apenas o Super Administrador pode editar funções.' USING ERRCODE = '42501';
   END IF;
