@@ -415,7 +415,12 @@ export default function Page() {
   // Fallback if active tab is not allowed
   React.useEffect(() => {
     if (mounted && state && currentUser && tabs.length > 0) {
-      const allowed = tabs.some(t => t.id === activeTab);
+      const nestedPagePermission = activeTab === 'clientes' ? 'clients_read'
+        : activeTab === 'ausencias' ? 'absences_read' : null;
+      const allowed = tabs.some(t => t.id === activeTab) || (
+        nestedPagePermission !== null &&
+        hasPermission(currentUser, nestedPagePermission as any, state.userGroups || [])
+      );
       if (!allowed) {
         setActiveTab('dashboard');
       }
@@ -739,7 +744,9 @@ export default function Page() {
                 const visibleConfigSubItems = configSubItems.filter(
                   sub => !sub.permission || hasPermission(currentUser, sub.permission as any, state?.userGroups || [])
                 );
-                const isConfigSectionActive = isActive || visibleConfigSubItems.some(sub => sub.id === activeTab);
+                const isConfigSectionActive = isActive || visibleConfigSubItems.some(
+                  sub => (sub.id === 'clientes' || sub.id === 'ausencias') && sub.id === activeTab
+                );
 
                 return (
                   <div key={tab.id} className="space-y-1">
@@ -774,7 +781,9 @@ export default function Page() {
                       <div className={cn("space-y-1.5 my-1.5", isCollapsed ? 'md:pl-0' : 'pl-5 pr-1')}>
                         {visibleConfigSubItems.map(sub => {
                           const SubIcon = sub.icon;
-                          const isSubActive = activeConfigTab === sub.id || activeTab === sub.id;
+                          const isSubActive = sub.id === 'clientes' || sub.id === 'ausencias'
+                            ? activeTab === sub.id
+                            : activeTab === 'configuracoes' && activeConfigTab === sub.id;
                           return (
                             <button
                               key={sub.id}
