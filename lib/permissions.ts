@@ -33,6 +33,7 @@ export interface GroupPermissions {
   tickets_read?: boolean;
   tickets_write?: boolean;
   tickets_delete?: boolean;
+  reports_read?: boolean;
 
   // Outras permissões existentes no sistema
   quotes_read?: boolean;
@@ -106,6 +107,7 @@ const ALL_TRUE_PERMISSIONS: GroupPermissions = {
   tickets_read: true,
   tickets_write: true,
   tickets_delete: true,
+  reports_read: true,
   quotes_read: true,
   quotes_write: true,
   quotes_delete: true,
@@ -524,6 +526,7 @@ export const EMPTY_PERMISSIONS: GroupPermissions = {
   tickets_read: false,
   tickets_write: false,
   tickets_delete: false,
+  reports_read: false,
   quotes_read: false,
   quotes_write: false,
   quotes_delete: false,
@@ -619,3 +622,4 @@ export function hasPermission(
   const perms = getGroupPermissions(roleId, customGroups);
   return !!perms[permissionKey];
 }
+

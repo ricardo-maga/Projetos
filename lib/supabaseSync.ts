@@ -703,6 +703,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
         title: t.task_title || '',
         statusId: t.status_id || '',
         taskTypeId: resolvedTaskTypeId || (defaultTaskType ? defaultTaskType.id : undefined),
+        priorityId: t.priority_id || undefined,
         assigneeIds: assigneesMap[t.id] || [],
         estimatedDate: t.estimated_date || '',
         description: t.task_description || '',
@@ -1608,6 +1609,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
       const projectId = t.projectId ? stringToUUID(t.projectId) : null;
       const statusId = t.statusId ? stringToUUID(t.statusId) : null;
       const taskTypeId = t.taskTypeId ? stringToUUID(t.taskTypeId) : null;
+      const priorityId = t.priorityId ? stringToUUID(t.priorityId) : null;
 
       return {
         id: t.id,
@@ -1615,6 +1617,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
         task_title: t.title,
         status_id: (statusId && validTaskStatusIds.has(statusId)) ? statusId : null,
         task_type_id: (taskTypeId && validTaskTypeIds.has(taskTypeId)) ? taskTypeId : null,
+        priority_id: priorityId,
         estimated_date: formatDbDate(t.estimatedDate),
         task_description: t.description || null,
         estimated_hours: t.estimatedHours || null,
@@ -2336,6 +2339,7 @@ ALTER TABLE IF EXISTS task_types ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT
 ALTER TABLE IF EXISTS task_types ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
 
 ALTER TABLE IF EXISTS tasks ADD COLUMN IF NOT EXISTS task_type_id UUID;
+ALTER TABLE IF EXISTS tasks ADD COLUMN IF NOT EXISTS priority_id UUID REFERENCES project_priority(id) ON DELETE SET NULL;
 ALTER TABLE IF EXISTS default_tasks ADD COLUMN IF NOT EXISTS task_type_id UUID;
 
 -- Seed dos Tipos de Tarefa com Níveis
@@ -2614,3 +2618,4 @@ export async function fetchAuditLogsFromSupabase(limit = 100): Promise<{ success
     return await response.json();
   } catch (err: any) { return { success: false, message: formatSupabaseError(err) }; }
 }
+

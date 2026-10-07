@@ -253,6 +253,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     project_id UUID NULL REFERENCES projects(id) ON DELETE CASCADE,
     task_title TEXT NOT NULL,
     status_id UUID NULL REFERENCES task_status(id) ON DELETE SET NULL,
+    priority_id UUID NULL REFERENCES project_priority(id) ON DELETE SET NULL,
     estimated_date DATE NULL,
     task_description TEXT NULL,
     estimated_hours INTERVAL NULL, -- Postgres native interval
@@ -637,6 +638,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_project_deleted ON tasks (project_id, delet
 CREATE INDEX IF NOT EXISTS idx_tasks_deleted_created_at ON tasks (deleted, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_tasks_active_project ON tasks (project_id, status_id) WHERE deleted = FALSE;
 CREATE INDEX IF NOT EXISTS idx_tasks_estimated_date ON tasks (estimated_date);
+CREATE INDEX IF NOT EXISTS idx_tasks_priority_id ON tasks (priority_id) WHERE deleted IS NOT TRUE;
 
 CREATE INDEX IF NOT EXISTS idx_task_assignees_user_id ON task_assignees (user_id);
 CREATE INDEX IF NOT EXISTS idx_task_assignees_task_id ON task_assignees (task_id);
@@ -876,3 +878,4 @@ BEGIN
     RETURN next_v;
 END;
 $$ LANGUAGE plpgsql;
+

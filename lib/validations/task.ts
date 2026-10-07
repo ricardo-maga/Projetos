@@ -34,6 +34,7 @@ export const createTaskSchema = z.object({
     .nullable()
     .optional()
     .transform((val) => (val === '' ? null : val)),
+  priorityId: z.string().nullable().optional().transform((val) => (val === '' ? null : val)),
   estimatedHours: z.number().nonnegative().optional().default(0),
   actualHours: z.number().nonnegative().optional().default(0),
   startDate: optionalDateField,
@@ -140,3 +141,4 @@ export const queryTaskSchema = z.object({
   taskTypeId: z.string().optional(),
   userId: z.string().optional(),
 });
+

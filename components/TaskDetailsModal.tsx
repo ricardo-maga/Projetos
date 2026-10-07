@@ -18,7 +18,7 @@ import {
   ChevronDown,
   Copy
 } from 'lucide-react';
-import { Task, Project, Client, TaskType, User } from '../lib/types';
+import { Task, Project, Client, TaskType, User, ProjectPriority } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
@@ -65,6 +65,7 @@ export interface TaskDetailsModalProps {
   deleteTask?: (id: string) => Promise<any> | void;
   taskStatuses: any[];
   taskTypes?: TaskType[];
+  projectPriorities?: ProjectPriority[];
   users: User[];
   userGroups?: any[];
   appConfig?: any;
@@ -99,6 +100,7 @@ export default function TaskDetailsModal({
   deleteTask,
   taskStatuses,
   taskTypes = [],
+  projectPriorities = [],
   users,
   userGroups = [],
   appConfig,
@@ -145,6 +147,7 @@ export default function TaskDetailsModal({
   const [formDescription, setFormDescription] = useState('');
   const [formStatusId, setFormStatusId] = useState('');
   const [formTypeId, setFormTypeId] = useState('');
+  const [formPriorityId, setFormPriorityId] = useState('');
   const [formEstimatedDate, setFormEstimatedDate] = useState('');
   const [formEstimatedHours, setFormEstimatedHours] = useState('08:00');
   const [formActualHours, setFormActualHours] = useState('0');
@@ -185,6 +188,7 @@ export default function TaskDetailsModal({
         setFormDescription(activeTask.description || '');
         setFormStatusId(getDefaultTaskStatusId(taskStatuses)); // Reset to default unstarted status on duplicate
         setFormTypeId(activeTask.taskTypeId || '');
+        setFormPriorityId(activeTask.priorityId || projectPriorities.filter(p => !p.deleted).sort((a, b) => a.scale - b.scale)[0]?.id || '');
         setFormEstimatedDate(activeTask.estimatedDate || '');
         setFormEstimatedHours(formatToOnlyHours(activeTask.estimatedHours) || '08:00');
         setFormActualHours('0'); // Reset actual hours to 0 on duplicate
@@ -213,6 +217,7 @@ export default function TaskDetailsModal({
         setFormDescription('');
         setFormStatusId(defaultStatus);
         setFormTypeId('');
+        setFormPriorityId(projectPriorities.filter(p => !p.deleted).sort((a, b) => a.scale - b.scale)[0]?.id || '');
         // "Data planeada" prevalece, sem datas reais de início e fim inicialmente preenchidas
         setFormEstimatedDate(initialDate || '');
         setFormEstimatedHours('08:00');
@@ -236,6 +241,7 @@ export default function TaskDetailsModal({
       setFormDescription(activeTask.description || '');
       setFormStatusId(activeTask.statusId || getDefaultTaskStatusId(taskStatuses));
       setFormTypeId(activeTask.taskTypeId || '');
+      setFormPriorityId(activeTask.priorityId || '');
       setFormEstimatedDate(activeTask.estimatedDate || '');
       setFormEstimatedHours(formatToOnlyHours(activeTask.estimatedHours) || '0');
       setFormActualHours(formatToOnlyHours(activeTask.actualHours) || '0');
@@ -432,6 +438,7 @@ export default function TaskDetailsModal({
           description: formDescription.trim(),
           statusId: formStatusId || undefined,
           taskTypeId: formTypeId || undefined,
+          priorityId: formPriorityId || undefined,
           estimatedDate: formEstimatedDate || undefined,
           estimatedHours: parseTaskHoursToFloat(formEstimatedHours),
           actualHours: parseTaskHoursToFloat(formActualHours),
@@ -455,6 +462,7 @@ export default function TaskDetailsModal({
           description: formDescription.trim(),
           statusId: formStatusId || undefined,
           taskTypeId: formTypeId || '',
+          priorityId: formPriorityId || null,
           estimatedDate: formEstimatedDate || '',
           estimatedHours: parseTaskHoursToFloat(formEstimatedHours),
           actualHours: parseTaskHoursToFloat(formActualHours),
@@ -741,6 +749,20 @@ export default function TaskDetailsModal({
                   className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 read-only:bg-surface-muted"
                 />
               </div>
+              <div className="space-y-1">
+                <label htmlFor="task-formPriorityId" className="block text-body-sm font-bold text-text-primary">Prioridade</label>
+                <Select id="task-formPriorityId"
+                  disabled={isPlanningReadOnly}
+                  value={formPriorityId}
+                  onChange={e => setFormPriorityId(e.target.value)}
+                  className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface-muted cursor-pointer"
+                >
+                  <option value="">Sem prioridade</option>
+                  {projectPriorities.filter(priority => !priority.deleted || priority.id === formPriorityId).sort((a, b) => a.scale - b.scale).map(priority => (
+                    <option key={priority.id} value={priority.id}>{priority.name}{priority.scale === 3 ? ' · Crítica' : ''}</option>
+                  ))}
+                </Select>
+              </div>
             </div>
 
             {/* Task type (status is the first functional field above planning) */}
@@ -944,3 +966,4 @@ export default function TaskDetailsModal({
       </Dialog>
   );
 }
+

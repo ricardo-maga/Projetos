@@ -14,6 +14,7 @@ import NotificationDropdown from '../components/NotificationDropdown';
 import DatabaseStatusIndicator from '../components/DatabaseStatusIndicator';
 import CalendarSection from '../components/CalendarSection';
 import MyFocusSection from '../components/MyFocusSection';
+import ReportsSection from '../components/ReportsSection';
 import { TicketSection } from '../components/TicketSection';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { logAuditEventToSupabase } from '../lib/supabaseSync';
@@ -27,7 +28,7 @@ import { cn } from '../lib/utils';
 import { 
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
   Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw,
-  Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Ticket as TicketIcon, Eye, EyeOff, AlertCircle
+  Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Ticket as TicketIcon, Eye, EyeOff, AlertCircle, ChartNoAxesCombined
 } from 'lucide-react';
 
 import { clearClientSession, setClientSession, getClientToken } from '../lib/clientAuth';
@@ -406,6 +407,7 @@ export default function Page() {
       { id: 'tickets', label: 'Tickets', icon: TicketIcon, permission: 'tickets_read' },
       { id: 'projetos', label: 'Projetos', icon: Briefcase, permission: 'projects_read' },
       { id: 'tarefas', label: 'Tarefas', icon: CheckSquare, permission: 'tasks_read' },
+      { id: 'relatorios', label: 'Relatórios', icon: ChartNoAxesCombined, permission: 'reports_read' },
       { id: 'calendario', label: 'Calendário', icon: Calendar, permission: 'calendar_read' },
       { id: 'configuracoes', label: 'Configurações', icon: Settings, permission: 'config_read' },
     // Tickets is temporarily hidden from navigation; its APIs and data remain intact.
@@ -948,6 +950,20 @@ export default function Page() {
                 />
               )}
 
+              {activeTab === 'relatorios' && (
+                <ReportsSection
+                  projects={state.projects || []}
+                  tasks={state.tasks || []}
+                  projectMaterials={state.projectMaterials || []}
+                  clients={state.clients || []}
+                  users={state.users || []}
+                  projectPriorities={state.projectPriorities || []}
+                  taskStatuses={state.taskStatuses || []}
+                  onNavigate={handleTabChange}
+                  onSelectProject={handleSelectProject}
+                />
+              )}
+
               {activeTab === 'projetos' && (
                 <ProjectSection 
                   projects={state.projects}
@@ -1003,6 +1019,7 @@ export default function Page() {
                   absences={state.userAbsences || []}
                   taskStatuses={state.taskStatuses}
                   taskTypes={state.taskTypes || []}
+                  projectPriorities={state.projectPriorities || []}
                   addTask={addTask}
                   updateTask={updateTask}
                   deleteTask={deleteTask}
@@ -1198,3 +1215,4 @@ export default function Page() {
     </div>
   );
 }
+
