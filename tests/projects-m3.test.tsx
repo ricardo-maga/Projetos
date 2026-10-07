@@ -14,6 +14,13 @@ const project = {
   teamsInvolvedIds: [], partnersIds: [], deleted: false,
 };
 const statuses = [{ id: 'qa-status', name: 'Estado configurado', color: 'laranja', scale: 2 }];
+it('forwards auxiliary priorities to the unified task modal inside Projects', () => {
+  const priorities = [{ id: 'custom-priority', name: 'Prioridade configurada', scale: 2, deleted: false }];
+  const h = createProjectHarness();
+  const tree = h.render({ ...projectPreviewProps, selectedProjectId: project.id, projectPriorities: priorities });
+  const modal = findProjectElement(tree, e => e.type?.name === 'TaskDetailsModal');
+  expect(modal.props.projectPriorities).toBe(priorities);
+});
 it('keeps compact monthly navigation and hides legends and document controls without erasing metadata', () => {
   const h = createProjectHarness();
   const tree = h.render({ ...projectPreviewProps, selectedProjectId: project.id });
