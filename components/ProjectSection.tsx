@@ -4739,6 +4739,7 @@ export default function ProjectSection({
         }}
         taskStatuses={taskStatuses}
         taskTypes={taskTypes}
+        projectPriorities={projectPriorities}
         users={users}
         userGroups={userGroups}
         appConfig={appConfig}
