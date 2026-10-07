@@ -407,8 +407,6 @@ export default function Page() {
       { id: 'projetos', label: 'Projetos', icon: Briefcase, permission: 'projects_read' },
       { id: 'tarefas', label: 'Tarefas', icon: CheckSquare, permission: 'tasks_read' },
       { id: 'calendario', label: 'Calendário', icon: Calendar, permission: 'calendar_read' },
-      { id: 'clientes', label: 'Clientes', icon: Building, permission: 'clients_read' },
-      { id: 'ausencias', label: 'Registo de ausências', icon: Users, permission: 'absences_read' },
       { id: 'configuracoes', label: 'Configurações', icon: Settings, permission: 'config_read' },
     // Tickets is temporarily hidden from navigation; its APIs and data remain intact.
     ].filter(tab => tab.id !== 'tickets' && (!tab.permission || hasPermission(currentUser, tab.permission as any, state?.userGroups || [])));
@@ -726,6 +724,8 @@ export default function Page() {
 
               if (tab.id === 'configuracoes') {
                 const configSubItems = [
+                  { id: 'clientes', label: 'Clientes', icon: Building, permission: 'clients_read' },
+                  { id: 'ausencias', label: 'Registo de ausências', icon: Users, permission: 'absences_read' },
                   { id: 'sistema', label: 'Configurações do Sistema', icon: Settings },
                   { id: 'campos', label: 'Campos Auxiliares', icon: ListTodo },
                   { id: 'dias', label: 'Dias Especiais', icon: Calendar },
@@ -736,6 +736,10 @@ export default function Page() {
                   { id: 'auditoria', label: 'Registo de Auditoria', icon: ShieldCheck },
                   { id: 'importacao', label: 'Importação e Backup', icon: Database },
                 ];
+                const visibleConfigSubItems = configSubItems.filter(
+                  sub => !sub.permission || hasPermission(currentUser, sub.permission as any, state?.userGroups || [])
+                );
+                const isConfigSectionActive = isActive || visibleConfigSubItems.some(sub => sub.id === activeTab);
 
                 return (
                   <div key={tab.id} className="space-y-1">
@@ -751,7 +755,7 @@ export default function Page() {
                         isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-4',
                         isDisabled 
                           ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent' 
-                          : isActive 
+                          : isConfigSectionActive 
                             ? 'is-active'
                             : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
                       )}
@@ -766,17 +770,21 @@ export default function Page() {
                     </button>
 
                     {/* Submenu under Configurações */}
-                    {isActive && (
+                    {isConfigSectionActive && (
                       <div className={cn("space-y-1.5 my-1.5", isCollapsed ? 'md:pl-0' : 'pl-5 pr-1')}>
-                        {configSubItems.map(sub => {
+                        {visibleConfigSubItems.map(sub => {
                           const SubIcon = sub.icon;
-                          const isSubActive = activeConfigTab === sub.id;
+                          const isSubActive = activeConfigTab === sub.id || activeTab === sub.id;
                           return (
                             <button
                               key={sub.id}
                               onClick={() => {
-                                handleTabChange('configuracoes');
-                                setActiveConfigTab(sub.id);
+                                if (sub.id === 'clientes' || sub.id === 'ausencias') {
+                                  handleTabChange(sub.id);
+                                } else {
+                                  handleTabChange('configuracoes');
+                                  setActiveConfigTab(sub.id);
+                                }
                               }}
                               className={cn(
                                 "w-full flex items-center gap-2.5 py-2 rounded-control text-caption font-semibold transition-all duration-150 cursor-pointer select-none border-l-2",

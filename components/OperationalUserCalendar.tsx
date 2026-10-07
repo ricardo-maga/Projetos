@@ -8,6 +8,7 @@ import {
   X,
   CalendarDays,
   Maximize2,
+  ChevronDown,
   Minimize2
 } from 'lucide-react';
 import { Task, Project, Client, User, UserAbsence, SpecialDay, TaskType } from '../lib/types';
@@ -21,7 +22,7 @@ import {
   isTaskOnDate,
   computeTaskDropUpdates
 } from '../lib/operationalCalendar';
-import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, getTaskStatusStyle, getUserInitials } from '../lib/utils';
+import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, getTaskStatusStyle } from '../lib/utils';
 import { normalizeRoleId } from '../lib/permissions';
 import DateViewNavigator from './ui/DateViewNavigator';
 import { M3Button, M3FilterChip, M3SectionHeader } from './M3';
@@ -90,6 +91,7 @@ export default function OperationalUserCalendar({
   // 1. Fullscreen container ref and state
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [expandedTaskCards, setExpandedTaskCards] = useState<Set<string>>(new Set());
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -343,6 +345,12 @@ export default function OperationalUserCalendar({
     return activeEligibleUsers.filter(u => selectedUserIds.includes(u.id));
   }, [activeEligibleUsers, selectedUserIds]);
 
+  const occupiedDates = new Set(calendarDays.filter(day =>
+    displayedUsers.some(user => (userDayTasksMap.get(`${user.id}_${day.dateStr}`) || []).length > 0)
+  ).map(day => day.dateStr));
+  const calendarMinWidth = 168 + calendarDays.reduce((width, day) =>
+    width + (occupiedDates.has(day.dateStr) ? 144 : 64), 0);
+
   // User selection handlers
   const handleSelectAllUsers = () => {
     setSelectedUserIds(activeEligibleUsers.map(u => u.id));
@@ -493,12 +501,16 @@ export default function OperationalUserCalendar({
       {/* OPERATIONAL CALENDAR TABLE */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] border-collapse text-left table-fixed">
+          <table className="border-collapse text-left table-fixed" style={{ minWidth: calendarMinWidth, width: occupiedDates.size ? '100%' : calendarMinWidth }}>
+            <colgroup>
+              <col style={{ width: 168 }} />
+              {calendarDays.map(day => <col key={day.dateStr} style={occupiedDates.has(day.dateStr) ? undefined : { width: 64 }} />)}
+            </colgroup>
             {/* Header: Days */}
             <thead className="bg-surface border-b border-border-subtle sticky top-0 z-20">
               <tr>
                 {/* User Column Header */}
-                <th className="w-56 p-3 text-body-sm font-extrabold text-text-secondary sticky left-0 z-30 bg-surface border-r border-border-subtle shadow-[2px_0_4px_rgba(0,0,0,0.02)]">
+                <th className="p-3 text-body-sm font-extrabold text-text-secondary sticky left-0 z-30 bg-surface border-r border-border-subtle shadow-[2px_0_4px_rgba(0,0,0,0.02)]">
                   <div className="flex items-center justify-between">
                     <span>Utilizador</span>
                     <span className="text-caption text-text-muted font-semibold">
@@ -526,9 +538,9 @@ export default function OperationalUserCalendar({
                       title={specialDay ? specialDay.name : undefined}
                     >
                       <div className="text-caption uppercase font-bold tracking-wider opacity-75">
-                        {day.weekdayShort}
+                        {day.weekdayShort.slice(0, 3).toUpperCase()}
                       </div>
-                      <div className="flex items-center justify-center gap-1 my-0.5">
+                      <div className="flex flex-col items-center justify-center gap-0.5 my-0.5">
                         <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-body-sm font-black ${
                           day.isToday
                             ? 'bg-warning text-white shadow-2xs'
@@ -537,7 +549,7 @@ export default function OperationalUserCalendar({
                           {day.dayNum}
                         </span>
                         <span className="text-caption uppercase font-bold text-text-muted">
-                          {day.monthShort}
+                          {day.monthShort.slice(0, 3).toUpperCase()}
                         </span>
                       </div>
                       {specialDay && (
@@ -720,6 +732,8 @@ export default function OperationalUserCalendar({
                                 const clientName = project ? getClientName(project.clientId) : '';
                                 const tStyle = getTaskStatusStyle(task.statusId, taskStatuses);
                                 const statusName = tStyle.name;
+                                const cardKey = `${cellKey}_${task.id}`;
+                                const isExpanded = expandedTaskCards.has(cardKey);
 
                                 // Color styling based on status color configuration
                                 const cardStyle = `border-l-4 ${tStyle.dotClass.replace('bg-', 'border-l-')} ${tStyle.bgClass} ${tStyle.borderClass} hover:brightness-95`;
@@ -745,17 +759,23 @@ export default function OperationalUserCalendar({
                                       e.dataTransfer.setData('sourceDateStr', day.dateStr);
                                       e.dataTransfer.effectAllowed = 'move';
                                     }}
-                                    onClick={() => onSelectTask(task)}
                                     className={`p-2 bg-surface rounded-xl shadow-2xs hover:shadow-xs transition-all space-y-1 text-left ${cardStyle} ${
                                       canMoveTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                                     }`}
-                                    title={`Abrir tarefa: ${task.title}\nCliente: ${clientName || 'Sem cliente'}\nProjeto: ${projectLabel}\nEstado: ${statusName}`}
                                   >
-                                    {/* Linha 1: Nome do cliente (Sem ícone) */}
-                                    <div className="text-caption font-bold text-text-secondary truncate leading-tight">
-                                      {clientName || 'Sem cliente'}
-                                    </div>
-
+                                    <Button type="button" variant="ghost" size="sm"
+                                      className="w-full justify-between gap-1 px-0 text-left"
+                                      aria-expanded={isExpanded}
+                                      aria-label={`${isExpanded ? 'Recolher' : 'Expandir'} tarefa de ${clientName || 'Sem cliente'}`}
+                                      onClick={() => setExpandedTaskCards(previous => {
+                                        const next = new Set(previous);
+                                        if (next.has(cardKey)) next.delete(cardKey); else next.add(cardKey);
+                                        return next;
+                                      })}>
+                                      <span className="text-body-sm font-bold truncate">{clientName || 'Sem cliente'}</span>
+                                      <ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                    </Button>
+                                    {isExpanded && <div className="space-y-1">
                                     {/* Linha 2: Nome do projeto */}
                                     <div className="text-body-sm font-bold text-primary truncate leading-tight">
                                       {projectLabel}
@@ -776,24 +796,10 @@ export default function OperationalUserCalendar({
                                       <span className={`inline-block text-caption font-bold px-1.5 py-0.5 rounded-md truncate max-w-[110px] ${badgeStyle}`}>
                                         {statusName}
                                       </span>
-                                      {task.assigneeIds && task.assigneeIds.length > 0 && (
-                                        <div className="flex items-center -space-x-1 shrink-0" title={`Atribuído a: ${task.assigneeIds.map(id => users.find(u => u.id === id)?.name).filter(Boolean).join(', ')}`}>
-                                          {task.assigneeIds.slice(0, 2).map(id => {
-                                            const assignedUser = users.find(u => u.id === id);
-                                            return (
-                                              <span key={id} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-black ring-1 ring-white">
-                                                {getUserInitials(assignedUser?.name || id)}
-                                              </span>
-                                            );
-                                          })}
-                                          {task.assigneeIds.length > 2 && (
-                                            <span className="text-caption font-bold text-text-muted pl-0.5">
-                                              +{task.assigneeIds.length - 2}
-                                            </span>
-                                          )}
-                                        </div>
-                                      )}
                                     </div>
+                                      <Button type="button" variant="ghost" size="sm" className="w-full"
+                                        onClick={() => onSelectTask(task)}>Abrir tarefa</Button>
+                                    </div>}
                                   </div>
                                 );
                               })}

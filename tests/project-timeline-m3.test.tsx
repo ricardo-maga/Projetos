@@ -67,7 +67,7 @@ describe('Project timeline M3', () => {
     expect(html).toContain('Dia especial');
     const scroll = find(tree, e => e.props?.['data-project-timeline-scroll'] !== undefined);
     expect(scroll.props.className).toBe('overflow-x-auto overflow-y-hidden');
-    expect(find(tree, e => e.type === 'table').props.style.minWidth).toBe(2360);
+    expect(find(tree, e => e.type === 'table').props.style.minWidth).toBe(1930);
     h.state.fullscreen = true;
     tree = h.render(timelinePreviewProps);
     const master = find(tree, e => e.props?.['data-project-timeline-master'] !== undefined);
@@ -78,7 +78,10 @@ describe('Project timeline M3', () => {
     const task: any = { id: 't', projectId: 'one', title: 'Tarefa real', estimatedDate: '2026-10-05', statusId: 'pending', estimatedHours: '2' };
     let selected = '', created = '';
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
-    const tree = h.render({ ...timelinePreviewProps, projects: [project('one')], tasks: [task], onSelectTask: (t: any) => selected = t.id, onCreateTask: (date: string, id: string) => created = `${date}:${id}` });
+    const props = { ...timelinePreviewProps, projects: [project('one')], tasks: [task], onSelectTask: (t: any) => selected = t.id, onCreateTask: (date: string, id: string) => created = `${date}:${id}` };
+    let tree = h.render(props);
+    find(tree, e => e.props?.['aria-expanded'] === false).props.onClick();
+    tree = h.render(props);
     const event = find(tree, e => e.props?.onClick && e.props.children?.props?.children?.[0]?.props?.children?.[1] === 'Tarefa real');
     expect(event).toBeDefined(); event.props.onClick(); expect(selected).toBe('t');
     find(tree, e => e.props?.['aria-label'] === 'Criar tarefa em Projeto one no dia 2026-10-05').props.onClick();
@@ -90,5 +93,23 @@ describe('Project timeline M3', () => {
     const source = readFileSync(new URL('../components/ProjectTimeline.tsx', import.meta.url), 'utf8');
     expect(source).not.toMatch(/<(button|input|select|textarea)\b/);
     expect(source).not.toMatch(/(?:bg|text|border)-(?:slate|blue|indigo)-/);
+  });
+  it('starts with client-only rows and expands compact task cards with initials but no task status badge', () => {
+    const task: any = { id: 't', projectId: 'one', title: 'Tarefa compacta', estimatedDate: '2026-10-10', statusId: 'custom', assigneeIds: ['u'], estimatedHours: '4' };
+    const props: any = { ...timelinePreviewProps, projects: [project('one')], tasks: [task], users: [{ id: 'u', name: 'Ana Silva' }], taskStatuses: [{ id: 'custom', name: 'Estado tarefa exclusivo', color: 'verde' }] };
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    let tree = h.render(props), html = renderToStaticMarkup(tree);
+    expect(html).toContain('Cliente Exemplo'); expect(html).not.toContain('Projeto one');
+    expect(html).not.toContain('Tarefa compacta'); expect(html).not.toContain('IP-one');
+    const widths = find(tree, e => e.type === 'colgroup').props.children[1].map((e: any) => e.props.style?.width);
+    // The Saturday with a registered task is not compressed, even while collapsed.
+    expect(widths[5]).toBeUndefined(); expect(widths[6]).toBe(64);
+    find(tree, e => e.props?.['aria-expanded'] === false).props.onClick();
+    tree = h.render(props); html = renderToStaticMarkup(tree);
+    expect(html).toContain('Tarefa compacta'); expect(html).toContain('AS');
+    expect(html).toContain('border-l-4'); expect(html).not.toContain('Estado tarefa exclusivo');
+    expect(html).toContain('IP-one'); expect(html).not.toContain('IP:');
+    find(tree, e => e.props?.['aria-expanded'] === true).props.onClick();
+    expect(renderToStaticMarkup(h.render(props))).not.toContain('Tarefa compacta');
   });
 });
