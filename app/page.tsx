@@ -19,6 +19,7 @@ import { TicketSection } from '../components/TicketSection';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { logAuditEventToSupabase } from '../lib/supabaseSync';
 import { hasPermission } from '../lib/permissions';
+import { APP_SECTIONS } from '../lib/sectionCatalog';
 import AppLogo from '../components/AppLogo';
 import AppLoadingScreen from '../components/AppLoadingScreen';
 import Dialog from '../components/ui/Dialog';
@@ -28,7 +29,7 @@ import { cn } from '../lib/utils';
 import { 
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
   Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw,
-  Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Ticket as TicketIcon, Eye, EyeOff, AlertCircle, ChartNoAxesCombined
+  Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Eye, EyeOff, AlertCircle
 } from 'lucide-react';
 
 import { clearClientSession, setClientSession, getClientToken } from '../lib/clientAuth';
@@ -401,17 +402,8 @@ export default function Page() {
 
   const tabs = React.useMemo(() => {
     if (!state || !currentUser) return [];
-    return [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'meu-foco', label: 'O meu foco', icon: Compass },
-      { id: 'tickets', label: 'Tickets', icon: TicketIcon, permission: 'tickets_read' },
-      { id: 'projetos', label: 'Projetos', icon: Briefcase, permission: 'projects_read' },
-      { id: 'tarefas', label: 'Tarefas', icon: CheckSquare, permission: 'tasks_read' },
-      { id: 'relatorios', label: 'Relatórios', icon: ChartNoAxesCombined, permission: 'reports_read' },
-      { id: 'calendario', label: 'Calendário', icon: Calendar, permission: 'calendar_read' },
-      { id: 'configuracoes', label: 'Configurações', icon: Settings, permission: 'config_read' },
-    // Tickets is temporarily hidden from navigation; its APIs and data remain intact.
-    ].filter(tab => tab.id !== 'tickets' && (!tab.permission || hasPermission(currentUser, tab.permission as any, state?.userGroups || [])));
+    return APP_SECTIONS.filter(section => !section.requiredPermission ||
+      hasPermission(currentUser, section.requiredPermission as any, state?.userGroups || []));
   }, [state, currentUser]);
 
   // Fallback if active tab is not allowed
@@ -924,30 +916,6 @@ export default function Page() {
                   deleteTask={deleteTask}
                   onSelectProject={handleSelectProject}
                   appConfig={state.appConfig}
-                />
-              )}
-
-              {activeTab === 'tickets' && tabs.some(tab => tab.id === 'tickets') && (
-                <TicketSection 
-                  tickets={state.tickets || []}
-                  users={state.users || []}
-                  clients={state.clients || []}
-                  projects={state.projects || []}
-                  tasks={state.tasks || []}
-                  taskStatuses={state.taskStatuses || []}
-                  taskTypes={state.taskTypes || []}
-                  projectPriorities={state.projectPriorities || []}
-                  ticketStatuses={state.ticketStatuses || []}
-                  userGroups={state.userGroups || []}
-                  currentUser={currentUser}
-                  onAddTicket={addTicket}
-                  onUpdateTicket={updateTicket}
-                  onDeleteTicket={deleteTicket}
-                  onValidateAndApprove={validateAndApproveTicket}
-                  onConvertToTask={convertTicketToTask}
-                  onResolveDirectly={resolveTicketDirectly}
-                  onNavigateToProject={handleSelectProject}
-                  onAddClient={addClient}
                 />
               )}
 

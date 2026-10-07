@@ -556,84 +556,1187 @@ export function normalizeRoleId(roleId?: string | null): string | null {
  * A autorização runtime e integridade de dados é garantida exclusivamente no PostgreSQL / RPC.
  * Roles desconhecidas ou vazias nunca recebem permissões por fallback.
  */
-export function getGroupPermissions(roleId?: string | null, customGroups?: UserGroup[]): GroupPermissions {
-  if (!roleId) return { ...EMPTY_PERMISSIONS };
-  const normalizedRole = normalizeRoleId(roleId);
-  if (!normalizedRole) return { ...EMPTY_PERMISSIONS };
+export function getGroupPermissions(roleId?: string | null, customGroups?: UserGm 'react';
+import { useERP } from '../hooks/useERP';
+import BentoDashboard from '../components/BentoDashboard';
+import ProjectSection from '../components/ProjectSection';
+import TaskSection from '../components/TaskSection';
+import ClientSection from '../components/ClientSection';
+import QuoteSection from '../components/QuoteSection';
+import InventorySection from '../components/InventorySection';
+import UserSection from '../components/UserSection';
+import ConfigSection from '../components/ConfigSection';
+import NotificationDropdown from '../components/NotificationDropdown';
+import DatabaseStatusIndicator from '../components/DatabaseStatusIndicator';
+import CalendarSection from '../components/CalendarSection';
+import MyFocusSection from '../components/MyFocusSection';
+import ReportsSection from '../components/ReportsSection';
+import { TicketSection } from '../components/TicketSection';
+import { isSupabaseConfigured } from '../lib/supabaseClient';
+import { logAuditEventToSupabase } from '../lib/supabaseSync';
+import { hasPermission } from '../lib/permissions';
+import { APP_SECTIONS } from '../lib/sectionCatalog';
+import AppLogo from '../components/AppLogo';
+import AppLoadingScreen from '../components/AppLoadingScreen';
+import Dialog from '../components/ui/Dialog';
+import IconButton from '../components/ui/IconButton';
+import { cn } from '../lib/utils';
 
-  const base = DEFAULT_PERMISSIONS[normalizedRole] || DEFAULT_PERMISSIONS[roleId];
-  if (!base) return { ...EMPTY_PERMISSIONS };
+import { 
+  LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
+  Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw,
+  Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Eye, EyeOff, AlertCircle
+} from 'lucide-react';
+
+import { clearClientSession, setClientSession, getClientToken } from '../lib/clientAuth';
+
+export default function Page() {
+  const [mounted, setMounted] = React.useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeConfigTab, setActiveConfigTab] = useState('sistema');
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
-  if (customGroups) {
-    const group = customGroups.find(g => g.id === roleId || g.id === normalizedRole);
-    if (group && (group as any).permissions) {
-      let parsedPerms = (group as any).permissions;
-      if (typeof parsedPerms === 'string') {
+  // Login state
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  
+  // Change password state
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [changePasswordError, setChangePasswordError] = useState('');
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState(false);
+
+  // Restore session from HttpOnly cookies or active bearer token
+  React.useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const token = getClientToken();
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const res = await fetch('/api/auth/session', { method: 'GET', headers });
+        let data: any = null;
         try {
-          parsedPerms = JSON.parse(parsedPerms);
+          data = await res.json();
+        } catch {}
+
+        if (res.ok && data && data.success && data.user) {
+          if (data.token) {
+            setClientSession(data.token, data.user);
+          }
+          setCurrentUser(data.user);
+        } else {
+          if (res.status === 401) {
+            clearClientSession();
+            setCurrentUser(null);
+          } else setCurrentUser(null);
+        }
+      } catch (fetchErr) {
+        console.warn('Erro na verificação de sessão com o servidor:', fetchErr);
+        setCurrentUser(null);
+      } finally {
+        setMounted(true);
+      }
+    };
+    restoreSession();
+  }, []);
+
+  // Listen for session expiration events from write operations
+  React.useEffect(() => {
+    const handleSessionExpired = (e: any) => {
+      clearClientSession();
+      setCurrentUser(null);
+      const msg = e?.detail?.message || 'A sua sessão expirou ou é inválida. Por favor, faça login novamente.';
+      setLoginError(msg);
+    };
+    window.addEventListener('erp_auth_session_expired', handleSessionExpired);
+    return () => window.removeEventListener('erp_auth_session_expired', handleSessionExpired);
+  }, []);
+
+  const {
+    isInitialDataLoaded,
+    loading,
+    state,
+    resetToDefault,
+    clearAllData,
+    importState,
+    addProject,
+    updateProject,
+    deleteProject,
+    addTask,
+    addTasks,
+    updateTask,
+    deleteTask,
+    addComment,
+    deleteComment,
+    addAbsence,
+    deleteAbsence,
+    addUser,
+    updateUser,
+    deleteUser,
+    addClient,
+    updateClient,
+    deleteClient,
+    addMaterial,
+    updateMaterial,
+    deleteMaterial,
+    addQuote,
+    updateQuote,
+    deleteQuote,
+    addBOMItem,
+    updateBOMItem,
+    deleteBOMItem,
+    addEquipment,
+    updateEquipment,
+    deleteEquipment,
+    // Tickets
+    addTicket,
+    updateTicket,
+    deleteTicket,
+    validateAndApproveTicket,
+    convertTicketToTask,
+    resolveTicketDirectly,
+    addProjectMaterial,
+    updateProjectMaterial,
+    deleteProjectMaterial,
+    addProjectRiskItem,
+    updateProjectRiskItem,
+    deleteProjectRiskItem,
+    updateConfig,
+    addAuxRecord,
+    updateAuxRecord,
+    deleteAuxRecord,
+    reorderAuxRecords,
+    addSpecialDay,
+    deleteSpecialDay,
+    addDefaultTask,
+    updateDefaultTask,
+    deleteDefaultTask,
+    updateNotificationSetting,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    addNotification,
+    addAutomationRule,
+    updateAutomationRule,
+    deleteAutomationRule,
+    toggleAutomationRule,
+    runAutomationRule,
+    syncStatus,
+    publicAppConfig,
+    syncError,
+    isDbConfigured,
+    refreshFromDatabase,
+  } = useERP();
+
+  const hasProcessedDeepLink = React.useRef(false);
+
+  const [navKey, setNavKey] = useState(0);
+
+  const scrollToTop = React.useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      const mainElem = document.getElementById('main-content');
+      if (mainElem) mainElem.scrollTop = 0;
+      const bodyWrapper = document.getElementById('body-wrapper');
+      if (bodyWrapper) bodyWrapper.scrollTop = 0;
+      const activeContent = document.getElementById('active-tab-content');
+      if (activeContent) activeContent.scrollTop = 0;
+      const mainRoot = document.getElementById('main-root');
+      if (mainRoot) mainRoot.scrollTop = 0;
+    }
+  }, []);
+
+  // Ensure scroll is at top whenever active tab, selected project, or nav key changes
+  React.useEffect(() => {
+    scrollToTop();
+    const timer = setTimeout(scrollToTop, 0);
+    const raf = requestAnimationFrame(scrollToTop);
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(raf);
+    };
+  }, [activeTab, selectedProjectId, navKey, scrollToTop]);
+
+  // Handle direct deep links
+  React.useEffect(() => {
+    if (mounted && state && !hasProcessedDeepLink.current) {
+      hasProcessedDeepLink.current = true;
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      const projectParam = params.get('project');
+      
+      if (tabParam) {
+        setActiveTab(tabParam);
+      }
+      if (projectParam) {
+        setSelectedProjectId(projectParam);
+      }
+    }
+  }, [mounted, state]);
+
+  // Synchronize active theme attribute on document.documentElement for global styling
+  React.useEffect(() => {
+    const cachedTheme = typeof window !== 'undefined' ? localStorage.getItem('erp_theme') : null;
+    const currentTheme = state?.appConfig?.theme || cachedTheme || 'default';
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      document.body?.setAttribute('data-theme', currentTheme);
+      const root = document.getElementById('main-root');
+      if (root) {
+        root.setAttribute('data-theme', currentTheme);
+      }
+    }
+  }, [state?.appConfig?.theme]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    setSelectedProjectId(null);
+    setNavKey(prev => prev + 1);
+    setSidebarOpen(false);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      params.set('tab', tabId);
+      params.delete('project');
+      window.history.pushState(null, '', '?' + params.toString());
+      scrollToTop();
+    }
+  };
+
+  const handleSelectProject = (projId: string | null) => {
+    setSelectedProjectId(projId);
+    if (projId) {
+      setActiveTab('projetos');
+    }
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (projId) {
+        params.set('tab', 'projetos');
+        params.set('project', projId);
+      } else {
+        params.delete('project');
+      }
+      window.history.pushState(null, '', '?' + params.toString());
+      scrollToTop();
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setIsLoggingIn(true);
+    
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loginEmail.trim(),
+          password: loginPassword,
+          rememberMe
+        })
+      });
+
+      let responseText = '';
+      try {
+        responseText = await res.text();
+      } catch (readErr) {
+        console.warn('Erro ao ler resposta:', readErr);
+      }
+
+      let data: any = null;
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
         } catch {
-          parsedPerms = {};
+          console.warn('Resposta não JSON:', responseText.substring(0, 100));
         }
       }
-      return { ...base, ...parsedPerms };
-    }
-  }
-  
-  return base;
-}
 
-/**
- * Helper de apresentação para a camada de visualização UI (botões, tabs, menus).
- * AVISO: NÃO é uma boundary de segurança de backend. A autorização runtime
- * é efetuada no PostgreSQL (has_permission / RPC / RLS).
- */
-export function hasPermission(
-  userOrRoleId: string | { roleId?: string; role_id?: string; type?: string; isAdmin?: boolean; is_admin?: boolean; isSuperAdmin?: boolean; permissions?: unknown; [key: string]: any } | null | undefined,
-  permissionKey: keyof GroupPermissions,
-  customGroups?: UserGroup[]
-): boolean {
-  if (!userOrRoleId) return false;
-  
-  let roleId = '';
-  let isAdminUser = false;
-  
-  if (typeof userOrRoleId === 'string') {
-    roleId = userOrRoleId.trim();
-    if (
-      roleId === 'ug-1' ||
-      roleId === CANONICAL_ROLE_IDS.SUPER_ADMIN ||
-      roleId === '00000000-0000-0000-0000-000000000001' ||
-      roleId === 'admin'
-    ) {
-      isAdminUser = true;
-    }
-  } else if (typeof userOrRoleId === 'object') {
-    roleId = (userOrRoleId.roleId || userOrRoleId.role_id || userOrRoleId.type || '').trim();
-    if (userOrRoleId.type === 'External') return false;
-    if (userOrRoleId.isSuperAdmin) return true;
+      if (res.ok && data?.success) {
+        
+        // Save bearer token for robust cross-origin, iframe and API requests
+        if (data.token) {
+          setClientSession(data.token, data.user, rememberMe);
+        }
 
-    // Session permissions are the server-calculated union across active roles.
-    // An empty array is authoritative and must not fall back to hard-coded roles.
-    if (Array.isArray(userOrRoleId.permissions)) {
-      const requested = String(permissionKey);
-      const canonical = requested.replace(/^([^_]+)_/, '$1.');
-      const alternatives = canonical.endsWith('.write')
-        ? [canonical, canonical.replace(/\.write$/, '.create'), canonical.replace(/\.write$/, '.update')]
-        : [canonical];
-      return userOrRoleId.permissions.some((code: unknown) => typeof code === 'string' && alternatives.includes(code));
+        // Show loading screen immediately and activate user session
+        setIsTransitioning(true);
+        setCurrentUser(data.user);
+
+        // Fetch authoritative database records directly using the active session token
+        try {
+          await refreshFromDatabase();
+        } catch (refreshErr) {
+          console.warn('Erro ao atualizar dados após autenticação:', refreshErr);
+        } finally {
+          setIsTransitioning(false);
+          setIsLoggingIn(false);
+        }
+      } else {
+        let errorMessage = 
+          data?.error?.message || 
+          data?.message || 
+          data?.error?.details?.fieldErrors?.password?.[0] || 
+          data?.error?.details?.fieldErrors?.email?.[0];
+
+        if (!errorMessage) {
+          if (res.status === 401) {
+            errorMessage = 'Email ou palavra-passe incorretos.';
+          } else if (res.status === 403) {
+            errorMessage = 'Este utilizador ainda aguarda aprovação por um administrador.';
+          } else if (res.status === 429) {
+            errorMessage = 'Demasiadas tentativas de autenticação. Por favor, aguarde um minuto.';
+          } else if (res.status >= 500) {
+            errorMessage = 'O servidor está temporariamente indisponível. Por favor, tente novamente.';
+          } else {
+            errorMessage = 'Email ou palavra-passe incorretos.';
+          }
+        }
+
+        setLoginError(errorMessage);
+        setIsLoggingIn(false);
+      }
+    } catch (err) {
+      console.error('Error logging in:', err);
+      setLoginError('Ocorreu um erro ao ligar ao servidor de autenticação. Por favor, tente novamente.');
+      setIsLoggingIn(false);
     }
-    isAdminUser = !!(
-      userOrRoleId.isSuperAdmin ||
-      roleId === 'ug-1' ||
-      roleId === CANONICAL_ROLE_IDS.SUPER_ADMIN ||
-      roleId === '00000000-0000-0000-0000-000000000001' ||
-      roleId === 'admin'
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangePasswordError('');
+    setChangePasswordSuccess(false);
+
+    if (newPassword && newPassword !== confirmNewPassword) {
+      setChangePasswordError('As passwords não coincidem.');
+      return;
+    }
+    if (newPassword && newPassword.length < 12) {
+      setChangePasswordError('A password deve ter pelo menos 12 caracteres.');
+      return;
+    }
+
+    const updates: any = {};
+    if (profileName && profileName !== currentUser.name) {
+      updates.name = profileName;
+    }
+    if (newPassword) {
+      const response = await fetch('/api/auth/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: newPassword }) });
+      if (!response.ok) { setChangePasswordError('Não foi possível alterar a password.'); return; }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      updateUser(currentUser.id, updates);
+      
+      const updatedUser = { ...currentUser, ...updates };
+      setCurrentUser(updatedUser);
+    }
+    
+    setChangePasswordSuccess(true);
+    setTimeout(() => {
+      setIsChangingPassword(false);
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setChangePasswordSuccess(false);
+    }, 2000);
+  };
+
+  const tabs = React.useMemo(() => {
+    if (!state || !currentUser) return [];
+    return APP_SECTIONS.filter(section => !section.requiredPermission ||
+      hasPermission(currentUser, section.requiredPermission as any, state?.userGroups || []));
+  }, [state, currentUser]);
+
+  // Fallback if active tab is not allowed
+  React.useEffect(() => {
+    if (mounted && state && currentUser && tabs.length > 0) {
+      const nestedPagePermission = activeTab === 'clientes' ? 'clients_read'
+        : activeTab === 'ausencias' ? 'absences_read' : null;
+      const allowed = tabs.some(t => t.id === activeTab) || (
+        nestedPagePermission !== null &&
+        hasPermission(currentUser, nestedPagePermission as any, state.userGroups || [])
+      );
+      if (!allowed) {
+        setActiveTab('dashboard');
+      }
+    }
+  }, [activeTab, tabs, mounted, state, currentUser]);
+
+  // useERP exposes a clean baseline before authenticated data loads; never let
+  // its default branding override the public configuration on a fresh login.
+  const loginBranding = publicAppConfig || (isInitialDataLoaded ? state?.appConfig : null);
+
+  if (!mounted) {
+    return (
+      <AppLoadingScreen id="session-check-screen" />
     );
   }
-  
-  if (isAdminUser) return true;
-  if (!roleId) return false;
-  
-  const perms = getGroupPermissions(roleId, customGroups);
-  return !!perms[permissionKey];
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <div className="w-full max-w-md bg-white rounded-2xl -xl border border-slate-100 overflow-hidden">
+          <div className="p-8 pb-6 bg-slate-800 text-white text-center flex flex-col items-center">
+            <AppLogo 
+              logoUrl={loginBranding?.logoImagePath || loginBranding?.logo}
+              appName={loginBranding?.appName || ''}
+              className="w-72 max-w-full h-16 rounded-2xl bg-white p-2.5 mb-4 shadow-md mx-auto"
+              fallbackIconClassName="w-8 h-8 text-blue-600"
+            />
+            {loginBranding?.appName ? (
+              <h1 className="text-2xl font-bold font-sans tracking-tight">{loginBranding.appName}</h1>
+            ) : null}
+            {loginBranding?.appDescription ? (
+              <p className="text-slate-400 text-sm mt-1">{loginBranding.appDescription}</p>
+            ) : null}
+          </div>
+          
+          <form onSubmit={handleLogin} className="p-8 space-y-5">
+            {loginError && (
+              <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm font-medium text-center border border-red-100">
+                {loginError}
+              </div>
+            )}
+            
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-slate-700">E-mail</label>
+              <input 
+                type="email" 
+                value={loginEmail}
+                onChange={e => {
+                  setLoginEmail(e.target.value);
+                  if (loginError) setLoginError('');
+                }}
+                autoComplete="username"
+                placeholder="nome@empresa.com"
+                disabled={isLoggingIn}
+                className="w-full p-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+                required
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <label className="block text-sm font-medium text-slate-700">Password</label>
+
+              </div>
+              <div className="relative">
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  value={loginPassword}
+                  onChange={e => {
+                    setLoginPassword(e.target.value);
+                    if (loginError) setLoginError('');
+                  }}
+                  autoComplete="current-password"
+                  placeholder="Introduza a password"
+                  disabled={isLoggingIn}
+                  className="w-full p-3 pr-10 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                  tabIndex={-1}
+                  title={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between py-1">
+              <label className={`flex items-center gap-2 text-xs font-semibold select-none ${isLoggingIn ? 'text-slate-400 cursor-not-allowed' : 'text-slate-600 cursor-pointer'}`}>
+                <input 
+                  type="checkbox" 
+                  checked={rememberMe}
+                  onChange={e => setRememberMe(e.target.checked)}
+                  disabled={isLoggingIn}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                />
+                Lembrar
+              </label>
+              <span className="text-[10px] text-slate-400">
+                {rememberMe ? '30 dias' : '8 horas'}
+              </span>
+            </div>
+            
+            <button 
+              type="submit"
+              disabled={isLoggingIn}
+              className={`w-full py-3 text-white rounded-xl font-bold transition-all duration-200 shadow-sm flex items-center justify-center gap-2.5 ${
+                isLoggingIn 
+                  ? 'bg-blue-500/90 cursor-wait' 
+                  : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.99] cursor-pointer'
+              }`}
+            >
+              {isLoggingIn ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>A autenticar...</span>
+                </>
+              ) : (
+                <span>Entrar</span>
+              )}
+            </button>
+
+
+            
+            <div className="pt-4 text-center text-xs text-slate-400">
+              <p>Acesso Restrito - Uso Interno</p>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Authenticated user: DB error on initial authoritative load
+  if (syncStatus === 'error' && !isInitialDataLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="db-error-screen">
+        <div className="w-full max-w-md bg-white rounded-2xl border border-rose-100 p-8 text-center space-y-6 shadow-sm animate-fade-in">
+          <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">
+              Erro ao carregar os dados
+            </h1>
+            <p className="text-slate-500 text-xs font-medium leading-relaxed">
+              {syncError || 'Não foi possível obter os dados autoritativos da base de dados.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => refreshFromDatabase()}
+            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Tentar novamente</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. Authenticated user: Authoritative data not yet loaded or transition in progress
+  if (!isInitialDataLoaded || isTransitioning) {
+    return (
+      <AppLoadingScreen id="loading-screen" />
+    );
+  }
+
+  const appConfig = state?.appConfig || {};
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background text-text-primary" id="main-root" data-active-tab={activeTab} data-theme={appConfig.theme || 'default'}>
+      
+      {/* HEADER BAR (Gmail / Material inspired contract: exactly 3 zones) */}
+      <header className="m3-top-app-bar sticky top-0 z-50 h-16 px-4 flex items-center justify-between shrink-0" id="app-header">
+        {/* Zone 1: Burger + Brand logo wordmark */}
+        <div className="flex items-center gap-3 min-w-0">
+          <IconButton
+            variant="ghost"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="md:hidden text-text-secondary hover:bg-surface-muted hover:text-text-primary rounded-full shrink-0"
+            id="toggle-sidebar"
+            aria-label={sidebarOpen ? "Fechar menu" : "Abrir menu"}
+          >
+            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </IconButton>
+          
+          <IconButton
+            variant="ghost"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden md:inline-flex text-text-secondary hover:bg-surface-muted hover:text-text-primary rounded-full shrink-0"
+            title={isCollapsed ? "Expandir menu" : "Colapsar menu"}
+            id="toggle-desktop-sidebar"
+            aria-label="Alternar menu lateral"
+          >
+            <Menu className="w-5 h-5" />
+          </IconButton>
+          
+          <div 
+            className="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0"
+            onClick={() => handleTabChange('dashboard')}
+            title="Ir para o Dashboard"
+          >
+            <AppLogo 
+              logoUrl={appConfig.logoImagePath || appConfig.logo} 
+              appName={appConfig.appName}
+              className="w-auto max-w-[200px] h-10 bg-transparent border-0 shadow-none p-0 shrink"
+            />
+            <div className="min-w-0 hidden sm:block">
+              <h1 className="text-body font-bold text-text-primary tracking-tight leading-tight truncate">{appConfig.appName}</h1>
+              <p className="text-caption text-text-muted font-medium truncate">{appConfig.appDescription}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Zone 2 & 3: Actions + Notification + Profile dropdown */}
+        <div className="flex items-center gap-3 shrink-0">
+          
+          <NotificationDropdown 
+            notifications={(state.notifications || []).filter(n => !n.userId || n.userId === currentUser.id || n.userId === 'all')}
+            markAsRead={markNotificationAsRead}
+            markAllAsRead={() => markAllNotificationsAsRead(currentUser.id)}
+          />
+          <DatabaseStatusIndicator status={syncStatus} configured={isDbConfigured} loaded={isInitialDataLoaded} error={syncError} />
+          
+          <div
+            onClick={() => {
+              setProfileName(currentUser.name);
+              setNewPassword('');
+              setConfirmNewPassword('');
+              setIsChangingPassword(true);
+            }}
+            className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-all p-1.5 hover:bg-surface-muted rounded-full" 
+            id="user-profile"
+            title="Editar perfil"
+          >
+            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-caption border border-border shadow-raised uppercase shrink-0">
+              {(() => {
+                const parts = (currentUser.name || '').trim().split(/\s+/);
+                if (parts.length >= 2) {
+                  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+                }
+                return (parts[0] || '').charAt(0).toUpperCase();
+              })()}
+            </div>
+            
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (currentUser) {
+                  logAuditEventToSupabase({
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    userEmail: currentUser.email,
+                    action: 'LOGOUT',
+                    entityType: 'USER',
+                    entityId: currentUser.id,
+                    entityName: currentUser.name,
+                    details: `Sessão terminada por ${currentUser.name}`
+                  }).catch(() => {});
+                }
+                clearClientSession();
+                fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
+                setCurrentUser(null);
+              }}
+              className="p-1.5 hover:bg-error/10 text-text-muted hover:text-error rounded-full transition-colors"
+              title="Terminar sessão"
+              aria-label="Terminar sessão"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* BODY WRAPPER */}
+      <div className="flex-1 flex relative" id="body-wrapper">
+
+        {/* Mobile drawer backdrop overlay */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 top-16 bg-black/40 backdrop-blur-xs z-30 md:hidden animate-fade-in"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Fechar menu"
+          />
+        )}
+        
+        {/* SIDEBAR NAVIGATION - Gmail/Material inspired sidebar */}
+        <aside 
+          className={`fixed top-16 bottom-0 left-0 z-40 h-[calc(100dvh-4rem)] transform ${
+            sidebarOpen ? 'translate-x-0 shadow-overlay' : '-translate-x-full'
+          } md:static md:top-auto md:bottom-auto md:h-auto md:translate-x-0 md:shadow-none md:flex flex-col ${
+            isCollapsed ? 'md:w-20' : 'md:w-64'
+          } w-72 max-w-[85vw] m3-nav-rail transition-all duration-200 ease-in-out`}
+          id="sidebar-nav"
+        >
+          <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+            {tabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              const isDisabled = (tab as any).disabled;
+
+              if (tab.id === 'configuracoes') {
+                const configSubItems = [
+                  { id: 'sistema', label: 'Configurações da aplicação', icon: Settings },
+                  { id: 'campos', label: 'Campos Auxiliares', icon: ListTodo },
+                  { id: 'dias', label: 'Dias Especiais', icon: Calendar },
+                  { id: 'clientes', label: 'Clientes', icon: Building, permission: 'clients_read' },
+                  { id: 'ausencias', label: 'Registo de ausências', icon: Users, permission: 'absences_read' },
+                  { id: 'tarefas', label: 'Tarefas Modelo', icon: CheckSquare },
+                  { id: 'utilizadores', label: 'Utilizadores e Equipas', icon: Users },
+                  { id: 'permissoes', label: 'Funções e Permissões', icon: ShieldCheck, permission: 'roles_read' },
+                  { id: 'notificacoes', label: 'Notificações', icon: Bell },
+                  { id: 'automacoes', label: 'Automações', icon: Zap },
+                  { id: 'auditoria', label: 'Registo de Auditoria', icon: ShieldCheck },
+                  { id: 'importacao', label: 'Importação e Backup', icon: Database },
+                ];
+                const visibleConfigSubItems = configSubItems.filter(
+                  sub => !sub.permission || hasPermission(currentUser, sub.permission as any, state?.userGroups || [])
+                );
+                const isConfigSectionActive = isActive || visibleConfigSubItems.some(
+                  sub => (sub.id === 'clientes' || sub.id === 'ausencias') && sub.id === activeTab
+                );
+
+                return (
+                  <div key={tab.id} className="space-y-1">
+                    <button
+                      disabled={isDisabled}
+                      onClick={() => {
+                        if (!isDisabled) {
+                          handleTabChange(tab.id);
+                        }
+                      }}
+                      className={cn(
+                        "m3-nav-item w-full flex items-center gap-3 py-3 font-semibold transition-all duration-150 cursor-pointer select-none",
+                        isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-4',
+                        isDisabled 
+                          ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent' 
+                          : isConfigSectionActive 
+                            ? 'is-active'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
+                      )}
+                      id={`tab-${tab.id}`}
+                      title={isCollapsed ? (isDisabled ? `${tab.label} (Desativado)` : tab.label) : undefined}
+                    >
+                      <Icon className={cn(
+                        "w-5 h-5 flex-shrink-0 transition-colors",
+                        isDisabled ? 'text-text-disabled' : isActive ? 'text-primary' : 'text-text-muted'
+                      )} />
+                      <span className={cn("text-body truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
+                    </button>
+
+                    {/* Submenu under Configurações */}
+                    {isConfigSectionActive && (
+                      <div className={cn("space-y-1.5 my-1.5", isCollapsed ? 'md:pl-0' : 'pl-5 pr-1')}>
+                        {visibleConfigSubItems.map(sub => {
+                          const SubIcon = sub.icon;
+                          const isSubActive = sub.id === 'clientes' || sub.id === 'ausencias'
+                            ? activeTab === sub.id
+                            : activeTab === 'configuracoes' && activeConfigTab === sub.id;
+                          return (
+                            <button
+                              key={sub.id}
+                              onClick={() => {
+                                if (sub.id === 'clientes' || sub.id === 'ausencias') {
+                                  handleTabChange(sub.id);
+                                } else {
+                                  handleTabChange('configuracoes');
+                                  setActiveConfigTab(sub.id);
+                                }
+                              }}
+                              className={cn(
+                                "w-full flex items-center gap-2.5 py-2 rounded-control text-caption font-semibold transition-all duration-150 cursor-pointer select-none border-l-2",
+                                isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-3',
+                                isSubActive
+                                  ? 'bg-primary/5 text-primary font-bold border-primary'
+                                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
+                              )}
+                              title={isCollapsed ? sub.label : undefined}
+                            >
+                              <SubIcon className={cn(
+                                "w-4 h-4 shrink-0 transition-colors",
+                                isSubActive ? 'text-primary' : 'text-text-muted'
+                              )} />
+                              <span className={cn("truncate", isCollapsed ? 'md:hidden' : 'block')}>{sub.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  key={tab.id}
+                  disabled={isDisabled}
+                  onClick={() => {
+                    if (!isDisabled) {
+                      handleTabChange(tab.id);
+                    }
+                  }}
+                  className={cn(
+                    "m3-nav-item w-full flex items-center gap-3 py-3 font-semibold transition-all duration-150 cursor-pointer select-none",
+                    isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-4',
+                    isDisabled 
+                      ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent' 
+                      : isActive 
+                        ? 'is-active'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
+                  )}
+                  id={`tab-${tab.id}`}
+                  title={isCollapsed ? (isDisabled ? `${tab.label} (Desativado)` : tab.label) : undefined}
+                >
+                  <Icon className={cn(
+                    "w-5 h-5 flex-shrink-0 transition-colors",
+                    isDisabled ? 'text-text-disabled' : isActive ? 'text-primary' : 'text-text-muted'
+                  )} />
+                  <span className={cn("text-body truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+        </aside>
+
+        {/* MAIN PANEL CONTENT */}
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 overflow-y-auto bg-background" id="main-content">
+          <div className="max-w-7xl mx-auto space-y-6">
+            
+
+            {/* Error or Rollback Notification */}
+            {syncStatus === 'error' && (
+              <div className="bg-error/5 border border-error/20 rounded-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-error text-body-sm font-semibold shadow-raised" id="db-error-banner">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-error shrink-0 animate-ping" />
+                  <div>
+                    <span className="font-bold">Aviso de Integridade da Base de Dados: </span>
+                    <span className="font-medium">{syncError || 'A última operação não pôde ser gravada na base de dados e foi revertida para proteção de dados.'}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => refreshFromDatabase()}
+                  className="px-4 py-2 bg-error hover:opacity-90 text-white font-bold rounded-control text-caption transition-colors shrink-0 flex items-center gap-1.5 shadow-raised cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Recarregar da Base de Dados
+                </button>
+              </div>
+            )}
+
+            {/* Content view switcher */}
+            <div id="active-tab-content" key={`${activeTab}-${navKey}`} className="animate-fade-in">
+              {activeTab === 'dashboard' && (
+                <BentoDashboard 
+                  projects={state.projects}
+                  tasks={state.tasks}
+                  absences={state.userAbsences}
+                  materials={state.materials}
+                  projectMaterials={state.projectMaterials || []}
+                  projectRiskItems={state.projectRiskItems || []}
+                  quotes={state.quotes}
+                  comments={state.comments}
+                  clients={state.clients}
+                  users={state.users}
+                  projectStatuses={state.projectStatuses}
+                  taskStatuses={state.taskStatuses}
+                  projectCategories={state.projectCategories}
+                  projectPriorities={state.projectPriorities}
+                  onNavigate={handleTabChange}
+                  onSelectProject={handleSelectProject}
+                />
+              )}
+
+              {activeTab === 'meu-foco' && (
+                <MyFocusSection 
+                  key={currentUser.id}
+                  currentUser={currentUser}
+                  users={state.users}
+                  userGroups={state.userGroups}
+                  tasks={state.tasks}
+                  projects={state.projects}
+                  clients={state.clients}
+                  specialDays={state.specialDays || []}
+                  taskStatuses={state.taskStatuses}
+                  taskTypes={state.taskTypes}
+                  userAbsences={state.userAbsences}
+                  projectStatuses={state.projectStatuses}
+                  projectRiskItems={state.projectRiskItems || []}
+                  riskStatuses={state.riskStatuses || []}
+                  updateTask={updateTask}
+                  addTask={addTask}
+                  deleteTask={deleteTask}
+                  onSelectProject={handleSelectProject}
+                  appConfig={state.appConfig}
+                />
+              )}
+
+              {activeTab === 'relatorios' && (
+                <ReportsSection
+                  projects={state.projects || []}
+                  tasks={state.tasks || []}
+                  projectMaterials={state.projectMaterials || []}
+                  clients={state.clients || []}
+                  users={state.users || []}
+                  projectPriorities={state.projectPriorities || []}
+                  taskStatuses={state.taskStatuses || []}
+                  onNavigate={handleTabChange}
+                  onSelectProject={handleSelectProject}
+                />
+              )}
+
+              {activeTab === 'projetos' && (
+                <ProjectSection 
+                  projects={state.projects}
+                  clients={state.clients}
+                  users={state.users}
+                  tasks={state.tasks}
+                  comments={state.comments}
+                  absences={state.userAbsences}
+                  projectStatuses={state.projectStatuses}
+                  projectCategories={state.projectCategories}
+                  projectRisks={state.projectRisks}
+                  projectPriorities={state.projectPriorities}
+                  projectTeams={state.projectTeams}
+                  projectPartners={state.projectPartners}
+                  addProject={addProject}
+                  updateProject={updateProject}
+                  deleteProject={deleteProject}
+                  addClient={addClient}
+                  addComment={addComment}
+                  deleteComment={deleteComment}
+                  addTask={addTask}
+                  addTasks={addTasks}
+                  updateTask={updateTask}
+                  taskStatuses={state.taskStatuses}
+                  taskTypes={state.taskTypes || []}
+                  specialDays={state.specialDays}
+                  selectedProjectId={selectedProjectId}
+                  setSelectedProjectId={handleSelectProject}
+                  defaultTasks={state.defaultTasks || []}
+                  appConfig={state.appConfig}
+                  currentUser={currentUser}
+                  userGroups={state.userGroups}
+                  projectMaterials={state.projectMaterials || []}
+                  addProjectMaterial={addProjectMaterial}
+                  updateProjectMaterial={updateProjectMaterial}
+                  deleteProjectMaterial={deleteProjectMaterial}
+                  projectRiskItems={state.projectRiskItems || []}
+                  riskCategories={state.riskCategories || []}
+                  riskStatuses={state.riskStatuses || []}
+                  riskPriorities={state.riskPriorities || []}
+                  addProjectRiskItem={addProjectRiskItem}
+                  updateProjectRiskItem={updateProjectRiskItem}
+                  deleteProjectRiskItem={deleteProjectRiskItem}
+                />
+              )}
+
+              {activeTab === 'tarefas' && (
+                <TaskSection 
+                  tasks={state.tasks}
+                  projects={state.projects}
+                  clients={state.clients}
+                  users={state.users}
+                  absences={state.userAbsences || []}
+                  taskStatuses={state.taskStatuses}
+                  taskTypes={state.taskTypes || []}
+                  projectPriorities={state.projectPriorities || []}
+                  addTask={addTask}
+                  updateTask={updateTask}
+                  deleteTask={deleteTask}
+                  currentUser={currentUser}
+                  userGroups={state.userGroups}
+                  appConfig={state.appConfig}
+                />
+              )}
+
+              {activeTab === 'calendario' && (
+                <CalendarSection 
+                  projects={state.projects}
+                  tasks={state.tasks}
+                  absences={state.userAbsences}
+                  users={state.users}
+                  clients={state.clients}
+                  taskStatuses={state.taskStatuses}
+                  taskTypes={state.taskTypes || []}
+                  projectStatuses={state.projectStatuses}
+                  specialDays={state.specialDays}
+                  projectRiskItems={state.projectRiskItems || []}
+                  addTask={addTask}
+                  updateTask={updateTask}
+                  onSelectProject={handleSelectProject}
+                  currentUser={currentUser}
+                  userGroups={state.userGroups}
+                  appConfig={state.appConfig}
+                />
+              )}
+
+              {activeTab === 'clientes' && (
+                <ClientSection 
+                  clients={state.clients}
+                  projects={state.projects || []}
+                  onSelectProject={handleSelectProject}
+                  addClient={addClient}
+                  updateClient={updateClient}
+                  deleteClient={deleteClient}
+                  currentUser={currentUser}
+                  userGroups={state.userGroups}
+                />
+              )}
+
+              {activeTab === 'ausencias' && (
+                <UserSection 
+                  absences={state.userAbsences}
+                  users={state.users}
+                  userGroups={state.userGroups}
+                  addAbsence={addAbsence}
+                  deleteAbsence={deleteAbsence}
+                  addUser={addUser}
+                  updateUser={updateUser}
+                  deleteUser={deleteUser}
+                  hideUsers={true}
+                  appConfig={state.appConfig}
+                  specialDays={state.specialDays}
+                  updateAuxRecord={updateAuxRecord}
+                  currentUser={currentUser}
+                />
+              )}
+
+              {activeTab === 'configuracoes' && (
+                <ConfigSection 
+                  activeConfigTab={activeConfigTab}
+                  onChangeConfigTab={setActiveConfigTab}
+                  config={appConfig}
+                  specialDays={state.specialDays}
+                  updateConfig={updateConfig}
+                  onResetDemoData={resetToDefault}
+                  onClearDemoData={clearAllData}
+                  onRefreshFromDatabase={refreshFromDatabase}
+                  addSpecialDay={addSpecialDay!}
+                  deleteSpecialDay={deleteSpecialDay!}
+                  defaultTasks={state.defaultTasks || []}
+                  addDefaultTask={addDefaultTask!}
+                  updateDefaultTask={updateDefaultTask!}
+                  deleteDefaultTask={deleteDefaultTask!}
+                  projectCategories={state.projectCategories || []}
+                  projectStatuses={state.projectStatuses || []}
+                  taskStatuses={state.taskStatuses || []}
+                  taskTypes={state.taskTypes || []}
+                  projectRisks={state.projectRisks || []}
+                  projectPriorities={state.projectPriorities || []}
+                  projectTeams={state.projectTeams || []}
+                  projectPartners={state.projectPartners || []}
+                  addAuxRecord={addAuxRecord}
+                  updateAuxRecord={updateAuxRecord}
+                  deleteAuxRecord={deleteAuxRecord}
+                  reorderAuxRecords={reorderAuxRecords}
+                  state={state}
+                  importState={importState}
+                  addProject={addProject}
+                  clients={state.clients}
+                  addClient={addClient}
+                  addAbsence={addAbsence}
+                  deleteAbsence={deleteAbsence}
+                  addUser={addUser}
+                  updateUser={updateUser}
+                  deleteUser={deleteUser}
+                  updateNotificationSetting={updateNotificationSetting}
+                  currentUser={currentUser}
+                  userGroups={state.userGroups}
+                  automationRules={state.automationRules || []}
+                  addAutomationRule={addAutomationRule}
+                  updateAutomationRule={updateAutomationRule}
+                  deleteAutomationRule={deleteAutomationRule}
+                  toggleAutomationRule={toggleAutomationRule}
+                  runAutomationRule={runAutomationRule}
+                />
+              )}
+            </div>
+
+          </div>
+        </main>
+
+      </div>
+
+      {/* FOOTER COPYRIGHT */}
+      <footer className="bg-surface border-t border-border py-3 px-6 text-center text-caption text-text-muted font-medium" id="app-footer-copyright">
+        {appConfig.footerCopyrightText}
+      </footer>
+
+      {/* CHANGE PASSWORD MODAL USING NEW UI DIALOG */}
+      <Dialog 
+        isOpen={isChangingPassword} 
+        onClose={() => setIsChangingPassword(false)} 
+        title="Editar Perfil"
+      >
+        {changePasswordSuccess ? (
+          <div className="p-4 bg-success/10 text-success border border-success/20 rounded-control text-body-sm text-center font-semibold">
+            Perfil atualizado com sucesso!
+          </div>
+        ) : (
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            {changePasswordError && (
+              <div className="p-3 bg-error/10 text-error rounded-control text-caption font-semibold border border-error/20">
+                {changePasswordError}
+              </div>
+            )}
+            
+            <div className="space-y-1.5">
+              <label className="block text-label font-bold text-text-secondary select-none">Nome</label>
+              <input 
+                type="text"
+                value={profileName}
+                onChange={e => setProfileName(e.target.value)}
+                className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20 font-bold"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-label font-bold text-text-secondary select-none">Nova password (Opcional)</label>
+              <input 
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Deixe em branco para manter a atual"
+                className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="block text-label font-bold text-text-secondary select-none">Confirmar nova password</label>
+              <input 
+                type="password"
+                value={confirmNewPassword}
+                onChange={e => setConfirmNewPassword(e.target.value)}
+                placeholder="Deixe em branco para manter a atual"
+                className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            
+            <div className="pt-4 flex gap-3">
+              <button 
+                type="button"
+                onClick={() => setIsChangingPassword(false)}
+                className="flex-1 h-11 bg-surface-muted text-text-primary hover:bg-border border border-border rounded-control text-body-sm font-semibold transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit"
+                className="flex-1 h-11 bg-primary text-white hover:bg-primary-hover active:bg-primary-active rounded-control text-body-sm font-semibold transition-all shadow-raised cursor-pointer"
+              >
+                Guardar
+              </button>
+            </div>
+          </form>
+        )}
+      </Dialog>
+
+    </div>
+  );
 }

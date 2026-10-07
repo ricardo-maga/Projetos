@@ -5,7 +5,7 @@ import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseEr
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { requireAuth, AuthError, ForbiddenError } from '@/lib/auth/requireAuth';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
-import { normalizeRoleId, CANONICAL_ROLE_IDS } from '@/lib/permissions';
+import { hasPermission, normalizeRoleId, CANONICAL_ROLE_IDS } from '@/lib/permissions';
 import { ADMIN_SYNC_FIELDS, stripAdministrativeSyncFields, SYNC_DOMAIN_PERMISSIONS, changedSyncRecords, isOwnNotificationReadChange } from '@/lib/supabase/syncPayload';
 import { SYNC_READ_PERMISSIONS, projectSyncRead } from '@/lib/supabase/syncReadProjection';
 import { prepareCommentChanges } from '@/lib/supabase/commentIdentity';
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     const codes = [...new Set([...Object.values(SYNC_READ_PERMISSIONS), 'users:read'])];
     const decisions = await Promise.all(codes.map(async code => {
-      const { data, error } = await clientToUse.rpc('has_permission', { p_permission_code: code, p_user_id: user.id });
+      const { data, error } = await clientToUse.rpc('has_permission', { p_permission_code: code, p_user_id: user.auth_user_id });
       if (error) throw new AuthError('Não foi possível validar permissões de leitura.', 503);
       return [code, data === true] as const;
     }));
@@ -97,10 +97,7 @@ export async function POST(req: NextRequest) {
       }));
     }
 
-    const userNormalizedRole = normalizeRoleId(user.role_id);
-    const isAdmin = user.is_admin || 
-      userNormalizedRole === CANONICAL_ROLE_IDS.SUPER_ADMIN || 
-      userNormalizedRole === CANONICAL_ROLE_IDS.ADMIN;
+    const isAdmin = hasPermission(user, 'config_write');
 
     // FASE 26: Prevenção de Privilege Escalation.
     // Utilizadores não-admin não podem alterar configurações globais, utilizadores ou grupos.
@@ -173,7 +170,7 @@ export async function POST(req: NextRequest) {
     const allowed = new Map<string, boolean>();
     const can = async (code: string) => {
       if (!allowed.has(code)) {
-        const { data, error } = await clientToUse.rpc('has_permission', { p_permission_code: code, p_user_id: user.id });
+        const { data, error } = await clientToUse.rpc('has_permission', { p_permission_code: code, p_user_id: user.auth_user_id });
         if (error) throw new AuthError('Não foi possível validar permissões de sincronização.', 503);
         allowed.set(code, data === true);
       }

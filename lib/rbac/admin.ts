@@ -7,7 +7,7 @@ export async function authorizeRbac(req: NextRequest, permission: 'roles.read' |
   const db = requireServerDbClient();
   const { data, error } = await db.rpc('has_permission', {
     p_permission_code: permission,
-    p_user_id: user.id,
+    p_user_id: user.auth_user_id,
   });
   if (error) throw new AuthError('Não foi possível validar as permissões.', 503);
   if (data !== true) throw new ForbiddenError('Apenas utilizadores autorizados podem gerir funções.');
