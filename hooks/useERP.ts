@@ -1173,28 +1173,31 @@ export function useERP() {
   const deleteAbsence = (id: string) => deleteSyncedEntity('userAbsences', id);
 
   // ==================== USERS CRUD ====================
-  const addUser = (user: Omit<User, 'id' | 'deleted' | 'createdDate'>) => {
+  const addUser = async (user: Omit<User, 'id' | 'deleted' | 'createdDate'>) => {
     const newUser: User = {
       ...user,
       id: crypto.randomUUID(),
       deleted: false,
       createdDate: new Date().toISOString()
     };
-    logAudit('CREATE', 'USER', newUser.id, newUser.name, `Criado utilizador "${newUser.name}" (${newUser.email})`);
-    saveState(prev => ({
+    const result = await saveState(prev => ({
       ...prev,
       users: [...prev.users, newUser]
     }));
+    if (!result.success) return null;
+    logAudit('CREATE', 'USER', newUser.id, newUser.name, `Criado utilizador "${newUser.name}" (${newUser.email})`);
+    return newUser.id;
   };
 
-  const updateUser = (id: string, updates: Partial<Omit<User, 'id' | 'createdDate'>>) => {
+  const updateUser = async (id: string, updates: Partial<Omit<User, 'id' | 'createdDate'>>) => {
     const existingUser = state?.users?.find(u => u.id === id);
     const userName = updates.name || existingUser?.name || id;
     logAudit('UPDATE', 'USER', id, userName, `Atualizado utilizador "${userName}"`);
-    saveState(prev => ({
+    const result = await saveState(prev => ({
       ...prev,
       users: prev.users.map(u => u.id === id ? { ...u, ...updates } as User : u)
     }));
+    return result.success;
   };
 
   const deleteUser = (id: string) => {

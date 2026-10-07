@@ -46,7 +46,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         data-filled={hasFilledButtonBackground(className, !selected && ['primary', 'danger', 'destructive', 'success'].includes(variant)) ? 'true' : undefined}
       >
         {isLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+          <Loader2 className="w-4 h-4 animate-spin shrink-0 text-warning" />
         ) : null}
         {children}
       </button>

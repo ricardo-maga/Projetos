@@ -986,6 +986,19 @@ export default function ProjectSection({
     return tasks.filter(t => t.projectId === selectedProjectId && !t.deleted);
   }, [selectedProjectId, loadedProjectIdForTasks, serverTasks, tasks]);
 
+  const riskOwnerUsers = React.useMemo(() => {
+    const configuredGroupIds = appConfig?.taskAssigneeGroupIds || (appConfig?.taskAssigneeGroupId ? [appConfig.taskAssigneeGroupId] : []);
+    const canonicalGroupIds = translateToCanonicalRoleIds(configuredGroupIds);
+    if (canonicalGroupIds.length === 0) return [];
+
+    return users
+      .filter(user => {
+        const userCanonicalRoleIds = translateToCanonicalRoleIds([user.roleId]);
+        return !user.deleted && canonicalGroupIds.some(groupId => userCanonicalRoleIds.some(roleId => matchId(groupId, roleId)));
+      })
+      .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-PT', { sensitivity: 'base' }));
+  }, [appConfig?.taskAssigneeGroupIds, appConfig?.taskAssigneeGroupId, users]);
+
 
   const projComments = comments.filter(c => matchId(c.projectId, selectedProjectId));
   const projMaterials = (projectMaterials || []).filter(pm => matchId(pm.projectId, selectedProjectId) && !pm.deleted);
@@ -2534,7 +2547,7 @@ export default function ProjectSection({
                     if (!dateA && !dateB) return 0;
                     if (!dateA) return 1;
                     if (!dateB) return -1;
-                    return dateA.localeCompare(dateB);
+                    return dateB.localeCompare(dateA);
                   }).map(task => (
                     <Card
                       key={task.id}
@@ -2610,19 +2623,7 @@ export default function ProjectSection({
                     Material em Falta
                   </span>
                 </div>
-              ) : (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between text-emerald-900 shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
-                    <div>
-                      <h4 className="font-extrabold text-sm uppercase tracking-wide text-emerald-800">Sem Avisos de Material em Falta</h4>
-                      <p className="text-xs font-semibold text-emerald-700 mt-0.5">
-                        Não existem materiais por encomendar nem encomendas com data prevista de entrega ultrapassada.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              ) : null}
 
               {/* Header with Registar material button */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
@@ -4504,7 +4505,7 @@ export default function ProjectSection({
                     className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-hidden bg-surface font-semibold text-text-primary cursor-pointer"
                   >
                     <option value="">Sem responsável (Geral)</option>
-                    {users.map(u => (
+                    {riskOwnerUsers.map(u => (
                       <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </Select>

@@ -40,6 +40,9 @@ BEGIN
   IF auth.role() <> 'service_role' THEN
     RAISE EXCEPTION 'Server-only operation' USING ERRCODE = '42501';
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.users WHERE id=p_actor_id AND approved IS TRUE AND deleted IS NOT TRUE AND COALESCE(type,'') <> 'External') THEN
+    RAISE EXCEPTION 'Executor inválido ou inativo.' USING ERRCODE = '42501';
+  END IF;
   IF NOT public.has_permission('roles.manage', (SELECT auth_user_id FROM public.users WHERE id = p_actor_id)) THEN
     RAISE EXCEPTION 'Apenas o Super Administrador pode gerir permissões.' USING ERRCODE = '42501';
   END IF;
@@ -99,6 +102,9 @@ DECLARE
 BEGIN
   IF auth.role() <> 'service_role' THEN
     RAISE EXCEPTION 'Server-only operation' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.users WHERE id=p_actor_id AND approved IS TRUE AND deleted IS NOT TRUE AND COALESCE(type,'') <> 'External') THEN
+    RAISE EXCEPTION 'Executor inválido ou inativo.' USING ERRCODE = '42501';
   END IF;
   IF NOT public.has_permission('roles.manage', (SELECT auth_user_id FROM public.users WHERE id = p_actor_id)) THEN
     RAISE EXCEPTION 'Apenas o Super Administrador pode atribuir funções.' USING ERRCODE = '42501';

@@ -41,9 +41,32 @@ import {
 } from '../lib/supabaseSync';
 // import Papa from 'papaparse';
 import UserSection from './UserSection';
-import RolePermissionSection from './RolePermissionSection';
 
-import { hasPermission } from '../lib/permissions';
+import { CANONICAL_ROLE_IDS, hasPermission } from '../lib/permissions';
+import { translateToCanonicalRoleIds } from '../lib/utils';
+
+const CANONICAL_ASSOCIATION_GROUPS = [
+  { id: CANONICAL_ROLE_IDS.SUPER_ADMIN, name: 'Super Administrador' },
+  { id: CANONICAL_ROLE_IDS.ADMIN, name: 'Administrador' },
+  { id: CANONICAL_ROLE_IDS.PROJECT_MANAGER, name: 'Gestor de Projetos' },
+  { id: CANONICAL_ROLE_IDS.TECHNICIAN, name: 'Técnico' },
+  { id: CANONICAL_ROLE_IDS.COMMERCIAL, name: 'Comercial' },
+  { id: CANONICAL_ROLE_IDS.SOLUTIONS, name: 'Soluções' },
+  { id: CANONICAL_ROLE_IDS.VIEWER, name: 'Visualizador' },
+] as const;
+
+function toggleCanonicalAssociationGroup(
+  selectedIds: string[],
+  setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>,
+  groupId: string,
+) {
+  const normalizedIds = translateToCanonicalRoleIds(selectedIds);
+  setSelectedIds(
+    normalizedIds.includes(groupId)
+      ? normalizedIds.filter(id => id !== groupId)
+      : [...normalizedIds, groupId],
+  );
+}
 
 interface ConfigSectionProps {
   activeConfigTab?: string;
@@ -673,6 +696,10 @@ export default function ConfigSection({
       alert('Não tem permissão para alterar as configurações.');
       return;
     }
+    const canonicalSalesRepGroupIds = translateToCanonicalRoleIds(salesRepGroupIds);
+    const canonicalProjManagerGroupIds = translateToCanonicalRoleIds(projManagerGroupIds);
+    const canonicalFieldManagerGroupIds = translateToCanonicalRoleIds(fieldManagerGroupIds);
+    const canonicalTaskAssigneeGroupIds = translateToCanonicalRoleIds(taskAssigneeGroupIds);
     updateConfig({
       appName,
       appDescription: appDesc,
@@ -680,14 +707,14 @@ export default function ConfigSection({
       logo: logo,
       footerCopyrightText: footer,
       theme,
-      salesRepGroupIds,
-      projManagerGroupIds,
-      fieldManagerGroupIds,
-      taskAssigneeGroupIds,
-      salesRepGroupId: salesRepGroupIds[0] || '',
-      projManagerGroupId: projManagerGroupIds[0] || '',
-      fieldManagerGroupId: fieldManagerGroupIds[0] || '',
-      taskAssigneeGroupId: taskAssigneeGroupIds[0] || '',
+      salesRepGroupIds: canonicalSalesRepGroupIds,
+      projManagerGroupIds: canonicalProjManagerGroupIds,
+      fieldManagerGroupIds: canonicalFieldManagerGroupIds,
+      taskAssigneeGroupIds: canonicalTaskAssigneeGroupIds,
+      salesRepGroupId: canonicalSalesRepGroupIds[0] || '',
+      projManagerGroupId: canonicalProjManagerGroupIds[0] || '',
+      fieldManagerGroupId: canonicalFieldManagerGroupIds[0] || '',
+      taskAssigneeGroupId: canonicalTaskAssigneeGroupIds[0] || '',
     });
     alert('Configurações da aplicação gravadas com sucesso!');
   };
@@ -1000,30 +1027,22 @@ export default function ConfigSection({
               <div className="space-y-2">
                 <label className="block text-slate-500">Grupos para &quot;Gestor de Vendas&quot; (Escolha Múltipla)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
-                  ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
-                      const isChecked = salesRepGroupIds.includes(g.id);
+                  {CANONICAL_ASSOCIATION_GROUPS.map(g => {
+                      const isChecked = translateToCanonicalRoleIds(salesRepGroupIds).includes(g.id);
                       return (
                         <label key={g.id} className="flex items-center gap-2.5 p-2 bg-white border border-slate-100 rounded-lg cursor-pointer select-none hover:bg-slate-50 transition-colors">
                           <input
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => {
-                              if (isChecked) {
-                                setSalesRepGroupIds(salesRepGroupIds.filter(id => id !== g.id));
-                              } else {
-                                setSalesRepGroupIds([...salesRepGroupIds, g.id]);
-                              }
+                              toggleCanonicalAssociationGroup(salesRepGroupIds, setSalesRepGroupIds, g.id);
                             }}
                             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
                           />
                           <span className="text-slate-700 font-semibold text-xs">{g.name}</span>
                         </label>
                       );
-                    })
-                  )}
+                    })}
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium font-sans">
                   Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Gestor de Vendas&quot; no formulário dos projetos.
@@ -1033,30 +1052,22 @@ export default function ConfigSection({
               <div className="space-y-2">
                 <label className="block text-slate-500">Grupos para &quot;Project Leader&quot; (Escolha Múltipla)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
-                  ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
-                      const isChecked = projManagerGroupIds.includes(g.id);
+                  {CANONICAL_ASSOCIATION_GROUPS.map(g => {
+                      const isChecked = translateToCanonicalRoleIds(projManagerGroupIds).includes(g.id);
                       return (
                         <label key={g.id} className="flex items-center gap-2.5 p-2 bg-white border border-slate-100 rounded-lg cursor-pointer select-none hover:bg-slate-50 transition-colors">
                           <input
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => {
-                              if (isChecked) {
-                                setProjManagerGroupIds(projManagerGroupIds.filter(id => id !== g.id));
-                              } else {
-                                setProjManagerGroupIds([...projManagerGroupIds, g.id]);
-                              }
+                              toggleCanonicalAssociationGroup(projManagerGroupIds, setProjManagerGroupIds, g.id);
                             }}
                             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
                           />
                           <span className="text-slate-700 font-semibold text-xs">{g.name}</span>
                         </label>
                       );
-                    })
-                  )}
+                    })}
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium font-sans">
                   Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Project Lader&quot; no formulário dos projetos.
@@ -1066,30 +1077,22 @@ export default function ConfigSection({
               <div className="space-y-2">
                 <label className="block text-slate-500">Grupos para &quot;Técnico Responsável&quot; (Escolha Múltipla)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
-                  ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
-                      const isChecked = fieldManagerGroupIds.includes(g.id);
+                  {CANONICAL_ASSOCIATION_GROUPS.map(g => {
+                      const isChecked = translateToCanonicalRoleIds(fieldManagerGroupIds).includes(g.id);
                       return (
                         <label key={g.id} className="flex items-center gap-2.5 p-2 bg-white border border-slate-100 rounded-lg cursor-pointer select-none hover:bg-slate-50 transition-colors">
                           <input
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => {
-                              if (isChecked) {
-                                setFieldManagerGroupIds(fieldManagerGroupIds.filter(id => id !== g.id));
-                              } else {
-                                setFieldManagerGroupIds([...fieldManagerGroupIds, g.id]);
-                              }
+                              toggleCanonicalAssociationGroup(fieldManagerGroupIds, setFieldManagerGroupIds, g.id);
                             }}
                             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
                           />
                           <span className="text-slate-700 font-semibold text-xs">{g.name}</span>
                         </label>
                       );
-                    })
-                  )}
+                    })}
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium font-sans">
                   Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Técnico responsável&quot; no formulário dos projetos.
@@ -1099,30 +1102,22 @@ export default function ConfigSection({
               <div className="space-y-2 pt-2 border-t border-slate-100" id="task-assignee-groups-config">
                 <label className="block text-slate-700 font-bold">Grupos Associados Tarefas (Técnicos Alocados - Escolha Múltipla)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
-                  ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
-                      const isChecked = taskAssigneeGroupIds.includes(g.id);
+                  {CANONICAL_ASSOCIATION_GROUPS.map(g => {
+                      const isChecked = translateToCanonicalRoleIds(taskAssigneeGroupIds).includes(g.id);
                       return (
                         <label key={g.id} className="flex items-center gap-2.5 p-2 bg-white border border-slate-100 rounded-lg cursor-pointer select-none hover:bg-slate-50 transition-colors">
                           <input
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => {
-                              if (isChecked) {
-                                setTaskAssigneeGroupIds(taskAssigneeGroupIds.filter(id => id !== g.id));
-                              } else {
-                                setTaskAssigneeGroupIds([...taskAssigneeGroupIds, g.id]);
-                              }
+                              toggleCanonicalAssociationGroup(taskAssigneeGroupIds, setTaskAssigneeGroupIds, g.id);
                             }}
                             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
                           />
                           <span className="text-slate-700 font-semibold text-xs">{g.name}</span>
                         </label>
                       );
-                    })
-                  )}
+                    })}
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium font-sans">
                   Selecione os grupos de utilizadores que poderão aparecer na seleção de Técnicos Alocados na criação e edição de tarefas em toda a aplicação.
@@ -2223,10 +2218,6 @@ export default function ConfigSection({
         <AuditLogSection auditLogs={state.auditLogs || []} currentUser={currentUser} />
       )}
 
-      {activeConfigTab === 'permissoes' && hasPermission(currentUser, 'roles_read' as any, userGroups) && (
-        <RolePermissionSection />
-      )}
-
       {/* UTILIZADORES TAB */}
       {activeConfigTab === 'utilizadores' && (
         <div className="bg-white rounded-2xl border border-slate-200 -sm animate-fade-in text-xs" id="users-tab">
@@ -2242,7 +2233,6 @@ export default function ConfigSection({
               deleteUser={deleteUser!}
               hideAbsences={true}
               specialDays={state.specialDays || []}
-              updateAuxRecord={updateAuxRecord}
               currentUser={currentUser}
             />
           )}
