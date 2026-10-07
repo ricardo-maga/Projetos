@@ -1096,6 +1096,10 @@ export default function UserSection({
                           keys: ['config_read', 'config_write']
                         },
                         {
+                          title: 'Relatórios',
+                          keys: ['reports_read']
+                        },
+                        {
                           title: 'Administração de Utilizadores',
                           keys: ['users_read', 'users_write', 'users_delete']
                         }
@@ -1124,6 +1128,7 @@ export default function UserSection({
                                 absences_delete: 'Eliminar Ausências',
                                 config_read: 'Ver Configurações',
                                 config_write: 'Editar Configurações',
+                                reports_read: 'Ver Relatórios',
                                 users_read: 'Ver Utilizadores',
                                 users_write: 'Criar / Editar Utilizadores',
                                 users_delete: 'Eliminar Utilizadores',

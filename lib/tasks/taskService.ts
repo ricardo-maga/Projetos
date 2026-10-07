@@ -7,6 +7,7 @@ export interface TaskDTO {
   description: string;
   statusId: string;
   taskTypeId: string;
+  priorityId: string | null;
   estimatedHours: number;
   actualHours: number;
   startDate: string;
@@ -32,6 +33,7 @@ export interface CreateTaskParams {
   description?: string;
   statusId?: string;
   taskTypeId?: string | null;
+  priorityId?: string | null;
   estimatedHours?: number;
   actualHours?: number;
   startDate?: string | null;
@@ -53,6 +55,7 @@ export interface UpdateTaskParams {
   description?: string;
   statusId?: string;
   taskTypeId?: string | null;
+  priorityId?: string | null;
   estimatedHours?: number;
   actualHours?: number;
   startDate?: string | null;
@@ -174,6 +177,7 @@ export function mapRowToTaskDTO(row: any, assigneesMap: Record<string, string[]>
     description: row.task_description || row.description || '',
     statusId: row.status_id || row.statusId || 'ts-1',
     taskTypeId: row.task_type_id || row.taskTypeId || '',
+    priorityId: row.priority_id || row.priorityId || null,
     estimatedHours: parseTaskHoursToNumber(row.estimated_hours ?? row.estimatedHours),
     actualHours: parseTaskHoursToNumber(row.actual_hours ?? row.actualHours),
     startDate: row.start_date || '',
@@ -250,6 +254,7 @@ export async function createTaskServer(
     p_task_title: params.title.trim(),
     p_status_id: resolvedStatus,
     p_task_type_id: resolvedType,
+    p_priority_id: params.priorityId || null,
     p_estimated_hours: estimatedHoursStr,
     p_actual_hours: actualHoursStr,
     p_start_date: params.startDate || null,
@@ -322,6 +327,8 @@ export async function updateTaskServer(
     p_task_title: params.title ? params.title.trim() : null,
     p_status_id: resolvedStatus,
     p_task_type_id: resolvedType,
+    p_priority_id: params.priorityId === undefined ? null : params.priorityId,
+    p_update_priority: params.priorityId !== undefined,
     p_estimated_hours: estimatedHoursStr,
     p_actual_hours: actualHoursStr,
     p_start_date: params.startDate || null,

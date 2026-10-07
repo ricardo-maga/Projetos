@@ -60,6 +60,7 @@ export interface TaskCreateInput {
   description?: string;
   statusId?: string;
   taskTypeId?: string | null;
+  priorityId?: string | null;
   estimatedHours?: number | string;
   actualHours?: number | string;
   startDate?: string | null;
@@ -78,6 +79,7 @@ export interface TaskUpdateInput {
   description?: string;
   statusId?: string;
   taskTypeId?: string | null;
+  priorityId?: string | null;
   estimatedHours?: number | string;
   actualHours?: number | string;
   startDate?: string | null;
@@ -145,6 +147,7 @@ export function normalizeTaskFromApiResponse(data: any): Task {
     description: data.description !== undefined ? data.description : (data.task_description || ''),
     statusId: data.statusId || data.status_id || '',
     taskTypeId: data.taskTypeId || data.task_type_id || undefined,
+    priorityId: data.priorityId || data.priority_id || undefined,
     estimatedHours: String(parseTaskHoursToNumber(data.estimatedHours ?? data.estimated_hours)),
     actualHours: String(parseTaskHoursToNumber(data.actualHours ?? data.actual_hours)),
     startDate: data.startDate || data.start_date || undefined,

@@ -38,6 +38,7 @@ export interface Task {
   title: string;
   statusId: string; // Relation: Task status table
   taskTypeId?: string; // Relation: Task types table
+  priorityId?: string; // Relation: Project priority table (task-specific priority)
   assigneeIds: string[]; // Relation: Users table (team type)
   estimatedDate: string;
   description: string;
