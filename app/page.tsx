@@ -6,8 +6,6 @@ import BentoDashboard from '../components/BentoDashboard';
 import ProjectSection from '../components/ProjectSection';
 import TaskSection from '../components/TaskSection';
 import ClientSection from '../components/ClientSection';
-import QuoteSection from '../components/QuoteSection';
-import InventorySection from '../components/InventorySection';
 import UserSection from '../components/UserSection';
 import ConfigSection from '../components/ConfigSection';
 import NotificationDropdown from '../components/NotificationDropdown';
@@ -132,15 +130,6 @@ export default function Page() {
     addClient,
     updateClient,
     deleteClient,
-    addMaterial,
-    updateMaterial,
-    deleteMaterial,
-    addQuote,
-    updateQuote,
-    deleteQuote,
-    addBOMItem,
-    updateBOMItem,
-    deleteBOMItem,
     addEquipment,
     updateEquipment,
     deleteEquipment,
