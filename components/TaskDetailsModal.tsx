@@ -749,6 +749,9 @@ export default function TaskDetailsModal({
                   className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 read-only:bg-surface-muted"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label htmlFor="task-formPriorityId" className="block text-body-sm font-bold text-text-primary">Prioridade</label>
                 <Select id="task-formPriorityId"
@@ -759,14 +762,11 @@ export default function TaskDetailsModal({
                 >
                   <option value="">Sem prioridade</option>
                   {projectPriorities.filter(priority => !priority.deleted || priority.id === formPriorityId).sort((a, b) => a.scale - b.scale).map(priority => (
-                    <option key={priority.id} value={priority.id}>{priority.name}{priority.scale === 3 ? ' · Crítica' : ''}</option>
+                    <option key={priority.id} value={priority.id}>{priority.name}</option>
                   ))}
                 </Select>
               </div>
-            </div>
-
-            {/* Task type (status is the first functional field above planning) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Task type shares the priority row. */}
               <div className="space-y-1">
                 <label htmlFor="task-formTypeId" className="block text-body-sm font-bold text-text-primary">Tipo de tarefa</label>
                 <Select id="task-formTypeId"

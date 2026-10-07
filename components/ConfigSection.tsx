@@ -41,6 +41,7 @@ import {
 } from '../lib/supabaseSync';
 // import Papa from 'papaparse';
 import UserSection from './UserSection';
+import RolePermissionSection from './RolePermissionSection';
 
 import { hasPermission } from '../lib/permissions';
 
@@ -2220,6 +2221,10 @@ export default function ConfigSection({
       {/* AUDITORIA TAB */}
       {activeConfigTab === 'auditoria' && (
         <AuditLogSection auditLogs={state.auditLogs || []} currentUser={currentUser} />
+      )}
+
+      {activeConfigTab === 'permissoes' && hasPermission(currentUser, 'roles_read' as any, userGroups) && (
+        <RolePermissionSection />
       )}
 
       {/* UTILIZADORES TAB */}

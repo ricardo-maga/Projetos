@@ -48,6 +48,9 @@ export interface GroupPermissions {
   users_read?: boolean;
   users_write?: boolean;
   users_delete?: boolean;
+  roles_read?: boolean;
+  roles_manage?: boolean;
+  app_access?: boolean;
 }
 
 export const CANONICAL_ROLE_IDS = {
@@ -585,7 +588,7 @@ export function getGroupPermissions(roleId?: string | null, customGroups?: UserG
  * é efetuada no PostgreSQL (has_permission / RPC / RLS).
  */
 export function hasPermission(
-  userOrRoleId: string | { roleId?: string; role_id?: string; type?: string; isAdmin?: boolean; is_admin?: boolean; [key: string]: any } | null | undefined,
+  userOrRoleId: string | { roleId?: string; role_id?: string; type?: string; isAdmin?: boolean; is_admin?: boolean; isSuperAdmin?: boolean; permissions?: unknown; [key: string]: any } | null | undefined,
   permissionKey: keyof GroupPermissions,
   customGroups?: UserGroup[]
 ): boolean {
@@ -606,9 +609,21 @@ export function hasPermission(
     }
   } else if (typeof userOrRoleId === 'object') {
     roleId = (userOrRoleId.roleId || userOrRoleId.role_id || userOrRoleId.type || '').trim();
+    if (userOrRoleId.type === 'External') return false;
+    if (userOrRoleId.isSuperAdmin) return true;
+
+    // Session permissions are the server-calculated union across active roles.
+    // An empty array is authoritative and must not fall back to hard-coded roles.
+    if (Array.isArray(userOrRoleId.permissions)) {
+      const requested = String(permissionKey);
+      const canonical = requested.replace(/^([^_]+)_/, '$1.');
+      const alternatives = canonical.endsWith('.write')
+        ? [canonical, canonical.replace(/\.write$/, '.create'), canonical.replace(/\.write$/, '.update')]
+        : [canonical];
+      return userOrRoleId.permissions.some((code: unknown) => typeof code === 'string' && alternatives.includes(code));
+    }
     isAdminUser = !!(
-      userOrRoleId.isAdmin ||
-      userOrRoleId.is_admin ||
+      userOrRoleId.isSuperAdmin ||
       roleId === 'ug-1' ||
       roleId === CANONICAL_ROLE_IDS.SUPER_ADMIN ||
       roleId === '00000000-0000-0000-0000-000000000001' ||

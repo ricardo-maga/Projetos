@@ -28,7 +28,24 @@ export async function POST(req: NextRequest) {
       .or(`auth_user_id.eq.${signIn.user.id},id.eq.${signIn.user.id}`).maybeSingle();
     if (profileError || !profile || profile.deleted) { await supabase.auth.signOut(); return unauthorized('A conta não está autorizada para aceder à aplicação.', requestId); }
     if (!profile.approved) { await supabase.auth.signOut(); return forbidden('Este utilizador ainda aguarda aprovação por um administrador.', requestId); }
-    const user = { id: profile.id, name: profile.name, email: profile.email, type: profile.type || 'Team', roleId: profile.role_id, isAdmin: Boolean(profile.is_admin) };
+    if (profile.type === 'External') { await supabase.auth.signOut(); return forbidden('Este utilizador não está autorizado a aceder ao sistema interno.', requestId); }
+    const { data: userRoles, error: userRolesError } = await admin.from('user_roles').select('role_id').eq('user_id', profile.id);
+    const roleIds = [...new Set((userRoles || []).map((item: any) => item.role_id).filter(Boolean))];
+    const { data: roles, error: rolesError } = roleIds.length ? await admin.from('roles').select('id,code,name').eq('is_active', true).in('id', roleIds) : { data: [], error: null };
+    const activeRoleIds = (roles || []).map((role: any) => role.id);
+    const { data: grants, error: grantsError } = activeRoleIds.length ? await admin.from('role_permissions').select('permission_id').in('role_id', activeRoleIds) : { data: [], error: null };
+    const permissionIds = [...new Set((grants || []).map((item: any) => item.permission_id).filter(Boolean))];
+    const { data: permissionRows, error: permissionsError } = permissionIds.length ? await admin.from('permissions').select('code').eq('is_active', true).in('id', permissionIds) : { data: [], error: null };
+    if (userRolesError || rolesError || grantsError || permissionsError) {
+      await supabase.auth.signOut();
+      return internalServerError('Não foi possível carregar as permissões da conta.', requestId);
+    }
+    const user = {
+      id: profile.id, name: profile.name, email: profile.email, type: profile.type || 'Team',
+      roleId: profile.role_id, roleIds: activeRoleIds, roleNames: (roles || []).map((role: any) => role.name),
+      isAdmin: Boolean(profile.is_admin), isSuperAdmin: (roles || []).some((role: any) => role.code === 'SUPER_ADMIN'),
+      permissions: [...new Set((permissionRows || []).map((item: any) => item.code))],
+    };
     await logAuditEvent({ action: 'LOGIN', userId: profile.id, entity: 'users', entityId: profile.id, ip, details: { method: 'supabase_auth' } });
     // Return authenticated user details and active session token for API / bearer authentication
     return NextResponse.json({ 
