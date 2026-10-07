@@ -1,11 +1,11 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Plus, Search, ShieldAlert } from 'lucide-react';
-import type { Client, Project, ProjectRiskItem, SpecialDay, Task } from '../lib/types';
+import { ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert } from 'lucide-react';
+import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User } from '../lib/types';
 import { buildProjectTimelineEvents, filterProjectTimeline, type TimelineHorizon } from '../lib/projectTimeline';
 import { getOperationalCalendarDays, formatOperationalDateRange } from '../lib/operationalCalendar';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
-import { getTaskStatusStyle, getProjectStatusStyle } from '../lib/utils';
+import { getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '../lib/utils';
 import { M3SectionHeader, M3SegmentedControl } from './M3';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
@@ -17,11 +17,12 @@ import DateViewNavigator from './ui/DateViewNavigator';
 
 interface ProjectTimelineProps {
   projects: Project[]; clients: Client[]; tasks: Task[]; projectStatuses: any[]; taskStatuses: any[];
+  users?: User[];
   projectRiskItems?: ProjectRiskItem[]; specialDays?: SpecialDay[]; canCreate: boolean;
   onSelectProject?: (id: string) => void; onSelectTask: (task: Task) => void; onCreateTask: (date: string, projectId: string) => void;
 }
 const PAGE_SIZE = 50;
-export default function ProjectTimeline({ projects, clients, tasks, projectStatuses, taskStatuses, projectRiskItems = [], specialDays = [],
+export default function ProjectTimeline({ projects, clients, tasks, users = [], projectStatuses, taskStatuses, projectRiskItems = [], specialDays = [],
   canCreate, onSelectProject, onSelectTask, onCreateTask }: ProjectTimelineProps) {
   const [anchor, setAnchor] = useState(() => new Date());
   const [periodDays, setPeriodDays] = useState<7 | 14>(7);
@@ -31,6 +32,7 @@ export default function ProjectTimeline({ projects, clients, tasks, projectStatu
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const masterRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const change = () => setFullscreen(document.fullscreenElement === masterRef.current);
@@ -64,6 +66,10 @@ export default function ProjectTimeline({ projects, clients, tasks, projectStatu
   const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
   const shift = (offset: number) => setAnchor(previous => { const next = new Date(previous); next.setDate(next.getDate() + offset); return next; });
   const dayStyle = (date: string, weekend: boolean) => specialDays.some(s => s.date === date) || weekend ? 'bg-surface-muted' : 'bg-surface';
+  const compactDays = new Set(days.filter(day => (day.isWeekend || specialDays.some(s => s.date === day.dateStr)) &&
+    !visibleProjects.some(project => (events.get(project.id)?.get(day.dateStr) || []).some(event => event.kind === 'task'))
+  ).map(day => day.dateStr));
+  const timelineMinWidth = 260 + days.reduce((width, day) => width + (compactDays.has(day.dateStr) ? 64 : 150), 0);
   return <div ref={masterRef} data-project-timeline-master className={fullscreen
     ? 'fixed inset-0 z-50 h-screen overflow-y-auto bg-background p-4 sm:p-6 space-y-4'
     : 'space-y-4'}>
@@ -90,38 +96,49 @@ export default function ProjectTimeline({ projects, clients, tasks, projectStatu
       </div>
       {/* Intrinsic table height: only horizontal scrolling here; the master owns vertical scrolling. */}
       <div className="overflow-x-auto overflow-y-hidden" data-project-timeline-scroll>
-        <table className="w-full table-fixed text-body-sm" style={{ minWidth: 260 + periodDays * 150 }}>
+        <table className="w-full table-fixed text-body-sm" style={{ minWidth: timelineMinWidth }}>
           <caption className="sr-only">Timeline de projetos · {formatOperationalDateRange(days)}</caption>
-          <colgroup><col style={{ width: 260 }} />{days.map(day => <col key={day.dateStr} style={{ width: 150 }} />)}</colgroup>
+          <colgroup><col style={{ width: 260 }} />{days.map(day => <col key={day.dateStr} style={compactDays.has(day.dateStr) ? { width: 64 } : undefined} />)}</colgroup>
           <thead className="text-caption text-text-secondary bg-surface-muted"><tr>
             <th scope="col" className="p-3 text-left">Projeto</th>
             {days.map(day => <th scope="col" key={day.dateStr} className={`p-3 border-l border-border text-left ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
-              <span className="block">{day.weekdayShort} {day.dayNum}/{day.date.getMonth() + 1}</span>
+              <span className="block">{day.weekdayShort.slice(0, 3).toUpperCase()} {day.dayNum}/{day.date.getMonth() + 1}</span>
               {specialDays.find(s => s.date === day.dateStr) && <span className="block text-caption font-normal text-text-secondary break-words">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
             </th>)}
           </tr></thead>
-          <tbody>{visibleProjects.map(project => { const style = getProjectStatusStyle(project.statusId, projectStatuses); return <tr key={project.id} className="border-t border-border align-top">
+          <tbody>{visibleProjects.map(project => { const style = getProjectStatusStyle(project.statusId, projectStatuses); const expanded = expandedProjects.has(project.id); return <tr key={project.id} className="border-t border-border align-top">
             <th scope="row" className="p-3 text-left font-medium text-text-primary space-y-1">
-              <span className="block text-body-sm text-primary">{clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}</span>
+              <Button variant="ghost" size="sm" className="w-full justify-between px-0 text-left" aria-expanded={expanded}
+                aria-label={`${expanded ? 'Recolher' : 'Expandir'} projeto de ${clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}`}
+                onClick={() => setExpandedProjects(previous => { const next = new Set(previous); if (next.has(project.id)) next.delete(project.id); else next.add(project.id); return next; })}>
+                <span className="truncate">{clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}</span>
+                <ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 ${expanded ? 'rotate-180' : ''}`} />
+              </Button>
+              {expanded && <div className="space-y-1">
               <Button variant="ghost" size="sm" className="px-0 h-auto min-h-9 text-body whitespace-normal text-left justify-start" onClick={() => openOutsideTimeline(() => onSelectProject?.(project.id))}>{project.title}</Button>
-              {project.installProjectNo && <span className="block text-caption text-text-secondary">IP: {project.installProjectNo}</span>}
+              {project.installProjectNo && <span className="block text-caption text-text-secondary">{project.installProjectNo}</span>}
               <Badge className={style.badgeClass}>{style.name}</Badge>
+              </div>}
             </th>
             {days.map(day => <td key={day.dateStr} className={`p-2 border-l border-border ${dayStyle(day.dateStr, day.isWeekend)}`}>
-              <div className="space-y-2">
+              {expanded && <div className="space-y-2">
                 {(events.get(project.id)?.get(day.dateStr) || []).map((event, index) => {
                   const status = event.kind === 'task' ? getTaskStatusStyle(event.task.statusId, taskStatuses) : undefined;
-                  return <Button key={`${event.kind}-${index}`} variant="ghost" size="sm" className="w-full h-auto min-h-9 px-2 py-2 whitespace-normal text-left justify-start bg-surface border border-border"
+                  return <Button key={`${event.kind}-${index}`} variant="ghost" size="sm" className={`w-full h-auto min-h-9 px-2 py-2 whitespace-normal text-left justify-start bg-surface border border-border ${status ? `border-l-4 ${status.dotClass.replace('bg-', 'border-l-')}` : ''}`}
                     onClick={() => openOutsideTimeline(() => event.kind === 'task' ? onSelectTask(event.task) : onSelectProject?.(project.id))}>
                     <span className="flex flex-col gap-1 min-w-0 break-words">
                       <span className="text-body-sm font-semibold">{event.kind === 'risk' && <ShieldAlert className="inline w-3.5 h-3.5 mr-1" />}{event.title}</span>
-                      {event.kind === 'task' ? <><span className="text-caption text-text-secondary">{parseTaskHoursToFloat(event.task.estimatedHours)} h previstas</span><Badge className={status?.badgeClass}>{status?.name}</Badge></>
+                      {event.kind === 'task' ? <><span className="text-caption text-text-secondary">{parseTaskHoursToFloat(event.task.estimatedHours)} h previstas</span>
+                        <span className="flex items-center gap-1" aria-label="Técnicos alocados">
+                          {(event.task.assigneeIds || []).slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
+                          {(event.task.assigneeIds || []).length > 2 && <span className="text-caption">+{event.task.assigneeIds.length - 2}</span>}
+                        </span></>
                         : <span className="text-caption text-text-secondary">{event.kind === 'risk' ? 'Revisão de risco' : 'Evento do projeto'}</span>}
                     </span>
                   </Button>;
                 })}
                 {canCreate && <IconButton size="sm" aria-label={`Criar tarefa em ${project.title} no dia ${day.dateStr}`} onClick={() => openOutsideTimeline(() => onCreateTask(day.dateStr, project.id))}><Plus className="w-4 h-4" /></IconButton>}
-              </div>
+              </div>}
             </td>)}
           </tr>; })}</tbody>
         </table>
