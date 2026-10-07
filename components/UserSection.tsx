@@ -954,7 +954,10 @@ export default function UserSection({
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                   {users
                     .filter(u => !u.deleted)
-                    .filter(u => filterGroupId === 'all' || u.roleId === filterGroupId)
+                    .filter(u => filterGroupId === 'all' || (
+                      (normalizeRoleId(u.roleId) || u.roleId?.trim()) ===
+                      (normalizeRoleId(filterGroupId) || filterGroupId.trim())
+                    ))
                     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }))
                     .map(u => (
                     <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
