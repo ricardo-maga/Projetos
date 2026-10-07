@@ -14,6 +14,22 @@ const project = {
   teamsInvolvedIds: [], partnersIds: [], deleted: false,
 };
 const statuses = [{ id: 'qa-status', name: 'Estado configurado', color: 'laranja', scale: 2 }];
+it('keeps compact monthly navigation and hides legends and document controls without erasing metadata', () => {
+  const h = createProjectHarness();
+  const tree = h.render({ ...projectPreviewProps, selectedProjectId: project.id });
+  const html = renderToStaticMarkup(tree);
+  expect(html).toContain('outubro 2026');
+  expect(html).not.toContain('outubro de 2026');
+  expect(html).not.toContain('Documentação técnica');
+  expect(html).not.toContain('Fim-de-semana / Feriado');
+  for (const label of ['Mês anterior', 'Mês seguinte']) {
+    expect(findProjectElement(tree, e => e.props?.['aria-label'] === label).props.size).toBe('sm');
+  }
+  const source = readFileSync(new URL('../components/ProjectSection.tsx', import.meta.url), 'utf8');
+  expect(source).not.toContain('Esquemas Técnicos / Documentos (Anexos)');
+  expect(source).toContain('setFormDocs(proj.documents || [])');
+  expect(source).toContain('documents: formDocs');
+});
 export const projectPreviewProps: React.ComponentProps<typeof ProjectSection> = {
   projects: [project] as any, clients: [{ id: 'qa-client', clientName: 'Cliente de exemplo', deleted: false }] as any,
   users: [{ id: 'qa-user', name: 'Pessoa de exemplo', roleId: 'ug-1', deleted: false }],

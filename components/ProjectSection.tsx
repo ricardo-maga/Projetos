@@ -263,8 +263,7 @@ export default function ProjectSection({
   const [formClientContactEmail, setFormClientContactEmail] = useState('');
   const [formClientContactPhone, setFormClientContactPhone] = useState('');
   
-  // Document field (simple entry)
-  const [newDocName, setNewDocName] = useState('');
+  // Retain existing document metadata when saving; document controls are hidden.
   const [formDocs, setFormDocs] = useState<string[]>([]);
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -708,17 +707,6 @@ export default function ProjectSection({
       const exists = prev.some(p => matchId(p, id));
       return exists ? prev.filter(p => !matchId(p, id)) : [...prev, id];
     });
-  };
-
-  const addDocument = () => {
-    if (newDocName.trim()) {
-      setFormDocs(prev => [...prev, newDocName.trim()]);
-      setNewDocName('');
-    }
-  };
-
-  const removeDocument = (idx: number) => {
-    setFormDocs(prev => prev.filter((_, i) => i !== idx));
   };
 
   const autocompleteClients = (clients || [])
@@ -1581,10 +1569,10 @@ export default function ProjectSection({
 
                 {projectViewTab === 'calendario' ? (
                   <div className="space-y-4 animate-fade-in">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <h3 className="font-bold text-text-primary text-body-sm uppercase tracking-wider flex items-center gap-2">Calendário Mensal do Projeto</h3>
-                      <div className="flex items-center gap-1.5">
-                        <IconButton variant="ghost" aria-label="Mês anterior"
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <IconButton variant="ghost" size="sm" aria-label="Mês anterior"
                           type="button"
                           onClick={() => setCalMonthOffset(o => o - 1)}
                           className="flex items-center justify-center p-1.5 bg-surface hover:bg-surface-muted border border-border rounded-lg text-text-secondary cursor-pointer transition-colors"
@@ -1600,7 +1588,7 @@ export default function ProjectSection({
                         >
                           Hoje
                         </Button>
-                        <IconButton variant="ghost" aria-label="Mês seguinte"
+                        <IconButton variant="ghost" size="sm" aria-label="Mês seguinte"
                           type="button"
                           onClick={() => setCalMonthOffset(o => o + 1)}
                           className="flex items-center justify-center p-1.5 bg-surface hover:bg-surface-muted border border-border rounded-lg text-text-secondary cursor-pointer transition-colors"
@@ -1612,7 +1600,7 @@ export default function ProjectSection({
                           {(() => {
                             const targetDate = selectedProj.startDate ? new Date(selectedProj.startDate + 'T00:00:00') : new Date();
                             targetDate.setMonth(targetDate.getMonth() + calMonthOffset);
-                            return targetDate.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+                            return `${targetDate.toLocaleDateString('pt-PT', { month: 'long' })} ${targetDate.getFullYear()}`;
                           })()}
                         </span>
                       </div>
@@ -1843,17 +1831,6 @@ export default function ProjectSection({
 
                           return cells;
                         })()}
-                      </div>
-                      <div className="bg-surface-muted p-2.5 border-t border-border-subtle flex flex-wrap gap-x-4 gap-y-1.5 justify-center text-caption font-bold text-text-secondary">
-                        <span className="flex items-center gap-1"><span className="text-body-sm">🚀</span> Início Projeto</span>
-                        <span className="flex items-center gap-1"><span className="text-body-sm">🏁</span> Prazo Entrega</span>
-                        <span className="flex items-center gap-1"><span className="text-body-sm">🔮</span> Prev. Real</span>
-                        <span className="flex items-center gap-1"><span className="text-body-sm">📅</span> Agendamento</span>
-                        <span className="flex items-center gap-1"><span className="text-body-sm">🔔</span> Lembretes</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary inline-block"></span> Tarefas</span>
-                        <span className="flex items-center gap-1"><span className="text-body-sm">📦</span> Entrega Material</span>
-                        <span className="flex items-center gap-1"><span className="text-body-sm">⚠️</span> Revisão Risco</span>
-                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-border inline-block"></span> Fim-de-semana / Feriado</span>
                       </div>
                     </div>
                   </div>
@@ -2374,20 +2351,6 @@ export default function ProjectSection({
                   </div>
                 </div>
 
-              {/* Documents Attachments list */}
-              <div className="space-y-2">
-                <span className="text-caption text-text-muted uppercase font-bold tracking-wider block">Documentação técnica</span>
-                {selectedProj.documents?.length > 0 ? (
-                  <div className="space-y-1 mt-1">
-                    {selectedProj.documents.map((doc, i) => (
-                      <div key={i} className="flex items-center gap-1.5 py-1 text-primary hover:underline cursor-pointer">
-                        <FileText className="w-3.5 h-3.5 flex-shrink-0 text-text-muted" />
-                        <span className="font-semibold truncate max-w-[180px]">{doc}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : <span className="text-text-muted italic block mt-1">Sem esquemas ou PDFs anexados.</span>}
-              </div>
 
             </div>
 
@@ -3861,43 +3824,6 @@ export default function ProjectSection({
               </div>
             </div>
 
-            {/* Documents lists input */}
-            <div className="space-y-2 md:col-span-2">
-              <label className="block text-text-secondary">Esquemas Técnicos / Documentos (Anexos)</label>
-              <div className="flex gap-2">
-                <Input aria-label="Esquemas Técnicos / Documentos (Anexos)"
-                  type="text"
-                  value={newDocName}
-                  onChange={e => setNewDocName(e.target.value)}
-                  placeholder="Introduza o nome do ficheiro (ex: Esquema_Pneumatico_v1.pdf)"
-                  className="flex-1 p-2 border border-border rounded-control"
-                />
-                <Button variant="ghost" size="sm"
-                  type="button"
-                  onClick={addDocument}
-                  className="px-4 py-2 bg-surface-muted hover:bg-border border border-border text-text-secondary rounded-control font-bold"
-                >
-                  Adicionar
-                </Button>
-              </div>
-
-              {formDocs.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {formDocs.map((doc, idx) => (
-                    <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 border border-primary/20 text-primary rounded-lg">
-                      <span className="font-semibold truncate max-w-[200px]">{doc}</span>
-                      <Button variant="ghost" size="sm"
-                        type="button"
-                        onClick={() => removeDocument(idx)}
-                        className="text-error hover:text-error font-extrabold ml-1"
-                      >
-                        ×
-                      </Button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Default Tasks Selection section */}
             {!editingId && defaultTasks && defaultTasks.length > 0 && (
