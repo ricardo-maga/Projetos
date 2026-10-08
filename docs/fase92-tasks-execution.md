@@ -43,7 +43,7 @@ Tabela aplicável quando `canWrite` permite escrita; em View/sem permissão os c
 | Campo / Grupo | Editável | Bloqueado |
 |---|---:|---:|
 | Estado da tarefa | Sim | Não |
-| Técnicos Alocados | Sim | Não |
+| Utilizadores alocados | Sim | Não |
 | Horas Reais Consumidas | Sim | Não |
 | Data de Início e Hora de Início | Sim | Não |
 | Data de Fim e Hora de Fim | Sim | Não |

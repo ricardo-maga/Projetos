@@ -21,7 +21,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
   onChange,
   allowedGroupIds,
   filterTeamOnly = false,
-  label = 'Técnicos Alocados',
+  label = 'Utilizadores',
   className = ''
 }) => {
   const [searchTerm, setSearchTerm] = useState('');

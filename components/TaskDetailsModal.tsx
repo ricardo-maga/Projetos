@@ -598,13 +598,9 @@ export default function TaskDetailsModal({
             <div className="flex items-center justify-between border-b border-border pb-2">
               <span className="text-body-sm font-extrabold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
                 <ListTodo className="w-4 h-4 text-primary" />
-                Dados de Planeamento
+                Dados de planeamento
               </span>
-              {effectiveMode === 'create' && (
-                <span className="text-caption font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-badge">
-                  Campos essenciais
-                </span>
-              )}
+
             </div>
 
             {/* Title */}
@@ -821,16 +817,7 @@ export default function TaskDetailsModal({
                 <PlayCircle className="w-4 h-4 text-warning" />
                 Dados de Execução Real
               </span>
-              {effectiveMode === 'create' ? (
-                <span className="text-caption font-bold text-text-muted bg-surface-muted px-2 py-0.5 rounded-badge border border-border">
-                  Opcional na criação
-                </span>
-              ) : effectiveMode === 'execute' ? (
-                <span className="text-caption font-bold text-warning bg-warning/10 border border-warning/20 px-2 py-0.5 rounded-badge flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-warning" />
-                  Foco no registo de trabalho
-                </span>
-              ) : null}
+
             </div>
 
             {/* Consumed Real Hours */}

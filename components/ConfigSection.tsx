@@ -96,7 +96,7 @@ export const PASTEL_COLORS = [
   { id: 'vermelho', name: 'Vermelho', hex: '#fca5a5', bgClass: 'bg-red-200', textClass: 'text-red-900', borderClass: 'border-red-300' },
   { id: 'amarelo', name: 'Amarelo', hex: '#fef08a', bgClass: 'bg-yellow-200', textClass: 'text-yellow-900', borderClass: 'border-yellow-300' },
   { id: 'verde', name: 'Verde', hex: '#bbf7d0', bgClass: 'bg-green-200', textClass: 'text-green-900', borderClass: 'border-green-300' },
-  { id: 'azul', name: 'Azul Céu', hex: '#38bdf8', bgClass: 'bg-sky-200', textClass: 'text-sky-900', borderClass: 'border-sky-300' },
+  { id: 'azul', name: 'Azul', hex: '#38bdf8', bgClass: 'bg-sky-200', textClass: 'text-sky-900', borderClass: 'border-sky-300' },
   { id: 'laranja', name: 'Laranja', hex: '#fed7aa', bgClass: 'bg-orange-200', textClass: 'text-orange-900', borderClass: 'border-orange-300' },
   { id: 'cinza', name: 'Cinza', hex: '#e2e8f0', bgClass: 'bg-slate-200', textClass: 'text-slate-800', borderClass: 'border-slate-300' },
 ];
@@ -1096,7 +1096,7 @@ export default function ConfigSection({
               </div>
 
               <div className="space-y-2 pt-2 border-t border-slate-100" id="task-assignee-groups-config">
-                <label className="block text-slate-700 font-bold">Grupos Associados Tarefas (Técnicos Alocados - Escolha Múltipla)</label>
+                <label className="block text-slate-700 font-bold">Grupos associados a tarefas</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
                   {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
                     <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
@@ -1124,7 +1124,7 @@ export default function ConfigSection({
                   )}
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium font-sans">
-                  Selecione os grupos de utilizadores que poderão aparecer na seleção de Técnicos Alocados na criação e edição de tarefas em toda a aplicação.
+                  Selecione os grupos de utilizadores que poderão aparecer na seleção de Utilizadores na criação e edição de tarefas em toda a aplicação.
                 </p>
               </div>
             </div>
@@ -1471,16 +1471,16 @@ export default function ConfigSection({
           <div className="flex gap-1.5 min-w-max">
             {[
               { id: 'projectCategories', label: 'Categorias' },
-              { id: 'projectStatuses', label: 'Estados do Projeto' },
-              { id: 'taskTypes', label: 'Tipos de Tarefa' },
-              { id: 'taskStatuses', label: 'Estados de Tarefa' },
-              { id: 'ticketStatuses', label: 'Estados de Tickets' },
+              { id: 'projectStatuses', label: 'Estados do projeto' },
+              { id: 'taskTypes', label: 'Tipos de tarefa' },
+              { id: 'taskStatuses', label: 'Estados de tarefa' },
+              { id: 'ticketStatuses', label: 'Estados de tickets' },
               { id: 'projectPriorities', label: 'Prioridades' },
-              { id: 'projectTeams', label: 'Equipas Internas' },
-              { id: 'projectPartners', label: 'Parceiros Externos' },
-              { id: 'riskCategories', label: 'Categorias de Risco' },
-              { id: 'riskStatuses', label: 'Estados de Risco' },
-              { id: 'riskPriorities', label: 'Prioridades de Risco' },
+              { id: 'projectTeams', label: 'Equipas internas' },
+              { id: 'projectPartners', label: 'Parceiros externos' },
+              { id: 'riskCategories', label: 'Categorias de risco' },
+              { id: 'riskStatuses', label: 'Estados de risco' },
+              { id: 'riskPriorities', label: 'Prioridades de risco' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -1509,7 +1509,7 @@ export default function ConfigSection({
         <form onSubmit={handleAddAuxRecord} className="flex flex-col gap-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
-              <label className="block text-[11px] text-slate-500 font-bold">Nome da Nova Opção *</label>
+              <label className="block text-[11px] text-slate-500 font-bold">Nome da opção *</label>
               <input 
                 type="text" 
                 required
@@ -1522,7 +1522,7 @@ export default function ConfigSection({
 
             {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') && (
               <div className="space-y-1">
-                <label className="block text-[11px] text-slate-500 font-bold">Escala / Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? '1 a 10' : '1 a 3'})</label>
+                <label className="block text-[11px] text-slate-500 font-bold">Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? '1 a 10' : '1 a 3'})</label>
                 <input 
                   type="number"
                   min={activeAuxTab === 'projectStatuses' ? 0 : 1}
@@ -1540,13 +1540,13 @@ export default function ConfigSection({
               className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              Adicionar Opção
+              Adicionar opção
             </button>
           </div>
 
           {isColorAuxTab && (
             <div className="pt-2 border-t border-slate-200/60 flex flex-col sm:flex-row sm:items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Cor Pastel Associada:</span>
+              <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Cor:</span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {PASTEL_COLORS.map(c => {
                   const isSelected = newAuxColor === c.hex;
@@ -1590,10 +1590,10 @@ export default function ConfigSection({
                     <th className="p-3.5 w-10"></th>
                     <th className="p-3.5">Nome da Opção</th>
                     {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') && (
-                      <th className="p-3.5 w-32">Escala / Nível</th>
+                      <th className="p-3.5 w-32">Nível</th>
                     )}
                     {isColorAuxTab && (
-                      <th className="p-3.5 w-48">Cor Pastel</th>
+                      <th className="p-3.5 w-48">Cor</th>
                     )}
                     <th className="p-3.5 w-36 text-right">Ações</th>
                   </tr>

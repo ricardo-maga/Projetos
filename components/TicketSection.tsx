@@ -2276,7 +2276,7 @@ export function TicketSection({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Técnicos Alocados à Tarefa</label>
+                <label className="block font-bold text-slate-700 mb-1">Utilizadores alocados à tarefa</label>
                 <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border border-slate-200 rounded-lg bg-slate-50">
                   {activeUsers.map(u => {
                     const isChecked = convAssigneeIds.includes(u.id);
