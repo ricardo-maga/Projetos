@@ -518,9 +518,9 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       client.from('tasks').select('*').order('created_at', { ascending: false }),
       client.from('comments').select('*').order('created_at', { ascending: true }),
       client.from('user_absences').select('*'),
-      client.from('material').select('*').order('created_at', { ascending: false }),
-      client.from('quotes').select('*').order('created_at', { ascending: false }),
-      client.from('bill_of_materials').select('*'),
+      Promise.resolve({ data: [], error: null }), // global material catalog removed
+      Promise.resolve({ data: [], error: null }), // quotes/BOM removed
+      Promise.resolve({ data: [], error: null }), // quotes/BOM removed
       client.from('equipment').select('*').order('created_at', { ascending: false }),
       client.from('app_configuration').select('*').limit(1),
       client.from('special_days').select('*'),
@@ -1505,18 +1505,8 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
         is_admin: u.isAdmin || false
       }))) : Promise.resolve({ error: null }),
 
-      // Materials (table: material)
-      state.materials.length ? supabase.from('material').upsert(state.materials.map((m: any) => ({
-        id: m.id,
-        name: m.name,
-        reference: m.reference || null,
-        manufacturer_reference: m.manufacturerReference || null,
-        unit: m.unit || null,
-        unit_cost: m.unitCost || 0,
-        supplier: m.supplier || null,
-        deleted: m.deleted,
-        created_at: m.createdDate || new Date().toISOString()
-      }))) : Promise.resolve({ error: null }),
+      // Global material catalog removed; project_materials is persisted separately below.
+      Promise.resolve({ error: null }),
     ];
 
     const initialResults = await Promise.all(upserts);
@@ -1928,25 +1918,8 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
         return supabase.from('user_absences').upsert(mappedAbsences).then(res => ({ ...res, table: 'user_absences' }));
       })() : Promise.resolve({ error: null }),
 
-      // Quotes
-      (state.quotes && state.quotes.length > 0) ? (() => {
-        const mappedQuotes = state.quotes.map((q: any) => {
-          const pid = q.projectId ? stringToUUID(q.projectId) : null;
-          const rid = q.responsibleId ? stringToUUID(q.responsibleId) : null;
-          return {
-            id: q.id,
-            project_id: pid,
-            status: q.status,
-            version: Number(q.version) || 1,
-            total_value: q.totalValue || 0,
-            valid_until: q.validUntil || null,
-            responsible_id: rid,
-            deleted: q.deleted,
-            created_at: q.createdDate || new Date().toISOString()
-          };
-        });
-        return supabase.from('quotes').upsert(mappedQuotes).then(res => ({ ...res, table: 'quotes' }));
-      })() : Promise.resolve({ error: null }),
+      // Quotes/BOM removed.
+      Promise.resolve({ error: null }),
 
       // Equipment List
       (state.equipmentList && state.equipmentList.length > 0) ? (() => {
@@ -1987,34 +1960,6 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
     if (secondaryError && secondaryError.error) {
       console.error('Error saving secondary entities (Stage 1) for table', (secondaryError as any).table, ':', secondaryError.error);
       return { success: false, message: `Error saving secondary entities (Stage 1) for table ${(secondaryError as any).table}: ${formatSupabaseError(secondaryError.error)}` };
-    }
-
-    // Now that quotes are fully saved in the database, we can safely upsert Bill of Materials to avoid foreign key violations.
-    if (state.billOfMaterials && state.billOfMaterials.length > 0) {
-      const validQuoteIds = new Set(state.quotes.map((q: any) => q.id));
-      const validMaterialIds = new Set(state.materials.map((m: any) => m.id));
-      const mappedBOMs = state.billOfMaterials
-        .map((b: any) => {
-          const qid = b.quoteId ? stringToUUID(b.quoteId) : null;
-          const mid = b.materialId ? stringToUUID(b.materialId) : null;
-          return {
-            id: b.id,
-            quote_id: qid,
-            material_id: mid,
-            quantity: b.quantity || 1,
-            deleted: b.deleted,
-            created_at: b.createdDate || new Date().toISOString()
-          };
-        })
-        .filter(b => b.quote_id && b.material_id);
-
-      if (mappedBOMs.length > 0) {
-        const resBOM = await supabase.from('bill_of_materials').upsert(mappedBOMs);
-        if (resBOM.error) {
-          console.error('Error saving Bill of Materials (Stage 2):', resBOM.error);
-          return { success: false, message: `Erro ao gravar Bill of Materials: ${formatSupabaseError(resBOM.error)}` };
-        }
-      }
     }
 
     // Save Ticket Statuses

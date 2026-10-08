@@ -49,6 +49,46 @@ export const projectPreviewProps: React.ComponentProps<typeof ProjectSection> = 
 };
 
 describe('Projects M3 presentation', () => {
+  it('orders project tasks from the most recent date and keeps the material tab quiet without warnings', () => {
+    const tasks = [
+      { id: 'older-task', projectId: project.id, title: 'Tarefa antiga', statusId: 'qa-status', estimatedDate: '2026-10-01', assigneeIds: [] },
+      { id: 'newer-task', projectId: project.id, title: 'Tarefa recente', statusId: 'qa-status', estimatedDate: '2026-10-03', assigneeIds: [] },
+    ];
+    const taskHarness = createProjectHarness({ activeDetailTab: 'tarefas', loadedProjectIdForTasks: project.id, serverTasks: tasks });
+    const taskHtml = renderToStaticMarkup(taskHarness.render({ ...projectPreviewProps, selectedProjectId: project.id }));
+    expect(taskHtml.indexOf('Tarefa recente')).toBeLessThan(taskHtml.indexOf('Tarefa antiga'));
+
+    const materialHarness = createProjectHarness({ activeDetailTab: 'material' });
+    const materialHtml = renderToStaticMarkup(materialHarness.render({
+      ...projectPreviewProps,
+      selectedProjectId: project.id,
+      projectMaterials: [{ id: 'stored-material', projectId: project.id, status: 'em_armazem', description: 'Peça em armazém', quantity: 1 }],
+    }));
+    expect(materialHtml).not.toContain('Sem Avisos de Material em Falta');
+  });
+
+  it('limits risk owners to task-assignee groups in alphabetical order', () => {
+    const h = createProjectHarness({ showRiskModal: true });
+    const tree = h.render({
+      ...projectPreviewProps,
+      selectedProjectId: project.id,
+      appConfig: { taskAssigneeGroupIds: [CANONICAL_ROLE_IDS.TECHNICIAN] },
+      users: [
+        { id: 'z', name: 'Zara Técnica', roleId: CANONICAL_ROLE_IDS.TECHNICIAN },
+        { id: 'a', name: 'Ana Técnica', roleId: 'ug-3' },
+        { id: 'commercial', name: 'Bruno Comercial', roleId: CANONICAL_ROLE_IDS.COMMERCIAL },
+        { id: 'deleted', name: 'Carlos Eliminado', roleId: CANONICAL_ROLE_IDS.TECHNICIAN, deleted: true },
+      ],
+    });
+    const ownerSelect = findProjectElement(tree, e => e.props?.['aria-label'] === 'Responsável / Proprietário do Risco');
+    const ownerHtml = renderToStaticMarkup(ownerSelect);
+    expect(ownerHtml).toContain('Ana Técnica');
+    expect(ownerHtml).toContain('Zara Técnica');
+    expect(ownerHtml.indexOf('Ana Técnica')).toBeLessThan(ownerHtml.indexOf('Zara Técnica'));
+    expect(ownerHtml).not.toContain('Bruno Comercial');
+    expect(ownerHtml).not.toContain('Carlos Eliminado');
+  });
+
   it('provides an icon for each project list and analytics tab', () => {
     const h = createProjectHarness();
     const tree = h.render({ ...projectPreviewProps, selectedProjectId: null });

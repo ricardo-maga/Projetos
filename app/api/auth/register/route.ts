@@ -51,7 +51,11 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (existingUser) {
-      return badRequest('Já existe uma conta associada a este endereço de email.', requestId);
+      // Do not reveal whether an address is already registered.
+      return NextResponse.json({
+        success: true,
+        message: 'Se o endereço puder ser registado, o pedido será processado e ficará sujeito a aprovação por um administrador.',
+      }, { status: 202 });
     }
 
     let authUserId: string | null = null;
@@ -60,7 +64,7 @@ export async function POST(req: NextRequest) {
     if (adminSupabase) {
       const { data: authUser, error: authError } = await adminSupabase.auth.admin.createUser({
         email: cleanEmail,
-        password: password.trim(),
+        password,
         // Do not mark self-registered accounts as verified until Supabase has
         // completed its configured email-verification flow.
         email_confirm: false,
@@ -69,7 +73,7 @@ export async function POST(req: NextRequest) {
 
       if (authError) {
         console.error('[REGISTER AUTH ERROR]', authError);
-        return badRequest(`Erro ao criar utilizador no Supabase Auth: ${authError.message}`, requestId);
+        return badRequest('Não foi possível concluir o pedido de registo.', requestId);
       }
 
       authUserId = authUser.user?.id || null;
@@ -97,7 +101,7 @@ export async function POST(req: NextRequest) {
 
     if (insertError) {
       console.error('[REGISTER DB ERROR]', insertError);
-      return internalServerError(`Erro ao gravar perfil do utilizador: ${insertError.message}`, requestId);
+      return internalServerError('Não foi possível concluir o pedido de registo.', requestId);
     }
 
     await logAuditEvent({
