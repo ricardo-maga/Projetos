@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { CalendarDays, GanttChart } from 'lucide-react';
-import type { Project, Task, UserAbsence, User, Client, SpecialDay, ProjectRiskItem, TaskType } from '../lib/types';
+import type { Project, Task, UserAbsence, User, Client, SpecialDay, ProjectRiskItem, TaskType, ProjectPriority } from '../lib/types';
 import { hasPermission } from '../lib/permissions';
 import OperationalUserCalendar from './OperationalUserCalendar';
 import TaskDetailsModal from './TaskDetailsModal';
@@ -12,6 +12,7 @@ import { Card } from './ui/Card';
 interface CalendarSectionProps {
   projects: Project[]; tasks: Task[]; absences: UserAbsence[]; users: User[]; clients: Client[];
   specialDays?: SpecialDay[]; projectRiskItems?: ProjectRiskItem[]; projectStatuses?: any[];
+  projectPriorities?: ProjectPriority[];
   onSelectProject?: (id: string) => void;
   addTask?: (task: any) => any; updateTask?: (id: string, updates: any) => any; deleteTask?: (id: string) => any;
   taskStatuses: any[]; taskTypes?: TaskType[]; currentUser?: any; userGroups?: any[]; appConfig?: any;
@@ -20,7 +21,7 @@ interface CalendarSectionProps {
 // One daily planning source: canonical task dates, hours and assignees.
 export default function CalendarSection({ projects = [], tasks = [], absences = [], users = [], clients = [],
   specialDays = [], projectRiskItems = [], projectStatuses = [], onSelectProject, addTask, updateTask, deleteTask, taskStatuses = [], taskTypes = [],
-  currentUser, userGroups = [], appConfig }: CalendarSectionProps) {
+  projectPriorities = [], currentUser, userGroups = [], appConfig }: CalendarSectionProps) {
   const [view, setView] = useState<'users' | 'projects'>('users');
   const [modal, setModal] = useState<{ task: Task | null; mode: 'create' | 'edit' | 'view'; date?: string; userId?: string; projectId?: string } | null>(null);
   const canRead = hasPermission(currentUser, 'calendar_read', userGroups);
@@ -45,6 +46,6 @@ export default function CalendarSection({ projects = [], tasks = [], absences = 
       onSelectProject={onSelectProject} onSelectTask={openTask} onCreateTask={(date, projectId) => createTask(date, undefined, projectId)} />}
     {modal && <TaskDetailsModal isOpen task={modal.task} mode={modal.mode} initialDate={modal.date} initialAssigneeId={modal.userId} initialProjectId={modal.projectId}
       onClose={() => setModal(null)} createTask={addTask} updateTask={updateTask} deleteTask={deleteTask} taskStatuses={taskStatuses} taskTypes={taskTypes}
-      users={users} userGroups={userGroups} appConfig={appConfig} projects={projects} clients={clients} absences={absences} tasks={tasks} canWrite={canCreate} />}
+      projectPriorities={projectPriorities} users={users} userGroups={userGroups} appConfig={appConfig} projects={projects} clients={clients} absences={absences} tasks={tasks} canWrite={canCreate} />}
   </div>;
 }

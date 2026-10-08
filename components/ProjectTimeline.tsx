@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
 import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User } from '../lib/types';
 import { buildProjectTimelineEvents, filterProjectTimeline, type TimelineHorizon } from '../lib/projectTimeline';
 import { getOperationalCalendarDays, formatOperationalDateRange } from '../lib/operationalCalendar';
@@ -33,6 +33,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const [page, setPage] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(new Set());
   const masterRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const change = () => setFullscreen(document.fullscreenElement === masterRef.current);
@@ -60,7 +61,8 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   };
   const days = useMemo(() => getOperationalCalendarDays(anchor, periodDays), [anchor, periodDays]);
   const events = useMemo(() => buildProjectTimelineEvents(projects, tasks, projectRiskItems, includeRiskReviews), [projects, tasks, projectRiskItems, includeRiskReviews]);
-  const filtered = filterProjectTimeline(projects, clients, projectStatuses, events, { search, horizon, showCompleted });
+  const filtered = filterProjectTimeline(projects, clients, projectStatuses, events, { search, horizon, showCompleted })
+    .filter(project => !hiddenProjectIds.has(project.id));
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)), validPage = Math.min(page, pages);
   const start = (validPage - 1) * PAGE_SIZE, visibleProjects = filtered.slice(start, start + PAGE_SIZE);
   const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
@@ -91,6 +93,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               <Input aria-label="Pesquisar na timeline" placeholder="Pesquisar projeto, cliente ou nº IP…" className="pl-9 text-body-sm" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} /></div>
             <Checkbox label="Mostrar projetos concluídos" checked={showCompleted} onChange={e => { setShowCompleted(e.target.checked); setPage(1); }} />
             <Checkbox label="Incluir revisões de risco" checked={includeRiskReviews} onChange={e => { setIncludeRiskReviews(e.target.checked); setPage(1); }} />
+            {hiddenProjectIds.size > 0 && <Button variant="outline" size="sm" onClick={() => setHiddenProjectIds(new Set())}>Repor todos os projetos</Button>}
           </div>
         </div>
       </div>
@@ -99,21 +102,24 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
         <table className="w-full table-fixed text-body-sm" style={{ minWidth: timelineMinWidth }}>
           <caption className="sr-only">Timeline de projetos · {formatOperationalDateRange(days)}</caption>
           <colgroup><col style={{ width: 260 }} />{days.map(day => <col key={day.dateStr} style={compactDays.has(day.dateStr) ? { width: 64 } : undefined} />)}</colgroup>
-          <thead className="text-caption text-text-secondary bg-surface-muted"><tr>
-            <th scope="col" className="p-3 text-left">Projeto</th>
-            {days.map(day => <th scope="col" key={day.dateStr} className={`p-3 border-l border-border text-left ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
+          <thead className="text-body-sm font-semibold text-text-secondary bg-surface-muted"><tr>
+            <th scope="col" className="p-3 text-left text-body-sm font-semibold">Projeto</th>
+            {days.map(day => <th scope="col" key={day.dateStr} className={`p-3 border-l border-border text-left text-body-sm font-semibold ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
               <span className="block">{day.weekdayShort.slice(0, 3).toUpperCase()} {day.dayNum}/{day.date.getMonth() + 1}</span>
               {specialDays.find(s => s.date === day.dateStr) && <span className="block text-caption font-normal text-text-secondary break-words">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
             </th>)}
           </tr></thead>
           <tbody>{visibleProjects.map(project => { const style = getProjectStatusStyle(project.statusId, projectStatuses); const expanded = expandedProjects.has(project.id); return <tr key={project.id} className="border-t border-border align-top">
             <th scope="row" className="p-3 text-left font-medium text-text-primary space-y-1">
-              <Button variant="ghost" size="sm" className="w-full justify-between px-0 text-left" aria-expanded={expanded}
-                aria-label={`${expanded ? 'Recolher' : 'Expandir'} projeto de ${clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}`}
-                onClick={() => setExpandedProjects(previous => { const next = new Set(previous); if (next.has(project.id)) next.delete(project.id); else next.add(project.id); return next; })}>
-                <span className="truncate">{clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}</span>
-                <ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 ${expanded ? 'rotate-180' : ''}`} />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" className="min-w-0 flex-1 justify-between px-0 text-left" aria-expanded={expanded}
+                  aria-label={`${expanded ? 'Recolher' : 'Expandir'} projeto de ${clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}`}
+                  onClick={() => setExpandedProjects(previous => { const next = new Set(previous); if (next.has(project.id)) next.delete(project.id); else next.add(project.id); return next; })}>
+                  <span className="truncate">{clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}</span>
+                  <ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 ${expanded ? 'rotate-180' : ''}`} />
+                </Button>
+                {!expanded && <IconButton size="sm" aria-label={`Ocultar projeto ${project.title} da timeline`} onClick={() => setHiddenProjectIds(previous => new Set(previous).add(project.id))}><X className="w-4 h-4" /></IconButton>}
+              </div>
               {expanded && <div className="space-y-1">
               <Button variant="ghost" size="sm" className="px-0 h-auto min-h-9 text-body whitespace-normal text-left justify-start" onClick={() => openOutsideTimeline(() => onSelectProject?.(project.id))}>{project.title}</Button>
               {project.installProjectNo && <span className="block text-caption text-text-secondary">{project.installProjectNo}</span>}
@@ -121,6 +127,21 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               </div>}
             </th>
             {days.map(day => <td key={day.dateStr} className={`p-2 border-l border-border ${dayStyle(day.dateStr, day.isWeekend)}`}>
+              {!expanded && <div className="space-y-1">
+                {(events.get(project.id)?.get(day.dateStr) || []).filter(event => event.kind === 'task').map((event, index) => {
+                  const status = getTaskStatusStyle(event.task.statusId, taskStatuses);
+                  const assigneeIds = event.task.assigneeIds || [];
+                  return <Button key={`compact-task-${index}`} variant="ghost" size="sm" title={event.title} aria-label={`Abrir tarefa ${event.title}`}
+                    className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${status.dotClass.replace('bg-', 'border-l-')}`}
+                    onClick={() => openOutsideTimeline(() => onSelectTask(event.task))}>
+                    <span className="flex items-center gap-1 min-w-0">
+                      {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
+                      {!assigneeIds.length && <span className={`w-3 h-3 rounded-full ${status.dotClass}`} aria-label={status.name} />}
+                      {assigneeIds.length > 2 && <span className="text-caption">+{assigneeIds.length - 2}</span>}
+                    </span>
+                  </Button>;
+                })}
+              </div>}
               {expanded && <div className="space-y-2">
                 {(events.get(project.id)?.get(day.dateStr) || []).map((event, index) => {
                   const status = event.kind === 'task' ? getTaskStatusStyle(event.task.statusId, taskStatuses) : undefined;
@@ -132,7 +153,8 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                         <span className="flex items-center gap-1" aria-label="Técnicos alocados">
                           {(event.task.assigneeIds || []).slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
                           {(event.task.assigneeIds || []).length > 2 && <span className="text-caption">+{event.task.assigneeIds.length - 2}</span>}
-                        </span></>
+                        </span>
+                        <span className="text-caption text-text-secondary">{(event.task.assigneeIds || []).map(id => users.find(user => user.id === id)?.name).filter(Boolean).join(', ') || 'Sem utilizador alocado'}</span></>
                         : <span className="text-caption text-text-secondary">{event.kind === 'risk' ? 'Revisão de risco' : 'Evento do projeto'}</span>}
                     </span>
                   </Button>;

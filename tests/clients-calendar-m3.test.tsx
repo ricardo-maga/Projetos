@@ -7,6 +7,7 @@ import { findProjectElement as find } from './fixtures/projects-m3-harness';
 import { Dialog } from '../components/ui/Dialog';
 import { Tabs } from '../components/ui/Tabs';
 import ProjectTimeline from '../components/ProjectTimeline';
+import TaskDetailsModal from '../components/TaskDetailsModal';
 
 const client: any = { id: 'c', clientName: 'Cliente Exemplo', shortName: 'CE', location: 'Porto', taxId: '123', contactPerson: 'Ana', contactEmail: 'ana@example.invalid', contactPhone: '123', notes: 'Nota', deleted: false };
 export const clientPreviewProps: any = { clients: [client], projects: [{ id: 'p', clientId: 'c', title: 'Projeto associado', deleted: false }], currentUser: { id: 'qa-user', roleId: 'ug-1' }, userGroups: [], addClient: () => {}, updateClient: () => {}, deleteClient: () => {}, onSelectProject: () => {} };
@@ -48,9 +49,10 @@ describe('Clients and Calendar M3', () => {
     find(tree, e => e.props?.onClick && e.props?.children?.[0]?.props?.children?.[0]?.props?.children === 'Projeto associado').props.onClick();
     expect(selected).toBe('p'); expect(h.state.selectedClientForModal).toBe(null);
   });
-  it('uses Projects-style tabs with icons, forwards risks and preserves calendar permissions/modal', () => {
+  it('uses Projects-style tabs with icons, forwards risks and priorities, and preserves calendar permissions/modal', () => {
     const h = createSectionHarness('CalendarSection.tsx');
-    const props: any = { projects: [], tasks: [], clients: [], users: [], absences: [], taskStatuses: [], projectStatuses: [], projectRiskItems: [{ id: 'r' }], currentUser: { id: 'qa-user', roleId: 'ug-1' } };
+    const priorities = [{ id: 'high', name: 'Alta', scale: 1, deleted: false }];
+    const props: any = { projects: [], tasks: [], clients: [], users: [], absences: [], taskStatuses: [], projectStatuses: [], projectPriorities: priorities, projectRiskItems: [{ id: 'r' }], currentUser: { id: 'qa-user', roleId: 'ug-1' } };
     let tree = h.render(props);
     const tabs = find(tree, e => e.type === Tabs);
     expect(tabs.props.tabs.map((t: any) => t.label)).toEqual(['Calendário semanal', 'Timeline de projetos']);
@@ -60,6 +62,8 @@ describe('Clients and Calendar M3', () => {
     expect(timeline.props.projectRiskItems).toEqual([{ id: 'r' }]);
     timeline.props.onCreateTask('2026-10-05', 'p');
     expect(h.state.modal).toEqual({ task: null, mode: 'create', date: '2026-10-05', userId: undefined, projectId: 'p' });
+    tree = h.render(props);
+    expect(find(tree, e => e.type === TaskDetailsModal).props.projectPriorities).toBe(priorities);
     expect(renderToStaticMarkup(h.render({ ...props, currentUser: { roleId: 'not-permitted' } }))).toContain('Sem permissão');
   });
 });
