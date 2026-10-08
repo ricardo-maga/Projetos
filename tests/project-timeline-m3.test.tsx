@@ -100,7 +100,7 @@ describe('Project timeline M3', () => {
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
     let tree = h.render(props), html = renderToStaticMarkup(tree);
     expect(html).toContain('Cliente Exemplo'); expect(html).not.toContain('Projeto one');
-    expect(html).not.toContain('Tarefa compacta'); expect(html).not.toContain('IP-one');
+    expect(html).toContain('Tarefa compacta'); expect(html).not.toContain('IP-one');
     expect(html).toContain('AS'); expect(html).toContain('border-l-4'); expect(html).not.toContain('Estado tarefa exclusivo');
     expect(find(tree, e => e.props?.['aria-label'] === 'Criar tarefa em Projeto one no dia 2026-10-10')).toBeUndefined();
     find(tree, e => e.props?.['aria-label'] === 'Ocultar projeto Projeto one da timeline').props.onClick();

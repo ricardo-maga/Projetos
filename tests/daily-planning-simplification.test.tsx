@@ -52,4 +52,8 @@ describe('Daily planning without allocation UI', () => {
       expect(source).not.toContain('createPlanningAllocation');
     }
   });
+  it('keeps task drag-and-drop available to users who can write tasks or the calendar', () => {
+    const source = readFileSync(new URL('../components/CalendarSection.tsx', import.meta.url), 'utf8');
+    expect(source).toContain('canMoveTask={canCreate}');
+  });
 });

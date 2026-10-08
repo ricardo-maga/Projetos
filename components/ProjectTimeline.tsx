@@ -138,6 +138,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                       {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
                       {!assigneeIds.length && <span className={`w-3 h-3 rounded-full ${status.dotClass}`} aria-label={status.name} />}
                       {assigneeIds.length > 2 && <span className="text-caption">+{assigneeIds.length - 2}</span>}
+                      <span className="min-w-0 flex-1 truncate text-caption text-text-primary">{event.title}</span>
                     </span>
                   </Button>;
                 })}
