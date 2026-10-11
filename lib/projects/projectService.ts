@@ -436,19 +436,16 @@ export async function deleteProject(
     throw new Error('Project not found.');
   }
 
-  const [tasksRes, quotesRes, materialsRes] = await Promise.all([
+  const [tasksRes, materialsRes] = await Promise.all([
     client.from('tasks').select('id, deleted').eq('project_id', id),
-    client.from('quotes').select('id, deleted').eq('project_id', id),
     client.from('project_materials').select('id, deleted').eq('project_id', id),
   ]);
 
   const activeTasksCount = (tasksRes.data || []).filter((t: any) => !t.deleted).length;
-  const activeQuotesCount = (quotesRes.data || []).filter((q: any) => !q.deleted).length;
   const activeMaterialsCount = (materialsRes.data || []).filter((m: any) => !m.deleted).length;
 
   const dependencies: string[] = [];
   if (activeTasksCount > 0) dependencies.push(`${activeTasksCount} tarefa(s) ativa(s)`);
-  if (activeQuotesCount > 0) dependencies.push(`${activeQuotesCount} orçamento(s)`);
   if (activeMaterialsCount > 0) dependencies.push(`${activeMaterialsCount} material(ais) associado(s)`);
 
   if (dependencies.length > 0) {

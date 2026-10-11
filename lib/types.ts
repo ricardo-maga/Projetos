@@ -237,18 +237,6 @@ export interface Client {
   version?: number;
 }
 
-export interface Material {
-  id: string;
-  name: string;
-  reference: string;
-  manufacturerReference: string;
-  unit: string; // pcs, m, kg
-  unitCost: number;
-  supplier: string;
-  deleted: boolean;
-  createdDate: string;
-}
-
 export interface ProjectMaterial {
   syncVersion?: number;
   id: string;
@@ -266,28 +254,22 @@ export interface ProjectMaterial {
   createdDate?: string;
 }
 
-export interface Quote {
-  id: string;
-  projectId: string; // Relation: Projects table (or empty if Client-only)
-  clientId: string; // Relation: Clients table (if project is not yet created)
-  projectIdOrClientId?: string;
-  status: 'Draft' | 'Sent' | 'Approved' | 'Rejected' | string;
-  version: string | number;
-  totalValue: number;
-  validUntil: string;
-  responsibleId: string; // Relation: Users table
-  responsible?: string;
-  deleted: boolean;
-  createdDate: string;
+/** @deprecated Global catalog removed from UI/database; retained temporarily for legacy state decoding. */
+export interface Material {
+  id: string; name: string; reference: string; manufacturerReference: string;
+  unit: string; unitCost: number; supplier: string; deleted: boolean; createdDate: string;
 }
 
+/** @deprecated Quotes/BOM removed from UI/database; retained temporarily for legacy state decoding. */
+export interface Quote {
+  id: string; projectId: string; clientId: string; projectIdOrClientId?: string;
+  status: string; version: string | number; totalValue: number; validUntil: string;
+  responsibleId: string; responsible?: string; deleted: boolean; createdDate: string;
+}
+
+/** @deprecated Quotes/BOM removed from UI/database; retained temporarily for legacy state decoding. */
 export interface BillOfMaterial {
-  id: string;
-  quoteId: string; // Relation: Quotes table
-  materialId: string; // Relation: Material table
-  quantity: number;
-  deleted: boolean;
-  createdDate: string;
+  id: string; quoteId: string; materialId: string; quantity: number; deleted: boolean; createdDate: string;
 }
 
 export interface Equipment {
@@ -431,10 +413,10 @@ export interface ERPState {
   projectPartners: ProjectPartner[];
   appConfig: AppConfiguration;
   clients: Client[];
-  materials: Material[];
+  /** @deprecated */ materials: Material[];
   projectMaterials?: ProjectMaterial[];
-  quotes: Quote[];
-  billOfMaterials: BillOfMaterial[];
+  /** @deprecated */ quotes: Quote[];
+  /** @deprecated */ billOfMaterials: BillOfMaterial[];
   equipmentList: Equipment[];
   specialDays: SpecialDay[];
   defaultTasks?: DefaultTask[];
