@@ -1173,31 +1173,29 @@ export function useERP() {
   const deleteAbsence = (id: string) => deleteSyncedEntity('userAbsences', id);
 
   // ==================== USERS CRUD ====================
-  const addUser = async (user: Omit<User, 'id' | 'deleted' | 'createdDate'>) => {
-    const newUser: User = {
-      ...user,
-      id: crypto.randomUUID(),
-      deleted: false,
-      createdDate: new Date().toISOString()
-    };
-    const result = await saveState(prev => ({
-      ...prev,
-      users: [...prev.users, newUser]
-    }));
-    if (!result.success) return null;
-    logAudit('CREATE', 'USER', newUser.id, newUser.name, `Criado utilizador "${newUser.name}" (${newUser.email})`);
-    return newUser.id;
+  const addUser = async (user: Pick<User, 'name' | 'email' | 'type'> & { password: string }) => {
+    const response = await fetch('/api/users', {
+      method: 'POST', headers: getAuthHeaders(),
+      body: JSON.stringify({ name: user.name, email: user.email, type: user.type, password: user.password }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível criar o utilizador.');
+    await refreshFromDatabase();
+    return result.id as string;
   };
 
-  const updateUser = async (id: string, updates: Partial<Omit<User, 'id' | 'createdDate'>>) => {
-    const existingUser = state?.users?.find(u => u.id === id);
-    const userName = updates.name || existingUser?.name || id;
-    logAudit('UPDATE', 'USER', id, userName, `Atualizado utilizador "${userName}"`);
-    const result = await saveState(prev => ({
-      ...prev,
-      users: prev.users.map(u => u.id === id ? { ...u, ...updates } as User : u)
-    }));
-    return result.success;
+  const updateUser = async (id: string, updates: Partial<Omit<User, 'id' | 'createdDate'>> & { password?: string }) => {
+    const existing = state?.users?.find(u => u.id === id);
+    if (!existing) throw new Error('Utilizador não encontrado.');
+    const response = await fetch('/api/users', {
+      method: 'PATCH', headers: getAuthHeaders(),
+      body: JSON.stringify({ id, name: updates.name ?? existing.name, email: updates.email ?? existing.email,
+        type: updates.type ?? existing.type, password: updates.password }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível atualizar o utilizador.');
+    await refreshFromDatabase();
+    return true;
   };
 
   const deleteUser = (id: string) => {

@@ -176,6 +176,17 @@ export async function POST(req: NextRequest) {
       }
       return allowed.get(code) === true;
     };
+    if (Array.isArray(state.users) && state.users.length) {
+      const existing = new Map(baseline.data.users.map(profile => [profile.id, profile]));
+      for (const incoming of state.users) {
+        const previous = existing.get(incoming.id);
+        if (!previous || incoming.deleted !== true || previous.deleted === true ||
+            stable({ ...incoming, deleted: previous.deleted }) !== stable(previous)) {
+          return NextResponse.json({ success: false, message: 'Criação e edição de utilizadores exigem a API de contas.' }, { status: 400 });
+        }
+      }
+      if (!(await can('users:delete'))) throw new ForbiddenError('Sem permissão para eliminar utilizadores.');
+    }
     for (const [field, [write, remove]] of Object.entries(SYNC_DOMAIN_PERMISSIONS)) {
       if (state[field] === undefined) continue;
       let changes;

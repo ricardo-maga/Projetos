@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserAbsence, SpecialDay, AppConfiguration } from '../lib/types';
 import { Plus, Trash2, Calendar, Users, UserCheck, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, Filter, ShieldCheck } from 'lucide-react';
-import { hashPassword } from '../lib/utils';
 import ConfirmModal from './ConfirmModal';
 import { hasPermission, normalizeRoleId } from '../lib/permissions';
 
@@ -235,15 +234,16 @@ export default function UserSection({
       alert('Atribua pelo menos uma função ao utilizador.');
       return;
     }
-    const hashedPassword = await hashPassword(uPassword);
-    const newUserId = await addUser({
+    let newUserId: string | null | void;
+    try { newUserId = await addUser({
       name: uName,
       email: uEmail,
-      password: hashedPassword,
-      roleId: '',
+      password: uPassword,
       type: uType,
-      approved: true,
-    });
+    }); } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível criar o utilizador.');
+      return;
+    }
     if (!newUserId) {
       alert('Não foi possível gravar o utilizador na base de dados.');
       return;
@@ -287,10 +287,15 @@ export default function UserSection({
         alert('As passwords introduzidas não coincidem.');
         return;
       }
-      updates.password = await hashPassword(uPassword);
+      updates.password = uPassword;
     }
 
-    const userUpdated = await updateUser(editingUser.id, updates);
+    let userUpdated: boolean | void;
+    try { userUpdated = await updateUser(editingUser.id, updates); }
+    catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível atualizar o utilizador.');
+      return;
+    }
     if (userUpdated === false) {
       alert('Não foi possível guardar as alterações do utilizador.');
       return;
@@ -797,10 +802,14 @@ export default function UserSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-500">Password {isAddingUser ? '*' : '(Deixe em branco para manter a atual)'}</label>
+                  <label className="block text-slate-500">Password {isAddingUser ? '*' : editingUser && !editingUser.authUserId ? '(Necessária para ativar a conta)' : '(Deixe em branco para manter a atual)'}</label>
+                  {!isAddingUser && editingUser && !editingUser.authUserId && (
+                    <p className="text-xs text-amber-700">Este perfil não tem conta de autenticação. Defina uma password para criar a conta e permitir o acesso.</p>
+                  )}
                   <input 
                     type="password" 
-                    required={isAddingUser}
+                    required={isAddingUser || Boolean(editingUser && !editingUser.authUserId)}
+                    minLength={12}
                     value={uPassword}
                     onChange={e => setUPassword(e.target.value)}
                     placeholder="••••••••"
@@ -813,6 +822,7 @@ export default function UserSection({
                   <input 
                     type="password" 
                     required={isAddingUser && !!uPassword}
+                    minLength={12}
                     value={uPasswordConfirm}
                     onChange={e => setUPasswordConfirm(e.target.value)}
                     placeholder="••••••••"

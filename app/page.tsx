@@ -364,20 +364,22 @@ export default function Page() {
       return;
     }
 
-    const updates: any = {};
-    if (profileName && profileName !== currentUser.name) {
-      updates.name = profileName;
-    }
+    const nameChanged = Boolean(profileName && profileName !== currentUser.name);
+    const token = getClientToken();
+    const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
     if (newPassword) {
-      const response = await fetch('/api/auth/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: newPassword }) });
+      const response = await fetch('/api/auth/password', { method: 'POST', headers, body: JSON.stringify({ password: newPassword }) });
       if (!response.ok) { setChangePasswordError('Não foi possível alterar a password.'); return; }
     }
 
-    if (Object.keys(updates).length > 0) {
-      updateUser(currentUser.id, updates);
-      
-      const updatedUser = { ...currentUser, ...updates };
-      setCurrentUser(updatedUser);
+    if (nameChanged) {
+      const response = await fetch('/api/auth/profile', { method: 'PATCH', headers, body: JSON.stringify({ name: profileName }) });
+      if (!response.ok) {
+        setChangePasswordError(newPassword ? 'A password foi alterada, mas não foi possível atualizar o nome.' : 'Não foi possível atualizar o nome.');
+        return;
+      }
+      setCurrentUser({ ...currentUser, name: profileName });
+      await refreshFromDatabase();
     }
     
     setChangePasswordSuccess(true);
