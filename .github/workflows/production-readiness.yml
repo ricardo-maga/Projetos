@@ -22,7 +22,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2.21
-      - run: bun install --frozen-lockfile
+      # bun.lock uses a legacy lockfile format rejected by Bun 1.2 in frozen mode.
+      - run: bun install --no-save
       - run: bun run typecheck:app
       - run: bun run test:security
 
@@ -35,7 +36,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2.21
-      - run: bun install --frozen-lockfile
+      - run: bun install --no-save
       - run: bun add --no-save @playwright/test@1.55.0
       - run: bunx playwright install --with-deps chromium
       - run: bunx playwright test --config=playwright.config.ts
