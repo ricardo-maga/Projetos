@@ -11,7 +11,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'unknown';
-  if (!checkRateLimit(`login:${ip}`, { limit: 10, windowSeconds: 60 }).success) return rateLimitExceeded(requestId);
+  if (!(await checkRateLimit(`login:${ip}`, { limit: 10, windowSeconds: 60 })).success) return rateLimitExceeded(requestId);
   let body: unknown;
   try { body = await req.json(); } catch { return validationError('Corpo da mensagem inválido (JSON esperado).', requestId); }
   const parsed = loginSchema.safeParse(body);

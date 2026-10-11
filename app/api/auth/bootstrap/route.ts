@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
 
   // 1. Rate limiting: 5 attempts per IP per hour
-  const rateCheck = checkRateLimit(`bootstrap_${ip}`, { limit: 5, windowSeconds: 3600 });
+  const rateCheck = await checkRateLimit(`bootstrap_${ip}`, { limit: 5, windowSeconds: 3600 });
   if (!rateCheck.success) {
     return tooManyRequests('Demasiadas tentativas de bootstrap. Tente novamente mais tarde.', requestId);
   }

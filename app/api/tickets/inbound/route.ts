@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: 'Não autorizado.' }, { status: 401 });
   }
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
-  if (!checkRateLimit(`inbound-ticket:${ip}`, { limit: 30, windowSeconds: 60 }).success) {
+  if (!(await checkRateLimit(`inbound-ticket:${ip}`, { limit: 30, windowSeconds: 60 })).success) {
     return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429 });
   }
   if (!isSupabaseConfigured) {

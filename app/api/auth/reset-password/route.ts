@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
 
   // 1. Rate limiting (3 requests per minute per IP)
-  const rateLimit = checkRateLimit(`reset-pwd:${ip}`, { limit: 3, windowSeconds: 60 });
+  const rateLimit = await checkRateLimit(`reset-pwd:${ip}`, { limit: 3, windowSeconds: 60 });
   if (!rateLimit.success) {
     return rateLimitExceeded(requestId);
   }

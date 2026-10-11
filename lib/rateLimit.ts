@@ -1,62 +1,18 @@
-/**
- * Server-side Sliding-Window Rate Limiter
- * Used for authentication, bootstrap, password reset, and sensitive endpoints.
- */
-
-interface RateLimitRecord {
-  count: number;
-  resetTime: number;
-}
-
-const rateLimitStore = new Map<string, RateLimitRecord>();
-
-// Cleanup stale records periodically
-if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, record] of rateLimitStore.entries()) {
-      if (now > record.resetTime) {
-        rateLimitStore.delete(key);
-      }
-    }
-  }, 60 * 1000);
-}
+import { createHash } from 'crypto';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export interface RateLimitOptions {
   limit: number;      // Maximum allowed requests within window
   windowSeconds: number; // Time window in seconds
 }
 
-export function checkRateLimit(identifier: string, options: RateLimitOptions): { success: boolean; remaining: number; resetTime: number } {
-  const now = Date.now();
-  const windowMs = options.windowSeconds * 1000;
-  const record = rateLimitStore.get(identifier);
-
-  if (!record || now > record.resetTime) {
-    const newRecord: RateLimitRecord = {
-      count: 1,
-      resetTime: now + windowMs,
-    };
-    rateLimitStore.set(identifier, newRecord);
-    return {
-      success: true,
-      remaining: options.limit - 1,
-      resetTime: newRecord.resetTime,
-    };
-  }
-
-  if (record.count >= options.limit) {
-    return {
-      success: false,
-      remaining: 0,
-      resetTime: record.resetTime,
-    };
-  }
-
-  record.count += 1;
-  return {
-    success: true,
-    remaining: options.limit - record.count,
-    resetTime: record.resetTime,
-  };
+export async function checkRateLimit(identifier: string, options: RateLimitOptions): Promise<{ success: boolean; remaining: number; resetTime: number }> {
+  const client = createAdminClient();
+  if (!client) throw new Error('Rate limiting service unavailable.');
+  const { data, error } = await client.rpc('consume_rate_limit', {
+    p_bucket: createHash('sha256').update(identifier).digest('hex'), p_limit: options.limit, p_window_seconds: options.windowSeconds,
+  });
+  const row = Array.isArray(data) ? data[0] : data;
+  if (error || !row) throw new Error('Rate limiting service unavailable.');
+  return { success: row.success === true, remaining: Number(row.remaining), resetTime: new Date(row.reset_at).getTime() };
 }

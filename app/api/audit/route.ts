@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth(req);
-    if (!checkRateLimit(`audit-client:${user.id}`, { limit: 30, windowSeconds: 60 }).success)
+    if (!(await checkRateLimit(`audit-client:${user.id}`, { limit: 30, windowSeconds: 60 })).success)
       return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429 });
     if (Number(req.headers.get('content-length') || 0) > 4096)
       return NextResponse.json({ success: false, message: 'Pedido demasiado grande.' }, { status: 413 });
