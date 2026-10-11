@@ -2,8 +2,7 @@ import type { ERPState } from '../types';
 
 export const SYNC_READ_PERMISSIONS = {
   projects: 'projects:read', comments: 'projects:read', projectRiskItems: 'projects:read',
-  tasks: 'tasks:read', clients: 'clients:read', materials: 'materials:read',
-  projectMaterials: 'materials:read', quotes: 'quotes:read', billOfMaterials: 'quotes:read',
+  tasks: 'tasks:read', clients: 'clients:read', projectMaterials: 'materials:read',
   equipmentList: 'equipment:read', userAbsences: 'absences:read', tickets: 'tickets:read',
   defaultTasks: 'config:read', automationRules: 'admin:access', auditLogs: 'admin:access',
   notificationSettings: 'admin:access',

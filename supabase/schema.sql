@@ -335,48 +335,6 @@ CREATE TABLE IF NOT EXISTS default_tasks (
 );
 
 -- ==========================================
--- 21. TABLE `material`
--- ==========================================
-CREATE TABLE IF NOT EXISTS material (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL,
-    reference TEXT NULL,
-    manufacturer_reference TEXT NULL,
-    unit TEXT NULL,
-    unit_cost NUMERIC NULL,
-    supplier TEXT NULL,
-    deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- ==========================================
--- 22. TABLE `quotes`
--- ==========================================
-CREATE TABLE IF NOT EXISTS quotes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    project_id UUID NULL REFERENCES projects(id) ON DELETE SET NULL,
-    status TEXT NULL,
-    version INT4 NOT NULL DEFAULT 1,
-    total_value NUMERIC NULL,
-    valid_until DATE NULL,
-    responsible_id UUID NULL REFERENCES users(id) ON DELETE SET NULL,
-    deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- ==========================================
--- 23. TABLE `bill_of_materials`
--- ==========================================
-CREATE TABLE IF NOT EXISTS bill_of_materials (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    quote_id UUID NULL REFERENCES quotes(id) ON DELETE CASCADE,
-    material_id UUID NULL REFERENCES material(id) ON DELETE SET NULL,
-    quantity NUMERIC NOT NULL DEFAULT 1.00,
-    deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- ==========================================
 -- 24. TABLE `equipment`
 -- ==========================================
 CREATE TABLE IF NOT EXISTS equipment (
@@ -530,27 +488,6 @@ INSERT INTO user_absences (id, user_id, absence_start_date, absence_end_date, re
 INSERT INTO app_configuration (id, app_name, app_description, footer_text, logo_url) VALUES
 ('33333333-4444-5555-6666-777777777777', 'Gestão de Projetos e ERP', 'Plataforma integrada de planeamento, orçamentação e controlo de projetos industriais.', '© 2026 Gestão de Projetos e ERP. Todos os direitos reservados.', '');
 
--- 21. Seed material
-INSERT INTO material (id, name, reference, manufacturer_reference, unit, unit_cost, supplier, deleted, created_at) VALUES
-('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1', 'Módulo PLC Siemens S7-1200', '6ES7214-1AG40-0XB0', 'Siemens CPU 1214C', 'pcs', 350.00, 'FFonseca', FALSE, '2026-01-15T09:00:00Z'),
-('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2', 'Cabo de Rede Ethernet Cat6 LSZH', 'CAB-ETH-CAT6-100', 'General Cable', 'm', 1.25, 'FFonseca', FALSE, '2026-01-15T09:10:00Z'),
-('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee3', 'Célula de Carga 50kg Inox', 'HBM-PW15AH-50KG', 'HBM LoadCells', 'pcs', 185.00, 'Dibal', FALSE, '2026-01-20T11:00:00Z'),
-('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee4', 'Câmara de Visão Artificial 5MP', 'COGNEX-ISM8402', 'Cognex In-Sight', 'pcs', 1450.00, 'Inovasense', FALSE, '2026-01-22T14:30:00Z'),
-('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee5', 'Impressora Aplicadora de Etiquetas Industrial', 'ZEBRA-ZE511', 'Zebra Technologies', 'pcs', 3200.00, 'TSMaq', FALSE, '2026-02-01T10:00:00Z');
-
--- 22. Seed quotes
-INSERT INTO quotes (id, project_id, status, version, total_value, valid_until, responsible_id, deleted, created_at) VALUES
-('ffffffff-ffff-ffff-ffff-ffffffffffff', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Approved', 1, 5625.00, '2026-06-15', '11111111-1111-1111-1111-111111111114', FALSE, '2026-04-10T10:00:00Z'),
-('ffffffff-ffff-ffff-ffff-fffffffffffa', NULL, 'Draft', 1, 1450.00, '2026-08-30', '11111111-1111-1111-1111-111111111114', FALSE, '2026-07-01T15:00:00Z');
-
--- 23. Seed bill_of_materials
-INSERT INTO bill_of_materials (id, quote_id, material_id, quantity, deleted, created_at) VALUES
-('11111111-2222-3333-4444-555555555551', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1', 1, FALSE, '2026-04-10T10:15:00Z'),
-('11111111-2222-3333-4444-555555555552', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2', 100, FALSE, '2026-04-10T10:16:00Z'),
-('11111111-2222-3333-4444-555555555553', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee3', 4, FALSE, '2026-04-10T10:17:00Z'),
-('11111111-2222-3333-4444-555555555554', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee5', 1, FALSE, '2026-04-10T10:18:00Z'),
-('11111111-2222-3333-4444-555555555555', 'ffffffff-ffff-ffff-ffff-fffffffffffa', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee4', 1, FALSE, '2026-07-01T15:10:00Z');
-
 -- 24. Seed equipment
 INSERT INTO equipment (id, serial_number, brand, model, project_id, status, installation_date, deleted, created_at) VALUES
 ('22222222-1111-4444-3333-999999999991', 'EQ-SN-99120', 'Dibal', 'Dibal LS-4000', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Active', '2026-06-29', FALSE, '2026-06-29T11:00:00Z'),
@@ -581,9 +518,6 @@ ALTER TABLE task_assignees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_absences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_configuration ENABLE ROW LEVEL SECURITY;
-ALTER TABLE material ENABLE ROW LEVEL SECURITY;
-ALTER TABLE quotes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bill_of_materials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE equipment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE special_days ENABLE ROW LEVEL SECURITY;
 ALTER TABLE default_tasks ENABLE ROW LEVEL SECURITY;
@@ -610,9 +544,6 @@ CREATE POLICY "Full access to auth users on task_assignees" ON task_assignees FO
 CREATE POLICY "Full access to auth users on comments" ON comments FOR ALL TO authenticated USING (true);
 CREATE POLICY "Full access to auth users on user_absences" ON user_absences FOR ALL TO authenticated USING (true);
 CREATE POLICY "Full access to auth users on app_configuration" ON app_configuration FOR ALL TO authenticated USING (true);
-CREATE POLICY "Full access to auth users on material" ON material FOR ALL TO authenticated USING (true);
-CREATE POLICY "Full access to auth users on quotes" ON quotes FOR ALL TO authenticated USING (true);
-CREATE POLICY "Full access to auth users on bill_of_materials" ON bill_of_materials FOR ALL TO authenticated USING (true);
 CREATE POLICY "Full access to auth users on equipment" ON equipment FOR ALL TO authenticated USING (true);
 CREATE POLICY "Full access to auth users on special_days" ON special_days FOR ALL TO authenticated USING (true);
 CREATE POLICY "Full access to auth users on default_tasks" ON default_tasks FOR ALL TO authenticated USING (true);
@@ -647,8 +578,6 @@ CREATE INDEX IF NOT EXISTS idx_comments_project_id ON comments (project_id);
 CREATE INDEX IF NOT EXISTS idx_comments_project_created ON comments (project_id, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_clients_deleted ON clients (deleted);
-CREATE INDEX IF NOT EXISTS idx_quotes_project_id ON quotes (project_id);
-CREATE INDEX IF NOT EXISTS idx_bom_quote_id ON bill_of_materials (quote_id);
 
 
 -- ==========================================

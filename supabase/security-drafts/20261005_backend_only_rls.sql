@@ -9,12 +9,12 @@ SET LOCAL statement_timeout = '60s';
 DO $cutover$
 DECLARE
   targets constant text[] := ARRAY[
-    'audit_logs','automation_rules','bill_of_materials','clients','comments',
-    'default_tasks','equipment','erp_projects','erp_tasks','material',
+    'audit_logs','automation_rules','clients','comments',
+    'default_tasks','equipment','erp_projects','erp_tasks',
     'notification_settings','notifications','project_category','project_category_link',
     'project_materials','project_partners','project_partners_link','project_priority',
     'project_priority_link','project_risk','project_risk_items','project_risk_link',
-    'project_status','project_teams','project_teams_link','projects','quotes',
+    'project_status','project_teams','project_teams_link','projects',
     'risk_categories','risk_priorities','risk_statuses','special_days','task_assignees',
     'task_status','task_types','tasks','ticket_statuses','tickets','user_absences',
     'user_groups','users'

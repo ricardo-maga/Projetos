@@ -22,7 +22,7 @@
 
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem, AuditLog } from './types';
+import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Equipment, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem, AuditLog } from './types';
 import { getProjectsServerData } from './projects/projectService';
 import { normalizeRoleId } from './permissions';
 import { getAuthHeaders } from './clientAuth';
@@ -259,23 +259,6 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
       id: stringToUUID(a.id),
       userId: stringToUUID(a.userId),
     })),
-    materials: (state.materials || []).map((m: any) => ({
-      ...m,
-      id: stringToUUID(m.id),
-    })),
-    quotes: (state.quotes || []).map((q: any) => ({
-      ...q,
-      id: stringToUUID(q.id),
-      projectId: stringToUUID(q.projectId),
-      clientId: stringToUUID(q.clientId),
-      responsibleId: stringToUUID(q.responsibleId),
-    })),
-    billOfMaterials: (state.billOfMaterials || []).map((b: any) => ({
-      ...b,
-      id: stringToUUID(b.id),
-      quoteId: stringToUUID(b.quoteId),
-      materialId: stringToUUID(b.materialId),
-    })),
     equipmentList: (state.equipmentList || []).map((e: any) => ({
       ...e,
       id: stringToUUID(e.id),
@@ -485,9 +468,6 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       resTasks,
       resComments,
       resUserAbsences,
-      resMaterials,
-      resQuotes,
-      resBOMs,
       resEquipment,
       resConfig,
       resSpecialDays,
@@ -518,9 +498,6 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       client.from('tasks').select('*').order('created_at', { ascending: false }),
       client.from('comments').select('*').order('created_at', { ascending: true }),
       client.from('user_absences').select('*'),
-      Promise.resolve({ data: [], error: null }), // global material catalog removed
-      Promise.resolve({ data: [], error: null }), // quotes/BOM removed
-      Promise.resolve({ data: [], error: null }), // quotes/BOM removed
       client.from('equipment').select('*').order('created_at', { ascending: false }),
       client.from('app_configuration').select('*').limit(1),
       client.from('special_days').select('*'),
@@ -765,40 +742,6 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       createdDate: a.created_at || '',
     }));
 
-    const materials: Material[] = (resMaterials.data || []).map((m: any) => ({
-      id: m.id,
-      name: m.name,
-      reference: m.reference || '',
-      manufacturerReference: m.manufacturer_reference || '',
-      unit: m.unit || '',
-      unitCost: Number(m.unit_cost) || 0,
-      supplier: m.supplier || '',
-      deleted: m.deleted || false,
-      createdDate: m.created_at || '',
-    }));
-
-    const quotes: Quote[] = (resQuotes.data || []).map((q: any) => ({
-      id: q.id,
-      projectId: q.project_id || '',
-      clientId: '',
-      status: q.status || '',
-      version: q.version || 1,
-      totalValue: Number(q.total_value) || 0,
-      validUntil: q.valid_until || '',
-      responsibleId: q.responsible_id || '',
-      deleted: q.deleted || false,
-      createdDate: q.created_at || '',
-    }));
-
-    const billOfMaterials: BillOfMaterial[] = (resBOMs.data || []).map((b: any) => ({
-      id: b.id,
-      quoteId: b.quote_id || '',
-      materialId: b.material_id || '',
-      quantity: Number(b.quantity) || 1,
-      deleted: b.deleted || false,
-      createdDate: b.created_at || '',
-    }));
-
     const equipmentList: Equipment[] = (resEquipment.data || []).map((e: any) => ({
       id: e.id,
       serialNumber: e.serial_number || '',
@@ -1004,10 +947,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       comments,
       userAbsences,
       appConfig,
-      materials,
       projectMaterials,
-      quotes,
-      billOfMaterials,
       equipmentList,
       specialDays,
       defaultTasks,
@@ -1035,10 +975,9 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       projectCategories: resProjectCategories.data || [], projectRisks: resProjectRisks.data || [],
       projectPriorities: resProjectPriorities.data || [], projectTeams: resProjectTeams.data || [],
       projectPartners: resProjectPartners.data || [], taskStatuses: resTaskStatuses.data || [],
-      taskTypes: resTaskTypes.data || [], users: resUsers.data || [], materials: resMaterials.data || [],
+      taskTypes: resTaskTypes.data || [], users: resUsers.data || [],
       projectMaterials: projectMaterialsRows || [], projectRiskItems: resProjectRiskItems.data || [],
-      comments: resComments.data || [], userAbsences: resUserAbsences.data || [], quotes: resQuotes.data || [],
-      billOfMaterials: resBOMs.data || [], equipmentList: resEquipment.data || [], specialDays: resSpecialDays.data || [],
+      comments: resComments.data || [], userAbsences: resUserAbsences.data || [], equipmentList: resEquipment.data || [], specialDays: resSpecialDays.data || [],
       defaultTasks: resDefaultTasks.data || [], riskCategories: resRiskCategories.data || [],
       riskStatuses: resRiskStatuses.data || [], riskPriorities: resRiskPriorities.data || [],
       ticketStatuses: resTicketStatuses.data || [], notifications: resNotifications.data || [],
@@ -1506,8 +1445,6 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
         is_admin: u.isAdmin || false
       }))) : Promise.resolve({ error: null }),
 
-      // Global material catalog removed; project_materials is persisted separately below.
-      Promise.resolve({ error: null }),
     ];
 
     const initialResults = await Promise.all(upserts);
@@ -1919,9 +1856,6 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
         return supabase.from('user_absences').upsert(mappedAbsences).then(res => ({ ...res, table: 'user_absences' }));
       })() : Promise.resolve({ error: null }),
 
-      // Quotes/BOM removed.
-      Promise.resolve({ error: null }),
-
       // Equipment List
       (state.equipmentList && state.equipmentList.length > 0) ? (() => {
         const mappedEquipment = state.equipmentList.map((e: any) => {
@@ -2109,9 +2043,6 @@ ALTER TABLE IF EXISTS task_assignees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS user_absences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS app_configuration ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS material ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS quotes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS bill_of_materials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS equipment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS special_days ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS default_tasks ENABLE ROW LEVEL SECURITY;
@@ -2540,7 +2471,7 @@ export async function logAuditEventToSupabase(log: {
   userName?: string;
   userEmail?: string;
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'RESTORE' | 'EXPORT' | 'SETTINGS' | string;
-  entityType: 'PROJECT' | 'TASK' | 'CLIENT' | 'USER' | 'MATERIAL' | 'RISK' | 'QUOTE' | 'SYSTEM' | string;
+  entityType: 'PROJECT' | 'TASK' | 'CLIENT' | 'USER' | 'RISK' | 'SYSTEM' | string;
   entityId?: string;
   entityName?: string;
   details: string;

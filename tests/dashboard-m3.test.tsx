@@ -10,7 +10,7 @@ import { hasFilledButtonBackground } from '../components/ui/buttonAppearance';
 import { getProjectStatusStyle } from '../lib/utils';
 
 const props: React.ComponentProps<typeof Dashboard> = {
-  projects: [], tasks: [], absences: [], materials: [], quotes: [], comments: [],
+  projects: [], tasks: [], absences: [], projectMaterials: [], comments: [],
   clients: [], users: [], projectStatuses: [], taskStatuses: [],
   projectCategories: [], projectPriorities: [], onNavigate: () => {}, onSelectProject: () => {},
 };
