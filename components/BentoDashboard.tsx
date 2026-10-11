@@ -9,7 +9,7 @@ import { IconButton } from './ui/IconButton';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import React, { useState, useMemo } from 'react';
-import { Project, Task, Comment, UserAbsence, Material, Quote, Client, ProjectMaterial, ProjectRiskItem } from '../lib/types';
+import { Project, Task, Comment, UserAbsence, Client, ProjectMaterial, ProjectRiskItem } from '../lib/types';
 import { Briefcase, CheckSquare, Users, MessageSquare, CalendarClock, ChevronLeft, ChevronRight, AlertTriangle, Package, CheckCircle2, Clock, BarChart2, Search } from 'lucide-react';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getProjectCalculatedRisk, matchTaskStatusId, parseTimeToHours, getProjectStatusStyle } from '../lib/utils';
@@ -18,10 +18,8 @@ interface BentoDashboardProps {
   projects: Project[];
   tasks: Task[];
   absences: UserAbsence[];
-  materials: Material[];
   projectMaterials?: ProjectMaterial[];
   projectRiskItems?: ProjectRiskItem[];
-  quotes: Quote[];
   comments: Comment[];
   clients: Client[];
   users: any[];
@@ -37,10 +35,8 @@ export default function BentoDashboard({
   projects,
   tasks,
   absences,
-  materials,
   projectMaterials = [],
   projectRiskItems = [],
-  quotes,
   comments,
   clients,
   users,

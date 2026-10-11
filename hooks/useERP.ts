@@ -18,7 +18,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { applyLegacyVersions } from '../lib/supabase/legacyWriteBatch';
 import { buildLegacySyncPayload } from '../lib/supabase/syncPayload';
-import { ERPState, AppConfiguration, Project, Task, Comment, UserAbsence, User, Client, Material, Quote, BillOfMaterial, Equipment, Ticket } from '../lib/types';
+import { ERPState, AppConfiguration, Project, Task, Comment, UserAbsence, User, Client, Equipment, Ticket } from '../lib/types';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
@@ -1461,40 +1461,6 @@ export function useERP() {
     }
   };
 
-  // ==================== MATERIALS CRUD ====================
-  const addMaterial = (material: Omit<Material, 'id' | 'deleted' | 'createdDate'>) => {
-    const newMat: Material = {
-      ...material,
-      id: crypto.randomUUID(),
-      deleted: false,
-      createdDate: new Date().toISOString()
-    };
-    logAudit('CREATE', 'MATERIAL', newMat.id, newMat.name, `Criado material/artigo "${newMat.name}"`);
-    saveState(prev => ({
-      ...prev,
-      materials: [newMat, ...prev.materials]
-    }));
-  };
-
-  const updateMaterial = (id: string, updates: Partial<Omit<Material, 'id' | 'createdDate'>>) => {
-    const existingMat = state?.materials?.find(m => m.id === id);
-    const matName = updates.name || existingMat?.name || id;
-    logAudit('UPDATE', 'MATERIAL', id, matName, `Atualizado material/artigo "${matName}"`);
-    saveState(prev => ({
-      ...prev,
-      materials: prev.materials.map(m => m.id === id ? { ...m, ...updates } as Material : m)
-    }));
-  };
-
-  const deleteMaterial = (id: string) => {
-    const existingMat = state?.materials?.find(m => m.id === id);
-    logAudit('DELETE', 'MATERIAL', id, existingMat?.name, `Eliminado material/artigo "${existingMat?.name || id}"`);
-    saveState(prev => ({
-      ...prev,
-      materials: prev.materials.map(m => m.id === id ? { ...m, deleted: true } : m)
-    }));
-  };
-
   // ==================== PROJECT MATERIALS CRUD ====================
   const addProjectMaterial = (pm: Omit<import('../lib/types').ProjectMaterial, 'id' | 'deleted' | 'createdDate'>) => {
     const newPM: import('../lib/types').ProjectMaterial = {
@@ -1550,141 +1516,6 @@ export function useERP() {
       ...prev,
       projectRiskItems: (prev.projectRiskItems || []).map(r => matchId(r.id, id) ? { ...r, deleted: true } : r)
     }));
-  };
-
-  // ==================== QUOTES CRUD ====================
-  const addQuote = (quote: Omit<Quote, 'id' | 'deleted' | 'createdDate'>) => {
-    const newQuote: Quote = {
-      ...quote,
-      id: genId('q'),
-      deleted: false,
-      createdDate: new Date().toISOString()
-    };
-    saveState(prev => ({
-      ...prev,
-      quotes: [newQuote, ...prev.quotes]
-    }));
-    return newQuote;
-  };
-
-  const updateQuote = (id: string, updates: Partial<Omit<Quote, 'id' | 'createdDate'>>) => {
-    const now = new Date().toISOString();
-    saveState(prev => {
-      const existingQuote = prev.quotes.find(q => q.id === id);
-      const newQuotes = prev.quotes.map(q => q.id === id ? { ...q, ...updates } as Quote : q);
-      let newNotifs = prev.notifications || [];
-      let newProjects = prev.projects;
-
-      const isApprovedNow = updates.status && ['Aprovado', 'Ap. Cliente', 'approved'].includes(updates.status) && existingQuote?.status !== updates.status;
-
-      if (isApprovedNow) {
-        const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'quote_approved');
-        for (const rule of activeRules) {
-          for (const action of rule.actions) {
-            if (action.type === 'send_notification') {
-              newNotifs = [{
-                id: genId('notif'),
-                userId: action.params?.targetUserId || 'all',
-                title: action.params?.notificationTitle || 'Orçamento Aprovado',
-                message: action.params?.notificationMessage || `O orçamento "${existingQuote?.id || id}" foi aprovado pelo cliente.`,
-                isRead: false,
-                createdDate: now,
-                linkUrl: existingQuote?.projectId ? `/projects?project=${existingQuote.projectId}` : '/quotes'
-              }, ...newNotifs];
-            } else if (action.type === 'change_project_status' && action.params?.targetStatusId && existingQuote?.projectId) {
-              newProjects = newProjects.map(p => p.id === existingQuote.projectId ? { ...p, statusId: action.params!.targetStatusId!, updatedDate: now } : p);
-            }
-          }
-        }
-      }
-
-      return {
-        ...prev,
-        quotes: newQuotes,
-        notifications: newNotifs,
-        projects: newProjects
-      };
-    });
-  };
-
-  const deleteQuote = (id: string) => {
-    saveState(prev => ({
-      ...prev,
-      quotes: prev.quotes.map(q => q.id === id ? { ...q, deleted: true } : q)
-    }));
-  };
-
-  // ==================== BILL OF MATERIALS CRUD ====================
-  const addBOMItem = (bomItem: Omit<BillOfMaterial, 'id' | 'deleted' | 'createdDate'>) => {
-    const newItem: BillOfMaterial = {
-      ...bomItem,
-      id: genId('bom'),
-      deleted: false,
-      createdDate: new Date().toISOString()
-    };
-    
-    saveState(prev => {
-      const nextBOM = [...prev.billOfMaterials, newItem];
-      let nextQuotes = prev.quotes;
-      const quote = prev.quotes.find(q => q.id === bomItem.quoteId);
-      if (quote) {
-        const quoteBOMs = nextBOM.filter(b => b.quoteId === bomItem.quoteId && !b.deleted);
-        const total = quoteBOMs.reduce((sum, b) => {
-          const mat = prev.materials.find(m => m.id === b.materialId);
-          return sum + (mat ? mat.unitCost * b.quantity : 0);
-        }, 0);
-        nextQuotes = prev.quotes.map(q => q.id === bomItem.quoteId ? { ...q, totalValue: total } : q);
-      }
-      return {
-        ...prev,
-        billOfMaterials: nextBOM,
-        quotes: nextQuotes
-      };
-    });
-  };
-
-  const updateBOMItem = (id: string, updates: Partial<Omit<BillOfMaterial, 'id' | 'createdDate'>>) => {
-    saveState(prev => {
-      const nextBOM = prev.billOfMaterials.map(b => b.id === id ? { ...b, ...updates } as BillOfMaterial : b);
-      const item = prev.billOfMaterials.find(b => b.id === id);
-      let nextQuotes = prev.quotes;
-      if (item) {
-        const quoteId = item.quoteId;
-        const quoteBOMs = nextBOM.filter(b => b.quoteId === quoteId && !b.deleted);
-        const total = quoteBOMs.reduce((sum, b) => {
-          const mat = prev.materials.find(m => m.id === b.materialId);
-          return sum + (mat ? mat.unitCost * b.quantity : 0);
-        }, 0);
-        nextQuotes = prev.quotes.map(q => q.id === quoteId ? { ...q, totalValue: total } : q);
-      }
-      return {
-        ...prev,
-        billOfMaterials: nextBOM,
-        quotes: nextQuotes
-      };
-    });
-  };
-
-  const deleteBOMItem = (id: string) => {
-    saveState(prev => {
-      const nextBOM = prev.billOfMaterials.map(b => b.id === id ? { ...b, deleted: true } : b);
-      const item = prev.billOfMaterials.find(b => b.id === id);
-      let nextQuotes = prev.quotes;
-      if (item) {
-        const quoteId = item.quoteId;
-        const quoteBOMs = nextBOM.filter(b => b.quoteId === quoteId && !b.deleted);
-        const total = quoteBOMs.reduce((sum, b) => {
-          const mat = prev.materials.find(m => m.id === b.materialId);
-          return sum + (mat ? mat.unitCost * b.quantity : 0);
-        }, 0);
-        nextQuotes = prev.quotes.map(q => q.id === quoteId ? { ...q, totalValue: total } : q);
-      }
-      return {
-        ...prev,
-        billOfMaterials: nextBOM,
-        quotes: nextQuotes
-      };
-    });
   };
 
   // ==================== EQUIPMENT CRUD ====================
@@ -2237,10 +2068,6 @@ export function useERP() {
     updateClient,
     deleteClient,
     
-    addMaterial,
-    updateMaterial,
-    deleteMaterial,
-    
     addProjectMaterial,
     updateProjectMaterial,
     deleteProjectMaterial,
@@ -2248,14 +2075,6 @@ export function useERP() {
     addProjectRiskItem,
     updateProjectRiskItem,
     deleteProjectRiskItem,
-    
-    addQuote,
-    updateQuote,
-    deleteQuote,
-    
-    addBOMItem,
-    updateBOMItem,
-    deleteBOMItem,
     
     addEquipment,
     updateEquipment,

@@ -44,8 +44,8 @@ OCC, filtros, permissões, estados e tratamento de erros não foram reimplementa
 O update de estado continua a enviar exclusivamente statusId; o submit completo
 continua a passar o payload existente a updateProject/addProject.
 
-O bloco de Material/BOM, incluindo o seu modal, é byte-identical à cópia inicial.
-A navegação para esse separador foi normalizada, mas o seu conteúdo não mudou.
+O detalhe de materiais por projeto, incluindo o seu modal, permanece isolado do
+catálogo global de materiais e da funcionalidade de BOM, que foram removidos.
 Não foram alterados API, service, SQL, migrations, RPC, RLS, RBAC, autenticação,
 sessão, supabaseSync, Planning, Calendar ou Tickets. Apenas o calendário/cronograma
 que já pertence ao detalhe do projeto recebe tokens e controlos de apresentação.

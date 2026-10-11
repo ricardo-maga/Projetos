@@ -257,7 +257,6 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
               <option value="TASK">Tarefas</option>
               <option value="CLIENT">Clientes</option>
               <option value="USER">Utilizadores</option>
-              <option value="MATERIAL">Materiais</option>
               <option value="RISK">Riscos</option>
               <option value="SYSTEM">Sistema</option>
             </select>

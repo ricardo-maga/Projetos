@@ -213,7 +213,7 @@ describe('FASE 33-C1 — Verificação Estática de Contrato da API de Clients c
 
     it('15. addClient, updateClient e deleteClient não usam saveState', () => {
       const clientSectionStart = useERPContent.indexOf('// ==================== CLIENTS CRUD');
-      const nextSectionStart = useERPContent.indexOf('// ==================== MATERIALS CRUD', clientSectionStart);
+      const nextSectionStart = useERPContent.indexOf('// ==================== PROJECT MATERIALS CRUD', clientSectionStart);
       const clientSectionBlock = useERPContent.substring(clientSectionStart, nextSectionStart);
 
       expect(clientSectionBlock.includes('saveState(')).toBe(false);
@@ -221,7 +221,7 @@ describe('FASE 33-C1 — Verificação Estática de Contrato da API de Clients c
 
     it('16. deleteClient só altera o estado após sucesso da API', () => {
       const deleteStart = useERPContent.indexOf('const deleteClient =');
-      const deleteEnd = useERPContent.indexOf('// ==================== MATERIALS CRUD');
+      const deleteEnd = useERPContent.indexOf('// ==================== PROJECT MATERIALS CRUD');
       const deleteBlock = useERPContent.substring(deleteStart, deleteEnd);
 
       expect(deleteBlock.includes('if (res.ok && result.success)')).toBe(true);

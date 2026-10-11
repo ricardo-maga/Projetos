@@ -254,24 +254,6 @@ export interface ProjectMaterial {
   createdDate?: string;
 }
 
-/** @deprecated Global catalog removed from UI/database; retained temporarily for legacy state decoding. */
-export interface Material {
-  id: string; name: string; reference: string; manufacturerReference: string;
-  unit: string; unitCost: number; supplier: string; deleted: boolean; createdDate: string;
-}
-
-/** @deprecated Quotes/BOM removed from UI/database; retained temporarily for legacy state decoding. */
-export interface Quote {
-  id: string; projectId: string; clientId: string; projectIdOrClientId?: string;
-  status: string; version: string | number; totalValue: number; validUntil: string;
-  responsibleId: string; responsible?: string; deleted: boolean; createdDate: string;
-}
-
-/** @deprecated Quotes/BOM removed from UI/database; retained temporarily for legacy state decoding. */
-export interface BillOfMaterial {
-  id: string; quoteId: string; materialId: string; quantity: number; deleted: boolean; createdDate: string;
-}
-
 export interface Equipment {
   id: string;
   serialNumber: string;
@@ -350,7 +332,7 @@ export interface AuditLog {
   userName?: string;
   userEmail?: string;
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'RESTORE' | 'EXPORT' | 'SETTINGS' | string;
-  entityType: 'PROJECT' | 'TASK' | 'CLIENT' | 'USER' | 'MATERIAL' | 'RISK' | 'QUOTE' | 'SYSTEM' | string;
+  entityType: 'PROJECT' | 'TASK' | 'CLIENT' | 'USER' | 'RISK' | 'SYSTEM' | string;
   entityId?: string;
   entityName?: string;
   details: string;
@@ -413,10 +395,7 @@ export interface ERPState {
   projectPartners: ProjectPartner[];
   appConfig: AppConfiguration;
   clients: Client[];
-  /** @deprecated */ materials: Material[];
   projectMaterials?: ProjectMaterial[];
-  /** @deprecated */ quotes: Quote[];
-  /** @deprecated */ billOfMaterials: BillOfMaterial[];
   equipmentList: Equipment[];
   specialDays: SpecialDay[];
   defaultTasks?: DefaultTask[];

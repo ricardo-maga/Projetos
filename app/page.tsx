@@ -867,10 +867,8 @@ export default function Page() {
                   projects={state.projects}
                   tasks={state.tasks}
                   absences={state.userAbsences}
-                  materials={state.materials}
                   projectMaterials={state.projectMaterials || []}
                   projectRiskItems={state.projectRiskItems || []}
-                  quotes={state.quotes}
                   comments={state.comments}
                   clients={state.clients}
                   users={state.users}

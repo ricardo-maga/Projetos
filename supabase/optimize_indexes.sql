@@ -105,23 +105,11 @@ CREATE INDEX IF NOT EXISTS idx_project_teams_link_team ON project_teams_link (te
 CREATE INDEX IF NOT EXISTS idx_project_partners_link_partner ON project_partners_link (partner_id);
 
 -- ============================================================================
--- 8. TABELAS AUXILIARES E ORÇAMENTAÇÃO (`clients`, `quotes`, `bill_of_materials`, `equipment`, etc.)
+-- 8. TABELAS AUXILIARES (`clients`, `equipment`, etc.)
 -- ============================================================================
 CREATE INDEX IF NOT EXISTS idx_clients_deleted ON clients (deleted);
 CREATE INDEX IF NOT EXISTS idx_clients_name ON clients (client_name) WHERE deleted = FALSE;
 CREATE INDEX IF NOT EXISTS idx_clients_created_at ON clients (created_at DESC);
-
-CREATE INDEX IF NOT EXISTS idx_quotes_project_id ON quotes (project_id);
-CREATE INDEX IF NOT EXISTS idx_quotes_deleted ON quotes (deleted);
-CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes (status);
-
-CREATE INDEX IF NOT EXISTS idx_bom_quote_id ON bill_of_materials (quote_id);
-CREATE INDEX IF NOT EXISTS idx_bom_material_id ON bill_of_materials (material_id);
-CREATE INDEX IF NOT EXISTS idx_bom_deleted ON bill_of_materials (deleted);
-
-CREATE INDEX IF NOT EXISTS idx_material_deleted ON material (deleted);
-CREATE INDEX IF NOT EXISTS idx_material_name ON material (name) WHERE deleted = FALSE;
-CREATE INDEX IF NOT EXISTS idx_material_supplier ON material (supplier);
 
 CREATE INDEX IF NOT EXISTS idx_equipment_project_id ON equipment (project_id);
 CREATE INDEX IF NOT EXISTS idx_equipment_deleted ON equipment (deleted);
@@ -136,7 +124,4 @@ ANALYZE comments;
 ANALYZE project_materials;
 ANALYZE project_risk_items;
 ANALYZE clients;
-ANALYZE quotes;
-ANALYZE bill_of_materials;
-ANALYZE material;
 ANALYZE equipment;

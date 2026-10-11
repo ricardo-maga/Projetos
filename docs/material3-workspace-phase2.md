@@ -21,7 +21,7 @@ Esta decisão substitui visualmente os temas de cor anteriores nos módulos abra
 - Calendário: cabeçalho M3, navegação de 7/14 dias, ações e seleção de utilizadores; remoção de uma renderização duplicada do calendário semanal.
 - O meu foco: banner claro e filtros segmentados para tarefas e projetos, preservando a lógica de filtragem.
 - Removidas regras CSS globais que alteravam indiscriminadamente alturas de controlos, geometria de tabelas e cores de estados.
-- Tickets excluído da normalização; conteúdo Materials/BOM assinalado como excluído, mantendo o tema original nesse painel.
+- Tickets excluído da normalização. A funcionalidade global Materials/BOM foi retirada; materiais por projeto permanecem no detalhe do projeto.
 
 ## Limites
 
