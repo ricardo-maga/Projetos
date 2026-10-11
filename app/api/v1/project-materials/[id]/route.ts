@@ -8,7 +8,7 @@ import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { requirePermission } from '@/lib/auth/authorization';
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(req, 'materials_write');
+  const auth = await requirePermission(req, 'project_materials:write');
   if (!auth.success) return auth.response;
 
   const { id } = await params;
@@ -77,7 +77,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(req, 'materials_delete');
+  const auth = await requirePermission(req, 'project_materials:delete');
   if (!auth.success) return auth.response;
 
   const { id } = await params;
