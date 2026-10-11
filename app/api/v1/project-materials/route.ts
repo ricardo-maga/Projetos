@@ -9,7 +9,7 @@ import { ProjectMaterial } from '@/lib/types';
 import { requirePermission } from '@/lib/auth/authorization';
 
 export async function GET(req: NextRequest) {
-  const auth = await requirePermission(req, 'materials_read');
+  const auth = await requirePermission(req, 'project_materials:read');
   if (!auth.success) return auth.response;
 
   if (!isSupabaseConfigured) {
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requirePermission(req, 'materials_write');
+  const auth = await requirePermission(req, 'project_materials:write');
   if (!auth.success) return auth.response;
 
   if (!isSupabaseConfigured) {
