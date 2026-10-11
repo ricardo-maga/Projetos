@@ -6,7 +6,6 @@ import { bootstrapSchema } from '@/lib/validations/auth';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { logAuditEvent } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
-import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 import { badRequest, forbidden, tooManyRequests, validationError, internalServerError } from '@/lib/apiErrors';
 
 export async function POST(req: NextRequest) {
@@ -54,11 +53,10 @@ export async function POST(req: NextRequest) {
 
     // 4. One-time check: verify if an active admin user already exists
     const adminSb = createAdminClient();
-    const sb = adminSb || defaultSupabase;
-
-    if (!sb) {
+    if (!adminSb) {
       return internalServerError('Base de dados Supabase não disponível.', requestId);
     }
+    const sb = adminSb;
 
     const { data: existingAdmins, error: adminQueryError } = await sb
       .from('users')
@@ -68,6 +66,7 @@ export async function POST(req: NextRequest) {
 
     if (adminQueryError) {
       console.error('Error checking existing admins during bootstrap:', adminQueryError);
+      return internalServerError('Não foi possível verificar os administradores existentes.', requestId);
     }
 
     if (existingAdmins && existingAdmins.length > 0) {
@@ -80,7 +79,7 @@ export async function POST(req: NextRequest) {
     // 5. Create or configure admin user in Supabase Auth
     let authUserId: string | null = null;
 
-    if (adminSb) {
+    {
       // Use Admin API to create user with email confirmed
       const { data: createdAuthUser, error: authError } = await adminSb.auth.admin.createUser({
         email: adminEmail,
@@ -96,11 +95,12 @@ export async function POST(req: NextRequest) {
           const target = listData?.users?.find((u) => u.email?.toLowerCase() === adminEmail.toLowerCase());
           if (target) {
             authUserId = target.id;
-            await adminSb.auth.admin.updateUserById(target.id, {
+            const { error: updateError } = await adminSb.auth.admin.updateUserById(target.id, {
               password: adminPassword,
               email_confirm: true,
               user_metadata: { name: adminName || 'Super Administrador' },
             });
+            if (updateError) return internalServerError('Não foi possível atualizar a conta Auth.', requestId);
           }
         } else {
           return badRequest(`Erro ao criar utilizador no Supabase Auth: ${authError.message}`, requestId);
@@ -108,27 +108,15 @@ export async function POST(req: NextRequest) {
       } else if (createdAuthUser?.user) {
         authUserId = createdAuthUser.user.id;
       }
-    } else {
-      // Fallback: standard sign up
-      const { data: signUpData, error: signUpError } = await sb.auth.signUp({
-        email: adminEmail,
-        password: adminPassword,
-        options: {
-          data: { name: adminName || 'Super Administrador' },
-        },
-      });
-
-      if (signUpError && !signUpError.message.includes('already')) {
-        return badRequest(`Erro no registo de utilizador: ${signUpError.message}`, requestId);
-      }
-      authUserId = signUpData?.user?.id || null;
     }
+    if (!authUserId) return internalServerError('Não foi possível identificar a conta Auth.', requestId);
 
     // 6. Associate with users table as SUPER_ADMIN
-    const targetUserId = authUserId || crypto.randomUUID();
+    const targetUserId = authUserId;
     const { error: upsertError } = await sb.from('users').upsert(
       {
         id: targetUserId,
+        auth_user_id: authUserId,
         email: adminEmail.toLowerCase(),
         name: adminName || 'Super Administrador',
         is_admin: true,
@@ -144,6 +132,10 @@ export async function POST(req: NextRequest) {
       console.error('Error inserting user profile during bootstrap:', upsertError);
       return internalServerError('Falha ao gravar perfil administrativo.', requestId);
     }
+    const { error: roleError } = await sb.from('user_roles').upsert({
+      user_id: targetUserId, role_id: '10000000-0000-0000-0000-000000000001',
+    }, { onConflict: 'user_id,role_id' });
+    if (roleError) return internalServerError('Falha ao gravar a função de Super Administrador.', requestId);
 
     // 7. Audit log of the successful bootstrap
     await logAuditEvent({

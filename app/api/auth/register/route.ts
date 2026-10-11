@@ -7,7 +7,6 @@ import { registerSchema } from '@/lib/validations/auth';
 import { rateLimitExceeded, validationError, badRequest, internalServerError } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
-import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 
 export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
@@ -37,11 +36,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const adminSupabase = createAdminClient();
-    const dbClient = adminSupabase || defaultSupabase;
-
-    if (!dbClient) {
+    if (!adminSupabase) {
       return internalServerError('Base de dados Supabase não configurada.', requestId);
     }
+    const dbClient = adminSupabase;
 
     // Check if email is already in public.users
     const { data: existingUser } = await dbClient
@@ -58,28 +56,18 @@ export async function POST(req: NextRequest) {
       }, { status: 202 });
     }
 
-    let authUserId: string | null = null;
-
-    // Create in Supabase Auth if admin client is available
-    if (adminSupabase) {
-      const { data: authUser, error: authError } = await adminSupabase.auth.admin.createUser({
-        email: cleanEmail,
-        password,
-        // Do not mark self-registered accounts as verified until Supabase has
-        // completed its configured email-verification flow.
-        email_confirm: false,
-        user_metadata: { name: name.trim() },
-      });
-
-      if (authError) {
-        console.error('[REGISTER AUTH ERROR]', authError);
-        return badRequest('Não foi possível concluir o pedido de registo.', requestId);
-      }
-
-      authUserId = authUser.user?.id || null;
+    const { data: authUser, error: authError } = await adminSupabase.auth.admin.createUser({
+      email: cleanEmail,
+      password,
+      email_confirm: false,
+      user_metadata: { name: name.trim() },
+    });
+    if (authError || !authUser.user) {
+      console.error('[REGISTER AUTH ERROR]', authError);
+      return badRequest('Não foi possível concluir o pedido de registo.', requestId);
     }
-
-    const newUserId = authUserId || crypto.randomUUID();
+    const authUserId = authUser.user.id;
+    const newUserId = authUserId;
     const now = new Date().toISOString();
 
     // The auth.users trigger may have created the profile already. Upsert keeps
@@ -101,6 +89,17 @@ export async function POST(req: NextRequest) {
 
     if (insertError) {
       console.error('[REGISTER DB ERROR]', insertError);
+      await adminSupabase.auth.admin.deleteUser(authUserId);
+      return internalServerError('Não foi possível concluir o pedido de registo.', requestId);
+    }
+    const { error: roleError } = await dbClient.from('user_roles').upsert({
+      user_id: newUserId,
+      role_id: '10000000-0000-0000-0000-000000000004',
+    }, { onConflict: 'user_id,role_id' });
+    if (roleError) {
+      console.error('[REGISTER ROLE ERROR]', roleError);
+      await dbClient.from('users').delete().eq('id', newUserId);
+      await adminSupabase.auth.admin.deleteUser(authUserId);
       return internalServerError('Não foi possível concluir o pedido de registo.', requestId);
     }
 

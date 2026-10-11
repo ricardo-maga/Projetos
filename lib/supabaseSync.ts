@@ -215,7 +215,7 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
     projectPartners: (state.projectPartners || []).map((p: any) => ({ ...p, id: stringToUUID(p.id) })),
     taskStatuses: (state.taskStatuses || []).map((s: any) => ({ ...s, id: stringToUUID(s.id) })),
     taskTypes: (state.taskTypes || []).map((tt: any) => ({ ...tt, id: stringToUUID(tt.id) })),
-    users: (state.users || []).map((u: any) => ({
+    users: (state.users || []).map(({ password, ...u }: any) => ({
       ...u,
       id: stringToUUID(u.id),
       roleId: normalizeRoleId(u.roleId) || stringToUUID(u.roleId),
@@ -740,6 +740,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       type: u.type as any,
       name: u.name,
       email: u.email || '',
+      authUserId: u.auth_user_id || null,
       roleId: u.role_id || '',
       approved: u.approved || false,
       deleted: u.deleted || false,
@@ -2206,10 +2207,6 @@ CREATE TABLE IF NOT EXISTS notifications (
 ALTER TABLE IF EXISTS notifications ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications (user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications (created_at DESC);
-
--- Adicionar campo de password aos utilizadores e definir valor por defeito para 12345 (hashed)
-ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS password TEXT;
-UPDATE users SET password = '5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5' WHERE password IS NULL;
 
 -- Adicionar campo de permissões aos grupos de utilizadores
 ALTER TABLE IF EXISTS user_groups ADD COLUMN IF NOT EXISTS permissions TEXT;

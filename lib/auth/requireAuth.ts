@@ -77,7 +77,7 @@ export async function requireAuth(req?: Request): Promise<AuthenticatedUser> {
 
   const { data: profile, error: profileError } = await admin.from('users')
     .select('id, auth_user_id, name, email, role_id, is_admin, type, approved, deleted')
-    .or(`auth_user_id.eq.${userAuth.id},id.eq.${userAuth.id}`).maybeSingle();
+    .eq('auth_user_id', userAuth.id).maybeSingle();
 
   if (profileError || !profile || profile.deleted) throw new AuthError('Utilizador não encontrado ou inativo.');
   if (!profile.approved) throw new ForbiddenError('A conta aguarda aprovação por um administrador.');

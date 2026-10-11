@@ -18,7 +18,7 @@ export function projectSyncRead(state: ERPState, userId: string, can: ReadonlyMa
   }
   projected.users = (state.users || []).map(user => {
     if (can.get('users:read') === true || user.id === userId) {
-      const { password, ...safe } = user;
+      const { password, ...safe } = user as typeof user & { password?: string };
       return safe;
     }
     return { id:user.id, name:user.name, type:user.type, roleId:user.roleId,

@@ -92,10 +92,10 @@ export interface UserAbsence {
 
 export interface User {
   id: string;
-  type: 'Team' | 'Sales' | 'External' | 'Other';
+  type: 'Team' | 'Sales' | 'Admin' | 'External' | 'Other';
   name: string;
   email: string;
-  password?: string;
+  authUserId?: string | null;
   roleId: string; // Relation: User groups table
   approved: boolean;
   deleted: boolean;

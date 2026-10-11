@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     if (!admin) return internalServerError('Serviço de autenticação não configurado.', requestId);
     const { data: profile, error: profileError } = await admin.from('users')
       .select('id, auth_user_id, name, email, role_id, is_admin, type, approved, deleted')
-      .or(`auth_user_id.eq.${signIn.user.id},id.eq.${signIn.user.id}`).maybeSingle();
+      .eq('auth_user_id', signIn.user.id).maybeSingle();
     if (profileError || !profile || profile.deleted) { await supabase.auth.signOut(); return unauthorized('A conta não está autorizada para aceder à aplicação.', requestId); }
     if (!profile.approved) { await supabase.auth.signOut(); return forbidden('Este utilizador ainda aguarda aprovação por um administrador.', requestId); }
     if (profile.type === 'External') { await supabase.auth.signOut(); return forbidden('Este utilizador não está autorizado a aceder ao sistema interno.', requestId); }
