@@ -5,7 +5,7 @@ import { AppConfiguration, SpecialDay, DefaultTask, ERPState } from '../lib/type
 import { 
   Settings, RefreshCw, Key, Info, Calendar, Plus, Trash2, ListTodo, Edit2, Check, X,
   Database, UploadCloud, DownloadCloud, CheckCircle, AlertCircle, Terminal, Copy, ExternalLink, ShieldCheck,
-  Users, GripVertical, Zap, Clock
+  Users, GripVertical, Zap, Clock, Bell
 } from 'lucide-react';
 import AutomationEditor from './AutomationEditor';
 import AuditLogSection from './AuditLogSection';
@@ -41,6 +41,12 @@ import {
 } from '../lib/supabaseSync';
 // import Papa from 'papaparse';
 import UserSection from './UserSection';
+import Tabs from './ui/Tabs';
+import Card from './ui/Card';
+import Input from './ui/Input';
+import Select from './ui/Select';
+import Switch from './ui/Switch';
+import { M3SectionHeader, M3Button } from './M3';
 
 import { hasPermission } from '../lib/permissions';
 
@@ -98,7 +104,7 @@ export const PASTEL_COLORS = [
   { id: 'verde', name: 'Verde', hex: '#bbf7d0', bgClass: 'bg-green-200', textClass: 'text-green-900', borderClass: 'border-green-300' },
   { id: 'azul', name: 'Azul', hex: '#38bdf8', bgClass: 'bg-sky-200', textClass: 'text-sky-900', borderClass: 'border-sky-300' },
   { id: 'laranja', name: 'Laranja', hex: '#fed7aa', bgClass: 'bg-orange-200', textClass: 'text-orange-900', borderClass: 'border-orange-300' },
-  { id: 'cinza', name: 'Cinza', hex: '#e2e8f0', bgClass: 'bg-slate-200', textClass: 'text-slate-800', borderClass: 'border-slate-300' },
+  { id: 'cinza', name: 'Cinza', hex: '#e2e8f0', bgClass: 'bg-slate-200', textClass: 'text-text-primary', borderClass: 'border-slate-300' },
 ];
 
 export function getPastelColor(colorInput?: string) {
@@ -165,14 +171,14 @@ function SortableAuxRow({
     <tr 
       ref={setNodeRef} 
       style={style} 
-      className={`border-b border-slate-100 hover:bg-slate-50/50 text-xs transition-colors ${isDragging ? 'bg-slate-100' : ''}`}
+      className={`border-b border-border-subtle hover:bg-surface-muted/50 text-xs transition-colors ${isDragging ? 'bg-surface-muted' : ''}`}
     >
       <td className="p-3.5 w-10">
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="p-1 text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing"
+          className="p-1 text-slate-400 hover:text-text-secondary cursor-grab active:cursor-grabbing"
         >
           <GripVertical className="w-4 h-4" />
         </button>
@@ -183,10 +189,10 @@ function SortableAuxRow({
             type="text"
             value={editAuxName}
             onChange={e => setEditAuxName(e.target.value)}
-            className="w-full p-1 px-2 border border-slate-200 rounded-md font-semibold text-xs text-slate-800 focus:ring-2 focus:ring-blue-100 outline-none"
+            className="w-full p-1 px-2 border border-border rounded-md font-semibold text-xs text-text-primary focus:ring-2 focus:ring-blue-100 outline-none"
           />
         ) : (
-          <span className="text-slate-800 font-bold">{item.name}</span>
+          <span className="text-text-primary font-bold">{item.name}</span>
         )}
       </td>
 
@@ -199,10 +205,10 @@ function SortableAuxRow({
               max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes') ? 10 : 3}
               value={editAuxScale}
               onChange={e => setEditAuxScale(Number(e.target.value))}
-              className="w-16 p-1 px-2 border border-slate-200 rounded-md font-semibold text-xs text-slate-800 focus:ring-2 focus:ring-blue-100 outline-none"
+              className="w-16 p-1 px-2 border border-border rounded-md font-semibold text-xs text-text-primary focus:ring-2 focus:ring-blue-100 outline-none"
             />
           ) : (
-            <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-bold text-slate-600 font-mono">
+            <span className="px-2 py-0.5 bg-surface-muted border border-border rounded text-[10px] font-bold text-text-secondary font-mono">
               Nível {item.scale ?? (activeAuxTab === 'projectStatuses' ? 0 : 1)}
             </span>
           )}
@@ -223,7 +229,7 @@ function SortableAuxRow({
                     className={`px-2 py-0.5 rounded-md text-[10px] font-bold border flex items-center gap-1 transition-all cursor-pointer ${
                       isSelected 
                         ? `${c.bgClass} ${c.textClass} ${c.borderClass} ring-2 ring-slate-400 shadow-2xs` 
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'bg-surface text-text-secondary border-border hover:bg-surface-muted'
                     }`}
                     title={c.name}
                   >
@@ -254,7 +260,7 @@ function SortableAuxRow({
               <button 
                 type="button"
                 onClick={() => setEditingAuxId(null)}
-                className="p-1 px-2 text-[10px] font-bold text-slate-500 hover:bg-slate-100 rounded-md transition-colors flex items-center gap-1"
+                className="p-1 px-2 text-[10px] font-bold text-text-muted hover:bg-surface-muted rounded-md transition-colors flex items-center gap-1"
               >
                 <X className="w-3.5 h-3.5" />
                 Cancelar
@@ -262,7 +268,7 @@ function SortableAuxRow({
               <button 
                 type="button"
                 onClick={() => handleSaveEditAuxRecord(item.id)}
-                className="p-1 px-2 text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors flex items-center gap-1"
+                className="p-1 px-2 text-[10px] font-bold text-white bg-primary hover:bg-blue-700 rounded-md transition-colors flex items-center gap-1"
               >
                 <Check className="w-3.5 h-3.5" />
                 Gravar
@@ -278,7 +284,7 @@ function SortableAuxRow({
                   setEditAuxScale(item.scale || 1);
                   setEditAuxColor(item.color || '#bfdbfe');
                 }}
-                className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors flex items-center justify-center"
+                className="p-1 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-md transition-colors flex items-center justify-center"
                 title="Editar"
               >
                 <Edit2 className="w-3.5 h-3.5" />
@@ -385,6 +391,11 @@ export default function ConfigSection({
   }
 
   const activeConfigTab = activeConfigTabProp || 'sistema';
+  const [usersConfigTab, setUsersConfigTab] = useState<'users' | 'associacoes'>('users');
+  const [notificationTab, setNotificationTab] = useState<'notificacoes' | 'automacoes'>(activeConfigTab === 'automacoes' ? 'automacoes' : 'notificacoes');
+  useEffect(() => {
+    if (activeConfigTab === 'automacoes') setNotificationTab('automacoes');
+  }, [activeConfigTab]);
   const setActiveConfigTab = (tab: string) => {
     if (onChangeConfigTab) onChangeConfigTab(tab);
   };
@@ -679,6 +690,14 @@ export default function ConfigSection({
       logo: logo,
       footerCopyrightText: footer,
       theme,
+    });
+    alert('Configurações gravadas com sucesso!');
+  };
+
+  const handleSaveAssociations = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canWriteConfig) return;
+    updateConfig({
       salesRepGroupIds,
       projManagerGroupIds,
       fieldManagerGroupIds,
@@ -688,7 +707,7 @@ export default function ConfigSection({
       fieldManagerGroupId: fieldManagerGroupIds[0] || '',
       taskAssigneeGroupId: taskAssigneeGroupIds[0] || '',
     });
-    alert('Configurações da aplicação gravadas com sucesso!');
+    alert('Associação de grupos gravada com sucesso!');
   };
 
   const handleAddSpecialDay = (e: React.FormEvent) => {
@@ -870,78 +889,78 @@ export default function ConfigSection({
   };
 
   return (
-    <div className="space-y-6" id="config-section-root">
+    <div className="m3-config space-y-6" id="config-section-root">
       
       {/* SISTEMA TAB */}
       {activeConfigTab === 'sistema' && (
       <form onSubmit={handleSubmit} className="w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 gap-6 items-start">
           {/* Card 1: Configuração do Sistema */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm animate-fade-in text-xs font-bold text-slate-700" id="core-config-card">
-            <h2 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
-              <Settings className="w-5 h-5 text-blue-600" />
+          <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="core-config-card">
+            <h2 className="text-base font-bold text-text-primary mb-5 flex items-center gap-2">
+              <Settings className="w-5 h-5 text-primary" />
               Configurações da aplicação
             </h2>
 
             <div className="space-y-5">
               <div className="space-y-1">
-                <label className="block text-slate-500">Nome do portal</label>
+                <label className="block text-text-muted">Nome do portal</label>
                 <input 
                   type="text" 
                   required
                   value={appName}
                   onChange={e => setAppName(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-blue-100 outline-none font-sans"
+                  className="w-full p-2.5 border border-border rounded-control font-bold text-text-primary focus:ring-2 focus:ring-blue-100 outline-none font-sans"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-slate-500">Descrição do portal</label>
+                <label className="block text-text-muted">Descrição do portal</label>
                 <input 
                   type="text" 
                   value={appDesc}
                   onChange={e => setAppDesc(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl font-medium text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none font-sans"
+                  className="w-full p-2.5 border border-border rounded-control font-medium text-text-secondary focus:ring-2 focus:ring-blue-100 outline-none font-sans"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-slate-600 font-bold">Caminho da imagem do logótipo</label>
+                <label className="block text-text-secondary font-bold">Caminho da imagem do logótipo</label>
                 <input 
                   type="text" 
                   value={logo}
                   onChange={e => setLogo(e.target.value)}
                   placeholder="https://exemplo.com/logo.svg, /logo.png, data:image/svg+xml;... ou <svg...>"
-                  className="w-full p-2.5 border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-100 outline-none"
+                  className="w-full p-2.5 border border-border rounded-control font-mono text-xs focus:ring-2 focus:ring-blue-100 outline-none"
                 />
                 <p className="text-[11px] text-slate-400 font-normal">
                   Suporta URLs de imagens (SVG, PNG, JPG, WebP), ficheiros locais (/logo.svg), Data URIs (base64) e código SVG inline.
                 </p>
 
                 {/* Live Preview */}
-                <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-xl mt-2">
-                  <span className="text-xs font-semibold text-slate-500 shrink-0">Pré-visualização:</span>
+                <div className="flex items-center gap-3 p-3 bg-surface-muted border border-border/80 rounded-control mt-2">
+                  <span className="text-xs font-semibold text-text-muted shrink-0">Pré-visualização:</span>
                   <AppLogo 
                     logoUrl={logo} 
                     appName={appName} 
-                    className="w-72 max-w-full h-10 rounded-xl bg-white border border-slate-200 shadow-2xs p-1"
+                    className="w-72 max-w-full h-10 rounded-control bg-surface border border-border shadow-2xs p-1"
                   />
 
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="block text-slate-500">Texto de rodapé</label>
+                <label className="block text-text-muted">Texto de rodapé</label>
                 <input 
                   type="text" 
                   value={footer}
                   onChange={e => setFooter(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-100 outline-none font-sans"
+                  className="w-full p-2.5 border border-border rounded-control font-medium focus:ring-2 focus:ring-blue-100 outline-none font-sans"
                 />
               </div>
 
               <div className="space-y-2 pt-2">
-                <label className="block text-slate-500">Esquema de cores</label>
+                <label className="block text-text-muted">Esquema de cores</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {[
                     { id: 'default', name: 'Azul Clássico', desc: 'Padrão original azul', hex: '#2563eb' },
@@ -967,10 +986,10 @@ export default function ConfigSection({
                         }
                         updateConfig({ theme: t.id });
                       }}
-                      className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      className={`flex items-center gap-3 p-3 rounded-control border text-left transition-all cursor-pointer ${
                         theme === t.id
-                          ? 'border-slate-800 bg-slate-50/70 -sm ring-2 ring-slate-100'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/40'
+                          ? 'border-slate-800 bg-surface-muted/70 ring-2 ring-slate-100'
+                          : 'border-border hover:border-slate-300 hover:bg-surface-muted/40'
                       }`}
                     >
                       <span 
@@ -978,7 +997,7 @@ export default function ConfigSection({
                         style={{ backgroundColor: t.hex }}
                       />
                       <div>
-                        <div className="font-bold text-slate-800 text-[11px] leading-tight font-sans">{t.name}</div>
+                        <div className="font-bold text-text-primary text-[11px] leading-tight font-sans">{t.name}</div>
                         <div className="text-[9px] text-slate-400 font-medium leading-none mt-0.5 font-sans">{t.desc}</div>
                       </div>
                     </button>
@@ -988,156 +1007,10 @@ export default function ConfigSection({
             </div>
           </div>
 
-          {/* Card 2: Escolha de Grupos / Gestores */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm animate-fade-in text-xs font-bold text-slate-700" id="managers-config-card">
-            <h2 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-600" />
-              Associação de grupos
-            </h2>
-
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="block text-slate-500">Grupos para &quot;Gestor de Vendas&quot; (Escolha Múltipla)</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
-                  ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
-                      const isChecked = salesRepGroupIds.includes(g.id);
-                      return (
-                        <label key={g.id} className="flex items-center gap-2.5 p-2 bg-white border border-slate-100 rounded-lg cursor-pointer select-none hover:bg-slate-50 transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              if (isChecked) {
-                                setSalesRepGroupIds(salesRepGroupIds.filter(id => id !== g.id));
-                              } else {
-                                setSalesRepGroupIds([...salesRepGroupIds, g.id]);
-                              }
-                            }}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                          />
-                          <span className="text-slate-700 font-semibold text-xs">{g.name}</span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-400 font-medium font-sans">
-                  Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Gestor de Vendas&quot; no formulário dos projetos.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-slate-500">Grupos para &quot;Project Leader&quot; (Escolha Múltipla)</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
-                  ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
-                      const isChecked = projManagerGroupIds.includes(g.id);
-                      return (
-                        <label key={g.id} className="flex items-center gap-2.5 p-2 bg-white border border-slate-100 rounded-lg cursor-pointer select-none hover:bg-slate-50 transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              if (isChecked) {
-                                setProjManagerGroupIds(projManagerGroupIds.filter(id => id !== g.id));
-                              } else {
-                                setProjManagerGroupIds([...projManagerGroupIds, g.id]);
-                              }
-                            }}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                          />
-                          <span className="text-slate-700 font-semibold text-xs">{g.name}</span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-400 font-medium font-sans">
-                  Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Project Lader&quot; no formulário dos projetos.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-slate-500">Grupos para &quot;Técnico Responsável&quot; (Escolha Múltipla)</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
-                  ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
-                      const isChecked = fieldManagerGroupIds.includes(g.id);
-                      return (
-                        <label key={g.id} className="flex items-center gap-2.5 p-2 bg-white border border-slate-100 rounded-lg cursor-pointer select-none hover:bg-slate-50 transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              if (isChecked) {
-                                setFieldManagerGroupIds(fieldManagerGroupIds.filter(id => id !== g.id));
-                              } else {
-                                setFieldManagerGroupIds([...fieldManagerGroupIds, g.id]);
-                              }
-                            }}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                          />
-                          <span className="text-slate-700 font-semibold text-xs">{g.name}</span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-400 font-medium font-sans">
-                  Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Técnico responsável&quot; no formulário dos projetos.
-                </p>
-              </div>
-
-              <div className="space-y-2 pt-2 border-t border-slate-100" id="task-assignee-groups-config">
-                <label className="block text-slate-700 font-bold">Grupos associados a tarefas</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
-                  ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
-                      const isChecked = taskAssigneeGroupIds.includes(g.id);
-                      return (
-                        <label key={g.id} className="flex items-center gap-2.5 p-2 bg-white border border-slate-100 rounded-lg cursor-pointer select-none hover:bg-slate-50 transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              if (isChecked) {
-                                setTaskAssigneeGroupIds(taskAssigneeGroupIds.filter(id => id !== g.id));
-                              } else {
-                                setTaskAssigneeGroupIds([...taskAssigneeGroupIds, g.id]);
-                              }
-                            }}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                          />
-                          <span className="text-slate-700 font-semibold text-xs">{g.name}</span>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-400 font-medium font-sans">
-                  Selecione os grupos de utilizadores que poderão aparecer na seleção de Utilizadores na criação e edição de tarefas em toda a aplicação.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="mt-6 flex justify-end">
-          <button 
-            type="submit"
-            className="px-6 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors -sm cursor-pointer font-sans text-xs"
-          >
-            Gravar Configurações
-          </button>
+          <M3Button type="submit" disabled={!canWriteConfig}>Gravar configurações</M3Button>
         </div>
       </form>
       )}
@@ -1145,32 +1018,32 @@ export default function ConfigSection({
       {/* DIAS ESPECIAIS TAB */}
       {activeConfigTab === 'dias' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm animate-fade-in text-xs font-bold text-slate-700" id="special-days-card">
-          <h2 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
+          <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="special-days-card">
+          <h2 className="text-base font-bold text-text-primary mb-5 flex items-center gap-2">
             <Calendar className="w-5 h-5 text-indigo-600" />
             Dias especiais
           </h2>
 
-          <form onSubmit={handleAddSpecialDay} className="flex flex-col sm:flex-row gap-3 items-end mb-6 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+          <form onSubmit={handleAddSpecialDay} className="flex flex-col sm:flex-row gap-3 items-end mb-6 bg-surface-muted/50 p-4 rounded-control border border-border-subtle">
             <div className="w-full sm:w-48 space-y-1">
-              <label className="block text-[11px] text-slate-500">Dia</label>
+              <label className="block text-[11px] text-text-muted">Dia</label>
               <input 
                 type="date"
                 required
                 value={sdDate}
                 onChange={e => setSdDate(e.target.value)}
-                className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 focus:ring-2 focus:ring-blue-100 outline-none bg-white"
+                className="w-full p-2 border border-border rounded-lg text-text-primary focus:ring-2 focus:ring-blue-100 outline-none bg-surface"
               />
             </div>
             <div className="flex-1 w-full space-y-1">
-              <label className="block text-[11px] text-slate-500">Nome</label>
+              <label className="block text-[11px] text-text-muted">Nome</label>
               <input 
                 type="text"
                 required
                 placeholder="Ex: Natal"
                 value={sdName}
                 onChange={e => setSdName(e.target.value)}
-                className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-blue-100 outline-none bg-white"
+                className="w-full p-2 border border-border rounded-lg text-text-primary font-medium focus:ring-2 focus:ring-blue-100 outline-none bg-surface"
               />
             </div>
             <button 
@@ -1191,19 +1064,19 @@ export default function ConfigSection({
 
             return (
               specialDays.length === 0 ? (
-                <div className="p-6 bg-slate-50 text-slate-400 text-center rounded-xl font-medium border border-slate-100">
+                <div className="p-6 bg-surface-muted text-slate-400 text-center rounded-control font-medium border border-border-subtle">
                   Nenhum dia especial configurado.
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                     {visibleSd.map(sd => (
-                      <div key={sd.id} className="flex flex-col items-start justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl relative group -sm hover: transition-">
+                      <div key={sd.id} className="flex flex-col items-start justify-between p-3 bg-surface-muted border border-border-subtle rounded-control relative group transition-colors">
                         <div className="flex flex-col gap-2 w-full pr-6">
-                          <span className="px-2 py-1 bg-white text-indigo-700 border border-indigo-100 rounded text-[10px] uppercase font-black tracking-wider self-start">
+                          <span className="px-2 py-1 bg-surface text-indigo-700 border border-indigo-100 rounded text-[10px] uppercase font-black tracking-wider self-start">
                             {new Date(sd.date + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </span>
-                          <span className="text-slate-700 font-bold text-[11px] truncate w-full" title={sd.name}>{sd.name}</span>
+                          <span className="text-text-secondary font-bold text-[11px] truncate w-full" title={sd.name}>{sd.name}</span>
                         </div>
                         <button 
                           type="button"
@@ -1223,8 +1096,8 @@ export default function ConfigSection({
                   </div>
 
                   {totalSdPages > 1 && (
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                      <span className="text-slate-500 font-medium text-[10px]">
+                    <div className="flex items-center justify-between pt-4 border-t border-border-subtle">
+                      <span className="text-text-muted font-medium text-[10px]">
                         A mostrar {visibleSd.length} de {specialDays.length} registos (Página {currentSdPage + 1} de {totalSdPages})
                       </span>
                       <div className="flex gap-2">
@@ -1232,7 +1105,7 @@ export default function ConfigSection({
                           type="button"
                           onClick={() => setSdPage(p => Math.max(0, p - 1))} 
                           disabled={currentSdPage === 0} 
-                          className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded disabled:opacity-50 transition-colors"
+                          className="px-3 py-1.5 bg-surface-muted text-text-secondary hover:bg-slate-200 rounded disabled:opacity-50 transition-colors"
                         >
                           Anterior
                         </button>
@@ -1240,7 +1113,7 @@ export default function ConfigSection({
                           type="button"
                           onClick={() => setSdPage(p => Math.min(totalSdPages - 1, p + 1))} 
                           disabled={currentSdPage >= totalSdPages - 1} 
-                          className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded disabled:opacity-50 transition-colors"
+                          className="px-3 py-1.5 bg-surface-muted text-text-secondary hover:bg-slate-200 rounded disabled:opacity-50 transition-colors"
                         >
                           Próxima
                         </button>
@@ -1257,8 +1130,8 @@ export default function ConfigSection({
 
       {/* TAREFAS TAB */}
       {activeConfigTab === 'tarefas' && (
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm animate-fade-in text-xs font-bold text-slate-700" id="default-tasks-card">
-        <h2 className="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
+      <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="default-tasks-card">
+        <h2 className="text-base font-bold text-text-primary mb-2 flex items-center gap-2">
           <ListTodo className="w-5 h-5 text-emerald-600" />
           Templates de tarefas
         </h2>
@@ -1266,24 +1139,24 @@ export default function ConfigSection({
           Configure modelos de tarefas padronizadas (ex: Instalação mecânica, FAT, Automação). Ao criar ou editar um projeto, poderá selecionar e clonar estas tarefas de forma automática e instantânea.
         </p>
 
-        <form onSubmit={handleAddDefaultTask} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end bg-slate-50/50 p-4 rounded-2xl border border-slate-100 mb-6">
+        <form onSubmit={handleAddDefaultTask} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end bg-surface-muted/50 p-4 rounded-card border border-border-subtle mb-6">
           <div className="md:col-span-2 space-y-1">
-            <label className="block text-[11px] text-slate-500">Título da tarefa *</label>
+            <label className="block text-[11px] text-text-muted">Título da tarefa *</label>
             <input 
               type="text"
               required
               placeholder="Ex: Eletrificação de sistema"
               value={dtTitle}
               onChange={e => setDtTitle(e.target.value)}
-              className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 bg-white font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
+              className="w-full p-2 border border-border rounded-lg text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
             />
           </div>
           <div className="space-y-1">
-            <label className="block text-[11px] text-slate-500">Tipo de Tarefa</label>
+            <label className="block text-[11px] text-text-muted">Tipo de Tarefa</label>
             <select
               value={dtTypeId}
               onChange={e => setDtTypeId(e.target.value)}
-              className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 bg-white font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
+              className="w-full p-2 border border-border rounded-lg text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
             >
               <option value="">Por defeito</option>
               {taskTypes.filter((s: any) => !s.deleted).map((s: any) => (
@@ -1292,14 +1165,14 @@ export default function ConfigSection({
             </select>
           </div>
           <div className="space-y-1">
-            <label className="block text-[11px] text-slate-500">Duração prevista (HH:MM)</label>
+            <label className="block text-[11px] text-text-muted">Duração prevista (HH:MM)</label>
             <input 
               type="text"
               required
               placeholder="02:00"
               value={dtHours}
               onChange={e => setDtHours(e.target.value)}
-              className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 bg-white font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
+              className="w-full p-2 border border-border rounded-lg text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
             />
           </div>
           <button 
@@ -1311,19 +1184,19 @@ export default function ConfigSection({
           </button>
           
           <div className="md:col-span-5 space-y-1 mt-2">
-            <label className="block text-[11px] text-slate-500">Descrição Técnica do Modelo</label>
+            <label className="block text-[11px] text-text-muted">Descrição Técnica do Modelo</label>
             <textarea 
               placeholder="Descreva as instruções padrão que o técnico deverá cumprir..."
               value={dtDesc}
               onChange={e => setDtDesc(e.target.value)}
               rows={2}
-              className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 bg-white font-medium focus:ring-2 focus:ring-blue-100 outline-none"
+              className="w-full p-2 border border-border rounded-lg text-text-primary bg-surface font-medium focus:ring-2 focus:ring-blue-100 outline-none"
             />
           </div>
         </form>
 
         {defaultTasks.length === 0 ? (
-          <div className="p-6 bg-slate-50 text-slate-400 text-center rounded-2xl font-medium border border-slate-100">
+          <div className="p-6 bg-surface-muted text-slate-400 text-center rounded-card font-medium border border-border-subtle">
             Nenhuma tarefa por defeito configurada. Introduza uma no formulário acima.
           </div>
         ) : (
@@ -1332,7 +1205,7 @@ export default function ConfigSection({
               const isEditingThis = editingDtId === dt.id;
               const typeName = dt.taskTypeId ? taskTypes.find((tt: any) => tt.id === dt.taskTypeId)?.name : null;
               return (
-                <div key={dt.id} className="p-4 bg-white border border-slate-200/80 rounded-2xl -sm space-y-3 transition- hover:-md flex flex-col justify-between">
+                <div key={dt.id} className="p-4 bg-surface border border-border/80 rounded-card space-y-3 transition-colors hover:border-primary/30 flex flex-col justify-between">
                   {isEditingThis ? (
                     // Inline Edit Mode
                     <div className="space-y-3 flex-1">
@@ -1342,7 +1215,7 @@ export default function ConfigSection({
                           type="text"
                           value={editDtTitle}
                           onChange={e => setEditDtTitle(e.target.value)}
-                          className="w-full p-1.5 border border-slate-200 rounded-md font-semibold text-xs text-slate-800"
+                          className="w-full p-1.5 border border-border rounded-md font-semibold text-xs text-text-primary"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
@@ -1351,7 +1224,7 @@ export default function ConfigSection({
                           <select
                             value={editDtTypeId}
                             onChange={e => setEditDtTypeId(e.target.value)}
-                            className="w-full p-1.5 border border-slate-200 rounded-md font-semibold text-xs text-slate-800 bg-white"
+                            className="w-full p-1.5 border border-border rounded-md font-semibold text-xs text-text-primary bg-surface"
                           >
                             <option value="">Por defeito</option>
                             {taskTypes.filter((s: any) => !s.deleted).map((s: any) => (
@@ -1365,7 +1238,7 @@ export default function ConfigSection({
                             type="text"
                             value={editDtHours}
                             onChange={e => setEditDtHours(e.target.value)}
-                            className="w-full p-1.5 border border-slate-200 rounded-md font-semibold text-xs text-slate-800"
+                            className="w-full p-1.5 border border-border rounded-md font-semibold text-xs text-text-primary"
                           />
                         </div>
                       </div>
@@ -1375,7 +1248,7 @@ export default function ConfigSection({
                           value={editDtDesc}
                           onChange={e => setEditDtDesc(e.target.value)}
                           rows={2}
-                          className="w-full p-1.5 border border-slate-200 rounded-md text-xs text-slate-600 font-medium"
+                          className="w-full p-1.5 border border-border rounded-md text-xs text-text-secondary font-medium"
                         />
                       </div>
                     </div>
@@ -1384,7 +1257,7 @@ export default function ConfigSection({
                     <div className="space-y-1.5 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <h4 className="text-xs font-bold text-slate-800 tracking-tight leading-snug">{dt.title}</h4>
+                          <h4 className="text-xs font-bold text-text-primary tracking-tight leading-snug">{dt.title}</h4>
                           {typeName && (
                             <span className="px-1.5 py-0.5 bg-blue-50 border border-blue-100 text-blue-700 rounded text-[9px] font-bold">
                               {typeName}
@@ -1395,18 +1268,18 @@ export default function ConfigSection({
                           {dt.estimatedHours}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                      <p className="text-[11px] text-text-muted font-medium leading-relaxed">
                         {dt.description || <span className="italic text-slate-400">Sem instruções de modelo fornecidas.</span>}
                       </p>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 mt-2">
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle mt-2">
                     {isEditingThis ? (
                       <>
                         <button 
                           onClick={() => setEditingDtId(null)}
-                          className="p-1 px-2 text-[10px] font-bold text-slate-500 hover:bg-slate-100 rounded-md transition-colors flex items-center gap-1"
+                          className="p-1 px-2 text-[10px] font-bold text-text-muted hover:bg-surface-muted rounded-md transition-colors flex items-center gap-1"
                         >
                           <X className="w-3.5 h-3.5" />
                           Cancelar
@@ -1423,7 +1296,7 @@ export default function ConfigSection({
                       <>
                         <button 
                           onClick={() => startEditingDefaultTask(dt)}
-                          className="p-1 px-2 text-[10px] font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors flex items-center gap-1"
+                          className="p-1 px-2 text-[10px] font-bold text-text-muted hover:text-primary hover:bg-blue-50 rounded-md transition-colors flex items-center gap-1"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           Editar
@@ -1439,7 +1312,7 @@ export default function ConfigSection({
                               );
                             }
                           }}
-                          className="p-1 px-2 text-[10px] font-bold text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors flex items-center gap-1"
+                          className="p-1 px-2 text-[10px] font-bold text-text-muted hover:text-red-600 hover:bg-red-50 rounded-md transition-colors flex items-center gap-1"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           Eliminar
@@ -1457,9 +1330,9 @@ export default function ConfigSection({
 
       {/* Opções e Tabelas Auxiliares de Projeto (Full Width Card) */}
       {activeConfigTab === 'campos' && (
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm animate-fade-in text-xs font-bold text-slate-700" id="aux-tables-card">
-        <h2 className="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
-          <Settings className="w-5 h-5 text-blue-600" />
+      <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="aux-tables-card">
+        <h2 className="text-base font-bold text-text-primary mb-2 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-primary" />
           Opções e tabelas de apoio
         </h2>
         <p className="text-slate-400 text-[11px] font-medium mb-5 leading-relaxed">
@@ -1467,7 +1340,7 @@ export default function ConfigSection({
         </p>
 
         {/* Tab Selector */}
-        <div className="overflow-x-auto w-full border-b border-slate-200 pb-3 mb-5 scrollbar-thin">
+        <div className="overflow-x-auto w-full border-b border-border pb-3 mb-5 scrollbar-thin">
           <div className="flex gap-1.5 min-w-max">
             {[
               { id: 'projectCategories', label: 'Categorias' },
@@ -1495,8 +1368,8 @@ export default function ConfigSection({
                 }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all whitespace-nowrap shrink-0 ${
                   activeAuxTab === tab.id
-                    ? 'bg-blue-600 text-white -sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800'
+                    ? 'bg-primary text-white'
+                    : 'bg-surface-muted text-text-secondary hover:bg-slate-200 hover:text-text-primary'
                 }`}
               >
                 {tab.label}
@@ -1506,23 +1379,23 @@ export default function ConfigSection({
         </div>
 
         {/* Addition form */}
-        <form onSubmit={handleAddAuxRecord} className="flex flex-col gap-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 mb-6">
+        <form onSubmit={handleAddAuxRecord} className="flex flex-col gap-3 bg-surface-muted/50 p-4 rounded-card border border-border-subtle mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
-              <label className="block text-[11px] text-slate-500 font-bold">Nome da opção *</label>
+              <label className="block text-[11px] text-text-muted font-bold">Nome da opção *</label>
               <input 
                 type="text" 
                 required
                 placeholder={`Introduza o nome...`}
                 value={newAuxName}
                 onChange={e => setNewAuxName(e.target.value)}
-                className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 bg-white font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
+                className="w-full p-2 border border-border rounded-lg text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
               />
             </div>
 
             {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') && (
               <div className="space-y-1">
-                <label className="block text-[11px] text-slate-500 font-bold">Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? '1 a 10' : '1 a 3'})</label>
+                <label className="block text-[11px] text-text-muted font-bold">Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? '1 a 10' : '1 a 3'})</label>
                 <input 
                   type="number"
                   min={activeAuxTab === 'projectStatuses' ? 0 : 1}
@@ -1530,14 +1403,14 @@ export default function ConfigSection({
                   required
                   value={newAuxScale}
                   onChange={e => setNewAuxScale(Number(e.target.value))}
-                  className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 bg-white font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
+                  className="w-full p-2 border border-border rounded-lg text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
                 />
               </div>
             )}
 
             <button 
               type="submit"
-              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2 bg-primary hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Adicionar opção
@@ -1545,8 +1418,8 @@ export default function ConfigSection({
           </div>
 
           {isColorAuxTab && (
-            <div className="pt-2 border-t border-slate-200/60 flex flex-col sm:flex-row sm:items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Cor:</span>
+            <div className="pt-2 border-t border-border/60 flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-[11px] font-bold text-text-muted whitespace-nowrap">Cor:</span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {PASTEL_COLORS.map(c => {
                   const isSelected = newAuxColor === c.hex;
@@ -1558,7 +1431,7 @@ export default function ConfigSection({
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
                         isSelected 
                           ? `${c.bgClass} ${c.textClass} ${c.borderClass} ring-2 ring-slate-400 shadow-xs` 
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          : 'bg-surface text-text-secondary border-border hover:bg-surface-muted'
                       }`}
                     >
                       <span className={`w-3 h-3 rounded-full ${c.bgClass} border ${c.borderClass} inline-block`} />
@@ -1573,11 +1446,11 @@ export default function ConfigSection({
 
         {/* Option List Table / Row */}
         {activeAuxItems.length === 0 ? (
-          <div className="p-4 bg-slate-50 text-slate-400 text-center rounded-xl font-medium border border-slate-100">
+          <div className="p-4 bg-surface-muted text-slate-400 text-center rounded-control font-medium border border-border-subtle">
             Nenhuma opção configurada nesta tabela auxiliar.
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden mb-6">
+          <div className="bg-surface rounded-card border border-border shadow-2xs overflow-hidden mb-6">
             <div className="overflow-x-auto w-full">
               <DndContext 
                 sensors={sensors}
@@ -1586,7 +1459,7 @@ export default function ConfigSection({
               >
                 <table className="w-full min-w-[520px] text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] uppercase text-slate-500 font-bold tracking-wider whitespace-nowrap">
+                    <tr className="bg-surface-muted/90 border-b border-border/80 text-[11px] uppercase text-text-muted font-bold tracking-wider whitespace-nowrap">
                     <th className="p-3.5 w-10"></th>
                     <th className="p-3.5">Nome da Opção</th>
                     {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') && (
@@ -1631,88 +1504,108 @@ export default function ConfigSection({
       </div>
       )}
 
-      {/* IMPORTAÇÃO TAB */}
-      {activeConfigTab === 'notificacoes' && (
+      {/* NOTIFICAÇÕES E AUTOMAÇÕES */}
+      {(activeConfigTab === 'notificacoes' || activeConfigTab === 'automacoes') && (
+        <div className="space-y-5">
+          <M3SectionHeader title="Notificações e Automações" description="Configure os avisos e as regras automáticas da aplicação." />
+          <Tabs
+            tabs={[
+              { id: 'notificacoes', label: 'Notificações', icon: <Bell className="w-4 h-4" /> },
+              { id: 'automacoes', label: 'Automações', icon: <Zap className="w-4 h-4" /> },
+            ]}
+            activeTabId={notificationTab}
+            onChange={tab => setNotificationTab(tab as 'notificacoes' | 'automacoes')}
+          />
+          {notificationTab === 'notificacoes' && (
         <div className="space-y-6">
           <div>
-            <h3 className="text-sm font-bold text-slate-800 mb-1 uppercase tracking-tight">Notificações In-App</h3>
-            <p className="text-xs text-slate-500 font-medium mb-4">Configure que notificações o sistema gera e quantos dias antes (quando aplicável).</p>
+            <h3 className="text-sm font-bold text-text-primary mb-1 uppercase tracking-tight">Notificações In-App</h3>
+            <p className="text-xs text-text-muted font-medium mb-4">Configure que notificações o sistema gera e quantos dias antes (quando aplicável).</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(state.notificationSettings || []).map(ns => (
-                <div key={ns.id} className="bg-white p-4 border border-slate-200 rounded-xl">
+                <Card key={ns.id} className="p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-bold text-sm text-slate-800">{ns.name}</h4>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="sr-only peer"
-                        checked={ns.enabled}
-                        onChange={(e) => updateNotificationSetting && updateNotificationSetting(ns.id, { enabled: e.target.checked })}
-                      />
-                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
+                    <h4 className="font-bold text-sm text-text-primary">{ns.name}</h4>
+                    <Switch
+                      checked={ns.enabled}
+                      disabled={!canWriteConfig}
+                      label={`Ativar ${ns.name}`}
+                      onChange={enabled => updateNotificationSetting?.(ns.id, { enabled })}
+                    />
                   </div>
                   
                   <div className="flex items-center gap-4">
                     {['task_due_date', 'project_due_date', 'project_scheduled_date'].includes(ns.type) && (
                       <div className="space-y-1 flex-1">
-                        <label className="block text-xs font-semibold text-slate-500 uppercase">Dias de antecedência</label>
-                        <input 
+                        <Input
+                          label="Dias de antecedência"
                           type="number"
                           min="0"
                           max="30"
                           value={ns.daysBefore}
-                          disabled={!ns.enabled}
+                          disabled={!ns.enabled || !canWriteConfig}
                           onChange={(e) => updateNotificationSetting && updateNotificationSetting(ns.id, { daysBefore: parseInt(e.target.value) || 0 })}
-                          className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50"
                         />
                       </div>
                     )}
                     
                     <div className="space-y-1 flex-1">
-                      <label className="block text-xs font-semibold text-slate-500 uppercase">Destinatários</label>
-                      <select 
+                      <Select
+                        label="Destinatários"
                         value={ns.targetGroup}
-                        disabled={!ns.enabled}
+                        disabled={!ns.enabled || !canWriteConfig}
                         onChange={(e) => updateNotificationSetting && updateNotificationSetting(ns.id, { targetGroup: e.target.value as any })}
-                        className="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 font-medium text-slate-700"
                       >
                         <option value="all">Todos os utilizadores</option>
                         <option value="allocated">Utilizadores alocados</option>
                         <option value="managers">Gestores</option>
-                      </select>
+                      </Select>
                     </div>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
             
-            <div className="mt-8 p-4 bg-slate-800 text-slate-300 rounded-xl text-xs font-mono overflow-x-auto whitespace-pre">
-              <div className="font-bold text-white mb-2 text-sm sans-serif">Em desenvolvimento:</div>
-              {`Em desenvolvimento`}
-            </div>
+
           </div>
+        </div>
+          )}
+          {notificationTab === 'automacoes' && (
+            <AutomationEditor
+              automationRules={automationRules || state.automationRules || []}
+              addAutomationRule={addAutomationRule}
+              updateAutomationRule={updateAutomationRule}
+              deleteAutomationRule={deleteAutomationRule}
+              toggleAutomationRule={toggleAutomationRule}
+              runAutomationRule={runAutomationRule}
+              projectStatuses={state.projectStatuses || []}
+              taskStatuses={state.taskStatuses || []}
+              projects={state.projects || []}
+              users={state.users || []}
+              canWrite={canWriteConfig}
+            />
+          )}
         </div>
       )}
 
       {activeConfigTab === 'importacao' && (
         <div className="space-y-6">
           {/* CSV Import Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm text-xs font-bold text-slate-700 animate-fade-in" id="csv-import-card">
-            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
+          <div className="bg-surface rounded-card border border-border p-6 text-xs font-bold text-text-secondary animate-fade-in" id="csv-import-card">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
+                <div className="w-9 h-9 rounded-control bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
                   <UploadCloud className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">Importação de Projetos via CSV</h3>
+                  <h3 className="text-sm font-extrabold text-text-primary">Importação de Projetos via CSV</h3>
                   <p className="text-[11px] text-slate-400 font-medium">Cole o conteúdo CSV para criar múltiplos projetos de forma massiva.</p>
                 </div>
               </div>
             </div>
 
-            <p className="text-slate-500 text-[11px] font-normal mb-4 leading-relaxed">
+            <p className="text-text-muted text-[11px] font-normal mb-4 leading-relaxed">
               Certifique-se de que o CSV inclui colunas para: Título do Projeto, Cliente, Orçamento, Data de Início, Data Limite, Install Project e Oportunidade SF.
             </p>
             <div className="space-y-4">
@@ -1721,7 +1614,7 @@ export default function ConfigSection({
                 onChange={e => setCsvText(e.target.value)}
                 placeholder={`Exemplo:\nTítulo, Cliente, Orçamento, Data Início\nProjeto A, Cliente X, 50000, 2024-01-01`}
                 rows={5}
-                className="w-full p-3 border border-slate-200 rounded-xl font-mono text-xs text-slate-600 focus:ring-2 focus:ring-blue-100 outline-none"
+                className="w-full p-3 border border-border rounded-control font-mono text-xs text-text-secondary focus:ring-2 focus:ring-blue-100 outline-none"
               />
               
               <div className="flex gap-2">
@@ -1729,21 +1622,21 @@ export default function ConfigSection({
                   type="button"
                   onClick={handleCsvImport}
                   disabled={importingCsv || !csvText.trim()}
-                  className="px-5 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs"
+                  className="px-5 py-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs"
                 >
                   {importingCsv ? 'A importar...' : 'Importar Dados'}
                 </button>
               </div>
 
               {csvResult && (
-                <div className={`p-4 rounded-xl border ${csvResult.failed > 0 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
-                  <h4 className="font-bold text-sm mb-2 text-slate-800">Resultado da Importação:</h4>
-                  <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                <div className={`p-4 rounded-control border ${csvResult.failed > 0 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                  <h4 className="font-bold text-sm mb-2 text-text-primary">Resultado da Importação:</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-text-secondary">
                     <li>Registos importados com sucesso: <span className="text-emerald-600 font-bold">{csvResult.success}</span></li>
                     {csvResult.failed > 0 && <li>Falhas: <span className="text-amber-600 font-bold">{csvResult.failed}</span></li>}
                   </ul>
                   {csvResult.errors.length > 0 && (
-                    <div className="mt-3 p-3 bg-white rounded-lg border border-amber-200 text-amber-700 h-32 overflow-y-auto">
+                    <div className="mt-3 p-3 bg-surface rounded-lg border border-amber-200 text-amber-700 h-32 overflow-y-auto">
                       {csvResult.errors.map((e, i) => (
                         <div key={i}>{e}</div>
                       ))}
@@ -1755,14 +1648,14 @@ export default function ConfigSection({
           </div>
 
           {/* Automatic Daily Backup Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm text-xs font-bold text-slate-700 animate-fade-in" id="auto-backup-card">
-            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
+          <div className="bg-surface rounded-card border border-border p-6 text-xs font-bold text-text-secondary animate-fade-in" id="auto-backup-card">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
+                <div className="w-9 h-9 rounded-control bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">Gravação Automática Diária</h3>
+                  <h3 className="text-sm font-extrabold text-text-primary">Gravação Automática Diária</h3>
                   <p className="text-[11px] text-slate-400 font-medium">Política de retenção: até 10 snapshots diários e 10 snapshots semanais.</p>
                 </div>
               </div>
@@ -1773,27 +1666,27 @@ export default function ConfigSection({
                   checked={config.autoDailyBackupEnabled !== false}
                   onChange={e => updateConfig({ autoDailyBackupEnabled: e.target.checked })}
                 />
-                <div className="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                <div className="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
               </label>
             </div>
 
             <div className="space-y-4">
-              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-3 text-slate-600 font-medium leading-relaxed">
+              <div className="p-4 bg-surface-muted border border-border/80 rounded-control space-y-3 text-text-secondary font-medium leading-relaxed">
                 <p className="text-xs">
                   Quando ativada, a aplicação efetua automaticamente um snapshot diário completo da base de dados no Supabase.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
-                  <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center gap-2.5 shadow-2xs">
+                  <div className="p-3 bg-surface border border-border rounded-control flex items-center gap-2.5 shadow-2xs">
                     <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span><strong>10 Diários:</strong> Mantém sempre os últimos 10 snapshots diários.</span>
                   </div>
-                  <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center gap-2.5 shadow-2xs">
-                    <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                  <div className="p-3 bg-surface border border-border rounded-control flex items-center gap-2.5 shadow-2xs">
+                    <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
                     <span><strong>10 Semanais:</strong> Mantém 1 snapshot de cada semana das últimas 10 semanas.</span>
                   </div>
                 </div>
-                <div className="text-[11px] text-slate-500 space-y-1 pt-1">
-                  <p>• O nome dos snapshots automáticos inclui a data e a hora de criação (ex: <code className="font-mono bg-slate-200/60 px-1.5 py-0.5 rounded text-slate-800">[Auto-Diário] 2026-09-12 12:30:00</code>).</p>
+                <div className="text-[11px] text-text-muted space-y-1 pt-1">
+                  <p>• O nome dos snapshots automáticos inclui a data e a hora de criação (ex: <code className="font-mono bg-slate-200/60 px-1.5 py-0.5 rounded text-text-primary">[Auto-Diário] 2026-09-12 12:30:00</code>).</p>
                   <p>• À medida que novos snapshots são gravados, os mais antigos que não se enquadrem na regra são eliminados automaticamente.</p>
                   <p>• Esta regra <strong>não influencia</strong> de todo os snapshots criados manualmente por si.</p>
                 </div>
@@ -1823,14 +1716,14 @@ export default function ConfigSection({
           </div>
 
           {/* Supabase Integration & Backups List Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm text-xs animate-fade-in" id="supabase-panel">
-            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
+          <div className="bg-surface rounded-card border border-border p-6 text-xs animate-fade-in" id="supabase-panel">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+                <div className="w-9 h-9 rounded-control bg-blue-50 text-primary flex items-center justify-center border border-blue-100 shrink-0">
                   <Database className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">Integração Supabase Cloud & Restauro</h3>
+                  <h3 className="text-sm font-extrabold text-text-primary">Integração Supabase Cloud & Restauro</h3>
                   <p className="text-[11px] text-slate-400 font-medium">Grave snapshots manuais ou restaure cópias guardadas na nuvem.</p>
                 </div>
               </div>
@@ -1840,7 +1733,8 @@ export default function ConfigSection({
                   <button
                     type="button"
                     onClick={handleTestConnection}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold rounded-lg transition-all flex items-center gap-1.5 text-xs"
+                    disabled={supabaseStatus === 'testing' || loadingBackups || savingBackup}
+                    className="px-3 py-1.5 bg-surface-muted hover:bg-slate-200 border border-border text-text-secondary font-bold rounded-lg transition-all flex items-center gap-1.5 text-xs"
                     title="Testar ligação à base de dados"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${supabaseStatus === 'testing' ? 'animate-spin' : ''}`} />
@@ -1855,18 +1749,18 @@ export default function ConfigSection({
             </div>
 
         {/* Status Indicator Bar */}
-        <div className={`p-4 rounded-xl mb-6 border ${
+        <div className={`p-4 rounded-control mb-6 border ${
           supabaseStatus === 'success' 
             ? 'bg-emerald-50/50 border-emerald-100 text-emerald-800' 
             : supabaseStatus === 'testing'
             ? 'bg-blue-50/50 border-blue-100 text-blue-800'
-            : 'bg-slate-50 border-slate-200 text-slate-700'
+            : 'bg-surface-muted border-border text-text-secondary'
         }`}>
           <div className="flex items-start gap-2.5">
             {supabaseStatus === 'success' ? (
               <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
             ) : supabaseStatus === 'testing' ? (
-              <RefreshCw className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5 animate-spin" />
+              <RefreshCw className="w-4 h-4 text-primary flex-shrink-0 mt-0.5 animate-spin" />
             ) : (
               <AlertCircle className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
             )}
@@ -1878,7 +1772,7 @@ export default function ConfigSection({
                 </p>
               )}
               {supabaseStatus === 'failed' && !isSupabaseConfigured && (
-                <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                <p className="text-[10px] text-text-muted font-medium mt-0.5">
                   Atenção: O sistema não está a gravar dados localmente. Sem o Supabase, perderá os dados ao atualizar a página. Siga as instruções abaixo para ligar a sua instância do Supabase ao portal.
                 </p>
               )}
@@ -1888,15 +1782,15 @@ export default function ConfigSection({
 
         {/* Instructions block for non-configured states */}
         {!isSupabaseConfigured && (
-          <div className="space-y-4 bg-slate-50/50 rounded-2xl border border-slate-200 p-4 mb-6">
-            <h4 className="font-bold text-slate-800 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
+          <div className="space-y-4 bg-surface-muted/50 rounded-card border border-border p-4 mb-6">
+            <h4 className="font-bold text-text-primary flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-primary" />
               Como configurar o Supabase:
             </h4>
             
-            <ol className="list-decimal list-inside space-y-2.5 text-slate-600 font-semibold pl-1">
+            <ol className="list-decimal list-inside space-y-2.5 text-text-secondary font-semibold pl-1">
               <li>
-                Crie um projeto gratuito no <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-0.5">Supabase.com <ExternalLink className="w-3 h-3" /></a>.
+                Crie um projeto gratuito no <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">Supabase.com <ExternalLink className="w-3 h-3" /></a>.
               </li>
               <li>
                 Abra a barra lateral de <strong>Configurações do AI Studio</strong> (Menu Secrets / Chaves de API).
@@ -1927,7 +1821,7 @@ export default function ConfigSection({
             {showSql && (
               <div className="mt-3 space-y-2 animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-500 font-bold font-mono">SCRIPT SQL RECOMENDADO</span>
+                  <span className="text-[10px] text-text-muted font-bold font-mono">SCRIPT SQL RECOMENDADO</span>
                   <button
                     type="button"
                     onClick={copySqlToClipboard}
@@ -1937,7 +1831,7 @@ export default function ConfigSection({
                     {sqlCopied ? 'Copiado!' : 'Copiar Script'}
                   </button>
                 </div>
-                <pre className="p-3 bg-slate-900 text-slate-200 rounded-xl font-mono text-[10px] overflow-x-auto max-h-[250px] leading-relaxed border border-slate-800">
+                <pre className="p-3 bg-slate-900 text-slate-200 rounded-control font-mono text-[10px] overflow-x-auto max-h-[250px] leading-relaxed border border-slate-800">
                   {SUPABASE_SETUP_SQL}
                 </pre>
               </div>
@@ -1948,15 +1842,15 @@ export default function ConfigSection({
         {/* Backup operations for configured states */}
         {isSupabaseConfigured && (
           <div className="space-y-6">
-            <div className="bg-slate-50/50 rounded-2xl border border-slate-200 p-4">
-              <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                <UploadCloud className="w-4 h-4 text-blue-600" />
+            <div className="bg-surface-muted/50 rounded-card border border-border p-4">
+              <h4 className="font-bold text-text-primary mb-3 flex items-center gap-1.5">
+                <UploadCloud className="w-4 h-4 text-primary" />
                 Criar Nova Cópia de Segurança na Nuvem
               </h4>
 
               <form onSubmit={handleSaveBackup} className="flex flex-col sm:flex-row gap-2 items-end">
                 <div className="flex-1 w-full space-y-1">
-                  <label className="block text-[10px] text-slate-500">Nome identificador da cópia</label>
+                  <label className="block text-[10px] text-text-muted">Nome identificador da cópia</label>
                   <input
                     type="text"
                     required
@@ -1964,13 +1858,13 @@ export default function ConfigSection({
                     placeholder="Ex: Cópia Completa - Linha de Montagem 3"
                     value={newBackupName}
                     onChange={e => setNewBackupName(e.target.value)}
-                    className="w-full p-2 border border-slate-200 rounded-lg text-slate-800 font-semibold focus:ring-2 focus:ring-blue-100 outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                    className="w-full p-2 border border-border rounded-lg text-text-primary font-semibold focus:ring-2 focus:ring-blue-100 outline-none disabled:bg-surface-muted disabled:text-slate-400"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={savingBackup || supabaseStatus !== 'success' || !newBackupName.trim()}
-                  className="w-full sm:w-auto px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 -sm disabled:bg-slate-200 disabled:text-slate-400"
+                  className="w-full sm:w-auto px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:bg-slate-200 disabled:text-slate-400"
                 >
                   <UploadCloud className={`w-4 h-4 ${savingBackup ? 'animate-bounce' : ''}`} />
                   {savingBackup ? 'A Gravar...' : 'Gravar no Supabase'}
@@ -1981,15 +1875,15 @@ export default function ConfigSection({
             {/* Backups List */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="font-extrabold text-slate-800 flex items-center gap-1.5">
+                <h4 className="font-extrabold text-text-primary flex items-center gap-1.5">
                   <DownloadCloud className="w-4 h-4 text-indigo-600" />
                   Cópias de Segurança Disponíveis no Supabase ({backups.length})
                 </h4>
                 <button
                   type="button"
                   onClick={fetchBackups}
-                  disabled={loadingBackups || supabaseStatus !== 'success'}
-                  className="px-2 py-1 text-[10px] bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md font-bold text-slate-600 transition-all flex items-center gap-1"
+                  disabled={loadingBackups || savingBackup || supabaseStatus !== 'success'}
+                  className="px-2 py-1 text-[10px] bg-surface-muted hover:bg-slate-200 border border-border rounded-md font-bold text-text-secondary transition-all flex items-center gap-1"
                 >
                   <RefreshCw className={`w-3 h-3 ${loadingBackups ? 'animate-spin' : ''}`} />
                   Atualizar Lista
@@ -1997,18 +1891,18 @@ export default function ConfigSection({
               </div>
 
               {loadingBackups ? (
-                <div className="p-8 text-center bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2">
+                <div className="p-8 text-center bg-surface-muted border border-border rounded-card flex flex-col items-center justify-center gap-2">
                   <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                  <span className="font-bold text-slate-500">A carregar registos do Supabase...</span>
+                  <span className="font-bold text-text-muted">A carregar registos do Supabase...</span>
                 </div>
               ) : backupsError ? (
-                <div className="p-6 bg-red-50/50 border border-red-200 rounded-2xl text-red-800">
+                <div className="p-6 bg-red-50/50 border border-red-200 rounded-card text-red-800">
                   <div className="flex gap-2.5 items-start">
                     <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-bold text-xs">Erro ao ler registos do Supabase</p>
                       <p className="font-semibold text-[10px] text-red-600 font-mono mt-1 break-all bg-red-100/40 p-2 rounded border border-red-100">{backupsError}</p>
-                      <p className="font-semibold text-[10px] text-slate-600 mt-2">
+                      <p className="font-semibold text-[10px] text-text-secondary mt-2">
                         Isto geralmente ocorre se a conectividade com o Supabase estiver indisponível ou se as permissões estiverem incorretas.
                       </p>
                     </div>
@@ -2017,7 +1911,7 @@ export default function ConfigSection({
                     <button 
                       type="button"
                       onClick={() => setShowSql(!showSql)}
-                      className="text-[10px] font-bold text-blue-600 hover:underline cursor-pointer flex items-center gap-1"
+                      className="text-[10px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-1"
                     >
                       {showSql ? 'Ocultar Script SQL de Configuração' : 'Ver Script SQL de Configuração'}
                     </button>
@@ -2025,16 +1919,16 @@ export default function ConfigSection({
                     {showSql && (
                       <div className="mt-3 text-left space-y-2 max-w-xl">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-slate-500 font-mono">SCRIPT SQL DO SUPABASE</span>
+                          <span className="text-[10px] text-text-muted font-mono">SCRIPT SQL DO SUPABASE</span>
                           <button
                             type="button"
                             onClick={copySqlToClipboard}
-                            className="px-2 py-0.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded text-[9px]"
+                            className="px-2 py-0.5 bg-surface border border-border hover:bg-surface-muted text-text-secondary font-bold rounded text-[9px]"
                           >
                             {sqlCopied ? 'Copiado!' : 'Copiar'}
                           </button>
                         </div>
-                        <pre className="p-3 bg-slate-950 text-slate-200 rounded-xl font-mono text-[9px] overflow-x-auto max-h-[150px] leading-relaxed border border-slate-850">
+                        <pre className="p-3 bg-slate-950 text-slate-200 rounded-control font-mono text-[9px] overflow-x-auto max-h-[150px] leading-relaxed border border-slate-850">
                           {SUPABASE_SETUP_SQL}
                         </pre>
                       </div>
@@ -2042,12 +1936,12 @@ export default function ConfigSection({
                   </div>
                 </div>
               ) : backups.length === 0 ? (
-                <div className="p-8 text-center bg-slate-50 text-slate-400 font-bold border border-slate-150 rounded-2xl">
+                <div className="p-8 text-center bg-surface-muted text-slate-400 font-bold border border-slate-150 rounded-card">
                   Nenhuma cópia de segurança encontrada. As cópias de segurança da base de dados são mantidas e geridas automaticamente pelo PostgreSQL.
                   <button 
                     type="button"
                     onClick={() => setShowSql(!showSql)}
-                    className="block mx-auto mt-3 text-blue-600 hover:underline cursor-pointer"
+                    className="block mx-auto mt-3 text-primary hover:underline cursor-pointer"
                   >
                     {showSql ? 'Ocultar Script SQL' : 'Ver Script SQL de Configuração de Tabelas'}
                   </button>
@@ -2055,27 +1949,27 @@ export default function ConfigSection({
                   {showSql && (
                     <div className="mt-4 text-left space-y-2 max-w-xl mx-auto">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-slate-500 font-mono">SCRIPT SQL DO SUPABASE</span>
+                        <span className="text-[10px] text-text-muted font-mono">SCRIPT SQL DO SUPABASE</span>
                         <button
                           type="button"
                           onClick={copySqlToClipboard}
-                          className="px-2 py-0.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded text-[9px]"
+                          className="px-2 py-0.5 bg-surface border border-border hover:bg-surface-muted text-text-secondary font-bold rounded text-[9px]"
                         >
                           {sqlCopied ? 'Copiado!' : 'Copiar'}
                         </button>
                       </div>
-                      <pre className="p-3 bg-slate-950 text-slate-200 rounded-xl font-mono text-[9px] overflow-x-auto max-h-[150px] leading-relaxed">
+                      <pre className="p-3 bg-slate-950 text-slate-200 rounded-control font-mono text-[9px] overflow-x-auto max-h-[150px] leading-relaxed">
                         {SUPABASE_SETUP_SQL}
                       </pre>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+                <div className="bg-surface rounded-card border border-border shadow-2xs overflow-hidden">
                   <div className="overflow-x-auto w-full">
                     <table className="w-full min-w-[520px] text-left border-collapse">
                       <thead>
-                        <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] uppercase text-slate-500 font-bold tracking-wider whitespace-nowrap">
+                        <tr className="bg-surface-muted/90 border-b border-border/80 text-[11px] uppercase text-text-muted font-bold tracking-wider whitespace-nowrap">
                         <th className="p-3.5">Nome da Cópia</th>
                         <th className="p-3.5">Data de Gravação</th>
                         <th className="p-3.5 text-right">Ações de Restauro</th>
@@ -2083,17 +1977,18 @@ export default function ConfigSection({
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs">
                       {backups.map(backup => (
-                        <tr key={backup.id} className="hover:bg-slate-50/50 transition-colors">
+                        <tr key={backup.id} className="hover:bg-surface-muted/50 transition-colors">
                           <td className="p-3.5">
-                            <span className="text-slate-800 font-bold font-mono">{backup.name}</span>
+                            <span className="text-text-primary font-bold font-mono">{backup.name}</span>
                           </td>
-                          <td className="p-3.5 text-slate-500 font-medium font-mono">
+                          <td className="p-3.5 text-text-muted font-medium font-mono">
                             {new Date(backup.created_at).toLocaleString('pt-PT')}
                           </td>
                           <td className="p-3.5 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"
+                                disabled={savingBackup || loadingBackups}
                                 onClick={() => handleRestoreBackup(backup)}
                                 className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-lg text-indigo-700 font-extrabold text-[10px] flex items-center gap-1 transition-all cursor-pointer"
                                 title="Carregar esta cópia de segurança"
@@ -2103,6 +1998,7 @@ export default function ConfigSection({
                               </button>
                               <button
                                 type="button"
+                                disabled={savingBackup || loadingBackups}
                                 onClick={() => handleDeleteBackup(backup.id)}
                                 className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                                 title="Eliminar cópia permanentemente"
@@ -2123,14 +2019,14 @@ export default function ConfigSection({
         )}
 
           {/* Auditoria de Consultas & Índices Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm text-xs animate-fade-in" id="index-panel">
-            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
+          <div className="bg-surface rounded-card border border-border p-6 text-xs animate-fade-in" id="index-panel">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 shrink-0">
+                <div className="w-9 h-9 rounded-control bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 shrink-0">
                   <Zap className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">Auditoria de Consultas & Índices Supabase</h3>
+                  <h3 className="text-sm font-extrabold text-text-primary">Auditoria de Consultas & Índices Supabase</h3>
                   <p className="text-[11px] text-slate-400 font-medium">Índices B-Tree compostos e paginação no servidor para otimização de desempenho.</p>
                 </div>
               </div>
@@ -2138,40 +2034,40 @@ export default function ConfigSection({
               <button
                 type="button"
                 onClick={() => setShowIndexSql(!showIndexSql)}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold rounded-lg transition-all flex items-center gap-1.5 text-xs cursor-pointer"
+                className="px-3 py-1.5 bg-surface-muted hover:bg-slate-200 border border-border text-text-secondary font-bold rounded-lg transition-all flex items-center gap-1.5 text-xs cursor-pointer"
               >
-                <Terminal className="w-3.5 h-3.5 text-slate-500" />
+                <Terminal className="w-3.5 h-3.5 text-text-muted" />
                 {showIndexSql ? 'Ocultar Script' : 'Ver Script de Índices'}
               </button>
             </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-150">
+            <div className="p-3 bg-surface-muted rounded-control border border-slate-150">
               <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-[11px]">
                 <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
                 Índices de Projetos
               </div>
-              <p className="text-[10px] text-slate-500 mt-1 font-mono leading-tight">
+              <p className="text-[10px] text-text-muted mt-1 font-mono leading-tight">
                 idx_projects_deleted_created_at, idx_projects_active_status
               </p>
             </div>
 
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-150">
+            <div className="p-3 bg-surface-muted rounded-control border border-slate-150">
               <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-[11px]">
                 <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
                 Índices de Tarefas
               </div>
-              <p className="text-[10px] text-slate-500 mt-1 font-mono leading-tight">
+              <p className="text-[10px] text-text-muted mt-1 font-mono leading-tight">
                 idx_tasks_project_deleted, idx_tasks_deleted_created_at
               </p>
             </div>
 
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-150">
+            <div className="p-3 bg-surface-muted rounded-control border border-slate-150">
               <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-[11px]">
                 <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
                 Paginação e APIs
               </div>
-              <p className="text-[10px] text-slate-500 mt-1 font-mono leading-tight">
+              <p className="text-[10px] text-text-muted mt-1 font-mono leading-tight">
                 /api/v1/projects & /api/v1/tasks (LIMIT/OFFSET ativo)
               </p>
             </div>
@@ -2180,17 +2076,17 @@ export default function ConfigSection({
           {showIndexSql && (
             <div className="space-y-2 animate-fade-in">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-500 font-mono font-bold">SCRIPT SQL DE OTIMIZAÇÃO (supabase/optimize_indexes.sql)</span>
+                <span className="text-[10px] text-text-muted font-mono font-bold">SCRIPT SQL DE OTIMIZAÇÃO (supabase/optimize_indexes.sql)</span>
                 <button
                   type="button"
                   onClick={copyIndexSqlToClipboard}
-                  className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg text-[10px] flex items-center gap-1 transition-colors"
+                  className="px-2.5 py-1 bg-surface border border-border hover:bg-surface-muted text-text-secondary font-bold rounded-lg text-[10px] flex items-center gap-1 transition-colors"
                 >
-                  <Copy className="w-3 h-3 text-slate-500" />
+                  <Copy className="w-3 h-3 text-text-muted" />
                   {indexSqlCopied ? 'Copiado para o clipboard!' : 'Copiar Script SQL'}
                 </button>
               </div>
-              <pre className="p-3 bg-slate-950 text-emerald-400 rounded-xl font-mono text-[9px] overflow-x-auto max-h-[200px] leading-relaxed border border-slate-800">
+              <pre className="p-3 bg-slate-950 text-emerald-400 rounded-control font-mono text-[9px] overflow-x-auto max-h-[200px] leading-relaxed border border-slate-800">
                 {SUPABASE_OPTIMIZE_INDEXES_SQL}
               </pre>
             </div>
@@ -2200,23 +2096,6 @@ export default function ConfigSection({
       </div>
       )}
 
-      {/* AUTOMAÇÕES TAB */}
-      {activeConfigTab === 'automacoes' && (
-        <AutomationEditor
-          automationRules={automationRules || state.automationRules || []}
-          addAutomationRule={addAutomationRule}
-          updateAutomationRule={updateAutomationRule}
-          deleteAutomationRule={deleteAutomationRule}
-          toggleAutomationRule={toggleAutomationRule}
-          runAutomationRule={runAutomationRule}
-          projectStatuses={state.projectStatuses || []}
-          taskStatuses={state.taskStatuses || []}
-          projects={state.projects || []}
-          users={state.users || []}
-          canWrite={canWriteConfig}
-        />
-      )}
-
       {/* AUDITORIA TAB */}
       {activeConfigTab === 'auditoria' && (
         <AuditLogSection auditLogs={state.auditLogs || []} currentUser={currentUser} />
@@ -2224,8 +2103,170 @@ export default function ConfigSection({
 
       {/* UTILIZADORES TAB */}
       {activeConfigTab === 'utilizadores' && (
-        <div className="bg-white rounded-2xl border border-slate-200 -sm animate-fade-in text-xs" id="users-tab">
-          {state.users && state.userGroups && (
+        <div className="space-y-5" id="users-tab">
+          <M3SectionHeader title="Utilizadores" description="Gerir utilizadores, funções e associação de grupos." />
+          <Tabs
+            tabs={[
+              { id: 'users', label: 'Utilizadores', icon: <Users className="w-4 h-4" /> },
+              { id: 'associacoes', label: 'Associação de grupos', icon: <GripVertical className="w-4 h-4" /> },
+            ]}
+            activeTabId={usersConfigTab}
+            onChange={tab => setUsersConfigTab(tab as 'users' | 'associacoes')}
+          />
+      {/* ASSOCIAÇÃO DE GRUPOS, NO SUBMENU UTILIZADORES */}
+      {activeConfigTab === 'utilizadores' && usersConfigTab === 'associacoes' && (
+        <form onSubmit={handleSaveAssociations} className="space-y-4">
+          <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="managers-config-card">
+            <h2 className="text-base font-bold text-text-primary mb-5 flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Associação de grupos
+            </h2>
+
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="block text-text-muted">Grupos para &quot;Gestor de Vendas&quot; (Escolha Múltipla)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
+                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
+                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
+                  ) : (
+                    state.userGroups?.filter(g => !g.deleted).map(g => {
+                      const isChecked = salesRepGroupIds.includes(g.id);
+                      return (
+                        <label key={g.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-lg cursor-pointer select-none hover:bg-surface-muted transition-colors">
+                          <input
+                            type="checkbox"
+                            disabled={!canWriteConfig}
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setSalesRepGroupIds(salesRepGroupIds.filter(id => id !== g.id));
+                              } else {
+                                setSalesRepGroupIds([...salesRepGroupIds, g.id]);
+                              }
+                            }}
+                            className="rounded border-slate-300 text-primary focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                          />
+                          <span className="text-text-secondary font-semibold text-xs">{g.name}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium font-sans">
+                  Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Gestor de Vendas&quot; no formulário dos projetos.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-text-muted">Grupos para &quot;Project Leader&quot; (Escolha Múltipla)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
+                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
+                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
+                  ) : (
+                    state.userGroups?.filter(g => !g.deleted).map(g => {
+                      const isChecked = projManagerGroupIds.includes(g.id);
+                      return (
+                        <label key={g.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-lg cursor-pointer select-none hover:bg-surface-muted transition-colors">
+                          <input
+                            type="checkbox"
+                            disabled={!canWriteConfig}
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setProjManagerGroupIds(projManagerGroupIds.filter(id => id !== g.id));
+                              } else {
+                                setProjManagerGroupIds([...projManagerGroupIds, g.id]);
+                              }
+                            }}
+                            className="rounded border-slate-300 text-primary focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                          />
+                          <span className="text-text-secondary font-semibold text-xs">{g.name}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium font-sans">
+                  Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Project Leader&quot; no formulário dos projetos.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-text-muted">Grupos para &quot;Técnico Responsável&quot; (Escolha Múltipla)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
+                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
+                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
+                  ) : (
+                    state.userGroups?.filter(g => !g.deleted).map(g => {
+                      const isChecked = fieldManagerGroupIds.includes(g.id);
+                      return (
+                        <label key={g.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-lg cursor-pointer select-none hover:bg-surface-muted transition-colors">
+                          <input
+                            type="checkbox"
+                            disabled={!canWriteConfig}
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setFieldManagerGroupIds(fieldManagerGroupIds.filter(id => id !== g.id));
+                              } else {
+                                setFieldManagerGroupIds([...fieldManagerGroupIds, g.id]);
+                              }
+                            }}
+                            className="rounded border-slate-300 text-primary focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                          />
+                          <span className="text-text-secondary font-semibold text-xs">{g.name}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium font-sans">
+                  Selecione os grupos de utilizadores que poderão ser atribuídos como &quot;Técnico responsável&quot; no formulário dos projetos.
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-border-subtle" id="task-assignee-groups-config">
+                <label className="block text-text-secondary font-bold">Grupos associados a tarefas</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
+                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
+                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
+                  ) : (
+                    state.userGroups?.filter(g => !g.deleted).map(g => {
+                      const isChecked = taskAssigneeGroupIds.includes(g.id);
+                      return (
+                        <label key={g.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-lg cursor-pointer select-none hover:bg-surface-muted transition-colors">
+                          <input
+                            type="checkbox"
+                            disabled={!canWriteConfig}
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setTaskAssigneeGroupIds(taskAssigneeGroupIds.filter(id => id !== g.id));
+                              } else {
+                                setTaskAssigneeGroupIds([...taskAssigneeGroupIds, g.id]);
+                              }
+                            }}
+                            className="rounded border-slate-300 text-primary focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                          />
+                          <span className="text-text-secondary font-semibold text-xs">{g.name}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium font-sans">
+                  Selecione os grupos de utilizadores que poderão aparecer na seleção de Utilizadores na criação e edição de tarefas em toda a aplicação.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <M3Button type="submit" disabled={!canWriteConfig}>Gravar associações</M3Button>
+          </div>
+        </form>
+      )}
+
+          {usersConfigTab === 'users' && state.users && state.userGroups && (
             <UserSection 
               absences={state.userAbsences || []}
               users={state.users}
