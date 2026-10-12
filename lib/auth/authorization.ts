@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { unauthorized, forbidden } from '@/lib/apiErrors';
+import { unauthorized, forbidden, createErrorResponse } from '@/lib/apiErrors';
 import { GroupPermissions, normalizeRoleId, CANONICAL_ROLE_IDS } from '@/lib/permissions';
 import {
   requireAuth as requireCentralAuth,
@@ -62,7 +62,9 @@ export async function requireAuth(req?: NextRequest): Promise<AuthResult> {
     const message = error instanceof AuthError ? error.message : 'Sessão inválida ou expirada. Faça login novamente.';
     return {
       success: false,
-      response: unauthorized(message, requestId),
+      response: error instanceof AuthError && error.statusCode === 503
+        ? createErrorResponse(503, 'AUTH_SERVICE_UNAVAILABLE', message, requestId)
+        : unauthorized(message, requestId),
     };
   }
 }
@@ -118,7 +120,9 @@ export async function requirePermission(
     const message = error instanceof AuthError ? error.message : 'Sessão inválida ou expirada. Faça login novamente.';
     return {
       success: false,
-      response: unauthorized(message, requestId),
+      response: error instanceof AuthError && error.statusCode === 503
+        ? createErrorResponse(503, 'AUTH_SERVICE_UNAVAILABLE', message, requestId)
+        : unauthorized(message, requestId),
     };
   }
 }
@@ -168,7 +172,9 @@ export async function requireAdmin(req?: NextRequest): Promise<AuthResult> {
     const message = error instanceof AuthError ? error.message : 'Sessão inválida ou expirada. Faça login novamente.';
     return {
       success: false,
-      response: unauthorized(message, requestId),
+      response: error instanceof AuthError && error.statusCode === 503
+        ? createErrorResponse(503, 'AUTH_SERVICE_UNAVAILABLE', message, requestId)
+        : unauthorized(message, requestId),
     };
   }
 }

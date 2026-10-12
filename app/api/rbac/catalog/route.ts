@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authorizeRbac, rbacError } from '@/lib/rbac/admin';
+import { withCanonicalErrors } from '@/lib/apiErrors';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest) {
+async function getCatalog(req: NextRequest) {
   try {
     const { db } = await authorizeRbac(req, 'roles.read');
     const [rolesResult, permissionsResult, grantsResult, usersResult, assignmentsResult] = await Promise.all([
@@ -19,3 +20,5 @@ export async function GET(req: NextRequest) {
       rolePermissions: grantsResult.data || [], users: usersResult.data || [], userRoles: assignmentsResult.data || [] });
   } catch (error) { return rbacError(error); }
 }
+
+export const GET = withCanonicalErrors(getCatalog);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AuthError, ForbiddenError, requireAuth } from '@/lib/auth/requireAuth';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { withCanonicalErrors } from '@/lib/apiErrors';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,7 @@ function failure(error: unknown) {
     { status: error instanceof AuthError ? error.statusCode : 500 });
 }
 
-export async function GET(req: NextRequest) {
+async function getAudit(req: NextRequest) {
   try {
     const user = await requireAuth(req);
     const client = requireServerDbClient();
@@ -32,10 +33,10 @@ export async function GET(req: NextRequest) {
   } catch (error) { return failure(error); }
 }
 
-export async function POST(req: NextRequest) {
+async function createAuditEvent(req: NextRequest) {
   try {
     const user = await requireAuth(req);
-    if (!checkRateLimit(`audit-client:${user.id}`, { limit: 30, windowSeconds: 60 }).success)
+    if (!(await checkRateLimit(`audit-client:${user.id}`, { limit: 30, windowSeconds: 60 })).success)
       return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429 });
     if (Number(req.headers.get('content-length') || 0) > 4096)
       return NextResponse.json({ success: false, message: 'Pedido demasiado grande.' }, { status: 413 });
@@ -55,3 +56,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) { return failure(error); }
 }
+
+export const GET = withCanonicalErrors(getAudit);
+export const POST = withCanonicalErrors(createAuditEvent);

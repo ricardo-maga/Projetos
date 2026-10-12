@@ -3,12 +3,15 @@ export const dynamic = 'force-dynamic';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
+import { saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { ProjectMaterial } from '@/lib/types';
 import { requirePermission } from '@/lib/auth/authorization';
+import { activeRelationExists, isUuid, mapProjectMaterial, parsePage } from '@/lib/supabase/operationalRecords';
+import { withCanonicalErrors } from '@/lib/apiErrors';
+import { createProjectMaterialSchema } from '@/lib/validations/operational';
 
-export async function GET(req: NextRequest) {
+async function getMaterials(req: NextRequest) {
   const auth = await requirePermission(req, 'project_materials:read');
   if (!auth.success) return auth.response;
 
@@ -19,26 +22,28 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get('projectId');
+    const pagination = parsePage(searchParams);
+    if (!pagination) return NextResponse.json({ success: false, message: 'page e pageSize inválidos (pageSize máximo: 100).' }, { status: 400 });
+    if (projectId && !isUuid(projectId))
+      return NextResponse.json({ success: false, message: 'Filtro de projeto inválido.' }, { status: 400 });
 
     const databaseClient = requireServerDbClient();
-    const result = await getActiveStateFromSupabase(databaseClient);
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
-    let materials = (result.data.projectMaterials || []).filter((pm: any) => !pm.deleted);
-
-    if (projectId) {
-      materials = materials.filter((pm: any) => pm.projectId === projectId);
-    }
-
-    return NextResponse.json({ success: true, count: materials.length, data: materials });
+    let query = databaseClient.from('project_materials').select('*', { count: 'exact' }).eq('deleted', false);
+    if (projectId) query = query.eq('project_id', projectId);
+    const from = (pagination.page - 1) * pagination.pageSize;
+    const { data, count, error } = await query.order('created_at', { ascending: false })
+      .order('id', { ascending: false }).range(from, from + pagination.pageSize - 1);
+    if (error) throw error;
+    const materials = (data || []).map(mapProjectMaterial);
+    return NextResponse.json({ success: true, count: materials.length, total: count || 0,
+      page: pagination.page, pageSize: pagination.pageSize,
+      totalPages: Math.ceil((count || 0) / pagination.pageSize), data: materials });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
   }
 }
 
-export async function POST(req: NextRequest) {
+async function createMaterial(req: NextRequest) {
   const auth = await requirePermission(req, 'project_materials:write');
   if (!auth.success) return auth.response;
 
@@ -47,31 +52,23 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
-    if (!body.projectId || !body.description || !body.supplier) {
+    const parsed = createProjectMaterialSchema.safeParse(await req.json());
+    if (!parsed.success) {
       return NextResponse.json({
         success: false,
-        message: 'Os campos "projectId", "description" e "supplier" são obrigatórios.'
+        message: 'Dados do material inválidos.'
       }, { status: 400 });
     }
+    const body = parsed.data;
 
     const databaseClient = requireServerDbClient();
-    const result = await getActiveStateFromSupabase(databaseClient);
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
-    const currentState = result.data;
-
     // Validate that target project exists and is not deleted
-    if (currentState.projects && Array.isArray(currentState.projects)) {
-      const projectExists = currentState.projects.some((p: any) => p.id === body.projectId && !p.deleted);
-      if (!projectExists) {
-        return NextResponse.json({
-          success: false,
-          message: 'O projeto especificado não existe ou foi eliminado.'
-        }, { status: 404 });
-      }
+    const projectExists = await activeRelationExists(databaseClient, 'projects', body.projectId);
+    if (!projectExists) {
+      return NextResponse.json({
+        success: false,
+        message: 'O projeto especificado não existe ou foi eliminado.'
+      }, { status: 404 });
     }
 
     const newMaterial: ProjectMaterial = {
@@ -81,7 +78,7 @@ export async function POST(req: NextRequest) {
       supplier: body.supplier,
       quantity: Number(body.quantity) || 1,
       reference: body.reference || '',
-      budget: Number(body.budget) || 0,
+      budget: body.budget ?? '',
       costPrice: Number(body.costPrice) || 0,
       salePrice: Number(body.salePrice) || 0,
       expectedDeliveryDate: body.expectedDeliveryDate || '',
@@ -90,8 +87,7 @@ export async function POST(req: NextRequest) {
       createdDate: new Date().toISOString()
     };
 
-    currentState.projectMaterials = [newMaterial, ...(currentState.projectMaterials || [])];
-    const saveResult = await saveActiveStateToSupabase(currentState, databaseClient, { projectMaterials: [newMaterial] });
+    const saveResult = await saveActiveStateToSupabase({} as any, databaseClient, { projectMaterials: [newMaterial] });
 
     if (!saveResult.success) {
       return NextResponse.json(saveResult, { status: saveResult.status || 500 });
@@ -102,3 +98,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
   }
 }
+
+export const GET = withCanonicalErrors(getMaterials);
+export const POST = withCanonicalErrors(createMaterial);

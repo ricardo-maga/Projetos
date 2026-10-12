@@ -4,7 +4,6 @@ import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { 
-  getActiveStateFromSupabase, 
   saveActiveStateToSupabase, 
   formatSupabaseError 
 } from '@/lib/supabaseSync';
@@ -13,8 +12,11 @@ import { Ticket } from '@/lib/types';
 import { genId } from '@/lib/utils';
 import { requirePermission } from '@/lib/auth/authorization';
 import { reserveTicketNumber } from '@/lib/supabase/ticketNumber';
+import { activeRelationExists, isUuid, mapTicket, parsePage } from '@/lib/supabase/operationalRecords';
+import { withCanonicalErrors } from '@/lib/apiErrors';
+import { createTicketSchema } from '@/lib/validations/operational';
 
-export async function GET(req: NextRequest) {
+async function getTickets(req: NextRequest) {
   const auth = await requirePermission(req, 'tickets_read');
   if (!auth.success) return auth.response;
 
@@ -28,31 +30,30 @@ export async function GET(req: NextRequest) {
     const source = searchParams.get('source');
     const assignedToId = searchParams.get('assignedToId');
     const clientId = searchParams.get('clientId');
+    const pagination = parsePage(searchParams);
+    if (!pagination) return NextResponse.json({ success: false, message: 'page e pageSize inválidos (pageSize máximo: 100).' }, { status: 400 });
+    if ((assignedToId && !isUuid(assignedToId)) || (clientId && !isUuid(clientId)))
+      return NextResponse.json({ success: false, message: 'Filtro de utilizador ou cliente inválido.' }, { status: 400 });
 
     const databaseClient = requireServerDbClient();
-    const result = await getActiveStateFromSupabase(databaseClient);
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
-    let tickets: Ticket[] = (result.data.tickets || []).filter((t: Ticket) => !t.deleted);
-
-    if (status) {
-      tickets = tickets.filter(t => t.status === status);
-    }
-    if (source) {
-      tickets = tickets.filter(t => t.source === source);
-    }
-    if (assignedToId) {
-      tickets = tickets.filter(t => t.assignedToId === assignedToId);
-    }
-    if (clientId) {
-      tickets = tickets.filter(t => t.clientId === clientId);
-    }
+    let query = databaseClient.from('tickets').select('*', { count: 'exact' }).eq('deleted', false);
+    if (status) query = query.eq('status', status);
+    if (source) query = query.eq('source', source);
+    if (assignedToId) query = query.eq('assigned_to_id', assignedToId);
+    if (clientId) query = query.eq('client_id', clientId);
+    const from = (pagination.page - 1) * pagination.pageSize;
+    const { data, count, error } = await query.order('created_at', { ascending: false })
+      .order('id', { ascending: false }).range(from, from + pagination.pageSize - 1);
+    if (error) throw error;
+    const tickets = (data || []).map(mapTicket);
 
     return NextResponse.json({
       success: true,
       count: tickets.length,
+      total: count || 0,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: Math.ceil((count || 0) / pagination.pageSize),
       data: tickets
     });
   } catch (err: any) {
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function createTicket(req: NextRequest) {
   const auth = await requirePermission(req, 'tickets_write');
   if (!auth.success) return auth.response;
 
@@ -72,11 +73,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
-
-    if (!body.title || typeof body.title !== 'string' || !body.title.trim()) {
-      return NextResponse.json({ success: false, message: 'Título do ticket é obrigatório.' }, { status: 400 });
-    }
+    const parsed = createTicketSchema.safeParse(await req.json());
+    if (!parsed.success) return NextResponse.json({ success: false, message: 'Dados do ticket inválidos.' }, { status: 400 });
+    const body = parsed.data;
 
     const validStatuses = ['validacao', 'aberto', 'em_analise', 'convertido', 'resolvido', 'cancelado'];
     if (body.status && !validStatuses.includes(body.status)) {
@@ -87,16 +86,9 @@ export async function POST(req: NextRequest) {
     }
 
     const databaseClient = requireServerDbClient();
-    const result = await getActiveStateFromSupabase(databaseClient);
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
-    const state = result.data;
-
     // Validate client relation if specified
     if (body.clientId !== undefined && body.clientId !== null && body.clientId !== '') {
-      const clientExists = Array.isArray(state.clients) && state.clients.some((c: any) => c.id === body.clientId && !c.deleted);
+      const clientExists = await activeRelationExists(databaseClient, 'clients', body.clientId);
       if (!clientExists) {
         return NextResponse.json({
           success: false,
@@ -107,7 +99,7 @@ export async function POST(req: NextRequest) {
 
     // Validate assignee relation if specified
     if (body.assignedToId !== undefined && body.assignedToId !== null && body.assignedToId !== '') {
-      const userExists = Array.isArray(state.users) && state.users.some((u: any) => u.id === body.assignedToId && !u.deleted && u.approved !== false);
+      const userExists = await activeRelationExists(databaseClient, 'users', body.assignedToId);
       if (!userExists) {
         return NextResponse.json({
           success: false,
@@ -119,7 +111,7 @@ export async function POST(req: NextRequest) {
     // Validate project relation if specified
     const targetProjectId = body.convertedProjectId || body.projectId;
     if (targetProjectId !== undefined && targetProjectId !== null && targetProjectId !== '') {
-      const projectExists = Array.isArray(state.projects) && state.projects.some((p: any) => p.id === targetProjectId && !p.deleted);
+      const projectExists = await activeRelationExists(databaseClient, 'projects', targetProjectId);
       if (!projectExists) {
         return NextResponse.json({
           success: false,
@@ -158,10 +150,9 @@ export async function POST(req: NextRequest) {
       deleted: false
     };
 
-    let notifications = state.notifications || [];
+    const notifications = [] as any[];
     if (newTicket.assignedToId && !isExternal) {
-      notifications = [
-        {
+      notifications.push({
           id: genId('notif'),
           userId: newTicket.assignedToId,
           title: `Novo Ticket Atribuído: ${ticketNumber}`,
@@ -169,20 +160,12 @@ export async function POST(req: NextRequest) {
           isRead: false,
           createdDate: now,
           linkUrl: `?tab=tickets&ticketId=${id}`
-        },
-        ...notifications
-      ];
+      });
     }
 
-    const newState = {
-      ...state,
-      tickets: [newTicket, ...(state.tickets || [])],
-      notifications
-    };
-
-    const saveRes = await saveActiveStateToSupabase(newState, databaseClient, {
+    const saveRes = await saveActiveStateToSupabase({} as any, databaseClient, {
       tickets: [newTicket],
-      notifications: notifications.filter(notification => !(state.notifications || []).some(existing => existing.id === notification.id))
+      notifications,
     });
     if (!saveRes.success) {
       return NextResponse.json(saveRes, { status: saveRes.status || 500 });
@@ -200,3 +183,6 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const GET = withCanonicalErrors(getTickets);
+export const POST = withCanonicalErrors(createTicket);

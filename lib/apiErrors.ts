@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export type ApiErrorCode =
   | 'BAD_REQUEST'
@@ -79,6 +80,24 @@ export function tooManyRequests(arg1: string, arg2?: string) {
 }
 
 export const rateLimitExceeded = tooManyRequests;
+
+// Migration adapter: retain the legacy `message` field for existing clients while
+// giving every operational v1 error the canonical error envelope and request ID.
+export function withCanonicalErrors<F extends (req: NextRequest, ...args: any[]) => Promise<NextResponse>>(handler: F): F {
+  return (async (req: NextRequest, ...args: any[]) => {
+    const response = await handler(req, ...args);
+    if (response.status < 400) return response;
+    const body = await response.clone().json().catch(() => null);
+    if (!body || typeof body !== 'object' || body.error || typeof body.message !== 'string') return response;
+    const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
+    const code = ({400:'BAD_REQUEST',401:'UNAUTHORIZED',403:'FORBIDDEN',404:'NOT_FOUND',409:'CONFLICT',413:'PAYLOAD_TOO_LARGE',422:'VALIDATION_ERROR',429:'TOO_MANY_REQUESTS',503:'AUTH_SERVICE_UNAVAILABLE'} as Record<number,string>)[response.status]
+      || (response.status >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
+    const headers = new Headers(response.headers);
+    headers.set('x-request-id', requestId);
+    return NextResponse.json({ ...body, error: { code, message: body.message, requestId } },
+      { status: response.status, headers });
+  }) as F;
+}
 
 export function internalServerError(message: string = 'Ocorreu um erro interno no servidor.', requestId: string) {
   return createErrorResponse(500, 'INTERNAL_SERVER_ERROR', message, requestId);

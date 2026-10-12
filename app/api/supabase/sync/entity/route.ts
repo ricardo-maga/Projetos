@@ -15,7 +15,7 @@ const targets = {
 export async function DELETE(req: NextRequest) {
   try {
     const user = await requireAuth(req);
-    if (!checkRateLimit(`sync-delete:${user.id}`, { limit: 30, windowSeconds: 60 }).success)
+    if (!(await checkRateLimit(`sync-delete:${user.id}`, { limit: 30, windowSeconds: 60 })).success)
       return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429 });
     let body;
     try { body = await req.json(); } catch { return NextResponse.json({ success: false, message: 'Pedido inválido.' }, { status: 400 }); }

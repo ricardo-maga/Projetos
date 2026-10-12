@@ -48,7 +48,24 @@ test('admin session and Supabase Data API boundaries are valid', async ({ reques
     Authorization: `Bearer ${adminToken}`,
   };
   const supabaseUrl = environment('E2E_SUPABASE_URL');
-  for (const table of ['notifications', 'notification_reads', 'user_roles']) {
+  for (const table of [
+    'notifications',
+    'notification_reads',
+    'user_roles',
+    // Internal planning tables are server-authoritative. Authenticated users
+    // must not bypass API RBAC through the Supabase Data API.
+    'planning_allocations',
+    'work_schedules',
+    'work_schedule_periods',
+    'resource_work_schedules',
+    'work_schedule_overrides',
+    'work_schedule_override_periods',
+    'non_project_work',
+    'resource_non_project_allocations',
+    'skills',
+    'resource_skills',
+    'task_skill_requirements',
+  ]) {
     const response = await request.get(`${supabaseUrl}/rest/v1/${table}?select=*`, { headers });
     expect(response.status()).toBeGreaterThanOrEqual(400);
   }

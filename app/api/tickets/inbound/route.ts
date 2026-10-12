@@ -4,7 +4,6 @@ import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { 
-  getActiveStateFromSupabase, 
   saveActiveStateToSupabase, 
   formatSupabaseError 
 } from '@/lib/supabaseSync';
@@ -22,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: 'Não autorizado.' }, { status: 401 });
   }
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
-  if (!checkRateLimit(`inbound-ticket:${ip}`, { limit: 30, windowSeconds: 60 }).success) {
+  if (!(await checkRateLimit(`inbound-ticket:${ip}`, { limit: 30, windowSeconds: 60 })).success) {
     return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429 });
   }
   if (!isSupabaseConfigured) {
@@ -39,12 +38,6 @@ export async function POST(req: NextRequest) {
     const requesterName = body.requesterName || (requesterEmail ? requesterEmail.split('@')[0].replace('.', ' ') : 'Contacto Externo');
 
     const databaseClient = requireServerDbClient();
-    const result = await getActiveStateFromSupabase(databaseClient);
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
-    const state = result.data;
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     const ticketNumber = await reserveTicketNumber(databaseClient);
@@ -70,14 +63,9 @@ export async function POST(req: NextRequest) {
       deleted: false
     };
 
-    const newState = {
-      ...state,
-      tickets: [newTicket, ...(state.tickets || [])]
-    };
-
-    const saveRes = await saveActiveStateToSupabase(newState, databaseClient, { tickets: [newTicket] });
+    const saveRes = await saveActiveStateToSupabase({} as any, databaseClient, { tickets: [newTicket] });
     if (!saveRes.success) {
-      return NextResponse.json(saveRes, { status: 500 });
+      return NextResponse.json(saveRes, { status: saveRes.status || 500 });
     }
 
     return NextResponse.json({

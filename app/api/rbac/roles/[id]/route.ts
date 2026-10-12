@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authorizeRbac, databaseError, rbacError } from '@/lib/rbac/admin';
+import { withCanonicalErrors } from '@/lib/apiErrors';
 
 export const dynamic = 'force-dynamic';
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function updateRole(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { user, db } = await authorizeRbac(req, 'roles.manage');
     const { id } = await params;
@@ -19,3 +20,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ success: true, role: data });
   } catch (error) { return rbacError(error); }
 }
+
+export const PATCH = withCanonicalErrors(updateRole);

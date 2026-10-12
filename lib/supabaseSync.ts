@@ -1813,7 +1813,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
     }
     */
 
-    // 6. Comments, User Absences, Quotes, BOMs, Equipment List, Special Days, Default Tasks
+    // 6. Comments, User Absences, Equipment List, Special Days, Default Tasks
     // Omission in a cached snapshot never authorizes a database deletion.
 
     const validProjIds = new Set(state.projects.map((p: any) => p.id));

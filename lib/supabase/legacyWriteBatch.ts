@@ -42,9 +42,10 @@ export function createLegacyWriteBatch(database: any, source: ERPState) {
     async commit() {
       if (!changes.size) return { success: true, versions: {} as LegacyVersions };
       const { data, error } = await database.rpc('write_legacy_batch', { p_changes: [...changes.values()] });
-      if (error && error.code !== 'PT409') console.error('Legacy atomic write rejected:', error.code, error.message);
-      if (error) return { success: false, status: error.code === 'PT409' ? 409 : 500,
-        message: error.code === 'PT409' ? 'Os dados foram alterados entretanto. Atualize a página antes de repetir.' : 'A base de dados rejeitou a gravação atómica.' };
+      const isConflict = error?.code === 'PT409' || error?.code === '40001';
+      if (error && !isConflict) console.error('Legacy atomic write rejected:', error.code, error.message);
+      if (error) return { success: false, status: isConflict ? 409 : 500,
+        message: isConflict ? 'Os dados foram alterados entretanto. Atualize a página antes de repetir.' : 'A base de dados rejeitou a gravação atómica.' };
       const versions: LegacyVersions = {};
       for (const entry of data || []) {
         const field = LEGACY_TABLE_FIELDS[entry.table_name as keyof typeof LEGACY_TABLE_FIELDS];

@@ -3,11 +3,14 @@ export const dynamic = 'force-dynamic';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveStateFromSupabase, saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
+import { saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { requirePermission } from '@/lib/auth/authorization';
+import { activeRelationExists, getOperationalRecord, mapProjectMaterial } from '@/lib/supabase/operationalRecords';
+import { withCanonicalErrors } from '@/lib/apiErrors';
+import { updateProjectMaterialSchema } from '@/lib/validations/operational';
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(req, 'project_materials:write');
   if (!auth.success) return auth.response;
 
@@ -17,51 +20,40 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   try {
-    const updates = await req.json();
+    const parsed = updateProjectMaterialSchema.safeParse(await req.json());
+    if (!parsed.success) return NextResponse.json({ success: false, message: 'Dados do material inválidos.' }, { status: 400 });
+    const updates = parsed.data as Record<string, any>;
     const databaseClient = requireServerDbClient();
-    const result = await getActiveStateFromSupabase(databaseClient);
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
-    const currentState = result.data;
-    if (!currentState.projectMaterials) {
-      currentState.projectMaterials = [];
-    }
-
-    const matIndex = currentState.projectMaterials.findIndex((m: any) => m.id === id);
-
-    if (matIndex === -1 || currentState.projectMaterials[matIndex].deleted) {
+    const existingMaterial = await getOperationalRecord(databaseClient, 'project_materials', id, mapProjectMaterial);
+    if (!existingMaterial) {
       return NextResponse.json({ success: false, message: 'Material não encontrado.' }, { status: 404 });
     }
 
     if (updates.projectId) {
-      if (currentState.projects && Array.isArray(currentState.projects)) {
-        const projectExists = currentState.projects.some((p: any) => p.id === updates.projectId && !p.deleted);
-        if (!projectExists) {
-          return NextResponse.json({
-            success: false,
-            message: 'O projeto especificado não existe ou foi eliminado.'
-          }, { status: 404 });
-        }
+      const projectExists = await activeRelationExists(databaseClient, 'projects', updates.projectId);
+      if (!projectExists) {
+        return NextResponse.json({
+          success: false,
+          message: 'O projeto especificado não existe ou foi eliminado.'
+        }, { status: 404 });
       }
     }
 
     // Write permission must not permit soft-delete or rewriting server identity.
-    if (updates.syncVersion !== undefined && updates.syncVersion !== currentState.projectMaterials[matIndex].syncVersion) {
+    if (updates.syncVersion !== undefined && updates.syncVersion !== existingMaterial.syncVersion) {
       return NextResponse.json({ success: false, message: 'O material foi alterado entretanto. Atualize antes de repetir.' }, { status: 409 });
     }
     const mutableFields = ['projectId', 'description', 'supplier', 'quantity', 'reference',
       'budget', 'costPrice', 'salePrice', 'expectedDeliveryDate', 'status'];
     const permittedUpdates = Object.fromEntries(mutableFields
       .filter(field => updates[field] !== undefined).map(field => [field, updates[field]]));
-    currentState.projectMaterials[matIndex] = {
-      ...currentState.projectMaterials[matIndex],
+    const updatedMaterial = {
+      ...existingMaterial,
       ...permittedUpdates,
       id
     };
 
-    const saveResult = await saveActiveStateToSupabase(currentState, databaseClient, { projectMaterials: [currentState.projectMaterials[matIndex]] });
+    const saveResult = await saveActiveStateToSupabase({} as any, databaseClient, { projectMaterials: [updatedMaterial] });
     if (!saveResult.success) {
       return NextResponse.json(saveResult, { status: saveResult.status || 500 });
     }
@@ -69,14 +61,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({
       success: true,
       message: 'Linha de material atualizada.',
-      data: { ...currentState.projectMaterials[matIndex], syncVersion: saveResult.versions?.projectMaterials?.[id] }
+      data: { ...updatedMaterial, syncVersion: saveResult.versions?.projectMaterials?.[id] }
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function deleteMaterial(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(req, 'project_materials:delete');
   if (!auth.success) return auth.response;
 
@@ -87,25 +79,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   try {
     const databaseClient = requireServerDbClient();
-    const result = await getActiveStateFromSupabase(databaseClient);
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
-    const currentState = result.data;
-    if (!currentState.projectMaterials) {
-      currentState.projectMaterials = [];
-    }
-
-    const matIndex = currentState.projectMaterials.findIndex((m: any) => m.id === id);
-
-    if (matIndex === -1) {
+    const existingMaterial = await getOperationalRecord(databaseClient, 'project_materials', id, mapProjectMaterial);
+    if (!existingMaterial) {
       return NextResponse.json({ success: false, message: 'Material não encontrado.' }, { status: 404 });
     }
 
-    currentState.projectMaterials[matIndex].deleted = true;
-
-    const saveResult = await saveActiveStateToSupabase(currentState, databaseClient, { projectMaterials: [currentState.projectMaterials[matIndex]] });
+    const deletedMaterial = { ...existingMaterial, deleted: true };
+    const saveResult = await saveActiveStateToSupabase({} as any, databaseClient, { projectMaterials: [deletedMaterial] });
     if (!saveResult.success) {
       return NextResponse.json(saveResult, { status: saveResult.status || 500 });
     }
@@ -115,3 +95,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
   }
 }
+
+export const PUT = withCanonicalErrors(updateMaterial);
+export const DELETE = withCanonicalErrors(deleteMaterial);
