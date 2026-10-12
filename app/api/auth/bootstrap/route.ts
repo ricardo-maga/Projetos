@@ -10,6 +10,11 @@ import { badRequest, forbidden, tooManyRequests, validationError, internalServer
 
 export async function POST(req: NextRequest) {
   const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
+  // Bootstrap is a setup-only capability. Production accounts are managed through
+  // the authenticated users API and must never recreate a first administrator.
+  if (process.env.VERCEL_ENV === 'production') {
+    return forbidden('O bootstrap administrativo está permanentemente desativado em produção.', requestId);
+  }
   const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
 
   // 1. Rate limiting: 5 attempts per IP per hour
