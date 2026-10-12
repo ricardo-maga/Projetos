@@ -29,7 +29,6 @@ describe('FASE 25-B — Auditoria e Correção BOLA/IDOR (Resource Authorization
   let restoreHarness: () => void;
 
   beforeEach(() => {
-    restoreHarness = installLegacyRouteHarness();
     authSpy = spyOn(authModule, 'requireAuth').mockResolvedValue({
       success: true,
       user: mockUser,
@@ -77,6 +76,7 @@ describe('FASE 25-B — Auditoria e Correção BOLA/IDOR (Resource Authorization
       }),
     };
 
+    restoreHarness = installLegacyRouteHarness(mockClient);
     serverDbSpy = spyOn(serverDbModule, 'getServerDbClient').mockResolvedValue(mockClient);
   });
 
