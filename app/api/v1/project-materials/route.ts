@@ -12,7 +12,7 @@ import { withCanonicalErrors } from '@/lib/apiErrors';
 import { createProjectMaterialSchema } from '@/lib/validations/operational';
 
 async function getMaterials(req: NextRequest) {
-  const auth = await requirePermission(req, 'materials_read');
+  const auth = await requirePermission(req, 'project_materials:read');
   if (!auth.success) return auth.response;
 
   if (!isSupabaseConfigured) {
@@ -44,7 +44,7 @@ async function getMaterials(req: NextRequest) {
 }
 
 async function createMaterial(req: NextRequest) {
-  const auth = await requirePermission(req, 'materials_write');
+  const auth = await requirePermission(req, 'project_materials:write');
   if (!auth.success) return auth.response;
 
   if (!isSupabaseConfigured) {

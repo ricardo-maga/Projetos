@@ -11,7 +11,7 @@ import { withCanonicalErrors } from '@/lib/apiErrors';
 import { updateProjectMaterialSchema } from '@/lib/validations/operational';
 
 async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(req, 'materials_write');
+  const auth = await requirePermission(req, 'project_materials:write');
   if (!auth.success) return auth.response;
 
   const { id } = await params;
@@ -69,7 +69,7 @@ async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ 
 }
 
 async function deleteMaterial(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(req, 'materials_delete');
+  const auth = await requirePermission(req, 'project_materials:delete');
   if (!auth.success) return auth.response;
 
   const { id } = await params;
