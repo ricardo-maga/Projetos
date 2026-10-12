@@ -23,6 +23,12 @@ test('conflict fails closed without retrying stale writes', async () => {
   expect(attempts).toBe(1);
 });
 
+test('legacy SQLSTATE conflict is reported as 409 until the database migration is applied', async () => {
+  const batch = createLegacyWriteBatch({rpc:async()=>({error:{code:'40001'}})}, {} as ERPState);
+  await (batch.client.from('tickets') as any).upsert([{id:'new'}]);
+  expect(await batch.commit()).toMatchObject({success:false,status:409});
+});
+
 test('cannot add canonical task/project writers to a legacy batch', async () => {
   const batch = createLegacyWriteBatch({}, {} as ERPState);
   await expect((batch.client.from('tasks') as any).upsert([{id:'forbidden'}])).rejects.toThrow('fora do boundary');

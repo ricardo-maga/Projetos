@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authorizeRbac, databaseError, rbacError } from '@/lib/rbac/admin';
+import { withCanonicalErrors } from '@/lib/apiErrors';
 
 export const dynamic = 'force-dynamic';
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function updateRolePermissions(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { user, db } = await authorizeRbac(req, 'roles.manage');
     const { id } = await params;
@@ -27,3 +28,5 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ success: true });
   } catch (error) { return rbacError(error); }
 }
+
+export const PUT = withCanonicalErrors(updateRolePermissions);

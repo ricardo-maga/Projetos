@@ -56,11 +56,11 @@ export async function GET() {
             supplier: { type: "string", example: "ElectraLda / Siemens" },
             quantity: { type: "number", example: 4 },
             reference: { type: "string", example: "REF-88231" },
-            budget: { type: "number", example: 150.00 },
+            budget: { oneOf: [{ type: "string" }, { type: "number" }], example: "ORC-2026-150" },
             costPrice: { type: "number", example: 120.00 },
             salePrice: { type: "number", example: 180.00 },
             expectedDeliveryDate: { type: "string", format: "date" },
-            status: { type: "string", enum: ["encomendado", "em_stock"], example: "encomendado" },
+            status: { type: "string", description: "Estado da linha, incluindo encomendado e em_armazem", example: "encomendado" },
             deleted: { type: "boolean", default: false }
           },
           required: ["projectId", "description", "supplier"]
@@ -83,12 +83,39 @@ export async function GET() {
           type: "object",
           properties: {
             id: { type: "string", format: "uuid" },
-            name: { type: "string", example: "Empresa Metalúrgica do Norte" },
-            email: { type: "string", format: "email" },
-            phone: { type: "string" },
-            nif: { type: "string" }
+            clientName: { type: "string", example: "Empresa Metalúrgica do Norte" },
+            shortName: { type: "string" },
+            taxId: { type: "string" },
+            contactEmail: { type: "string", format: "email" },
+            contactPhone: { type: "string" }
           },
-          required: ["name"]
+          required: ["clientName"]
+        },
+        Ticket: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            syncVersion: { type: "integer" },
+            ticketNumber: { type: "string" },
+            title: { type: "string" },
+            description: { type: "string" },
+            source: { type: "string" },
+            status: { type: "string" },
+            priority: { type: "string" },
+            clientId: { type: "string", format: "uuid" },
+            assignedToId: { type: "string", format: "uuid" },
+            createdDate: { type: "string", format: "date-time" }
+          },
+          required: ["title"]
+        },
+        ApiError: {
+          type: "object",
+          properties: {
+            error: { type: "object", properties: {
+              code: { type: "string" }, message: { type: "string" }, requestId: { type: "string" }
+            }, required: ["code", "message", "requestId"] }
+          },
+          required: ["error"]
         }
       }
     },
@@ -160,13 +187,16 @@ export async function GET() {
       },
       "/project-materials": {
         get: {
-          summary: "Listar materiais/encomendas de projetos",
+          summary: "Listar materiais/encomendas de projetos por página",
           tags: ["Materiais & Encomendas"],
           parameters: [
-            { name: "projectId", in: "query", required: false, schema: { type: "string" }, description: "Filtrar por projeto" }
+            { name: "projectId", in: "query", required: false, schema: { type: "string", format: "uuid" }, description: "Filtrar por projeto" },
+            { name: "page", in: "query", schema: { type: "integer", minimum: 1, default: 1 } },
+            { name: "pageSize", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } }
           ],
           responses: {
-            "200": { description: "Lista de linhas de material" }
+            "200": { description: "Página de linhas de material com count, total, page, pageSize, totalPages e data" },
+            "400": { description: "Parâmetros inválidos", content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } } }
           }
         },
         post: {
@@ -179,7 +209,9 @@ export async function GET() {
             }
           },
           responses: {
-            "201": { description: "Linha de material criada" }
+            "201": { description: "Linha de material criada" },
+            "400": { description: "Dados inválidos", content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } } },
+            "409": { description: "Conflito de concorrência", content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } } }
           }
         }
       },
@@ -210,6 +242,41 @@ export async function GET() {
             "200": { description: "Linha de material eliminada" }
           }
         }
+      },
+      "/tickets": {
+        get: {
+          summary: "Listar tickets por página",
+          tags: ["Tickets"],
+          parameters: [
+            { name: "status", in: "query", schema: { type: "string" } },
+            { name: "source", in: "query", schema: { type: "string" } },
+            { name: "assignedToId", in: "query", schema: { type: "string", format: "uuid" } },
+            { name: "clientId", in: "query", schema: { type: "string", format: "uuid" } },
+            { name: "page", in: "query", schema: { type: "integer", minimum: 1, default: 1 } },
+            { name: "pageSize", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } }
+          ],
+          responses: { "200": { description: "Página de tickets com count, total, page, pageSize, totalPages e data" },
+            "400": { description: "Parâmetros inválidos", content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } } } }
+        },
+        post: {
+          summary: "Criar ticket",
+          tags: ["Tickets"],
+          requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/Ticket" } } } },
+          responses: { "201": { description: "Ticket criado" },
+            "400": { description: "Dados inválidos", content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } } },
+            "409": { description: "Conflito de concorrência", content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } } } }
+        }
+      },
+      "/tickets/{id}": {
+        get: { summary: "Consultar ticket", tags: ["Tickets"], parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }
+        ], responses: { "200": { description: "Ticket encontrado" }, "404": { description: "Ticket não encontrado" } } },
+        patch: { summary: "Atualizar ticket", tags: ["Tickets"], parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }
+        ], responses: { "200": { description: "Ticket atualizado" }, "409": { description: "Versão concorrente" } } },
+        delete: { summary: "Eliminar ticket logicamente", tags: ["Tickets"], parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }
+        ], responses: { "200": { description: "Ticket eliminado" } } }
       },
       "/tasks": {
         get: {

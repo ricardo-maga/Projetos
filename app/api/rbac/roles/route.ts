@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authorizeRbac, databaseError, rbacError } from '@/lib/rbac/admin';
+import { withCanonicalErrors } from '@/lib/apiErrors';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
+async function createRole(req: NextRequest) {
   try {
     const { user, db } = await authorizeRbac(req, 'roles.manage');
     const body = await req.json();
@@ -25,3 +26,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, role: data }, { status: 201 });
   } catch (error) { return rbacError(error); }
 }
+
+export const POST = withCanonicalErrors(createRole);

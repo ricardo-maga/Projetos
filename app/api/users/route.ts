@@ -6,6 +6,7 @@ import { requirePermission, AuthError } from '@/lib/auth/requireAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { logAuditEvent } from '@/lib/audit';
 import { CANONICAL_ROLE_IDS } from '@/lib/permissions';
+import { withCanonicalErrors } from '@/lib/apiErrors';
 
 const fields = z.object({
   name: z.string().trim().min(2).max(200),
@@ -21,7 +22,7 @@ function failure(error: unknown) {
   return NextResponse.json({ success: false, message: status === 500 ? 'Falha ao guardar o utilizador.' : error instanceof Error ? error.message : 'Operação recusada.' }, { status });
 }
 
-export async function POST(req: NextRequest) {
+async function createUser(req: NextRequest) {
   try {
     const actor = await requirePermission(req, 'users_write');
     const parsed = createFields.safeParse(await req.json());
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
   } catch (error) { return failure(error); }
 }
 
-export async function PATCH(req: NextRequest) {
+async function updateUser(req: NextRequest) {
   try {
     const actor = await requirePermission(req, 'users_write');
     const parsed = updateFields.safeParse(await req.json());
@@ -118,3 +119,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true, id });
   } catch (error) { return failure(error); }
 }
+
+export const POST = withCanonicalErrors(createUser);
+export const PATCH = withCanonicalErrors(updateUser);

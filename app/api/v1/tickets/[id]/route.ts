@@ -4,13 +4,15 @@ import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { 
-  getActiveStateFromSupabase, 
   saveActiveStateToSupabase, 
   formatSupabaseError 
 } from '@/lib/supabaseSync';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { Ticket } from '@/lib/types';
 import { requirePermission } from '@/lib/auth/authorization';
+import { activeRelationExists, getOperationalRecord, mapTicket } from '@/lib/supabase/operationalRecords';
+import { withCanonicalErrors } from '@/lib/apiErrors';
+import { updateTicketSchema } from '@/lib/validations/operational';
 
 const VALID_STATUSES = ['validacao', 'aberto', 'em_analise', 'convertido', 'resolvido', 'cancelado'];
 
@@ -25,7 +27,7 @@ async function getIdFromParams(input: any): Promise<string> {
   return resolved?.id || '';
 }
 
-export async function GET(req: NextRequest, ctx: any) {
+async function getTicket(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'tickets_read');
   if (!auth.success) return auth.response;
 
@@ -36,12 +38,7 @@ export async function GET(req: NextRequest, ctx: any) {
 
   try {
     const databaseClient = requireServerDbClient();
-    const result = await getActiveStateFromSupabase(databaseClient);
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
-    const ticket = (result.data.tickets || []).find((t: Ticket) => t.id === id && !t.deleted);
+    const ticket = await getOperationalRecord(databaseClient, 'tickets', id, mapTicket);
     if (!ticket) {
       return NextResponse.json({ success: false, message: 'Ticket não encontrado ou eliminado.' }, { status: 404 });
     }
@@ -58,14 +55,6 @@ export async function GET(req: NextRequest, ctx: any) {
   }
 }
 
-export async function PATCH(req: NextRequest, ctx: any) {
-  return handleUpdate(req, ctx);
-}
-
-export async function PUT(req: NextRequest, ctx: any) {
-  return handleUpdate(req, ctx);
-}
-
 async function handleUpdate(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'tickets_write');
   if (!auth.success) return auth.response;
@@ -76,19 +65,12 @@ async function handleUpdate(req: NextRequest, ctx: any) {
   }
 
   try {
-    const updates = await req.json();
+    const parsed = updateTicketSchema.safeParse(await req.json());
+    if (!parsed.success) return NextResponse.json({ success: false, message: 'Dados do ticket inválidos.' }, { status: 400 });
+    const updates = parsed.data as Record<string, any>;
     const databaseClient = requireServerDbClient();
-    const result = await getActiveStateFromSupabase(databaseClient);
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
-    const state = result.data;
-    if (!state.tickets) state.tickets = [];
-    const tickets: Ticket[] = state.tickets;
-    const index = tickets.findIndex((t: Ticket) => t.id === id && !t.deleted);
-
-    if (index === -1) {
+    const existingTicket = await getOperationalRecord(databaseClient, 'tickets', id, mapTicket);
+    if (!existingTicket) {
       return NextResponse.json({ success: false, message: 'Ticket não encontrado ou eliminado.' }, { status: 404 });
     }
 
@@ -99,13 +81,14 @@ async function handleUpdate(req: NextRequest, ctx: any) {
 
     // Validate status if updated
     const validStatuses = [...VALID_STATUSES];
-    if (Array.isArray(state.ticketStatuses)) {
-      state.ticketStatuses.forEach((ts: any) => {
-        if (ts && !ts.deleted) {
-          if (ts.id && !validStatuses.includes(ts.id)) validStatuses.push(ts.id);
-          if (ts.name && !validStatuses.includes(ts.name)) validStatuses.push(ts.name);
-        }
-      });
+    if (updates.status !== undefined) {
+      const { data: ticketStatuses, error: statusesError } = await databaseClient.from('ticket_statuses')
+        .select('id,name').eq('deleted', false);
+      if (statusesError) throw statusesError;
+      for (const ts of ticketStatuses || []) {
+        if (ts.id && !validStatuses.includes(ts.id)) validStatuses.push(ts.id);
+        if (ts.name && !validStatuses.includes(ts.name)) validStatuses.push(ts.name);
+      }
     }
 
     if (updates.status !== undefined && !validStatuses.includes(updates.status)) {
@@ -117,7 +100,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
 
     // Validate client relation if updated
     if (updates.clientId !== undefined && updates.clientId !== null && updates.clientId !== '') {
-      const clientExists = Array.isArray(state.clients) && state.clients.some((c: any) => c.id === updates.clientId && !c.deleted);
+      const clientExists = await activeRelationExists(databaseClient, 'clients', updates.clientId);
       if (!clientExists) {
         return NextResponse.json({ success: false, message: 'O cliente especificado não existe ou foi eliminado.' }, { status: 400 });
       }
@@ -125,7 +108,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
 
     // Validate assignee relation if updated
     if (updates.assignedToId !== undefined && updates.assignedToId !== null && updates.assignedToId !== '') {
-      const userExists = Array.isArray(state.users) && state.users.some((u: any) => u.id === updates.assignedToId && !u.deleted && u.approved !== false);
+      const userExists = await activeRelationExists(databaseClient, 'users', updates.assignedToId);
       if (!userExists) {
         return NextResponse.json({ success: false, message: 'O utilizador responsável especificado não existe ou está inativo.' }, { status: 400 });
       }
@@ -134,13 +117,12 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     // Validate project relation if updated
     const projectUpdateToCheck = updates.convertedProjectId !== undefined ? updates.convertedProjectId : updates.projectId;
     if (projectUpdateToCheck !== undefined && projectUpdateToCheck !== null && projectUpdateToCheck !== '') {
-      const projectExists = Array.isArray(state.projects) && state.projects.some((p: any) => p.id === projectUpdateToCheck && !p.deleted);
+      const projectExists = await activeRelationExists(databaseClient, 'projects', projectUpdateToCheck);
       if (!projectExists) {
         return NextResponse.json({ success: false, message: 'O projeto especificado não existe ou foi eliminado.' }, { status: 400 });
       }
     }
 
-    const existingTicket = tickets[index];
     if (updates.syncVersion !== undefined && updates.syncVersion !== existingTicket.syncVersion) {
       return NextResponse.json({ success: false, message: 'O ticket foi alterado entretanto. Atualize antes de repetir.' }, { status: 409 });
     }
@@ -175,9 +157,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
       updatedDate: new Date().toISOString()
     };
 
-    state.tickets[index] = updatedTicket;
-
-    const saveRes = await saveActiveStateToSupabase(state, databaseClient, { tickets: [state.tickets[index]] });
+    const saveRes = await saveActiveStateToSupabase({} as any, databaseClient, { tickets: [updatedTicket] });
     if (!saveRes.success) {
       return NextResponse.json(saveRes, { status: saveRes.status || 500 });
     }
@@ -185,7 +165,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     return NextResponse.json({
       success: true,
       message: 'Ticket atualizado com sucesso.',
-      data: { ...state.tickets[index], syncVersion: saveRes.versions?.tickets?.[id] }
+      data: { ...updatedTicket, syncVersion: saveRes.versions?.tickets?.[id] }
     });
   } catch (err: any) {
     return NextResponse.json(
@@ -195,7 +175,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
   }
 }
 
-export async function DELETE(req: NextRequest, ctx: any) {
+async function deleteTicket(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'tickets_delete');
   if (!auth.success) return auth.response;
 
@@ -206,27 +186,18 @@ export async function DELETE(req: NextRequest, ctx: any) {
 
   try {
     const databaseClient = requireServerDbClient();
-    const result = await getActiveStateFromSupabase(databaseClient);
-    if (!result.success || !result.data) {
-      return NextResponse.json(result, { status: 500 });
-    }
-
-    const state = result.data;
-    if (!state.tickets) state.tickets = [];
-    const tickets: Ticket[] = state.tickets;
-    const index = tickets.findIndex((t: Ticket) => t.id === id && !t.deleted);
-
-    if (index === -1) {
+    const ticket = await getOperationalRecord(databaseClient, 'tickets', id, mapTicket);
+    if (!ticket) {
       return NextResponse.json({ success: false, message: 'Ticket não encontrado ou já eliminado.' }, { status: 404 });
     }
 
-    state.tickets[index] = {
-      ...tickets[index],
+    const deletedTicket: Ticket = {
+      ...ticket,
       deleted: true,
       updatedDate: new Date().toISOString()
     };
 
-    const saveRes = await saveActiveStateToSupabase(state, databaseClient, { tickets: [state.tickets[index]] });
+    const saveRes = await saveActiveStateToSupabase({} as any, databaseClient, { tickets: [deletedTicket] });
     if (!saveRes.success) {
       return NextResponse.json(saveRes, { status: saveRes.status || 500 });
     }
@@ -242,3 +213,8 @@ export async function DELETE(req: NextRequest, ctx: any) {
     );
   }
 }
+
+export const GET = withCanonicalErrors(getTicket);
+export const PATCH = withCanonicalErrors(handleUpdate);
+export const PUT = PATCH;
+export const DELETE = withCanonicalErrors(deleteTicket);

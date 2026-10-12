@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { requireAuth, AuthError } from '@/lib/auth/requireAuth';
+import { withCanonicalErrors } from '@/lib/apiErrors';
 
 async function getAuthenticatedUserSession(req?: NextRequest) {
   try {
@@ -19,12 +20,13 @@ async function getAuthenticatedUserSession(req?: NextRequest) {
       isSuperAdmin: user.is_super_admin,
       permissions: user.permissions,
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof AuthError && error.statusCode >= 500) throw error;
     return null;
   }
 }
 
-export async function GET(req: NextRequest) {
+async function getSession(req: NextRequest) {
   try {
     const user = await getAuthenticatedUserSession(req);
     if (!user) {
@@ -50,11 +52,12 @@ export async function GET(req: NextRequest) {
       token,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: error?.message || 'Erro interno.' }, { status: 500 });
+    return NextResponse.json({ success: false, message: error?.message || 'Erro interno.' },
+      { status: error instanceof AuthError ? error.statusCode : 500 });
   }
 }
 
-export async function POST(req: NextRequest) {
+async function postSession(req: NextRequest) {
   try {
     const supabase = await createClient();
     let body: any = {};
@@ -85,11 +88,12 @@ export async function POST(req: NextRequest) {
       user,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: error?.message || 'Erro interno.' }, { status: 500 });
+    return NextResponse.json({ success: false, message: error?.message || 'Erro interno.' },
+      { status: error instanceof AuthError ? error.statusCode : 500 });
   }
 }
 
-export async function DELETE() {
+async function deleteSession(_req: NextRequest) {
   try {
     const supabase = await createClient();
     await supabase.auth.signOut();
@@ -106,4 +110,8 @@ export async function DELETE() {
     return NextResponse.json({ success: false, message: error?.message || 'Erro ao encerrar sessão.' }, { status: 500 });
   }
 }
+
+export const GET = withCanonicalErrors(getSession);
+export const POST = withCanonicalErrors(postSession);
+export const DELETE = withCanonicalErrors(deleteSession);
 
