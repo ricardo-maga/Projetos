@@ -70,7 +70,7 @@ interface ProjectSectionProps {
   projectTeams: any[];
   projectPartners: any[];
   addProject: (p: any) => any;
-  updateProject: (id: string, updates: any) => void;
+  updateProject: (id: string, updates: any) => Promise<unknown>;
   deleteProject: (id: string) => void;
   addClient: (c: any) => any;
   addComment: (projectId: string, authorId: string, text: string) => void;
@@ -159,6 +159,8 @@ export default function ProjectSection({
   // Risk Form State
   const [showRiskModal, setShowRiskModal] = useState(false);
   const [isSavingRisk, setIsSavingRisk] = useState(false);
+  const [isSavingProjectStatus, setIsSavingProjectStatus] = useState(false);
+  const projectStatusSaveInFlight = React.useRef(false);
   const riskSaveInFlight = React.useRef(false);
   const [editingRiskId, setEditingRiskId] = useState<string | null>(null);
   const [riskTitle, setRiskTitle] = useState('');
@@ -2209,15 +2211,35 @@ export default function ProjectSection({
 
                 <div  className="space-y-2.5">
                   <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Estado</h4>
-                  <Select aria-label="Estado"
+                  <Select aria-label="Estado" aria-busy={isSavingProjectStatus}
                     value={selectedProj.statusId}
-                    onChange={(e) => updateProject(selectedProj.id, { statusId: e.target.value })}
+                    disabled={isSavingProjectStatus || !canWriteProjects}
+                    onChange={async (e) => {
+                      if (projectStatusSaveInFlight.current) return;
+                      const statusId = e.target.value;
+                      projectStatusSaveInFlight.current = true;
+                      setIsSavingProjectStatus(true);
+                      try {
+                        await updateProject(selectedProj.id, { statusId });
+                      } catch {
+                        // updateProject reports the API error; the current status stays selected.
+                      } finally {
+                        projectStatusSaveInFlight.current = false;
+                        setIsSavingProjectStatus(false);
+                      }
+                    }}
                     className={getProjectStatusStyle(selectedProj.statusId, projectStatuses).badgeClass}
                   >
                     {sortedStatuses.filter(s => !s.deleted || s.id === selectedProj.statusId).map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </Select>
+                  {isSavingProjectStatus && (
+                    <p role="status" aria-live="polite" className="flex items-center gap-2 text-caption text-text-secondary">
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      A guardar estado…
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2.5">
                   <h4 className="font-bold text-caption uppercase text-text-muted tracking-wider">Categorias</h4>
