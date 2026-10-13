@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { AuditLog, User } from '../lib/types';
 import { 
   ShieldCheck, Search, Download, RefreshCw, Filter, 
@@ -8,6 +8,7 @@ import {
   ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { fetchAuditLogsFromSupabase } from '../lib/supabaseSync';
+import { M3SectionHeader } from './M3';
 
 interface AuditLogSectionProps {
   auditLogs?: AuditLog[];
@@ -22,6 +23,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
   const [pageSize, setPageSize] = useState<number>(25);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState(false);
+  const refreshInFlight = useRef(false);
   const [remoteLogs, setRemoteLogs] = useState<AuditLog[] | null>(null);
 
   // Combine local audit logs from state and remote logs if fetched
@@ -30,13 +32,17 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
   }, [remoteLogs, auditLogs]);
 
   const handleRefresh = async () => {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
     setLoading(true);
-    const res = await fetchAuditLogsFromSupabase(200);
-    if (res.success && res.data) {
-      setRemoteLogs(res.data);
+    try {
+      const res = await fetchAuditLogsFromSupabase(200);
+      if (res.success && res.data) setRemoteLogs(res.data);
+      if (onRefresh) await onRefresh();
+    } finally {
+      refreshInFlight.current = false;
+      setLoading(false);
     }
-    setLoading(false);
-    if (onRefresh) onRefresh();
   };
 
   // Filter logs
@@ -118,25 +124,20 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
       case 'RESTORE':
         return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 rounded-md uppercase tracking-wider">Restauro</span>;
       default:
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200 rounded-md uppercase tracking-wider">{action}</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-surface-muted text-text-secondary border border-border rounded-md uppercase tracking-wider">{action}</span>;
     }
   };
 
   return (
-    <div className="space-y-6 animate-fade-in" id="audit-log-section">
+    <div className="m3-config space-y-6 animate-fade-in" id="audit-log-section">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 -sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-surface rounded-card border border-border p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-600">
+          <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-control text-indigo-600">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-base font-extrabold text-slate-800">
-              Registos de Auditoria do Sistema (Audit Logs)
-            </h2>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Rastreabilidade total e histórico inalterável de todas as ações de utilizadores, alterações de registos e acessos.
-            </p>
+            <M3SectionHeader title="Registo de auditoria" description="Histórico de ações, alterações de registos e acessos." />
           </div>
         </div>
 
@@ -145,7 +146,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
             type="button"
             onClick={handleRefresh}
             disabled={loading}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-2 bg-surface-muted hover:bg-slate-200 text-text-secondary font-bold text-xs rounded-control transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Atualizar
@@ -154,7 +155,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
             type="button"
             onClick={exportToCSV}
             disabled={filteredLogs.length === 0}
-            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl -sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="m3-button m3-button--filled flex items-center gap-1.5 disabled:opacity-50"
           >
             <Download className="w-3.5 h-3.5" />
             Exportar CSV
@@ -164,51 +165,51 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 -sm flex items-center gap-3">
-          <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
+        <div className="bg-surface p-4 rounded-card border border-border flex items-center gap-3">
+          <div className="p-2.5 bg-blue-50 text-primary rounded-control border border-blue-100">
             <Database className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Registado</div>
-            <div className="text-lg font-black text-slate-800">{stats.total}</div>
+            <div className="text-lg font-black text-text-primary">{stats.total}</div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 -sm flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
+        <div className="bg-surface p-4 rounded-card border border-border flex items-center gap-3">
+          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-control border border-emerald-100">
             <CheckCircle className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Criações</div>
-            <div className="text-lg font-black text-slate-800">{stats.creates}</div>
+            <div className="text-lg font-black text-text-primary">{stats.creates}</div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 -sm flex items-center gap-3">
-          <div className="p-2.5 bg-rose-50 text-rose-600 rounded-xl border border-rose-100">
+        <div className="bg-surface p-4 rounded-card border border-border flex items-center gap-3">
+          <div className="p-2.5 bg-rose-50 text-rose-600 rounded-control border border-rose-100">
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Eliminações</div>
-            <div className="text-lg font-black text-slate-800">{stats.deletes}</div>
+            <div className="text-lg font-black text-text-primary">{stats.deletes}</div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 -sm flex items-center gap-3">
-          <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl border border-purple-100">
+        <div className="bg-surface p-4 rounded-card border border-border flex items-center gap-3">
+          <div className="p-2.5 bg-purple-50 text-purple-600 rounded-control border border-purple-100">
             <UserIcon className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Autenticações</div>
-            <div className="text-lg font-black text-slate-800">{stats.logins}</div>
+            <div className="text-lg font-black text-text-primary">{stats.logins}</div>
           </div>
         </div>
       </div>
 
       {/* Audit Log Table Container with Filters Toolbar */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+      <div className="bg-surface rounded-card border border-border shadow-2xs overflow-hidden">
         {/* Filters Toolbar */}
-        <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/60 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-b border-border/80 bg-surface-muted/60 flex flex-col md:flex-row items-center justify-between gap-3">
           {/* Search */}
           <div className="relative w-full md:flex-1 md:max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -220,7 +221,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                 setCurrentPage(1);
               }}
               placeholder="Pesquisar utilizador, ação, detalhes ou entidade..."
-              className="w-full pl-9 pr-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+              className="w-full pl-9 pr-3.5 py-2 bg-surface border border-border rounded-control text-xs font-medium text-text-primary placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
             />
           </div>
 
@@ -232,7 +233,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                 setFilterAction(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
+              className="px-3 py-2 bg-surface border border-border rounded-control text-xs font-semibold text-text-secondary outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
             >
               <option value="ALL">Todas as Ações</option>
               <option value="CREATE">Criar (CREATE)</option>
@@ -250,7 +251,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                 setFilterEntity(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
+              className="px-3 py-2 bg-surface border border-border rounded-control text-xs font-semibold text-text-secondary outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
             >
               <option value="ALL">Todas as Entidades</option>
               <option value="PROJECT">Projetos</option>
@@ -263,14 +264,14 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
 
             {/* Page Size */}
             <div className="flex items-center gap-1.5 pl-1">
-              <span className="text-xs text-slate-500 font-medium whitespace-nowrap">Mostrar:</span>
+              <span className="text-xs text-text-muted font-medium whitespace-nowrap">Mostrar:</span>
               <select
                 value={pageSize}
                 onChange={e => {
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
+                className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-xs font-semibold text-text-secondary cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value={15}>15</option>
                 <option value={25}>25</option>
@@ -284,7 +285,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
         {/* Audit Log Table */}
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse min-w-[700px]">
-            <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+            <thead className="bg-surface-muted/90 text-[11px] uppercase tracking-wider text-text-muted font-bold border-b border-border/80 whitespace-nowrap select-none">
               <tr>
                 <th className="px-5 py-3.5 text-left">Data e Hora</th>
                 <th className="px-5 py-3.5 text-left">Utilizador</th>
@@ -303,8 +304,8 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                 </tr>
               ) : (
                 paginatedLogs.map((log, index) => (
-                  <tr key={log.id || index} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="px-5 py-3.5 whitespace-nowrap text-slate-500 font-mono text-[11px]">
+                  <tr key={log.id || index} className="hover:bg-surface-muted/60 transition-colors">
+                    <td className="px-5 py-3.5 whitespace-nowrap text-text-muted font-mono text-[11px]">
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
                         {log.timestamp ? new Date(log.timestamp).toLocaleString('pt-PT') : 'N/A'}
@@ -312,7 +313,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                     </td>
 
                     <td className="px-5 py-3.5 whitespace-nowrap">
-                      <div className="font-bold text-slate-800">{log.userName || 'Sistema'}</div>
+                      <div className="font-bold text-text-primary">{log.userName || 'Sistema'}</div>
                       {log.userEmail && <div className="text-[10px] text-slate-400 font-mono">{log.userEmail}</div>}
                     </td>
 
@@ -321,17 +322,17 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                     </td>
 
                     <td className="px-5 py-3.5 whitespace-nowrap">
-                      <div className="font-extrabold text-slate-700 font-mono text-[11px]">
+                      <div className="font-extrabold text-text-secondary font-mono text-[11px]">
                         {log.entityType || 'GERAL'}
                       </div>
                       {log.entityName && (
-                        <div className="text-[10px] text-slate-500 max-w-[150px] truncate">
+                        <div className="text-[10px] text-text-muted max-w-[150px] truncate">
                           {log.entityName}
                         </div>
                       )}
                     </td>
 
-                    <td className="px-5 py-3.5 text-slate-700 font-medium">
+                    <td className="px-5 py-3.5 text-text-secondary font-medium">
                       <span className="leading-relaxed break-words">{log.details}</span>
                     </td>
                   </tr>
@@ -343,9 +344,9 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
 
         {/* Pagination Footer */}
         {filteredLogs.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50/70 border-t border-slate-200/80 text-xs gap-3 font-medium">
-            <span className="text-slate-500">
-              A mostrar <strong className="text-slate-800">{((currentPage - 1) * pageSize) + 1}</strong> a <strong className="text-slate-800">{Math.min(currentPage * pageSize, filteredLogs.length)}</strong> de <strong className="text-slate-800">{filteredLogs.length}</strong> registos
+          <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-surface-muted/70 border-t border-border/80 text-xs gap-3 font-medium">
+            <span className="text-text-muted">
+              A mostrar <strong className="text-text-primary">{((currentPage - 1) * pageSize) + 1}</strong> a <strong className="text-text-primary">{Math.min(currentPage * pageSize, filteredLogs.length)}</strong> de <strong className="text-text-primary">{filteredLogs.length}</strong> registos
             </span>
 
             {totalPages > 1 && (
@@ -354,19 +355,19 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                   type="button"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 bg-surface border border-border rounded-lg font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   <span>Anterior</span>
                 </button>
-                <span className="px-3 text-xs font-bold text-slate-700">
+                <span className="px-3 text-xs font-bold text-text-secondary">
                   {currentPage} / {totalPages}
                 </span>
                 <button
                   type="button"
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 bg-surface border border-border rounded-lg font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <span>Seguinte</span>
                   <ChevronRight className="w-3.5 h-3.5" />

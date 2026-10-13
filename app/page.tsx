@@ -27,7 +27,7 @@ import { cn } from '../lib/utils';
 import { 
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
   Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw,
-  Bell, Zap, ShieldCheck, Database, ListTodo, Loader2, Eye, EyeOff, AlertCircle
+  Bell, ShieldCheck, Database, ListTodo, Loader2, Eye, EyeOff, AlertCircle
 } from 'lucide-react';
 
 import { clearClientSession, setClientSession, getClientToken } from '../lib/clientAuth';
@@ -721,8 +721,7 @@ export default function Page() {
                   { id: 'ausencias', label: 'Registo de ausências', icon: Users, permission: 'absences_read' },
                   { id: 'tarefas', label: 'Tarefas Modelo', icon: CheckSquare },
                   { id: 'utilizadores', label: 'Utilizadores', icon: Users },
-                  { id: 'notificacoes', label: 'Notificações', icon: Bell },
-                  { id: 'automacoes', label: 'Automações', icon: Zap },
+                  { id: 'notificacoes', label: 'Notificações e Automações', icon: Bell },
                   { id: 'auditoria', label: 'Registo de Auditoria', icon: ShieldCheck },
                   { id: 'importacao', label: 'Importação e Backup', icon: Database },
                 ];
