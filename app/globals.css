@@ -457,6 +457,18 @@ button[data-filled="true"] :where(span, svg) {
 /* Projects-only responsive phase filters; shared controls keep their contract. */
 .m3-projects .m3-project-filters { border-radius: var(--radius-control); overflow: hidden; }
 .m3-projects .m3-project-filters .m3-segment { border-radius: 0; }
+/* Settings keeps its existing forms while using the same M3 field and focus contract. */
+.m3-config :is(input:not([type="checkbox"]), select, textarea) {
+  background-color: var(--m3-surface);
+  color: var(--m3-on-surface);
+  border-color: var(--m3-outline-variant);
+  border-radius: var(--radius-control);
+}
+.m3-config :is(input:not([type="checkbox"]), select, textarea):focus-visible {
+  outline: 2px solid var(--m3-primary);
+  outline-offset: 1px;
+}
+.m3-config :is(input, select, textarea, button):disabled { cursor: not-allowed; opacity: .5; }
 @media (max-width: 639px) {
   .m3-projects .m3-project-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .m3-projects .m3-project-filters .m3-segment { border: 0; white-space: normal; }

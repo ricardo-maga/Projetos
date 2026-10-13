@@ -17,6 +17,7 @@ import IconButton from './ui/IconButton';
 import Input from './ui/Input';
 import Textarea from './ui/Textarea';
 import Badge from './ui/Badge';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 
 interface ClientSectionProps {
   clients: Client[];
@@ -46,6 +47,7 @@ export default function ClientSection({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [isEditing, setIsEditing] = useState(false);
+  const { busy: isSavingClient, run: runClientAction } = useAsyncAction();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedClientForModal, setSelectedClientForModal] = useState<Client | null>(null);
   const [projectsCurrentPage, setProjectsCurrentPage] = useState(1);
@@ -142,6 +144,7 @@ export default function ClientSection({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await runClientAction(async () => {
     if (!canWriteClients) {
       alert('Não tem permissão para criar ou editar clientes.');
       return;
@@ -167,6 +170,7 @@ export default function ClientSection({
     } catch (err) {
       // Error handled in useERP
     }
+    });
   };
 
   return (
@@ -178,6 +182,7 @@ export default function ClientSection({
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm"
                 type="button"
+                disabled={isSavingClient}
                 onClick={() => setIsEditing(false)}
                 className="px-3 py-1.5 text-text-muted bg-surface hover:bg-surface-muted border border-border-subtle rounded-control font-semibold transition-colors"
               >
@@ -185,6 +190,7 @@ export default function ClientSection({
               </Button>
               <Button variant="primary" size="sm"
                 type="submit"
+                isLoading={isSavingClient}
                 className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-white hover:bg-primary font-bold rounded-control text-body-sm shadow-sm transition-colors"
               >
                 <Save className="w-3.5 h-3.5" /> Gravar Cliente
@@ -287,6 +293,7 @@ export default function ClientSection({
           <div className="flex justify-end gap-3 pt-6 border-t border-border-subtle">
             <Button variant="outline" size="sm"
               type="button"
+              disabled={isSavingClient}
               onClick={() => setIsEditing(false)}
               className="px-5 py-2.5 bg-surface hover:bg-surface-muted text-text-secondary font-bold rounded-control border border-border-subtle"
             >
@@ -294,6 +301,7 @@ export default function ClientSection({
             </Button>
             <Button variant="primary" size="sm"
               type="submit"
+              isLoading={isSavingClient}
               className="px-6 py-2.5 bg-primary text-white font-bold rounded-control hover:bg-primary -sm"
             >
               Gravar Cliente
@@ -430,9 +438,8 @@ export default function ClientSection({
                           {c.deleted ? (
                             canWriteClients && (
                               <Button variant="outline" size="sm"
-                                onClick={async () => {
-                                  await updateClient(c.id, { deleted: false });
-                                }}
+                                isLoading={isSavingClient}
+                                onClick={() => { void runClientAction(() => updateClient(c.id, { deleted: false })); }}
                                 className="px-2 py-1 bg-success/10 text-success hover:bg-success/10 rounded-md text-caption font-bold cursor-pointer"
                                 title="Restaurar Cliente"
                               >

@@ -205,18 +205,15 @@ export default function AutomationEditor({
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Top Banner & Action */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
-        <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
-          <Zap className="w-64 h-64 text-white" />
-        </div>
+      <div className="bg-primary/10 border border-primary/20 rounded-card p-6 text-text-primary relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-semibold backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-blue-300" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
               Editor de Automação de Processos (No-Code)
             </div>
             <h2 className="text-2xl font-bold tracking-tight">Regras de Negócio e Automações</h2>
-            <p className="text-sm text-slate-300 max-w-2xl">
+            <p className="text-sm text-text-secondary max-w-2xl">
               Crie fluxos automáticos para gerar tarefas padrão, atualizar estados de projetos e notificar as equipas sem necessidade de intervenção manual.
             </p>
           </div>
@@ -224,7 +221,7 @@ export default function AutomationEditor({
           {canWrite && (
             <button
               onClick={handleOpenAdd}
-              className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-2xl font-bold text-sm shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
+              className="m3-button m3-button--filled inline-flex items-center justify-center gap-2 shrink-0"
             >
               <Plus className="w-4 h-4" />
               Nova Regra de Automação
@@ -233,18 +230,18 @@ export default function AutomationEditor({
         </div>
 
         {/* Counters */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/10">
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-sm">
-            <div className="text-xs text-slate-400 font-medium">Total de Regras</div>
-            <div className="text-xl font-bold text-white mt-0.5">{automationRules.length}</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-primary/20">
+          <div className="bg-surface rounded-card p-3 border border-border">
+            <div className="text-xs text-text-secondary font-medium">Total de Regras</div>
+            <div className="text-xl font-bold text-text-primary mt-0.5">{automationRules.length}</div>
           </div>
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-sm">
-            <div className="text-xs text-emerald-400 font-medium">Regras Ativas</div>
-            <div className="text-xl font-bold text-emerald-300 mt-0.5">{activeCount}</div>
+          <div className="bg-surface rounded-card p-3 border border-border">
+            <div className="text-xs text-text-secondary font-medium">Regras Ativas</div>
+            <div className="text-xl font-bold text-success mt-0.5">{activeCount}</div>
           </div>
-          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-sm col-span-2 sm:col-span-1">
-            <div className="text-xs text-slate-400 font-medium">Execuções Automáticas</div>
-            <div className="text-xl font-bold text-blue-300 mt-0.5">Ativas no Servidor</div>
+          <div className="bg-surface rounded-card p-3 border border-border col-span-2 sm:col-span-1">
+            <div className="text-xs text-text-secondary font-medium">Execuções Automáticas</div>
+            <div className="text-xl font-bold text-primary mt-0.5">Ativas no Servidor</div>
           </div>
         </div>
       </div>
@@ -252,18 +249,18 @@ export default function AutomationEditor({
       {/* Rules List */}
       <div className="space-y-4">
         {automationRules.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-xs">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
+          <div className="bg-surface rounded-card border border-border p-12 text-center shadow-xs">
+            <div className="w-12 h-12 rounded-card bg-blue-50 text-primary flex items-center justify-center mx-auto mb-3">
               <Zap className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-slate-900 mb-1">Nenhuma regra configurada</h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto mb-4">
+            <h3 className="text-base font-bold text-text-primary mb-1">Nenhuma regra configurada</h3>
+            <p className="text-xs text-text-muted max-w-md mx-auto mb-4">
               Comece a economizar tempo criando automações que criam tarefas automaticamente ou notificam os responsáveis.
             </p>
             {canWrite && (
               <button
                 onClick={handleOpenAdd}
-                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="m3-button m3-button--filled inline-flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Criar Primeira Regra
@@ -274,8 +271,8 @@ export default function AutomationEditor({
           automationRules.map(rule => (
             <div 
               key={rule.id}
-              className={`bg-white rounded-2xl border transition-all p-5 shadow-xs ${
-                rule.enabled ? 'border-slate-200 hover:border-blue-300' : 'border-slate-200 opacity-60 bg-slate-50/50'
+              className={`bg-surface rounded-card border transition-all p-5 shadow-xs ${
+                rule.enabled ? 'border-border hover:border-blue-300' : 'border-border opacity-60 bg-surface-muted/50'
               }`}
             >
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -283,6 +280,9 @@ export default function AutomationEditor({
                 <div className="flex items-start gap-4 flex-1">
                   <button
                     type="button"
+                    role="switch"
+                    aria-checked={rule.enabled}
+                    aria-label={`${rule.enabled ? 'Desativar' : 'Ativar'} regra ${rule.name}`}
                     onClick={() => canWrite && toggleAutomationRule(rule.id)}
                     disabled={!canWrite}
                     className={`mt-1 relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
@@ -291,7 +291,7 @@ export default function AutomationEditor({
                     title={rule.enabled ? 'Desativar Regra' : 'Ativar Regra'}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-surface shadow-xs ring-0 transition duration-200 ease-in-out ${
                         rule.enabled ? 'translate-x-5' : 'translate-x-0'
                       }`}
                     />
@@ -299,24 +299,24 @@ export default function AutomationEditor({
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-bold text-slate-900">{rule.name}</h3>
+                      <h3 className="text-sm font-bold text-text-primary">{rule.name}</h3>
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${
-                        rule.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                        rule.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-text-secondary'
                       }`}>
                         {rule.enabled ? 'Ativa' : 'Inativa'}
                       </span>
                     </div>
                     {rule.description && (
-                      <p className="text-xs text-slate-500">{rule.description}</p>
+                      <p className="text-xs text-text-muted">{rule.description}</p>
                     )}
                   </div>
                 </div>
 
                 {/* Flow Diagram (Trigger -> Actions) */}
-                <div className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200/80 shrink-0 flex-wrap sm:flex-nowrap">
+                <div className="flex items-center gap-2 bg-surface-muted p-3 rounded-control border border-border/80 shrink-0 flex-wrap sm:flex-nowrap">
                   {/* Trigger Pill */}
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-900 rounded-lg text-xs font-bold border border-blue-200">
-                    <Zap className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <Zap className="w-3.5 h-3.5 text-primary shrink-0" />
                     <span>{getTriggerLabel(rule)}</span>
                   </div>
 
@@ -356,15 +356,15 @@ export default function AutomationEditor({
                 </div>
 
                 {/* Actions (Test / Edit / Delete) */}
-                <div className="flex items-center gap-2 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100 shrink-0 justify-end">
+                <div className="flex items-center gap-2 border-t lg:border-t-0 pt-3 lg:pt-0 border-border-subtle shrink-0 justify-end">
                   {runAutomationRule && (
                     <button
                       type="button"
                       onClick={() => handleRunTest(rule.id)}
-                      className="px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 text-xs font-bold text-text-secondary hover:text-blue-700 hover:bg-blue-50 border border-border hover:border-blue-200 rounded-control transition-all flex items-center gap-1.5 cursor-pointer"
                       title="Testar execução desta regra manualmente num projeto"
                     >
-                      <Play className="w-3 h-3 text-blue-600 fill-blue-600" />
+                      <Play className="w-3 h-3 text-primary fill-blue-600" />
                       Testar
                     </button>
                   )}
@@ -374,7 +374,7 @@ export default function AutomationEditor({
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(rule)}
-                        className="p-2 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                        className="p-2 text-text-muted hover:text-primary hover:bg-surface-muted rounded-control transition-colors cursor-pointer"
                         title="Editar Regra"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -382,7 +382,7 @@ export default function AutomationEditor({
                       <button
                         type="button"
                         onClick={() => setConfirmDeleteRuleId(rule.id)}
-                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                        className="p-2 text-text-muted hover:text-red-600 hover:bg-red-50 rounded-control transition-colors cursor-pointer"
                         title="Eliminar Regra"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -399,11 +399,11 @@ export default function AutomationEditor({
       {/* Add / Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="bg-surface rounded-card max-w-2xl w-full shadow-2xl border border-border-subtle overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="px-6 py-5 bg-slate-900 text-white flex items-center justify-between">
+            <div className="px-6 py-5 bg-primary text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400">
+                <div className="w-10 h-10 rounded-card bg-primary/30 border border-blue-500/40 flex items-center justify-center text-blue-400">
                   <Zap className="w-5 h-5" />
                 </div>
                 <div>
@@ -427,14 +427,14 @@ export default function AutomationEditor({
             <form onSubmit={handleSaveRule} className="p-6 overflow-y-auto space-y-6 flex-1">
               {/* Section 1: Name and Description */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-xs font-bold text-text-primary uppercase tracking-wider">
                   <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px]">1</span>
                   Identificação da Regra
                 </div>
 
                 <div className="space-y-3 pl-7">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">
                       Nome da Regra <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -442,13 +442,13 @@ export default function AutomationEditor({
                       value={ruleName}
                       onChange={e => setRuleName(e.target.value)}
                       placeholder="Ex: Gerar tarefas padrão ao colocar projeto Em Curso"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
+                      className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">
                       Descrição da Regra (Opcional)
                     </label>
                     <textarea
@@ -456,26 +456,26 @@ export default function AutomationEditor({
                       onChange={e => setRuleDescription(e.target.value)}
                       placeholder="Explique o propósito desta automação..."
                       rows={2}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-100 outline-none"
+                      className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-medium focus:ring-2 focus:ring-blue-100 outline-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Section 2: Trigger Condition */}
-              <div className="space-y-4 pt-4 border-t border-slate-100">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+              <div className="space-y-4 pt-4 border-t border-border-subtle">
+                <div className="flex items-center gap-2 text-xs font-bold text-text-primary uppercase tracking-wider">
                   <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px]">2</span>
                   Quando isto acontecer (Gatilho)
                 </div>
 
                 <div className="space-y-3 pl-7">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Evento de Origem</label>
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">Evento de Origem</label>
                     <select
                       value={triggerType}
                       onChange={e => setTriggerType(e.target.value as any)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold cursor-pointer outline-none"
+                      className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold cursor-pointer outline-none"
                     >
                       <option value="project_status_changed">Ao alterar o estado de um Projeto</option>
                       <option value="task_status_changed">Ao alterar o estado de uma Tarefa</option>
@@ -486,13 +486,13 @@ export default function AutomationEditor({
 
                   {triggerType === 'project_status_changed' && (
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      <label className="block text-xs font-semibold text-text-secondary mb-1">
                         Quando o estado do projeto passar a ser:
                       </label>
                       <select
                         value={triggerToStatusId}
                         onChange={e => setTriggerToStatusId(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold cursor-pointer outline-none"
+                        className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold cursor-pointer outline-none"
                       >
                         <option value="">Qualquer Estado</option>
                         {projectStatuses.map(s => (
@@ -504,13 +504,13 @@ export default function AutomationEditor({
 
                   {triggerType === 'task_status_changed' && (
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      <label className="block text-xs font-semibold text-text-secondary mb-1">
                         Quando o estado da tarefa passar a ser:
                       </label>
                       <select
                         value={triggerToStatusId}
                         onChange={e => setTriggerToStatusId(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold cursor-pointer outline-none"
+                        className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold cursor-pointer outline-none"
                       >
                         <option value="">Qualquer Estado</option>
                         {taskStatuses.map(s => (
@@ -523,41 +523,41 @@ export default function AutomationEditor({
               </div>
 
               {/* Section 3: Actions to Execute */}
-              <div className="space-y-4 pt-4 border-t border-slate-100">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+              <div className="space-y-4 pt-4 border-t border-border-subtle">
+                <div className="flex items-center gap-2 text-xs font-bold text-text-primary uppercase tracking-wider">
                   <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px]">3</span>
                   Executar estas Ações
                 </div>
 
                 <div className="space-y-3 pl-7">
                   {/* Action 1: Create Default Tasks */}
-                  <label className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100/80 transition-colors">
+                  <label className="flex items-start gap-3 p-3 bg-surface-muted border border-border rounded-control cursor-pointer hover:bg-surface-muted/80 transition-colors">
                     <input
                       type="checkbox"
                       checked={actionCreateDefaultTasks}
                       onChange={e => setActionCreateDefaultTasks(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 text-blue-600 rounded-xs cursor-pointer"
+                      className="mt-0.5 w-4 h-4 text-primary rounded-xs cursor-pointer"
                     />
                     <div>
-                      <div className="text-xs font-bold text-slate-800">Criar Tarefas Padrão no Projeto</div>
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-xs font-bold text-text-primary">Criar Tarefas Padrão no Projeto</div>
+                      <div className="text-[11px] text-text-muted">
                         Insere automaticamente a lista de tarefas pré-definidas na configuração do sistema.
                       </div>
                     </div>
                   </label>
 
                   {/* Action 2: Change Project Status */}
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="p-3 bg-surface-muted border border-border rounded-control space-y-2">
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={actionChangeProjectStatus}
                         onChange={e => setActionChangeProjectStatus(e.target.checked)}
-                        className="mt-0.5 w-4 h-4 text-blue-600 rounded-xs cursor-pointer"
+                        className="mt-0.5 w-4 h-4 text-primary rounded-xs cursor-pointer"
                       />
                       <div>
-                        <div className="text-xs font-bold text-slate-800">Alterar Estado do Projeto</div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-xs font-bold text-text-primary">Alterar Estado do Projeto</div>
+                        <div className="text-[11px] text-text-muted">
                           Atualiza o estado do projeto associado para um estado de destino específico.
                         </div>
                       </div>
@@ -568,7 +568,7 @@ export default function AutomationEditor({
                         <select
                           value={targetProjectStatusId}
                           onChange={e => setTargetProjectStatusId(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold outline-none"
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-xs font-semibold outline-none"
                           required={actionChangeProjectStatus}
                         >
                           <option value="">Selecione o Estado de Destino...</option>
@@ -581,17 +581,17 @@ export default function AutomationEditor({
                   </div>
 
                   {/* Action 3: Send Notification */}
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="p-3 bg-surface-muted border border-border rounded-control space-y-2">
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={actionSendNotification}
                         onChange={e => setActionSendNotification(e.target.checked)}
-                        className="mt-0.5 w-4 h-4 text-blue-600 rounded-xs cursor-pointer"
+                        className="mt-0.5 w-4 h-4 text-primary rounded-xs cursor-pointer"
                       />
                       <div>
-                        <div className="text-xs font-bold text-slate-800">Enviar Notificação no Sistema</div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-xs font-bold text-text-primary">Enviar Notificação no Sistema</div>
+                        <div className="text-[11px] text-text-muted">
                           Gera um aviso interno para os utilizadores/gestores relevantes.
                         </div>
                       </div>
@@ -604,7 +604,7 @@ export default function AutomationEditor({
                           value={notificationTitle}
                           onChange={e => setNotificationTitle(e.target.value)}
                           placeholder="Título da Notificação (ex: Orçamento Aprovado)"
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold outline-none"
+                          className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-semibold outline-none"
                           required={actionSendNotification}
                         />
                         <input
@@ -612,7 +612,7 @@ export default function AutomationEditor({
                           value={notificationMessage}
                           onChange={e => setNotificationMessage(e.target.value)}
                           placeholder="Mensagem detalhada..."
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none"
+                          className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg text-xs outline-none"
                         />
                       </div>
                     )}
@@ -621,17 +621,17 @@ export default function AutomationEditor({
               </div>
 
               {/* Modal Footer */}
-              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+              <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-text-secondary hover:bg-surface-muted rounded-control transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+                  className="px-5 py-2 bg-primary hover:bg-blue-700 text-white text-xs font-bold rounded-control transition-all shadow-xs cursor-pointer"
                 >
                   {editingRuleId ? 'Guardar Alterações' : 'Criar Regra'}
                 </button>
@@ -644,27 +644,27 @@ export default function AutomationEditor({
       {/* Manual Test Execution Modal */}
       {testRuleId && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+          <div className="bg-surface rounded-card max-w-md w-full p-6 shadow-2xl border border-border-subtle space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-                <Play className="w-4 h-4 text-blue-600 fill-blue-600" />
+              <div className="flex items-center gap-2 text-text-primary font-bold text-sm">
+                <Play className="w-4 h-4 text-primary fill-blue-600" />
                 Testar Regra de Automação
               </div>
-              <button onClick={() => setTestRuleId(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+              <button onClick={() => setTestRuleId(null)} className="text-slate-400 hover:text-text-secondary cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-text-secondary">
               Selecione um projeto existente para simular o disparo imediato desta regra de automação:
             </p>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Projeto para Teste</label>
+              <label className="block text-xs font-semibold text-text-secondary mb-1">Projeto para Teste</label>
               <select
                 value={selectedTestProjectId}
                 onChange={e => setSelectedTestProjectId(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none cursor-pointer"
+                className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold outline-none cursor-pointer"
               >
                 {projects.filter(p => !p.deleted).map(p => (
                   <option key={p.id} value={p.id}>{p.title}</option>
@@ -673,7 +673,7 @@ export default function AutomationEditor({
             </div>
 
             {testFeedback && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold flex items-center gap-2">
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-control text-emerald-800 text-xs font-semibold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 {testFeedback}
               </div>
@@ -683,14 +683,14 @@ export default function AutomationEditor({
               <button
                 type="button"
                 onClick={() => setTestRuleId(null)}
-                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="px-3.5 py-2 text-xs font-semibold text-text-secondary hover:bg-surface-muted rounded-control"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleExecuteTest}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs cursor-pointer"
+                className="px-4 py-2 bg-primary hover:bg-blue-700 text-white text-xs font-bold rounded-control flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
                 <Zap className="w-3.5 h-3.5" />
                 Executar Agora

@@ -17,6 +17,7 @@ import { M3SectionHeader, M3SegmentedControl } from './M3';
 import { getAbsenceVisibility } from '../lib/absenceVisibility';
 import { getClientToken } from '../lib/clientAuth';
 import RolePermissionSection from './RolePermissionSection';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 
 interface UserSectionProps {
   absences: UserAbsence[];
@@ -58,6 +59,7 @@ export default function UserSection({
   const canDeleteUsers = hasPermission(currentUser, 'users_delete', userGroups);
 
   const [subTab, setSubTab] = useState<'absences' | 'users' | 'roles'>(hideAbsences ? 'users' : 'absences');
+  const { busy: isSavingUser, run: runUserAction } = useAsyncAction();
   const [filterRoleId, setFilterRoleId] = useState<string>('all');
   const [rbacRoles, setRbacRoles] = useState<Array<{ id: string; name: string; code: string }>>([]);
   const [rbacUserRoles, setRbacUserRoles] = useState<Array<{ user_id: string; role_id: string }>>([]);
@@ -214,6 +216,7 @@ export default function UserSection({
 
   const handleAddUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await runUserAction(async () => {
     if (!canWriteUsers) {
       alert('Não tem permissão para criar utilizadores.');
       return;
@@ -258,10 +261,12 @@ export default function UserSection({
     setUPasswordConfirm('');
     setURoleIds([]);
     setIsAddingUser(false);
+    });
   };
 
   const handleEditUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await runUserAction(async () => {
     if (!canWriteUsers) {
       alert('Não tem permissão para editar utilizadores.');
       return;
@@ -309,6 +314,7 @@ export default function UserSection({
     setUPassword('');
     setUPasswordConfirm('');
     setEditingUser(null);
+    });
   };
 
   const matchUserId = (idA: string, idB: string) => {
@@ -766,6 +772,7 @@ export default function UserSection({
                 </h2>
                 <button 
                   type="button" 
+                  disabled={isSavingUser}
                   onClick={() => {
                     setIsAddingUser(false);
                     setEditingUser(null);
@@ -852,6 +859,7 @@ export default function UserSection({
                 <Button
                   type="button"
                   variant="outline"
+                  disabled={isSavingUser}
                   onClick={() => {
                     setIsAddingUser(false);
                     setEditingUser(null);
@@ -861,6 +869,7 @@ export default function UserSection({
                 </Button>
                 <Button
                   type="submit"
+                  isLoading={isSavingUser}
                 >
                   {isAddingUser ? 'Adicionar Recurso' : 'Gravar Alterações'}
                 </Button>

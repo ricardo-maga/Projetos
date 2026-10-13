@@ -1201,7 +1201,7 @@ export function useERP() {
   const deleteUser = (id: string) => {
     const existingUser = state?.users?.find(u => u.id === id);
     logAudit('DELETE', 'USER', id, existingUser?.name, `Eliminado utilizador "${existingUser?.name || id}"`);
-    saveState(prev => ({
+    return saveState(prev => ({
       ...prev,
       users: prev.users.map(u => u.id === id ? { ...u, deleted: true } : u)
     }));
@@ -1510,7 +1510,7 @@ export function useERP() {
   };
 
   const deleteProjectRiskItem = (id: string) => {
-    saveState(prev => ({
+    return saveState(prev => ({
       ...prev,
       projectRiskItems: (prev.projectRiskItems || []).map(r => matchId(r.id, id) ? { ...r, deleted: true } : r)
     }));
@@ -1546,7 +1546,7 @@ export function useERP() {
 
   // ==================== APP CONFIGURATION ====================
   const updateConfig = (updates: Record<string, any>) => {
-    saveState(prev => ({
+    return saveState(prev => ({
       ...prev,
       appConfig: { ...prev.appConfig, ...updates }
     }));
@@ -1639,14 +1639,14 @@ export function useERP() {
   };
 
   const markNotificationAsRead = (id: string) => {
-    saveState(prev => ({
+    return saveState(prev => ({
       ...prev,
       notifications: (prev.notifications || []).map(n => n.id === id ? { ...n, isRead: true } : n)
     }));
   };
 
   const markAllNotificationsAsRead = (userId: string) => {
-    saveState(prev => ({
+    return saveState(prev => ({
       ...prev,
       notifications: (prev.notifications || []).map(n => (!n.userId || n.userId === userId || n.userId === 'all') ? { ...n, isRead: true } : n)
     }));

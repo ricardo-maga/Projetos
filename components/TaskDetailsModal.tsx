@@ -158,6 +158,7 @@ export default function TaskDetailsModal({
   const [formNotes, setFormNotes] = useState('');
   const [formAssignees, setFormAssignees] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Click outside to close project dropdown
@@ -382,7 +383,7 @@ export default function TaskDetailsModal({
       return;
     }
 
-    if (!canWrite || isSubmitting) return;
+    if (!canWrite || submittingRef.current) return;
 
     if (effectiveMode !== 'execute' && !formTitle.trim()) {
       setFormError('O título da tarefa é obrigatório.');
@@ -429,6 +430,7 @@ export default function TaskDetailsModal({
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
     try {
       if (effectiveMode === 'create') {
@@ -483,15 +485,17 @@ export default function TaskDetailsModal({
     } catch (err: any) {
       setFormError(err?.message || 'Erro ao processar a tarefa.');
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!activeTask || !deleteTask) return;
+    if (!activeTask || !deleteTask || submittingRef.current) return;
     const confirmDelete = window.confirm(`Tem a certeza que deseja eliminar a tarefa "${activeTask.title}"?`);
     if (!confirmDelete) return;
 
+    submittingRef.current = true;
     setIsSubmitting(true);
     try {
       await deleteTask(activeTask.id);
@@ -499,6 +503,7 @@ export default function TaskDetailsModal({
       onClose();
     } catch (err: any) {
       setFormError(err?.message || 'Erro ao eliminar a tarefa.');
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
