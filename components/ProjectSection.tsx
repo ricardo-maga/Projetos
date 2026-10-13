@@ -17,6 +17,7 @@ import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
@@ -159,6 +160,7 @@ export default function ProjectSection({
   // Risk Form State
   const [showRiskModal, setShowRiskModal] = useState(false);
   const [isSavingRisk, setIsSavingRisk] = useState(false);
+  const { busy: isSavingProject, run: runProjectAction } = useAsyncAction();
   const riskSaveInFlight = React.useRef(false);
   const [editingRiskId, setEditingRiskId] = useState<string | null>(null);
   const [riskTitle, setRiskTitle] = useState('');
@@ -563,6 +565,7 @@ export default function ProjectSection({
   // Submit Form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await runProjectAction(async () => {
     if (!canWriteProjects) {
       alert('Não tem permissão para criar ou editar projetos.');
       return;
@@ -679,9 +682,9 @@ export default function ProjectSection({
 
           if (tasksToCreate.length > 0) {
             if (addTasks) {
-              addTasks(tasksToCreate);
+              await addTasks(tasksToCreate);
             } else {
-              tasksToCreate.forEach(t => addTask(t));
+              for (const task of tasksToCreate) await addTask(task);
             }
           }
           setSelectedProjectId(newProj.id);
@@ -693,6 +696,7 @@ export default function ProjectSection({
       console.error('[PROJECT FORM ERROR]', err);
       // Keep form open for correction on failure
     }
+    });
   };
 
   const handleToggleTeam = (id: string) => {
@@ -1321,9 +1325,7 @@ export default function ProjectSection({
     askConfirmation(
       'Eliminar Risco',
       'Tem a certeza que deseja eliminar este item de risco? Esta operação não pode ser revertida.',
-      () => {
-        deleteProjectRiskItem(id);
-      }
+      () => deleteProjectRiskItem(id)
     );
   };
 
@@ -3364,8 +3366,8 @@ export default function ProjectSection({
             title={editingId ? 'Editar projeto' : 'Adicionar novo projeto'}
             description={editingId ? `ID ${editingId}` : undefined}
             actions={<>
-              <Button type="button" variant="secondary" size="sm" onClick={() => setIsEditing(false)}>Cancelar</Button>
-              <Button type="submit" size="sm">Gravar Alterações</Button>
+              <Button type="button" variant="secondary" size="sm" disabled={isSavingProject} onClick={() => setIsEditing(false)}>Cancelar</Button>
+              <Button type="submit" size="sm" isLoading={isSavingProject}>Gravar Alterações</Button>
             </>}
           />
 
@@ -3873,6 +3875,7 @@ export default function ProjectSection({
           <div className="flex justify-end gap-3 pt-6 border-t border-border-subtle">
             <Button variant="ghost" size="sm"
               type="button"
+              disabled={isSavingProject}
               onClick={() => setIsEditing(false)}
               className="px-5 py-2.5 bg-surface-muted hover:bg-surface-muted text-text-secondary font-bold rounded-control border border-border"
             >
@@ -3880,6 +3883,7 @@ export default function ProjectSection({
             </Button>
             <Button variant="primary" size="sm"
               type="submit"
+              isLoading={isSavingProject}
               className="px-6 py-2.5 bg-primary text-white rounded-control font-bold hover:bg-primary transition-colors -sm"
             >
               Gravar Alterações
@@ -4457,6 +4461,7 @@ export default function ProjectSection({
               </h3>
               <IconButton aria-label="Fechar" variant="ghost" size="sm"
                 type="button"
+                disabled={isSavingRisk}
                 onClick={() => setShowRiskModal(false)}
                 className="text-text-muted hover:text-text-secondary text-lg cursor-pointer"
               >
@@ -4692,6 +4697,7 @@ export default function ProjectSection({
               <div className="flex justify-end gap-2.5 pt-4 border-t border-border-subtle">
                 <Button variant="ghost" size="sm"
                   type="button"
+                  disabled={isSavingRisk}
                   onClick={() => setShowRiskModal(false)}
                   className="px-5 py-2.5 text-body-sm font-extrabold text-text-secondary hover:text-text-primary bg-surface-muted hover:bg-surface-muted rounded-control border border-border transition-colors cursor-pointer"
                 >

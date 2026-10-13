@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppConfiguration, SpecialDay, DefaultTask, ERPState } from '../lib/types';
 import { 
   Settings, RefreshCw, Key, Info, Calendar, Plus, Trash2, ListTodo, Edit2, Check, X,
@@ -41,6 +41,7 @@ import {
 } from '../lib/supabaseSync';
 // import Papa from 'papaparse';
 import UserSection from './UserSection';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 import Tabs from './ui/Tabs';
 import Card from './ui/Card';
 import Input from './ui/Input';
@@ -55,7 +56,7 @@ interface ConfigSectionProps {
   onChangeConfigTab?: (tab: string) => void;
   config: AppConfiguration;
   specialDays: SpecialDay[];
-  updateConfig: (updates: Partial<AppConfiguration>) => void;
+  updateConfig: (updates: Partial<AppConfiguration>) => Promise<{ success: boolean; message?: string }>;
   onResetDemoData?: () => void;
   onClearDemoData?: () => void;
   addSpecialDay: (date: string, name: string) => void;
@@ -426,6 +427,10 @@ export default function ConfigSection({
   const [backupsError, setBackupsError] = useState<string | null>(null);
   const [loadingBackups, setLoadingBackups] = useState(false);
   const [savingBackup, setSavingBackup] = useState(false);
+  const { busy: isSavingConfig, run: runConfigAction } = useAsyncAction();
+  const backupSaveInFlight = useRef(false);
+  const connectionTestInFlight = useRef(false);
+  const autoBackupInFlight = useRef(false);
   const [newBackupName, setNewBackupName] = useState('');
   const [sqlCopied, setSqlCopied] = useState(false);
   const [showSql, setShowSql] = useState(false);
@@ -439,16 +444,22 @@ export default function ConfigSection({
   };
 
   const handleTestConnection = async () => {
+    if (connectionTestInFlight.current) return;
+    connectionTestInFlight.current = true;
     setSupabaseStatus('testing');
     setSupabaseMessage('A testar ligação com o Supabase...');
-    const result = await testSupabaseConnection();
-    if (result.success) {
-      setSupabaseStatus('success');
-      setSupabaseMessage(result.message);
-      fetchBackups();
-    } else {
-      setSupabaseStatus('failed');
-      setSupabaseMessage(result.message);
+    try {
+      const result = await testSupabaseConnection();
+      if (result.success) {
+        setSupabaseStatus('success');
+        setSupabaseMessage(result.message);
+        await fetchBackups();
+      } else {
+        setSupabaseStatus('failed');
+        setSupabaseMessage(result.message);
+      }
+    } finally {
+      connectionTestInFlight.current = false;
     }
   };
 
@@ -480,17 +491,22 @@ export default function ConfigSection({
 
   const handleSaveBackup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBackupName.trim()) return;
+    if (!newBackupName.trim() || backupSaveInFlight.current) return;
+    backupSaveInFlight.current = true;
     setSavingBackup(true);
-    const result = await saveSnapshotToSupabase(state, newBackupName.trim());
-    if (result.success) {
-      alert('Cópia de segurança criada com sucesso no Supabase!');
-      setNewBackupName('');
-      fetchBackups();
-    } else {
-      alert(result.message);
+    try {
+      const result = await saveSnapshotToSupabase(state, newBackupName.trim());
+      if (result.success) {
+        alert('Cópia de segurança criada com sucesso no Supabase!');
+        setNewBackupName('');
+        await fetchBackups();
+      } else {
+        alert(result.message);
+      }
+    } finally {
+      backupSaveInFlight.current = false;
+      setSavingBackup(false);
     }
-    setSavingBackup(false);
   };
 
   const handleRestoreBackup = async (backup: SupabaseBackup) => {
@@ -677,13 +693,14 @@ export default function ConfigSection({
     });
   })();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await runConfigAction(async () => {
     if (!canWriteConfig) {
       alert('Não tem permissão para alterar as configurações.');
       return;
     }
-    updateConfig({
+    const result = await updateConfig({
       appName,
       appDescription: appDesc,
       logoImagePath: logo,
@@ -691,7 +708,9 @@ export default function ConfigSection({
       footerCopyrightText: footer,
       theme,
     });
-    alert('Configurações gravadas com sucesso!');
+    if (result.success) alert('Configurações gravadas com sucesso!');
+    else alert(result.message || 'Não foi possível gravar as configurações.');
+    });
   };
 
   const handleSaveAssociations = (e: React.FormEvent) => {
@@ -1010,7 +1029,7 @@ export default function ConfigSection({
         </div>
 
         <div className="mt-6 flex justify-end">
-          <M3Button type="submit" disabled={!canWriteConfig}>Gravar configurações</M3Button>
+          <M3Button type="submit" disabled={!canWriteConfig || isSavingConfig}>{isSavingConfig ? 'A guardar...' : 'Gravar configurações'}</M3Button>
         </div>
       </form>
       )}
@@ -1696,13 +1715,19 @@ export default function ConfigSection({
                 <button
                   type="button"
                   onClick={async () => {
+                    if (autoBackupInFlight.current) return;
+                    autoBackupInFlight.current = true;
                     setLoadingBackups(true);
-                    const res = await checkAndCreateAutoDailyBackup(state);
-                    alert(res.message);
-                    fetchBackups();
-                    setLoadingBackups(false);
+                    try {
+                      const res = await checkAndCreateAutoDailyBackup(state);
+                      alert(res.message);
+                      await fetchBackups();
+                    } finally {
+                      autoBackupInFlight.current = false;
+                      setLoadingBackups(false);
+                    }
                   }}
-                  disabled={loadingBackups || !isSupabaseConfigured || config.autoDailyBackupEnabled === false}
+                  disabled={loadingBackups || savingBackup || !isSupabaseConfigured || config.autoDailyBackupEnabled === false}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all flex items-center gap-2 text-xs disabled:bg-slate-200 disabled:text-slate-400 cursor-pointer shadow-2xs"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loadingBackups ? 'animate-spin' : ''}`} />
@@ -1854,7 +1879,7 @@ export default function ConfigSection({
                   <input
                     type="text"
                     required
-                    disabled={savingBackup || supabaseStatus !== 'success'}
+                    disabled={savingBackup || loadingBackups || supabaseStatus !== 'success'}
                     placeholder="Ex: Cópia Completa - Linha de Montagem 3"
                     value={newBackupName}
                     onChange={e => setNewBackupName(e.target.value)}
@@ -1863,7 +1888,7 @@ export default function ConfigSection({
                 </div>
                 <button
                   type="submit"
-                  disabled={savingBackup || supabaseStatus !== 'success' || !newBackupName.trim()}
+                  disabled={savingBackup || loadingBackups || supabaseStatus !== 'success' || !newBackupName.trim()}
                   className="w-full sm:w-auto px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:bg-slate-200 disabled:text-slate-400"
                 >
                   <UploadCloud className={`w-4 h-4 ${savingBackup ? 'animate-bounce' : ''}`} />

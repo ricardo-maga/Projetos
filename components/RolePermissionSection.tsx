@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LoaderCircle, Plus, ShieldCheck } from 'lucide-react';
 import { getClientToken } from '@/lib/clientAuth';
 import Button from './ui/Button';
@@ -21,6 +21,7 @@ export default function RolePermissionSection() {
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDescription, setNewRoleDescription] = useState('');
   const [busy, setBusy] = useState(false);
+  const mutationInFlight = useRef(false);
   const [busyAction, setBusyAction] = useState<'permissions' | 'create-role' | 'deactivate-role' | null>(null);
   const [message, setMessage] = useState('');
 
@@ -57,29 +58,34 @@ export default function RolePermissionSection() {
   }, [catalog, roleId, permissionById]);
 
   const savePermissions = async () => {
-    if (!roleId) return;
+    if (!roleId || mutationInFlight.current) return;
+    mutationInFlight.current = true;
     setBusy(true); setBusyAction('permissions'); setMessage('');
     try { await request(`/api/rbac/roles/${roleId}/permissions`, { method: 'PUT', body: JSON.stringify({ permissionCodes }) }); await refresh(); setMessage('Permissões guardadas e registadas na auditoria.'); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao guardar permissões.'); }
-    finally { setBusy(false); setBusyAction(null); }
+    finally { mutationInFlight.current = false; setBusy(false); setBusyAction(null); }
   };
 
   const createRole = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (mutationInFlight.current) return;
+    mutationInFlight.current = true;
     setBusy(true); setBusyAction('create-role'); setMessage('');
     try {
       const result = await request('/api/rbac/roles', { method: 'POST', body: JSON.stringify({ name: newRoleName, description: newRoleDescription }) });
       setNewRoleName(''); setNewRoleDescription(''); await refresh(); setRoleId(result.role.id); setMessage('Função criada. Defina as permissões na matriz.');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao criar função.'); }
-    finally { setBusy(false); setBusyAction(null); }
+    finally { mutationInFlight.current = false; setBusy(false); setBusyAction(null); }
   };
 
   const deactivateRole = async () => {
+    if (mutationInFlight.current) return;
     if (!roleId || !window.confirm('Desativar esta função? As atribuições existentes têm de ser removidas primeiro.')) return;
+    mutationInFlight.current = true;
     setBusy(true); setBusyAction('deactivate-role'); setMessage('');
     try { await request(`/api/rbac/roles/${roleId}`, { method: 'PATCH', body: JSON.stringify({ is_active: false }) }); await refresh(); setMessage('Função desativada e auditada.'); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao desativar função.'); }
-    finally { setBusy(false); setBusyAction(null); }
+    finally { mutationInFlight.current = false; setBusy(false); setBusyAction(null); }
   };
 
   if (!catalog) return <div className="flex items-center gap-2 p-6 text-sm text-slate-600" role="status" aria-live="polite">
@@ -95,15 +101,15 @@ export default function RolePermissionSection() {
         <M3Card className="space-y-4 p-4 md:p-5">
           <div><h3 className="font-semibold text-text-primary">Funções</h3><p className="mt-1 text-sm text-text-secondary">Escolha uma função existente ou crie uma personalizada.</p></div>
           <div className="flex flex-wrap gap-3">
-            <select aria-label="Função" className="min-w-56 flex-1 rounded-control border border-border bg-surface px-3 py-2.5 text-sm text-text-primary" value={roleId} onChange={event => setRoleId(event.target.value)}>
+            <select aria-label="Função" disabled={busy} className="min-w-56 flex-1 rounded-control border border-border bg-surface px-3 py-2.5 text-sm text-text-primary" value={roleId} onChange={event => setRoleId(event.target.value)}>
               {activeRoles.map(role => <option key={role.id} value={role.id}>{role.name}{role.is_system ? ' · sistema' : ''}</option>)}
             </select>
             {catalog.roles.find(role => role.id === roleId && !role.is_system) && <Button type="button" variant="outline" size="sm" disabled={busy} isLoading={busyAction === 'deactivate-role'} onClick={deactivateRole}>Desativar função</Button>}
           </div>
           <form onSubmit={createRole} className="space-y-3 border-t border-border pt-5">
             <h4 className="text-sm font-semibold text-text-primary">Criar função</h4>
-            <input aria-label="Nome da função" required maxLength={80} value={newRoleName} onChange={event => setNewRoleName(event.target.value)} placeholder="Nome" className="w-full rounded-control border border-border bg-surface px-3 py-2.5 text-sm text-text-primary" />
-            <textarea aria-label="Descrição da função" maxLength={500} value={newRoleDescription} onChange={event => setNewRoleDescription(event.target.value)} placeholder="Descrição (opcional)" rows={3} className="w-full resize-y rounded-control border border-border bg-surface px-3 py-2.5 text-sm text-text-primary" />
+            <input aria-label="Nome da função" disabled={busy} required maxLength={80} value={newRoleName} onChange={event => setNewRoleName(event.target.value)} placeholder="Nome" className="w-full rounded-control border border-border bg-surface px-3 py-2.5 text-sm text-text-primary" />
+            <textarea aria-label="Descrição da função" disabled={busy} maxLength={500} value={newRoleDescription} onChange={event => setNewRoleDescription(event.target.value)} placeholder="Descrição (opcional)" rows={3} className="w-full resize-y rounded-control border border-border bg-surface px-3 py-2.5 text-sm text-text-primary" />
             <Button type="submit" disabled={busy || !newRoleName.trim()} isLoading={busyAction === 'create-role'}><Plus className="h-4 w-4" />Criar função</Button>
           </form>
         </M3Card>
@@ -111,7 +117,7 @@ export default function RolePermissionSection() {
         <M3Card className="space-y-4 p-4 md:p-5">
           <div className="border-b border-border pb-4"><h3 className="font-semibold text-text-primary">Matriz de permissões</h3><p className="mt-1 text-sm text-text-secondary">Permissões para: <span className="font-semibold text-primary">{activeRoles.find(role => role.id === roleId)?.name || 'Selecione uma função'}</span></p></div>
           {modules.map(module => (
-            <fieldset key={module} className="rounded-xl border border-border bg-surface-muted/40 p-4">
+            <fieldset key={module} disabled={busy} className="rounded-xl border border-border bg-surface-muted/40 p-4">
               <legend className="px-1 text-sm font-semibold capitalize text-text-primary">{module}</legend>
               <div className="grid gap-2 sm:grid-cols-2">
                 {editablePermissions.filter(permission => permission.module === module).map(permission => (

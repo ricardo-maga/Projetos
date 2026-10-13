@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useERP } from '../hooks/useERP';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 import BentoDashboard from '../components/BentoDashboard';
 import ProjectSection from '../components/ProjectSection';
 import TaskSection from '../components/TaskSection';
@@ -49,6 +50,8 @@ export default function Page() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const loginInFlight = React.useRef(false);
+  const { busy: isSavingProfile, run: runProfileAction } = useAsyncAction();
   
   // Change password state
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -269,6 +272,8 @@ export default function Page() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loginInFlight.current) return;
+    loginInFlight.current = true;
     setLoginError('');
     setIsLoggingIn(true);
     
@@ -348,10 +353,15 @@ export default function Page() {
       setLoginError('Ocorreu um erro ao ligar ao servidor de autenticação. Por favor, tente novamente.');
       setIsLoggingIn(false);
     }
+    finally {
+      loginInFlight.current = false;
+    }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      await runProfileAction(async () => {
     setChangePasswordError('');
     setChangePasswordSuccess(false);
 
@@ -389,6 +399,10 @@ export default function Page() {
       setConfirmNewPassword('');
       setChangePasswordSuccess(false);
     }, 2000);
+      });
+    } catch (error) {
+      setChangePasswordError(error instanceof Error ? error.message : 'Não foi possível guardar o perfil.');
+    }
   };
 
   const tabs = React.useMemo(() => {
@@ -581,7 +595,7 @@ export default function Page() {
   const appConfig = state?.appConfig || {};
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-text-primary" id="main-root" data-active-tab={activeTab} data-theme={appConfig.theme || 'default'}>
+    <div className="min-h-screen flex flex-col bg-background text-text-primary" id="main-root" data-active-tab={activeTab} data-theme={appConfig.theme || 'default'} inert={syncStatus === 'syncing'} aria-busy={syncStatus === 'syncing'}>
       
       {/* HEADER BAR (Gmail / Material inspired contract: exactly 3 zones) */}
       <header className="m3-top-app-bar sticky top-0 z-50 h-16 px-4 flex items-center justify-between shrink-0" id="app-header">
@@ -1101,7 +1115,7 @@ export default function Page() {
       {/* CHANGE PASSWORD MODAL USING NEW UI DIALOG */}
       <Dialog 
         isOpen={isChangingPassword} 
-        onClose={() => setIsChangingPassword(false)} 
+        onClose={() => { if (!isSavingProfile) setIsChangingPassword(false); }}
         title="Editar Perfil"
       >
         {changePasswordSuccess ? (
@@ -1152,6 +1166,7 @@ export default function Page() {
             <div className="pt-4 flex gap-3">
               <button 
                 type="button"
+                disabled={isSavingProfile}
                 onClick={() => setIsChangingPassword(false)}
                 className="flex-1 h-11 bg-surface-muted text-text-primary hover:bg-border border border-border rounded-control text-body-sm font-semibold transition-all cursor-pointer"
               >
@@ -1159,9 +1174,10 @@ export default function Page() {
               </button>
               <button 
                 type="submit"
+                disabled={isSavingProfile}
                 className="flex-1 h-11 bg-primary text-white hover:bg-primary-hover active:bg-primary-active rounded-control text-body-sm font-semibold transition-all shadow-raised cursor-pointer"
               >
-                Guardar
+                {isSavingProfile ? 'A guardar...' : 'Guardar'}
               </button>
             </div>
           </form>

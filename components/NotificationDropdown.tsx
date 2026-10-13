@@ -5,15 +5,17 @@ import { Bell, Check, ExternalLink } from 'lucide-react';
 import { Notification } from '../lib/types';
 import { cn } from '../lib/utils';
 import IconButton from './ui/IconButton';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 
 interface NotificationDropdownProps {
   notifications: Notification[];
-  markAsRead: (id: string) => void;
-  markAllAsRead: () => void;
+  markAsRead: (id: string) => void | Promise<unknown>;
+  markAllAsRead: () => void | Promise<unknown>;
 }
 
 export default function NotificationDropdown({ notifications, markAsRead, markAllAsRead }: NotificationDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { busy, run } = useAsyncAction();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,7 +51,8 @@ export default function NotificationDropdown({ notifications, markAsRead, markAl
             <h3 className="font-bold text-body text-text-primary">Notificações</h3>
             {unreadCount > 0 && (
               <button 
-                onClick={markAllAsRead}
+                disabled={busy}
+                onClick={() => { void run(markAllAsRead); }}
                 className="text-label font-semibold text-primary hover:text-primary-hover flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Check className="w-4 h-4" />
@@ -100,7 +103,8 @@ export default function NotificationDropdown({ notifications, markAsRead, markAl
                   </div>
                   {!notif.isRead && (
                     <button 
-                      onClick={() => markAsRead(notif.id)}
+                      disabled={busy}
+                      onClick={() => { void run(() => markAsRead(notif.id)); }}
                       className="w-7 h-7 rounded-full flex items-center justify-center text-primary hover:bg-primary/10 transition-colors cursor-pointer self-start shrink-0 border border-primary/10"
                       title="Marcar como lida"
                     >

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 import { 
   Ticket, 
   User, 
@@ -65,12 +66,12 @@ interface TicketSectionProps {
   userGroups: UserGroup[];
   currentUser?: User | null;
   appConfig?: any;
-  onAddTicket: (ticket: Omit<Ticket, 'id' | 'ticketNumber' | 'createdDate' | 'updatedDate'>) => void;
-  onUpdateTicket: (id: string, updates: Partial<Ticket>) => void;
-  onDeleteTicket: (id: string) => void;
-  onValidateAndApprove: (id: string, data: { clientId?: string; assignedToId?: string; priority?: string; category?: string; taskTypeId?: string; validationNotes?: string }) => void;
-  onConvertToTask: (id: string, data: { projectId: string; title: string; description?: string; notes?: string; assigneeIds: string[]; estimatedDate?: string; estimatedHours?: string; taskTypeId?: string; statusId?: string }) => void;
-  onResolveDirectly: (id: string, resolutionNotes: string) => void;
+  onAddTicket: (ticket: Omit<Ticket, 'id' | 'ticketNumber' | 'createdDate' | 'updatedDate'>) => void | Promise<unknown>;
+  onUpdateTicket: (id: string, updates: Partial<Ticket>) => void | Promise<unknown>;
+  onDeleteTicket: (id: string) => void | Promise<unknown>;
+  onValidateAndApprove: (id: string, data: { clientId?: string; assignedToId?: string; priority?: string; category?: string; taskTypeId?: string; validationNotes?: string }) => void | Promise<unknown>;
+  onConvertToTask: (id: string, data: { projectId: string; title: string; description?: string; notes?: string; assigneeIds: string[]; estimatedDate?: string; estimatedHours?: string; taskTypeId?: string; statusId?: string }) => void | Promise<unknown>;
+  onResolveDirectly: (id: string, resolutionNotes: string) => void | Promise<unknown>;
   onNavigateToProject?: (projectId: string) => void;
   onAddClient?: (client: any) => any;
 }
@@ -96,6 +97,14 @@ export function TicketSection({
   onNavigateToProject,
   onAddClient
 }: TicketSectionProps) {
+  const { busy: isSavingTicket, run: runTicketOperation } = useAsyncAction();
+  const runTicketAction = async (action: () => Promise<unknown> | unknown) => {
+    try {
+      await runTicketOperation(action);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível concluir a operação do ticket.');
+    }
+  };
   // Navigation sub-tabs
   const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'all' | 'validation' | 'converted' | 'simulator'>('dashboard');
 
@@ -407,7 +416,7 @@ export function TicketSection({
   }, [activeTickets, activePriorities, techniciansWithTickets]);
 
   // Helper: Resolve or Create Client via autocomplete text (identical to ProjectSection)
-  const resolveOrCreateClient = (selectedId: string, searchQueryText: string): string | undefined => {
+  const resolveOrCreateClient = async (selectedId: string, searchQueryText: string): Promise<string | undefined> => {
     let finalClientId = selectedId;
     const trimmedQuery = searchQueryText.trim();
 
@@ -424,7 +433,7 @@ export function TicketSection({
         finalClientId = existing.id;
       } else if (!selectedId || !(clients || []).some(c => c && c.id === selectedId && !c.deleted)) {
         if (onAddClient) {
-          const newClient = onAddClient({
+          const newClient = await onAddClient({
             clientName: trimmedQuery,
             shortName: trimmedQuery,
             location: '',
@@ -463,8 +472,9 @@ export function TicketSection({
   };
 
   // Submit Create Manual Ticket
-  const handleSubmitCreate = (e: React.FormEvent) => {
+  const handleSubmitCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    await runTicketAction(async () => {
     if (!newTitle.trim()) return;
     if (!newPriority) {
       alert('Por favor selecione a Prioridade do ticket.');
@@ -475,9 +485,9 @@ export function TicketSection({
       return;
     }
 
-    const finalClientId = resolveOrCreateClient(newClientId, clientSearchQuery);
+    const finalClientId = await resolveOrCreateClient(newClientId, clientSearchQuery);
 
-    onAddTicket({
+    await onAddTicket({
       title: newTitle.trim(),
       description: newDescription.trim(),
       source: newSource,
@@ -495,6 +505,7 @@ export function TicketSection({
     });
 
     setIsCreateModalOpen(false);
+    });
   };
 
   // Open Edit Modal
@@ -517,8 +528,9 @@ export function TicketSection({
   };
 
   // Submit Edit Ticket
-  const handleSubmitEdit = (e: React.FormEvent) => {
+  const handleSubmitEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await runTicketAction(async () => {
     if (!selectedTicket || !editTitle.trim()) return;
     if (!editPriority) {
       alert('Por favor selecione a Prioridade do ticket.');
@@ -529,9 +541,9 @@ export function TicketSection({
       return;
     }
 
-    const finalClientId = resolveOrCreateClient(editClientId, editClientSearchQuery);
+    const finalClientId = await resolveOrCreateClient(editClientId, editClientSearchQuery);
 
-    onUpdateTicket(selectedTicket.id, {
+    await onUpdateTicket(selectedTicket.id, {
       title: editTitle.trim(),
       description: editDescription.trim(),
       status: editStatus,
@@ -547,6 +559,7 @@ export function TicketSection({
 
     setIsEditModalOpen(false);
     setSelectedTicket(null);
+    });
   };
 
   // Open Validation Modal
@@ -564,13 +577,14 @@ export function TicketSection({
   };
 
   // Submit Validation Approval
-  const handleSubmitValidation = (e: React.FormEvent) => {
+  const handleSubmitValidation = async (e: React.FormEvent) => {
     e.preventDefault();
+    await runTicketAction(async () => {
     if (!selectedTicket) return;
 
-    const finalClientId = resolveOrCreateClient(valClientId, valClientSearchQuery);
+    const finalClientId = await resolveOrCreateClient(valClientId, valClientSearchQuery);
 
-    onValidateAndApprove(selectedTicket.id, {
+    await onValidateAndApprove(selectedTicket.id, {
       clientId: finalClientId,
       assignedToId: valAssignedToId || undefined,
       priority: valPriority,
@@ -581,6 +595,7 @@ export function TicketSection({
 
     setIsValidationModalOpen(false);
     setSelectedTicket(null);
+    });
   };
 
   // Open Convert to Task Modal
@@ -613,11 +628,12 @@ export function TicketSection({
   };
 
   // Submit Convert to Task
-  const handleSubmitConvert = (e: React.FormEvent) => {
+  const handleSubmitConvert = async (e: React.FormEvent) => {
     e.preventDefault();
+    await runTicketAction(async () => {
     if (!selectedTicket || !convProjectId) return;
 
-    onConvertToTask(selectedTicket.id, {
+    await onConvertToTask(selectedTicket.id, {
       projectId: convProjectId,
       title: convTaskTitle.trim(),
       description: convTaskDescription.trim(),
@@ -630,6 +646,7 @@ export function TicketSection({
 
     setIsConvertModalOpen(false);
     setSelectedTicket(null);
+    });
   };
 
   const getInitials = (name: string) => {
@@ -647,7 +664,8 @@ export function TicketSection({
     setIsResolveModalOpen(true);
   };
 
-  const handleReassignTechnician = () => {
+  const handleReassignTechnician = async () => {
+    await runTicketAction(async () => {
     if (!selectedTicket) return;
     if (!resolveNewTechnicianId) {
       alert('Por favor selecione um técnico responsável para reatribuir.');
@@ -658,20 +676,23 @@ export function TicketSection({
       return;
     }
     const newTech = users.find(u => u.id === resolveNewTechnicianId);
-    onUpdateTicket(selectedTicket.id, { assignedToId: resolveNewTechnicianId });
+    await onUpdateTicket(selectedTicket.id, { assignedToId: resolveNewTechnicianId });
     alert(`Ticket ${selectedTicket.ticketNumber} reatribuído a ${newTech?.name || 'novo responsável'}. Notificação enviada.`);
     setIsResolveModalOpen(false);
     setSelectedTicket(null);
+    });
   };
 
   // Submit Direct Resolution
-  const handleSubmitResolve = (e: React.FormEvent) => {
+  const handleSubmitResolve = async (e: React.FormEvent) => {
     e.preventDefault();
+    await runTicketAction(async () => {
     if (!selectedTicket) return;
 
-    onResolveDirectly(selectedTicket.id, resolveNotes.trim() || 'Resolvido diretamente sem necessidade de conversão em tarefa de obra.');
+    await onResolveDirectly(selectedTicket.id, resolveNotes.trim() || 'Resolvido diretamente sem necessidade de conversão em tarefa de obra.');
     setIsResolveModalOpen(false);
     setSelectedTicket(null);
+    });
   };
 
   // Open Detail Modal
@@ -1456,9 +1477,10 @@ export function TicketSection({
 
                             {/* Delete Button */}
                             <button
+                              disabled={isSavingTicket}
                               onClick={() => {
                                 if (window.confirm(`Tem a certeza que deseja eliminar o ticket ${ticket.ticketNumber}?`)) {
-                                  onDeleteTicket(ticket.id);
+                                  void runTicketAction(() => onDeleteTicket(ticket.id));
                                 }
                               }}
                               className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
@@ -1513,7 +1535,7 @@ export function TicketSection({
               <label className="block font-bold text-slate-700 mb-1">Canal de Origem</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  type="button"
+                  type="button" disabled={isSavingTicket}
                   onClick={() => setSimChannel('teams')}
                   className={`p-3 rounded-xl border flex items-center gap-2 font-semibold transition-all ${
                     simChannel === 'teams'
@@ -1526,7 +1548,7 @@ export function TicketSection({
                 </button>
 
                 <button
-                  type="button"
+                  type="button" disabled={isSavingTicket}
                   onClick={() => setSimChannel('email')}
                   className={`p-3 rounded-xl border flex items-center gap-2 font-semibold transition-all ${
                     simChannel === 'email'
@@ -1590,7 +1612,7 @@ export function TicketSection({
 
             <div className="pt-2">
               <button
-                type="submit"
+                type="submit" disabled={isSavingTicket}
                 className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2"
               >
                 <Send className="w-4 h-4" />
@@ -1690,7 +1712,7 @@ export function TicketSection({
                         return (
                           <button
                             key={c.id}
-                            type="button"
+                            type="button" disabled={isSavingTicket}
                             onMouseDown={() => {
                               setNewClientId(c.id);
                               setClientSearchQuery(`${c.clientName} (${c.shortName})`);
@@ -1795,14 +1817,14 @@ export function TicketSection({
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
-                  type="button"
+                  type="button" disabled={isSavingTicket}
                   onClick={() => setIsCreateModalOpen(false)}
                   className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
                   Cancelar
                 </button>
                 <button
-                  type="submit"
+                  type="submit" disabled={isSavingTicket}
                   className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs"
                 >
                   Gravar & Notificar Técnico
@@ -1872,7 +1894,7 @@ export function TicketSection({
                         return (
                           <button
                             key={c.id}
-                            type="button"
+                            type="button" disabled={isSavingTicket}
                             onMouseDown={() => {
                               setEditClientId(c.id);
                               setEditClientSearchQuery(`${c.clientName} (${c.shortName})`);
@@ -2005,7 +2027,7 @@ export function TicketSection({
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
-                  type="button"
+                  type="button" disabled={isSavingTicket}
                   onClick={() => {
                     setIsEditModalOpen(false);
                     setSelectedTicket(null);
@@ -2015,7 +2037,7 @@ export function TicketSection({
                   Cancelar
                 </button>
                 <button
-                  type="submit"
+                  type="submit" disabled={isSavingTicket}
                   className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
                 >
                   Guardar Alterações
@@ -2088,7 +2110,7 @@ export function TicketSection({
                         return (
                           <button
                             key={c.id}
-                            type="button"
+                            type="button" disabled={isSavingTicket}
                             onMouseDown={() => {
                               setValClientId(c.id);
                               setValClientSearchQuery(`${c.clientName} (${c.shortName})`);
@@ -2173,7 +2195,7 @@ export function TicketSection({
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
-                  type="button"
+                  type="button" disabled={isSavingTicket}
                   onClick={() => {
                     setIsValidationModalOpen(false);
                     setSelectedTicket(null);
@@ -2183,7 +2205,7 @@ export function TicketSection({
                   Cancelar
                 </button>
                 <button
-                  type="submit"
+                  type="submit" disabled={isSavingTicket}
                   className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-xs"
                 >
                   Aprovar, Atribuir & Notificar Técnico
@@ -2338,7 +2360,7 @@ export function TicketSection({
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
-                  type="button"
+                  type="button" disabled={isSavingTicket}
                   onClick={() => {
                     setIsConvertModalOpen(false);
                     setSelectedTicket(null);
@@ -2348,7 +2370,7 @@ export function TicketSection({
                   Cancelar
                 </button>
                 <button
-                  type="submit"
+                  type="submit" disabled={isSavingTicket}
                   className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs"
                 >
                   Criar Tarefa & Atualizar Ticket
@@ -2401,7 +2423,7 @@ export function TicketSection({
                     ))}
                   </select>
                   <button
-                    type="button"
+                    type="button" disabled={isSavingTicket}
                     onClick={handleReassignTechnician}
                     className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-colors shadow-xs"
                   >
@@ -2418,7 +2440,7 @@ export function TicketSection({
                   <div className="text-[10px] text-emerald-700">Transfere o ticket para o cronograma de obra.</div>
                 </div>
                 <button
-                  type="button"
+                  type="button" disabled={isSavingTicket}
                   onClick={() => {
                     const ticketToConv = selectedTicket;
                     setIsResolveModalOpen(false);
@@ -2443,7 +2465,7 @@ export function TicketSection({
                 />
                 <div className="flex items-center justify-end gap-2 pt-2">
                   <button
-                    type="button"
+                    type="button" disabled={isSavingTicket}
                     onClick={() => {
                       setIsResolveModalOpen(false);
                       setSelectedTicket(null);
@@ -2453,7 +2475,7 @@ export function TicketSection({
                     Fechar
                   </button>
                   <button
-                    type="submit"
+                    type="submit" disabled={isSavingTicket}
                     className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg shadow-xs"
                   >
                     Marcar como Resolvido
@@ -2586,7 +2608,7 @@ export function TicketSection({
               </span>
 
               <button
-                type="button"
+                type="button" disabled={isSavingTicket}
                 onClick={() => {
                   setIsDetailModalOpen(false);
                   setSelectedTicket(null);
