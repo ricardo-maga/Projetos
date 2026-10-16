@@ -27,6 +27,7 @@ jobs:
       - run: bun run typecheck:app
       - run: bun run test:security
       - run: bun test tests/task-priority-transport.test.ts
+      - run: bun test tests/project-forecast.test.ts tests/dashboard-m3.test.tsx tests/projects-m3.test.tsx
 
   production-security-e2e:
     needs: security-and-types

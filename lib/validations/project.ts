@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const forecastDate = z.string().refine(value => value === '' || /^\d{4}-(0[1-9]|1[0-2])-01$/.test(value), 'O Forecast deve indicar mês e ano válidos.');
+
 export const createProjectSchema = z.object({
   title: z.string().trim().min(1, 'O título do projeto é obrigatório').max(255, 'O título do projeto não pode ter mais de 255 caracteres'),
   clientId: z.string().trim().min(1, 'O cliente é obrigatório'),
@@ -22,6 +24,7 @@ export const createProjectSchema = z.object({
   deliveryDate: z.string().optional().default(''),
   estimatedDate: z.string().optional().default(''),
   scheduledDate: z.string().optional().default(''),
+  forecastDate: forecastDate.optional().default(''),
   completedDate: z.string().optional().default(''),
   budgetValue: z.coerce.number().min(0, 'O orçamento do projeto não pode ser negativo').optional().default(0),
   isUrgent: z.boolean().optional().default(false),
@@ -61,6 +64,7 @@ export const updateProjectSchema = z.object({
   deliveryDate: z.string().optional(),
   estimatedDate: z.string().optional(),
   scheduledDate: z.string().optional(),
+  forecastDate: forecastDate.optional(),
   completedDate: z.string().optional(),
   budgetValue: z.coerce.number().min(0, 'O orçamento do projeto não pode ser negativo').optional(),
   isUrgent: z.boolean().optional(),
