@@ -30,8 +30,9 @@ import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { TaskAnalytics } from './TaskAnalytics';
 
 import { hasPermission } from '../lib/permissions';
-import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, formatToOnlyHours, getTaskEffectiveDate, getTaskStatusStyle, getUserInitials, cn } from '../lib/utils';
+import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, getTaskEffectiveDate, getTaskStatusStyle, getUserInitials, cn } from '../lib/utils';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
+import { getTaskDisplayHours } from '../lib/tasks/displayHours';
 import { Button, IconButton, Badge, Tabs, Select, Checkbox, Card, Input } from './ui';
 
 
@@ -817,7 +818,7 @@ export default function TaskSection({
                       <th className="px-4 py-3 text-left">Data</th>
                       <th className="px-4 py-3 text-left">Tarefa</th>
                       <th className="px-4 py-3 text-left">Responsáveis</th>
-                      <th className="px-4 py-3 text-center">Horas prev./Reais</th>
+                      <th className="px-4 py-3 text-center">Horas</th>
                       <th className="px-4 py-3 text-left">Tipo</th>
                       <th className="px-4 py-3 text-right">Ações</th>
                     </tr>
@@ -827,8 +828,7 @@ export default function TaskSection({
                       const scale = getTaskScale(t.statusId);
                       const tStyle = getTaskStatusStyle(t.statusId, taskStatuses);
                       const statusName = tStyle.name;
-                      const estHours = formatToOnlyHours(t.estimatedHours) || '0';
-                      const actHours = formatToOnlyHours(t.actualHours) || '0';
+                      const displayHours = getTaskDisplayHours(t);
                       const targetDate = getTaskEffectiveDate(t);
                       const isOverdue = Boolean(targetDate && targetDate < todayStr && scale !== 3);
 
@@ -908,16 +908,14 @@ export default function TaskSection({
                             {renderAssignees(t.assigneeIds)}
                           </td>
 
-                          {/* 5. Horas prev./Reais */}
+                          {/* 5. Horas reais preenchidas ou horas previstas */}
                           <td className="px-4 py-3.5 text-center font-bold text-body-sm whitespace-nowrap text-text-primary">
-                            <span className="text-text-secondary">{estHours} h</span>
-                            <span className="text-text-muted mx-1.5">/</span>
-                            {parseTaskHoursToFloat(actHours) > 0 ? (
+                            {displayHours.isActual ? (
                               <Badge variant="success" className="font-bold text-caption">
-                                {actHours} h
+                                {displayHours.hours} h
                               </Badge>
                             ) : (
-                              <span className="text-text-muted">{actHours} h</span>
+                              <span className="text-text-secondary">{displayHours.hours} h</span>
                             )}
                           </td>
 
@@ -1108,3 +1106,4 @@ export default function TaskSection({
     </div>
   );
 }
+
