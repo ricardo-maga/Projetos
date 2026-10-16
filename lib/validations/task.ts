@@ -28,12 +28,8 @@ export const createTaskSchema = z.object({
   projectId: optionalNullableProjectId.default(null),
   title: z.string().trim().min(2, 'O título da tarefa deve ter no mínimo 2 caracteres'),
   description: z.string().optional().default(''),
-  statusId: z.string().optional(),
-  taskTypeId: z
-    .string()
-    .nullable()
-    .optional()
-    .transform((val) => (val === '' ? null : val)),
+  statusId: z.string().trim().min(1, 'O estado da tarefa é obrigatório'),
+  taskTypeId: z.string().trim().min(1, 'O tipo de tarefa é obrigatório'),
   priorityId: z.string().nullable().optional().transform((val) => (val === '' ? null : val)),
   estimatedHours: z.number().nonnegative().optional().default(0),
   actualHours: z.number().nonnegative().optional().default(0),

@@ -278,6 +278,8 @@ describe('FASE 66-B — Tasks Persistence Boundary & Project Decoupling', () => 
         body: JSON.stringify({
           projectId: validUUIDProject1,
           title: 'Tarefa Nova Com Projeto',
+          statusId: '99999999-9999-9999-9999-999999999901',
+          taskTypeId: '33333333-3333-3333-3333-333333333304',
           estimatedHours: 6,
         }),
       });
@@ -298,6 +300,8 @@ describe('FASE 66-B — Tasks Persistence Boundary & Project Decoupling', () => 
         body: JSON.stringify({
           projectId: null,
           title: 'Tarefa Standalone Desacoplada',
+          statusId: '99999999-9999-9999-9999-999999999901',
+          taskTypeId: '33333333-3333-3333-3333-333333333304',
           estimatedHours: 4,
         }),
       });
@@ -316,6 +320,8 @@ describe('FASE 66-B — Tasks Persistence Boundary & Project Decoupling', () => 
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           title: 'Tarefa Sem Campo ProjectId',
+          statusId: '99999999-9999-9999-9999-999999999901',
+          taskTypeId: '33333333-3333-3333-3333-333333333304',
           estimatedHours: 2,
         }),
       });
@@ -333,6 +339,8 @@ describe('FASE 66-B — Tasks Persistence Boundary & Project Decoupling', () => 
         body: JSON.stringify({
           projectId: validUUIDDeletedProject,
           title: 'Tentativa com Projeto Eliminado',
+          statusId: '99999999-9999-9999-9999-999999999901',
+          taskTypeId: '33333333-3333-3333-3333-333333333304',
         }),
       });
 
@@ -440,6 +448,8 @@ describe('FASE 66-B — Tasks Persistence Boundary & Project Decoupling', () => 
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           title: 'Datas Inválidas',
+          statusId: '99999999-9999-9999-9999-999999999901',
+          taskTypeId: '33333333-3333-3333-3333-333333333304',
           startDate: '2026-10-10',
           endDate: '2026-10-05',
         }),

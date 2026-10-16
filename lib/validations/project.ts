@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createProjectSchema = z.object({
   title: z.string().trim().min(1, 'O título do projeto é obrigatório').max(255, 'O título do projeto não pode ter mais de 255 caracteres'),
-  clientId: z.string().optional().default(''),
+  clientId: z.string().trim().min(1, 'O cliente é obrigatório'),
   description: z.string().optional().default(''),
   installProjectNo: z.string().optional().default(''),
   sfOpportunityNo: z.string().optional().default(''),
@@ -11,7 +11,7 @@ export const createProjectSchema = z.object({
   categoryIds: z.array(z.string().trim()).optional().default([]),
   priorityId: z.string().optional().default(''),
   riskId: z.string().optional().default(''),
-  projectManagerId: z.string().optional().nullable().default(''),
+  projectManagerId: z.string().trim().min(1, 'O Project Leader é obrigatório'),
   fieldManagerId: z.string().optional().nullable().default(''),
   salesRepId: z.string().optional().nullable().default(''),
   teamIds: z.array(z.string().trim()).optional().default([]),
@@ -34,7 +34,10 @@ export const createProjectSchema = z.object({
   notes: z.string().optional(),
   createdById: z.string().optional(),
   version: z.number().int().min(1).optional().default(1),
-});
+}).refine(
+  (project) => project.categoryIds.some((id) => id.length > 0) || project.categoryId.trim().length > 0,
+  { path: ['categoryIds'], message: 'Selecione pelo menos uma categoria.' }
+);
 
 export const updateProjectSchema = z.object({
   title: z.string().trim().min(1, 'O título do projeto é obrigatório').max(255, 'O título do projeto não pode ter mais de 255 caracteres').optional(),

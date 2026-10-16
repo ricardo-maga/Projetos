@@ -411,6 +411,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
         body: JSON.stringify({
           title: 'Novo Chiller Bloco B',
           clientId: validUUID1,
+          projectManagerId: validUUID5,
           statusId: validUUID3,
           categoryId: validUUID4,
           budgetValue: 125000,
@@ -575,6 +576,8 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
         body: JSON.stringify({
           projectId: 'proj-ativo-1',
           title: 'Ligação de Cabos Principais',
+          statusId: validUUID3,
+          taskTypeId: validUUID4,
           description: 'Passagem de cabos de 50mm2',
           estimatedHours: 4,
         }),

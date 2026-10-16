@@ -46,8 +46,17 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
   });
 
   describe('1. Criação e Validação de Tarefas (Schema & API)', () => {
+    it('exige título, tipo e estado na criação', () => {
+      const base = { title: 'Inspeção', statusId: 'ts-1', taskTypeId: 'tt-1' };
+      expect(createTaskSchema.safeParse({ ...base, title: ' ' }).success).toBe(false);
+      expect(createTaskSchema.safeParse({ ...base, statusId: '' }).success).toBe(false);
+      expect(createTaskSchema.safeParse({ ...base, taskTypeId: null }).success).toBe(false);
+      expect(createTaskSchema.safeParse(base).success).toBe(true);
+    });
     it('cria tarefa com todos os dados válidos', () => {
       const res = createTaskSchema.safeParse({
+        statusId: '99999999-9999-9999-9999-999999999901',
+        taskTypeId: '33333333-3333-3333-3333-333333333304',
         projectId: validProjectId,
         title: 'Instalação de Painéis Fotovoltaicos',
         description: 'Montagem de estrutura na cobertura',
@@ -64,6 +73,8 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
 
     it('permite criar tarefa sem utilizadores atribuídos', () => {
       const res = createTaskSchema.safeParse({
+        statusId: '99999999-9999-9999-9999-999999999901',
+        taskTypeId: '33333333-3333-3333-3333-333333333304',
         projectId: validProjectId,
         title: 'Inspeção Inicial',
         assignedUserIds: [],
@@ -76,6 +87,8 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
 
     it('aceita horas previstas como número não negativo', () => {
       const res = createTaskSchema.safeParse({
+        statusId: '99999999-9999-9999-9999-999999999901',
+        taskTypeId: '33333333-3333-3333-3333-333333333304',
         projectId: validProjectId,
         title: 'Manutenção Preventiva',
         estimatedHours: 4.5,
@@ -90,6 +103,8 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
   describe('2. Validação de Horários de Execução (startTime & endTime)', () => {
     it('aceita hora de fim estritamente posterior à hora de início', () => {
       const res = createTaskSchema.safeParse({
+        statusId: '99999999-9999-9999-9999-999999999901',
+        taskTypeId: '33333333-3333-3333-3333-333333333304',
         projectId: validProjectId,
         title: 'Trabalho de Campo',
         startTime: '08:00',
@@ -100,6 +115,8 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
 
     it('rejeita hora de fim igual à hora de início (endTime == startTime)', () => {
       const res = createTaskSchema.safeParse({
+        statusId: '99999999-9999-9999-9999-999999999901',
+        taskTypeId: '33333333-3333-3333-3333-333333333304',
         projectId: validProjectId,
         title: 'Trabalho de Campo Inválido',
         startTime: '10:00',
@@ -114,6 +131,8 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
 
     it('rejeita hora de fim anterior à hora de início (endTime < startTime)', () => {
       const res = createTaskSchema.safeParse({
+        statusId: '99999999-9999-9999-9999-999999999901',
+        taskTypeId: '33333333-3333-3333-3333-333333333304',
         projectId: validProjectId,
         title: 'Trabalho Invertido',
         startTime: '17:00',
@@ -258,6 +277,8 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
         body: JSON.stringify({
           projectId: '00000000-0000-0000-0000-000000000999',
           title: 'Tarefa em Projeto Inexistente',
+          statusId: '99999999-9999-9999-9999-999999999901',
+          taskTypeId: '33333333-3333-3333-3333-333333333304',
         }),
       });
 

@@ -36,6 +36,8 @@ describe('FASE 24 — Robustez da Gestão de Projetos: Unit & Integration Tests'
       const res = createProjectSchema.safeParse({
         title: 'Instalação Fotovoltaica 50kW',
         clientId: validUUID1,
+        projectManagerId: validUUID2,
+        categoryIds: [validUUID3],
         description: 'Instalação completa em cobertura industrial',
         budgetValue: 45000,
         startDate: '2026-10-01',
@@ -47,6 +49,14 @@ describe('FASE 24 — Robustez da Gestão de Projetos: Unit & Integration Tests'
         expect(res.data.budgetValue).toBe(45000);
         expect(res.data.statusId).toBe('');
       }
+    });
+
+    it('exige cliente, Project Leader e pelo menos uma categoria na criação', () => {
+      const base = { title: 'Projeto válido', clientId: validUUID1, projectManagerId: validUUID2, categoryIds: [validUUID3] };
+      expect(createProjectSchema.safeParse({ ...base, clientId: ' ' }).success).toBe(false);
+      expect(createProjectSchema.safeParse({ ...base, projectManagerId: '' }).success).toBe(false);
+      expect(createProjectSchema.safeParse({ ...base, categoryIds: [] }).success).toBe(false);
+      expect(createProjectSchema.safeParse(base).success).toBe(true);
     });
 
     it('valida updateProjectSchema com versão inteira positiva para OCC', () => {
