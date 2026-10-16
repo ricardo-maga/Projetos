@@ -36,9 +36,10 @@ export default function ReportsSection({ projects, tasks, projectMaterials, clie
           <Badge>{row.value}</Badge>
           {row.projectId && <Button variant="ghost" size="sm" onClick={() => onSelectProject(row.projectId)} title="Abrir projeto"><ExternalLink className="w-4 h-4" /></Button>}
         </div>) : <p className="p-6 text-body-sm text-text-secondary text-center">
-          {reportId === 'critical-open-tasks' ? 'Sem tarefas com prioridade de nível 3 e estado de nível 1 ou 2. Confirme a prioridade das tarefas.' : 'Sem materiais em atraso.'}
+          {reportId === 'critical-open-tasks' ? 'Sem tarefas com prioridade de nível 3 e estado de nível 1 ou 2. Confirme a prioridade das tarefas.' : reportId === 'unallocated-tasks' ? 'Sem tarefas por alocar.' : 'Sem materiais em atraso.'}
         </p>}
       </div>
     </Card>
   </div>;
 }
+
