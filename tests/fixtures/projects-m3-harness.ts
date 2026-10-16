@@ -16,7 +16,10 @@ export function createProjectHarness(initialState: Record<string, any> = {}) {
     }
     ts.forEachChild(node, visit);
   }
-  visit(ast);
+  const component = ast.statements.find((statement): statement is ts.FunctionDeclaration =>
+    ts.isFunctionDeclaration(statement) && statement.name?.text === 'ProjectSection');
+  if (!component?.body) throw new Error('ProjectSection component not found');
+  visit(component.body);
   const state: Record<string, any> = { ...initialState };
   const effects: (() => any)[] = [];
   let cursor = 0;
@@ -38,7 +41,13 @@ export function createProjectHarness(initialState: Record<string, any> = {}) {
     module: ts.ModuleKind.CommonJS, esModuleInterop: true,
   } }).outputText;
   const exports: Record<string, any> = {};
-  new Function('require', 'exports', js)((id: string) => id === 'react' ? isolatedReact : requireActual(id), exports);
+  new Function('require', 'exports', js)((id: string) => {
+    if (id === 'react') return isolatedReact;
+    if (id === '../hooks/useAsyncAction') {
+      return { useAsyncAction: () => ({ busy: false, run: (action: () => Promise<unknown>) => action() }) };
+    }
+    return requireActual(id);
+  }, exports);
   return { state, effects, render(props: any) { cursor = 0; effects.length = 0; return exports.default(props); } };
 }
 
