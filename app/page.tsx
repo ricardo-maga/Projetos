@@ -926,10 +926,8 @@ export default function Page() {
                   tasks={state.tasks || []}
                   projectMaterials={state.projectMaterials || []}
                   clients={state.clients || []}
-                  users={state.users || []}
                   projectPriorities={state.projectPriorities || []}
                   taskStatuses={state.taskStatuses || []}
-                  onNavigate={handleTabChange}
                   onSelectProject={handleSelectProject}
                 />
               )}
