@@ -90,6 +90,7 @@ export const updateTaskSchema = z.object({
     .nullable()
     .optional()
     .transform((val) => (val === '' ? null : val)),
+  priorityId: z.string().nullable().optional().transform((val) => (val === '' ? null : val)),
   estimatedHours: z.number().nonnegative().optional(),
   actualHours: z.number().nonnegative().optional(),
   startDate: optionalDateField,
