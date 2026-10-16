@@ -1058,10 +1058,10 @@ export function TaskAnalytics({
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <FolderKanban className="w-5 h-5 text-purple-600" />
-              Projetos Ativos: Comparativo de Horas Previstas vs. Gastas
+              Horas gastas em projetos ativos
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Análise de desvio de rentabilidade e esforço alocado aos projetos de obra em execução.
+              Análise de esforço em projetos em execução.
             </p>
           </div>
           <span className="text-xs font-bold px-3 py-1 bg-purple-50 text-purple-700 rounded-lg self-start sm:self-auto">
