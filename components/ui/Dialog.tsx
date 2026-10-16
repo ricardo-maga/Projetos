@@ -12,9 +12,10 @@ export interface DialogProps {
   title?: string;
   children: React.ReactNode;
   className?: string;
+  bodyClassName?: string;
 }
 
-export function Dialog({ isOpen, onClose, title, children, className }: DialogProps) {
+export function Dialog({ isOpen, onClose, title, children, className, bodyClassName }: DialogProps) {
   // Prevent body scroll when open
   useEffect(() => {
     if (isOpen) {
@@ -52,7 +53,7 @@ export function Dialog({ isOpen, onClose, title, children, className }: DialogPr
             )}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-border bg-surface-muted/30">
+            <div className="flex shrink-0 items-center justify-between p-5 border-b border-border bg-surface-muted/30">
               {title ? (
                 <h2 className="text-heading-sm font-bold text-text-primary tracking-tight">
                   {title}
@@ -72,7 +73,7 @@ export function Dialog({ isOpen, onClose, title, children, className }: DialogPr
             </div>
 
             {/* Content Body */}
-            <div className="p-6 overflow-y-auto max-h-[70vh] text-body-sm text-text-secondary leading-relaxed">
+            <div className={cn("p-6 overflow-y-auto max-h-[70vh] text-body-sm text-text-secondary leading-relaxed", bodyClassName)}>
               {children}
             </div>
           </motion.div>
