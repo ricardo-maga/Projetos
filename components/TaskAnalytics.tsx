@@ -961,7 +961,7 @@ export function TaskAnalytics({
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Users className="w-5 h-5 text-emerald-600" />
-              Alocação & Carga de Trabalho Futura dos Próximos 7, 15 e 30 Dias por Utilizador
+              Carga de trabalho futura por utilizador
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
               Identificação prévia de pontos de estrangulamento e sobrecarga na equipa técnica para as próximas semanas.
