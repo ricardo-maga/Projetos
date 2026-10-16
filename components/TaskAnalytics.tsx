@@ -78,6 +78,14 @@ export function TaskAnalytics({
 
   // Filter State
   const [timeHorizon, setTimeHorizon] = useState<'7' | '30' | '60' | '90'>('30');
+  const [workloadHorizon, setWorkloadHorizon] = useState<'7' | '15' | '30'>('30');
+
+  // A task's hours apply to every assigned user. Zero actual hours means no work logged yet.
+  const taskHours = useCallback((task: Task) => {
+    const actual = parseTimeToHours(task.actualHours);
+    const hours = actual > 0 ? actual : parseTimeToHours(task.estimatedHours);
+    return hours * Math.max(1, task.assigneeIds?.length || 0);
+  }, []);
 
   // Helper to map status scale
   const getTaskScale = useMemo(() => {
@@ -140,10 +148,10 @@ export function TaskAnalytics({
     });
 
     const totalEstHoursOpen = openTasks.reduce((acc, t) => acc + parseTimeToHours(t.estimatedHours), 0);
-    const totalActHoursOpen = openTasks.reduce((acc, t) => acc + parseTimeToHours(t.actualHours), 0);
-
-    const totalEstHoursAll = filteredTasks.reduce((acc, t) => acc + parseTimeToHours(t.estimatedHours), 0);
-    const totalActHoursAll = filteredTasks.reduce((acc, t) => acc + parseTimeToHours(t.actualHours), 0);
+    const hours30d = filteredTasks.reduce((acc, t) => {
+      const daysAgo = getDaysAgo(t.startDate || t.estimatedDate || t.createdDate);
+      return daysAgo !== null && daysAgo >= 0 && daysAgo < 30 ? acc + taskHours(t) : acc;
+    }, 0);
 
     const completionRate = filteredTasks.length > 0 
       ? Math.round((completedTasks.length / filteredTasks.length) * 100) 
@@ -155,12 +163,10 @@ export function TaskAnalytics({
       totalAll: filteredTasks.length,
       overdueCount: overdueTasks.length,
       totalEstHoursOpen,
-      totalActHoursOpen,
-      totalEstHoursAll,
-      totalActHoursAll,
+      hours30d,
       completionRate
     };
-  }, [filteredTasks, getTaskScale, todayStr]);
+  }, [filteredTasks, getTaskScale, getDaysAgo, taskHours, todayStr]);
 
   // -------------------------------------------------------------
   // 1 & 2. TAREFAS EM ABERTO POR TIPO DE TAREFA
@@ -175,8 +181,7 @@ export function TaskAnalytics({
       typeId: string;
       typeName: string;
       count: number;
-      estHours: number;
-      actHours: number;
+      hours: number;
     }> = {};
 
     // Initialize map with all active task types
@@ -185,8 +190,7 @@ export function TaskAnalytics({
         typeId: tt.id,
         typeName: tt.name,
         count: 0,
-        estHours: 0,
-        actHours: 0
+        hours: 0
       };
     });
 
@@ -194,30 +198,27 @@ export function TaskAnalytics({
       typeId: 'untyped',
       typeName: 'Sem Tipo / Geral',
       count: 0,
-      estHours: 0,
-      actHours: 0
+      hours: 0
     };
 
     openTasks.forEach(t => {
       const key = t.taskTypeId && typeMap[t.taskTypeId] ? t.taskTypeId : 'untyped';
       typeMap[key].count += 1;
-      typeMap[key].estHours += parseTimeToHours(t.estimatedHours);
-      typeMap[key].actHours += parseTimeToHours(t.actualHours);
+      typeMap[key].hours += taskHours(t);
     });
 
-    const list = Object.values(typeMap).filter(item => item.count > 0 || item.estHours > 0);
+    const list = Object.values(typeMap).filter(item => item.count > 0);
     const totalOpen = openTasks.length || 1;
 
     return list.map(item => ({
       ...item,
       percentage: Math.round((item.count / totalOpen) * 100),
-      formattedEstHours: formatHoursToHHMM(item.estHours),
-      formattedActHours: formatHoursToHHMM(item.actHours)
+      formattedHours: formatHoursToHHMM(item.hours)
     })).sort((a, b) => b.count - a.count);
-  }, [filteredTasks, getTaskScale, taskTypes]);
+  }, [filteredTasks, getTaskScale, taskTypes, taskHours]);
 
   // -------------------------------------------------------------
-  // 3 & 4. NÚMERO E HORAS DE TAREFAS DOS ÚLTIMOS 30, 60, 90 DIAS POR TIPO
+  // 3 & 4. N�MERO E HORAS DE TAREFAS DOS �LTIMOS 30, 60, 90 DIAS POR TIPO
   // -------------------------------------------------------------
   const pastDaysAnalysisByType = useMemo(() => {
     const typeMap: Record<string, {
@@ -227,14 +228,10 @@ export function TaskAnalytics({
       count30: number;
       count60: number;
       count90: number;
-      estHours7: number;
-      actHours7: number;
-      estHours30: number;
-      actHours30: number;
-      estHours60: number;
-      actHours60: number;
-      estHours90: number;
-      actHours90: number;
+      hours7: number;
+      hours30: number;
+      hours60: number;
+      hours90: number;
     }> = {};
 
     taskTypes.filter(tt => !tt.deleted).forEach(tt => {
@@ -242,10 +239,7 @@ export function TaskAnalytics({
         typeId: tt.id,
         typeName: tt.name,
         count7: 0, count30: 0, count60: 0, count90: 0,
-        estHours7: 0, actHours7: 0,
-        estHours30: 0, actHours30: 0,
-        estHours60: 0, actHours60: 0,
-        estHours90: 0, actHours90: 0
+        hours7: 0, hours30: 0, hours60: 0, hours90: 0
       };
     });
 
@@ -253,10 +247,7 @@ export function TaskAnalytics({
       typeId: 'untyped',
       typeName: 'Sem Tipo / Geral',
       count7: 0, count30: 0, count60: 0, count90: 0,
-      estHours7: 0, actHours7: 0,
-      estHours30: 0, actHours30: 0,
-      estHours60: 0, actHours60: 0,
-      estHours90: 0, actHours90: 0
+      hours7: 0, hours30: 0, hours60: 0, hours90: 0
     };
 
     filteredTasks.forEach(t => {
@@ -265,68 +256,58 @@ export function TaskAnalytics({
       if (daysAgo === null || daysAgo < 0) return; // ignore future dates for past analytics
 
       const key = t.taskTypeId && typeMap[t.taskTypeId] ? t.taskTypeId : 'untyped';
-      const estH = parseTimeToHours(t.estimatedHours);
-      const actH = parseTimeToHours(t.actualHours);
+      const hours = taskHours(t);
 
-      if (daysAgo <= 7) {
+      if (daysAgo < 7) {
         typeMap[key].count7 += 1;
-        typeMap[key].estHours7 += estH;
-        typeMap[key].actHours7 += actH;
+        typeMap[key].hours7 += hours;
       }
-      if (daysAgo <= 30) {
+      if (daysAgo < 30) {
         typeMap[key].count30 += 1;
-        typeMap[key].estHours30 += estH;
-        typeMap[key].actHours30 += actH;
+        typeMap[key].hours30 += hours;
       }
-      if (daysAgo <= 60) {
+      if (daysAgo < 60) {
         typeMap[key].count60 += 1;
-        typeMap[key].estHours60 += estH;
-        typeMap[key].actHours60 += actH;
+        typeMap[key].hours60 += hours;
       }
-      if (daysAgo <= 90) {
+      if (daysAgo < 90) {
         typeMap[key].count90 += 1;
-        typeMap[key].estHours90 += estH;
-        typeMap[key].actHours90 += actH;
+        typeMap[key].hours90 += hours;
       }
     });
 
     return Object.values(typeMap)
-      .filter(item => item.count90 > 0 || item.estHours90 > 0)
+      .filter(item => item.count90 > 0)
       .sort((a, b) => b.count90 - a.count90);
-  }, [filteredTasks, taskTypes, getDaysAgo]);
+  }, [filteredTasks, taskTypes, getDaysAgo, taskHours]);
 
   // Chart dataset for past days (based on selected timeHorizon or comparison)
   const pastDaysChartData = useMemo(() => {
     return pastDaysAnalysisByType.map(item => {
       let count = item.count30;
-      let estHours = item.estHours30;
-      let actHours = item.actHours30;
+      let hours = item.hours30;
 
       if (timeHorizon === '7') {
         count = item.count7;
-        estHours = item.estHours7;
-        actHours = item.actHours7;
+        hours = item.hours7;
       } else if (timeHorizon === '60') {
         count = item.count60;
-        estHours = item.estHours60;
-        actHours = item.actHours60;
+        hours = item.hours60;
       } else if (timeHorizon === '90') {
         count = item.count90;
-        estHours = item.estHours90;
-        actHours = item.actHours90;
+        hours = item.hours90;
       }
 
       return {
         typeName: item.typeName,
         QtdTarefas: count,
-        HorasEstimadas: Math.round(estHours * 10) / 10,
-        HorasGastas: Math.round(actHours * 10) / 10,
+        Horas: Math.round(hours * 10) / 10,
         count7: item.count7,
         count30: item.count30,
         count60: item.count60,
         count90: item.count90,
       };
-    });
+    }).filter(item => item.QtdTarefas > 0);
   }, [pastDaysAnalysisByType, timeHorizon]);
 
   // -------------------------------------------------------------
@@ -363,7 +344,7 @@ export function TaskAnalytics({
 
     userMap['unassigned'] = {
       userId: 'unassigned',
-      userName: 'Sem Responsável',
+      userName: 'Sem Respons�vel',
       roleId: '',
       hours7d: 0,
       hours15d: 0,
@@ -388,8 +369,8 @@ export function TaskAnalytics({
 
       const estH = parseTimeToHours(t.estimatedHours);
       const assignees = t.assigneeIds && t.assigneeIds.length > 0 ? t.assigneeIds : ['unassigned'];
-      // Attribute proportional hours per user to avoid overcounting
-      const hoursPerUser = estH / assignees.length;
+      // Every assignee carries the task's full planned workload.
+      const hoursPerUser = estH;
 
       assignees.forEach(uId => {
         const key = userMap[uId] ? uId : 'unassigned';
@@ -410,22 +391,12 @@ export function TaskAnalytics({
 
     return Object.values(userMap)
       .filter(item => item.hours30d > 0 || item.tasksCount30d > 0)
-      .map(item => {
-        let loadBadge = { label: 'Normal', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-        if (item.hours7d > 40) {
-          loadBadge = { label: 'Sobrecarga (>40h/sem)', color: 'bg-rose-50 text-rose-700 border-rose-200' };
-        } else if (item.hours7d > 28) {
-          loadBadge = { label: 'Carga Elevada', color: 'bg-amber-50 text-amber-700 border-amber-200' };
-        }
-
-        return {
+      .map(item => ({
           ...item,
           formatted7d: formatHoursToHHMM(item.hours7d),
           formatted15d: formatHoursToHHMM(item.hours15d),
-          formatted30d: formatHoursToHHMM(item.hours30d),
-          loadBadge
-        };
-      })
+          formatted30d: formatHoursToHHMM(item.hours30d)
+        }))
       .sort((a, b) => b.hours30d - a.hours30d);
   }, [filteredTasks, users, getTaskScale, getDaysAhead]);
 
@@ -438,8 +409,7 @@ export function TaskAnalytics({
 
     const projectStats = activeProjs.map(proj => {
       const projTasks = activeTasks.filter(t => t.projectId === proj.id);
-      const estHours = projTasks.reduce((acc, t) => acc + parseTimeToHours(t.estimatedHours), 0);
-      const actHours = projTasks.reduce((acc, t) => acc + parseTimeToHours(t.actualHours), 0);
+      const hours = projTasks.reduce((acc, t) => acc + taskHours(t), 0);
       
       const openTasksCount = projTasks.filter(t => {
         const scale = getTaskScale(t.statusId);
@@ -448,9 +418,6 @@ export function TaskAnalytics({
 
       const completedTasksCount = projTasks.filter(t => getTaskScale(t.statusId) === 3).length;
 
-      const deviationHours = actHours - estHours;
-      const deviationPercentage = estHours > 0 ? Math.round((deviationHours / estHours) * 100) : 0;
-
       return {
         id: proj.id,
         title: proj.title,
@@ -458,44 +425,16 @@ export function TaskAnalytics({
         totalTasks: projTasks.length,
         openTasksCount,
         completedTasksCount,
-        estHours: Math.round(estHours * 10) / 10,
-        actHours: Math.round(actHours * 10) / 10,
-        formattedEst: formatHoursToHHMM(estHours),
-        formattedAct: formatHoursToHHMM(actHours),
-        deviationHours: Math.round(deviationHours * 10) / 10,
-        formattedDeviation: (deviationHours > 0 ? '+' : '') + formatHoursToHHMM(Math.abs(deviationHours)),
-        deviationPercentage
+        hours: Math.round(hours * 10) / 10,
+        formattedHours: formatHoursToHHMM(hours)
       };
     });
 
-    // Filter projects that have tasks or registered hours, and sort descending by total hours
+    // Show projects with tasks, ordered by their combined hours.
     return projectStats
-      .filter(p => p.totalTasks > 0 || p.estHours > 0 || p.actHours > 0)
-      .sort((a, b) => (b.estHours + b.actHours) - (a.estHours + a.actHours));
-  }, [projects, activeTasks, clients, getTaskScale]);
-
-  // -------------------------------------------------------------
-  // 7. DISTRIBUIÇÃO POR ESTADO DE TAREFA (Ciclo de Vida)
-  // -------------------------------------------------------------
-  const statusDistribution = useMemo(() => {
-    const map: Record<string, { name: string; count: number; color: string }> = {};
-
-    taskStatuses.filter(s => !s.deleted).forEach((s, idx) => {
-      map[s.id] = {
-        name: s.name,
-        count: 0,
-        color: COLORS[idx % COLORS.length]
-      };
-    });
-
-    filteredTasks.forEach(t => {
-      if (map[t.statusId]) {
-        map[t.statusId].count += 1;
-      }
-    });
-
-    return Object.values(map).filter(item => item.count > 0);
-  }, [filteredTasks, taskStatuses]);
+      .filter(p => p.totalTasks > 0)
+      .sort((a, b) => b.hours - a.hours);
+  }, [projects, activeTasks, clients, getTaskScale, taskHours]);
 
   return (
     <div className="space-y-8 animate-fadeIn pb-12">
@@ -507,13 +446,13 @@ export function TaskAnalytics({
           <div>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
               <Sparkles className="w-4 h-4 text-blue-500" />
-              Painel de Inteligência de Projetos
+              Painel de Intelig�ncia de Projetos
             </div>
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-              Análise Avançada de Tarefas & Alocação de Equipas
+              An�lise Avan�ada de Tarefas & Aloca��o de Equipas
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Métricas consolidadas de tarefas em aberto, evolução temporal, carga de trabalho futura e rentabilidade de horas por projeto.
+              M�tricas consolidadas de tarefas em aberto, evolu��o temporal, carga de trabalho futura e rentabilidade de horas por projeto.
             </p>
           </div>
 
@@ -525,59 +464,6 @@ export function TaskAnalytics({
           </div>
         </div>
 
-        {/* Global Controls Bar */}
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
-          {/* Segmented Horizon Control */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-700">Janela Temporal (Análise Histórica):</span>
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-              <button
-                type="button"
-                onClick={() => setTimeHorizon('7')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  timeHorizon === '7'
-                    ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                7 Dias
-              </button>
-              <button
-                type="button"
-                onClick={() => setTimeHorizon('30')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  timeHorizon === '30'
-                    ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                30 Dias
-              </button>
-              <button
-                type="button"
-                onClick={() => setTimeHorizon('60')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  timeHorizon === '60'
-                    ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                60 Dias
-              </button>
-              <button
-                type="button"
-                onClick={() => setTimeHorizon('90')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  timeHorizon === '90'
-                    ? 'bg-white text-blue-700 shadow-2xs font-extrabold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                90 Dias
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -631,18 +517,18 @@ export function TaskAnalytics({
             </span>
           </div>
           <div className="mt-3 text-xs text-slate-600 flex items-center justify-between font-medium pt-2 border-t border-slate-100">
-            <span>Requer atenção rápida</span>
+            <span>Requer aten��o r�pida</span>
             <span className="text-caption font-bold text-amber-600">
               {kpis.totalOpen > 0 ? Math.round((kpis.overdueCount / kpis.totalOpen) * 100) : 0}% das abertas
             </span>
           </div>
         </div>
 
-        {/* KPI 3: Horas Totais Registadas */}
+        {/* KPI 3: Horas dos �ltimos 30 dias */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-emerald-300 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Horas Reais Gastas
+              Horas gastas em 30 dias
             </span>
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
               <TrendingUp className="w-4 h-4" />
@@ -650,29 +536,19 @@ export function TaskAnalytics({
           </div>
           <div className="flex items-baseline justify-between">
             <div className="text-2xl font-black text-slate-900 tracking-tight">
-              {formatHoursToHHMM(kpis.totalActHoursAll)}h
+              {formatHoursToHHMM(kpis.hours30d)}h
             </div>
-            <span className="text-xs font-semibold text-slate-500">
-              vs {formatHoursToHHMM(kpis.totalEstHoursAll)}h previstas
-            </span>
           </div>
-          <div className="mt-3 text-xs text-slate-600 flex items-center justify-between font-medium pt-2 border-t border-slate-100">
-            <span>Eficiência de Execução:</span>
-            <span className={`font-bold ${
-              kpis.totalActHoursAll > kpis.totalEstHoursAll ? 'text-rose-600' : 'text-emerald-600'
-            }`}>
-              {kpis.totalEstHoursAll > 0 
-                ? `${Math.round((kpis.totalActHoursAll / kpis.totalEstHoursAll) * 100)}%` 
-                : '100%'}
-            </span>
+          <div className="mt-3 text-xs text-slate-600 font-medium pt-2 border-t border-slate-100">
+            Gastas quando registadas; previstas nas restantes tarefas.
           </div>
         </div>
 
-        {/* KPI 4: Taxa de Conclusão */}
+        {/* KPI 4: Taxa de Conclus�o */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-purple-300 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Taxa de Conclusão
+              Taxa de Conclus�o
             </span>
             <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
               <CheckCircle2 className="w-4 h-4" />
@@ -706,7 +582,7 @@ export function TaskAnalytics({
               Tarefas em aberto por tipo de tarefa
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Distribuição do volume e horas estimadas das tarefas pendentes e em curso por tipologia.
+              Distribui��o das tarefas abertas e respetivas horas por tipologia.
             </p>
           </div>
           <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-700 rounded-lg self-start sm:self-auto">
@@ -736,7 +612,7 @@ export function TaskAnalytics({
                   </Pie>
                   <Tooltip
                     formatter={(val: any, name: any, item: any) => [
-                      `${val} tarefas (${item.payload.formattedEstHours}h previstas)`,
+                      `${val} tarefas (${item.payload.formattedHours}h)`,
                       item.payload.typeName
                     ]}
                     contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
@@ -756,9 +632,8 @@ export function TaskAnalytics({
                 <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider">
                   <th className="py-2.5 px-3">Tipo de Tarefa</th>
                   <th className="py-2.5 px-3 text-center">Tarefas Abertas</th>
-                  <th className="py-2.5 px-3 text-right">Horas Previstas</th>
-                  <th className="py-2.5 px-3 text-right">Horas Gastas</th>
-                  <th className="py-2.5 px-3 text-right">% do Total</th>
+                  <th className="py-2.5 px-3 text-right">Horas</th>
+                  <th className="py-2.5 px-3 text-right w-40">% do Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -777,15 +652,12 @@ export function TaskAnalytics({
                       </span>
                     </td>
                     <td className="py-3 px-3 text-right font-medium text-slate-700">
-                      {item.formattedEstHours}h
-                    </td>
-                    <td className="py-3 px-3 text-right font-medium text-slate-700">
-                      {item.formattedActHours}h
+                      {item.formattedHours}h
                     </td>
                     <td className="py-3 px-3 text-right font-bold text-blue-600">
                       <div className="flex items-center justify-end gap-2">
                         <span>{item.percentage}%</span>
-                        <div className="w-12 bg-slate-100 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                        <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden hidden sm:block">
                           <div 
                             className="bg-blue-600 h-full rounded-full" 
                             style={{ width: `${item.percentage}%` }}
@@ -797,7 +669,7 @@ export function TaskAnalytics({
                 ))}
                 {openTasksByType.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-slate-400 italic">
+                    <td colSpan={4} className="py-6 text-center text-slate-400 italic">
                       Nenhuma tarefa em aberto encontrada com os filtros selecionados.
                     </td>
                   </tr>
@@ -809,7 +681,7 @@ export function TaskAnalytics({
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* SECTION 3 & 4: HISTÓRICO 30, 60, 90 DIAS POR TIPO */}
+      {/* SECTION 3 & 4: HIST�RICO 30, 60, 90 DIAS POR TIPO */}
       {/* ------------------------------------------------------------- */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
@@ -819,7 +691,7 @@ export function TaskAnalytics({
               Horas gastas por tipo de tarefa
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Comparativo de tarefas criadas e esforço em horas acumulado em janelas temporais
+              Tarefas criadas e horas acumuladas em cada per�odo.
             </p>
           </div>
 
@@ -872,19 +744,18 @@ export function TaskAnalytics({
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
                   formatter={(val: any, name: any) => [
-                    name.includes('Horas') ? `${val}h` : `${val} tarefas`,
-                    name === 'QtdTarefas' ? 'Qtd. Tarefas' : name === 'HorasEstimadas' ? 'Horas Previstas' : 'Horas Gastas'
+                    name === 'Qtd. Tarefas' ? `${val} tarefas` : `${val}h`,
+                    name
                   ]}
                 />
                 <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px' }} />
                 <Bar yAxisId="left" dataKey="QtdTarefas" name="Qtd. Tarefas" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={32} />
-                <Bar yAxisId="right" dataKey="HorasEstimadas" name="Horas Previstas" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={32} />
-                <Bar yAxisId="right" dataKey="HorasGastas" name="Horas Gastas" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                <Bar yAxisId="right" dataKey="Horas" name="Horas" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={32} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center text-xs text-slate-400 italic">
-              Sem registos históricos para o período selecionado.
+              Sem registos hist�ricos para o per�odo selecionado.
             </div>
           )}
         </div>
@@ -915,36 +786,32 @@ export function TaskAnalytics({
                     {item.count7}
                   </td>
                   <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '7' ? 'bg-indigo-100/30' : ''}`}>
-                    <span className="font-semibold">{formatHoursToHHMM(item.estHours7)}h</span>
-                    <span className="text-caption text-text-muted block">Real: {formatHoursToHHMM(item.actHours7)}h</span>
+                    <span className="font-semibold">{formatHoursToHHMM(item.hours7)}h</span>
                   </td>
                   <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '30' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'bg-indigo-50/20 text-indigo-900'}`}>
                     {item.count30}
                   </td>
                   <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '30' ? 'bg-indigo-100/30' : 'bg-indigo-50/20'}`}>
-                    <span className="font-semibold">{formatHoursToHHMM(item.estHours30)}h</span>
-                    <span className="text-caption text-text-muted block">Real: {formatHoursToHHMM(item.actHours30)}h</span>
+                    <span className="font-semibold">{formatHoursToHHMM(item.hours30)}h</span>
                   </td>
                   <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '60' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'bg-slate-50/30 text-slate-800'}`}>
                     {item.count60}
                   </td>
                   <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '60' ? 'bg-indigo-100/30' : 'bg-slate-50/30'}`}>
-                    <span className="font-semibold">{formatHoursToHHMM(item.estHours60)}h</span>
-                    <span className="text-caption text-text-muted block">Real: {formatHoursToHHMM(item.actHours60)}h</span>
+                    <span className="font-semibold">{formatHoursToHHMM(item.hours60)}h</span>
                   </td>
                   <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '90' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'text-slate-800'}`}>
                     {item.count90}
                   </td>
                   <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '90' ? 'bg-indigo-100/30' : ''}`}>
-                    <span className="font-semibold">{formatHoursToHHMM(item.estHours90)}h</span>
-                    <span className="text-caption text-text-muted block">Real: {formatHoursToHHMM(item.actHours90)}h</span>
+                    <span className="font-semibold">{formatHoursToHHMM(item.hours90)}h</span>
                   </td>
                 </tr>
               ))}
               {pastDaysAnalysisByType.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-slate-400 italic">
-                    Nenhum histórico encontrado para esta seleção.
+                  <td colSpan={9} className="py-6 text-center text-slate-400 italic">
+                    Nenhum hist�rico encontrado para esta sele��o.
                   </td>
                 </tr>
               )}
@@ -964,35 +831,41 @@ export function TaskAnalytics({
               Carga de trabalho futura por utilizador
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Identificação prévia de pontos de estrangulamento e sobrecarga na equipa técnica para as próximas semanas.
+              Identifica��o pr�via de pontos de estrangulamento e sobrecarga na equipa t�cnica para as pr�ximas semanas.
             </p>
           </div>
-          <span className="text-xs text-slate-500 font-medium">
-            *Horas distribuídas proporcionalmente por tarefa
-          </span>
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200/80">
+            {(['7', '15', '30'] as const).map(days => (
+              <button
+                key={days}
+                type="button"
+                onClick={() => setWorkloadHorizon(days)}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${workloadHorizon === days ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                {days} Dias
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Chart View */}
         <div className="h-80 w-full mb-6">
-          {isMounted && userWorkloadUpcoming.length > 0 ? (
+          {isMounted && userWorkloadUpcoming.some(u => u[`hours${workloadHorizon}d`] > 0) ? (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={userWorkloadUpcoming} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="userName" tick={{ fontSize: 11, fill: '#64748b' }} interval={0} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} unit="h" />
+              <BarChart data={userWorkloadUpcoming.filter(u => u[`hours${workloadHorizon}d`] > 0)} layout="vertical" margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} unit="h" />
+                <YAxis dataKey="userName" type="category" width={140} tick={{ fontSize: 11, fill: '#64748b' }} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                  formatter={(val: any) => [`${Math.round(val * 10) / 10}h previstas`]}
+                  formatter={(val: any) => [`${formatHoursToHHMM(Number(val))}h`, `Pr�ximos ${workloadHorizon} dias`]}
                 />
-                <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="hours7d" name="Próximos 7 Dias" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="hours15d" name="Próximos 15 Dias" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="hours30d" name="Próximos 30 Dias" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                <Bar dataKey={`hours${workloadHorizon}d`} name={`Pr�ximos ${workloadHorizon} dias`} fill="#10b981" radius={[0, 6, 6, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center text-xs text-slate-400 italic">
-              Sem carga de trabalho agendada para os próximos 30 dias.
+              Sem carga de trabalho agendada para os pr�ximos {workloadHorizon} dias.
             </div>
           )}
         </div>
@@ -1002,12 +875,11 @@ export function TaskAnalytics({
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider">
-                <th className="py-2.5 px-3">Colaborador / Técnico</th>
+                <th className="py-2.5 px-3">Colaborador / T�cnico</th>
                 <th className="py-2.5 px-3 text-center bg-emerald-50/50 text-emerald-800">Horas (7 Dias)</th>
                 <th className="py-2.5 px-3 text-center bg-blue-50/50 text-blue-800">Horas (15 Dias)</th>
                 <th className="py-2.5 px-3 text-center bg-purple-50/50 text-purple-800">Horas (30 Dias)</th>
-                <th className="py-2.5 px-3 text-center">Nº Tarefas Futuras</th>
-                <th className="py-2.5 px-3 text-right">Estado de Carga</th>
+                <th className="py-2.5 px-3 text-center">N� Tarefas Futuras</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1031,17 +903,12 @@ export function TaskAnalytics({
                   <td className="py-3 px-3 text-center font-semibold text-slate-800">
                     {u.tasksCount30d}
                   </td>
-                  <td className="py-3 px-3 text-right">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-caption font-bold border ${u.loadBadge.color}`}>
-                      {u.loadBadge.label}
-                    </span>
-                  </td>
                 </tr>
               ))}
               {userWorkloadUpcoming.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-slate-400 italic">
-                    Nenhuma tarefa agendada nos próximos 30 dias.
+                  <td colSpan={5} className="py-6 text-center text-slate-400 italic">
+                    Nenhuma tarefa agendada nos pr�ximos 30 dias.
                   </td>
                 </tr>
               )}
@@ -1061,7 +928,7 @@ export function TaskAnalytics({
               Horas gastas em projetos ativos
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Análise de esforço em projetos em execução.
+              An�lise de esfor�o em projetos em execu��o.
             </p>
           </div>
           <span className="text-xs font-bold px-3 py-1 bg-purple-50 text-purple-700 rounded-lg self-start sm:self-auto">
@@ -1085,9 +952,7 @@ export function TaskAnalytics({
                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
                   formatter={(val: any) => [`${val}h`]}
                 />
-                <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="estHours" name="Horas Previstas" fill="#93c5fd" radius={[0, 6, 6, 0]} maxBarSize={20} />
-                <Bar dataKey="actHours" name="Horas Gastas" fill="#3b82f6" radius={[0, 6, 6, 0]} maxBarSize={20} />
+                <Bar dataKey="hours" name="Horas" fill="#3b82f6" radius={[0, 6, 6, 0]} maxBarSize={20} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -1103,21 +968,15 @@ export function TaskAnalytics({
             <thead>
               <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider">
                 <th className="py-2.5 px-3">Projeto</th>
-                <th className="py-2.5 px-3">Cliente</th>
-                <th className="py-2.5 px-3 text-center">Tarefas (Abertas / Concluídas)</th>
-                <th className="py-2.5 px-3 text-right">Horas Previstas</th>
-                <th className="py-2.5 px-3 text-right">Horas Gastas</th>
-                <th className="py-2.5 px-3 text-right">Desvio</th>
+                <th className="py-2.5 px-3 text-center">Tarefas (Abertas / Conclu�das)</th>
+                <th className="py-2.5 px-3 text-right">Horas</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {activeProjectsHours.map(p => (
                 <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                   <td className="py-3 px-3 font-bold text-slate-900">
-                    {p.title}
-                  </td>
-                  <td className="py-3 px-3 font-medium text-slate-600">
-                    {p.clientName}
+                    {p.clientName} - {p.title}
                   </td>
                   <td className="py-3 px-3 text-center">
                     <span className="font-semibold text-slate-800">
@@ -1125,27 +984,13 @@ export function TaskAnalytics({
                     </span>
                   </td>
                   <td className="py-3 px-3 text-right font-semibold text-slate-700">
-                    {p.formattedEst}h
-                  </td>
-                  <td className="py-3 px-3 text-right font-bold text-slate-900">
-                    {p.formattedAct}h
-                  </td>
-                  <td className="py-3 px-3 text-right font-bold">
-                    <span className={`inline-flex items-center gap-1 ${
-                      p.deviationHours > 0 
-                        ? 'text-rose-600' 
-                        : p.deviationHours < 0 
-                          ? 'text-emerald-600' 
-                          : 'text-slate-500'
-                    }`}>
-                      {p.formattedDeviation}h ({p.deviationPercentage > 0 ? `+${p.deviationPercentage}` : p.deviationPercentage}%)
-                    </span>
+                    {p.formattedHours}h
                   </td>
                 </tr>
               ))}
               {activeProjectsHours.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-slate-400 italic">
+                  <td colSpan={3} className="py-6 text-center text-slate-400 italic">
                     Sem projetos ativos registados.
                   </td>
                 </tr>
@@ -1155,38 +1000,6 @@ export function TaskAnalytics({
         </div>
       </div>
 
-      {/* ------------------------------------------------------------- */}
-      {/* SECTION 7: DISTRIBUIÇÃO GLOBAL POR ESTADO DE TAREFA */}
-      {/* ------------------------------------------------------------- */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
-        <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 mb-1">
-          <Layers className="w-5 h-5 text-amber-500" />
-          Distribuição Global por Estado no Ciclo de Vida
-        </h3>
-        <p className="text-xs text-slate-500 mb-6">
-          Visão holística de todas as tarefas nos vários estados de progresso configurados.
-        </p>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-          {statusDistribution.map(st => (
-            <div 
-              key={st.name} 
-              className="bg-slate-50/80 rounded-xl p-4 border border-slate-200/80 text-center flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-600 mb-2">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: st.color }} />
-                <span className="truncate">{st.name}</span>
-              </div>
-              <div className="text-xl font-black text-slate-900">
-                {st.count}
-              </div>
-              <div className="text-caption text-text-muted mt-1">
-                {filteredTasks.length > 0 ? Math.round((st.count / filteredTasks.length) * 100) : 0}% do total
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
