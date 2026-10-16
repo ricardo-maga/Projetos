@@ -1,4 +1,3 @@
-Failed to find real location of C:\Python314\python.exe
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
