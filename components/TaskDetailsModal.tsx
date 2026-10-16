@@ -391,6 +391,15 @@ export default function TaskDetailsModal({
       return;
     }
 
+    if (effectiveMode === 'create' && !formTypeId.trim()) {
+      setFormError('O tipo de tarefa é obrigatório.');
+      return;
+    }
+    if (effectiveMode === 'create' && !formStatusId.trim()) {
+      setFormError('O estado da tarefa é obrigatório.');
+      return;
+    }
+
     // Resolve project ID: only assign if formProjectId matches a valid, non-deleted project.
     // If user cleared the selection or typed arbitrary text without selecting, projectId is null.
     let resolvedProjectId: string | null = null;
@@ -572,7 +581,7 @@ export default function TaskDetailsModal({
         {/* Form Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           <div className="space-y-2">
-            <p className="text-label font-bold text-text-primary">Estado da tarefa</p>
+            <p className="text-label font-bold text-text-primary">Estado da tarefa {effectiveMode === 'create' ? '*' : ''}</p>
             <SingleChoice
               label="Estado da tarefa"
               value={taskStatuses.find(s => s.id === formStatusId || matchTaskStatusId(s.id, formStatusId))?.id || formStatusId}
@@ -770,7 +779,7 @@ export default function TaskDetailsModal({
               </div>
             {/* Task type shares the priority row. */}
               <div className="space-y-1">
-                <label htmlFor="task-formTypeId" className="block text-body-sm font-bold text-text-primary">Tipo de tarefa</label>
+                <label htmlFor="task-formTypeId" className="block text-body-sm font-bold text-text-primary">Tipo de tarefa {effectiveMode === 'create' ? '*' : ''}</label>
                 <Select id="task-formTypeId"
                   disabled={isPlanningReadOnly}
                   value={formTypeId}

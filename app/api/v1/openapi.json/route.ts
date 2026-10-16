@@ -36,16 +36,19 @@ export async function GET() {
             id: { type: "string", format: "uuid" },
             title: { type: "string", example: "Instalação de Linha de Produção 3" },
             clientId: { type: "string", format: "uuid" },
+            projectManagerId: { type: "string", format: "uuid", description: "Project Leader" },
+            categoryIds: { type: "array", minItems: 1, items: { type: "string", format: "uuid" } },
             description: { type: "string" },
             statusId: { type: "string", example: "ps-1" },
-            categoryId: { type: "string", example: "pc-1" },
+            categoryId: { type: "string", minLength: 1, example: "pc-1" },
             riskId: { type: "string", example: "pr-1" },
             priorityId: { type: "string", example: "pp-1" },
             demo: { type: "boolean", default: false },
             scheduledDate: { type: "string", format: "date" },
             createdAt: { type: "string", format: "date-time" }
           },
-          required: ["title", "clientId"]
+          required: ["title", "clientId", "projectManagerId"],
+          anyOf: [{ required: ["categoryId"] }, { required: ["categoryIds"] }]
         },
         ProjectMaterial: {
           type: "object",
@@ -77,7 +80,7 @@ export async function GET() {
             estimatedHours: { type: "number", example: 8 },
             estimatedDate: { type: "string", format: "date" }
           },
-          required: ["title", "projectId"]
+          required: ["title", "taskTypeId", "statusId"]
         },
         Client: {
           type: "object",

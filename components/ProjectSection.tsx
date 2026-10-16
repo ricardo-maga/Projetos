@@ -574,6 +574,11 @@ export default function ProjectSection({
       return;
     }
 
+    if (!editingId && (!formTitle.trim() || !clientSearchQuery.trim() || !formProjManager.trim() || formCategories.length === 0)) {
+      alert('Preencha o cliente, o nome do projeto, o Project Leader e selecione pelo menos uma categoria.');
+      return;
+    }
+
     let finalClientId = formClient;
     const trimmedQuery = clientSearchQuery.trim();
 
@@ -3504,7 +3509,7 @@ export default function ProjectSection({
 
             {/* Category */}
             <div className="space-y-1">
-              <label className="block text-text-secondary font-bold">Categorias</label>
+              <label className="block text-text-secondary font-bold">Categorias *</label>
               <div className="border border-border rounded-control p-3 max-h-[120px] overflow-y-auto bg-surface-muted/50 space-y-1.5">
                 {projectCategories.filter(c => !c.deleted).map(c => {
                   const isChecked = formCategories.some(catId => matchId(catId, c.id));

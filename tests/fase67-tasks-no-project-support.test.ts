@@ -7,6 +7,8 @@ describe('FASE 67 — TASKS: Suporte Completo a Tarefas sem Projeto', () => {
   describe('A & B. Criação com e sem Projeto (Schemas & Normalização)', () => {
     it('criação sem projeto aceita explicitamente projectId = null', () => {
       const parsed = createTaskSchema.safeParse({
+        statusId: '99999999-9999-9999-9999-999999999901',
+        taskTypeId: '33333333-3333-3333-3333-333333333304',
         projectId: null,
         title: 'Tarefa Geral de Oficina',
       });
@@ -19,6 +21,8 @@ describe('FASE 67 — TASKS: Suporte Completo a Tarefas sem Projeto', () => {
 
     it('criação sem projeto aceita projectId omitido/undefined e normaliza para null', () => {
       const parsed = createTaskSchema.safeParse({
+        statusId: '99999999-9999-9999-9999-999999999901',
+        taskTypeId: '33333333-3333-3333-3333-333333333304',
         title: 'Verificação Periódica de Ferramentas',
       });
       expect(parsed.success).toBe(true);
@@ -30,6 +34,8 @@ describe('FASE 67 — TASKS: Suporte Completo a Tarefas sem Projeto', () => {
     it('criação com projeto existente preserva o UUID do projeto', () => {
       const projId = '11111111-1111-1111-1111-111111111111';
       const parsed = createTaskSchema.safeParse({
+        statusId: '99999999-9999-9999-9999-999999999901',
+        taskTypeId: '33333333-3333-3333-3333-333333333304',
         projectId: projId,
         title: 'Montagem de Estruturas',
       });
@@ -41,6 +47,8 @@ describe('FASE 67 — TASKS: Suporte Completo a Tarefas sem Projeto', () => {
 
     it('criação com string vazia de projectId normaliza para null', () => {
       const parsed = createTaskSchema.safeParse({
+        statusId: '99999999-9999-9999-9999-999999999901',
+        taskTypeId: '33333333-3333-3333-3333-333333333304',
         projectId: '   ',
         title: 'Limpeza de Bancada',
       });

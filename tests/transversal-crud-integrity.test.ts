@@ -251,6 +251,8 @@ describe('FASE 27 — Integridade CRUD Transversal', () => {
         body: JSON.stringify({
           projectId: validUUIDProject,
           title: 'Tarefa com Falha em Assignees',
+          statusId: '99999999-9999-9999-9999-999999999901',
+          taskTypeId: '33333333-3333-3333-3333-333333333304',
           assignedUserIds: [validUUIDUser],
         }),
       });

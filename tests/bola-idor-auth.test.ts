@@ -100,6 +100,8 @@ describe('FASE 25-B — Auditoria e Correção BOLA/IDOR (Resource Authorization
         body: JSON.stringify({
           projectId: nonExistentProjectId,
           title: 'Nova Tarefa com Projeto Inválido',
+          statusId: '99999999-9999-9999-9999-999999999901',
+          taskTypeId: '33333333-3333-3333-3333-333333333304',
         }),
       });
 

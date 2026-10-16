@@ -845,7 +845,7 @@ export default function UserSection({
                 </div>
 
                 {canManageRoleAssignments ? <fieldset className="md:col-span-2 rounded-xl border border-border bg-surface-muted/50 p-4 space-y-3">
-                  <legend className="px-1 text-sm font-semibold text-text-primary">Funções do novo sistema</legend>
+                  <legend className="px-1 text-sm font-semibold text-text-primary">Funções na aplicação</legend>
                   <p className="text-xs font-normal text-text-secondary">As permissões efetivas são a união das funções selecionadas. A atribuição é auditada.</p>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {rbacRoles.map(role => (

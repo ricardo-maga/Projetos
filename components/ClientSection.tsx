@@ -200,53 +200,53 @@ export default function ClientSection({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1">
-              <Input label="Nome da Empresa / Cliente *"
+              <Input label="Nome do cliente *"
 
                 type="text"
                 required
                 value={formName}
                 onChange={e => setFormName(e.target.value)}
-                placeholder="Ex: Alimentos Gourmet, S.A."
+                placeholder="Ex: Fábrica de metal, S.A."
                 className=""
               />
             </div>
 
             <div className="space-y-1">
-              <Input label="Abreviatura / Nome Curto *"
+              <Input label="Nome Curto *"
 
                 type="text"
                 required
                 value={formShortName}
                 onChange={e => setFormShortName(e.target.value)}
-                placeholder="Ex: AGourmet"
+                placeholder="Ex: Metal SA"
                 className=""
               />
             </div>
 
             <div className="space-y-1">
-              <Input label="NIF / Número Contribuinte (Tax ID)"
+              <Input label="NIF (Tax ID)"
 
                 type="text"
                 value={formTaxId}
                 onChange={e => setFormTaxId(e.target.value)}
-                placeholder="Ex: PT 502948293"
+                placeholder="Ex: PT503768669"
                 className="font-mono"
               />
             </div>
 
             <div className="space-y-1">
-              <Input label="Localização / Morada Principal"
+              <Input label="Localização"
 
                 type="text"
                 value={formLocation}
                 onChange={e => setFormLocation(e.target.value)}
-                placeholder="Ex: Zona Industrial de Aveiro, Lote 4"
+                placeholder="Ex: Maia"
                 className=""
               />
             </div>
 
             <div className="space-y-1">
-              <Input label="Pessoa de Contacto (Gestor de Compras)"
+              <Input label="Pessoa de contacto"
 
                 type="text"
                 value={formContactPerson}
@@ -257,18 +257,18 @@ export default function ClientSection({
             </div>
 
             <div className="space-y-1">
-              <Input label="E-mail de Contacto"
+              <Input label="E-mail de contacto"
 
                 type="email"
                 value={formContactEmail}
                 onChange={e => setFormContactEmail(e.target.value)}
-                placeholder="Ex: compras@agourmet.pt"
+                placeholder="Ex: compras@ametal.pt"
                 className="font-mono"
               />
             </div>
 
             <div className="space-y-1">
-              <Input label="Telemóvel / Telefone Contacto"
+              <Input label="Telefone"
 
                 type="text"
                 value={formContactPhone}
@@ -279,7 +279,7 @@ export default function ClientSection({
             </div>
 
             <div className="space-y-1 md:col-span-2">
-              <Textarea label="Notas / Observações"
+              <Textarea label="Notas"
 
                 rows={3}
                 value={formNotes}
