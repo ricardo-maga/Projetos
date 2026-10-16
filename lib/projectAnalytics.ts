@@ -20,8 +20,10 @@ export function buildProjectAnalytics(projects: Project[], statuses: any[], mate
     return { count: monthly.length, saleValue: monthly.reduce((sum, p) => {
       const value = Number(p.budgetValue);
       return sum + (Number.isFinite(value) ? value : 0);
-    }, 0) };
+    }, 0), projects: monthly };
   };
+  const fiscalYear = now.getFullYear() - (now.getMonth() < 3 ? 1 : 0);
+  const fiscalProjects = (year: number) => all.filter(p => date(p.startDate) >= `${year}-04-01` && date(p.startDate) < `${year + 1}-04-01`);
   const missing = new Set(materials.filter(m => !m.deleted && !['em_stock', 'em_armazem'].includes(m.status) &&
     (m.status === 'por_encomendar' || Boolean(date(m.expectedDeliveryDate) && date(m.expectedDeliveryDate) < today))).map(m => m.projectId));
   const group = (ids: (string | undefined)[]) => Object.entries(ids.reduce<Record<string, number>>((acc, id) => { const key = id || ''; acc[key] = (acc[key] || 0) + 1; return acc; }, {}))
@@ -30,5 +32,8 @@ export function buildProjectAnalytics(projects: Project[], statuses: any[], mate
     currentMonth: all.filter(p => referenceDate(p).startsWith(month(0))), nextMonth: all.filter(p => referenceDate(p).startsWith(month(1))),
     missing: all.filter(p => missing.has(p.id)), categories: group(scoped.flatMap(p => [...new Set(p.categoryIds?.length ? p.categoryIds : [p.categoryId])])),
     managers: group(activeProjects.map(p => p.projectManagerId)), sales: group(scoped.map(p => p.salesRepId)),
-    awardedCurrentMonth: awarded(0), awardedPreviousMonth: awarded(-1), month };
+    awardedCurrentMonth: awarded(0), awardedPreviousMonth: awarded(-1),
+    fiscalCurrent: { year: fiscalYear, projects: fiscalProjects(fiscalYear) },
+    fiscalPrevious: { year: fiscalYear - 1, projects: fiscalProjects(fiscalYear - 1) }, month };
 }
+
