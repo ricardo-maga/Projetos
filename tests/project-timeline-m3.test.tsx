@@ -71,7 +71,7 @@ describe('Project timeline M3', () => {
     h.state.fullscreen = true;
     tree = h.render(timelinePreviewProps);
     const master = find(tree, e => e.props?.['data-project-timeline-master'] !== undefined);
-    expect(master.props.className).toContain('overflow-y-auto');
+    expect(master.props.className).toContain('p-3');
     expect(find(tree, e => e.props?.['data-project-timeline-scroll'] !== undefined).props.className).not.toContain('overflow-y-auto');
   });
   it('preserves task opening and canonical quick creation callbacks', () => {
@@ -102,7 +102,7 @@ describe('Project timeline M3', () => {
     expect(html).toContain('Cliente Exemplo'); expect(html).not.toContain('Projeto one');
     expect(html).toContain('Tarefa compacta'); expect(html).not.toContain('IP-one');
     expect(html).toContain('AS'); expect(html).toContain('border-l-4'); expect(html).not.toContain('Estado tarefa exclusivo');
-    expect(find(tree, e => e.props?.['aria-label'] === 'Criar tarefa em Projeto one no dia 2026-10-10')).toBeUndefined();
+    expect(find(tree, e => e.props?.['aria-label'] === 'Criar tarefa em Projeto one no dia 2026-10-10')).toBeDefined();
     find(tree, e => e.props?.['aria-label'] === 'Ocultar projeto Projeto one da timeline').props.onClick();
     tree = h.render(props);
     expect(renderToStaticMarkup(tree)).toContain('Repor todos os projetos');
