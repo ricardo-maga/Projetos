@@ -218,7 +218,7 @@ export function TaskAnalytics({
   }, [filteredTasks, getTaskScale, taskTypes, taskHours]);
 
   // -------------------------------------------------------------
-  // 3 & 4. N�MERO E HORAS DE TAREFAS DOS �LTIMOS 30, 60, 90 DIAS POR TIPO
+  // 3 & 4. NÚMERO E HORAS DE TAREFAS DOS ÚLTIMOS 30, 60, 90 DIAS POR TIPO
   // -------------------------------------------------------------
   const pastDaysAnalysisByType = useMemo(() => {
     const typeMap: Record<string, {
@@ -344,7 +344,7 @@ export function TaskAnalytics({
 
     userMap['unassigned'] = {
       userId: 'unassigned',
-      userName: 'Sem Respons�vel',
+      userName: 'Sem Responsável',
       roleId: '',
       hours7d: 0,
       hours15d: 0,
@@ -446,13 +446,13 @@ export function TaskAnalytics({
           <div>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
               <Sparkles className="w-4 h-4 text-blue-500" />
-              Painel de Intelig�ncia de Projetos
+              Painel de Inteligência de Projetos
             </div>
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-              An�lise Avan�ada de Tarefas & Aloca��o de Equipas
+              Análise Avançada de Tarefas & Alocação de Equipas
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              M�tricas consolidadas de tarefas em aberto, evolu��o temporal, carga de trabalho futura e rentabilidade de horas por projeto.
+              Métricas consolidadas de tarefas em aberto, evolução temporal, carga de trabalho futura e rentabilidade de horas por projeto.
             </p>
           </div>
 
@@ -517,14 +517,14 @@ export function TaskAnalytics({
             </span>
           </div>
           <div className="mt-3 text-xs text-slate-600 flex items-center justify-between font-medium pt-2 border-t border-slate-100">
-            <span>Requer aten��o r�pida</span>
+            <span>Requer atenção rápida</span>
             <span className="text-caption font-bold text-amber-600">
               {kpis.totalOpen > 0 ? Math.round((kpis.overdueCount / kpis.totalOpen) * 100) : 0}% das abertas
             </span>
           </div>
         </div>
 
-        {/* KPI 3: Horas dos �ltimos 30 dias */}
+        {/* KPI 3: Horas dos últimos 30 dias */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-emerald-300 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -544,11 +544,11 @@ export function TaskAnalytics({
           </div>
         </div>
 
-        {/* KPI 4: Taxa de Conclus�o */}
+        {/* KPI 4: Taxa de Conclusão */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-purple-300 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Taxa de Conclus�o
+              Taxa de Conclusão
             </span>
             <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
               <CheckCircle2 className="w-4 h-4" />
@@ -582,7 +582,7 @@ export function TaskAnalytics({
               Tarefas em aberto por tipo de tarefa
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Distribui��o das tarefas abertas e respetivas horas por tipologia.
+              Distribuição das tarefas abertas e respetivas horas por tipologia.
             </p>
           </div>
           <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-700 rounded-lg self-start sm:self-auto">
@@ -681,7 +681,7 @@ export function TaskAnalytics({
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* SECTION 3 & 4: HIST�RICO 30, 60, 90 DIAS POR TIPO */}
+      {/* SECTION 3 & 4: HISTÓRICO 30, 60, 90 DIAS POR TIPO */}
       {/* ------------------------------------------------------------- */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
@@ -691,7 +691,7 @@ export function TaskAnalytics({
               Horas gastas por tipo de tarefa
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Tarefas criadas e horas acumuladas em cada per�odo.
+              Tarefas criadas e horas acumuladas em cada período.
             </p>
           </div>
 
@@ -755,7 +755,7 @@ export function TaskAnalytics({
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center text-xs text-slate-400 italic">
-              Sem registos hist�ricos para o per�odo selecionado.
+              Sem registos históricos para o período selecionado.
             </div>
           )}
         </div>
@@ -811,7 +811,7 @@ export function TaskAnalytics({
               {pastDaysAnalysisByType.length === 0 && (
                 <tr>
                   <td colSpan={9} className="py-6 text-center text-slate-400 italic">
-                    Nenhum hist�rico encontrado para esta sele��o.
+                    Nenhum histórico encontrado para esta seleção.
                   </td>
                 </tr>
               )}
@@ -831,7 +831,7 @@ export function TaskAnalytics({
               Carga de trabalho futura por utilizador
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Identifica��o pr�via de pontos de estrangulamento e sobrecarga na equipa t�cnica para as pr�ximas semanas.
+              Identificação prévia de pontos de estrangulamento e sobrecarga na equipa técnica para as próximas semanas.
             </p>
           </div>
           <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200/80">
@@ -858,14 +858,14 @@ export function TaskAnalytics({
                 <YAxis dataKey="userName" type="category" width={140} tick={{ fontSize: 11, fill: '#64748b' }} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                  formatter={(val: any) => [`${formatHoursToHHMM(Number(val))}h`, `Pr�ximos ${workloadHorizon} dias`]}
+                  formatter={(val: any) => [`${formatHoursToHHMM(Number(val))}h`, `Próximos ${workloadHorizon} dias`]}
                 />
-                <Bar dataKey={`hours${workloadHorizon}d`} name={`Pr�ximos ${workloadHorizon} dias`} fill="#10b981" radius={[0, 6, 6, 0]} maxBarSize={28} />
+                <Bar dataKey={`hours${workloadHorizon}d`} name={`Próximos ${workloadHorizon} dias`} fill="#10b981" radius={[0, 6, 6, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center text-xs text-slate-400 italic">
-              Sem carga de trabalho agendada para os pr�ximos {workloadHorizon} dias.
+              Sem carga de trabalho agendada para os próximos {workloadHorizon} dias.
             </div>
           )}
         </div>
@@ -875,11 +875,11 @@ export function TaskAnalytics({
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider">
-                <th className="py-2.5 px-3">Colaborador / T�cnico</th>
+                <th className="py-2.5 px-3">Colaborador / Técnico</th>
                 <th className="py-2.5 px-3 text-center bg-emerald-50/50 text-emerald-800">Horas (7 Dias)</th>
                 <th className="py-2.5 px-3 text-center bg-blue-50/50 text-blue-800">Horas (15 Dias)</th>
                 <th className="py-2.5 px-3 text-center bg-purple-50/50 text-purple-800">Horas (30 Dias)</th>
-                <th className="py-2.5 px-3 text-center">N� Tarefas Futuras</th>
+                <th className="py-2.5 px-3 text-center">Nº Tarefas Futuras</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -908,7 +908,7 @@ export function TaskAnalytics({
               {userWorkloadUpcoming.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-6 text-center text-slate-400 italic">
-                    Nenhuma tarefa agendada nos pr�ximos 30 dias.
+                    Nenhuma tarefa agendada nos próximos 30 dias.
                   </td>
                 </tr>
               )}
@@ -928,7 +928,7 @@ export function TaskAnalytics({
               Horas gastas em projetos ativos
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              An�lise de esfor�o em projetos em execu��o.
+              Análise de esforço em projetos em execução.
             </p>
           </div>
           <span className="text-xs font-bold px-3 py-1 bg-purple-50 text-purple-700 rounded-lg self-start sm:self-auto">
@@ -968,7 +968,7 @@ export function TaskAnalytics({
             <thead>
               <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider">
                 <th className="py-2.5 px-3">Projeto</th>
-                <th className="py-2.5 px-3 text-center">Tarefas (Abertas / Conclu�das)</th>
+                <th className="py-2.5 px-3 text-center">Tarefas (Abertas / Concluídas)</th>
                 <th className="py-2.5 px-3 text-right">Horas</th>
               </tr>
             </thead>
