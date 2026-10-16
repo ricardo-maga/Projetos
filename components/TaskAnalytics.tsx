@@ -703,14 +703,14 @@ export function TaskAnalytics({
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <PieIcon className="w-5 h-5 text-blue-600" />
-              Tarefas em Aberto por Tipo de Tarefa (Estado = 1 ou 2)
+              Tarefas em aberto por tipo de tarefa
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
               Distribuição do volume e horas estimadas das tarefas pendentes e em curso por tipologia.
             </p>
           </div>
           <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-700 rounded-lg self-start sm:self-auto">
-            Total Abertas: {kpis.totalOpen}
+            Tarefas abertas: {kpis.totalOpen}
           </span>
         </div>
 
@@ -816,10 +816,10 @@ export function TaskAnalytics({
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <BarChart2 className="w-5 h-5 text-indigo-600" />
-              Volume e Horas dos Últimos 30, 60 e 90 Dias por Tipo
+              Horas gastas por tipo de tarefa
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Comparativo de tarefas criadas e esforço em horas acumulado em janelas temporais retrospetivas.
+              Comparativo de tarefas criadas e esforço em horas acumulado em janelas temporais
             </p>
           </div>
 
