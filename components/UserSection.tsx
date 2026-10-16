@@ -33,6 +33,7 @@ interface UserSectionProps {
   deleteUser: (id: string) => void;
   hideAbsences?: boolean;
   hideUsers?: boolean;
+  hideRoles?: boolean;
   specialDays?: SpecialDay[];
   currentUser?: any;
   appConfig?: AppConfiguration;
@@ -51,6 +52,7 @@ export default function UserSection({
   deleteUser,
   hideAbsences = false,
   hideUsers = false,
+  hideRoles = false,
   specialDays = [],
   currentUser,
   appConfig,
@@ -447,7 +449,7 @@ export default function UserSection({
   const managementTabs: Array<{ value: 'absences' | 'users' | 'roles'; label: string }> = [
     ...(!hideAbsences ? [{ value: 'absences' as const, label: 'Ausências' }] : []),
     ...(!hideUsers ? [{ value: 'users' as const, label: 'Utilizadores' }] : []),
-    ...(canReadRoleAdmin ? [{ value: 'roles' as const, label: 'Funções e permissões' }] : []),
+    ...(canReadRoleAdmin && !hideRoles ? [{ value: 'roles' as const, label: 'Funções e permissões' }] : []),
   ];
 
   return (

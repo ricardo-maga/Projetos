@@ -41,6 +41,7 @@ import {
 } from '../lib/supabaseSync';
 // import Papa from 'papaparse';
 import UserSection from './UserSection';
+import RolePermissionSection from './RolePermissionSection';
 import { useAsyncAction } from '../hooks/useAsyncAction';
 import Tabs from './ui/Tabs';
 import Card from './ui/Card';
@@ -393,7 +394,7 @@ export default function ConfigSection({
   }
 
   const activeConfigTab = activeConfigTabProp || 'sistema';
-  const [usersConfigTab, setUsersConfigTab] = useState<'users' | 'associacoes'>('users');
+  const [usersConfigTab, setUsersConfigTab] = useState<'users' | 'roles' | 'associacoes'>('users');
   const [notificationTab, setNotificationTab] = useState<'notificacoes' | 'automacoes'>(activeConfigTab === 'automacoes' ? 'automacoes' : 'notificacoes');
   useEffect(() => {
     if (activeConfigTab === 'automacoes') setNotificationTab('automacoes');
@@ -2142,11 +2143,17 @@ export default function ConfigSection({
           <Tabs
             tabs={[
               { id: 'users', label: 'Utilizadores', icon: <Users className="w-4 h-4" /> },
+              ...(hasPermission(currentUser, 'roles_manage' as any, userGroups)
+                ? [{ id: 'roles', label: 'Funções e permissões', icon: <ShieldCheck className="w-4 h-4" /> }]
+                : []),
               { id: 'associacoes', label: 'Associação de grupos', icon: <GripVertical className="w-4 h-4" /> },
             ]}
             activeTabId={usersConfigTab}
-            onChange={tab => setUsersConfigTab(tab as 'users' | 'associacoes')}
+            onChange={tab => setUsersConfigTab(tab as 'users' | 'roles' | 'associacoes')}
           />
+          {usersConfigTab === 'roles' && hasPermission(currentUser, 'roles_manage' as any, userGroups) && (
+            <RolePermissionSection onRolesChanged={onRefreshFromDatabase} />
+          )}
       {/* ASSOCIAÇÃO DE GRUPOS, NO SUBMENU UTILIZADORES */}
       {activeConfigTab === 'utilizadores' && usersConfigTab === 'associacoes' && (
         <form onSubmit={handleSaveAssociations} className="space-y-4">
@@ -2315,6 +2322,7 @@ export default function ConfigSection({
               updateUser={updateUser!}
               deleteUser={deleteUser!}
               hideAbsences={true}
+              hideRoles={true}
               specialDays={state.specialDays || []}
               currentUser={currentUser}
             />
