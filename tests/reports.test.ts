@@ -18,9 +18,9 @@ describe('Reports catalog', () => {
     ] }));
     expect(report.details.map((row: any) => row.id)).toEqual(['late']);
   });
-  it('identifies only open overdue tasks with task priority level 3', () => {
-    const report: any = buildReport('critical-overdue-tasks', input({ tasks: [task(), task({ id: 'not-critical', priorityId: undefined }), task({ id: 'done', statusId: 'done' }), task({ id: 'undated', estimatedDate: '' })], taskStatuses: [{ id: 'open', scale: 1 }, { id: 'done', scale: 3 }] }));
-    expect(report.details.map((row: any) => row.id)).toEqual(['t1']);
+  it('identifies critical tasks in status levels 1 or 2 regardless of date', () => {
+    const report: any = buildReport('critical-overdue-tasks', input({ tasks: [task(), task({ id: 'not-critical', priorityId: undefined }), task({ id: 'done', statusId: 'done' }), task({ id: 'undated', estimatedDate: '' }), task({ id: 'future', estimatedDate: '2026-10-20', statusId: 'in-progress' })], taskStatuses: [{ id: 'open', scale: 1 }, { id: 'in-progress', scale: 2 }, { id: 'done', scale: 3 }] }));
+    expect(report.details.map((row: any) => row.id)).toEqual(['t1', 'undated', 'future']);
   });
   it('includes all scheduled months and task dates without a shared date range', () => {
     const deliveries: any = buildReport('scheduled-deliveries', input({ projects: [project, { ...project, id: 'p2', scheduledDate: '2025-01-03' }] }));
