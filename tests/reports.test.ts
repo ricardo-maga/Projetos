@@ -18,8 +18,8 @@ describe('Reports catalog', () => {
     ] }));
     expect(report.details.map((row: any) => row.id)).toEqual(['late']);
   });
-  it('keeps only the two requested reports', () => {
-    expect(REPORT_CATALOG.map(item => item.id)).toEqual(['overdue-materials', 'critical-open-tasks']);
+  it('lists the available reports', () => {
+    expect(REPORT_CATALOG.map(item => item.id)).toEqual(['overdue-materials', 'critical-open-tasks', 'unallocated-tasks']);
   });
   it('includes critical open tasks with or without a project or date', () => {
     const report = buildReport('critical-open-tasks', input({
@@ -32,4 +32,17 @@ describe('Reports catalog', () => {
   it('returns no critical tasks when their priority has not been assigned', () => {
     expect(buildReport('critical-open-tasks', input({ tasks: [task({ priorityId: undefined })] })).total).toBe(0);
   });
+  it('lists open tasks missing an assignee or a planned date and identifies the missing data', () => {
+    const report = buildReport('unallocated-tasks', input({
+      taskStatuses: [{ id: 'open', scale: 1 }, { id: 'in-progress', scale: 2 }, { id: 'done', scale: 3 }],
+      tasks: [task(), task({ id: 'no-assignee', assigneeIds: [] }), task({ id: 'no-date', statusId: 'in-progress', estimatedDate: '', startDate: '2026-10-01' }), task({ id: 'both', assigneeIds: [], estimatedDate: '' }), task({ id: 'done', statusId: 'done', assigneeIds: [] }), task({ id: 'deleted', deleted: true, assigneeIds: [] })],
+    }));
+    expect(report.details.map(row => [row.id, row.value])).toEqual([
+      ['no-assignee', 'Sem responsável'],
+      ['no-date', 'Sem data prevista'],
+      ['both', 'Sem responsável · Sem data prevista'],
+    ]);
+    expect(report.details.find(row => row.id === 'no-date')?.date).toBe('');
+  });
 });
+
