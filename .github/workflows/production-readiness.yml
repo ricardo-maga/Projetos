@@ -26,6 +26,7 @@ jobs:
       - run: bun install --no-save
       - run: bun run typecheck:app
       - run: bun run test:security
+      - run: bun test tests/task-priority-transport.test.ts
 
   production-security-e2e:
     needs: security-and-types
