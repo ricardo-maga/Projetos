@@ -29,6 +29,37 @@ import { getAuthHeaders } from '../lib/clientAuth';
 import { normalizeTaskFromApiResponse } from '../lib/taskOperations';
 import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours, getProjectStatusStyle, getTaskStatusStyle } from '../lib/utils';
 import { configuredRoleIds, userHasAnyRole } from '../lib/roleAssociations';
+import { forecastLabel, forecastMonth, normalizeForecast, projectForecastAlert } from '../lib/projectForecast';
+
+function ForecastBadge({ project, statuses, canEdit, updateProject, compact = false }: {
+  project: Project; statuses: any[]; canEdit: boolean; updateProject?: (id: string, updates: any) => Promise<unknown>; compact?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const alert = projectForecastAlert(project, statuses);
+  const tone = project.forecastDate ? alert === 'overdue' ? 'bg-error text-white border-error' : 'bg-fuchsia-600 text-white border-fuchsia-700' : 'bg-surface-muted text-text-secondary border-border';
+  const alertTitle = alert === 'overdue' ? 'Forecast em atraso' : alert === 'current' ? 'Instalar este mês' : alert === 'next' ? 'Instalar no mês seguinte' : '';
+  const save = async () => {
+    if (!updateProject || saving) return;
+    const next = draft ? normalizeForecast(draft) : '';
+    if (next === (project.forecastDate || '')) { setEditing(false); return; }
+    setSaving(true);
+    try { await updateProject(project.id, { forecastDate: next }); setEditing(false); }
+    catch { /* The project action reports the error and keeps the stored value. */ }
+    finally { setSaving(false); }
+  };
+  if (editing) return <span className="inline-flex items-center gap-1" onClick={event => event.stopPropagation()}>
+    <input type="month" aria-label="Mês do Forecast" value={draft} disabled={saving} onChange={event => setDraft(event.target.value)} className="rounded-control border border-border bg-surface text-text-primary px-1 py-0.5 text-caption" />
+    <button type="button" aria-label="Guardar Forecast" disabled={saving} onClick={() => void save()} className="text-primary font-bold">✓</button>
+    <button type="button" aria-label="Cancelar edição do Forecast" disabled={saving} onClick={() => setEditing(false)} className="text-text-secondary">×</button>
+  </span>;
+  return <button type="button" disabled={!canEdit || saving} title={[alertTitle, canEdit ? 'Clique para alterar o Forecast' : ''].filter(Boolean).join(' · ') || undefined}
+    onClick={event => { event.stopPropagation(); setDraft(forecastMonth(project.forecastDate)); setEditing(true); }}
+    className={`inline-flex items-center rounded-control border font-bold ${compact ? 'px-1.5 py-0.5 text-caption' : 'px-3 py-1.5 text-body-sm'} ${tone} ${canEdit ? 'cursor-pointer hover:brightness-110' : ''}`}>
+    {forecastLabel(project.forecastDate)}
+  </button>;
+}
 
 function EditableProjectDate({ label, value, field, projectId, disabled, updateProject }: {
   label: string;
@@ -313,6 +344,7 @@ export default function ProjectSection({
   const [formDeliveryDate, setFormDeliveryDate] = useState('');
   const [formEstimatedDate, setFormEstimatedDate] = useState('');
   const [formScheduledDate, setFormScheduledDate] = useState('');
+  const [formForecastDate, setFormForecastDate] = useState('');
   const [formInstallNo, setFormInstallNo] = useState('');
   const [formSFNo, setFormSFNo] = useState('');
   const [formPriority, setFormPriority] = useState('');
@@ -570,6 +602,7 @@ export default function ProjectSection({
       setFormDeliveryDate(proj.deliveryDate);
       setFormEstimatedDate(proj.estimatedDate);
       setFormScheduledDate(proj.scheduledDate);
+      setFormForecastDate(forecastMonth(proj.forecastDate));
       setFormInstallNo(proj.installProjectNo);
       setFormSFNo(proj.sfOpportunityNo);
       const matchingPrio = projectPriorities.find(p => matchId(p.id, proj.priorityId))?.id || proj.priorityId || '';
@@ -599,6 +632,7 @@ export default function ProjectSection({
       setFormDeliveryDate('');
       setFormEstimatedDate('');
       setFormScheduledDate('');
+      setFormForecastDate('');
       setFormInstallNo('');
       setFormSFNo('');
       const defaultPrio = projectPriorities.find(p => !p.deleted)?.id || '';
@@ -701,6 +735,7 @@ export default function ProjectSection({
       deliveryDate: formDeliveryDate,
       estimatedDate: formEstimatedDate,
       scheduledDate: formScheduledDate,
+      forecastDate: formForecastDate ? normalizeForecast(formForecastDate) : '',
       installProjectNo: formInstallNo,
       sfOpportunityNo: formSFNo,
       priorityId: formPriority,
@@ -1519,6 +1554,7 @@ export default function ProjectSection({
               <span className="text-body-sm font-bold uppercase px-3 py-1.5 rounded-control bg-surface-muted text-text-secondary border border-border">
                 Prioridade: {getPriorityName(selectedProj.priorityId)}
               </span>
+              <ForecastBadge project={selectedProj} statuses={projectStatuses} canEdit={canWriteProjects} updateProject={updateProject} />
             </div>
           </div>
 
@@ -3794,6 +3830,13 @@ export default function ProjectSection({
               />
             </div>
 
+            <div className="space-y-1">
+              <label className="block text-text-secondary">Forecast da instalação (mês e ano)</label>
+              <Input aria-label="Forecast da instalação" type="month" value={formForecastDate}
+                onChange={e => setFormForecastDate(e.target.value)}
+                className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary" />
+            </div>
+
             {/* Client Contact Details */}
             <div className="space-y-4 md:col-span-2 p-4 bg-surface-muted border border-border rounded-control">
               <h3 className="font-bold text-text-primary flex items-center gap-2">
@@ -4078,7 +4121,7 @@ export default function ProjectSection({
                               <span className="w-1.5 h-7 bg-error rounded-full shrink-0" title="Risco Crítico do Projeto" />
                             )}
                             <div>
-                              <div className="text-body-sm text-primary font-medium">{getClientName(proj.clientId)}</div>
+                              <div className="text-body-sm text-primary font-medium flex items-center gap-1.5 flex-wrap">{getClientName(proj.clientId)} <ForecastBadge project={proj} statuses={projectStatuses} canEdit={canWriteProjects} updateProject={updateProject} compact /></div>
                               <Button type="button" variant="ghost" size="sm" className="h-auto min-h-9 px-0 text-body text-left justify-start whitespace-normal text-text-primary"
                                 aria-label={`Abrir projeto ${proj.title}`}
                                 onClick={event => { event.stopPropagation(); setSelectedProjectId(proj.id); }}>

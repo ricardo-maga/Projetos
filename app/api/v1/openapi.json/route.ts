@@ -45,6 +45,7 @@ export async function GET() {
             priorityId: { type: "string", example: "pp-1" },
             demo: { type: "boolean", default: false },
             scheduledDate: { type: "string", format: "date" },
+            forecastDate: { type: "string", format: "date", description: "Mês de início da instalação, representado pelo primeiro dia do mês; vazio quando não definido" },
             createdAt: { type: "string", format: "date-time" }
           },
           required: ["title", "clientId", "projectManagerId"],

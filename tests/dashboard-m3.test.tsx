@@ -8,6 +8,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { M3Button } from '../components/M3';
 import { hasFilledButtonBackground } from '../components/ui/buttonAppearance';
 import { getProjectStatusStyle } from '../lib/utils';
+import { currentForecastMonth } from '../lib/projectForecast';
 
 const props: React.ComponentProps<typeof Dashboard> = {
   projects: [], tasks: [], absences: [], projectMaterials: [], comments: [],
@@ -16,6 +17,19 @@ const props: React.ComponentProps<typeof Dashboard> = {
 };
 
 describe('Dashboard M3 presentation', () => {
+  it('lists only projects forecast for the selected month before installation', () => {
+    const month = currentForecastMonth();
+    const items = [
+      { id: 'pending', title: 'Projeto para instalar', statusId: 'preparation', forecastDate: `${month}-01`, deleted: false },
+      { id: 'installed', title: 'Projeto já iniciado', statusId: 'installation', forecastDate: `${month}-01`, deleted: false },
+    ];
+    const html = renderToStaticMarkup(<Dashboard {...props} projects={items as typeof props.projects}
+      projectStatuses={[{ id: 'preparation', scale: 3 }, { id: 'installation', scale: 4 }]} />);
+    const forecastPanel = html.split('Projetos Ativos')[0];
+    expect(forecastPanel).toContain('Projeto para instalar');
+    expect(forecastPanel).not.toContain('Projeto já iniciado');
+  });
+
   it('renders Foundation cards, readable sections and accessible search without data', () => {
     const html = renderToStaticMarkup(<Dashboard {...props} />);
     expect(html).toContain('m3-dashboard');
@@ -26,7 +40,11 @@ describe('Dashboard M3 presentation', () => {
     expect(html).toContain('Nenhum projeto ativo registado.');
     expect(html).toContain('Nenhuma ausência registada.');
     expect(html).not.toContain('bg-slate-900');
-    expect(html.match(/rounded-card/g)).toHaveLength(9);
+    expect(html.match(/rounded-card/g)).toHaveLength(10);
+    expect(html).toContain('Projetos em Forecast');
+    expect(html).toContain('Mês anterior');
+    expect(html).toContain('Mês atual');
+    expect(html).toContain('Mês seguinte');
     expect(html).toContain('Tarefas abertas');
     expect(html).toContain('sm:grid-cols-2 xl:grid-cols-4');
   });

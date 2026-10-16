@@ -13,6 +13,7 @@ import { Project, Task, Comment, UserAbsence, Client, ProjectMaterial, ProjectRi
 import { Briefcase, CheckSquare, Users, MessageSquare, CalendarClock, ChevronLeft, ChevronRight, AlertTriangle, Package, CheckCircle2, Clock, BarChart2, Search } from 'lucide-react';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getProjectCalculatedRisk, matchTaskStatusId, parseTimeToHours, getProjectStatusStyle } from '../lib/utils';
+import { currentForecastMonth, forecastMonth, offsetForecastMonth, projectForecastAlert } from '../lib/projectForecast';
 
 interface BentoDashboardProps {
   projects: Project[];
@@ -50,6 +51,18 @@ export default function BentoDashboard({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [projectSearchQuery, setProjectSearchQuery] = useState<string>('');
   const [workloadPage, setWorkloadPage] = useState<number>(1);
+  const [forecastOffset, setForecastOffset] = useState(0);
+  const [forecastToday, setForecastToday] = useState(() => new Date());
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setForecastToday(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const forecastCurrentMonth = currentForecastMonth(forecastToday);
+  const forecastSelectedMonth = offsetForecastMonth(forecastCurrentMonth, forecastOffset);
+  const forecastProjects = useMemo(() => projects.filter(project =>
+    !project.deleted && forecastMonth(project.forecastDate) === forecastSelectedMonth &&
+    projectForecastAlert(project, projectStatuses, forecastToday) !== null
+  ).sort((a, b) => a.title.localeCompare(b.title, 'pt-PT')), [projects, projectStatuses, forecastSelectedMonth, forecastToday]);
 
   // Robust ID normalization matcher for legacy, short, or standard UUID formats
   const matchId = (idA: string | null | undefined, idB: string | null | undefined) => {
@@ -352,6 +365,28 @@ export default function BentoDashboard({
         <MetricCard title={`Projetos ${summary.nextMonthName}`} value={summary.nextMonthProjects} />
         <MetricCard title="Tarefas abertas" value={summary.openTasks} />
       </div>
+
+      <Card className="md:col-span-12 flex flex-col overflow-hidden" aria-label="Projetos em Forecast">
+        <div className="p-4 sm:p-5 border-b border-border/80 flex flex-wrap items-center justify-between gap-3 bg-surface-muted/60">
+          <h2 className="text-heading-sm text-text-primary flex items-center gap-2"><CalendarClock className="w-5 h-5 text-fuchsia-600" />Projetos em Forecast</h2>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar mês do Forecast">
+            {([-1, 0, 1] as const).map(offset => {
+              const month = offsetForecastMonth(forecastCurrentMonth, offset);
+              const shortMonth = new Intl.DateTimeFormat('pt-PT', { month: 'short', timeZone: 'UTC' }).format(new Date(`${month}-01T00:00:00Z`)).replace('.', '').toUpperCase();
+              const label = offset === -1 ? 'Mês anterior' : offset === 0 ? 'Mês atual' : 'Mês seguinte';
+              return <Button key={offset} type="button" variant={forecastOffset === offset ? 'primary' : 'outline'} size="sm"
+                aria-pressed={forecastOffset === offset} onClick={() => setForecastOffset(offset)}>{label} ({shortMonth})</Button>;
+            })}
+          </div>
+        </div>
+        <div className="divide-y divide-border-subtle">
+          {forecastProjects.length === 0 ? <p className="p-5 text-body-sm text-text-muted">Sem projetos em Forecast neste mês.</p> :
+            forecastProjects.map(project => <Button key={project.id} variant="ghost" type="button" onClick={() => onSelectProject(project.id)}
+              className="w-full justify-start rounded-none px-5 py-3 text-left text-body-sm font-semibold text-text-primary hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary">
+              {project.title}
+            </Button>)}
+        </div>
+      </Card>
 
       {/* 1. Full-Width Box: Sorted Active Project Pipeline */}
       <Card className="md:col-span-12 flex flex-col overflow-hidden">

@@ -436,6 +436,7 @@ export function useERP() {
       deliveryDate: project.deliveryDate || undefined,
       estimatedDate: project.estimatedDate || undefined,
       scheduledDate: project.scheduledDate || undefined,
+      forecastDate: project.forecastDate || undefined,
       completedDate: (project as any).completedDate || undefined,
       budgetValue: Number(project.budgetValue || 0),
       isUrgent: Boolean((project as any).isUrgent),
@@ -571,6 +572,7 @@ export function useERP() {
     if (updates.deliveryDate !== undefined) patchPayload.deliveryDate = updates.deliveryDate;
     if (updates.estimatedDate !== undefined) patchPayload.estimatedDate = updates.estimatedDate;
     if (updates.scheduledDate !== undefined) patchPayload.scheduledDate = updates.scheduledDate;
+    if (updates.forecastDate !== undefined) patchPayload.forecastDate = updates.forecastDate;
     if ((updates as any).completedDate !== undefined) patchPayload.completedDate = (updates as any).completedDate;
     if (updates.budgetValue !== undefined) patchPayload.budgetValue = Number(updates.budgetValue || 0);
     if ((updates as any).isUrgent !== undefined) patchPayload.isUrgent = (updates as any).isUrgent;
@@ -671,6 +673,7 @@ export function useERP() {
             deliveryDate: serverProj.deliveryDate || '',
             estimatedDate: serverProj.estimatedDate || '',
             scheduledDate: serverProj.scheduledDate || '',
+            forecastDate: serverProj.forecastDate || '',
             budgetValue: typeof serverProj.budgetValue === 'number' ? serverProj.budgetValue : 0,
             demo: Boolean(serverProj.demo),
             documents: Array.isArray(serverProj.documents) ? serverProj.documents : [],

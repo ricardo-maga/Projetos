@@ -14,6 +14,7 @@ export interface Project {
   deliveryDate: string;
   estimatedDate: string;
   scheduledDate: string;
+  forecastDate?: string;
   installProjectNo: string;
   sfOpportunityNo: string;
   riskId?: string; // Relation: Project risk table (legacy/optional)
