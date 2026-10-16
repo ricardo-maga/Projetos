@@ -30,6 +30,62 @@ import { normalizeTaskFromApiResponse } from '../lib/taskOperations';
 import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours, getProjectStatusStyle, getTaskStatusStyle } from '../lib/utils';
 import { configuredRoleIds, userHasAnyRole } from '../lib/roleAssociations';
 
+function EditableProjectDate({ label, value, field, projectId, disabled, updateProject }: {
+  label: string;
+  value: string | undefined;
+  field: 'estimatedDate' | 'scheduledDate';
+  projectId: string;
+  disabled: boolean;
+  updateProject: (id: string, updates: any) => Promise<unknown>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const saveInFlight = React.useRef(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!editing) return;
+    inputRef.current?.focus();
+    try { inputRef.current?.showPicker(); } catch { /* The input stays available if the browser blocks the picker. */ }
+  }, [editing]);
+
+  const save = async (nextDate: string) => {
+    if (saveInFlight.current) return;
+    if (nextDate === (value || '')) {
+      setEditing(false);
+      return;
+    }
+    saveInFlight.current = true;
+    setSaving(true);
+    try {
+      await updateProject(projectId, { [field]: nextDate });
+    } catch {
+      // updateProject reports the API error; the original date stays visible.
+    } finally {
+      saveInFlight.current = false;
+      setSaving(false);
+      setEditing(false);
+    }
+  };
+
+  return (
+    <div className="flex justify-between py-1 border-b border-border-subtle">
+      <span className="font-medium text-text-secondary">{label}:</span>
+      {editing ? (
+        <input ref={inputRef} type="date" aria-label={label} aria-busy={saving}
+          defaultValue={value || ''} disabled={saving}
+          onChange={(event) => { void save(event.target.value); }}
+          onBlur={() => { if (!saveInFlight.current) setEditing(false); }}
+          onKeyDown={(event) => { if (event.key === 'Escape') setEditing(false); }}
+          className="font-bold text-text-secondary bg-surface border border-border-subtle rounded-control" />
+      ) : (
+        <span className="font-bold" onDoubleClick={() => { if (!disabled && !saving) setEditing(true); }}
+          title={disabled ? undefined : 'Duplo clique para editar'}>{value || '-'}</span>
+      )}
+    </div>
+  );
+}
+
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
   if (total <= 7) {
     return Array.from({ length: total }, (_, i) => i + 1);
@@ -2319,14 +2375,12 @@ export default function ProjectSection({
                     <span className="font-medium text-text-secondary">Prazo de entrega:</span>
                     <span className="font-bold text-primary">{selectedProj.deliveryDate || '-'}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-border-subtle">
-                    <span className="font-medium text-text-secondary">Previsão de entrega real:</span>
-                    <span className="font-bold">{selectedProj.estimatedDate || '-'}</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-border-subtle">
-                    <span className="font-medium text-text-secondary">Data agendamento:</span>
-                    <span className="font-bold">{selectedProj.scheduledDate || '-'}</span>
-                  </div>
+                  <EditableProjectDate key={`${selectedProj.id}-estimatedDate`} label="Previsão de entrega real"
+                    value={selectedProj.estimatedDate} field="estimatedDate" projectId={selectedProj.id}
+                    disabled={!canWriteProjects} updateProject={updateProject} />
+                  <EditableProjectDate key={`${selectedProj.id}-scheduledDate`} label="Data agendamento"
+                    value={selectedProj.scheduledDate} field="scheduledDate" projectId={selectedProj.id}
+                    disabled={!canWriteProjects} updateProject={updateProject} />
                 </div>
               </div>
 
