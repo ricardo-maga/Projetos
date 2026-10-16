@@ -29,7 +29,7 @@ export default function ProjectAnalytics({ projects, projectStatuses, categories
     <M3SectionHeader title="Análise de projetos" description="Indicadores de projetos e distribuição de responsabilidades." />
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {panel('Projetos ativos', data.active.length)}
-      <Card className="p-5 space-y-2"><h3 className="text-label text-text-secondary">Projetos FY{String(data.fiscalCurrent.year).slice(-2)}</h3><p className="text-heading-lg text-text-primary tabular-nums">{data.fiscalCurrent.projects.length}</p><p className="text-caption text-text-secondary">Adjudicados · 1 de abril de {data.fiscalCurrent.year} a 31 de março de {data.fiscalCurrent.year + 1}</p><div className="border-t border-outline-variant pt-2 text-caption text-text-secondary">Projetos FY{String(data.fiscalPrevious.year).slice(-2)} · {data.fiscalPrevious.projects.length}<br />Adjudicados · 1 de abril de {data.fiscalPrevious.year} a 31 de março de {data.fiscalPrevious.year + 1}</div></Card>
+      <Card className="p-5 space-y-2"><h3 className="text-label text-text-secondary">Projetos FY{String(data.fiscalCurrent.year).slice(-2)}</h3><p className="text-heading-lg text-text-primary tabular-nums">{data.fiscalCurrent.projects.length}</p><div className="border-t border-outline-variant pt-2 text-caption text-text-secondary">Projetos FY{String(data.fiscalPrevious.year).slice(-2)} · {data.fiscalPrevious.projects.length}</div></Card>
       {panel(`Projetos para ${monthName(0)}`, data.currentMonth.length)}{panel(`Projetos para ${monthName(1)}`, data.nextMonth.length)}
     </div>
     <Card className="p-5 space-y-4"><h3 className="text-heading-sm">Projetos por categoria de projeto</h3>{windowFilter('Janela das categorias', categoryWindowDays, setCategoryWindowDays)}{bars(data.categories, id => categories.find(c => c.id === id)?.name || 'Sem categoria')}</Card>
@@ -49,7 +49,6 @@ export default function ProjectAnalytics({ projects, projectStatuses, categories
         <h3 className="text-heading-sm">{title}</h3>
         <p className="text-heading-lg text-text-primary">{summary.count} <span className="text-body-sm text-text-secondary">projetos</span></p>
         <p className="text-heading-md text-text-primary">{new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(summary.saleValue)}</p>
-        <p className="text-caption text-text-secondary">Por data de início · Valor de venda</p>
         {summary.projects.length > 0 && <ul className="space-y-1 border-t border-outline-variant pt-2">{summary.projects.map(project => <li key={project.id} className="text-body-sm text-text-secondary">{clients.find(c => String(c.id) === String(project.clientId))?.clientName || 'Cliente'} - {project.title} ({initials(project.salesRepId)})</li>)}</ul>}
       </Card>)}
       <Card className="p-5 space-y-3"><h3 className="text-heading-sm">Gestores comerciais com mais projetos</h3>
