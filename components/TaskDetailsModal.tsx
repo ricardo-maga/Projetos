@@ -534,9 +534,10 @@ export default function TaskDetailsModal({
         : effectiveMode === 'create' 
         ? 'Nova Tarefa Operacional' 
         : activeTask?.title || 'Detalhes da Tarefa'}
-      className="max-w-2xl"
+      className="max-w-2xl max-h-[calc(100dvh-2rem)]"
+      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden p-0 max-h-none"
     >
-      <form onSubmit={handleSave} className="flex flex-col h-full">
+      <form onSubmit={handleSave} className="flex min-h-0 flex-1 flex-col">
         {/* Read-only banner if in edit/view mode */}
         {effectiveMode !== 'create' && activeTask && (
           <div className="px-6 py-3 bg-primary/5 border-b border-primary/20 text-body-sm text-text-secondary space-y-1.5 shrink-0">
@@ -579,7 +580,7 @@ export default function TaskDetailsModal({
         )}
 
         {/* Form Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-5">
           <div className="space-y-2">
             <p className="text-label font-bold text-text-primary">Estado da tarefa {effectiveMode === 'create' ? '*' : ''}</p>
             <SingleChoice
@@ -917,7 +918,7 @@ export default function TaskDetailsModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between gap-2 pt-4 border-t border-border">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border bg-surface px-6 py-4">
             <div>
               {effectiveMode !== 'create' && !isReadOnly && deleteTask && activeTask && (
                 <Button
@@ -933,7 +934,7 @@ export default function TaskDetailsModal({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Button 
                 type="button" 
                 variant="secondary"
