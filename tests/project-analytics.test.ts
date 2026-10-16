@@ -13,7 +13,7 @@ describe('Project analytics', () => {
       projectStatuses: statuses, categories: [], users: [], clients: [{ id: 'client', clientName: 'Brasmar' } as any],
       materials: [{ projectId: 'old', status: 'por_encomendar' } as any], onSelectProject: () => {},
     }));
-    expect(html).toMatch(/aria-pressed="true"[^>]*>.*?30 dias/);
+    expect(html).toContain('aria-label="Janela das categorias"');
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
     expect(html).toContain('Brasmar');
     expect(html).toContain('Linha de produção');
@@ -30,8 +30,9 @@ describe('Project analytics', () => {
     ];
     for (const days of [7, 30, 60, 90]) {
       const data = buildProjectAnalytics(projects, statuses, [], days, now);
-      expect(data.awardedCurrentMonth).toEqual({ count: 2, saleValue: 300.5 });
-      expect(data.awardedPreviousMonth).toEqual({ count: 1, saleValue: 50 });
+      expect(data.awardedCurrentMonth).toMatchObject({ count: 2, saleValue: 300.5 });
+      expect(data.awardedCurrentMonth.projects.map(p => p.id)).toEqual(['current', 'current-local']);
+      expect(data.awardedPreviousMonth).toMatchObject({ count: 1, saleValue: 50 });
     }
   });
   it('handles the previous year, missing values and empty monthly results', () => {
@@ -40,8 +41,26 @@ describe('Project analytics', () => {
       p('missing-value', '2025-01-01', { startDate: '2025-12-01' }),
       p('invalid-value', '2025-01-01', { startDate: '2025-12-02', budgetValue: 'invalid' }),
     ], statuses, [], 7, new Date(2026, 0, 5, 12));
-    expect(data.awardedPreviousMonth).toEqual({ count: 3, saleValue: 10 });
-    expect(data.awardedCurrentMonth).toEqual({ count: 0, saleValue: 0 });
+    expect(data.awardedPreviousMonth).toMatchObject({ count: 3, saleValue: 10 });
+    expect(data.awardedCurrentMonth).toMatchObject({ count: 0, saleValue: 0 });
+  });
+  it('rolls fiscal years on 1 April and excludes deleted projects', () => {
+    const projects = [
+      p('before', '2025-01-01', { startDate: '2025-03-31' }),
+      p('previous-start', '2025-01-01', { startDate: '2025-04-01' }),
+      p('previous-end', '2025-01-01', { startDate: '31/03/2026' }),
+      p('current-start', '2025-01-01', { startDate: '2026-04-01' }),
+      p('current-end', '2025-01-01', { startDate: '2027-03-31' }),
+      p('after', '2025-01-01', { startDate: '2027-04-01' }),
+      p('deleted', '2025-01-01', { startDate: '2026-04-01', deleted: true }),
+    ];
+    const october = buildProjectAnalytics(projects, statuses, [], 30, now);
+    expect(october.fiscalCurrent.year).toBe(2026);
+    expect(october.fiscalCurrent.projects.map(p => p.id)).toEqual(['current-start', 'current-end']);
+    expect(october.fiscalPrevious.projects.map(p => p.id)).toEqual(['previous-start', 'previous-end']);
+    const march = buildProjectAnalytics(projects, statuses, [], 30, new Date(2026, 2, 31, 12));
+    expect(march.fiscalCurrent.year).toBe(2025);
+    expect(march.fiscalCurrent.projects.map(p => p.id)).toEqual(['previous-start', 'previous-end']);
   });
   it('applies creation window while month counters ignore it', () => {
     const data = buildProjectAnalytics([p('new', '2026-10-01'), p('old', '2026-01-01'), p('next', '2026-01-01', { deliveryDate: '2026-11-01' }), p('deleted', '2026-10-01', { deleted: true }), p('future', '2026-10-06', { deliveryDate: '' })], statuses, [], 7, now);
@@ -99,3 +118,4 @@ describe('Project analytics', () => {
     }
   });
 });
+
