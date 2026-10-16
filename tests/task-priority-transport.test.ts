@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'bun:test';
 import { apiCreateTask, apiUpdateTask } from '../lib/taskOperations';
 import { createTaskServer, updateTaskServer } from '../lib/tasks/taskService';
+import { createTaskSchema, updateTaskSchema } from '../lib/validations/task';
 
 describe('Task priority transport', () => {
+  it('preserves priority through the API schemas, including clearing on update', () => {
+    const create = createTaskSchema.parse({ title: 'Tarefa', statusId: 'open', taskTypeId: 'type', priorityId: 'priority-3' });
+    expect(create.priorityId).toBe('priority-3');
+    expect(updateTaskSchema.parse({ priorityId: 'priority-3', version: 1 }).priorityId).toBe('priority-3');
+    expect(updateTaskSchema.parse({ priorityId: null, version: 1 }).priorityId).toBeNull();
+    expect(updateTaskSchema.parse({ version: 1 }).priorityId).toBeUndefined();
+  });
+
   it('sends the selected priority on create and edit, and sends null when clearing it', async () => {
     const originalFetch = globalThis.fetch;
     const payloads: Record<string, unknown>[] = [];
