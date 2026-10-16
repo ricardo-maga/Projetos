@@ -14,7 +14,7 @@ type Catalog = {
   userRoles: Array<{ user_id: string; role_id: string }>;
 };
 
-export default function RolePermissionSection() {
+export default function RolePermissionSection({ onRolesChanged }: { onRolesChanged?: () => Promise<boolean> }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [roleId, setRoleId] = useState('');
   const [permissionCodes, setPermissionCodes] = useState<string[]>([]);
@@ -73,7 +73,8 @@ export default function RolePermissionSection() {
     setBusy(true); setBusyAction('create-role'); setMessage('');
     try {
       const result = await request('/api/rbac/roles', { method: 'POST', body: JSON.stringify({ name: newRoleName, description: newRoleDescription }) });
-      setNewRoleName(''); setNewRoleDescription(''); await refresh(); setRoleId(result.role.id); setMessage('Função criada. Defina as permissões na matriz.');
+      setNewRoleName(''); setNewRoleDescription(''); await refresh(); const updated = await onRolesChanged?.(); setRoleId(result.role.id);
+      setMessage(updated === false ? 'Função criada, mas a lista de associações não foi atualizada. Recarregue a página.' : 'Função criada. Defina as permissões na matriz.');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao criar função.'); }
     finally { mutationInFlight.current = false; setBusy(false); setBusyAction(null); }
   };
@@ -83,7 +84,7 @@ export default function RolePermissionSection() {
     if (!roleId || !window.confirm('Desativar esta função? As atribuições existentes têm de ser removidas primeiro.')) return;
     mutationInFlight.current = true;
     setBusy(true); setBusyAction('deactivate-role'); setMessage('');
-    try { await request(`/api/rbac/roles/${roleId}`, { method: 'PATCH', body: JSON.stringify({ is_active: false }) }); await refresh(); setMessage('Função desativada e auditada.'); }
+    try { await request(`/api/rbac/roles/${roleId}`, { method: 'PATCH', body: JSON.stringify({ is_active: false }) }); await refresh(); const updated = await onRolesChanged?.(); setMessage(updated === false ? 'Função desativada, mas a lista de associações não foi atualizada. Recarregue a página.' : 'Função desativada e auditada.'); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Falha ao desativar função.'); }
     finally { mutationInFlight.current = false; setBusy(false); setBusyAction(null); }
   };

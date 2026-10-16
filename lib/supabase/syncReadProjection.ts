@@ -20,7 +20,7 @@ export function projectSyncRead(state: ERPState, userId: string, can: ReadonlyMa
       const { password, ...safe } = user as typeof user & { password?: string };
       return safe;
     }
-    return { id:user.id, name:user.name, type:user.type, roleId:user.roleId,
+    return { id:user.id, name:user.name, type:user.type, roleId:user.roleId, roleIds:user.roleIds,
       approved:user.approved, deleted:user.deleted, email:'', createdDate:'' };
   });
   // Notifications are recipient-scoped even for admins. Administrative viewing

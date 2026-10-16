@@ -1039,6 +1039,8 @@ export default function Page() {
                   absences={state.userAbsences}
                   users={state.users}
                   userGroups={state.userGroups}
+                  activeRoles={state.activeRoles}
+                  onRefreshFromDatabase={refreshFromDatabase}
                   addAbsence={addAbsence}
                   deleteAbsence={deleteAbsence}
                   addUser={addUser}

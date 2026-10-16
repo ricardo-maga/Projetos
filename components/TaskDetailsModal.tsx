@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Task, Project, Client, TaskType, User, ProjectPriority } from '../lib/types';
 import { AssigneeSelector } from './AssigneeSelector';
+import { configuredRoleIds } from '../lib/roleAssociations';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
 import { Dialog } from './ui/Dialog';
@@ -803,8 +804,7 @@ export default function TaskDetailsModal({
             <fieldset disabled={isReadOnly || isSubmitting} className="min-w-0">
               <AssigneeSelector
                 users={users}
-                userGroups={userGroups}
-                allowedGroupIds={appConfig?.taskAssigneeGroupIds}
+                allowedGroupIds={configuredRoleIds(appConfig?.taskAssigneeGroupIds, appConfig?.taskAssigneeGroupId)}
                 selectedIds={formAssignees}
                 onChange={isReadOnly ? () => {} : setFormAssignees}
                 filterTeamOnly

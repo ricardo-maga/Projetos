@@ -8,7 +8,7 @@
     "start": "NODE_ENV=production next start",
     "lint": "next lint",
     "typecheck:app": "tsc --noEmit --incremental false -p tsconfig.application.json",
-    "test:security": "bun test tests/bola-idor-auth.test.ts tests/rls-server-boundaries.test.ts tests/security-concurrency-migrations.test.ts tests/sync-auth.test.ts tests/sync-payload-security.test.ts tests/transversal-crud-integrity.test.ts",
+    "test:security": "bun test tests/bola-idor-auth.test.ts tests/rls-server-boundaries.test.ts tests/security-concurrency-migrations.test.ts tests/sync-auth.test.ts tests/sync-payload-security.test.ts tests/transversal-crud-integrity.test.ts tests/role-associations.test.ts",
     "test:e2e:security": "playwright test --config=playwright.config.ts",
     "clean": "next clean"
   },
