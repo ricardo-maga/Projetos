@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
-import { User, UserGroup } from '../lib/types';
-import { normalizeRoleId } from '../lib/permissions';
+import { User } from '../lib/types';
+import { userHasAnyRole } from '../lib/roleAssociations';
 
 interface AssigneeSelectorProps {
   users: User[];
-  userGroups?: UserGroup[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   allowedGroupIds?: string[];
@@ -16,7 +15,6 @@ interface AssigneeSelectorProps {
 
 export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
   users,
-  userGroups = [],
   selectedIds,
   onChange,
   allowedGroupIds,
@@ -30,13 +28,8 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
     return users
       .filter(u => !u.deleted)
       .filter(u => {
-        if (allowedGroupIds && allowedGroupIds.length > 0) {
-          const userRoleId = u.roleId || '';
-          const normalizedUserRole = normalizeRoleId(userRoleId);
-          return allowedGroupIds.some((gid: string) => {
-            const normalizedGid = normalizeRoleId(gid);
-            return gid === userRoleId || normalizedGid === normalizedUserRole || gid === normalizedUserRole;
-          });
+        if (allowedGroupIds) {
+          return userHasAnyRole(u, allowedGroupIds);
         }
         if (filterTeamOnly) {
           return u.type === 'Team';
@@ -73,7 +66,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
           type="text"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          placeholder="Pesquisar técnico por nome..."
+          placeholder="Pesquisar utilizador por nome..."
           className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-400 focus:outline-none placeholder:text-slate-400 text-slate-800 font-medium"
         />
         {searchTerm && (
@@ -88,17 +81,15 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
         )}
       </div>
 
-      {/* Technician Checkboxes List */}
+      {/* Eligible users */}
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 max-h-48 overflow-y-auto space-y-1">
         {filteredUsers.length === 0 ? (
           <p className="text-slate-400 italic text-xs text-center py-3">
-            {searchTerm ? 'Nenhum técnico encontrado' : 'Nenhum técnico disponível'}
+            {searchTerm ? 'Nenhum utilizador encontrado' : 'Nenhum utilizador disponível'}
           </p>
         ) : (
           filteredUsers.map(u => {
             const isSelected = selectedIds.includes(u.id);
-            const userGroup = userGroups?.find(g => g.id === u.roleId);
-            const groupLabel = userGroup?.name || (u.type === 'Team' ? 'Técnico' : u.type || 'Sem Grupo');
 
             return (
               <label
@@ -114,9 +105,6 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                   className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
                 />
                 <span className="truncate flex-1">{u.name}</span>
-                <span className="text-[10px] text-slate-500 font-medium truncate max-w-[130px] px-1.5 py-0.5 bg-slate-200/60 rounded">
-                  {groupLabel}
-                </span>
               </label>
             );
           })

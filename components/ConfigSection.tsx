@@ -50,6 +50,7 @@ import Switch from './ui/Switch';
 import { M3SectionHeader, M3Button } from './M3';
 
 import { hasPermission } from '../lib/permissions';
+import { configuredRoleIds } from '../lib/roleAssociations';
 
 interface ConfigSectionProps {
   activeConfigTab?: string;
@@ -360,10 +361,10 @@ export default function ConfigSection({
   const [logo, setLogo] = useState(config.logoImagePath || config.logo || '');
   const [footer, setFooter] = useState(config.footerCopyrightText);
   const [theme, setTheme] = useState(config.theme || 'default');
-  const [salesRepGroupIds, setSalesRepGroupIds] = useState<string[]>(config.salesRepGroupIds || (config.salesRepGroupId ? [config.salesRepGroupId] : []));
-  const [projManagerGroupIds, setProjManagerGroupIds] = useState<string[]>(config.projManagerGroupIds || (config.projManagerGroupId ? [config.projManagerGroupId] : []));
-  const [fieldManagerGroupIds, setFieldManagerGroupIds] = useState<string[]>(config.fieldManagerGroupIds || (config.fieldManagerGroupId ? [config.fieldManagerGroupId] : []));
-  const [taskAssigneeGroupIds, setTaskAssigneeGroupIds] = useState<string[]>(config.taskAssigneeGroupIds || (config.taskAssigneeGroupId ? [config.taskAssigneeGroupId] : []));
+  const [salesRepGroupIds, setSalesRepGroupIds] = useState<string[]>(configuredRoleIds(config.salesRepGroupIds, config.salesRepGroupId));
+  const [projManagerGroupIds, setProjManagerGroupIds] = useState<string[]>(configuredRoleIds(config.projManagerGroupIds, config.projManagerGroupId));
+  const [fieldManagerGroupIds, setFieldManagerGroupIds] = useState<string[]>(configuredRoleIds(config.fieldManagerGroupIds, config.fieldManagerGroupId));
+  const [taskAssigneeGroupIds, setTaskAssigneeGroupIds] = useState<string[]>(configuredRoleIds(config.taskAssigneeGroupIds, config.taskAssigneeGroupId));
 
   const configKey = JSON.stringify({
     appName: config.appName,
@@ -385,10 +386,10 @@ export default function ConfigSection({
     setLogo(config.logoImagePath || config.logo || '');
     setFooter(config.footerCopyrightText);
     setTheme(config.theme || 'default');
-    setSalesRepGroupIds(config.salesRepGroupIds || (config.salesRepGroupId ? [config.salesRepGroupId] : []));
-    setProjManagerGroupIds(config.projManagerGroupIds || (config.projManagerGroupId ? [config.projManagerGroupId] : []));
-    setFieldManagerGroupIds(config.fieldManagerGroupIds || (config.fieldManagerGroupId ? [config.fieldManagerGroupId] : []));
-    setTaskAssigneeGroupIds(config.taskAssigneeGroupIds || (config.taskAssigneeGroupId ? [config.taskAssigneeGroupId] : []));
+    setSalesRepGroupIds(configuredRoleIds(config.salesRepGroupIds, config.salesRepGroupId));
+    setProjManagerGroupIds(configuredRoleIds(config.projManagerGroupIds, config.projManagerGroupId));
+    setFieldManagerGroupIds(configuredRoleIds(config.fieldManagerGroupIds, config.fieldManagerGroupId));
+    setTaskAssigneeGroupIds(configuredRoleIds(config.taskAssigneeGroupIds, config.taskAssigneeGroupId));
   }
 
   const activeConfigTab = activeConfigTabProp || 'sistema';
@@ -713,20 +714,28 @@ export default function ConfigSection({
     });
   };
 
-  const handleSaveAssociations = (e: React.FormEvent) => {
+  const handleSaveAssociations = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canWriteConfig) return;
-    updateConfig({
-      salesRepGroupIds,
-      projManagerGroupIds,
-      fieldManagerGroupIds,
-      taskAssigneeGroupIds,
-      salesRepGroupId: salesRepGroupIds[0] || '',
-      projManagerGroupId: projManagerGroupIds[0] || '',
-      fieldManagerGroupId: fieldManagerGroupIds[0] || '',
-      taskAssigneeGroupId: taskAssigneeGroupIds[0] || '',
+    if (!canWriteConfig || !state.activeRoles) return;
+    await runConfigAction(async () => {
+      const activeIds = new Set(state.activeRoles!.map(role => role.id));
+      const salesIds = salesRepGroupIds.filter(id => activeIds.has(id));
+      const projectIds = projManagerGroupIds.filter(id => activeIds.has(id));
+      const fieldIds = fieldManagerGroupIds.filter(id => activeIds.has(id));
+      const taskIds = taskAssigneeGroupIds.filter(id => activeIds.has(id));
+      const result = await updateConfig({
+        salesRepGroupIds: salesIds,
+        projManagerGroupIds: projectIds,
+        fieldManagerGroupIds: fieldIds,
+        taskAssigneeGroupIds: taskIds,
+        salesRepGroupId: salesIds[0] || '',
+        projManagerGroupId: projectIds[0] || '',
+        fieldManagerGroupId: fieldIds[0] || '',
+        taskAssigneeGroupId: taskIds[0] || '',
+      });
+      if (result.success) alert('Associação de grupos gravada com sucesso!');
+      else alert(result.message || 'Não foi possível gravar a associação de grupos.');
     });
-    alert('Associação de grupos gravada com sucesso!');
   };
 
   const handleAddSpecialDay = (e: React.FormEvent) => {
@@ -2146,21 +2155,22 @@ export default function ConfigSection({
               <Users className="w-5 h-5 text-primary" />
               Associação de grupos
             </h2>
+            <p className="mb-5 text-sm font-normal text-text-secondary">As opções abaixo correspondem às funções ativas atribuídas aos utilizadores.</p>
 
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="block text-text-muted">Grupos para &quot;Gestor de Vendas&quot; (Escolha Múltipla)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
+                  {(state.activeRoles || []).length === 0 ? (
+                    <span className="text-slate-400 font-medium">Nenhuma função ativa criada</span>
                   ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
+                    state.activeRoles!.map(g => {
                       const isChecked = salesRepGroupIds.includes(g.id);
                       return (
                         <label key={g.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-lg cursor-pointer select-none hover:bg-surface-muted transition-colors">
                           <input
                             type="checkbox"
-                            disabled={!canWriteConfig}
+                            disabled={!canWriteConfig || isSavingConfig}
                             checked={isChecked}
                             onChange={() => {
                               if (isChecked) {
@@ -2185,16 +2195,16 @@ export default function ConfigSection({
               <div className="space-y-2">
                 <label className="block text-text-muted">Grupos para &quot;Project Leader&quot; (Escolha Múltipla)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
+                  {(state.activeRoles || []).length === 0 ? (
+                    <span className="text-slate-400 font-medium">Nenhuma função ativa criada</span>
                   ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
+                    state.activeRoles!.map(g => {
                       const isChecked = projManagerGroupIds.includes(g.id);
                       return (
                         <label key={g.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-lg cursor-pointer select-none hover:bg-surface-muted transition-colors">
                           <input
                             type="checkbox"
-                            disabled={!canWriteConfig}
+                            disabled={!canWriteConfig || isSavingConfig}
                             checked={isChecked}
                             onChange={() => {
                               if (isChecked) {
@@ -2219,16 +2229,16 @@ export default function ConfigSection({
               <div className="space-y-2">
                 <label className="block text-text-muted">Grupos para &quot;Técnico Responsável&quot; (Escolha Múltipla)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
+                  {(state.activeRoles || []).length === 0 ? (
+                    <span className="text-slate-400 font-medium">Nenhuma função ativa criada</span>
                   ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
+                    state.activeRoles!.map(g => {
                       const isChecked = fieldManagerGroupIds.includes(g.id);
                       return (
                         <label key={g.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-lg cursor-pointer select-none hover:bg-surface-muted transition-colors">
                           <input
                             type="checkbox"
-                            disabled={!canWriteConfig}
+                            disabled={!canWriteConfig || isSavingConfig}
                             checked={isChecked}
                             onChange={() => {
                               if (isChecked) {
@@ -2253,16 +2263,16 @@ export default function ConfigSection({
               <div className="space-y-2 pt-2 border-t border-border-subtle" id="task-assignee-groups-config">
                 <label className="block text-text-secondary font-bold">Grupos associados a tarefas</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
-                  {state.userGroups?.filter(g => !g.deleted).length === 0 ? (
-                    <span className="text-slate-400 font-medium">Nenhum grupo de utilizadores criado</span>
+                  {(state.activeRoles || []).length === 0 ? (
+                    <span className="text-slate-400 font-medium">Nenhuma função ativa criada</span>
                   ) : (
-                    state.userGroups?.filter(g => !g.deleted).map(g => {
+                    state.activeRoles!.map(g => {
                       const isChecked = taskAssigneeGroupIds.includes(g.id);
                       return (
                         <label key={g.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-lg cursor-pointer select-none hover:bg-surface-muted transition-colors">
                           <input
                             type="checkbox"
-                            disabled={!canWriteConfig}
+                            disabled={!canWriteConfig || isSavingConfig}
                             checked={isChecked}
                             onChange={() => {
                               if (isChecked) {
@@ -2286,7 +2296,7 @@ export default function ConfigSection({
             </div>
           </div>
           <div className="flex justify-end">
-            <M3Button type="submit" disabled={!canWriteConfig}>Gravar associações</M3Button>
+            <M3Button type="submit" disabled={!canWriteConfig || isSavingConfig || !state.activeRoles}>{isSavingConfig ? 'A gravar...' : 'Gravar associações'}</M3Button>
           </div>
         </form>
       )}
@@ -2296,6 +2306,9 @@ export default function ConfigSection({
               absences={state.userAbsences || []}
               users={state.users}
               userGroups={state.userGroups}
+              activeRoles={state.activeRoles}
+              appConfig={config}
+              onRefreshFromDatabase={onRefreshFromDatabase}
               addAbsence={addAbsence!}
               deleteAbsence={deleteAbsence!}
               addUser={addUser!}

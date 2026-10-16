@@ -479,6 +479,8 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       resTicketStatuses,
       resNotifications,
       resAutomationRules,
+      resActiveRoles,
+      resUserRoles,
     ] = await Promise.all([
       client.from('user_groups').select('*'),
       client.from('project_status').select('*').order('sort_order', { ascending: true }),
@@ -509,7 +511,20 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       client.from('ticket_statuses').select('*').order('sort_order', { ascending: true }),
       client.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
       client.from('automation_rules').select('*').order('created_at', { ascending: false }),
+      client.from('roles').select('id,name,code').eq('is_active', true).order('name'),
+      client.from('user_roles').select('user_id,role_id'),
     ]);
+
+    if (resActiveRoles.error || resUserRoles.error) {
+      throw resActiveRoles.error || resUserRoles.error;
+    }
+    const activeRoles = resActiveRoles.data || [];
+    const activeRoleIds = new Set(activeRoles.map((role: any) => role.id));
+    const assignments = new Map<string, string[]>();
+    for (const row of resUserRoles.data || []) {
+      if (!activeRoleIds.has(row.role_id)) continue;
+      assignments.set(row.user_id, [...(assignments.get(row.user_id) || []), row.role_id]);
+    }
 
     // Get projects data mapped via getProjectsServerData
     let projectsData: Project[] = (resProjects as any)?.data || [];
@@ -719,6 +734,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       email: u.email || '',
       authUserId: u.auth_user_id || null,
       roleId: u.role_id || '',
+      roleIds: assignments.get(u.id) || [],
       approved: u.approved || false,
       deleted: u.deleted || false,
       createdDate: u.created_at || '',
@@ -905,6 +921,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
 
     const loadedState: ERPState = {
       userGroups: userGroupsMapped,
+      activeRoles,
       projectStatuses: (resProjectStatuses.data || []).map((s: any) => ({ ...s, color: s.color || '#bfdbfe', deleted: s.deleted === true || s.deleted === 1 || s.deleted === 'true' })),
       projectCategories: (resProjectCategories.data || []).map((c: any) => ({ ...c, deleted: c.deleted === true || c.deleted === 1 || c.deleted === 'true' })),
       projectRisks: (resProjectRisks.data || []).map((r: any) => ({ ...r, color: r.color || '#bfdbfe', deleted: r.deleted === true || r.deleted === 1 || r.deleted === 'true' })),
@@ -1335,7 +1352,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
 
     // 2. Perform parallel upserts for primary entities
     const upserts = [
-      // App Configuration with theme, sales_rep_group_id, proj_manager_group_id and field_manager_group_id support with backward compatibility fallbacks
+      // Association columns are required: never report success after dropping them from a fallback write.
       state.appConfig ? supabase.from('app_configuration').upsert([{
         id: '33333333-4444-5555-6666-777777777777',
         app_name: state.appConfig.appName,
@@ -1357,47 +1374,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
         task_assignee_group_id: Array.isArray(state.appConfig.taskAssigneeGroupIds)
           ? (state.appConfig.taskAssigneeGroupIds.length ? state.appConfig.taskAssigneeGroupIds.join(',') : null)
           : (state.appConfig.taskAssigneeGroupId || null)
-      }]).then(res => {
-        if (res.error && (res.error.message.includes('sales_rep_group_id') || res.error.message.includes('proj_manager_group_id') || res.error.message.includes('field_manager_group_id') || res.error.message.includes('task_assignee_group_id') || res.error.code === '42703')) {
-          // Fallback if the new manager group ID columns do not exist yet on live DB
-          return supabase!.from('app_configuration').upsert([{
-            id: '33333333-4444-5555-6666-777777777777',
-            app_name: state.appConfig.appName,
-            app_description: state.appConfig.appDescription,
-            footer_text: state.appConfig.footerText,
-            logo_url: state.appConfig.logoImagePath || state.appConfig.logo || null,
-            logo_image_path: state.appConfig.logoImagePath || state.appConfig.logo || null,
-            footer_copyright_text: state.appConfig.footerCopyrightText || null,
-            theme_name: state.appConfig.theme || 'default'
-          }]).then(res2 => {
-            if (res2.error && (res2.error.message.includes('theme_name') || res2.error.code === 'P0002' || res2.error.code === '42703')) {
-              // Fallback if theme_name column also doesn't exist yet
-              return supabase!.from('app_configuration').upsert([{
-                id: '33333333-4444-5555-6666-777777777777',
-                app_name: state.appConfig.appName,
-                app_description: state.appConfig.appDescription,
-                footer_text: state.appConfig.footerText,
-                logo_url: state.appConfig.logoImagePath || state.appConfig.logo || null,
-                logo_image_path: state.appConfig.logoImagePath || state.appConfig.logo || null,
-                footer_copyright_text: state.appConfig.footerCopyrightText || null
-              }]);
-            }
-            return res2;
-          });
-        } else if (res.error && (res.error.message.includes('theme_name') || res.error.code === 'P0002' || res.error.code === '42703')) {
-          // Fallback if theme_name doesn't exist
-          return supabase!.from('app_configuration').upsert([{
-            id: '33333333-4444-5555-6666-777777777777',
-            app_name: state.appConfig.appName,
-            app_description: state.appConfig.appDescription,
-            footer_text: state.appConfig.footerText,
-            logo_url: state.appConfig.logoImagePath || state.appConfig.logo || null,
-            logo_image_path: state.appConfig.logoImagePath || state.appConfig.logo || null,
-            footer_copyright_text: state.appConfig.footerCopyrightText || null
-          }]);
-        }
-        return res;
-      }) : Promise.resolve({ error: null }),
+      }]) : Promise.resolve({ error: null }),
 
       // 3. Clients (FASE 26: Clients are persistent ONLY via dedicated /api/v1/clients REST APIs)
       // Therefore, database write operations (insert, update, upsert) for clients are disabled in this global sync.

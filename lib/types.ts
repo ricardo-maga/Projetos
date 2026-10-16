@@ -97,6 +97,7 @@ export interface User {
   email: string;
   authUserId?: string | null;
   roleId: string; // Relation: User groups table
+  roleIds?: string[]; // Active RBAC assignments used for operational eligibility
   approved: boolean;
   deleted: boolean;
   createdDate: string;
@@ -109,6 +110,12 @@ export interface UserGroup {
   deleted: boolean;
   permissions?: any;
   sort_order?: number;
+}
+
+export interface ActiveRole {
+  id: string;
+  name: string;
+  code: string;
 }
 
 export interface ProjectStatus {
@@ -387,6 +394,7 @@ export interface ERPState {
   userAbsences: UserAbsence[];
   users: User[];
   userGroups: UserGroup[];
+  activeRoles?: ActiveRole[];
   projectStatuses: ProjectStatus[];
   projectCategories: ProjectCategory[];
   projectRisks: ProjectRisk[];

@@ -23,7 +23,7 @@ import {
   computeTaskDropUpdates
 } from '../lib/operationalCalendar';
 import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, getTaskStatusStyle } from '../lib/utils';
-import { normalizeRoleId } from '../lib/permissions';
+import { configuredRoleIds, userHasAnyRole } from '../lib/roleAssociations';
 import DateViewNavigator from './ui/DateViewNavigator';
 import { M3Button, M3FilterChip, M3SectionHeader } from './M3';
 import { IconButton } from './ui/IconButton';
@@ -181,24 +181,12 @@ export default function OperationalUserCalendar({
 
   // 5. Active eligible users
   const activeEligibleUsers = useMemo(() => {
-    const allowedGroupIds = Array.isArray(appConfig?.taskAssigneeGroupIds) && appConfig.taskAssigneeGroupIds.length > 0
-      ? appConfig.taskAssigneeGroupIds
-      : (typeof appConfig?.taskAssigneeGroupId === 'string' && appConfig.taskAssigneeGroupId.trim() !== ''
-          ? appConfig.taskAssigneeGroupId.split(',').map((s: string) => s.trim()).filter(Boolean)
-          : []);
+    const allowedGroupIds = configuredRoleIds(appConfig?.taskAssigneeGroupIds, appConfig?.taskAssigneeGroupId);
 
     return users
       .filter(u => !u.deleted && u.email?.toLowerCase() !== 'ricardo75@gmail.com')
       .filter(u => {
-        if (allowedGroupIds.length > 0) {
-          const userRoleId = u.roleId || '';
-          const normalizedUserRole = normalizeRoleId(userRoleId);
-          return allowedGroupIds.some((gid: string) => {
-            const normalizedGid = normalizeRoleId(gid);
-            return gid === userRoleId || normalizedGid === normalizedUserRole || gid === normalizedUserRole;
-          });
-        }
-        return u.type === 'Team' || !u.type;
+        return userHasAnyRole(u, allowedGroupIds);
       })
       .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-PT', { sensitivity: 'base' }));
   }, [users, appConfig?.taskAssigneeGroupIds, appConfig?.taskAssigneeGroupId]);

@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { UserAbsence, SpecialDay, AppConfiguration } from '../lib/types';
 import { Plus, Trash2, Calendar, Users, UserCheck, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, Filter, ShieldCheck } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
-import { hasPermission, normalizeRoleId } from '../lib/permissions';
+import { hasPermission } from '../lib/permissions';
+import { userHasRole } from '../lib/roleAssociations';
 
 // UI Foundation Components
 import Button from './ui/Button';
@@ -23,6 +24,8 @@ interface UserSectionProps {
   absences: UserAbsence[];
   users: any[];
   userGroups: any[];
+  activeRoles?: Array<{ id: string; name: string }>;
+  onRefreshFromDatabase?: () => Promise<boolean>;
   addAbsence: (abs: any) => void;
   deleteAbsence: (id: string) => void;
   addUser: (user: any) => Promise<string | null> | string | null | void;
@@ -39,6 +42,8 @@ export default function UserSection({
   absences,
   users,
   userGroups,
+  activeRoles,
+  onRefreshFromDatabase,
   addAbsence,
   deleteAbsence,
   addUser,
@@ -90,7 +95,7 @@ export default function UserSection({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('Vacation');
-  const absenceVisibility = useMemo(() => getAbsenceVisibility(users, userGroups, appConfig), [users, userGroups, appConfig]);
+  const absenceVisibility = useMemo(() => getAbsenceVisibility(users, activeRoles || [], appConfig), [users, activeRoles, appConfig]);
   const absenceUsers = absenceVisibility.users;
   const absenceUserIds = useMemo(() => new Set(absenceUsers.map(user => user.id)), [absenceUsers]);
   const visibleAbsences = useMemo(() => absences.filter(absence => absenceUserIds.has(absence.userId)), [absences, absenceUserIds]);
@@ -105,7 +110,7 @@ export default function UserSection({
   }, [absenceUserIds, userId, filterUserId]);
   const absenceUserOptions = absenceVisibility.groups.map(group => (
     <optgroup key={group.id} label={group.name}>
-      {absenceUsers.filter(user => (normalizeRoleId(user.roleId) || user.roleId?.trim()) === (normalizeRoleId(group.id) || group.id.trim()))
+      {absenceUsers.filter(user => userHasRole(user, group.id))
         .map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
     </optgroup>
   ));
@@ -212,6 +217,8 @@ export default function UserSection({
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível guardar as funções atribuídas.');
     setRbacUserRoles(current => [...current.filter(assignment => assignment.user_id !== targetUserId), ...roleIds.map(role_id => ({ user_id: targetUserId, role_id }))]);
+    const refreshed = await onRefreshFromDatabase?.();
+    if (refreshed === false) alert('Funções atribuídas, mas não foi possível atualizar a lista de utilizadores. Recarregue a página.');
   };
 
   const handleAddUserSubmit = async (e: React.FormEvent) => {
@@ -979,7 +986,7 @@ export default function UserSection({
         </div>
       )}
 
-      {subTab === 'roles' && canReadRoleAdmin && <RolePermissionSection />}
+      {subTab === 'roles' && canReadRoleAdmin && <RolePermissionSection onRolesChanged={onRefreshFromDatabase} />}
       <ConfirmModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}

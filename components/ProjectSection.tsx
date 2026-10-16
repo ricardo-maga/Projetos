@@ -27,7 +27,8 @@ import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getAuthHeaders } from '../lib/clientAuth';
 import { normalizeTaskFromApiResponse } from '../lib/taskOperations';
-import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours, getProjectStatusStyle, getTaskStatusStyle, translateToCanonicalRoleIds } from '../lib/utils';
+import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours, getProjectStatusStyle, getTaskStatusStyle } from '../lib/utils';
+import { configuredRoleIds, userHasAnyRole } from '../lib/roleAssociations';
 
 const getPaginationPages = (current: number, total: number): (number | string)[] => {
   if (total <= 7) {
@@ -3559,10 +3560,9 @@ export default function ProjectSection({
               >
                 <option value="">Escolher utilizador</option>
                 {(() => {
-                  const projGroupIds = appConfig?.projManagerGroupIds || (appConfig?.projManagerGroupId ? [appConfig.projManagerGroupId] : []);
-                  const canonicalRoleIds = translateToCanonicalRoleIds(projGroupIds);
-                  let filteredUsers = canonicalRoleIds.length > 0
-                    ? users.filter(u => canonicalRoleIds.some(cid => matchId(cid, u.roleId)) && !u.deleted)
+                  const roleIds = configuredRoleIds(appConfig?.projManagerGroupIds, appConfig?.projManagerGroupId);
+                  let filteredUsers = roleIds.length > 0
+                    ? users.filter(u => userHasAnyRole(u, roleIds) && !u.deleted)
                     : [];
 
                   // Keep currently selected user even if deleted or not in the group to preserve existing data
@@ -3603,10 +3603,9 @@ export default function ProjectSection({
               >
                 <option value="">Escolher utilizador</option>
                 {(() => {
-                  const fieldGroupIds = appConfig?.fieldManagerGroupIds || (appConfig?.fieldManagerGroupId ? [appConfig.fieldManagerGroupId] : []);
-                  const canonicalRoleIds = translateToCanonicalRoleIds(fieldGroupIds);
-                  let filteredUsers = canonicalRoleIds.length > 0
-                    ? users.filter(u => canonicalRoleIds.some(cid => matchId(cid, u.roleId)) && !u.deleted)
+                  const roleIds = configuredRoleIds(appConfig?.fieldManagerGroupIds, appConfig?.fieldManagerGroupId);
+                  let filteredUsers = roleIds.length > 0
+                    ? users.filter(u => userHasAnyRole(u, roleIds) && !u.deleted)
                     : [];
 
                   // Keep currently selected user even if deleted or not in the group to preserve existing data
@@ -3647,10 +3646,9 @@ export default function ProjectSection({
               >
                 <option value="">Escolher utilizador</option>
                 {(() => {
-                  const salesGroupIds = appConfig?.salesRepGroupIds || (appConfig?.salesRepGroupId ? [appConfig.salesRepGroupId] : []);
-                  const canonicalRoleIds = translateToCanonicalRoleIds(salesGroupIds);
-                  let filteredUsers = canonicalRoleIds.length > 0
-                    ? users.filter(u => canonicalRoleIds.some(cid => matchId(cid, u.roleId)) && !u.deleted)
+                  const roleIds = configuredRoleIds(appConfig?.salesRepGroupIds, appConfig?.salesRepGroupId);
+                  let filteredUsers = roleIds.length > 0
+                    ? users.filter(u => userHasAnyRole(u, roleIds) && !u.deleted)
                     : [];
 
                   // Keep currently selected user even if deleted or not in the group to preserve existing data
