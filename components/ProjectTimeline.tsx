@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
 import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User } from '../lib/types';
 import { buildProjectTimelineEvents, filterProjectTimeline, type TimelineHorizon } from '../lib/projectTimeline';
@@ -14,6 +14,7 @@ import { IconButton } from './ui/IconButton';
 import { Input } from './ui/Input';
 import { Checkbox } from './ui/Checkbox';
 import DateViewNavigator from './ui/DateViewNavigator';
+import ExpandedView from './ui/ExpandedView';
 
 interface ProjectTimelineProps {
   projects: Project[]; clients: Client[]; tasks: Task[]; projectStatuses: any[]; taskStatuses: any[];
@@ -34,28 +35,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const [fullscreen, setFullscreen] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(new Set());
-  const masterRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const change = () => setFullscreen(document.fullscreenElement === masterRef.current);
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && !document.fullscreenElement) setFullscreen(false); };
-    document.addEventListener('fullscreenchange', change);
-    document.addEventListener('keydown', escape);
-    return () => { document.removeEventListener('fullscreenchange', change); document.removeEventListener('keydown', escape); };
-  }, []);
-  const toggleFullscreen = async () => {
-    if (fullscreen) {
-      if (document.fullscreenElement === masterRef.current) await document.exitFullscreen();
-      setFullscreen(false);
-    } else {
-      if (masterRef.current?.requestFullscreen) {
-        try { await masterRef.current.requestFullscreen(); setFullscreen(true); }
-        catch { setFullscreen(true); }
-      } else setFullscreen(true);
-    }
-  };
-  // Existing dialogs live in the parent section, outside the native fullscreen root.
-  const openOutsideTimeline = async (action: () => void) => {
-    if (typeof document !== 'undefined' && document.fullscreenElement && document.fullscreenElement === masterRef.current) await document.exitFullscreen();
+  const openOutsideTimeline = (action: () => void) => {
     setFullscreen(false);
     action();
   };
@@ -72,13 +52,12 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
     !visibleProjects.some(project => (events.get(project.id)?.get(day.dateStr) || []).some(event => event.kind === 'task'))
   ).map(day => day.dateStr));
   const timelineMinWidth = 260 + days.reduce((width, day) => width + (compactDays.has(day.dateStr) ? 64 : 150), 0);
-  return <div ref={masterRef} data-project-timeline-master className={fullscreen
-    ? 'fixed inset-0 z-50 h-screen overflow-y-auto bg-background p-4 sm:p-6 space-y-4'
-    : 'space-y-4'}>
+  return <ExpandedView open={fullscreen} onClose={() => setFullscreen(false)} title="Timeline de projetos">
+    <div data-project-timeline-master className={fullscreen ? 'p-3 sm:p-5' : ''}>
     <Card className="overflow-hidden">
       <div className="p-4 sm:p-5 bg-surface-muted/60 border-b border-border/80 space-y-4">
         <M3SectionHeader title="Timeline de projetos" description="Eventos por projeto, tarefas e datas de entrega."
-          actions={<Button variant="outline" size="sm" onClick={toggleFullscreen} aria-pressed={fullscreen}>
+          actions={<Button variant="outline" size="sm" onClick={() => setFullscreen(value => !value)} aria-pressed={fullscreen}>
             {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}{fullscreen ? 'Sair do ecrã cheio' : 'Ecrã cheio'}
           </Button>} />
         <DateViewNavigator periodDays={periodDays} onPeriodDaysChange={setPeriodDays} onPrev={() => shift(-periodDays)} onNext={() => shift(periodDays)}
@@ -160,8 +139,9 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                     </span>
                   </Button>;
                 })}
-                {canCreate && <IconButton size="sm" aria-label={`Criar tarefa em ${project.title} no dia ${day.dateStr}`} onClick={() => openOutsideTimeline(() => onCreateTask(day.dateStr, project.id))}><Plus className="w-4 h-4" /></IconButton>}
               </div>}
+              {canCreate && <div className="flex justify-end"><IconButton size="sm" aria-label={`Criar tarefa em ${project.title} no dia ${day.dateStr}`} title="Criar tarefa"
+                onClick={() => openOutsideTimeline(() => onCreateTask(day.dateStr, project.id))}><Plus className="w-4 h-4" /></IconButton></div>}
             </td>)}
           </tr>; })}</tbody>
         </table>
@@ -176,5 +156,6 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
         </nav>
       </div>
     </Card>
-  </div>;
+    </div>
+  </ExpandedView>;
 }

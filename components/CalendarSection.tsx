@@ -32,6 +32,9 @@ export default function CalendarSection({ projects = [], tasks = [], absences = 
   const createTask = (date: string, userId?: string, projectId?: string) => {
     if (canCreate) setModal({ task: null, mode: 'create', date, userId, projectId });
   };
+  const duplicateTask = (task: Task) => {
+    if (canWriteTasks) setModal({ task, mode: 'create' });
+  };
   if (!canRead) return <Card className="p-6 text-body text-text-secondary">Sem permissão para consultar o calendário.</Card>;
   return <div className="space-y-6">
     <Tabs tabs={[{ id: 'users', label: 'Calendário semanal', icon: <CalendarDays className="w-4 h-4" /> },
@@ -39,8 +42,8 @@ export default function CalendarSection({ projects = [], tasks = [], absences = 
       activeTabId={view} onChange={value => setView(value as 'users' | 'projects')} variant="line" />
     {view === 'users' ? <OperationalUserCalendar tasks={tasks} users={users} projects={projects} clients={clients}
       absences={absences} taskStatuses={taskStatuses} taskTypes={taskTypes} specialDays={specialDays} userGroups={userGroups}
-      onSelectTask={openTask} onQuickCreateTask={(userId, date, projectId) => createTask(date, userId, projectId)}
-      canCreateTask={canCreate} canMoveTask={canCreate} updateTask={updateTask} appConfig={appConfig} currentUser={currentUser} />
+      onSelectTask={openTask} onDuplicateTask={duplicateTask} onQuickCreateTask={(userId, date, projectId) => createTask(date, userId, projectId)}
+      canCreateTask={canCreate} canDuplicateTask={canWriteTasks} canMoveTask={canCreate} updateTask={updateTask} appConfig={appConfig} currentUser={currentUser} />
     : <ProjectTimeline projects={projects} tasks={tasks} clients={clients} users={users} projectStatuses={projectStatuses} taskStatuses={taskStatuses}
       projectRiskItems={projectRiskItems} specialDays={specialDays} canCreate={canCreate}
       onSelectProject={onSelectProject} onSelectTask={openTask} onCreateTask={(date, projectId) => createTask(date, undefined, projectId)} />}

@@ -6,10 +6,10 @@ import {
   Plus,
   AlertTriangle,
   X,
-  CalendarDays,
   Maximize2,
   ChevronDown,
-  Minimize2
+  Minimize2,
+  Copy
 } from 'lucide-react';
 import { Task, Project, Client, User, UserAbsence, SpecialDay, TaskType } from '../lib/types';
 import {
@@ -29,6 +29,7 @@ import { M3Button, M3FilterChip, M3SectionHeader } from './M3';
 import { IconButton } from './ui/IconButton';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import ExpandedView from './ui/ExpandedView';
 
 export function sanitizeUserIds(rawIds: any, eligibleUsers: User[] = []): string[] {
   if (!Array.isArray(rawIds)) return [];
@@ -62,8 +63,10 @@ interface OperationalUserCalendarProps {
   specialDays?: SpecialDay[];
   userGroups?: any[];
   onSelectTask: (task: Task) => void;
+  onDuplicateTask?: (task: Task) => void;
   onQuickCreateTask?: (userId: string, dateStr: string, projectId?: string) => void;
   canCreateTask?: boolean;
+  canDuplicateTask?: boolean;
   canMoveTask?: boolean;
   updateTask?: (id: string, updates: any) => void | Promise<unknown>;
   appConfig?: any;
@@ -81,38 +84,17 @@ export default function OperationalUserCalendar({
   specialDays = [],
   userGroups = [],
   onSelectTask,
+  onDuplicateTask,
   onQuickCreateTask,
   canCreateTask = false,
+  canDuplicateTask = false,
   canMoveTask = false,
   updateTask,
   appConfig,
   currentUser,
 }: OperationalUserCalendarProps) {
-  // 1. Fullscreen container ref and state
-  const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [expandedTaskCards, setExpandedTaskCards] = useState<Set<string>>(new Set());
-
-  const toggleFullscreen = () => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen?.().catch(() => {
-        setIsFullscreen(true);
-      });
-    } else {
-      document.exitFullscreen?.().catch(() => {
-        setIsFullscreen(false);
-      });
-    }
-  };
-
-  useEffect(() => {
-    const handleFS = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
-    };
-    document.addEventListener('fullscreenchange', handleFS);
-    return () => document.removeEventListener('fullscreenchange', handleFS);
-  }, []);
 
   // 2. Period state: 7 days (default) or 14 days
   const [periodDays, setPeriodDays] = useState<7 | 14>(7);
@@ -338,6 +320,9 @@ export default function OperationalUserCalendar({
   ).map(day => day.dateStr));
   const calendarMinWidth = 168 + calendarDays.reduce((width, day) =>
     width + (occupiedDates.has(day.dateStr) ? 144 : 64), 0);
+  const visibleTaskKeys = displayedUsers.flatMap(user => calendarDays.flatMap(day =>
+    (userDayTasksMap.get(`${user.id}_${day.dateStr}`) || []).map(task => `${user.id}_${day.dateStr}_${task.id}`)));
+  const allTasksExpanded = visibleTaskKeys.length > 0 && visibleTaskKeys.every(key => expandedTaskCards.has(key));
 
   // User selection handlers
   const handleSelectAllUsers = () => {
@@ -373,63 +358,41 @@ export default function OperationalUserCalendar({
   };
 
   return (
-    <div
-      ref={containerRef}
-      className={isFullscreen ? 'm3-calendar-fullscreen fixed inset-0 z-50 overflow-y-auto p-4 space-y-4' : 'space-y-4'}
-    >
+    <ExpandedView open={isFullscreen} onClose={() => setIsFullscreen(false)} title="Calendário semanal">
+    <div className={isFullscreen ? 'p-3 sm:p-5' : ''}>
       {/* TOP CONTROL BAR */}
-      <Card className="p-4 sm:p-5 bg-surface-muted/60 space-y-4">
+      <Card className="overflow-hidden">
+      <div className="p-4 sm:p-5 bg-surface-muted/60 border-b border-border/80 space-y-4">
         {/* Title & Actions */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="m3-calendar-icon p-2 rounded-xl">
-              <CalendarDays className="w-5 h-5" />
-            </span>
-            <div>
-              <M3SectionHeader title="Calendário semanal" description="Planeamento diário de tarefas, técnicos e horas previstas." />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Fullscreen Button */}
-            <M3Button tone="tonal"
-              type="button"
-              onClick={toggleFullscreen}
-              title={isFullscreen ? "Sair do ecrã cheio" : "Abrir em ecrã cheio"}
-            >
-              {isFullscreen ? (
-                <>
-                  <Minimize2 className="w-3.5 h-3.5" />
-                  <span>Sair do Ecrã Cheio</span>
-                </>
-              ) : (
-                <>
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  <span>Ecrã Cheio</span>
-                </>
-              )}
-            </M3Button>
-
-            {/* Quick Create Task button in Header */}
+        <M3SectionHeader title="Calendário semanal" description="Planeamento diário de tarefas, técnicos e horas previstas."
+          actions={<div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" type="button" aria-pressed={allTasksExpanded}
+              onClick={() => setExpandedTaskCards(allTasksExpanded ? new Set() : new Set(visibleTaskKeys))}>
+              {allTasksExpanded ? 'Fechar' : 'Expandir'}
+            </Button>
+            <Button variant="outline" size="sm" type="button" aria-pressed={isFullscreen}
+              onClick={() => setIsFullscreen(value => !value)} title={isFullscreen ? 'Sair do ecrã cheio' : 'Abrir em ecrã cheio'}>
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              {isFullscreen ? 'Sair do ecrã cheio' : 'Ecrã cheio'}
+            </Button>
             {canCreateTask && onQuickCreateTask && (
-              <M3Button
+              <Button size="sm"
                 type="button"
                 onClick={() => {
                   const defaultUser = displayedUsers[0]?.id || activeEligibleUsers[0]?.id || '';
                   const defaultDate = calendarDays[0]?.dateStr || formatDateToYYYYMMDD(new Date());
+                  setIsFullscreen(false);
                   onQuickCreateTask(defaultUser, defaultDate);
                 }}
                 title="Criar nova tarefa no calendário"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Nova Tarefa</span>
-              </M3Button>
+                <Plus className="w-4 h-4" />Nova tarefa
+              </Button>
             )}
-          </div>
-        </div>
+          </div>} />
 
         {/* LINE 1: Datas de visualização (DateViewNavigator) */}
-        <div className="pt-3 border-t border-border-subtle">
+        <div>
           <DateViewNavigator
             periodDays={periodDays}
             onPeriodDaysChange={setPeriodDays}
@@ -441,11 +404,11 @@ export default function OperationalUserCalendar({
         </div>
 
         {/* LINE 2: Utilizadores no Calendário */}
-        <div className="pt-3 border-t border-border-subtle space-y-2">
+        <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-text-muted" />
-              <span className="text-body-sm font-bold text-text-secondary">
+              <span className="text-label font-semibold text-text-secondary">
                 Utilizadores ({selectedUserIds.length}/{activeEligibleUsers.length}):
               </span>
             </div>
@@ -484,10 +447,9 @@ export default function OperationalUserCalendar({
             })}
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* OPERATIONAL CALENDAR TABLE */}
-      <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="border-collapse text-left table-fixed" style={{ minWidth: calendarMinWidth, width: occupiedDates.size ? '100%' : calendarMinWidth }}>
             <colgroup>
@@ -495,10 +457,10 @@ export default function OperationalUserCalendar({
               {calendarDays.map(day => <col key={day.dateStr} style={occupiedDates.has(day.dateStr) ? undefined : { width: 64 }} />)}
             </colgroup>
             {/* Header: Days */}
-            <thead className="bg-surface border-b border-border-subtle sticky top-0 z-20">
+            <thead className="text-body-sm font-semibold text-text-secondary bg-surface-muted border-b border-border sticky top-0 z-20">
               <tr>
                 {/* User Column Header */}
-                <th className="p-3 text-body-sm font-extrabold text-text-secondary sticky left-0 z-30 bg-surface border-r border-border-subtle shadow-[2px_0_4px_rgba(0,0,0,0.02)]">
+                <th className="p-3 text-left text-body-sm font-semibold sticky left-0 z-30 bg-surface-muted border-r border-border shadow-[2px_0_4px_rgba(0,0,0,0.02)]">
                   <div className="flex items-center justify-between">
                     <span>Utilizador</span>
                     <span className="text-caption text-text-muted font-semibold">
@@ -514,7 +476,7 @@ export default function OperationalUserCalendar({
                   return (
                     <th
                       key={day.dateStr}
-                      className={`p-2.5 text-center text-body-sm font-bold border-l border-border-subtle transition-colors ${
+                      className={`p-2.5 text-center text-body-sm font-semibold border-l border-border transition-colors ${
                         (day.isWeekend || !!specialDay)
                           ? (day.isToday
                               ? 'bg-surface-muted text-warning border-x-2 border-warning'
@@ -677,6 +639,7 @@ export default function OperationalUserCalendar({
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      setIsFullscreen(false);
                                       onQuickCreateTask(user.id, day.dateStr);
                                     }}
                                     className="p-1 hover:bg-primary/10 text-primary rounded-md transition-colors cursor-pointer"
@@ -783,8 +746,15 @@ export default function OperationalUserCalendar({
                                         {statusName}
                                       </span>
                                     </div>
-                                      <Button type="button" variant="ghost" size="sm" className="w-full"
-                                        onClick={() => onSelectTask(task)}>Abrir tarefa</Button>
+                                      <div className="flex items-center gap-1">
+                                        <Button type="button" variant="ghost" size="sm" className="min-w-0 flex-1"
+                                          onClick={() => { setIsFullscreen(false); onSelectTask(task); }}>Abrir tarefa</Button>
+                                        {canDuplicateTask && onDuplicateTask && <IconButton type="button" size="sm" variant="ghost"
+                                          title="Duplicar Tarefa" aria-label={`Duplicar tarefa ${task.title}`}
+                                          onClick={() => { setIsFullscreen(false); onDuplicateTask(task); }}>
+                                          <Copy className="w-4 h-4" />
+                                        </IconButton>}
+                                      </div>
                                     </div>}
                                   </div>
                                 );
@@ -809,5 +779,6 @@ export default function OperationalUserCalendar({
         </div>
       </Card>
     </div>
+    </ExpandedView>
   );
 }

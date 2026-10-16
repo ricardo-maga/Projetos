@@ -406,8 +406,6 @@ body[data-theme],
 .m3-filter-chip[aria-pressed="true"] { border-color: transparent; background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
 :is(.m3-button, .m3-icon-button, .m3-segment, .m3-filter-chip):focus-visible { outline: 3px solid var(--m3-primary); outline-offset: 3px; position: relative; z-index: 1; }
 :is(.m3-button, .m3-icon-button, .m3-segment, .m3-filter-chip):disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
-.m3-calendar-fullscreen { background: var(--m3-surface-container); }
-.m3-calendar-icon { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
 
 /* Opt-in migration of legacy cards, without changing status colors or table
    geometry, and respecting nested modules excluded from this phase. */
