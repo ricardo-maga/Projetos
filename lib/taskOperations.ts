@@ -276,6 +276,7 @@ export async function apiCreateTask(input: TaskCreateInput): Promise<TaskOperati
     description: input.description?.trim() || '',
     statusId: input.statusId || undefined,
     taskTypeId: input.taskTypeId || undefined,
+    priorityId: input.priorityId || null,
     estimatedHours: parseTaskHoursToFloat(input.estimatedHours),
     actualHours: parseTaskHoursToFloat(input.actualHours),
     startDate: input.startDate || undefined,
@@ -345,6 +346,7 @@ export async function apiUpdateTask(
   if (updates.description !== undefined) patchPayload.description = updates.description;
   if (updates.statusId !== undefined) patchPayload.statusId = updates.statusId;
   if (updates.taskTypeId !== undefined) patchPayload.taskTypeId = updates.taskTypeId;
+  if (updates.priorityId !== undefined) patchPayload.priorityId = updates.priorityId;
   if (updates.estimatedHours !== undefined) patchPayload.estimatedHours = parseTaskHoursToFloat(updates.estimatedHours);
   if (updates.actualHours !== undefined) patchPayload.actualHours = parseTaskHoursToFloat(updates.actualHours);
   if (updates.startDate !== undefined) patchPayload.startDate = updates.startDate;

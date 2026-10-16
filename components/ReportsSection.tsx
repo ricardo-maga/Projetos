@@ -1,30 +1,44 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { BarChart3, ExternalLink, Filter } from 'lucide-react';
-import type { Client, Project, ProjectMaterial, ProjectPriority, Task, TaskStatus, User } from '../lib/types';
+import { ExternalLink } from 'lucide-react';
+import type { Client, Project, ProjectMaterial, ProjectPriority, Task, TaskStatus } from '../lib/types';
 import { REPORT_CATALOG, buildReport, type ReportId } from '../lib/reports';
 import { M3SectionHeader } from './M3';
 import { Badge, Button, Card, Select } from './ui';
 
-export default function ReportsSection({ projects, tasks, projectMaterials, clients, users, projectPriorities, taskStatuses, onSelectProject }: {
-  projects: Project[]; tasks: Task[]; projectMaterials: ProjectMaterial[]; clients: Client[]; users: User[]; projectPriorities: ProjectPriority[]; taskStatuses: TaskStatus[];
-  onNavigate: (tab: string) => void; onSelectProject: (id: string) => void;
+export default function ReportsSection({ projects, tasks, projectMaterials, clients, projectPriorities, taskStatuses, onSelectProject }: {
+  projects: Project[]; tasks: Task[]; projectMaterials: ProjectMaterial[]; clients: Client[]; projectPriorities: ProjectPriority[]; taskStatuses: TaskStatus[];
+  onSelectProject: (id: string) => void;
 }) {
   const [reportId, setReportId] = useState<ReportId>('overdue-materials');
-  const [projectId, setProjectId] = useState('');
-  const [clientId, setClientId] = useState('');
-  const [managerId, setManagerId] = useState('');
-  const [technicianId, setTechnicianId] = useState('');
-  const [taskStatusId, setTaskStatusId] = useState('');
-  const report = useMemo(() => buildReport(reportId, { projects, tasks, projectMaterials, clients, users, projectPriorities, taskStatuses, projectId: projectId || undefined, clientId: clientId || undefined, managerId: managerId || undefined, technicianId: technicianId || undefined, taskStatusId: taskStatusId || undefined }), [reportId, projects, tasks, projectMaterials, clients, users, projectPriorities, taskStatuses, projectId, clientId, managerId, technicianId, taskStatusId]);
+  const report = useMemo(() => buildReport(reportId, { projects, tasks, projectMaterials, clients, projectPriorities, taskStatuses }), [reportId, projects, tasks, projectMaterials, clients, projectPriorities, taskStatuses]);
   const meta = REPORT_CATALOG.find(item => item.id === reportId)!;
+
   return <div className="space-y-5">
     <M3SectionHeader title="Relatórios" description="Análise operacional baseada nos dados atuais do sistema." />
-    <Card className="p-4 space-y-4"><div className="flex flex-wrap gap-3 items-end"><div className="min-w-60 flex-1"><label className="text-label font-bold">Relatório</label><Select value={reportId} onChange={event => setReportId(event.target.value as ReportId)} className="mt-1 w-full">{REPORT_CATALOG.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</Select></div><div className="min-w-52"><label className="text-label font-bold">Cliente</label><Select value={clientId} onChange={event => setClientId(event.target.value)} className="mt-1 w-full"><option value="">Todos os clientes</option>{clients.filter(client => !client.deleted).map(client => <option key={client.id} value={client.id}>{client.clientName}</option>)}</Select></div><div className="min-w-52"><label className="text-label font-bold">Gestor</label><Select value={managerId} onChange={event => setManagerId(event.target.value)} className="mt-1 w-full"><option value="">Todos os gestores</option>{users.filter(user => !user.deleted).map(user => <option key={user.id} value={user.id}>{user.name}</option>)}</Select></div><div className="min-w-52"><label className="text-label font-bold">Projeto</label><Select value={projectId} onChange={event => setProjectId(event.target.value)} className="mt-1 w-full"><option value="">Todos os projetos</option>{projects.filter(project => !project.deleted).map(project => <option key={project.id} value={project.id}>{project.title}</option>)}</Select></div>{reportId === 'critical-overdue-tasks' && <div className="min-w-52"><label className="text-label font-bold">Estado</label><Select value={taskStatusId} onChange={event => setTaskStatusId(event.target.value)} className="mt-1 w-full"><option value="">Todos os estados abertos</option>{taskStatuses.filter(status => status.scale === 1 || status.scale === 2).map(status => <option key={status.id} value={status.id}>{status.name}</option>)}</Select></div>}{reportId === 'technician-hours' && <div className="min-w-52"><label className="text-label font-bold">Técnico</label><Select value={technicianId} onChange={event => setTechnicianId(event.target.value)} className="mt-1 w-full"><option value="">Todos os técnicos</option>{users.filter(user => !user.deleted).map(user => <option key={user.id} value={user.id}>{user.name}</option>)}</Select></div>}</div><p className="text-caption text-text-secondary">{meta.description}</p></Card>
+    <Card className="p-4 space-y-4">
+      <div className="min-w-60">
+        <label htmlFor="report-select" className="text-label font-bold">Relatório</label>
+        <Select id="report-select" value={reportId} onChange={event => setReportId(event.target.value as ReportId)} className="mt-1 w-full">
+          {REPORT_CATALOG.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+        </Select>
+      </div>
+      <p className="text-caption text-text-secondary">{meta.description}</p>
+    </Card>
     <Card className="p-4"><p className="text-caption text-text-secondary">Resultados</p><p className="text-heading-lg">{report.total}</p></Card>
-    {'groups' in report && report.groups && <Card className="p-5 space-y-3"><h3 className="text-heading-sm flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Entregas por mês</h3>{report.groups.length ? report.groups.map(group => <div key={group.period} className="flex items-center gap-3"><span className="w-20 text-body-sm">{group.period}</span><div className="h-2 flex-1 rounded bg-surface-muted"><div className="h-2 rounded bg-primary" style={{ width: `${group.count / Math.max(...report.groups.map(item => item.count), 1) * 100}%` }} /></div><Badge>{group.count}</Badge></div>) : <p className="text-body-sm text-text-secondary">Sem entregas agendadas.</p>}</Card>}
-    <Card className="overflow-hidden"><div className="p-4 border-b border-border flex items-center gap-2"><Filter className="w-4 h-4" /><h3 className="text-heading-sm">Detalhe</h3></div><div className="divide-y divide-border-subtle">{report.details.length ? report.details.map(row => <div key={row.id} className="p-4 flex flex-wrap items-center gap-3"><div className="min-w-0 flex-1"><p className="font-bold text-body-sm truncate">{row.primary}</p><p className="text-caption text-text-secondary truncate">{row.secondary}</p></div>{row.date && <span className="text-caption">{row.date.split('-').reverse().join('/')}</span>}<Badge>{row.value}</Badge>{row.projectId && <Button variant="ghost" size="sm" onClick={() => onSelectProject(row.projectId)} title="Abrir projeto"><ExternalLink className="w-4 h-4" /></Button>}</div>) : <p className="p-6 text-body-sm text-text-secondary text-center">Sem resultados para os filtros selecionados.</p>}</div></Card>
-    {reportId === 'technician-hours' && <p className="text-caption text-text-secondary">As horas de uma tarefa com vários técnicos são contabilizadas integralmente para cada técnico atribuído. Os valores reais vêm das tarefas, não de lançamentos diários.</p>}
+    <Card className="overflow-hidden">
+      <div className="p-4 border-b border-border"><h3 className="text-heading-sm">Detalhe</h3></div>
+      <div className="divide-y divide-border-subtle">
+        {report.details.length ? report.details.map(row => <div key={row.id} className="p-4 flex flex-wrap items-center gap-3">
+          <div className="min-w-0 flex-1"><p className="font-bold text-body-sm truncate">{row.primary}</p><p className="text-caption text-text-secondary truncate">{row.secondary}</p></div>
+          {row.date && <span className="text-caption">{row.date.split('-').reverse().join('/')}</span>}
+          <Badge>{row.value}</Badge>
+          {row.projectId && <Button variant="ghost" size="sm" onClick={() => onSelectProject(row.projectId)} title="Abrir projeto"><ExternalLink className="w-4 h-4" /></Button>}
+        </div>) : <p className="p-6 text-body-sm text-text-secondary text-center">
+          {reportId === 'critical-open-tasks' ? 'Sem tarefas com prioridade de nível 3 e estado de nível 1 ou 2. Confirme a prioridade das tarefas.' : 'Sem materiais em atraso.'}
+        </p>}
+      </div>
+    </Card>
   </div>;
 }

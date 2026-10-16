@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { buildReport } from '../lib/reports';
+import { buildReport, REPORT_CATALOG } from '../lib/reports';
 
 const project: any = { id: 'p1', title: 'Linha A', clientId: 'c1', scheduledDate: '2026-10-03', deleted: false };
 const task = (extra = {}): any => ({ id: 't1', projectId: 'p1', title: 'Instalação', priorityId: 'critical', statusId: 'open', estimatedDate: '2026-10-01', estimatedHours: '8', actualHours: '6', assigneeIds: ['u1', 'u2'], deleted: false, ...extra });
@@ -18,14 +18,18 @@ describe('Reports catalog', () => {
     ] }));
     expect(report.details.map((row: any) => row.id)).toEqual(['late']);
   });
-  it('identifies critical tasks in status levels 1 or 2 regardless of date', () => {
-    const report: any = buildReport('critical-overdue-tasks', input({ tasks: [task(), task({ id: 'not-critical', priorityId: undefined }), task({ id: 'done', statusId: 'done' }), task({ id: 'undated', estimatedDate: '' }), task({ id: 'future', estimatedDate: '2026-10-20', statusId: 'in-progress' })], taskStatuses: [{ id: 'open', scale: 1 }, { id: 'in-progress', scale: 2 }, { id: 'done', scale: 3 }] }));
-    expect(report.details.map((row: any) => row.id)).toEqual(['t1', 'undated', 'future']);
+  it('keeps only the two requested reports', () => {
+    expect(REPORT_CATALOG.map(item => item.id)).toEqual(['overdue-materials', 'critical-open-tasks']);
   });
-  it('includes all scheduled months and task dates without a shared date range', () => {
-    const deliveries: any = buildReport('scheduled-deliveries', input({ projects: [project, { ...project, id: 'p2', scheduledDate: '2025-01-03' }] }));
-    const hours: any = buildReport('technician-hours', input({ tasks: [task(), task({ id: 'older', estimatedDate: '2025-01-01', estimatedHours: '2', actualHours: '1' }), task({ id: 'undated', estimatedDate: '', estimatedHours: '3', actualHours: '2' })] }));
-    expect(deliveries.groups).toEqual([{ period: '2025-01', count: 1 }, { period: '2026-10', count: 1 }]);
-    expect(hours.rows.map((row: any) => [row.name, row.estimated, row.actual])).toEqual([['Ana', 13, 9], ['Bruno', 13, 9]]);
+  it('includes critical open tasks with or without a project or date', () => {
+    const report = buildReport('critical-open-tasks', input({
+      tasks: [task(), task({ id: 'not-critical', priorityId: undefined }), task({ id: 'done', statusId: 'done' }), task({ id: 'undated', estimatedDate: '' }), task({ id: 'future', estimatedDate: '2026-10-20', statusId: 'in-progress' }), task({ id: 'standalone', projectId: null })],
+      taskStatuses: [{ id: 'open', scale: 1 }, { id: 'in-progress', scale: 2 }, { id: 'done', scale: 3 }],
+    }));
+    expect(report.details.map(row => row.id)).toEqual(['t1', 'undated', 'future', 'standalone']);
+    expect(report.details.find(row => row.id === 'standalone')?.secondary).toBe('Sem projeto');
+  });
+  it('returns no critical tasks when their priority has not been assigned', () => {
+    expect(buildReport('critical-open-tasks', input({ tasks: [task({ priorityId: undefined })] })).total).toBe(0);
   });
 });
