@@ -6,7 +6,7 @@ export type ReportId = 'overdue-materials' | 'critical-overdue-tasks' | 'schedul
 
 export const REPORT_CATALOG: Array<{ id: ReportId; label: string; description: string }> = [
   { id: 'overdue-materials', label: 'Materiais em atraso', description: 'Materiais pendentes cuja entrega prevista já passou.' },
-  { id: 'critical-overdue-tasks', label: 'Tarefas críticas em atraso', description: 'Tarefas abertas com prioridade de nível 3 e data operacional ultrapassada.' },
+  { id: 'critical-overdue-tasks', label: 'Tarefas críticas em aberto', description: 'Tarefas com prioridade de nível 3 e estado de nível 1 ou 2.' },
   { id: 'scheduled-deliveries', label: 'Projetos entregues por mês', description: 'Entregas planeadas agrupadas pela data agendada.' },
   { id: 'technician-hours', label: 'Horas por técnico', description: 'Total de horas previstas e reais por técnico em todas as tarefas atribuídas.' },
 ];
@@ -37,11 +37,10 @@ export function buildReport(id: ReportId, input: ReportsInput) {
 
   if (id === 'critical-overdue-tasks') {
     const rows = input.tasks.filter(task => {
-      const effectiveDate = iso(getTaskEffectiveDate(task));
       const priority = input.projectPriorities.find(item => item.id === task.priorityId);
       const status = input.taskStatuses.find(item => item.id === task.statusId);
       return !task.deleted && Boolean(task.projectId) && scopedProject(task.projectId!) && activeProjects.has(task.projectId!)
-        && priority?.scale === 3 && (status?.scale === 1 || status?.scale === 2) && (!input.taskStatusId || task.statusId === input.taskStatusId) && Boolean(effectiveDate) && effectiveDate < today(input.now);
+        && priority?.scale === 3 && (status?.scale === 1 || status?.scale === 2) && (!input.taskStatusId || task.statusId === input.taskStatusId);
     }).map(task => ({ task, project: activeProjects.get(task.projectId!)!, effectiveDate: iso(getTaskEffectiveDate(task)) }));
     return { rows, total: rows.length, details: rows.map(({ task, project, effectiveDate }) => ({ id: task.id, primary: task.title, secondary: `${clientName(project)} · ${project.title}`, date: effectiveDate, projectId: project.id, value: 'Crítica' })) };
   }
