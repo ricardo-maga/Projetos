@@ -115,7 +115,6 @@ export default function Page() {
     state,
     resetToDefault,
     clearAllData,
-    importState,
     addProject,
     updateProject,
     deleteProject,
@@ -737,7 +736,7 @@ export default function Page() {
                   { id: 'utilizadores', label: 'Utilizadores', icon: Users },
                   { id: 'notificacoes', label: 'Notificações e Automações', icon: Bell },
                   { id: 'auditoria', label: 'Registo de Auditoria', icon: ShieldCheck },
-                  { id: 'importacao', label: 'Importação e Backup', icon: Database },
+                  { id: 'importacao', label: 'Importação e base de dados', icon: Database },
                 ];
                 const visibleConfigSubItems = configSubItems.filter(
                   sub => !sub.permission || hasPermission(currentUser, sub.permission as any, state?.userGroups || [])
@@ -1081,7 +1080,8 @@ export default function Page() {
                   deleteAuxRecord={deleteAuxRecord}
                   reorderAuxRecords={reorderAuxRecords}
                   state={state}
-                  importState={importState}
+                  databaseStatus={syncStatus}
+                  databaseError={syncError}
                   addProject={addProject}
                   clients={state.clients}
                   addClient={addClient}

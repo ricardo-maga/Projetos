@@ -41,7 +41,7 @@ async function createAuditEvent(req: NextRequest) {
     if (Number(req.headers.get('content-length') || 0) > 4096)
       return NextResponse.json({ success: false, message: 'Pedido demasiado grande.' }, { status: 413 });
     const body = await req.json();
-    const allowed = ['CREATE','UPDATE','DELETE','LOGIN','LOGOUT','RESTORE','EXPORT','SETTINGS'];
+    const allowed = ['CREATE','UPDATE','DELETE','LOGIN','LOGOUT','EXPORT','SETTINGS'];
     if (!body || !allowed.includes(body.action))
       return NextResponse.json({ success: false, message: 'Evento inválido.' }, { status: 400 });
     // Client reports are explicitly non-authoritative. Ignore caller identity,

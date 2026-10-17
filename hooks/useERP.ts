@@ -283,20 +283,6 @@ export function useERP() {
     }
   };
 
-  // Import entire state from JSON string
-  const importState = (jsonStr: string): boolean => {
-    try {
-      const parsed = JSON.parse(jsonStr) as ERPState;
-      if (parsed && parsed.projects && parsed.tasks && parsed.users) {
-        saveState(parsed);
-        return true;
-      }
-    } catch (e) {
-      console.error('Import failed', e);
-    }
-    return false;
-  };
-
   const sortedState: ERPState = useMemo(() => {
     if (!state) return CLEAN_BASELINE_STATE;
     
@@ -2042,7 +2028,6 @@ export function useERP() {
     state: sortedState,
     resetToDefault,
     clearAllData,
-    importState,
     syncStatus,
     syncError,
     isDbConfigured,

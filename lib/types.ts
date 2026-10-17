@@ -227,7 +227,6 @@ export interface AppConfiguration {
   fieldManagerGroupIds?: string[];
   taskAssigneeGroupIds?: string[];
   taskAssigneeGroupId?: string;
-  autoDailyBackupEnabled?: boolean;
 }
 
 export interface Client {
@@ -339,7 +338,7 @@ export interface AuditLog {
   userId?: string;
   userName?: string;
   userEmail?: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'RESTORE' | 'EXPORT' | 'SETTINGS' | string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'EXPORT' | 'SETTINGS' | string;
   entityType: 'PROJECT' | 'TASK' | 'CLIENT' | 'USER' | 'RISK' | 'SYSTEM' | string;
   entityId?: string;
   entityName?: string;

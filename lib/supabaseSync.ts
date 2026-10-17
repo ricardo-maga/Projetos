@@ -28,14 +28,6 @@ import { normalizeRoleId } from './permissions';
 import { getAuthHeaders } from './clientAuth';
 import { createLegacyWriteBatch, type LegacyVersions } from './supabase/legacyWriteBatch';
 
-export interface SupabaseBackup {
-  id: string;
-  created_at: string;
-  updated_at: string;
-  name: string;
-  state: ERPState;
-}
-
 const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
 /**
@@ -320,24 +312,24 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
   if (!isSupabaseConfigured) {
     return {
       success: false,
-      message: 'Supabase não está configurado. Insira as credenciais no menu "Settings / Secrets" da plataforma.'
+      message: 'Supabase não está configurado nesta aplicação.'
     };
   }
 
   try {
-    const res = await fetch('/api/supabase/config', { method: 'GET' });
+    const res = await fetch('/api/supabase/sync', { method: 'GET', headers: getAuthHeaders(), cache: 'no-store' });
     const data = await res.json().catch(() => null);
 
-    if (res.ok && data?.isConfigured) {
+    if (res.ok && data?.success) {
       return {
         success: true,
-        message: 'Ligação ao servidor de base de dados e configuração bem-sucedida!'
+        message: 'Leitura autenticada da base de dados concluída com sucesso.'
       };
     }
 
     return {
       success: false,
-      message: 'Erro na ligação ao servidor Supabase.'
+      message: data?.message || `Não foi possível ler a base de dados (${res.status}).`
     };
   } catch (error: any) {
     return {
@@ -348,7 +340,7 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
 }
 
 /**
- * Save full ERP State snapshot to Supabase as backup (Legacy helper kept for backwards compatibility)
+ * Normalize dates received from legacy records.
  */
 function formatDbDate(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null;
@@ -361,81 +353,6 @@ function formatDbDate(dateStr: string | null | undefined): string | null {
     }
   }
   return s;
-}
-
-export async function saveSnapshotToSupabase(state: ERPState, name: string = 'Automático'): Promise<{ success: boolean; message: string; data?: any }> {
-  if (!isSupabaseConfigured || !supabase) {
-    return { success: false, message: 'Supabase não está configurado.' };
-  }
-
-  try {
-    await logAuditEventToSupabase({
-      action: 'CREATE',
-      entityType: 'BACKUP',
-      details: `Backup/snapshot solicitado: "${name}"`
-    });
-
-    return {
-      success: true,
-      message: 'Registo de backup concluído com sucesso.',
-      data: [{ id: crypto.randomUUID(), name, created_at: new Date().toISOString() }]
-    };
-  } catch (error: any) {
-    console.error('Supabase backup error:', error);
-    return {
-      success: false,
-      message: `Erro ao registar backup: ${error.message || error}`
-    };
-  }
-}
-
-/**
- * Load list of backups from Supabase (Legacy helper kept for compatibility)
- */
-export async function listBackupsFromSupabase(): Promise<{ success: boolean; data?: SupabaseBackup[]; message?: string }> {
-  return {
-    success: true,
-    data: []
-  };
-}
-
-/**
- * Delete a backup from Supabase (Legacy helper kept for compatibility)
- */
-export async function deleteBackupFromSupabase(id: string): Promise<{ success: boolean; message: string }> {
-  return {
-    success: true,
-    message: 'Registo de cópia de segurança processado.'
-  };
-}
-
-/**
- * Calculates start of week date string (YYYY-MM-DD) for weekly snapshot grouping
- */
-function getStartOfWeekKey(dateStr: string): string {
-  const d = new Date(dateStr);
-  const day = d.getUTCDay();
-  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));
-  return monday.toISOString().slice(0, 10);
-}
-
-/**
- * Prunes automatic snapshots based on retention rules:
- * - Keeps up to 10 daily snapshots (newest 1 for each of the last 10 distinct days)
- * - Keeps up to 10 weekly snapshots (newest 1 for each of the last 10 distinct weeks)
- * - Deletes any automatic snapshot that does not fit either rule
- * - Manual snapshots are NEVER touched or pruned
- */
-export async function pruneAutoBackups(autoBackups: SupabaseBackup[]): Promise<{ deletedCount: number }> {
-  return { deletedCount: 0 };
-}
-
-/**
- * Checks if a daily automatic backup exists for today; if not, creates one.
- */
-export async function checkAndCreateAutoDailyBackup(currentState: ERPState): Promise<{ created: boolean; message: string }> {
-  return { created: true, message: 'Rotina diária concluída.' };
 }
 
 /**
@@ -2449,7 +2366,7 @@ export async function logAuditEventToSupabase(log: {
   userId?: string;
   userName?: string;
   userEmail?: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'RESTORE' | 'EXPORT' | 'SETTINGS' | string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'EXPORT' | 'SETTINGS' | string;
   entityType: 'PROJECT' | 'TASK' | 'CLIENT' | 'USER' | 'RISK' | 'SYSTEM' | string;
   entityId?: string;
   entityName?: string;
