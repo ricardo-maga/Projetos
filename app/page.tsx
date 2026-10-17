@@ -33,6 +33,24 @@ import {
 
 import { clearClientSession, setClientSession, getClientToken } from '../lib/clientAuth';
 
+const CONFIG_TAB_SLUGS: Record<string, string> = {
+  sistema: 'configuration',
+  campos: 'aux-fields',
+  dias: 'special-days',
+  clientes: 'clients',
+  ausencias: 'absences',
+  tarefas: 'task-templates',
+  utilizadores: 'users',
+  notificacoes: 'notifications',
+  automacoes: 'automations',
+  auditoria: 'audit-log',
+  importacao: 'import-database',
+};
+
+const CONFIG_SLUG_TABS = Object.fromEntries(
+  Object.entries(CONFIG_TAB_SLUGS).map(([tab, slug]) => [slug, tab])
+);
+
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -214,7 +232,17 @@ export default function Page() {
       const projectParam = params.get('project');
       
       if (tabParam) {
-        setActiveTab(tabParam);
+        const configTab = CONFIG_SLUG_TABS[tabParam];
+        if (configTab) {
+          if (configTab === 'clientes' || configTab === 'ausencias') {
+            setActiveTab(configTab);
+          } else {
+            setActiveTab('configuracoes');
+            setActiveConfigTab(configTab);
+          }
+        } else {
+          setActiveTab(tabParam);
+        }
       }
       if (projectParam) {
         setSelectedProjectId(projectParam);
@@ -243,7 +271,25 @@ export default function Page() {
     setSidebarOpen(false);
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      params.set('tab', tabId);
+      params.set('tab', tabId === 'configuracoes'
+        ? CONFIG_TAB_SLUGS[activeConfigTab] || CONFIG_TAB_SLUGS.sistema
+        : tabId);
+      params.delete('project');
+      window.history.pushState(null, '', '?' + params.toString());
+      scrollToTop();
+    }
+  };
+
+  const handleConfigTabChange = (configTab: string) => {
+    const isNestedPage = configTab === 'clientes' || configTab === 'ausencias';
+    setActiveTab(isNestedPage ? configTab : 'configuracoes');
+    setActiveConfigTab(configTab);
+    setSelectedProjectId(null);
+    setNavKey(prev => prev + 1);
+    setSidebarOpen(false);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      params.set('tab', CONFIG_TAB_SLUGS[configTab] || CONFIG_TAB_SLUGS.sistema);
       params.delete('project');
       window.history.pushState(null, '', '?' + params.toString());
       scrollToTop();
@@ -750,7 +796,7 @@ export default function Page() {
                       disabled={isDisabled}
                       onClick={() => {
                         if (!isDisabled) {
-                          handleTabChange(tab.id);
+                          handleConfigTabChange('sistema');
                         }
                       }}
                       className={cn(
@@ -783,14 +829,7 @@ export default function Page() {
                           return (
                             <button
                               key={sub.id}
-                              onClick={() => {
-                                if (sub.id === 'clientes' || sub.id === 'ausencias') {
-                                  handleTabChange(sub.id);
-                                } else {
-                                  handleTabChange('configuracoes');
-                                  setActiveConfigTab(sub.id);
-                                }
-                              }}
+                              onClick={() => handleConfigTabChange(sub.id)}
                               className={cn(
                                 "w-full flex items-center gap-2.5 py-2 rounded-control text-caption font-semibold transition-all duration-150 cursor-pointer select-none border-l-2",
                                 isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-3',
@@ -1053,7 +1092,7 @@ export default function Page() {
               {activeTab === 'configuracoes' && (
                 <ConfigSection 
                   activeConfigTab={activeConfigTab}
-                  onChangeConfigTab={setActiveConfigTab}
+                  onChangeConfigTab={handleConfigTabChange}
                   config={appConfig}
                   specialDays={state.specialDays}
                   updateConfig={updateConfig}
