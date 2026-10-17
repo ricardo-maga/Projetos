@@ -5,7 +5,7 @@ import { AppConfiguration, SpecialDay, DefaultTask, ERPState } from '../lib/type
 import { 
   Settings, RefreshCw, Key, Info, Calendar, Plus, Trash2, ListTodo, Edit2, Check, X,
   Database, UploadCloud, CheckCircle, AlertCircle, Terminal, Copy, ShieldCheck,
-  Users, GripVertical, Zap, Bell
+  Users, GripVertical, Zap, Bell, Search, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import AutomationEditor from './AutomationEditor';
 import AuditLogSection from './AuditLogSection';
@@ -42,9 +42,12 @@ import Input from './ui/Input';
 import Select from './ui/Select';
 import Switch from './ui/Switch';
 import { M3SectionHeader, M3Button } from './M3';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
 
 import { hasPermission } from '../lib/permissions';
 import { configuredRoleIds } from '../lib/roleAssociations';
+import { formatHoursToHHMM, parseTimeToHours } from '../lib/utils';
 
 interface ConfigSectionProps {
   activeConfigTab?: string;
@@ -71,7 +74,6 @@ interface ConfigSectionProps {
   addAuxRecord?: (tableName: any, name: string, extra?: { scale?: number }) => void;
   updateAuxRecord?: (tableName: any, id: string, updates: Partial<{ name: string; scale: number; deleted: boolean }>) => void;
   deleteAuxRecord?: (tableName: any, id: string) => void;
-  updateNotificationSetting?: (id: string, updates: Partial<import('../lib/types').NotificationSetting>) => Promise<{ success: boolean; message?: string }>;
   reorderAuxRecords?: (tableName: any, newItems: any[]) => void;
   state: ERPState;
   databaseStatus: 'idle' | 'syncing' | 'synced' | 'error';
@@ -326,7 +328,6 @@ export default function ConfigSection({
   addAuxRecord,
   updateAuxRecord,
   deleteAuxRecord,
-  updateNotificationSetting,
   reorderAuxRecords,
   state,
   databaseStatus,
@@ -389,21 +390,6 @@ export default function ConfigSection({
   const activeConfigTab = activeConfigTabProp || 'sistema';
   const [usersConfigTab, setUsersConfigTab] = useState<'users' | 'roles' | 'associacoes'>('users');
   const [notificationTab, setNotificationTab] = useState<'notificacoes' | 'automacoes'>(activeConfigTab === 'automacoes' ? 'automacoes' : 'notificacoes');
-  const [savingNotificationId, setSavingNotificationId] = useState<string | null>(null);
-  const [notificationError, setNotificationError] = useState<string | null>(null);
-  const saveNotificationSetting = async (id: string, updates: Partial<import('../lib/types').NotificationSetting>) => {
-    if (!updateNotificationSetting || savingNotificationId) return;
-    setSavingNotificationId(id);
-    setNotificationError(null);
-    try {
-      const result = await updateNotificationSetting(id, updates);
-      if (!result.success) setNotificationError(result.message || 'Não foi possível guardar a definição.');
-    } catch {
-      setNotificationError('Não foi possível guardar a definição.');
-    } finally {
-      setSavingNotificationId(null);
-    }
-  };
   useEffect(() => {
     if (activeConfigTab === 'automacoes') setNotificationTab('automacoes');
   }, [activeConfigTab]);
@@ -483,12 +469,19 @@ export default function ConfigSection({
   const [sdDate, setSdDate] = useState('');
   const [sdName, setSdName] = useState('');
   const [sdPage, setSdPage] = useState(0);
+  const [sdSearch, setSdSearch] = useState('');
+  const [sdYear, setSdYear] = useState('');
+  const [sdPageSize, setSdPageSize] = useState(12);
 
   // Default Tasks form state
   const [dtTitle, setDtTitle] = useState('');
   const [dtDesc, setDtDesc] = useState('');
   const [dtHours, setDtHours] = useState('08:00');
   const [dtTypeId, setDtTypeId] = useState('');
+  const [dtSearch, setDtSearch] = useState('');
+  const [dtFilterTypeId, setDtFilterTypeId] = useState('');
+  const [dtPage, setDtPage] = useState(0);
+  const [dtPageSize, setDtPageSize] = useState(12);
 
   // Inline editing state for default tasks
   const [editingDtId, setEditingDtId] = useState<string | null>(null);
@@ -702,7 +695,7 @@ export default function ConfigSection({
       return;
     }
     if (!dtTitle.trim() || !addDefaultTask) return;
-    addDefaultTask(dtTitle.trim(), dtDesc.trim(), dtHours, dtTypeId || undefined);
+    addDefaultTask(dtTitle.trim(), dtDesc.trim(), formatHoursToHHMM(parseTimeToHours(dtHours)), dtTypeId || undefined);
     setDtTitle('');
     setDtDesc('');
     setDtHours('08:00');
@@ -713,7 +706,7 @@ export default function ConfigSection({
     setEditingDtId(dt.id);
     setEditDtTitle(dt.title);
     setEditDtDesc(dt.description);
-    setEditDtHours(dt.estimatedHours);
+    setEditDtHours(formatHoursToHHMM(parseTimeToHours(dt.estimatedHours)));
     setEditDtTypeId(dt.taskTypeId || '');
   };
 
@@ -722,11 +715,21 @@ export default function ConfigSection({
     updateDefaultTask(id, {
       title: editDtTitle.trim(),
       description: editDtDesc.trim(),
-      estimatedHours: editDtHours,
+      estimatedHours: formatHoursToHHMM(parseTimeToHours(editDtHours)),
       taskTypeId: editDtTypeId || undefined
     });
     setEditingDtId(null);
   };
+
+  const defaultTaskQuery = dtSearch.trim().toLocaleLowerCase('pt-PT');
+  const filteredDefaultTasks = defaultTasks.filter(task => {
+    const matchesType = !dtFilterTypeId || (dtFilterTypeId === 'unassigned' ? !task.taskTypeId : task.taskTypeId === dtFilterTypeId);
+    return matchesType && (!defaultTaskQuery || [task.title, task.description].some(value => value.toLocaleLowerCase('pt-PT').includes(defaultTaskQuery)));
+  });
+  const defaultTaskTotalPages = Math.max(1, Math.ceil(filteredDefaultTasks.length / dtPageSize));
+  const currentDefaultTaskPage = Math.min(dtPage, defaultTaskTotalPages - 1);
+  const defaultTaskStartIndex = currentDefaultTaskPage * dtPageSize;
+  const visibleDefaultTasks = filteredDefaultTasks.slice(defaultTaskStartIndex, defaultTaskStartIndex + dtPageSize);
 
   // CSV Import State
   const [csvText, setCsvText] = useState('');
@@ -941,195 +944,123 @@ export default function ConfigSection({
 
       {/* DIAS ESPECIAIS TAB */}
       {activeConfigTab === 'dias' && (
-        <div className="space-y-6">
-          <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="special-days-card">
-          <h2 className="text-base font-bold text-text-primary mb-5 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-indigo-600" />
-            Dias especiais
-          </h2>
-
-          <form onSubmit={handleAddSpecialDay} className="flex flex-col sm:flex-row gap-3 items-end mb-6 bg-surface-muted/50 p-4 rounded-control border border-border-subtle">
-            <div className="w-full sm:w-48 space-y-1">
-              <label className="block text-[11px] text-text-muted">Dia</label>
-              <input 
-                type="date"
-                required
-                value={sdDate}
-                onChange={e => setSdDate(e.target.value)}
-                className="w-full p-2 border border-border rounded-lg text-text-primary focus:ring-2 focus:ring-blue-100 outline-none bg-surface"
-              />
+        <Card className="bg-surface rounded-card border border-border overflow-hidden animate-fade-in" id="special-days-card">
+          <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60 space-y-4">
+            <M3SectionHeader title="Dias especiais" description="Consulte e organize as datas especiais do calendário."
+              actions={canWriteConfig ? <Button type="submit" form="special-day-form"><Plus aria-hidden="true" className="w-4 h-4" /> Adicionar dia especial</Button> : undefined} />
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+              <div className="flex-1 min-w-0">
+                <Input label="Pesquisar dias especiais" type="search" placeholder="Pesquisar por nome ou data…" value={sdSearch}
+                  onChange={e => { setSdSearch(e.target.value); setSdPage(0); }} />
+              </div>
+              <div className="w-full sm:w-48">
+                <Select label="Ano" value={sdYear} onChange={e => { setSdYear(e.target.value); setSdPage(0); }}>
+                  <option value="">Todos os anos</option>
+                  {[...new Set(specialDays.map(day => day.date.slice(0, 4)))].sort().reverse().map(year => <option key={year} value={year}>{year}</option>)}
+                </Select>
+              </div>
             </div>
-            <div className="flex-1 w-full space-y-1">
-              <label className="block text-[11px] text-text-muted">Nome</label>
-              <input 
-                type="text"
-                required
-                placeholder="Ex: Natal"
-                value={sdName}
-                onChange={e => setSdName(e.target.value)}
-                className="w-full p-2 border border-border rounded-lg text-text-primary font-medium focus:ring-2 focus:ring-blue-100 outline-none bg-surface"
-              />
-            </div>
-            <button 
-              type="submit"
-              className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-              title="Adicionar Dia Especial"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Adicionar</span>
-            </button>
-          </form>
-
+          </div>
+          {canWriteConfig && (
+            <form id="special-day-form" onSubmit={handleAddSpecialDay} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 sm:grid-cols-[12rem_minmax(0,1fr)] gap-3 items-end">
+              <Input label="Dia" type="date" required value={sdDate} onChange={e => setSdDate(e.target.value)} />
+              <Input label="Nome" type="text" required placeholder="Ex.: Natal" value={sdName} onChange={e => setSdName(e.target.value)} />
+            </form>
+          )}
           {(() => {
-            const sortedSd = [...specialDays].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            const totalSdPages = Math.ceil(sortedSd.length / 12);
-            const currentSdPage = Math.min(sdPage, Math.max(0, totalSdPages - 1));
-            const visibleSd = sortedSd.slice(currentSdPage * 12, (currentSdPage + 1) * 12);
-
-            return (
-              specialDays.length === 0 ? (
-                <div className="p-6 bg-surface-muted text-slate-400 text-center rounded-control font-medium border border-border-subtle">
-                  Nenhum dia especial configurado.
+            const query = sdSearch.trim().toLocaleLowerCase('pt-PT');
+            const sortedSd = specialDays.filter(day => {
+              const date = new Date(day.date + 'T00:00:00').toLocaleDateString('pt-PT');
+              return (!sdYear || day.date.startsWith(sdYear + '-')) &&
+                (!query || [day.name, day.date, date].some(value => value.toLocaleLowerCase('pt-PT').includes(query)));
+            }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const totalSdPages = Math.max(1, Math.ceil(sortedSd.length / sdPageSize));
+            const currentSdPage = Math.min(sdPage, totalSdPages - 1);
+            const startIndex = currentSdPage * sdPageSize;
+            const visibleSd = sortedSd.slice(startIndex, startIndex + sdPageSize);
+            return <>
+              {visibleSd.length === 0 ? (
+                <div role="status" className="p-10 text-center text-body-sm text-text-secondary space-y-3">
+                  <p>{specialDays.length === 0 ? 'Nenhum dia especial configurado.' : 'Nenhum dia especial encontrado para os filtros selecionados.'}</p>
+                  {(sdSearch || sdYear) && <Button type="button" variant="secondary" size="sm" onClick={() => { setSdSearch(''); setSdYear(''); setSdPage(0); }}>Limpar filtros</Button>}
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                    {visibleSd.map(sd => (
-                      <div key={sd.id} className="flex flex-col items-start justify-between p-3 bg-surface-muted border border-border-subtle rounded-control relative group transition-colors">
-                        <div className="flex flex-col gap-2 w-full pr-6">
-                          <span className="px-2 py-1 bg-surface text-indigo-700 border border-indigo-100 rounded text-[10px] uppercase font-black tracking-wider self-start">
-                            {new Date(sd.date + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </span>
-                          <span className="text-text-secondary font-bold text-[11px] truncate w-full" title={sd.name}>{sd.name}</span>
-                        </div>
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            askConfirmation(
-                              'Confirmar eliminação de dia especial',
-                              'Tem a certeza que deseja eliminar este dia? Esta ação terá um efeito permanente.',
-                              () => deleteSpecialDay(sd.id)
-                            );
-                          }}
-                          className="absolute top-2 right-2 p-1.5 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 rounded-md transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {totalSdPages > 1 && (
-                    <div className="flex items-center justify-between pt-4 border-t border-border-subtle">
-                      <span className="text-text-muted font-medium text-[10px]">
-                        A mostrar {visibleSd.length} de {specialDays.length} registos (Página {currentSdPage + 1} de {totalSdPages})
-                      </span>
-                      <div className="flex gap-2">
-                        <button 
-                          type="button"
-                          onClick={() => setSdPage(p => Math.max(0, p - 1))} 
-                          disabled={currentSdPage === 0} 
-                          className="px-3 py-1.5 bg-surface-muted text-text-secondary hover:bg-slate-200 rounded disabled:opacity-50 transition-colors"
-                        >
-                          Anterior
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => setSdPage(p => Math.min(totalSdPages - 1, p + 1))} 
-                          disabled={currentSdPage >= totalSdPages - 1} 
-                          className="px-3 py-1.5 bg-surface-muted text-text-secondary hover:bg-slate-200 rounded disabled:opacity-50 transition-colors"
-                        >
-                          Próxima
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <caption className="sr-only">Dias especiais, ordenados por data decrescente</caption>
+                    <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary border-b border-border">
+                      <tr><th scope="col" className="px-4 sm:px-5 py-3.5">Data</th><th scope="col" className="px-4 sm:px-5 py-3.5">Nome</th>{canWriteConfig && <th scope="col" className="px-4 sm:px-5 py-3.5 text-right">Ações</th>}</tr>
+                    </thead>
+                    <tbody className="text-body-sm divide-y divide-border-subtle">
+                      {visibleSd.map(sd => (
+                        <tr key={sd.id} className="hover:bg-surface-muted transition-colors">
+                          <td className="px-4 sm:px-5 py-4 text-text-secondary whitespace-nowrap">
+                            <time dateTime={sd.date}>{new Date(sd.date + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })}</time>
+                          </td>
+                          <td className="px-4 sm:px-5 py-4 font-medium text-text-primary break-words [overflow-wrap:anywhere]">{sd.name}</td>
+                          {canWriteConfig && <td className="px-4 sm:px-5 py-4 text-right">
+                            <IconButton type="button" variant="ghost" aria-label={`Eliminar dia especial: ${sd.name}, ${sd.date}`} className="text-text-secondary hover:text-error hover:bg-error/10"
+                              onClick={() => askConfirmation('Confirmar eliminação de dia especial', 'Tem a certeza que deseja eliminar este dia? Esta ação terá um efeito permanente.', () => deleteSpecialDay(sd.id))}>
+                              <Trash2 aria-hidden="true" className="w-4 h-4" />
+                            </IconButton>
+                          </td>}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )
-            );
+              )}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 sm:px-5 py-3.5 bg-surface-muted/70 border-t border-border text-body-sm text-text-secondary">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span role="status" aria-live="polite">A mostrar {sortedSd.length ? startIndex + 1 : 0} a {startIndex + visibleSd.length} de {sortedSd.length} registos</span>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="special-days-page-size" className="whitespace-nowrap">Por página:</label>
+                    <Select id="special-days-page-size" value={sdPageSize} onChange={e => { setSdPageSize(Number(e.target.value)); setSdPage(0); }}>
+                      {[12, 25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}
+                    </Select>
+                  </div>
+                </div>
+                <nav aria-label="Paginação dos dias especiais" className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="ghost" size="sm" disabled={currentSdPage === 0} onClick={() => setSdPage(currentSdPage - 1)}>Anterior</Button>
+                  <span className="text-label font-semibold">Página {currentSdPage + 1} de {totalSdPages}</span>
+                  <Button type="button" variant="ghost" size="sm" disabled={currentSdPage >= totalSdPages - 1} onClick={() => setSdPage(currentSdPage + 1)}>Seguinte</Button>
+                </nav>
+              </div>
+            </>;
           })()}
-        </div>
-      </div>
+        </Card>
       )}
 
       {/* TAREFAS TAB */}
       {activeConfigTab === 'tarefas' && (
-      <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="default-tasks-card">
-        <h2 className="text-base font-bold text-text-primary mb-2 flex items-center gap-2">
-          <ListTodo className="w-5 h-5 text-emerald-600" />
-          Templates de tarefas
-        </h2>
-        <p className="text-slate-400 text-[11px] font-medium mb-5 leading-relaxed">
-          Configure modelos de tarefas padronizadas (ex: Instalação mecânica, FAT, Automação). Ao criar ou editar um projeto, poderá selecionar e clonar estas tarefas de forma automática e instantânea.
-        </p>
+      <Card className="bg-surface rounded-card border border-border overflow-hidden animate-fade-in" id="default-tasks-card">
+        <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60 space-y-4">
+          <M3SectionHeader title="Templates de tarefas" description="Crie e organize modelos reutilizáveis para as tarefas dos projetos."
+            actions={canWriteConfig ? <Button type="submit" form="default-task-form"><Plus aria-hidden="true" className="w-4 h-4" /> Adicionar template</Button> : undefined} />
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+            <div className="flex-1 min-w-0 relative"><Search aria-hidden="true" className="absolute left-3 top-[2.75rem] -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none z-10" /><Input label="Pesquisar templates" type="search" placeholder="Pesquisar por título ou instruções…" value={dtSearch} onChange={e => { setDtSearch(e.target.value); setDtPage(0); }} className="pl-9" /></div>
+            <div className="w-full sm:w-64"><Select label="Tipo de tarefa" value={dtFilterTypeId} onChange={e => { setDtFilterTypeId(e.target.value); setDtPage(0); }}><option value="">Todos os tipos</option><option value="unassigned">Por defeito</option>{taskTypes.filter((type: any) => !type.deleted).map((type: any) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></div>
+          </div>
+        </div>
+        {canWriteConfig && <form id="default-task-form" onSubmit={handleAddDefaultTask} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+          <div className="lg:col-span-4"><Input label="Título da tarefa" type="text" required placeholder="Ex.: Eletrificação de sistema" value={dtTitle} onChange={e => setDtTitle(e.target.value)} /></div>
+          <div className="lg:col-span-3"><Select label="Tipo de tarefa" value={dtTypeId} onChange={e => setDtTypeId(e.target.value)}><option value="">Por defeito</option>{taskTypes.filter((type: any) => !type.deleted).map((type: any) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></div>
+          <div className="lg:col-span-2"><Input label="Duração prevista" type="text" required inputMode="numeric" pattern="[0-9]{1,3}:[0-5][0-9]" placeholder="HH:MM" value={dtHours} onChange={e => setDtHours(e.target.value)} onBlur={() => setDtHours(formatHoursToHHMM(parseTimeToHours(dtHours)))} /></div>
+          <div className="lg:col-span-3"><Input label="Instruções técnicas" type="text" placeholder="Instruções padrão…" value={dtDesc} onChange={e => setDtDesc(e.target.value)} /></div>
+        </form>}
 
-        <form onSubmit={handleAddDefaultTask} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end bg-surface-muted/50 p-4 rounded-card border border-border-subtle mb-6">
-          <div className="md:col-span-2 space-y-1">
-            <label className="block text-[11px] text-text-muted">Título da tarefa *</label>
-            <input 
-              type="text"
-              required
-              placeholder="Ex: Eletrificação de sistema"
-              value={dtTitle}
-              onChange={e => setDtTitle(e.target.value)}
-              className="w-full p-2 border border-border rounded-lg text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="block text-[11px] text-text-muted">Tipo de Tarefa</label>
-            <select
-              value={dtTypeId}
-              onChange={e => setDtTypeId(e.target.value)}
-              className="w-full p-2 border border-border rounded-lg text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
-            >
-              <option value="">Por defeito</option>
-              {taskTypes.filter((s: any) => !s.deleted).map((s: any) => (
-                <option key={s.id} value={s.id}>{s.name} (Nível {s.scale ?? 1})</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="block text-[11px] text-text-muted">Duração prevista (HH:MM)</label>
-            <input 
-              type="text"
-              required
-              placeholder="02:00"
-              value={dtHours}
-              onChange={e => setDtHours(e.target.value)}
-              className="w-full p-2 border border-border rounded-lg text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
-            />
-          </div>
-          <button 
-            type="submit"
-            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            Adicionar Modelo
-          </button>
-          
-          <div className="md:col-span-5 space-y-1 mt-2">
-            <label className="block text-[11px] text-text-muted">Descrição Técnica do Modelo</label>
-            <textarea 
-              placeholder="Descreva as instruções padrão que o técnico deverá cumprir..."
-              value={dtDesc}
-              onChange={e => setDtDesc(e.target.value)}
-              rows={2}
-              className="w-full p-2 border border-border rounded-lg text-text-primary bg-surface font-medium focus:ring-2 focus:ring-blue-100 outline-none"
-            />
-          </div>
-        </form>
-
-        {defaultTasks.length === 0 ? (
-          <div className="p-6 bg-surface-muted text-slate-400 text-center rounded-card font-medium border border-border-subtle">
-            Nenhuma tarefa por defeito configurada. Introduza uma no formulário acima.
+        {visibleDefaultTasks.length === 0 ? (
+          <div role="status" className="p-10 text-center text-body-sm text-text-secondary space-y-3">
+            <p>{defaultTasks.length === 0 ? 'Nenhuma tarefa por defeito configurada.' : 'Nenhum template encontrado para os filtros selecionados.'}</p>
+            {(dtSearch || dtFilterTypeId) && <Button type="button" variant="secondary" size="sm" onClick={() => { setDtSearch(''); setDtFilterTypeId(''); setDtPage(0); }}>Limpar filtros</Button>}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {defaultTasks.map(dt => {
+          <div className="divide-y divide-border-subtle">
+            {visibleDefaultTasks.map(dt => {
               const isEditingThis = editingDtId === dt.id;
               const typeName = dt.taskTypeId ? taskTypes.find((tt: any) => tt.id === dt.taskTypeId)?.name : null;
               return (
-                <div key={dt.id} className="p-4 bg-surface border border-border/80 rounded-card space-y-3 transition-colors hover:border-primary/30 flex flex-col justify-between">
+                <article key={dt.id} className="p-4 sm:p-5 hover:bg-surface-muted/50 transition-colors">
                   {isEditingThis ? (
                     // Inline Edit Mode
                     <div className="space-y-3 flex-1">
@@ -1188,8 +1119,8 @@ export default function ConfigSection({
                             </span>
                           )}
                         </div>
-                        <span className="flex-shrink-0 px-2 py-0.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-lg text-[9px] font-black font-mono">
-                          {dt.estimatedHours}
+                        <span className="flex-shrink-0 px-3 py-1.5 bg-surface-muted border border-border text-text-secondary rounded-control text-label font-semibold font-mono" aria-label={`Duração prevista: ${formatHoursToHHMM(parseTimeToHours(dt.estimatedHours))}`}>
+                          {formatHoursToHHMM(parseTimeToHours(dt.estimatedHours))}
                         </span>
                       </div>
                       <p className="text-[11px] text-text-muted font-medium leading-relaxed">
@@ -1244,12 +1175,16 @@ export default function ConfigSection({
                       </>
                     )}
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
         )}
-      </div>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 sm:px-5 py-3.5 bg-surface-muted/70 border-t border-border text-body-sm text-text-secondary">
+          <div className="flex flex-wrap items-center gap-3"><span role="status" aria-live="polite">A mostrar {filteredDefaultTasks.length ? defaultTaskStartIndex + 1 : 0} a {defaultTaskStartIndex + visibleDefaultTasks.length} de {filteredDefaultTasks.length} templates</span><div className="flex items-center gap-2"><label htmlFor="default-tasks-page-size" className="whitespace-nowrap">Por página:</label><Select id="default-tasks-page-size" value={dtPageSize} onChange={e => { setDtPageSize(Number(e.target.value)); setDtPage(0); }} className="h-9 py-0"><option value={12}>12</option><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></Select></div></div>
+          <nav aria-label="Paginação dos templates de tarefas" className="flex items-center gap-2"><Button type="button" variant="ghost" size="sm" disabled={currentDefaultTaskPage === 0} onClick={() => setDtPage(currentDefaultTaskPage - 1)}><ChevronLeft aria-hidden="true" className="w-4 h-4" />Anterior</Button><span className="text-label font-semibold">Página {currentDefaultTaskPage + 1} de {defaultTaskTotalPages}</span><Button type="button" variant="ghost" size="sm" disabled={currentDefaultTaskPage >= defaultTaskTotalPages - 1} onClick={() => setDtPage(currentDefaultTaskPage + 1)}>Seguinte<ChevronRight aria-hidden="true" className="w-4 h-4" /></Button></nav>
+        </div>
+      </Card>
       )}
 
       {/* Opções e Tabelas Auxiliares de Projeto (Full Width Card) */}
@@ -1431,7 +1366,7 @@ export default function ConfigSection({
       {/* NOTIFICAÇÕES E AUTOMAÇÕES */}
       {(activeConfigTab === 'notificacoes' || activeConfigTab === 'automacoes') && (
         <div className="space-y-5">
-          <M3SectionHeader title="Notificações e Automações" description="Configure os avisos e as regras automáticas da aplicação." />
+           <M3SectionHeader title="Notificações e Automações" description="Consulte o comportamento das notificações e configure regras automáticas suportadas." />
           <Tabs
             tabs={[
               { id: 'notificacoes', label: 'Notificações', icon: <Bell className="w-4 h-4" /> },
@@ -1441,60 +1376,10 @@ export default function ConfigSection({
             onChange={tab => setNotificationTab(tab as 'notificacoes' | 'automacoes')}
           />
           {notificationTab === 'notificacoes' && (
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-sm font-bold text-text-primary mb-1 uppercase tracking-tight">Notificações In-App</h3>
-            <p className="text-xs text-text-muted font-medium mb-4">Configure os destinatários e a antecedência. Os avisos por data são enviados antes, no próprio dia e uma vez no dia seguinte.</p>
-            {notificationError && <p role="alert" className="mb-4 text-sm text-error">{notificationError}</p>}
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(state.notificationSettings || []).map(ns => (
-                <Card key={ns.id} className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-bold text-sm text-text-primary">{ns.name}</h4>
-                    <Switch
-                      checked={ns.enabled}
-                      disabled={!canWriteConfig || savingNotificationId !== null}
-                      label={`Ativar ${ns.name}`}
-                      onChange={enabled => { void saveNotificationSetting(ns.id, { enabled }); }}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    {['task_due_date', 'project_due_date', 'project_scheduled_date'].includes(ns.type) && (
-                      <div className="space-y-1 flex-1">
-                        <Input
-                          label="Dias de antecedência"
-                          type="number"
-                          min="0"
-                          max="30"
-                          value={ns.daysBefore}
-                          disabled={!ns.enabled || !canWriteConfig || savingNotificationId !== null}
-                          onChange={(e) => { void saveNotificationSetting(ns.id, { daysBefore: parseInt(e.target.value, 10) || 0 }); }}
-                        />
-                      </div>
-                    )}
-                    
-                    <div className="space-y-1 flex-1">
-                      <Select
-                        label="Destinatários"
-                        value={ns.targetGroup}
-                        disabled={!ns.enabled || !canWriteConfig || savingNotificationId !== null}
-                        onChange={(e) => { void saveNotificationSetting(ns.id, { targetGroup: e.target.value as 'all' | 'allocated' | 'managers' }); }}
-                      >
-                        <option value="all">Todos os utilizadores</option>
-                        <option value="allocated">Utilizadores alocados</option>
-                        <option value="managers">Gestores</option>
-                      </Select>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-            
-
-          </div>
-        </div>
+            <Card className="p-5">
+              <h3 className="text-sm font-bold text-text-primary mb-2">Notificações no sistema</h3>
+              <p className="text-sm text-text-secondary">As notificações aparecem no sino da aplicação. Os antigos controlos de antecedência e destinatários foram retirados porque não tinham execução associada. Use a aba Automações para configurar avisos ligados a eventos de projetos e tarefas.</p>
+            </Card>
           )}
           {notificationTab === 'automacoes' && (
             <AutomationEditor
@@ -1505,6 +1390,8 @@ export default function ConfigSection({
               toggleAutomationRule={toggleAutomationRule}
               projectStatuses={state.projectStatuses || []}
               taskStatuses={state.taskStatuses || []}
+              projects={state.projects || []}
+              users={state.users || []}
               canWrite={canWriteConfig}
             />
           )}
@@ -1515,7 +1402,7 @@ export default function ConfigSection({
         <div className="space-y-6">
           {/* CSV Import Card */}
           <div className="bg-surface rounded-card border border-border p-6 text-xs font-bold text-text-secondary animate-fade-in" id="csv-import-card">
-            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-subtle">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-control bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
                   <UploadCloud className="w-5 h-5" />
@@ -1571,7 +1458,7 @@ export default function ConfigSection({
 
           {/* Estado da ligação à base de dados */}
           <div className="bg-surface rounded-card border border-border p-6 text-xs animate-fade-in" id="supabase-panel">
-            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-subtle">
               <div className="flex items-center gap-2.5">
                 <Database className="w-5 h-5 text-primary" />
                 <h3 className="text-sm font-extrabold text-text-primary">Ligação à base de dados</h3>

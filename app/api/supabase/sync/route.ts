@@ -40,27 +40,6 @@ export async function GET(req: NextRequest) {
       return [code, data === true] as const;
     }));
     result.data = projectSyncRead(result.data, user.id, new Map(decisions));
-    const { data: recipientNotices, error: noticesError } = await clientToUse.from('notifications')
-      .select('id,user_id,title,message,is_read,created_at,link_url')
-      .or(`user_id.eq.${user.id},user_id.is.null`)
-      .order('created_at', { ascending: false }).limit(200);
-    if (noticesError) throw noticesError;
-    result.data.notifications = (recipientNotices || []).map(notice => ({
-      id: notice.id, userId: notice.user_id || 'all', title: notice.title,
-      message: notice.message || '', isRead: notice.is_read === true,
-      createdDate: notice.created_at, linkUrl: notice.link_url || undefined,
-    }));
-    const visibleIds = (result.data.notifications || []).map(notification => notification.id);
-    if (visibleIds.length) {
-      const { data: reads, error: readsError } = await clientToUse.from('notification_reads')
-        .select('notification_id').eq('user_id', user.id).in('notification_id', visibleIds);
-      if (readsError) throw readsError;
-      const readIds = new Set((reads || []).map(read => read.notification_id));
-      result.data.notifications = result.data.notifications!.map(notification => ({
-        ...notification,
-        isRead: readIds.has(notification.id) || (notification.userId !== 'all' && notification.isRead),
-      }));
-    }
 
     return NextResponse.json(result);
   } catch (error: any) {
@@ -191,10 +170,6 @@ export async function POST(req: NextRequest) {
       for (const rule of state.automationRules) {
         const problem = validateAutomationRule(rule, baseline.data);
         if (problem) return NextResponse.json({ success: false, message: problem }, { status: 400 });
-      }
-      if (state.automationRules.some((rule: any) => rule.enabled && !rule.deleted)) {
-        const { error } = await clientToUse.from('automation_executions').select('id').limit(1);
-        if (error) return NextResponse.json({ success: false, message: 'O executor de automações ainda não está disponível na base de dados.' }, { status: 503 });
       }
     }
     const allowed = new Map<string, boolean>();

@@ -16,19 +16,15 @@ export function validateAutomationRule(rule: AutomationRule, state: ERPState): s
     .filter(status => !status.deleted).map(status => status.id));
   if (rule.triggerType !== 'task_created' && rule.triggerCondition?.toStatusId && !statusIds.has(rule.triggerCondition.toStatusId))
     return 'O estado do evento não existe ou foi eliminado.';
-  if (rule.triggerType !== 'task_created' && rule.triggerCondition?.fromStatusId && !statusIds.has(rule.triggerCondition.fromStatusId))
-    return 'O estado de origem não existe ou foi eliminado.';
   const projectStatusIds = new Set(state.projectStatuses.filter(status => !status.deleted).map(status => status.id));
   const seen = new Set<string>();
   for (const action of rule.actions) {
-    if (!action || typeof action !== 'object' || !ACTIONS[rule.triggerType].has(action.type) || seen.has(action.type))
+    if (!ACTIONS[rule.triggerType].has(action.type) || seen.has(action.type))
       return 'Combinação ou repetição de ações não suportada.';
     seen.add(action.type);
-    if (rule.triggerType === 'task_status_changed' && action.type === 'change_project_status' && !rule.triggerCondition?.toStatusId)
-      return 'Escolha um estado da tarefa para mudar automaticamente o estado do projeto.';
     if (action.type === 'change_project_status' && !projectStatusIds.has(action.params?.targetStatusId || ''))
       return 'O estado de destino do projeto não existe ou foi eliminado.';
-    if (action.type === 'send_notification' && (typeof action.params?.notificationTitle !== 'string' || !action.params.notificationTitle.trim()))
+    if (action.type === 'send_notification' && !action.params?.notificationTitle?.trim())
       return 'A notificação precisa de um título.';
   }
   return null;

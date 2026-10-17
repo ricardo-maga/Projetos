@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AutomationRule, AutomationAction, ProjectStatus, TaskStatus } from '../lib/types';
+import { AutomationRule, AutomationAction, ProjectStatus, TaskStatus, Project, User } from '../lib/types';
 import { 
   Zap, Plus, Trash2, Edit2, Play, CheckCircle2, ArrowRight, Bell, 
   ListTodo, Layers, ShieldCheck, Sparkles, Check, X, AlertCircle, Info, RefreshCw
@@ -16,6 +16,8 @@ interface AutomationEditorProps {
   toggleAutomationRule: (id: string) => Promise<{ success: boolean; message?: string }>;
   projectStatuses: ProjectStatus[];
   taskStatuses: TaskStatus[];
+  projects: Project[];
+  users: User[];
   canWrite?: boolean;
 }
 
@@ -27,6 +29,8 @@ export default function AutomationEditor({
   toggleAutomationRule,
   projectStatuses = [],
   taskStatuses = [],
+  projects = [],
+  users = [],
   canWrite = true,
 }: AutomationEditorProps) {
   const [showModal, setShowModal] = useState(false);
@@ -52,6 +56,8 @@ export default function AutomationEditor({
 
   // Test modal state
   const [testRuleId, setTestRuleId] = useState<string | null>(null);
+  const [selectedTestProjectId, setSelectedTestProjectId] = useState<string>('');
+  const [testFeedback, setTestFeedback] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const resetForm = () => {
@@ -128,10 +134,6 @@ export default function AutomationEditor({
       alert('Por favor selecione pelo menos uma ação para ser executada.');
       return;
     }
-    if (triggerType === 'task_status_changed' && actionChangeProjectStatus && !triggerToStatusId) {
-      alert('Escolha o estado da tarefa que deve desencadear a mudança do projeto.');
-      return;
-    }
 
     const ruleData: Omit<AutomationRule, 'id' | 'createdDate'> = {
       name: ruleName.trim(),
@@ -162,6 +164,17 @@ export default function AutomationEditor({
     const rule = automationRules.find(r => r.id === ruleId);
     if (!rule) return;
     setTestRuleId(ruleId);
+    const activeProjects = projects.filter(p => !p.deleted);
+    if (activeProjects.length > 0) {
+      setSelectedTestProjectId(activeProjects[0].id);
+    }
+    setTestFeedback(null);
+  };
+
+  const handleExecuteTest = () => {
+    if (!testRuleId) return;
+    const rule = automationRules.find(r => r.id === testRuleId);
+    setTestFeedback(`A regra "${rule?.name || ''}" executaria ${rule?.actions.length || 0} ação(ões) no projeto selecionado. Esta pré-visualização não alterou dados.`);
   };
 
   const getTriggerLabel = (rule: AutomationRule) => {
@@ -219,15 +232,15 @@ export default function AutomationEditor({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-primary/20">
           <div className="bg-surface rounded-card p-3 border border-border">
             <div className="text-xs text-text-secondary font-medium">Total de Regras</div>
-            <div className="text-xl font-bold text-text-primary mt-0.5">{visibleRules.length}</div>
+              <div className="text-xl font-bold text-text-primary mt-0.5">{visibleRules.length}</div>
           </div>
           <div className="bg-surface rounded-card p-3 border border-border">
             <div className="text-xs text-text-secondary font-medium">Regras Ativas</div>
             <div className="text-xl font-bold text-success mt-0.5">{activeCount}</div>
           </div>
           <div className="bg-surface rounded-card p-3 border border-border col-span-2 sm:col-span-1">
-            <div className="text-xs text-text-secondary font-medium">Execução</div>
-            <div className="text-xl font-bold text-primary mt-0.5">Por evento</div>
+              <div className="text-xs text-text-secondary font-medium">Execução</div>
+              <div className="text-xl font-bold text-primary mt-0.5">Por evento</div>
           </div>
         </div>
       </div>
@@ -341,8 +354,9 @@ export default function AutomationEditor({
                   </div>
                 </div>
 
-                {/* Actions (Preview / Edit / Delete) */}
+                {/* Actions (Test / Edit / Delete) */}
                 <div className="flex items-center gap-2 border-t lg:border-t-0 pt-3 lg:pt-0 border-border-subtle shrink-0 justify-end">
+                  {(
                     <button
                       type="button"
                       onClick={() => handleRunTest(rule.id)}
@@ -352,6 +366,7 @@ export default function AutomationEditor({
                       <Play className="w-3 h-3 text-primary fill-blue-600" />
                       Pré-visualizar
                     </button>
+                  )}
 
                   {canWrite && (
                     <>
@@ -575,7 +590,7 @@ export default function AutomationEditor({
                       <div>
                         <div className="text-xs font-bold text-text-primary">Enviar Notificação no Sistema</div>
                         <div className="text-[11px] text-text-muted">
-                          Gera um aviso interno para todos os utilizadores internos ativos.
+                          Gera um aviso interno para os utilizadores/gestores relevantes.
                         </div>
                       </div>
                     </label>
@@ -605,12 +620,16 @@ export default function AutomationEditor({
 
               {/* Modal Footer */}
               <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-xs font-semibold text-text-secondary hover:bg-surface-muted rounded-control transition-colors cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-text-secondary hover:bg-surface-muted rounded-control transition-colors cursor-pointer"
+                >
                   Cancelar
                 </button>
-                <button
+                  <button
                   type="submit"
-                  disabled={saving}
+                    disabled={saving}
                   className="px-5 py-2 bg-primary hover:bg-blue-700 text-white text-xs font-bold rounded-control transition-all shadow-xs cursor-pointer"
                 >
                   {editingRuleId ? 'Guardar Alterações' : 'Criar Regra'}
@@ -621,36 +640,43 @@ export default function AutomationEditor({
         </div>
       )}
 
-      {/* Read-only rule preview */}
+      {/* Manual Test Execution Modal */}
       {testRuleId && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-surface rounded-card max-w-md w-full p-6 shadow-2xl border border-border-subtle space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-text-primary font-bold text-sm">
                 <Play className="w-4 h-4 text-primary fill-blue-600" />
-                Pré-visualizar Regra de Automação
+                Testar Regra de Automação
               </div>
               <button onClick={() => setTestRuleId(null)} className="text-slate-400 hover:text-text-secondary cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-text-secondary">Resumo das ações da regra. Nenhum dado será alterado.</p>
+            <p className="text-xs text-text-secondary">
+                  Selecione um projeto para consultar as ações previstas. Nenhum dado será alterado:
+            </p>
 
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-control text-blue-900 text-xs space-y-2">
-              <p className="font-semibold">Ações previstas se o evento e as condições ocorrerem:</p>
-              <ul className="list-disc pl-4 space-y-1">
-                {(automationRules.find(rule => rule.id === testRuleId)?.actions || []).map((action, index) => (
-                  <li key={index}>
-                    {action.type === 'create_default_tasks' && 'Criar tarefas padrão apenas se o projeto não tiver tarefas ativas.'}
-                    {action.type === 'change_project_status' && (automationRules.find(rule => rule.id === testRuleId)?.triggerType === 'task_status_changed'
-                      ? 'Mudar o estado do projeto quando todas as tarefas ativas tiverem o estado do evento.'
-                      : 'Mudar o estado do projeto associado à tarefa criada.')}
-                    {action.type === 'send_notification' && 'Enviar uma notificação a cada utilizador interno ativo.'}
-                  </li>
+            <div>
+              <label className="block text-xs font-semibold text-text-secondary mb-1">Projeto para Teste</label>
+              <select
+                value={selectedTestProjectId}
+                onChange={e => setSelectedTestProjectId(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold outline-none cursor-pointer"
+              >
+                {projects.filter(p => !p.deleted).map(p => (
+                  <option key={p.id} value={p.id}>{p.title}</option>
                 ))}
-              </ul>
+              </select>
             </div>
+
+            {testFeedback && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-control text-emerald-800 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                {testFeedback}
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
@@ -658,7 +684,15 @@ export default function AutomationEditor({
                 onClick={() => setTestRuleId(null)}
                 className="px-3.5 py-2 text-xs font-semibold text-text-secondary hover:bg-surface-muted rounded-control"
               >
-                Fechar
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteTest}
+                className="px-4 py-2 bg-primary hover:bg-blue-700 text-white text-xs font-bold rounded-control flex items-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                  Pré-visualizar
               </button>
             </div>
           </div>

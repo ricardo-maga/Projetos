@@ -1,9 +1,5 @@
 -- Run automation actions in the same transaction as the operational write.
 -- Rules and execution history remain backend-only resources.
-UPDATE public.automation_rules
-SET enabled = false, deleted = true
-WHERE trigger_type = 'quote_approved' AND deleted = false;
-
 CREATE TABLE IF NOT EXISTS public.automation_executions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   rule_id uuid NOT NULL REFERENCES public.automation_rules(id) ON DELETE CASCADE,
@@ -52,13 +48,11 @@ BEGIN
           action_count := action_count + 1;
         END IF;
       ELSIF action_row->>'type' = 'send_notification' THEN
-        INSERT INTO public.notifications (user_id, title, message, link_url, event_key)
-        SELECT r.user_id, action_row->'params'->>'notificationTitle',
+        INSERT INTO public.notifications (user_id, title, message, link_url)
+        SELECT u.id, action_row->'params'->>'notificationTitle',
           coalesce(action_row->'params'->>'notificationMessage', ''),
-          '/projects?project=' || NEW.id::text,
-          'automation:' || rule_row.id::text || ':project:' || NEW.id::text || ':' || NEW.version::text || ':' || r.user_id::text
-        FROM notification_internal.recipients('all', NEW.id) r
-        ON CONFLICT (event_key) DO NOTHING;
+          '/projects?project=' || NEW.id::text
+        FROM public.users u WHERE u.deleted = false;
         action_count := action_count + 1;
       END IF;
     END LOOP;
@@ -115,19 +109,17 @@ BEGIN
           WHERE project_id = NEW.project_id AND deleted = false
             AND status_id IS DISTINCT FROM NEW.status_id
         ) THEN
-          UPDATE public.projects SET status_id = target_status, version = version + 1
+          UPDATE public.projects SET status_id = target_status
           WHERE id = NEW.project_id AND deleted = false
             AND status_id IS DISTINCT FROM target_status;
           action_count := action_count + 1;
         END IF;
       ELSIF action_row->>'type' = 'send_notification' THEN
-        INSERT INTO public.notifications (user_id, title, message, link_url, event_key)
-        SELECT r.user_id, action_row->'params'->>'notificationTitle',
+        INSERT INTO public.notifications (user_id, title, message, link_url)
+        SELECT u.id, action_row->'params'->>'notificationTitle',
           coalesce(action_row->'params'->>'notificationMessage', ''),
-          '/projects?project=' || NEW.project_id::text,
-          'automation:' || rule_row.id::text || ':task:' || NEW.id::text || ':' || NEW.version::text || ':' || r.user_id::text
-        FROM notification_internal.recipients('all', NEW.project_id, NEW.id) r
-        ON CONFLICT (event_key) DO NOTHING;
+          '/projects?project=' || NEW.project_id::text
+        FROM public.users u WHERE u.deleted = false;
         action_count := action_count + 1;
       END IF;
     END LOOP;
