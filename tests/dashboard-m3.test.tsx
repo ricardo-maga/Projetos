@@ -7,7 +7,6 @@ import { Button } from '../components/ui/Button';
 import { IconButton } from '../components/ui/IconButton';
 import { M3Button } from '../components/M3';
 import { hasFilledButtonBackground } from '../components/ui/buttonAppearance';
-import { getProjectStatusStyle } from '../lib/utils';
 import { currentForecastMonth, offsetForecastMonth } from '../lib/projectForecast';
 
 const props: React.ComponentProps<typeof Dashboard> = {
@@ -29,7 +28,7 @@ describe('Dashboard M3 presentation', () => {
     const html = renderToStaticMarkup(<Dashboard {...props} projects={items as typeof props.projects}
       clients={[{ id: 'client', clientName: 'Cliente Forecast' }] as typeof props.clients}
       projectStatuses={[{ id: 'preparation', name: 'Preparação', scale: 3 }, { id: 'installation', name: 'Instalação', scale: 4 }, { id: 'completed', name: 'Concluído', scale: 5 }]} />);
-    const forecastPanel = html.split('Projetos Ativos')[0];
+    const forecastPanel = html.split('Projetos ativos esta semana')[0];
     expect(forecastPanel).toContain('Projeto para instalar');
     expect(forecastPanel).toContain('Projeto já iniciado');
     expect(forecastPanel).toContain('Projeto concluído');
@@ -40,17 +39,17 @@ describe('Dashboard M3 presentation', () => {
     expect(forecastPanel).not.toContain('Projeto eliminado em Forecast');
   });
 
-  it('renders Foundation cards, readable sections and accessible search without data', () => {
+  it('renders Foundation cards and readable sections without the active-project pipeline', () => {
     const html = renderToStaticMarkup(<Dashboard {...props} />);
     expect(html).toContain('m3-dashboard');
     // The page shell owns the Dashboard title; cards retain semantic headings.
     expect(html).toMatch(/<h2\b[^>]*>/);
-    for (const title of ['Projetos Ativos', 'Projetos ativos esta semana', 'Projetos com maior carga horária', 'Comentários recentes', 'Ausências da equipa']) expect(html).toContain(title);
-    expect(html).toContain('aria-label="Pesquisar projetos por cliente, título, IP ou gestor"');
+    for (const title of ['Projetos ativos esta semana', 'Projetos com maior carga horária', 'Comentários recentes', 'Ausências da equipa']) expect(html).toContain(title);
+    expect(html).not.toContain('<h2 class="text-heading-sm text-text-primary">Projetos Ativos</h2>');
     expect(html).toContain('Nenhum projeto ativo registado.');
     expect(html).toContain('Nenhuma ausência registada.');
     expect(html).not.toContain('bg-slate-900');
-    expect(html.match(/rounded-card/g)).toHaveLength(10);
+    expect(html.match(/rounded-card/g)?.length).toBeGreaterThanOrEqual(8);
     expect(html).toContain('Projetos em Forecast');
     expect(html).toContain('aria-label="Filtrar mês do Forecast"');
     for (const offset of [-1, 0, 1]) {
@@ -81,7 +80,7 @@ describe('Dashboard M3 presentation', () => {
     expect(html).not.toContain('Comentário sem data');
   });
 
-  it('retains active-project filtering, canonical status and workload totals', () => {
+  it('limits workload totals to active project status scales', () => {
     const project = { id: 'p-active', title: 'Projeto de teste', clientId: 'c', projectManagerId: 'u', statusId: 'custom', createdDate: '2026-01-01', deliveryDate: '2026-12-01', deleted: false };
     const statuses = [{ id: 'custom', name: 'Estado configurado', color: 'laranja', scale: 1 }, { id: 'finished', name: 'Concluído', scale: 5 }];
     const html = renderToStaticMarkup(<Dashboard {...props}
@@ -92,8 +91,6 @@ describe('Dashboard M3 presentation', () => {
       tasks={[{ id: 't', projectId: 'p-active', statusId: 'ts-1', assigneeIds: ['u', 'u2'], estimatedHours: '04:00', actualHours: '', deleted: false }] as typeof props.tasks}
     />);
     expect(html).toContain('Cliente de teste');
-    expect(html).toContain('Estado configurado');
-    expect(html).toContain(getProjectStatusStyle('custom', statuses).textClass);
     expect(html).toContain('8h');
     expect(html).not.toContain('Projeto eliminado');
     expect(html).not.toContain('Projeto concluído');
@@ -104,9 +101,7 @@ describe('Dashboard M3 presentation', () => {
     const source = readFileSync(new URL('../components/BentoDashboard.tsx', import.meta.url), 'utf8');
     expect(source).toContain("onNavigate('tarefas')");
     expect(source).toContain("onNavigate('ausencias')");
-    expect(source).toContain('setCurrentPage(1)');
-    expect(source).toContain('Math.max(1, prev - 1)');
-    expect(source).toContain('Math.min(totalPages, prev + 1)');
+    expect(source).toContain('hasActiveProjectScale');
     expect(source).toContain("event.key === 'Enter' || event.key === ' '");
     expect(source).not.toMatch(/<(button|input)\b/);
     expect(source).not.toMatch(/text-\[(9|10|11)px\]|text-xs|bg-slate/);

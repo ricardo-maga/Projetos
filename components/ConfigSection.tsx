@@ -58,6 +58,7 @@ interface ConfigSectionProps {
   onResetDemoData?: () => void;
   onClearDemoData?: () => void;
   addSpecialDay: (date: string, name: string) => void;
+  updateSpecialDay: (id: string, updates: Partial<SpecialDay>) => void;
   deleteSpecialDay: (id: string) => void;
   defaultTasks?: DefaultTask[];
   addDefaultTask?: (title: string, description: string, estimatedHours: string, taskTypeId?: string) => void;
@@ -312,6 +313,7 @@ export default function ConfigSection({
   onResetDemoData,
   onClearDemoData,
   addSpecialDay,
+  updateSpecialDay,
   deleteSpecialDay,
   defaultTasks = [],
   addDefaultTask,
@@ -469,9 +471,9 @@ export default function ConfigSection({
   const [sdDate, setSdDate] = useState('');
   const [sdName, setSdName] = useState('');
   const [sdPage, setSdPage] = useState(0);
-  const [sdYear, setSdYear] = useState('');
   const [sdPageSize, setSdPageSize] = useState(25);
   const [showSpecialDayForm, setShowSpecialDayForm] = useState(false);
+  const [editingSpecialDayId, setEditingSpecialDayId] = useState<string | null>(null);
 
   // Default Tasks form state
   const [dtTitle, setDtTitle] = useState('');
@@ -668,25 +670,24 @@ export default function ConfigSection({
     }
     if (!sdDate || !sdName) return;
 
-    const existingDay = specialDays?.find(sd => sd.date === sdDate);
+    const finishSave = () => {
+      if (editingSpecialDayId) updateSpecialDay(editingSpecialDayId, { date: sdDate, name: sdName });
+      else addSpecialDay(sdDate, sdName);
+      setSdDate('');
+      setSdName('');
+      setEditingSpecialDayId(null);
+      setShowSpecialDayForm(false);
+    };
+    const existingDay = specialDays?.find(sd => sd.date === sdDate && sd.id !== editingSpecialDayId);
     if (existingDay) {
       askConfirmation(
         'Data Já Existente',
-        `Já existe um dia especial registado para esta data (${existingDay.name}). Tem a certeza que deseja inserir um novo registo na mesma data?`,
-        () => {
-          addSpecialDay(sdDate, sdName);
-          setSdDate('');
-          setSdName('');
-          setShowSpecialDayForm(false);
-        }
+        `Já existe um dia especial registado para esta data (${existingDay.name}). Tem a certeza que deseja guardar outro registo na mesma data?`,
+        finishSave
       );
       return;
     }
-
-    addSpecialDay(sdDate, sdName);
-    setSdDate('');
-    setSdName('');
-    setShowSpecialDayForm(false);
+    finishSave();
   };
 
   const handleAddDefaultTask = (e: React.FormEvent) => {
@@ -945,30 +946,30 @@ export default function ConfigSection({
         <Card className="bg-surface rounded-card border border-border overflow-hidden animate-fade-in" id="special-days-card">
           <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60 space-y-4">
             <M3SectionHeader title="Dias especiais" description="Consulte e organize as datas especiais do calendário."
-              actions={canWriteConfig ? <Button type="button" onClick={() => { setSdDate(''); setSdName(''); setShowSpecialDayForm(true); }}><Plus aria-hidden="true" className="w-4 h-4" /> Novo dia especial</Button> : undefined} />
-            <div className="flex justify-end">
-              <div className="w-full sm:w-48">
-                <Select label="Ano" value={sdYear} onChange={e => { setSdYear(e.target.value); setSdPage(0); }}>
-                  <option value="">Todos os anos</option>
-                  {[...new Set(specialDays.map(day => day.date.slice(0, 4)))].sort().reverse().map(year => <option key={year} value={year}>{year}</option>)}
-                </Select>
-              </div>
-            </div>
+              actions={canWriteConfig ? <Button type="button" onClick={() => {
+                if (showSpecialDayForm) {
+                  setShowSpecialDayForm(false);
+                  setEditingSpecialDayId(null);
+                  return;
+                }
+                setSdDate('');
+                setSdName('');
+                setEditingSpecialDayId(null);
+                setShowSpecialDayForm(true);
+              }}><Plus aria-hidden="true" className="w-4 h-4" /> Novo dia especial</Button> : undefined} />
           </div>
           {canWriteConfig && showSpecialDayForm && (
             <form id="special-day-form" onSubmit={handleAddSpecialDay} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 sm:grid-cols-[12rem_minmax(0,1fr)] gap-3 items-end">
               <Input label="Dia" type="date" required value={sdDate} onChange={e => setSdDate(e.target.value)} />
               <Input label="Nome" type="text" required placeholder="Ex.: Natal" value={sdName} onChange={e => setSdName(e.target.value)} />
               <div className="sm:col-span-2 flex justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={() => setShowSpecialDayForm(false)}>Cancelar</Button>
+                <Button type="button" variant="ghost" onClick={() => { setShowSpecialDayForm(false); setEditingSpecialDayId(null); }}>Cancelar</Button>
                 <Button type="submit"><Check aria-hidden="true" className="w-4 h-4" /> Guardar</Button>
               </div>
             </form>
           )}
           {(() => {
-            const sortedSd = specialDays.filter(day => {
-              return !sdYear || day.date.startsWith(sdYear + '-');
-            }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const sortedSd = specialDays.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             const totalSdPages = Math.max(1, Math.ceil(sortedSd.length / sdPageSize));
             const currentSdPage = Math.min(sdPage, totalSdPages - 1);
             const startIndex = currentSdPage * sdPageSize;
@@ -976,8 +977,7 @@ export default function ConfigSection({
             return <>
               {visibleSd.length === 0 ? (
                 <div role="status" className="p-10 text-center text-body-sm text-text-secondary space-y-3">
-                  <p>{specialDays.length === 0 ? 'Nenhum dia especial configurado.' : 'Nenhum dia especial encontrado para o ano selecionado.'}</p>
-                  {sdYear && <Button type="button" variant="secondary" size="sm" onClick={() => { setSdYear(''); setSdPage(0); }}>Limpar filtro</Button>}
+                  <p>Nenhum dia especial configurado.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -994,10 +994,24 @@ export default function ConfigSection({
                           </td>
                           <td className="px-4 sm:px-5 py-4 font-medium text-text-primary break-words [overflow-wrap:anywhere]">{sd.name}</td>
                           {canWriteConfig && <td className="px-4 sm:px-5 py-4 text-right">
+                            <div className="flex justify-end gap-1">
+                            <Button type="button" variant="ghost" size="sm" onClick={() => {
+                              setEditingSpecialDayId(null);
+                              setSdDate(sd.date);
+                              setSdName(sd.name);
+                              setShowSpecialDayForm(true);
+                            }}><Copy aria-hidden="true" className="w-4 h-4" />Duplicar</Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => {
+                              setEditingSpecialDayId(sd.id);
+                              setSdDate(sd.date);
+                              setSdName(sd.name);
+                              setShowSpecialDayForm(true);
+                            }}><Edit2 aria-hidden="true" className="w-4 h-4" />Editar</Button>
                             <IconButton type="button" variant="ghost" aria-label={`Eliminar dia especial: ${sd.name}, ${sd.date}`} className="text-text-secondary hover:text-error hover:bg-error/10"
                               onClick={() => askConfirmation('Confirmar eliminação de dia especial', 'Tem a certeza que deseja eliminar este dia? Esta ação terá um efeito permanente.', () => deleteSpecialDay(sd.id))}>
                               <Trash2 aria-hidden="true" className="w-4 h-4" />
                             </IconButton>
+                            </div>
                           </td>}
                         </tr>
                       ))}
@@ -1059,21 +1073,21 @@ export default function ConfigSection({
                     // Inline Edit Mode
                     <div className="space-y-3 flex-1">
                       <div className="space-y-1">
-                        <label className="text-[10px] text-slate-400 block font-bold">Título da Tarefa</label>
+                        <label className="text-label text-text-secondary block font-semibold">Título da tarefa</label>
                         <input 
                           type="text"
                           value={editDtTitle}
                           onChange={e => setEditDtTitle(e.target.value)}
-                          className="w-full p-1.5 border border-border rounded-md font-semibold text-xs text-text-primary"
+                          className="w-full h-11 px-3.5 border border-border rounded-control font-semibold text-body text-text-primary bg-surface"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <label className="text-[10px] text-slate-400 block font-bold">Tipo de Tarefa</label>
+                          <label className="text-label text-text-secondary block font-semibold">Tipo de tarefa</label>
                           <select
                             value={editDtTypeId}
                             onChange={e => setEditDtTypeId(e.target.value)}
-                            className="w-full p-1.5 border border-border rounded-md font-semibold text-xs text-text-primary bg-surface"
+                            className="w-full h-11 px-3.5 border border-border rounded-control font-semibold text-body text-text-primary bg-surface"
                           >
                             <option value="">Por defeito</option>
                             {taskTypes.filter((s: any) => !s.deleted).map((s: any) => (
@@ -1082,22 +1096,22 @@ export default function ConfigSection({
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] text-slate-400 block font-bold">Horas Estimadas</label>
+                          <label className="text-label text-text-secondary block font-semibold">Horas estimadas</label>
                           <input 
                             type="text"
                             value={editDtHours}
                             onChange={e => setEditDtHours(e.target.value)}
-                            className="w-full p-1.5 border border-border rounded-md font-semibold text-xs text-text-primary"
+                            className="w-full h-11 px-3.5 border border-border rounded-control font-semibold text-body text-text-primary bg-surface"
                           />
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] text-slate-400 block font-bold">Instruções Técnicas</label>
+                        <label className="text-label text-text-secondary block font-semibold">Instruções técnicas</label>
                         <textarea 
                           value={editDtDesc}
                           onChange={e => setEditDtDesc(e.target.value)}
                           rows={2}
-                          className="w-full p-1.5 border border-border rounded-md text-xs text-text-secondary font-medium"
+                          className="w-full px-3.5 py-3 border border-border rounded-control text-body text-text-secondary font-medium bg-surface"
                         />
                       </div>
                     </div>
@@ -1106,9 +1120,9 @@ export default function ConfigSection({
                     <div className="space-y-1.5 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <h4 className="text-xs font-bold text-text-primary tracking-tight leading-snug">{dt.title}</h4>
+                          <h4 className="text-body font-bold text-text-primary leading-snug">{dt.title}</h4>
                           {typeName && (
-                            <span className="px-1.5 py-0.5 bg-blue-50 border border-blue-100 text-blue-700 rounded text-[9px] font-bold">
+                            <span className="px-2 py-1 bg-blue-50 border border-blue-100 text-blue-700 rounded-control text-label font-semibold">
                               {typeName}
                             </span>
                           )}
@@ -1117,7 +1131,7 @@ export default function ConfigSection({
                           {formatHoursToHHMM(parseTimeToHours(dt.estimatedHours))}
                         </span>
                       </div>
-                      <p className="text-[11px] text-text-muted font-medium leading-relaxed">
+                      <p className="text-body-sm text-text-muted font-medium leading-relaxed">
                         {dt.description || <span className="italic text-slate-400">Sem instruções de modelo fornecidas.</span>}
                       </p>
                     </div>
@@ -1128,14 +1142,14 @@ export default function ConfigSection({
                       <>
                         <button 
                           onClick={() => setEditingDtId(null)}
-                          className="p-1 px-2 text-[10px] font-bold text-text-muted hover:bg-surface-muted rounded-md transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-text-muted hover:bg-surface-muted rounded-control transition-colors flex items-center gap-1"
                         >
                           <X className="w-3.5 h-3.5" />
                           Cancelar
                         </button>
                         <button 
                           onClick={() => handleSaveEditDefaultTask(dt.id)}
-                          className="p-1 px-2 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Check className="w-3.5 h-3.5" />
                           Gravar
@@ -1145,7 +1159,7 @@ export default function ConfigSection({
                       <>
                         <button 
                           onClick={() => startEditingDefaultTask(dt)}
-                          className="p-1 px-2 text-[10px] font-bold text-text-muted hover:text-primary hover:bg-blue-50 rounded-md transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-primary hover:bg-blue-50 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           Editar
@@ -1161,7 +1175,7 @@ export default function ConfigSection({
                               );
                             }
                           }}
-                          className="p-1 px-2 text-[10px] font-bold text-text-muted hover:text-red-600 hover:bg-red-50 rounded-md transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-red-600 hover:bg-red-50 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           Eliminar
