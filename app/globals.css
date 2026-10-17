@@ -278,14 +278,18 @@ body[data-theme="rose"],
 
 /* Domino brand palette. Shared presentation only: configured status colors,
    persisted settings and domain behavior are unchanged. */
-:root,
-html,
-body,
-html[data-theme],
-body[data-theme],
-[data-theme],
-#main-root,
-#main-root[data-theme] {
+/* Domino is an explicit scheme. `default` remains its legacy persisted alias so
+   existing installations keep their current presentation after the other
+   schemes are restored. */
+html:not([data-theme]),
+body:not([data-theme]),
+#main-root:not([data-theme]),
+html[data-theme="domino"],
+body[data-theme="domino"],
+#main-root[data-theme="domino"],
+html[data-theme="default"],
+body[data-theme="default"],
+#main-root[data-theme="default"] {
   --brand-domino-blue: #003b5c;
   --brand-domino-blue-60: #66899d;
   --brand-domino-blue-30: #b2c4ce;
