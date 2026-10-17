@@ -176,7 +176,6 @@ export default function Page() {
     addDefaultTask,
     updateDefaultTask,
     deleteDefaultTask,
-    updateNotificationSetting,
     markNotificationAsRead,
     markAllNotificationsAsRead,
     addNotification,
@@ -1128,7 +1127,6 @@ export default function Page() {
                   addUser={addUser}
                   updateUser={updateUser}
                   deleteUser={deleteUser}
-                  updateNotificationSetting={updateNotificationSetting}
                   currentUser={currentUser}
                   userGroups={state.userGroups}
                   automationRules={state.automationRules || []}
