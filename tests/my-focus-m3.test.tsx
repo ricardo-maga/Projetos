@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { findProjectElement as find } from './fixtures/projects-m3-harness';
 import { FocusPagination, FOCUS_TASK_SIZES, FOCUS_PROJECT_SIZES } from '../components/FocusPagination';
 import { assignedFocusRisks, focusHours, paginateFocus, readFocusPagination } from '../lib/myFocus';
+import { currentForecastMonth, forecastShortMonth, offsetForecastMonth } from '../lib/projectForecast';
 
 function harness() {
   const url = new URL('../components/MyFocusSection.tsx', import.meta.url);
@@ -46,6 +47,19 @@ export const focusPreviewProps: any = {
   riskStatuses: [{ id: 'open', name: 'Ativo' }], updateTask: () => {}, onSelectProject: () => {},
 };
 describe('My Focus M3', () => {
+  it('shows a short vivid Forecast badge only on this month’s managed projects', () => {
+    const month = currentForecastMonth();
+    const projects = [
+      { ...focusPreviewProps.projects[0], forecastDate: `${month}-01` },
+      { ...focusPreviewProps.projects[1], forecastDate: `${offsetForecastMonth(month, 1)}-01` },
+      { ...focusPreviewProps.projects[2], forecastDate: `${month}-01`, projectManagerId: 'other' },
+    ];
+    const tree = harness().render({ ...focusPreviewProps, projects });
+    const html = renderToStaticMarkup(find(tree, e => e.props?.id === 'card-managed-projects'));
+    expect(html.match(/title="Forecast /g)).toHaveLength(1);
+    expect(html).toContain(`title="Forecast ${forecastShortMonth(month)}"`);
+    expect(html).toContain('bg-fuchsia-600');
+  });
   it('puts client/project above task and hours, with a canonical circular execute action instead of a status badge', () => {
     const h = harness(), tree = h.render(focusPreviewProps);
     const card = find(tree, e => e.props?.id === 'card-my-tasks');

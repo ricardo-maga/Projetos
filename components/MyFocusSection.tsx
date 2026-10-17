@@ -14,6 +14,7 @@ import { assignedFocusRisks, focusHours, paginateFocus } from '../lib/myFocus';
 import { FocusPagination, useFocusPagination, FOCUS_TASK_SIZES, FOCUS_PROJECT_SIZES } from './FocusPagination';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { hasPermission } from '../lib/permissions';
+import { currentForecastMonth, forecastMonth, forecastShortMonth } from '../lib/projectForecast';
 import { M3Button, M3IconButton, M3SegmentedControl } from './M3';
 import { 
   CheckSquare, Briefcase, Play, ShieldAlert, Calendar as CalendarIcon, ChevronLeft,
@@ -100,6 +101,8 @@ export default function MyFocusSection({
   };
 
   const todayStr = useMemo(() => formatYMD(new Date()), []);
+  const focusForecastMonth = currentForecastMonth();
+  const focusForecastShortMonth = forecastShortMonth(focusForecastMonth);
   const [selectedDateStr, setSelectedDateStr] = useState<string>(todayStr);
 
   // Personal calendar notes state (stored per user in localStorage)
@@ -651,6 +654,10 @@ export default function MyFocusSection({
                             <h4 className="font-extrabold text-text-primary text-body-sm group-hover:text-primary transition-colors">
                               {client?.clientName || 'N/D'}
                             </h4>
+                            {forecastMonth(proj.forecastDate) === focusForecastMonth &&
+                              <span title={`Forecast ${focusForecastShortMonth}`} className="inline-flex items-center rounded-control border border-fuchsia-700 bg-fuchsia-600 px-1.5 py-0.5 text-caption font-bold text-white">
+                                {focusForecastShortMonth}
+                              </span>}
                             {pStatus && (() => {
                               const pStyle = getProjectStatusStyle(proj.statusId, projectStatuses);
                               return (
