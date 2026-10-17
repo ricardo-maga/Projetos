@@ -10,6 +10,7 @@ import { ADMIN_SYNC_FIELDS, stripAdministrativeSyncFields, SYNC_DOMAIN_PERMISSIO
 import { SYNC_READ_PERMISSIONS, projectSyncRead } from '@/lib/supabase/syncReadProjection';
 import { prepareCommentChanges } from '@/lib/supabase/commentIdentity';
 import { stable } from '@/lib/supabase/syncPayload';
+import { validateAutomationRule } from '@/lib/automation/validateRule';
 
 export async function GET(req: NextRequest) {
   if (!isSupabaseConfigured) {
@@ -184,6 +185,16 @@ export async function POST(req: NextRequest) {
           try { state[field] = changedSyncRecords(state[field], (baseline.data as any)[field]); }
           catch { return NextResponse.json({ success: false, message: `Coleção inválida: ${field}.` }, { status: 400 }); }
         }
+      }
+    }
+    if (Array.isArray(state.automationRules)) {
+      for (const rule of state.automationRules) {
+        const problem = validateAutomationRule(rule, baseline.data);
+        if (problem) return NextResponse.json({ success: false, message: problem }, { status: 400 });
+      }
+      if (state.automationRules.some((rule: any) => rule.enabled && !rule.deleted)) {
+        const { error } = await clientToUse.from('automation_executions').select('id').limit(1);
+        if (error) return NextResponse.json({ success: false, message: 'O executor de automações ainda não está disponível na base de dados.' }, { status: 503 });
       }
     }
     const allowed = new Map<string, boolean>();

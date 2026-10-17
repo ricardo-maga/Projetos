@@ -429,7 +429,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       client.from('ticket_statuses').select('*').order('sort_order', { ascending: true }),
       client.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
       client.from('notification_settings').select('*').order('type'),
-      client.from('automation_rules').select('*').order('created_at', { ascending: false }),
+      client.from('automation_rules').select('*').eq('deleted', false).order('created_at', { ascending: false }),
       client.from('roles').select('id,name,code').eq('is_active', true).order('name'),
       client.from('user_roles').select('user_id,role_id'),
     ]);
@@ -834,6 +834,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       triggerCondition: ar.trigger_condition || ar.triggerCondition || {},
       actions: ar.actions || [],
       enabled: ar.enabled !== false,
+        deleted: ar.deleted === true,
       createdDate: ar.created_at || ar.createdDate || new Date().toISOString()
     }));
 
@@ -1854,6 +1855,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
           trigger_condition: r.triggerCondition || {},
           actions: r.actions || [],
           enabled: r.enabled !== false,
+          deleted: r.deleted === true,
           created_at: r.createdDate || new Date().toISOString()
         }));
         const resRules = await supabase.from('automation_rules').upsert(mappedRules);

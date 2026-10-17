@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AutomationRule, AutomationAction, ProjectStatus, TaskStatus, Project, User } from '../lib/types';
+import { AutomationRule, AutomationAction, ProjectStatus, TaskStatus } from '../lib/types';
 import { 
   Zap, Plus, Trash2, Edit2, Play, CheckCircle2, ArrowRight, Bell, 
   ListTodo, Layers, ShieldCheck, Sparkles, Check, X, AlertCircle, Info, RefreshCw
@@ -10,15 +10,12 @@ import ConfirmModal from './ConfirmModal';
 
 interface AutomationEditorProps {
   automationRules: AutomationRule[];
-  addAutomationRule: (rule: Omit<AutomationRule, 'id' | 'createdDate'>) => void;
-  updateAutomationRule: (id: string, updates: Partial<AutomationRule>) => void;
-  deleteAutomationRule: (id: string) => void;
-  toggleAutomationRule: (id: string) => void;
-  runAutomationRule?: (id: string, projectId?: string) => void;
+  addAutomationRule: (rule: Omit<AutomationRule, 'id' | 'createdDate'>) => Promise<{ success: boolean; message?: string }>;
+  updateAutomationRule: (id: string, updates: Partial<AutomationRule>) => Promise<{ success: boolean; message?: string }>;
+  deleteAutomationRule: (id: string) => Promise<{ success: boolean; message?: string }>;
+  toggleAutomationRule: (id: string) => Promise<{ success: boolean; message?: string }>;
   projectStatuses: ProjectStatus[];
   taskStatuses: TaskStatus[];
-  projects: Project[];
-  users: User[];
   canWrite?: boolean;
 }
 
@@ -28,11 +25,8 @@ export default function AutomationEditor({
   updateAutomationRule,
   deleteAutomationRule,
   toggleAutomationRule,
-  runAutomationRule,
   projectStatuses = [],
   taskStatuses = [],
-  projects = [],
-  users = [],
   canWrite = true,
 }: AutomationEditorProps) {
   const [showModal, setShowModal] = useState(false);
@@ -58,8 +52,7 @@ export default function AutomationEditor({
 
   // Test modal state
   const [testRuleId, setTestRuleId] = useState<string | null>(null);
-  const [selectedTestProjectId, setSelectedTestProjectId] = useState<string>('');
-  const [testFeedback, setTestFeedback] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const resetForm = () => {
     setRuleName('');
@@ -104,7 +97,7 @@ export default function AutomationEditor({
     setShowModal(true);
   };
 
-  const handleSaveRule = (e: React.FormEvent) => {
+  const handleSaveRule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ruleName.trim()) {
       alert('Por favor introduza um nome para a regra.');
@@ -112,10 +105,10 @@ export default function AutomationEditor({
     }
 
     const actions: AutomationAction[] = [];
-    if (actionCreateDefaultTasks) {
+    if (triggerType === 'project_status_changed' && actionCreateDefaultTasks) {
       actions.push({ type: 'create_default_tasks' });
     }
-    if (actionChangeProjectStatus && targetProjectStatusId) {
+    if (triggerType !== 'project_status_changed' && actionChangeProjectStatus && targetProjectStatusId) {
       actions.push({
         type: 'change_project_status',
         params: { targetStatusId: targetProjectStatusId }
@@ -135,20 +128,30 @@ export default function AutomationEditor({
       alert('Por favor selecione pelo menos uma ação para ser executada.');
       return;
     }
+    if (triggerType === 'task_status_changed' && actionChangeProjectStatus && !triggerToStatusId) {
+      alert('Escolha o estado da tarefa que deve desencadear a mudança do projeto.');
+      return;
+    }
 
     const ruleData: Omit<AutomationRule, 'id' | 'createdDate'> = {
       name: ruleName.trim(),
       description: ruleDescription.trim() || undefined,
       enabled: ruleEnabled,
       triggerType,
-      triggerCondition: triggerToStatusId ? { toStatusId: triggerToStatusId } : undefined,
+      triggerCondition: triggerType !== 'task_created' && triggerToStatusId ? { toStatusId: triggerToStatusId } : undefined,
       actions
     };
 
     if (editingRuleId) {
-      updateAutomationRule(editingRuleId, ruleData);
+      setSaving(true);
+      const result = await updateAutomationRule(editingRuleId, ruleData);
+      setSaving(false);
+      if (!result.success) { alert(result.message || 'Não foi possível guardar a regra.'); return; }
     } else {
-      addAutomationRule(ruleData);
+      setSaving(true);
+      const result = await addAutomationRule(ruleData);
+      setSaving(false);
+      if (!result.success) { alert(result.message || 'Não foi possível criar a regra.'); return; }
     }
 
     setShowModal(false);
@@ -159,22 +162,6 @@ export default function AutomationEditor({
     const rule = automationRules.find(r => r.id === ruleId);
     if (!rule) return;
     setTestRuleId(ruleId);
-    const activeProjects = projects.filter(p => !p.deleted);
-    if (activeProjects.length > 0) {
-      setSelectedTestProjectId(activeProjects[0].id);
-    }
-    setTestFeedback(null);
-  };
-
-  const handleExecuteTest = () => {
-    if (!testRuleId || !runAutomationRule) return;
-    runAutomationRule(testRuleId, selectedTestProjectId);
-    const rule = automationRules.find(r => r.id === testRuleId);
-    setTestFeedback(`A regra "${rule?.name || ''}" foi executada com sucesso no projeto selecionado!`);
-    setTimeout(() => {
-      setTestFeedback(null);
-      setTestRuleId(null);
-    }, 2500);
   };
 
   const getTriggerLabel = (rule: AutomationRule) => {
@@ -191,8 +178,6 @@ export default function AutomationEditor({
           ? `Ao mudar estado da tarefa para "${statusName}"`
           : 'Ao mudar estado de qualquer tarefa';
       }
-      case 'quote_approved':
-        return 'Ao aprovar orçamento de um cliente';
       case 'task_created':
         return 'Ao criar uma nova tarefa';
       default:
@@ -200,7 +185,8 @@ export default function AutomationEditor({
     }
   };
 
-  const activeCount = automationRules.filter(r => r.enabled).length;
+  const visibleRules = automationRules.filter(r => !r.deleted);
+  const activeCount = visibleRules.filter(r => r.enabled).length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -233,22 +219,22 @@ export default function AutomationEditor({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-primary/20">
           <div className="bg-surface rounded-card p-3 border border-border">
             <div className="text-xs text-text-secondary font-medium">Total de Regras</div>
-            <div className="text-xl font-bold text-text-primary mt-0.5">{automationRules.length}</div>
+            <div className="text-xl font-bold text-text-primary mt-0.5">{visibleRules.length}</div>
           </div>
           <div className="bg-surface rounded-card p-3 border border-border">
             <div className="text-xs text-text-secondary font-medium">Regras Ativas</div>
             <div className="text-xl font-bold text-success mt-0.5">{activeCount}</div>
           </div>
           <div className="bg-surface rounded-card p-3 border border-border col-span-2 sm:col-span-1">
-            <div className="text-xs text-text-secondary font-medium">Execuções Automáticas</div>
-            <div className="text-xl font-bold text-primary mt-0.5">Ativas no Servidor</div>
+            <div className="text-xs text-text-secondary font-medium">Execução</div>
+            <div className="text-xl font-bold text-primary mt-0.5">Por evento</div>
           </div>
         </div>
       </div>
 
       {/* Rules List */}
       <div className="space-y-4">
-        {automationRules.length === 0 ? (
+        {visibleRules.length === 0 ? (
           <div className="bg-surface rounded-card border border-border p-12 text-center shadow-xs">
             <div className="w-12 h-12 rounded-card bg-blue-50 text-primary flex items-center justify-center mx-auto mb-3">
               <Zap className="w-6 h-6" />
@@ -268,7 +254,7 @@ export default function AutomationEditor({
             )}
           </div>
         ) : (
-          automationRules.map(rule => (
+          visibleRules.map(rule => (
             <div 
               key={rule.id}
               className={`bg-surface rounded-card border transition-all p-5 shadow-xs ${
@@ -283,8 +269,8 @@ export default function AutomationEditor({
                     role="switch"
                     aria-checked={rule.enabled}
                     aria-label={`${rule.enabled ? 'Desativar' : 'Ativar'} regra ${rule.name}`}
-                    onClick={() => canWrite && toggleAutomationRule(rule.id)}
-                    disabled={!canWrite}
+                    onClick={async () => { const result = await toggleAutomationRule(rule.id); if (!result.success) alert(result.message || 'Não foi possível alterar a regra.'); }}
+                    disabled={!canWrite || saving}
                     className={`mt-1 relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
                       rule.enabled ? 'bg-emerald-600' : 'bg-slate-300'
                     }`}
@@ -355,19 +341,17 @@ export default function AutomationEditor({
                   </div>
                 </div>
 
-                {/* Actions (Test / Edit / Delete) */}
+                {/* Actions (Preview / Edit / Delete) */}
                 <div className="flex items-center gap-2 border-t lg:border-t-0 pt-3 lg:pt-0 border-border-subtle shrink-0 justify-end">
-                  {runAutomationRule && (
                     <button
                       type="button"
                       onClick={() => handleRunTest(rule.id)}
                       className="px-3 py-1.5 text-xs font-bold text-text-secondary hover:text-blue-700 hover:bg-blue-50 border border-border hover:border-blue-200 rounded-control transition-all flex items-center gap-1.5 cursor-pointer"
-                      title="Testar execução desta regra manualmente num projeto"
+                      title="Pré-visualizar as ações sem alterar dados"
                     >
                       <Play className="w-3 h-3 text-primary fill-blue-600" />
-                      Testar
+                      Pré-visualizar
                     </button>
-                  )}
 
                   {canWrite && (
                     <>
@@ -474,12 +458,11 @@ export default function AutomationEditor({
                     <label className="block text-xs font-semibold text-text-secondary mb-1">Evento de Origem</label>
                     <select
                       value={triggerType}
-                      onChange={e => setTriggerType(e.target.value as any)}
+                      onChange={e => { setTriggerType(e.target.value as AutomationRule['triggerType']); setTriggerToStatusId(''); setActionCreateDefaultTasks(false); setActionChangeProjectStatus(false); }}
                       className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold cursor-pointer outline-none"
                     >
                       <option value="project_status_changed">Ao alterar o estado de um Projeto</option>
                       <option value="task_status_changed">Ao alterar o estado de uma Tarefa</option>
-                      <option value="quote_approved">Ao aprovar um Orçamento de cliente</option>
                       <option value="task_created">Ao criar uma nova Tarefa</option>
                     </select>
                   </div>
@@ -495,7 +478,7 @@ export default function AutomationEditor({
                         className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold cursor-pointer outline-none"
                       >
                         <option value="">Qualquer Estado</option>
-                        {projectStatuses.map(s => (
+                        {projectStatuses.filter(s => !s.deleted).map(s => (
                           <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
                       </select>
@@ -513,7 +496,7 @@ export default function AutomationEditor({
                         className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold cursor-pointer outline-none"
                       >
                         <option value="">Qualquer Estado</option>
-                        {taskStatuses.map(s => (
+                        {taskStatuses.filter(s => !s.deleted).map(s => (
                           <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
                       </select>
@@ -531,7 +514,7 @@ export default function AutomationEditor({
 
                 <div className="space-y-3 pl-7">
                   {/* Action 1: Create Default Tasks */}
-                  <label className="flex items-start gap-3 p-3 bg-surface-muted border border-border rounded-control cursor-pointer hover:bg-surface-muted/80 transition-colors">
+                  {triggerType === 'project_status_changed' && <label className="flex items-start gap-3 p-3 bg-surface-muted border border-border rounded-control cursor-pointer hover:bg-surface-muted/80 transition-colors">
                     <input
                       type="checkbox"
                       checked={actionCreateDefaultTasks}
@@ -544,10 +527,10 @@ export default function AutomationEditor({
                         Insere automaticamente a lista de tarefas pré-definidas na configuração do sistema.
                       </div>
                     </div>
-                  </label>
+                  </label>}
 
                   {/* Action 2: Change Project Status */}
-                  <div className="p-3 bg-surface-muted border border-border rounded-control space-y-2">
+                  {triggerType !== 'project_status_changed' && <div className="p-3 bg-surface-muted border border-border rounded-control space-y-2">
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input
                         type="checkbox"
@@ -558,7 +541,7 @@ export default function AutomationEditor({
                       <div>
                         <div className="text-xs font-bold text-text-primary">Alterar Estado do Projeto</div>
                         <div className="text-[11px] text-text-muted">
-                          Atualiza o estado do projeto associado para um estado de destino específico.
+                          {triggerType === 'task_status_changed' ? 'Atualiza o projeto quando todas as tarefas ativas atingirem o estado escolhido.' : 'Atualiza o estado do projeto associado.'}
                         </div>
                       </div>
                     </label>
@@ -572,13 +555,13 @@ export default function AutomationEditor({
                           required={actionChangeProjectStatus}
                         >
                           <option value="">Selecione o Estado de Destino...</option>
-                          {projectStatuses.map(s => (
+                          {projectStatuses.filter(s => !s.deleted).map(s => (
                             <option key={s.id} value={s.id}>{s.name}</option>
                           ))}
                         </select>
                       </div>
                     )}
-                  </div>
+                  </div>}
 
                   {/* Action 3: Send Notification */}
                   <div className="p-3 bg-surface-muted border border-border rounded-control space-y-2">
@@ -592,7 +575,7 @@ export default function AutomationEditor({
                       <div>
                         <div className="text-xs font-bold text-text-primary">Enviar Notificação no Sistema</div>
                         <div className="text-[11px] text-text-muted">
-                          Gera um aviso interno para os utilizadores/gestores relevantes.
+                          Gera um aviso interno para todos os utilizadores internos ativos.
                         </div>
                       </div>
                     </label>
@@ -603,7 +586,7 @@ export default function AutomationEditor({
                           type="text"
                           value={notificationTitle}
                           onChange={e => setNotificationTitle(e.target.value)}
-                          placeholder="Título da Notificação (ex: Orçamento Aprovado)"
+                          placeholder="Título da notificação (ex: Projeto atualizado)"
                           className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-semibold outline-none"
                           required={actionSendNotification}
                         />
@@ -622,15 +605,12 @@ export default function AutomationEditor({
 
               {/* Modal Footer */}
               <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-text-secondary hover:bg-surface-muted rounded-control transition-colors cursor-pointer"
-                >
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-xs font-semibold text-text-secondary hover:bg-surface-muted rounded-control transition-colors cursor-pointer">
                   Cancelar
                 </button>
                 <button
                   type="submit"
+                  disabled={saving}
                   className="px-5 py-2 bg-primary hover:bg-blue-700 text-white text-xs font-bold rounded-control transition-all shadow-xs cursor-pointer"
                 >
                   {editingRuleId ? 'Guardar Alterações' : 'Criar Regra'}
@@ -641,43 +621,36 @@ export default function AutomationEditor({
         </div>
       )}
 
-      {/* Manual Test Execution Modal */}
+      {/* Read-only rule preview */}
       {testRuleId && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-surface rounded-card max-w-md w-full p-6 shadow-2xl border border-border-subtle space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-text-primary font-bold text-sm">
                 <Play className="w-4 h-4 text-primary fill-blue-600" />
-                Testar Regra de Automação
+                Pré-visualizar Regra de Automação
               </div>
               <button onClick={() => setTestRuleId(null)} className="text-slate-400 hover:text-text-secondary cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-text-secondary">
-              Selecione um projeto existente para simular o disparo imediato desta regra de automação:
-            </p>
+            <p className="text-xs text-text-secondary">Resumo das ações da regra. Nenhum dado será alterado.</p>
 
-            <div>
-              <label className="block text-xs font-semibold text-text-secondary mb-1">Projeto para Teste</label>
-              <select
-                value={selectedTestProjectId}
-                onChange={e => setSelectedTestProjectId(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold outline-none cursor-pointer"
-              >
-                {projects.filter(p => !p.deleted).map(p => (
-                  <option key={p.id} value={p.id}>{p.title}</option>
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-control text-blue-900 text-xs space-y-2">
+              <p className="font-semibold">Ações previstas se o evento e as condições ocorrerem:</p>
+              <ul className="list-disc pl-4 space-y-1">
+                {(automationRules.find(rule => rule.id === testRuleId)?.actions || []).map((action, index) => (
+                  <li key={index}>
+                    {action.type === 'create_default_tasks' && 'Criar tarefas padrão apenas se o projeto não tiver tarefas ativas.'}
+                    {action.type === 'change_project_status' && (automationRules.find(rule => rule.id === testRuleId)?.triggerType === 'task_status_changed'
+                      ? 'Mudar o estado do projeto quando todas as tarefas ativas tiverem o estado do evento.'
+                      : 'Mudar o estado do projeto associado à tarefa criada.')}
+                    {action.type === 'send_notification' && 'Enviar uma notificação a cada utilizador interno ativo.'}
+                  </li>
                 ))}
-              </select>
+              </ul>
             </div>
-
-            {testFeedback && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-control text-emerald-800 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                {testFeedback}
-              </div>
-            )}
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
@@ -685,15 +658,7 @@ export default function AutomationEditor({
                 onClick={() => setTestRuleId(null)}
                 className="px-3.5 py-2 text-xs font-semibold text-text-secondary hover:bg-surface-muted rounded-control"
               >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleExecuteTest}
-                className="px-4 py-2 bg-primary hover:bg-blue-700 text-white text-xs font-bold rounded-control flex items-center gap-1.5 shadow-xs cursor-pointer"
-              >
-                <Zap className="w-3.5 h-3.5" />
-                Executar Agora
+                Fechar
               </button>
             </div>
           </div>
@@ -707,7 +672,7 @@ export default function AutomationEditor({
           title="Eliminar Regra de Automação"
           message="Tem a certeza que deseja eliminar esta regra de automação? O processo automático deixará de ser executado."
           onConfirm={() => {
-            deleteAutomationRule(confirmDeleteRuleId);
+            void deleteAutomationRule(confirmDeleteRuleId).then(result => { if (!result.success) alert(result.message || 'Não foi possível eliminar a regra.'); });
             setConfirmDeleteRuleId(null);
           }}
           onCancel={() => setConfirmDeleteRuleId(null)}
