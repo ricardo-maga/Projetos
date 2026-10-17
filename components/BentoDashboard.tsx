@@ -1,6 +1,6 @@
 'use client';
 
-import { M3SectionHeader, M3SegmentedControl } from './M3';
+import { M3SectionHeader } from './M3';
 import { Card } from './ui/Card';
 import { MetricCard } from './ui/MetricCard';
 import { buildDashboardSummary } from '../lib/dashboardSummary';
@@ -10,10 +10,10 @@ import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import React, { useState, useMemo } from 'react';
 import { Project, Task, Comment, UserAbsence, Client, ProjectMaterial, ProjectRiskItem } from '../lib/types';
-import { Briefcase, CheckSquare, Users, MessageSquare, CalendarClock, ChevronLeft, ChevronRight, AlertTriangle, Package, CheckCircle2, Clock, BarChart2, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Package, Search } from 'lucide-react';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getProjectCalculatedRisk, matchTaskStatusId, parseTimeToHours, getProjectStatusStyle } from '../lib/utils';
-import { currentForecastMonth, forecastMonth, forecastShortMonth, offsetForecastMonth } from '../lib/projectForecast';
+import { currentForecastMonth, forecastMonth, offsetForecastMonth } from '../lib/projectForecast';
 
 interface BentoDashboardProps {
   projects: Project[];
@@ -309,11 +309,13 @@ export default function BentoDashboard({
   upcomingAbsences.sort((a, b) => safeParseDate(a.absenceStartDate).getTime() - safeParseDate(b.absenceStartDate).getTime());
   const displayedAbsences = upcomingAbsences.slice(0, 10);
 
-  // Recent comments (excluding soft-deleted projects, sorted by createdDate descending)
+  // Recent comments from the last 15 days on non-deleted projects.
+  const commentCutoff = forecastToday.getTime() - 15 * 24 * 60 * 60 * 1000;
   const activeComments = [...comments]
     .filter(c => {
       const proj = projects.find(p => matchId(p.id, c.projectId));
-      return proj && !proj.deleted;
+      const createdAt = Date.parse(c.createdDate || '');
+      return proj && !proj.deleted && Number.isFinite(createdAt) && createdAt >= commentCutoff && createdAt <= forecastToday.getTime();
     })
     .sort((a, b) => {
       const timeA = a.createdDate ? new Date(a.createdDate).getTime() : 0;
@@ -358,7 +360,7 @@ export default function BentoDashboard({
       
 
       {/* Top Summary Cards Section */}
-      <div className="md:col-span-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores do dashboard">
+      <div className="m3-dashboard-summary md:col-span-12 grid gap-4" aria-label="Indicadores do dashboard">
         <MetricCard title="Projetos ativos" value={summary.activeProjects} />
         <MetricCard title={`Projetos ${summary.currentMonthName}`} value={summary.currentMonthProjects} />
         <MetricCard title={`Projetos ${summary.nextMonthName}`} value={summary.nextMonthProjects} />
@@ -367,11 +369,15 @@ export default function BentoDashboard({
 
       <Card className="md:col-span-12 flex flex-col overflow-hidden" aria-label="Projetos em Forecast">
         <div className="p-4 sm:p-5 border-b border-border/80 flex flex-wrap items-center justify-between gap-3 bg-surface-muted/60">
-          <h2 className="text-heading-sm text-text-primary flex items-center gap-2"><CalendarClock className="w-5 h-5 text-fuchsia-600" />Projetos em Forecast</h2>
-          <M3SegmentedControl<-1 | 0 | 1> label="Filtrar mês do Forecast" value={forecastOffset}
-            onChange={setForecastOffset} options={([-1, 0, 1] as const).map(offset => ({
-              value: offset, label: forecastShortMonth(offsetForecastMonth(forecastCurrentMonth, offset)),
-            }))} />
+          <h2 className="text-heading-sm text-text-primary">Projetos em Forecast</h2>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar mês do Forecast">
+            {([-1, 0, 1] as const).map(offset => {
+              const month = offsetForecastMonth(forecastCurrentMonth, offset);
+              const monthName = new Intl.DateTimeFormat('pt-PT', { month: 'long', timeZone: 'UTC' }).format(new Date(`${month}-01T00:00:00Z`)).replace(/^./, first => first.toLocaleUpperCase('pt-PT'));
+              return <Button key={offset} type="button" variant={forecastOffset === offset ? 'primary' : 'outline'} size="sm"
+                aria-pressed={forecastOffset === offset} onClick={() => setForecastOffset(offset)}>{monthName}</Button>;
+            })}
+          </div>
         </div>
         <div className="overflow-x-auto w-full">
           {forecastProjects.length === 0 ? <p className="p-5 text-body-sm text-text-muted">Sem projetos em Forecast neste mês.</p> :
@@ -400,10 +406,7 @@ export default function BentoDashboard({
       <Card className="md:col-span-12 flex flex-col overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-border/80 flex flex-col lg:flex-row justify-between lg:items-center gap-4 bg-surface-muted/60">
           <div>
-            <h2 className="text-heading-sm text-text-primary flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-primary" />
-              Projetos Ativos
-            </h2>
+            <h2 className="text-heading-sm text-text-primary">Projetos Ativos</h2>
             <p className="text-body-sm text-text-secondary mt-0.5">Ordenados por data de entrega</p>
           </div>
           
@@ -594,9 +597,7 @@ export default function BentoDashboard({
         <Card className="p-5 flex flex-col justify-between min-h-[360px]">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-heading-sm text-text-primary flex items-center gap-1.5">
-                <CalendarClock className="w-4 h-4 text-primary" /> Projetos ativos esta semana
-              </h3>
+              <h3 className="text-heading-sm text-text-primary">Projetos ativos esta semana</h3>
               <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold text-caption border border-primary/20">
                 {activeProjectsThisWeek.length} projeto{activeProjectsThisWeek.length !== 1 ? 's' : ''}
               </span>
@@ -662,9 +663,7 @@ export default function BentoDashboard({
         <Card className="p-5 flex flex-col justify-between min-h-[360px]">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-heading-sm text-text-primary flex items-center gap-1.5">
-                <BarChart2 className="w-4 h-4 text-primary" /> Projetos com maior carga horária
-              </h3>
+              <h3 className="text-heading-sm text-text-primary">Projetos com maior carga horária</h3>
               <span className="text-body-sm font-bold text-text-secondary">
                 Pág. {currentWorkloadPage}/{totalWorkloadPages}
               </span>
@@ -751,12 +750,10 @@ export default function BentoDashboard({
       </div>
 
       {/* Row: Notas & Comentários Recentes + Ausências e Férias da Equipa */}
-      <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="md:col-span-12 grid grid-cols-1 2xl:grid-cols-2 gap-5">
         {/* Left: Recent Comments */}
         <Card className="p-5 flex flex-col min-h-[320px]">
-          <h3 className="text-heading-sm text-text-primary mb-4 flex items-center gap-1.5">
-            <MessageSquare className="w-4 h-4 text-primary" /> Comentários recentes
-          </h3>
+          <h3 className="text-heading-sm text-text-primary mb-4">Comentários recentes</h3>
           {activeComments.length === 0 ? (
             <p className="text-body-sm text-text-muted py-8 text-center font-medium">Nenhum comentário adicionado recentemente.</p>
           ) : (
@@ -792,13 +789,11 @@ export default function BentoDashboard({
         {/* Right: Team Absences */}
         <Card className="p-5 flex flex-col justify-between min-h-[320px]">
           <div>
-            <h3 className="text-heading-sm text-text-primary mb-4 flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-primary" /> Ausências da equipa
-            </h3>
+            <h3 className="text-heading-sm text-text-primary mb-4">Ausências da equipa</h3>
             {displayedAbsences.length === 0 ? (
               <p className="text-body-sm text-text-muted py-8 text-center font-medium">Nenhuma ausência registada.</p>
             ) : (
-              <div className="flex flex-col gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 min-[620px]:grid-cols-2 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
                 {displayedAbsences.map((abs) => {
                   const startDate = safeParseDate(abs.absenceStartDate);
                   const endDate = safeParseDate(abs.absenceEndDate);

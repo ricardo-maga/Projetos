@@ -8,7 +8,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { M3Button } from '../components/M3';
 import { hasFilledButtonBackground } from '../components/ui/buttonAppearance';
 import { getProjectStatusStyle } from '../lib/utils';
-import { currentForecastMonth, forecastShortMonth, offsetForecastMonth } from '../lib/projectForecast';
+import { currentForecastMonth, offsetForecastMonth } from '../lib/projectForecast';
 
 const props: React.ComponentProps<typeof Dashboard> = {
   projects: [], tasks: [], absences: [], projectMaterials: [], comments: [],
@@ -53,10 +53,32 @@ describe('Dashboard M3 presentation', () => {
     expect(html.match(/rounded-card/g)).toHaveLength(10);
     expect(html).toContain('Projetos em Forecast');
     expect(html).toContain('aria-label="Filtrar mês do Forecast"');
-    expect(html).toContain('m3-segmented-control');
-    for (const offset of [-1, 0, 1]) expect(html).toContain(forecastShortMonth(offsetForecastMonth(currentForecastMonth(), offset)));
+    for (const offset of [-1, 0, 1]) {
+      const month = offsetForecastMonth(currentForecastMonth(), offset);
+      const name = new Intl.DateTimeFormat('pt-PT', { month: 'long', timeZone: 'UTC' })
+        .format(new Date(`${month}-01T00:00:00Z`)).replace(/^./, first => first.toLocaleUpperCase('pt-PT'));
+      expect(html).toContain(name);
+    }
+    expect(html).not.toContain('m3-segment__check');
+    expect(html).toMatch(/<h2 class="text-heading-sm text-text-primary">Projetos em Forecast<\/h2>/);
     expect(html).toContain('Tarefas abertas');
-    expect(html).toContain('sm:grid-cols-2 xl:grid-cols-4');
+    expect(html).toContain('m3-dashboard-summary');
+  });
+
+  it('shows comments only from the last 15 days', () => {
+    const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const project = { id: 'p', deleted: false } as typeof props.projects[number];
+    const comments = [
+      { id: 'recent', projectId: 'p', authorId: 'u', comment: 'Comentário recente', createdDate: daysAgo(14) },
+      { id: 'old', projectId: 'p', authorId: 'u', comment: 'Comentário antigo', createdDate: daysAgo(16) },
+      { id: 'future', projectId: 'p', authorId: 'u', comment: 'Comentário futuro', createdDate: daysAgo(-1) },
+      { id: 'invalid', projectId: 'p', authorId: 'u', comment: 'Comentário sem data', createdDate: 'invalid' },
+    ] as typeof props.comments;
+    const html = renderToStaticMarkup(<Dashboard {...props} projects={[project]} comments={comments} />);
+    expect(html).toContain('Comentário recente');
+    expect(html).not.toContain('Comentário antigo');
+    expect(html).not.toContain('Comentário futuro');
+    expect(html).not.toContain('Comentário sem data');
   });
 
   it('retains active-project filtering, canonical status and workload totals', () => {
