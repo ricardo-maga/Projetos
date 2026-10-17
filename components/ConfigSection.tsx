@@ -91,7 +91,6 @@ interface ConfigSectionProps {
   updateAutomationRule?: any;
   deleteAutomationRule?: any;
   toggleAutomationRule?: any;
-  runAutomationRule?: any;
   onRefreshFromDatabase?: () => Promise<boolean>;
 }
 
@@ -347,7 +346,6 @@ export default function ConfigSection({
   updateAutomationRule,
   deleteAutomationRule,
   toggleAutomationRule,
-  runAutomationRule,
   onRefreshFromDatabase,
 }: ConfigSectionProps) {
   const canReadConfig = hasPermission(currentUser, 'config_read', userGroups);
@@ -1504,11 +1502,8 @@ export default function ConfigSection({
               updateAutomationRule={updateAutomationRule}
               deleteAutomationRule={deleteAutomationRule}
               toggleAutomationRule={toggleAutomationRule}
-              runAutomationRule={runAutomationRule}
               projectStatuses={state.projectStatuses || []}
               taskStatuses={state.taskStatuses || []}
-              projects={state.projects || []}
-              users={state.users || []}
               canWrite={canWriteConfig}
             />
           )}

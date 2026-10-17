@@ -653,50 +653,6 @@ export function useERP() {
           let newTasks = prev.tasks;
           let newNotifs = prev.notifications || [];
 
-          if (updates.statusId) {
-            const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'project_status_changed');
-            for (const rule of activeRules) {
-              if (!rule.triggerCondition?.toStatusId || rule.triggerCondition.toStatusId === updates.statusId) {
-                for (const action of rule.actions) {
-                  if (action.type === 'create_default_tasks') {
-                    const projectTasks = newTasks.filter(t => t.projectId === id && !t.deleted);
-                    if (projectTasks.length === 0 && prev.defaultTasks && prev.defaultTasks.length > 0) {
-                      const autoTasks: Task[] = prev.defaultTasks.map(dt => ({
-                        id: genId('t'),
-                        projectId: id,
-                        title: dt.title,
-                        description: dt.description || '',
-                        estimatedHours: dt.estimatedHours || '08:00',
-                        actualHours: '00:00',
-                        startDate: now.split('T')[0],
-                        startTime: '09:00',
-                        endDate: now.split('T')[0],
-                        endTime: '18:00',
-                        estimatedDate: now.split('T')[0],
-                        notes: 'Gerada automaticamente pela regra de automação.',
-                        statusId: getDefaultTaskStatusId(prev.taskStatuses || []),
-                        assigneeIds: [],
-                        deleted: false,
-                        createdDate: now
-                      }));
-                      newTasks = [...autoTasks, ...newTasks];
-                    }
-                  } else if (action.type === 'send_notification') {
-                    newNotifs = [{
-                      id: genId('notif'),
-                      userId: 'all',
-                      title: action.params?.notificationTitle || 'Projeto Atualizado',
-                      message: action.params?.notificationMessage || 'Regra de automação executada no projeto.',
-                      isRead: false,
-                      createdDate: now,
-                      linkUrl: `/projects?project=${id}`
-                    }, ...newNotifs];
-                  }
-                }
-              }
-            }
-          }
-
           return {
             ...prev,
             projects: newProjects,
@@ -705,7 +661,11 @@ export function useERP() {
           };
         });
 
-        setSyncStatus('synced');
+        if (updates.statusId && updates.statusId !== existingProj.statusId && state?.automationRules?.some(r => r.enabled && !r.deleted && r.triggerType === 'project_status_changed')) {
+          await refreshFromDatabase();
+        } else {
+          setSyncStatus('synced');
+        }
         return true;
       } else {
         const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a alteração do projeto (${res.status}).`);
@@ -826,25 +786,6 @@ export function useERP() {
           let newProjects = prev.projects;
           let newNotifs = prev.notifications || [];
 
-          const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_created');
-          for (const rule of activeRules) {
-            for (const action of rule.actions) {
-              if (action.type === 'send_notification') {
-                newNotifs = [{
-                  id: genId('notif'),
-                  userId: action.params?.targetUserId || 'all',
-                  title: action.params?.notificationTitle || 'Nova Tarefa Criada',
-                  message: action.params?.notificationMessage || `Nova tarefa "${newTask.title}" adicionada.`,
-                  isRead: false,
-                  createdDate: now,
-                  linkUrl: `/projects?project=${newTask.projectId}`
-                }, ...newNotifs];
-              } else if (action.type === 'change_project_status' && action.params?.targetStatusId) {
-                newProjects = newProjects.map(p => p.id === newTask.projectId ? { ...p, statusId: action.params!.targetStatusId!, updatedDate: now } : p);
-              }
-            }
-          }
-
           return {
             ...prev,
             tasks: newTasks,
@@ -959,34 +900,6 @@ export function useERP() {
         });
         let newProjects = prev.projects;
         let newNotifs = prev.notifications || [];
-
-        if (targetTask && updates.statusId) {
-          const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_status_changed');
-          for (const rule of activeRules) {
-            if (!rule.triggerCondition?.toStatusId || rule.triggerCondition.toStatusId === updates.statusId) {
-              for (const action of rule.actions) {
-                if (action.type === 'change_project_status' && action.params?.targetStatusId) {
-                  const projectTasks = newTasks.filter(t => t.projectId === targetTask.projectId && !t.deleted);
-                  const completedStatusId = updates.statusId;
-                  const allCompleted = projectTasks.length > 0 && projectTasks.every(t => t.statusId === completedStatusId);
-                  if (allCompleted) {
-                    newProjects = newProjects.map(p => p.id === targetTask.projectId ? { ...p, statusId: action.params!.targetStatusId!, updatedDate: now } : p);
-                  }
-                } else if (action.type === 'send_notification') {
-                  newNotifs = [{
-                    id: genId('notif'),
-                    userId: 'all',
-                    title: action.params?.notificationTitle || 'Tarefa Concluída',
-                    message: action.params?.notificationMessage || 'Regra de automação executada.',
-                    isRead: false,
-                    createdDate: now,
-                    linkUrl: `/projects?project=${targetTask.projectId}`
-                  }, ...newNotifs];
-                }
-              }
-            }
-          }
-        }
 
         return {
           ...prev,
@@ -1625,95 +1538,33 @@ export function useERP() {
       id: genId('rule'),
       createdDate: new Date().toISOString()
     };
-    saveState(prev => ({
+    return saveState(prev => ({
       ...prev,
       automationRules: [newRule, ...(prev.automationRules || [])]
     }));
   };
 
   const updateAutomationRule = (id: string, updates: Partial<import('../lib/types').AutomationRule>) => {
-    saveState(prev => ({
+    return saveState(prev => ({
       ...prev,
       automationRules: (prev.automationRules || []).map(r => r.id === id ? { ...r, ...updates } as import('../lib/types').AutomationRule : r)
     }));
   };
 
   const deleteAutomationRule = (id: string) => {
-    saveState(prev => ({
+    return saveState(prev => ({
       ...prev,
-      automationRules: (prev.automationRules || []).filter(r => r.id !== id)
+      automationRules: (prev.automationRules || []).map(r => r.id === id ? { ...r, deleted: true, enabled: false } : r)
     }));
   };
 
   const toggleAutomationRule = (id: string) => {
-    saveState(prev => ({
+    return saveState(prev => ({
       ...prev,
       automationRules: (prev.automationRules || []).map(r => r.id === id ? { ...r, enabled: !r.enabled } : r)
     }));
   };
 
-  const runAutomationRule = (ruleId: string, projectId?: string) => {
-    const now = new Date().toISOString();
-    saveState(prev => {
-      const rule = (prev.automationRules || []).find(r => r.id === ruleId);
-      if (!rule) return prev;
-
-      let targetProjId = projectId;
-      if (!targetProjId) {
-        const firstProj = prev.projects.find(p => !p.deleted);
-        targetProjId = firstProj?.id;
-      }
-
-      let newTasks = prev.tasks;
-      let newProjects = prev.projects;
-      let newNotifs = prev.notifications || [];
-
-      for (const action of rule.actions) {
-        if (action.type === 'create_default_tasks' && targetProjId) {
-          if (prev.defaultTasks && prev.defaultTasks.length > 0) {
-            const autoTasks: Task[] = prev.defaultTasks.map(dt => ({
-              id: genId('t'),
-              projectId: targetProjId!,
-              title: dt.title,
-              description: dt.description || '',
-              estimatedHours: dt.estimatedHours || '08:00',
-              actualHours: '00:00',
-              startDate: now.split('T')[0],
-              startTime: '09:00',
-              endDate: now.split('T')[0],
-              endTime: '18:00',
-              estimatedDate: now.split('T')[0],
-              notes: 'Gerada manualmente por teste da regra de automação.',
-              statusId: getDefaultTaskStatusId(prev.taskStatuses || []),
-              assigneeIds: [],
-              deleted: false,
-              createdDate: now
-            }));
-            newTasks = [...autoTasks, ...newTasks];
-          }
-        } else if (action.type === 'change_project_status' && action.params?.targetStatusId && targetProjId) {
-          newProjects = newProjects.map(p => p.id === targetProjId ? { ...p, statusId: action.params!.targetStatusId!, updatedDate: now } : p);
-        } else if (action.type === 'send_notification') {
-          newNotifs = [{
-            id: genId('notif'),
-            userId: action.params?.targetUserId || 'all',
-            title: action.params?.notificationTitle || 'Regra Executada',
-            message: action.params?.notificationMessage || 'Regra de automação disparada.',
-            isRead: false,
-            createdDate: now,
-            linkUrl: targetProjId ? `/projects?project=${targetProjId}` : '/projects'
-          }, ...newNotifs];
-        }
-      }
-
-      return {
-        ...prev,
-        tasks: newTasks,
-        projects: newProjects,
-        notifications: newNotifs
-      };
-    });
-  };
 
   // ==================== TICKETS & SUPORTE (FASE 32: DEDICATED API) ====================
   const addTicket = async (
@@ -2055,7 +1906,6 @@ export function useERP() {
     updateAutomationRule,
     deleteAutomationRule,
     toggleAutomationRule,
-    runAutomationRule,
     refreshFromDatabase,
     saveState,
 

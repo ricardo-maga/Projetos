@@ -166,7 +166,6 @@ export default function Page() {
     updateAutomationRule,
     deleteAutomationRule,
     toggleAutomationRule,
-    runAutomationRule,
     syncStatus,
     publicAppConfig,
     syncError,
@@ -1098,7 +1097,6 @@ export default function Page() {
                   updateAutomationRule={updateAutomationRule}
                   deleteAutomationRule={deleteAutomationRule}
                   toggleAutomationRule={toggleAutomationRule}
-                  runAutomationRule={runAutomationRule}
                 />
               )}
             </div>

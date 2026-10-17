@@ -290,12 +290,11 @@ export interface DefaultTask {
 }
 
 export interface AutomationAction {
-  type: 'create_default_tasks' | 'change_project_status' | 'send_notification' | 'assign_user';
+  type: 'create_default_tasks' | 'change_project_status' | 'send_notification';
   params?: {
     targetStatusId?: string;
     notificationTitle?: string;
     notificationMessage?: string;
-    targetUserId?: string;
   };
 }
 
@@ -304,12 +303,13 @@ export interface AutomationRule {
   name: string;
   description?: string;
   enabled: boolean;
-  triggerType: 'project_status_changed' | 'task_status_changed' | 'task_created' | 'quote_approved';
+  triggerType: 'project_status_changed' | 'task_status_changed' | 'task_created';
   triggerCondition?: {
     fromStatusId?: string;
     toStatusId?: string;
   };
   actions: AutomationAction[];
+  deleted?: boolean;
   createdDate: string;
 }
 
