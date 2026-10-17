@@ -634,7 +634,6 @@ export default function MyFocusSection({
               ) : (
                 projectPage.items.map(proj => {
                   const client = clientsMap.get(proj.clientId);
-                  const pStatus = projectStatusMap.get(proj.statusId);
                   
                   const deliveryDateVal = getProjectEffectiveDeliveryDate(proj);
                   const deliveryDateType = getProjectDeliveryDateType(proj);
@@ -651,21 +650,13 @@ export default function MyFocusSection({
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-extrabold text-text-primary text-body-sm group-hover:text-primary transition-colors">
+                            <h4 className="font-extrabold text-text-primary text-body group-hover:text-primary transition-colors">
                               {client?.clientName || 'N/D'}
                             </h4>
                             {forecastMonth(proj.forecastDate) === focusForecastMonth &&
                               <span title={`Forecast ${focusForecastShortMonth}`} className="inline-flex items-center rounded-control border border-fuchsia-700 bg-fuchsia-600 px-1.5 py-0.5 text-caption font-bold text-white">
                                 {focusForecastShortMonth}
                               </span>}
-                            {pStatus && (() => {
-                              const pStyle = getProjectStatusStyle(proj.statusId, projectStatuses);
-                              return (
-                                <Badge className={pStyle.badgeClass}>
-                                  {pStyle.name}
-                                </Badge>
-                              );
-                            })()}
                           </div>
                           <p className="text-body-sm text-text-secondary font-medium">
                             <strong className="text-text-secondary">{proj.title}</strong>
