@@ -773,16 +773,12 @@ export default function Page() {
 
               if (tab.id === 'configuracoes') {
                 const configSubItems = [
-                  { id: 'sistema', label: 'Aplicação', icon: Settings, group: 'Configurações da aplicação' },
-                  { id: 'campos', label: 'Campos auxiliares', icon: ListTodo, group: 'Configurações da aplicação' },
-                  { id: 'dias', label: 'Dias especiais', icon: Calendar, group: 'Configurações da aplicação' },
-                  { id: 'tarefas', label: 'Tarefas modelo', icon: CheckSquare, group: 'Configurações da aplicação' },
+                  { id: 'aplicacao-menu', label: 'Configurações da aplicação', icon: Settings },
                   { id: 'clientes', label: 'Clientes', icon: Building, permission: 'clients_read' },
                   { id: 'ausencias', label: 'Registo de ausências', icon: Users, permission: 'absences_read' },
                   { id: 'utilizadores', label: 'Utilizadores', icon: Users },
                   { id: 'notificacoes', label: 'Notificações e Automações', icon: Bell },
-                  { id: 'auditoria', label: 'Registo de auditoria', icon: ShieldCheck, group: 'Sistema' },
-                  { id: 'importacao', label: 'Base de dados', icon: Database, group: 'Sistema' },
+                  { id: 'sistema-menu', label: 'Sistema', icon: Database },
                 ];
                 const visibleConfigSubItems = configSubItems.filter(
                   sub => !sub.permission || hasPermission(currentUser, sub.permission as any, state?.userGroups || [])
@@ -822,23 +818,22 @@ export default function Page() {
                     {/* Submenu under Configurações */}
                     {isConfigSectionActive && (
                       <div className={cn("space-y-1.5 my-1.5", isCollapsed ? 'md:pl-0' : 'pl-5 pr-1')}>
-                        {visibleConfigSubItems.map((sub, index) => {
+                        {visibleConfigSubItems.map(sub => {
                           const SubIcon = sub.icon;
                           const isSubActive = sub.id === 'clientes' || sub.id === 'ausencias'
                             ? activeTab === sub.id
-                            : activeTab === 'configuracoes' && activeConfigTab === sub.id;
+                            : activeTab === 'configuracoes' && (sub.id === 'aplicacao-menu'
+                              ? ['sistema', 'campos', 'dias', 'tarefas'].includes(activeConfigTab)
+                              : sub.id === 'sistema-menu'
+                                ? ['auditoria', 'importacao'].includes(activeConfigTab)
+                                : activeConfigTab === sub.id);
                           return (
-                            <React.Fragment key={sub.id}>
-                            {sub.group && (index === 0 || visibleConfigSubItems[index - 1].group !== sub.group) && (
-                              <div className={cn('pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted', isCollapsed ? 'md:sr-only' : 'pl-3')}>
-                                {sub.group}
-                              </div>
-                            )}
                             <button
-                              onClick={() => handleConfigTabChange(sub.id)}
+                              key={sub.id}
+                              onClick={() => handleConfigTabChange(sub.id === 'aplicacao-menu' ? 'sistema' : sub.id === 'sistema-menu' ? 'auditoria' : sub.id)}
                               className={cn(
                                 "w-full flex items-center gap-2.5 py-2 rounded-control text-caption font-semibold transition-all duration-150 cursor-pointer select-none border-l-2",
-                                isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : sub.group ? 'pl-6 pr-3' : 'px-3',
+                                isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-3',
                                 isSubActive
                                   ? 'bg-primary/5 text-primary font-bold border-primary'
                                   : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
@@ -851,7 +846,6 @@ export default function Page() {
                               )} />
                               <span className={cn("truncate", isCollapsed ? 'md:hidden' : 'block')}>{sub.label}</span>
                             </button>
-                            </React.Fragment>
                           );
                         })}
                       </div>
