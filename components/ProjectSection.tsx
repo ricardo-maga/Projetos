@@ -49,10 +49,13 @@ function ForecastBadge({ project, statuses, canEdit, updateProject, compact = fa
     catch { /* The project action reports the error and keeps the stored value. */ }
     finally { setSaving(false); }
   };
-  if (editing) return <span className="inline-flex items-center gap-1" onClick={event => event.stopPropagation()}>
-    <input type="month" aria-label="Mês do Forecast" value={draft} disabled={saving} onChange={event => setDraft(event.target.value)} className="rounded-control border border-border bg-surface text-text-primary px-1 py-0.5 text-caption" />
-    <button type="button" aria-label="Guardar Forecast" disabled={saving} onClick={() => void save()} className="text-primary font-bold">✓</button>
-    <button type="button" aria-label="Cancelar edição do Forecast" disabled={saving} onClick={() => setEditing(false)} className="text-text-secondary">×</button>
+  if (editing) return <span className={`inline-flex max-w-full items-center gap-1.5 ${compact ? '' : 'flex-wrap'}`} onClick={event => event.stopPropagation()}>
+    <input type="month" aria-label="Mês do Forecast" value={draft} disabled={saving} onChange={event => setDraft(event.target.value)}
+      className={`min-w-0 shrink-0 rounded-control border border-border bg-surface text-text-primary shadow-flat outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface-muted ${compact ? 'h-9 w-40 px-2 text-body-sm' : 'h-11 w-56 max-w-full px-3.5 text-body'}`} />
+    <button type="button" aria-label="Guardar Forecast" disabled={saving} onClick={() => void save()}
+      className={`${compact ? 'h-9 w-9' : 'h-11 w-11'} inline-flex shrink-0 items-center justify-center rounded-control border border-border bg-surface text-body font-bold text-primary hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50`}>✓</button>
+    <button type="button" aria-label="Cancelar edição do Forecast" disabled={saving} onClick={() => setEditing(false)}
+      className={`${compact ? 'h-9 w-9' : 'h-11 w-11'} inline-flex shrink-0 items-center justify-center rounded-control border border-border bg-surface text-body font-bold text-text-secondary hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50`}>×</button>
   </span>;
   return <button type="button" disabled={!canEdit || saving} title={[alertTitle, canEdit ? 'Clique para alterar o Forecast' : ''].filter(Boolean).join(' · ') || undefined}
     onClick={event => { event.stopPropagation(); setDraft(forecastMonth(project.forecastDate)); setEditing(true); }}
