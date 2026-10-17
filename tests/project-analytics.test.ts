@@ -14,7 +14,11 @@ describe('Project analytics', () => {
       materials: [{ projectId: 'old', status: 'por_encomendar' } as any], onSelectProject: () => {},
     }));
     expect(html).toContain('aria-label="Janela das categorias"');
-    expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
+    expect(html).toContain('aria-label="Janela do ranking comercial"');
+    expect(html).toContain('Ranking comerciais');
+    expect(html.match(/aria-pressed="true"/g)).toHaveLength(2);
+    expect(html.match(/>30 dias<|>60 dias<|>90 dias</g)).toHaveLength(6);
+    expect(html).not.toContain('>7 dias<');
     expect(html).toContain('Brasmar');
     expect(html).toContain('Linha de produção');
     expect(html).toContain('IP-123');
