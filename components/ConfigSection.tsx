@@ -469,9 +469,9 @@ export default function ConfigSection({
   const [sdDate, setSdDate] = useState('');
   const [sdName, setSdName] = useState('');
   const [sdPage, setSdPage] = useState(0);
-  const [sdSearch, setSdSearch] = useState('');
   const [sdYear, setSdYear] = useState('');
-  const [sdPageSize, setSdPageSize] = useState(12);
+  const [sdPageSize, setSdPageSize] = useState(25);
+  const [showSpecialDayForm, setShowSpecialDayForm] = useState(false);
 
   // Default Tasks form state
   const [dtTitle, setDtTitle] = useState('');
@@ -482,6 +482,7 @@ export default function ConfigSection({
   const [dtFilterTypeId, setDtFilterTypeId] = useState('');
   const [dtPage, setDtPage] = useState(0);
   const [dtPageSize, setDtPageSize] = useState(12);
+  const [showDefaultTaskForm, setShowDefaultTaskForm] = useState(false);
 
   // Inline editing state for default tasks
   const [editingDtId, setEditingDtId] = useState<string | null>(null);
@@ -678,6 +679,7 @@ export default function ConfigSection({
           addSpecialDay(sdDate, sdName);
           setSdDate('');
           setSdName('');
+          setShowSpecialDayForm(false);
         }
       );
       return;
@@ -686,6 +688,7 @@ export default function ConfigSection({
     addSpecialDay(sdDate, sdName);
     setSdDate('');
     setSdName('');
+    setShowSpecialDayForm(false);
   };
 
   const handleAddDefaultTask = (e: React.FormEvent) => {
@@ -700,6 +703,7 @@ export default function ConfigSection({
     setDtDesc('');
     setDtHours('08:00');
     setDtTypeId('');
+    setShowDefaultTaskForm(false);
   };
 
   const startEditingDefaultTask = (dt: DefaultTask) => {
@@ -947,12 +951,8 @@ export default function ConfigSection({
         <Card className="bg-surface rounded-card border border-border overflow-hidden animate-fade-in" id="special-days-card">
           <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60 space-y-4">
             <M3SectionHeader title="Dias especiais" description="Consulte e organize as datas especiais do calendário."
-              actions={canWriteConfig ? <Button type="submit" form="special-day-form"><Plus aria-hidden="true" className="w-4 h-4" /> Adicionar dia especial</Button> : undefined} />
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-              <div className="flex-1 min-w-0">
-                <Input label="Pesquisar dias especiais" type="search" placeholder="Pesquisar por nome ou data…" value={sdSearch}
-                  onChange={e => { setSdSearch(e.target.value); setSdPage(0); }} />
-              </div>
+              actions={canWriteConfig ? <Button type="button" onClick={() => { setSdDate(''); setSdName(''); setShowSpecialDayForm(true); }}><Plus aria-hidden="true" className="w-4 h-4" /> Novo dia especial</Button> : undefined} />
+            <div className="flex justify-end">
               <div className="w-full sm:w-48">
                 <Select label="Ano" value={sdYear} onChange={e => { setSdYear(e.target.value); setSdPage(0); }}>
                   <option value="">Todos os anos</option>
@@ -961,18 +961,19 @@ export default function ConfigSection({
               </div>
             </div>
           </div>
-          {canWriteConfig && (
+          {canWriteConfig && showSpecialDayForm && (
             <form id="special-day-form" onSubmit={handleAddSpecialDay} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 sm:grid-cols-[12rem_minmax(0,1fr)] gap-3 items-end">
               <Input label="Dia" type="date" required value={sdDate} onChange={e => setSdDate(e.target.value)} />
               <Input label="Nome" type="text" required placeholder="Ex.: Natal" value={sdName} onChange={e => setSdName(e.target.value)} />
+              <div className="sm:col-span-2 flex justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={() => setShowSpecialDayForm(false)}>Cancelar</Button>
+                <Button type="submit"><Check aria-hidden="true" className="w-4 h-4" /> Guardar</Button>
+              </div>
             </form>
           )}
           {(() => {
-            const query = sdSearch.trim().toLocaleLowerCase('pt-PT');
             const sortedSd = specialDays.filter(day => {
-              const date = new Date(day.date + 'T00:00:00').toLocaleDateString('pt-PT');
-              return (!sdYear || day.date.startsWith(sdYear + '-')) &&
-                (!query || [day.name, day.date, date].some(value => value.toLocaleLowerCase('pt-PT').includes(query)));
+              return !sdYear || day.date.startsWith(sdYear + '-');
             }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             const totalSdPages = Math.max(1, Math.ceil(sortedSd.length / sdPageSize));
             const currentSdPage = Math.min(sdPage, totalSdPages - 1);
@@ -981,8 +982,8 @@ export default function ConfigSection({
             return <>
               {visibleSd.length === 0 ? (
                 <div role="status" className="p-10 text-center text-body-sm text-text-secondary space-y-3">
-                  <p>{specialDays.length === 0 ? 'Nenhum dia especial configurado.' : 'Nenhum dia especial encontrado para os filtros selecionados.'}</p>
-                  {(sdSearch || sdYear) && <Button type="button" variant="secondary" size="sm" onClick={() => { setSdSearch(''); setSdYear(''); setSdPage(0); }}>Limpar filtros</Button>}
+                  <p>{specialDays.length === 0 ? 'Nenhum dia especial configurado.' : 'Nenhum dia especial encontrado para o ano selecionado.'}</p>
+                  {sdYear && <Button type="button" variant="secondary" size="sm" onClick={() => { setSdYear(''); setSdPage(0); }}>Limpar filtro</Button>}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -1016,7 +1017,7 @@ export default function ConfigSection({
                   <div className="flex items-center gap-2">
                     <label htmlFor="special-days-page-size" className="whitespace-nowrap">Por página:</label>
                     <Select id="special-days-page-size" value={sdPageSize} onChange={e => { setSdPageSize(Number(e.target.value)); setSdPage(0); }}>
-                      {[12, 25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}
+                      {[25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}
                     </Select>
                   </div>
                 </div>
@@ -1036,17 +1037,21 @@ export default function ConfigSection({
       <Card className="bg-surface rounded-card border border-border overflow-hidden animate-fade-in" id="default-tasks-card">
         <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60 space-y-4">
           <M3SectionHeader title="Templates de tarefas" description="Crie e organize modelos reutilizáveis para as tarefas dos projetos."
-            actions={canWriteConfig ? <Button type="submit" form="default-task-form"><Plus aria-hidden="true" className="w-4 h-4" /> Adicionar template</Button> : undefined} />
+            actions={canWriteConfig ? <Button type="button" onClick={() => { setDtTitle(''); setDtDesc(''); setDtHours('08:00'); setDtTypeId(''); setShowDefaultTaskForm(visible => !visible); }}><Plus aria-hidden="true" className="w-4 h-4" /> Nova tarefa</Button> : undefined} />
           <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
             <div className="flex-1 min-w-0 relative"><Search aria-hidden="true" className="absolute left-3 top-[2.75rem] -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none z-10" /><Input label="Pesquisar templates" type="search" placeholder="Pesquisar por título ou instruções…" value={dtSearch} onChange={e => { setDtSearch(e.target.value); setDtPage(0); }} className="pl-9" /></div>
             <div className="w-full sm:w-64"><Select label="Tipo de tarefa" value={dtFilterTypeId} onChange={e => { setDtFilterTypeId(e.target.value); setDtPage(0); }}><option value="">Todos os tipos</option><option value="unassigned">Por defeito</option>{taskTypes.filter((type: any) => !type.deleted).map((type: any) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></div>
           </div>
         </div>
-        {canWriteConfig && <form id="default-task-form" onSubmit={handleAddDefaultTask} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+        {canWriteConfig && showDefaultTaskForm && <form id="default-task-form" onSubmit={handleAddDefaultTask} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
           <div className="lg:col-span-4"><Input label="Título da tarefa" type="text" required placeholder="Ex.: Eletrificação de sistema" value={dtTitle} onChange={e => setDtTitle(e.target.value)} /></div>
           <div className="lg:col-span-3"><Select label="Tipo de tarefa" value={dtTypeId} onChange={e => setDtTypeId(e.target.value)}><option value="">Por defeito</option>{taskTypes.filter((type: any) => !type.deleted).map((type: any) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></div>
           <div className="lg:col-span-2"><Input label="Duração prevista" type="text" required inputMode="numeric" pattern="[0-9]{1,3}:[0-5][0-9]" placeholder="HH:MM" value={dtHours} onChange={e => setDtHours(e.target.value)} onBlur={() => setDtHours(formatHoursToHHMM(parseTimeToHours(dtHours)))} /></div>
           <div className="lg:col-span-3"><Input label="Instruções técnicas" type="text" placeholder="Instruções padrão…" value={dtDesc} onChange={e => setDtDesc(e.target.value)} /></div>
+          <div className="lg:col-span-12 flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setShowDefaultTaskForm(false)}>Cancelar</Button>
+            <Button type="submit"><Check aria-hidden="true" className="w-4 h-4" /> Guardar</Button>
+          </div>
         </form>}
 
         {visibleDefaultTasks.length === 0 ? (
