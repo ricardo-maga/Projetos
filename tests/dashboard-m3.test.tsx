@@ -8,7 +8,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { M3Button } from '../components/M3';
 import { hasFilledButtonBackground } from '../components/ui/buttonAppearance';
 import { getProjectStatusStyle } from '../lib/utils';
-import { currentForecastMonth } from '../lib/projectForecast';
+import { currentForecastMonth, forecastShortMonth, offsetForecastMonth } from '../lib/projectForecast';
 
 const props: React.ComponentProps<typeof Dashboard> = {
   projects: [], tasks: [], absences: [], projectMaterials: [], comments: [],
@@ -17,17 +17,27 @@ const props: React.ComponentProps<typeof Dashboard> = {
 };
 
 describe('Dashboard M3 presentation', () => {
-  it('lists only projects forecast for the selected month before installation', () => {
+  it('lists every live project forecast for the selected month, regardless of status', () => {
     const month = currentForecastMonth();
     const items = [
-      { id: 'pending', title: 'Projeto para instalar', statusId: 'preparation', forecastDate: `${month}-01`, deleted: false },
-      { id: 'installed', title: 'Projeto já iniciado', statusId: 'installation', forecastDate: `${month}-01`, deleted: false },
+      { id: 'pending', title: 'Projeto para instalar', clientId: 'client', installProjectNo: 'IP-123', statusId: 'preparation', forecastDate: `${month}-01`, deleted: false },
+      { id: 'installed', title: 'Projeto já iniciado', clientId: 'client', statusId: 'installation', forecastDate: `${month}-01`, deleted: false },
+      { id: 'closed', title: 'Projeto concluído', clientId: 'client', statusId: 'completed', forecastDate: `${month}-01`, deleted: false },
+      { id: 'other-month', title: 'Projeto de outro mês', statusId: 'preparation', forecastDate: `${offsetForecastMonth(month, 1)}-01`, deleted: false },
+      { id: 'deleted', title: 'Projeto eliminado em Forecast', statusId: 'preparation', forecastDate: `${month}-01`, deleted: true },
     ];
     const html = renderToStaticMarkup(<Dashboard {...props} projects={items as typeof props.projects}
-      projectStatuses={[{ id: 'preparation', scale: 3 }, { id: 'installation', scale: 4 }]} />);
+      clients={[{ id: 'client', clientName: 'Cliente Forecast' }] as typeof props.clients}
+      projectStatuses={[{ id: 'preparation', name: 'Preparação', scale: 3 }, { id: 'installation', name: 'Instalação', scale: 4 }, { id: 'completed', name: 'Concluído', scale: 5 }]} />);
     const forecastPanel = html.split('Projetos Ativos')[0];
     expect(forecastPanel).toContain('Projeto para instalar');
-    expect(forecastPanel).not.toContain('Projeto já iniciado');
+    expect(forecastPanel).toContain('Projeto já iniciado');
+    expect(forecastPanel).toContain('Projeto concluído');
+    expect(forecastPanel).toContain('Cliente Forecast');
+    expect(forecastPanel).toContain('IP-123');
+    expect(forecastPanel).toContain('Instalação');
+    expect(forecastPanel).not.toContain('Projeto de outro mês');
+    expect(forecastPanel).not.toContain('Projeto eliminado em Forecast');
   });
 
   it('renders Foundation cards, readable sections and accessible search without data', () => {
@@ -42,9 +52,9 @@ describe('Dashboard M3 presentation', () => {
     expect(html).not.toContain('bg-slate-900');
     expect(html.match(/rounded-card/g)).toHaveLength(10);
     expect(html).toContain('Projetos em Forecast');
-    expect(html).toContain('Mês anterior');
-    expect(html).toContain('Mês atual');
-    expect(html).toContain('Mês seguinte');
+    expect(html).toContain('aria-label="Filtrar mês do Forecast"');
+    expect(html).toContain('m3-segmented-control');
+    for (const offset of [-1, 0, 1]) expect(html).toContain(forecastShortMonth(offsetForecastMonth(currentForecastMonth(), offset)));
     expect(html).toContain('Tarefas abertas');
     expect(html).toContain('sm:grid-cols-2 xl:grid-cols-4');
   });

@@ -19,6 +19,12 @@ export function forecastMonth(value?: string): string {
   return value ? normalizeForecast(value).slice(0, 7) : '';
 }
 
+export function forecastShortMonth(month: string): string {
+  const [year, number] = month.split('-').map(Number);
+  return new Intl.DateTimeFormat('pt-PT', { month: 'short', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(year, number - 1, 1))).replace('.', '').slice(0, 3).toUpperCase();
+}
+
 export function currentForecastMonth(now = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', year: 'numeric', month: '2-digit' }).formatToParts(now);
   return `${parts.find(p => p.type === 'year')?.value}-${parts.find(p => p.type === 'month')?.value}`;

@@ -6,6 +6,7 @@ import ProjectSection from '../components/ProjectSection';
 import { getProjectStatusStyle } from '../lib/utils';
 import { createProjectHarness, findProjectElement } from './fixtures/projects-m3-harness';
 import { M3FilterChip, M3SegmentedControl } from '../components/M3';
+import { currentForecastMonth, forecastLabel, offsetForecastMonth } from '../lib/projectForecast';
 
 const project = {
   id: 'qa-project', title: 'Projeto M3 de exemplo', clientId: 'qa-client',
@@ -49,6 +50,20 @@ export const projectPreviewProps: React.ComponentProps<typeof ProjectSection> = 
 };
 
 describe('Projects M3 presentation', () => {
+  it('shows compact Forecast badges in the list only for the current month', () => {
+    const month = currentForecastMonth();
+    const projects = [
+      { ...project, id: 'current', forecastDate: `${month}-01` },
+      { ...project, id: 'next', forecastDate: `${offsetForecastMonth(month, 1)}-01` },
+      { ...project, id: 'unset' },
+    ];
+    const h = createProjectHarness({ serverProjects: projects,
+      settledProjectsKey: JSON.stringify([1, 25, '', '', '', '', 'active', 0]) });
+    const html = renderToStaticMarkup(h.render({ ...projectPreviewProps, projects, selectedProjectId: null }));
+    expect(html.match(/Clique para alterar o Forecast/g)).toHaveLength(1);
+    expect(html).not.toContain('Forecast N/D');
+    expect(html).not.toContain(forecastLabel(`${offsetForecastMonth(month, 1)}-01`));
+  });
   it('provides an icon for each project list and analytics tab', () => {
     const h = createProjectHarness();
     const tree = h.render({ ...projectPreviewProps, selectedProjectId: null });

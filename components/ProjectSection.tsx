@@ -29,7 +29,7 @@ import { getAuthHeaders } from '../lib/clientAuth';
 import { normalizeTaskFromApiResponse } from '../lib/taskOperations';
 import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours, getProjectStatusStyle, getTaskStatusStyle } from '../lib/utils';
 import { configuredRoleIds, userHasAnyRole } from '../lib/roleAssociations';
-import { forecastLabel, forecastMonth, normalizeForecast, projectForecastAlert } from '../lib/projectForecast';
+import { currentForecastMonth, forecastLabel, forecastMonth, normalizeForecast, projectForecastAlert } from '../lib/projectForecast';
 
 function ForecastBadge({ project, statuses, canEdit, updateProject, compact = false }: {
   project: Project; statuses: any[]; canEdit: boolean; updateProject?: (id: string, updates: any) => Promise<unknown>; compact?: boolean;
@@ -4150,7 +4150,7 @@ export default function ProjectSection({
                               <span className="w-1.5 h-7 bg-error rounded-full shrink-0" title="Risco Crítico do Projeto" />
                             )}
                             <div>
-                              <div className="text-body-sm text-primary font-medium flex items-center gap-1.5 flex-wrap">{getClientName(proj.clientId)} <ForecastBadge project={proj} statuses={projectStatuses} canEdit={canWriteProjects} updateProject={updateProject} compact /></div>
+                              <div className="text-body-sm text-primary font-medium flex items-center gap-1.5 flex-wrap">{getClientName(proj.clientId)} {forecastMonth(proj.forecastDate) === currentForecastMonth() && <ForecastBadge project={proj} statuses={projectStatuses} canEdit={canWriteProjects} updateProject={updateProject} compact />}</div>
                               <Button type="button" variant="ghost" size="sm" className="h-auto min-h-9 px-0 text-body text-left justify-start whitespace-normal text-text-primary"
                                 aria-label={`Abrir projeto ${proj.title}`}
                                 onClick={event => { event.stopPropagation(); setSelectedProjectId(proj.id); }}>
