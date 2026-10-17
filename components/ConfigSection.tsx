@@ -819,73 +819,56 @@ export default function ConfigSection({
       {/* SISTEMA TAB */}
       {activeConfigTab === 'sistema' && (
       <form onSubmit={handleSubmit} className="w-full">
-        <div className="grid grid-cols-1 gap-6 items-start">
-          {/* Card 1: Configuração do Sistema */}
-          <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="core-config-card">
-            <h2 className="text-base font-bold text-text-primary mb-5 flex items-center gap-2">
-              <Settings className="w-5 h-5 text-primary" />
-              Configurações da aplicação
-            </h2>
-
-            <div className="space-y-5">
-              <div className="space-y-1">
-                <label className="block text-text-muted">Nome do portal</label>
-                <input 
-                  type="text" 
-                  required
-                  value={appName}
-                  onChange={e => setAppName(e.target.value)}
-                  className="w-full p-2.5 border border-border rounded-control font-bold text-text-primary focus:ring-2 focus:ring-blue-100 outline-none font-sans"
-                />
+        <Card className="bg-surface rounded-card border border-border overflow-hidden animate-fade-in" id="core-config-card">
+          <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60">
+            <M3SectionHeader
+              title="Configurações da aplicação"
+              description="Defina a identidade visual e os dados apresentados no portal."
+              actions={canWriteConfig ? <M3Button type="submit" disabled={isSavingConfig}>{isSavingConfig ? 'A guardar...' : 'Guardar alterações'}</M3Button> : undefined}
+            />
+          </div>
+          <div className="p-4 sm:p-5 space-y-6">
+            <section aria-labelledby="portal-identity-heading" className="space-y-4">
+              <div>
+                <h3 id="portal-identity-heading" className="text-heading-sm text-text-primary">Identidade do portal</h3>
+                <p className="mt-1 text-body-sm text-text-secondary">Informação visível no cabeçalho e no rodapé da aplicação.</p>
               </div>
-
-              <div className="space-y-1">
-                <label className="block text-text-muted">Descrição do portal</label>
-                <input 
-                  type="text" 
-                  value={appDesc}
-                  onChange={e => setAppDesc(e.target.value)}
-                  className="w-full p-2.5 border border-border rounded-control font-medium text-text-secondary focus:ring-2 focus:ring-blue-100 outline-none font-sans"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-text-secondary font-bold">Caminho da imagem do logótipo</label>
-                <input 
-                  type="text" 
-                  value={logo}
-                  onChange={e => setLogo(e.target.value)}
-                  placeholder="https://exemplo.com/logo.svg, /logo.png, data:image/svg+xml;... ou <svg...>"
-                  className="w-full p-2.5 border border-border rounded-control font-mono text-xs focus:ring-2 focus:ring-blue-100 outline-none"
-                />
-                <p className="text-[11px] text-slate-400 font-normal">
-                  Suporta URLs de imagens (SVG, PNG, JPG, WebP), ficheiros locais (/logo.svg), Data URIs (base64) e código SVG inline.
-                </p>
-
-                {/* Live Preview */}
-                <div className="flex items-center gap-3 p-3 bg-surface-muted border border-border/80 rounded-control mt-2">
-                  <span className="text-xs font-semibold text-text-muted shrink-0">Pré-visualização:</span>
-                  <AppLogo 
-                    logoUrl={logo} 
-                    appName={appName} 
-                    className="w-72 max-w-full h-10 rounded-control bg-surface border border-border shadow-2xs p-1"
-                  />
-
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Input label="Nome do portal" type="text" required value={appName} onChange={e => setAppName(e.target.value)} />
+                <Input label="Descrição do portal" type="text" value={appDesc} onChange={e => setAppDesc(e.target.value)} />
+                <div className="lg:col-span-2">
+                  <Input label="Texto de rodapé" type="text" value={footer} onChange={e => setFooter(e.target.value)} />
                 </div>
               </div>
+            </section>
 
-              <div className="space-y-1">
-                <label className="block text-text-muted">Texto de rodapé</label>
-                <input 
-                  type="text" 
-                  value={footer}
-                  onChange={e => setFooter(e.target.value)}
-                  className="w-full p-2.5 border border-border rounded-control font-medium focus:ring-2 focus:ring-blue-100 outline-none font-sans"
-                />
+            <section aria-labelledby="portal-logo-heading" className="pt-6 border-t border-border-subtle space-y-4">
+              <div>
+                <h3 id="portal-logo-heading" className="text-heading-sm text-text-primary">Logótipo</h3>
+                <p className="mt-1 text-body-sm text-text-secondary">Escolha o ficheiro ou o código SVG apresentado na aplicação.</p>
               </div>
+              <Input
+                label="Caminho da imagem do logótipo"
+                type="text"
+                value={logo}
+                onChange={e => setLogo(e.target.value)}
+                placeholder="https://exemplo.com/logo.svg, /logo.png, data:image/svg+xml;... ou <svg...>"
+                className="font-mono text-body"
+              />
+              <p className="text-body-sm text-text-secondary">
+                  Suporta URLs de imagens (SVG, PNG, JPG, WebP), ficheiros locais (/logo.svg), Data URIs (base64) e código SVG inline.
+              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-surface-muted border border-border rounded-control">
+                <span className="text-label font-semibold text-text-secondary shrink-0">Pré-visualização</span>
+                <AppLogo logoUrl={logo} appName={appName} className="w-72 max-w-full h-10 rounded-control bg-surface border border-border shadow-2xs p-1" />
+              </div>
+            </section>
 
-              <div className="space-y-2 pt-2">
-                <label className="block text-text-muted">Esquema de cores</label>
+            <section aria-labelledby="portal-theme-heading" className="pt-6 border-t border-border-subtle space-y-4">
+              <div>
+                <h3 id="portal-theme-heading" className="text-heading-sm text-text-primary">Esquema de cores</h3>
+                <p className="mt-1 text-body-sm text-text-secondary">A paleta é aplicada imediatamente à sessão atual.</p>
+              </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {[
                     { id: 'domino', name: 'Domino Institucional', desc: 'Paleta oficial Domino', hex: '#003b5c' },
@@ -912,7 +895,8 @@ export default function ConfigSection({
                         }
                         updateConfig({ theme: t.id });
                       }}
-                      className={`flex items-center gap-3 p-3 rounded-control border text-left transition-all cursor-pointer ${
+                      aria-pressed={theme === t.id || (theme === 'default' && t.id === 'domino')}
+                      className={`flex items-center gap-3 p-3 rounded-control border text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                         (theme === t.id || (theme === 'default' && t.id === 'domino'))
                           ? 'border-slate-800 bg-surface-muted/70 ring-2 ring-slate-100'
                           : 'border-border hover:border-slate-300 hover:bg-surface-muted/40'
@@ -923,21 +907,15 @@ export default function ConfigSection({
                         style={{ backgroundColor: t.hex }}
                       />
                       <div>
-                        <div className="font-bold text-text-primary text-[11px] leading-tight font-sans">{t.name}</div>
-                        <div className="text-[9px] text-slate-400 font-medium leading-none mt-0.5 font-sans">{t.desc}</div>
+                        <div className="font-semibold text-text-primary text-body-sm leading-tight">{t.name}</div>
+                        <div className="text-caption text-text-secondary font-medium mt-1">{t.desc}</div>
                       </div>
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
+            </section>
           </div>
-
-        </div>
-
-        <div className="mt-6 flex justify-end">
-          <M3Button type="submit" disabled={!canWriteConfig || isSavingConfig}>{isSavingConfig ? 'A guardar...' : 'Gravar configurações'}</M3Button>
-        </div>
+        </Card>
       </form>
       )}
 
