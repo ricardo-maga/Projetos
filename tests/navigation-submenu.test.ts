@@ -14,10 +14,12 @@ describe('Configuration navigation regression', () => {
     expect(ids).toEqual(['dashboard', 'meu-foco', 'projetos', 'tarefas', 'calendario', 'configuracoes']);
     const submenu = source.match(/const configSubItems = \[([\s\S]*?)\];/)![1];
     expect([...submenu.matchAll(/id: '([^']+)'/g)].map(m => m[1])).toEqual([
-      'sistema', 'campos', 'dias', 'clientes', 'ausencias', 'tarefas', 'utilizadores',
-      'notificacoes', 'automacoes', 'auditoria', 'importacao',
+      'sistema', 'campos', 'dias', 'tarefas', 'clientes', 'ausencias', 'utilizadores',
+      'notificacoes', 'auditoria', 'importacao',
     ]);
     expect(submenu).toContain('Configurações da aplicação');
+    expect(submenu).toContain("group: 'Sistema'");
+    expect(submenu).toContain("label: 'Base de dados'");
   });
   it('does not expand configuration for Tasks despite the template identifier', () => {
     const section = new Function('isActive', 'visibleConfigSubItems', 'activeTab', `return ${sectionExpression}`);
