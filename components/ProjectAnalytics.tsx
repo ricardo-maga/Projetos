@@ -57,7 +57,7 @@ export default function ProjectAnalytics({ projects, projectStatuses, categories
       </Card>
       <Card className="p-5 space-y-4"><h3 className="text-heading-sm">Nº de projetos ativos por gestor de projeto</h3>{bars(data.managers, userName, 'Sem projetos ativos.')}</Card>
     </div>
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="grid gap-4 lg:grid-cols-2">
       {[
         { title: 'Projetos adjudicados este mês', summary: data.awardedCurrentMonth },
         { title: 'Projetos adjudicados o mês anterior', summary: data.awardedPreviousMonth },
@@ -67,7 +67,7 @@ export default function ProjectAnalytics({ projects, projectStatuses, categories
         <p className="text-heading-md text-text-primary">{new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(summary.saleValue)}</p>
         {summary.projects.length > 0 && <ul className="space-y-1 border-t border-outline-variant pt-2">{summary.projects.map(project => <li key={project.id} className="text-body-sm text-text-secondary">{clients.find(c => String(c.id) === String(project.clientId))?.clientName || 'Cliente'} - {project.title} ({initials(project.salesRepId)})</li>)}</ul>}
       </Card>)}
-      <Card className="p-5 space-y-3"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-heading-sm">Ranking comerciais</h3>{windowFilter('Janela do ranking comercial', salesWindowDays, setSalesWindowDays)}</div>
+      <Card className="p-5 space-y-3 lg:col-span-2"><div className="flex items-center justify-between gap-3"><h3 className="text-heading-sm">Ranking comerciais</h3>{windowFilter('Janela do ranking comercial', salesWindowDays, setSalesWindowDays)}</div>
         <ol className="space-y-2">{sales.filter(r => r.id).map((row, idx) => <li key={row.id} className={`flex justify-between gap-2 p-3 rounded-control ${idx < 3 ? 'bg-primary/10 text-primary font-semibold' : 'text-text-secondary'}`}>
           <span>{idx + 1}º · {userName(row.id)}</span><Badge>{row.count}</Badge></li>)}</ol>
         {!sales.some(r => r.id) && <p className="text-body-sm text-text-secondary">Sem gestor comercial atribuído nesta janela.</p>}
