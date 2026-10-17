@@ -75,6 +75,7 @@ interface ConfigSectionProps {
   addAuxRecord?: (tableName: any, name: string, extra?: { scale?: number }) => void;
   updateAuxRecord?: (tableName: any, id: string, updates: Partial<{ name: string; scale: number; deleted: boolean }>) => void;
   deleteAuxRecord?: (tableName: any, id: string) => void;
+  updateNotificationSetting?: (id: string, updates: Partial<import('../lib/types').NotificationSetting>) => Promise<{ success: boolean; message?: string }>;
   reorderAuxRecords?: (tableName: any, newItems: any[]) => void;
   state: ERPState;
   databaseStatus: 'idle' | 'syncing' | 'synced' | 'error';
@@ -330,6 +331,7 @@ export default function ConfigSection({
   addAuxRecord,
   updateAuxRecord,
   deleteAuxRecord,
+  updateNotificationSetting,
   reorderAuxRecords,
   state,
   databaseStatus,
@@ -390,6 +392,21 @@ export default function ConfigSection({
   }
 
   const activeConfigTab = activeConfigTabProp || 'sistema';
+  const [savingNotificationId, setSavingNotificationId] = useState<string | null>(null);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
+  const saveNotificationSetting = async (id: string, updates: Partial<import('../lib/types').NotificationSetting>) => {
+    if (!updateNotificationSetting || savingNotificationId) return;
+    setSavingNotificationId(id);
+    setNotificationError(null);
+    try {
+      const result = await updateNotificationSetting(id, updates);
+      if (!result.success) setNotificationError(result.message || 'Não foi possível guardar a definição.');
+    } catch {
+      setNotificationError('Não foi possível guardar a definição.');
+    } finally {
+      setSavingNotificationId(null);
+    }
+  };
   const [usersConfigTab, setUsersConfigTab] = useState<'users' | 'roles' | 'associacoes'>('users');
   const [notificationTab, setNotificationTab] = useState<'notificacoes' | 'automacoes'>(activeConfigTab === 'automacoes' ? 'automacoes' : 'notificacoes');
   useEffect(() => {
@@ -1352,7 +1369,7 @@ export default function ConfigSection({
       {/* NOTIFICAÇÕES E AUTOMAÇÕES */}
       {(activeConfigTab === 'notificacoes' || activeConfigTab === 'automacoes') && (
         <div className="space-y-5">
-           <M3SectionHeader title="Notificações e Automações" description="Consulte o comportamento das notificações e configure regras automáticas suportadas." />
+          <M3SectionHeader title="Notificações e Automações" description="Configure os avisos e as regras automáticas da aplicação." />
           <Tabs
             tabs={[
               { id: 'notificacoes', label: 'Notificações', icon: <Bell className="w-4 h-4" /> },
@@ -1362,10 +1379,43 @@ export default function ConfigSection({
             onChange={tab => setNotificationTab(tab as 'notificacoes' | 'automacoes')}
           />
           {notificationTab === 'notificacoes' && (
-            <Card className="p-5">
-              <h3 className="text-sm font-bold text-text-primary mb-2">Notificações no sistema</h3>
-              <p className="text-sm text-text-secondary">As notificações aparecem no sino da aplicação. Os antigos controlos de antecedência e destinatários foram retirados porque não tinham execução associada. Use a aba Automações para configurar avisos ligados a eventos de projetos e tarefas.</p>
-            </Card>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-sm font-bold text-text-primary mb-1 uppercase tracking-tight">Notificações In-App</h3>
+                <p className="text-xs text-text-muted font-medium mb-4">Configure os destinatários e a antecedência. Os avisos por data são enviados antes, no próprio dia e uma vez no dia seguinte.</p>
+                {notificationError && <p role="alert" className="mb-4 text-sm text-error">{notificationError}</p>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(state.notificationSettings || []).map(ns => (
+                    <Card key={ns.id} className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-bold text-sm text-text-primary">{ns.name}</h4>
+                        <Switch checked={ns.enabled} disabled={!canWriteConfig || savingNotificationId !== null}
+                          label={`Ativar ${ns.name}`}
+                          onChange={enabled => { void saveNotificationSetting(ns.id, { enabled }); }} />
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {['task_due_date', 'project_due_date', 'project_scheduled_date'].includes(ns.type) && (
+                          <div className="space-y-1 flex-1">
+                            <Input label="Dias de antecedência" type="number" min="0" max="30" value={ns.daysBefore}
+                              disabled={!ns.enabled || !canWriteConfig || savingNotificationId !== null}
+                              onChange={e => { void saveNotificationSetting(ns.id, { daysBefore: parseInt(e.target.value, 10) || 0 }); }} />
+                          </div>
+                        )}
+                        <div className="space-y-1 flex-1">
+                          <Select label="Destinatários" value={ns.targetGroup}
+                            disabled={!ns.enabled || !canWriteConfig || savingNotificationId !== null}
+                            onChange={e => { void saveNotificationSetting(ns.id, { targetGroup: e.target.value as 'all' | 'allocated' | 'managers' }); }}>
+                            <option value="all">Todos os utilizadores</option>
+                            <option value="allocated">Utilizadores alocados</option>
+                            <option value="managers">Gestores</option>
+                          </Select>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
           {notificationTab === 'automacoes' && (
             <AutomationEditor
