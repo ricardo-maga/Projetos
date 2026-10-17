@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { buildProjectAnalytics } from '../lib/projectAnalytics';
+import { buildProjectAnalytics, commercialProjectsInWindow, fiscalYearStart } from '../lib/projectAnalytics';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ProjectAnalytics from '../components/ProjectAnalytics';
@@ -7,6 +7,37 @@ const now = new Date(2026, 9, 5, 12);
 const statuses = [{ id: 'active', scale: 3 }, { id: 'done', scale: 5 }];
 const p = (id: string, createdDate: string, extra = {}) => ({ id, createdDate, statusId: 'active', deliveryDate: '2026-10-04', categoryId: 'cat', projectManagerId: 'manager', salesRepId: 'sales', deleted: false, ...extra }) as any;
 describe('Project analytics', () => {
+  it('filters commercial projects by start date and only includes managers with projects in the selected period', () => {
+    const projects = [
+      p('before-90', '2026-10-05', { startDate: '2026-07-07', salesRepId: 'old' }),
+      p('at-90', '2025-01-01', { startDate: '2026-07-08', salesRepId: 'ninety' }),
+      p('at-60', '2025-01-01', { startDate: '2026-08-07', salesRepId: 'sixty' }),
+      p('at-30', '2025-01-01', { startDate: '06/09/2026', salesRepId: 'thirty' }),
+      p('today', '2025-01-01', { startDate: '2026-10-05', salesRepId: 'thirty' }),
+      p('tomorrow', '2025-01-01', { startDate: '2026-10-06', salesRepId: 'future' }),
+      p('deleted', '2025-01-01', { startDate: '2026-10-05', salesRepId: 'deleted', deleted: true }),
+      p('unassigned', '2025-01-01', { startDate: '2026-10-05', salesRepId: '' }),
+    ];
+    expect(commercialProjectsInWindow(projects, 30, now).map(project => project.id)).toEqual(['today', 'at-30']);
+    expect(commercialProjectsInWindow(projects, 60, now).map(project => project.id)).toEqual(['today', 'at-30', 'at-60']);
+    expect(commercialProjectsInWindow(projects, 90, now).map(project => project.id)).toEqual(['today', 'at-30', 'at-60', 'at-90']);
+  });
+  it('uses April fiscal boundaries and moves FY labels on 1 April', () => {
+    const projects = [
+      p('before', '2025-01-01', { startDate: '2025-03-31', salesRepId: 'before' }),
+      p('fy25-start', '2025-01-01', { startDate: '2025-04-01', salesRepId: 'fy25' }),
+      p('fy25-end', '2025-01-01', { startDate: '31/03/2026', salesRepId: 'fy25' }),
+      p('fy26-start', '2025-01-01', { startDate: '2026-04-01', salesRepId: 'fy26' }),
+      p('fy26-end', '2025-01-01', { startDate: '2027-03-31', salesRepId: 'fy26' }),
+      p('fy27-start', '2025-01-01', { startDate: '2027-04-01', salesRepId: 'fy27' }),
+    ];
+    expect(fiscalYearStart(new Date(2027, 2, 31, 12))).toBe(2026);
+    expect(fiscalYearStart(new Date(2027, 3, 1, 12))).toBe(2027);
+    expect(commercialProjectsInWindow(projects, 'previousFY', now).map(project => project.id)).toEqual(['fy25-end', 'fy25-start']);
+    expect(commercialProjectsInWindow(projects, 'currentFY', now).map(project => project.id)).toEqual(['fy26-end', 'fy26-start']);
+    expect(commercialProjectsInWindow(projects, 'previousFY', new Date(2027, 3, 1, 12)).map(project => project.id)).toEqual(['fy26-end', 'fy26-start']);
+    expect(commercialProjectsInWindow(projects, 'currentFY', new Date(2027, 3, 1, 12)).map(project => project.id)).toEqual(['fy27-start']);
+  });
   it('defaults to 30 days and identifies missing-material projects by client, title and IP', () => {
     const html = renderToStaticMarkup(React.createElement(ProjectAnalytics, {
       projects: [p('old', '2025-01-01', { clientId: 'client', title: 'Linha de produção', installProjectNo: 'IP-123' })],
@@ -16,13 +47,32 @@ describe('Project analytics', () => {
     expect(html).toContain('aria-label="Janela das categorias"');
     expect(html).toContain('aria-label="Janela do ranking comercial"');
     expect(html).toContain('Ranking comerciais');
-    expect(html.match(/aria-pressed="true"/g)).toHaveLength(2);
-    expect(html.match(/>30 dias<|>60 dias<|>90 dias</g)).toHaveLength(6);
+    expect(html.match(/aria-pressed="true"/g)).toHaveLength(3);
+    expect(html.match(/>30 dias<|>60 dias<|>90 dias</g)).toHaveLength(9);
     expect(html).not.toContain('>7 dias<');
     expect(html).toContain('Brasmar');
     expect(html).toContain('Linha de produção');
     expect(html).toContain('IP-123');
     expect(html).not.toContain('Sem projetos com material em falta/atraso');
+  });
+  it('renders the commercial manager selector and all five period buttons', () => {
+    const today = new Date();
+    const startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const html = renderToStaticMarkup(React.createElement(ProjectAnalytics, {
+      projects: [p('visible', '2020-01-01', { startDate, title: 'Projeto visível', salesRepId: 'sales' }),
+        p('hidden', '2020-01-01', { startDate: '2020-01-01', title: 'Projeto antigo', salesRepId: 'old' })],
+      projectStatuses: statuses, categories: [], users: [{ id: 'sales', name: 'Ana Silva' }, { id: 'old', name: 'Outro gestor' }],
+      onSelectProject: () => {},
+    }));
+    expect(html).toContain('Projetos por gestor comercial');
+    expect(html).toContain('aria-label="Período dos projetos por gestor comercial"');
+    expect(html).toContain(`FY${String(fiscalYearStart(today) - 1).slice(-2)}`);
+    expect(html).toContain(`FY${String(fiscalYearStart(today)).slice(-2)}`);
+    expect(html).toContain('value="sales"');
+    expect(html).toContain('Ana Silva</option>');
+    expect(html).not.toContain('<option value="old"');
+    expect(html).toContain('Projeto visível');
+    expect(html).not.toContain('Projeto antigo');
   });
   it('counts monthly awards by start date and sums sale values independently of the window', () => {
     const projects = [
