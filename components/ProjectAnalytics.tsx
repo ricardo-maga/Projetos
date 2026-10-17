@@ -6,7 +6,6 @@ import { Card } from './ui/Card';
 import { MetricCard } from './ui/MetricCard';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
-import { Select } from './ui/Select';
 import { M3SectionHeader } from './M3';
 
 export default function ProjectAnalytics({ projects, projectStatuses, categories, users, clients = [], materials = [], onSelectProject }:
@@ -86,10 +85,13 @@ export default function ProjectAnalytics({ projects, projectStatuses, categories
         </div>
       </div>
       {commercialManagers.length > 0 ? <>
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="w-full sm:max-w-xs">
-            <Select label="Gestor comercial" value={activeSalesRepId} onChange={event => setSelectedSalesRepId(event.target.value)}
-              options={commercialManagers.map(id => ({ value: id, label: userName(id) }))} />
+        <div className="flex flex-wrap items-center gap-3">
+          <div role="group" aria-label="Gestor comercial" className="flex flex-wrap gap-2">
+            {commercialManagers.map(id => <button key={id} type="button" aria-pressed={activeSalesRepId === id}
+              onClick={() => setSelectedSalesRepId(id)}
+              className={`rounded-control border px-3 py-2 text-body-sm font-medium transition-colors ${activeSalesRepId === id ? 'border-primary bg-primary text-white' : 'border-border bg-surface text-text-primary hover:border-primary'}`}>
+              {userName(id)}
+            </button>)}
           </div>
           <Badge>{selectedCommercialProjects.length} projetos</Badge>
         </div>
@@ -105,3 +107,4 @@ export default function ProjectAnalytics({ projects, projectStatuses, categories
     </Card>
   </div>;
 }
+
