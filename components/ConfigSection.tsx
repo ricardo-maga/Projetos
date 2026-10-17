@@ -839,7 +839,7 @@ export default function ConfigSection({
         <Card className="bg-surface rounded-card border border-border overflow-hidden animate-fade-in" id="core-config-card">
           <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60">
             <M3SectionHeader
-              title="Configurações da aplicação"
+              title="Aplicação"
               description="Defina a identidade visual e os dados apresentados no portal."
               actions={canWriteConfig ? <M3Button type="submit" disabled={isSavingConfig}>{isSavingConfig ? 'A guardar...' : 'Guardar alterações'}</M3Button> : undefined}
             />
