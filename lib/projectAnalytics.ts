@@ -64,3 +64,4 @@ export function buildProjectAnalytics(projects: Project[], statuses: any[], mate
     fiscalCurrent: { year: fiscalYear, projects: fiscalProjects(fiscalYear) },
     fiscalPrevious: { year: fiscalYear - 1, projects: fiscalProjects(fiscalYear - 1) }, month };
 }
+
