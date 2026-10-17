@@ -18,7 +18,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { applyLegacyVersions } from '../lib/supabase/legacyWriteBatch';
 import { buildLegacySyncPayload } from '../lib/supabase/syncPayload';
-import { ERPState, AppConfiguration, Project, Task, Comment, UserAbsence, User, Client, Equipment, Ticket } from '../lib/types';
+import { ERPState, AppConfiguration, Project, Task, Comment, UserAbsence, User, Client, Equipment, Ticket, SpecialDay } from '../lib/types';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
@@ -1504,6 +1504,13 @@ export function useERP() {
     }));
   };
 
+  const updateSpecialDay = (id: string, updates: Partial<SpecialDay>) => {
+    saveState(prev => ({
+      ...prev,
+      specialDays: (prev.specialDays || []).map(day => day.id === id ? { ...day, ...updates } : day)
+    }));
+  };
+
   const deleteSpecialDay = (id: string) => deleteSyncedEntity('specialDays', id);
 
   // ==================== DEFAULT TASKS ====================
@@ -1924,6 +1931,7 @@ export function useERP() {
     deleteAuxRecord,
     reorderAuxRecords,
     addSpecialDay,
+    updateSpecialDay,
     deleteSpecialDay,
 
     addDefaultTask,

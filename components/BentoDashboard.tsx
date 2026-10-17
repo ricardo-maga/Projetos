@@ -79,6 +79,11 @@ export default function BentoDashboard({
     return name.includes('conclu') || name.includes('suspen') || name.includes('cancel');
   }, [projectStatuses]);
 
+  const hasActiveProjectScale = React.useCallback((statusId: string | null | undefined) => {
+    const status = projectStatuses.find(item => matchId(item.id, statusId) || item.id === statusId);
+    return typeof status?.scale === 'number' && status.scale >= 1 && status.scale <= 4;
+  }, [projectStatuses]);
+
   // Helpers to get relations
   const getClientName = React.useCallback((clientId: string) => {
     const client = clients.find(c => matchId(c.id, clientId));
@@ -241,7 +246,7 @@ export default function BentoDashboard({
 
   // 2. Projetos ativos com maior carga horária (hours consumed in completed/filled tasks + estimated hours in pending tasks)
   const projectsByWorkload = useMemo(() => {
-    const list = sortedProjects.map(proj => {
+    const list = projects.filter(proj => !proj.deleted && hasActiveProjectScale(proj.statusId)).map(proj => {
       const projTasks = tasks.filter(t => t.projectId === proj.id && !t.deleted);
       let totalHours = 0;
       let completedHours = 0;
@@ -276,7 +281,7 @@ export default function BentoDashboard({
 
     list.sort((a, b) => b.totalHours - a.totalHours);
     return list;
-  }, [sortedProjects, tasks, getClientName, getTaskScale]);
+  }, [projects, tasks, getClientName, getTaskScale, hasActiveProjectScale]);
 
   const WORKLOAD_PER_PAGE = 10;
   const totalWorkloadProjects = projectsByWorkload.length;
@@ -403,7 +408,7 @@ export default function BentoDashboard({
       </Card>
 
       {/* 1. Full-Width Box: Sorted Active Project Pipeline */}
-      <Card className="md:col-span-12 flex flex-col overflow-hidden">
+      {false && <Card className="md:col-span-12 flex flex-col overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-border/80 flex flex-col lg:flex-row justify-between lg:items-center gap-4 bg-surface-muted/60">
           <div>
             <h2 className="text-heading-sm text-text-primary">Projetos Ativos</h2>
@@ -588,7 +593,7 @@ export default function BentoDashboard({
             </div>
           </div>
         )}
-      </Card>
+      </Card>}
 
       {/* Row: Projetos Ativos Esta Semana + Projetos com Maior Carga Horária */}
       <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-5">

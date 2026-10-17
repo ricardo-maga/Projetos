@@ -5,7 +5,7 @@ import { AppConfiguration, SpecialDay, DefaultTask, ERPState } from '../lib/type
 import { 
   Settings, RefreshCw, Key, Info, Calendar, Plus, Trash2, ListTodo, Edit2, Check, X,
   Database, UploadCloud, CheckCircle, AlertCircle, Terminal, Copy, ShieldCheck,
-  Users, GripVertical, Zap, Bell, Search, ChevronLeft, ChevronRight
+  Users, GripVertical, Zap, Bell, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import AutomationEditor from './AutomationEditor';
 import AuditLogSection from './AuditLogSection';
@@ -58,6 +58,7 @@ interface ConfigSectionProps {
   onResetDemoData?: () => void;
   onClearDemoData?: () => void;
   addSpecialDay: (date: string, name: string) => void;
+  updateSpecialDay: (id: string, updates: Partial<SpecialDay>) => void;
   deleteSpecialDay: (id: string) => void;
   defaultTasks?: DefaultTask[];
   addDefaultTask?: (title: string, description: string, estimatedHours: string, taskTypeId?: string) => void;
@@ -312,6 +313,7 @@ export default function ConfigSection({
   onResetDemoData,
   onClearDemoData,
   addSpecialDay,
+  updateSpecialDay,
   deleteSpecialDay,
   defaultTasks = [],
   addDefaultTask,
@@ -469,17 +471,15 @@ export default function ConfigSection({
   const [sdDate, setSdDate] = useState('');
   const [sdName, setSdName] = useState('');
   const [sdPage, setSdPage] = useState(0);
-  const [sdYear, setSdYear] = useState('');
   const [sdPageSize, setSdPageSize] = useState(25);
   const [showSpecialDayForm, setShowSpecialDayForm] = useState(false);
+  const [editingSpecialDayId, setEditingSpecialDayId] = useState<string | null>(null);
 
   // Default Tasks form state
   const [dtTitle, setDtTitle] = useState('');
   const [dtDesc, setDtDesc] = useState('');
   const [dtHours, setDtHours] = useState('08:00');
   const [dtTypeId, setDtTypeId] = useState('');
-  const [dtSearch, setDtSearch] = useState('');
-  const [dtFilterTypeId, setDtFilterTypeId] = useState('');
   const [dtPage, setDtPage] = useState(0);
   const [dtPageSize, setDtPageSize] = useState(12);
   const [showDefaultTaskForm, setShowDefaultTaskForm] = useState(false);
@@ -670,25 +670,24 @@ export default function ConfigSection({
     }
     if (!sdDate || !sdName) return;
 
-    const existingDay = specialDays?.find(sd => sd.date === sdDate);
+    const finishSave = () => {
+      if (editingSpecialDayId) updateSpecialDay(editingSpecialDayId, { date: sdDate, name: sdName });
+      else addSpecialDay(sdDate, sdName);
+      setSdDate('');
+      setSdName('');
+      setEditingSpecialDayId(null);
+      setShowSpecialDayForm(false);
+    };
+    const existingDay = specialDays?.find(sd => sd.date === sdDate && sd.id !== editingSpecialDayId);
     if (existingDay) {
       askConfirmation(
         'Data Já Existente',
-        `Já existe um dia especial registado para esta data (${existingDay.name}). Tem a certeza que deseja inserir um novo registo na mesma data?`,
-        () => {
-          addSpecialDay(sdDate, sdName);
-          setSdDate('');
-          setSdName('');
-          setShowSpecialDayForm(false);
-        }
+        `Já existe um dia especial registado para esta data (${existingDay.name}). Tem a certeza que deseja guardar outro registo na mesma data?`,
+        finishSave
       );
       return;
     }
-
-    addSpecialDay(sdDate, sdName);
-    setSdDate('');
-    setSdName('');
-    setShowSpecialDayForm(false);
+    finishSave();
   };
 
   const handleAddDefaultTask = (e: React.FormEvent) => {
@@ -725,11 +724,7 @@ export default function ConfigSection({
     setEditingDtId(null);
   };
 
-  const defaultTaskQuery = dtSearch.trim().toLocaleLowerCase('pt-PT');
-  const filteredDefaultTasks = defaultTasks.filter(task => {
-    const matchesType = !dtFilterTypeId || (dtFilterTypeId === 'unassigned' ? !task.taskTypeId : task.taskTypeId === dtFilterTypeId);
-    return matchesType && (!defaultTaskQuery || [task.title, task.description].some(value => value.toLocaleLowerCase('pt-PT').includes(defaultTaskQuery)));
-  });
+  const filteredDefaultTasks = defaultTasks;
   const defaultTaskTotalPages = Math.max(1, Math.ceil(filteredDefaultTasks.length / dtPageSize));
   const currentDefaultTaskPage = Math.min(dtPage, defaultTaskTotalPages - 1);
   const defaultTaskStartIndex = currentDefaultTaskPage * dtPageSize;
@@ -824,73 +819,56 @@ export default function ConfigSection({
       {/* SISTEMA TAB */}
       {activeConfigTab === 'sistema' && (
       <form onSubmit={handleSubmit} className="w-full">
-        <div className="grid grid-cols-1 gap-6 items-start">
-          {/* Card 1: Configuração do Sistema */}
-          <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="core-config-card">
-            <h2 className="text-base font-bold text-text-primary mb-5 flex items-center gap-2">
-              <Settings className="w-5 h-5 text-primary" />
-              Configurações da aplicação
-            </h2>
-
-            <div className="space-y-5">
-              <div className="space-y-1">
-                <label className="block text-text-muted">Nome do portal</label>
-                <input 
-                  type="text" 
-                  required
-                  value={appName}
-                  onChange={e => setAppName(e.target.value)}
-                  className="w-full p-2.5 border border-border rounded-control font-bold text-text-primary focus:ring-2 focus:ring-blue-100 outline-none font-sans"
-                />
+        <Card className="bg-surface rounded-card border border-border overflow-hidden animate-fade-in" id="core-config-card">
+          <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60">
+            <M3SectionHeader
+              title="Configurações da aplicação"
+              description="Defina a identidade visual e os dados apresentados no portal."
+              actions={canWriteConfig ? <M3Button type="submit" disabled={isSavingConfig}>{isSavingConfig ? 'A guardar...' : 'Guardar alterações'}</M3Button> : undefined}
+            />
+          </div>
+          <div className="p-4 sm:p-5 space-y-6">
+            <section aria-labelledby="portal-identity-heading" className="space-y-4">
+              <div>
+                <h3 id="portal-identity-heading" className="text-heading-sm text-text-primary">Identidade do portal</h3>
+                <p className="mt-1 text-body-sm text-text-secondary">Informação visível no cabeçalho e no rodapé da aplicação.</p>
               </div>
-
-              <div className="space-y-1">
-                <label className="block text-text-muted">Descrição do portal</label>
-                <input 
-                  type="text" 
-                  value={appDesc}
-                  onChange={e => setAppDesc(e.target.value)}
-                  className="w-full p-2.5 border border-border rounded-control font-medium text-text-secondary focus:ring-2 focus:ring-blue-100 outline-none font-sans"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-text-secondary font-bold">Caminho da imagem do logótipo</label>
-                <input 
-                  type="text" 
-                  value={logo}
-                  onChange={e => setLogo(e.target.value)}
-                  placeholder="https://exemplo.com/logo.svg, /logo.png, data:image/svg+xml;... ou <svg...>"
-                  className="w-full p-2.5 border border-border rounded-control font-mono text-xs focus:ring-2 focus:ring-blue-100 outline-none"
-                />
-                <p className="text-[11px] text-slate-400 font-normal">
-                  Suporta URLs de imagens (SVG, PNG, JPG, WebP), ficheiros locais (/logo.svg), Data URIs (base64) e código SVG inline.
-                </p>
-
-                {/* Live Preview */}
-                <div className="flex items-center gap-3 p-3 bg-surface-muted border border-border/80 rounded-control mt-2">
-                  <span className="text-xs font-semibold text-text-muted shrink-0">Pré-visualização:</span>
-                  <AppLogo 
-                    logoUrl={logo} 
-                    appName={appName} 
-                    className="w-72 max-w-full h-10 rounded-control bg-surface border border-border shadow-2xs p-1"
-                  />
-
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Input label="Nome do portal" type="text" required value={appName} onChange={e => setAppName(e.target.value)} />
+                <Input label="Descrição do portal" type="text" value={appDesc} onChange={e => setAppDesc(e.target.value)} />
+                <div className="lg:col-span-2">
+                  <Input label="Texto de rodapé" type="text" value={footer} onChange={e => setFooter(e.target.value)} />
                 </div>
               </div>
+            </section>
 
-              <div className="space-y-1">
-                <label className="block text-text-muted">Texto de rodapé</label>
-                <input 
-                  type="text" 
-                  value={footer}
-                  onChange={e => setFooter(e.target.value)}
-                  className="w-full p-2.5 border border-border rounded-control font-medium focus:ring-2 focus:ring-blue-100 outline-none font-sans"
-                />
+            <section aria-labelledby="portal-logo-heading" className="pt-6 border-t border-border-subtle space-y-4">
+              <div>
+                <h3 id="portal-logo-heading" className="text-heading-sm text-text-primary">Logótipo</h3>
+                <p className="mt-1 text-body-sm text-text-secondary">Escolha o ficheiro ou o código SVG apresentado na aplicação.</p>
               </div>
+              <Input
+                label="Caminho da imagem do logótipo"
+                type="text"
+                value={logo}
+                onChange={e => setLogo(e.target.value)}
+                placeholder="https://exemplo.com/logo.svg, /logo.png, data:image/svg+xml;... ou <svg...>"
+                className="font-mono text-body"
+              />
+              <p className="text-body-sm text-text-secondary">
+                  Suporta URLs de imagens (SVG, PNG, JPG, WebP), ficheiros locais (/logo.svg), Data URIs (base64) e código SVG inline.
+              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-surface-muted border border-border rounded-control">
+                <span className="text-label font-semibold text-text-secondary shrink-0">Pré-visualização</span>
+                <AppLogo logoUrl={logo} appName={appName} className="w-72 max-w-full h-10 rounded-control bg-surface border border-border shadow-2xs p-1" />
+              </div>
+            </section>
 
-              <div className="space-y-2 pt-2">
-                <label className="block text-text-muted">Esquema de cores</label>
+            <section aria-labelledby="portal-theme-heading" className="pt-6 border-t border-border-subtle space-y-4">
+              <div>
+                <h3 id="portal-theme-heading" className="text-heading-sm text-text-primary">Esquema de cores</h3>
+                <p className="mt-1 text-body-sm text-text-secondary">A paleta é aplicada imediatamente à sessão atual.</p>
+              </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {[
                     { id: 'domino', name: 'Domino Institucional', desc: 'Paleta oficial Domino', hex: '#003b5c' },
@@ -917,7 +895,8 @@ export default function ConfigSection({
                         }
                         updateConfig({ theme: t.id });
                       }}
-                      className={`flex items-center gap-3 p-3 rounded-control border text-left transition-all cursor-pointer ${
+                      aria-pressed={theme === t.id || (theme === 'default' && t.id === 'domino')}
+                      className={`flex items-center gap-3 p-3 rounded-control border text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                         (theme === t.id || (theme === 'default' && t.id === 'domino'))
                           ? 'border-slate-800 bg-surface-muted/70 ring-2 ring-slate-100'
                           : 'border-border hover:border-slate-300 hover:bg-surface-muted/40'
@@ -928,21 +907,15 @@ export default function ConfigSection({
                         style={{ backgroundColor: t.hex }}
                       />
                       <div>
-                        <div className="font-bold text-text-primary text-[11px] leading-tight font-sans">{t.name}</div>
-                        <div className="text-[9px] text-slate-400 font-medium leading-none mt-0.5 font-sans">{t.desc}</div>
+                        <div className="font-semibold text-text-primary text-body-sm leading-tight">{t.name}</div>
+                        <div className="text-caption text-text-secondary font-medium mt-1">{t.desc}</div>
                       </div>
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
+            </section>
           </div>
-
-        </div>
-
-        <div className="mt-6 flex justify-end">
-          <M3Button type="submit" disabled={!canWriteConfig || isSavingConfig}>{isSavingConfig ? 'A guardar...' : 'Gravar configurações'}</M3Button>
-        </div>
+        </Card>
       </form>
       )}
 
@@ -951,30 +924,30 @@ export default function ConfigSection({
         <Card className="bg-surface rounded-card border border-border overflow-hidden animate-fade-in" id="special-days-card">
           <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60 space-y-4">
             <M3SectionHeader title="Dias especiais" description="Consulte e organize as datas especiais do calendário."
-              actions={canWriteConfig ? <Button type="button" onClick={() => { setSdDate(''); setSdName(''); setShowSpecialDayForm(true); }}><Plus aria-hidden="true" className="w-4 h-4" /> Novo dia especial</Button> : undefined} />
-            <div className="flex justify-end">
-              <div className="w-full sm:w-48">
-                <Select label="Ano" value={sdYear} onChange={e => { setSdYear(e.target.value); setSdPage(0); }}>
-                  <option value="">Todos os anos</option>
-                  {[...new Set(specialDays.map(day => day.date.slice(0, 4)))].sort().reverse().map(year => <option key={year} value={year}>{year}</option>)}
-                </Select>
-              </div>
-            </div>
+              actions={canWriteConfig ? <Button type="button" onClick={() => {
+                if (showSpecialDayForm) {
+                  setShowSpecialDayForm(false);
+                  setEditingSpecialDayId(null);
+                  return;
+                }
+                setSdDate('');
+                setSdName('');
+                setEditingSpecialDayId(null);
+                setShowSpecialDayForm(true);
+              }}><Plus aria-hidden="true" className="w-4 h-4" /> Novo dia especial</Button> : undefined} />
           </div>
           {canWriteConfig && showSpecialDayForm && (
             <form id="special-day-form" onSubmit={handleAddSpecialDay} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 sm:grid-cols-[12rem_minmax(0,1fr)] gap-3 items-end">
               <Input label="Dia" type="date" required value={sdDate} onChange={e => setSdDate(e.target.value)} />
               <Input label="Nome" type="text" required placeholder="Ex.: Natal" value={sdName} onChange={e => setSdName(e.target.value)} />
               <div className="sm:col-span-2 flex justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={() => setShowSpecialDayForm(false)}>Cancelar</Button>
+                <Button type="button" variant="ghost" onClick={() => { setShowSpecialDayForm(false); setEditingSpecialDayId(null); }}>Cancelar</Button>
                 <Button type="submit"><Check aria-hidden="true" className="w-4 h-4" /> Guardar</Button>
               </div>
             </form>
           )}
           {(() => {
-            const sortedSd = specialDays.filter(day => {
-              return !sdYear || day.date.startsWith(sdYear + '-');
-            }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const sortedSd = specialDays.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             const totalSdPages = Math.max(1, Math.ceil(sortedSd.length / sdPageSize));
             const currentSdPage = Math.min(sdPage, totalSdPages - 1);
             const startIndex = currentSdPage * sdPageSize;
@@ -982,8 +955,7 @@ export default function ConfigSection({
             return <>
               {visibleSd.length === 0 ? (
                 <div role="status" className="p-10 text-center text-body-sm text-text-secondary space-y-3">
-                  <p>{specialDays.length === 0 ? 'Nenhum dia especial configurado.' : 'Nenhum dia especial encontrado para o ano selecionado.'}</p>
-                  {sdYear && <Button type="button" variant="secondary" size="sm" onClick={() => { setSdYear(''); setSdPage(0); }}>Limpar filtro</Button>}
+                  <p>Nenhum dia especial configurado.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -1000,10 +972,24 @@ export default function ConfigSection({
                           </td>
                           <td className="px-4 sm:px-5 py-4 font-medium text-text-primary break-words [overflow-wrap:anywhere]">{sd.name}</td>
                           {canWriteConfig && <td className="px-4 sm:px-5 py-4 text-right">
+                            <div className="flex justify-end gap-1">
+                            <Button type="button" variant="ghost" size="sm" onClick={() => {
+                              setEditingSpecialDayId(null);
+                              setSdDate(sd.date);
+                              setSdName(sd.name);
+                              setShowSpecialDayForm(true);
+                            }}><Copy aria-hidden="true" className="w-4 h-4" />Duplicar</Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => {
+                              setEditingSpecialDayId(sd.id);
+                              setSdDate(sd.date);
+                              setSdName(sd.name);
+                              setShowSpecialDayForm(true);
+                            }}><Edit2 aria-hidden="true" className="w-4 h-4" />Editar</Button>
                             <IconButton type="button" variant="ghost" aria-label={`Eliminar dia especial: ${sd.name}, ${sd.date}`} className="text-text-secondary hover:text-error hover:bg-error/10"
                               onClick={() => askConfirmation('Confirmar eliminação de dia especial', 'Tem a certeza que deseja eliminar este dia? Esta ação terá um efeito permanente.', () => deleteSpecialDay(sd.id))}>
                               <Trash2 aria-hidden="true" className="w-4 h-4" />
                             </IconButton>
+                            </div>
                           </td>}
                         </tr>
                       ))}
@@ -1038,10 +1024,6 @@ export default function ConfigSection({
         <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60 space-y-4">
           <M3SectionHeader title="Templates de tarefas" description="Crie e organize modelos reutilizáveis para as tarefas dos projetos."
             actions={canWriteConfig ? <Button type="button" onClick={() => { setDtTitle(''); setDtDesc(''); setDtHours('08:00'); setDtTypeId(''); setShowDefaultTaskForm(visible => !visible); }}><Plus aria-hidden="true" className="w-4 h-4" /> Nova tarefa</Button> : undefined} />
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-            <div className="flex-1 min-w-0 relative"><Search aria-hidden="true" className="absolute left-3 top-[2.75rem] -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none z-10" /><Input label="Pesquisar templates" type="search" placeholder="Pesquisar por título ou instruções…" value={dtSearch} onChange={e => { setDtSearch(e.target.value); setDtPage(0); }} className="pl-9" /></div>
-            <div className="w-full sm:w-64"><Select label="Tipo de tarefa" value={dtFilterTypeId} onChange={e => { setDtFilterTypeId(e.target.value); setDtPage(0); }}><option value="">Todos os tipos</option><option value="unassigned">Por defeito</option>{taskTypes.filter((type: any) => !type.deleted).map((type: any) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></div>
-          </div>
         </div>
         {canWriteConfig && showDefaultTaskForm && <form id="default-task-form" onSubmit={handleAddDefaultTask} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
           <div className="lg:col-span-4"><Input label="Título da tarefa" type="text" required placeholder="Ex.: Eletrificação de sistema" value={dtTitle} onChange={e => setDtTitle(e.target.value)} /></div>
@@ -1057,7 +1039,6 @@ export default function ConfigSection({
         {visibleDefaultTasks.length === 0 ? (
           <div role="status" className="p-10 text-center text-body-sm text-text-secondary space-y-3">
             <p>{defaultTasks.length === 0 ? 'Nenhuma tarefa por defeito configurada.' : 'Nenhum template encontrado para os filtros selecionados.'}</p>
-            {(dtSearch || dtFilterTypeId) && <Button type="button" variant="secondary" size="sm" onClick={() => { setDtSearch(''); setDtFilterTypeId(''); setDtPage(0); }}>Limpar filtros</Button>}
           </div>
         ) : (
           <div className="divide-y divide-border-subtle">
@@ -1070,21 +1051,21 @@ export default function ConfigSection({
                     // Inline Edit Mode
                     <div className="space-y-3 flex-1">
                       <div className="space-y-1">
-                        <label className="text-[10px] text-slate-400 block font-bold">Título da Tarefa</label>
+                        <label className="text-label text-text-secondary block font-semibold">Título da tarefa</label>
                         <input 
                           type="text"
                           value={editDtTitle}
                           onChange={e => setEditDtTitle(e.target.value)}
-                          className="w-full p-1.5 border border-border rounded-md font-semibold text-xs text-text-primary"
+                          className="w-full h-11 px-3.5 border border-border rounded-control font-semibold text-body text-text-primary bg-surface"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <label className="text-[10px] text-slate-400 block font-bold">Tipo de Tarefa</label>
+                          <label className="text-label text-text-secondary block font-semibold">Tipo de tarefa</label>
                           <select
                             value={editDtTypeId}
                             onChange={e => setEditDtTypeId(e.target.value)}
-                            className="w-full p-1.5 border border-border rounded-md font-semibold text-xs text-text-primary bg-surface"
+                            className="w-full h-11 px-3.5 border border-border rounded-control font-semibold text-body text-text-primary bg-surface"
                           >
                             <option value="">Por defeito</option>
                             {taskTypes.filter((s: any) => !s.deleted).map((s: any) => (
@@ -1093,22 +1074,22 @@ export default function ConfigSection({
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] text-slate-400 block font-bold">Horas Estimadas</label>
+                          <label className="text-label text-text-secondary block font-semibold">Horas estimadas</label>
                           <input 
                             type="text"
                             value={editDtHours}
                             onChange={e => setEditDtHours(e.target.value)}
-                            className="w-full p-1.5 border border-border rounded-md font-semibold text-xs text-text-primary"
+                            className="w-full h-11 px-3.5 border border-border rounded-control font-semibold text-body text-text-primary bg-surface"
                           />
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] text-slate-400 block font-bold">Instruções Técnicas</label>
+                        <label className="text-label text-text-secondary block font-semibold">Instruções técnicas</label>
                         <textarea 
                           value={editDtDesc}
                           onChange={e => setEditDtDesc(e.target.value)}
                           rows={2}
-                          className="w-full p-1.5 border border-border rounded-md text-xs text-text-secondary font-medium"
+                          className="w-full px-3.5 py-3 border border-border rounded-control text-body text-text-secondary font-medium bg-surface"
                         />
                       </div>
                     </div>
@@ -1117,9 +1098,9 @@ export default function ConfigSection({
                     <div className="space-y-1.5 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <h4 className="text-xs font-bold text-text-primary tracking-tight leading-snug">{dt.title}</h4>
+                          <h4 className="text-body font-bold text-text-primary leading-snug">{dt.title}</h4>
                           {typeName && (
-                            <span className="px-1.5 py-0.5 bg-blue-50 border border-blue-100 text-blue-700 rounded text-[9px] font-bold">
+                            <span className="px-2 py-1 bg-blue-50 border border-blue-100 text-blue-700 rounded-control text-label font-semibold">
                               {typeName}
                             </span>
                           )}
@@ -1128,7 +1109,7 @@ export default function ConfigSection({
                           {formatHoursToHHMM(parseTimeToHours(dt.estimatedHours))}
                         </span>
                       </div>
-                      <p className="text-[11px] text-text-muted font-medium leading-relaxed">
+                      <p className="text-body-sm text-text-muted font-medium leading-relaxed">
                         {dt.description || <span className="italic text-slate-400">Sem instruções de modelo fornecidas.</span>}
                       </p>
                     </div>
@@ -1139,14 +1120,14 @@ export default function ConfigSection({
                       <>
                         <button 
                           onClick={() => setEditingDtId(null)}
-                          className="p-1 px-2 text-[10px] font-bold text-text-muted hover:bg-surface-muted rounded-md transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-text-muted hover:bg-surface-muted rounded-control transition-colors flex items-center gap-1"
                         >
                           <X className="w-3.5 h-3.5" />
                           Cancelar
                         </button>
                         <button 
                           onClick={() => handleSaveEditDefaultTask(dt.id)}
-                          className="p-1 px-2 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Check className="w-3.5 h-3.5" />
                           Gravar
@@ -1156,7 +1137,7 @@ export default function ConfigSection({
                       <>
                         <button 
                           onClick={() => startEditingDefaultTask(dt)}
-                          className="p-1 px-2 text-[10px] font-bold text-text-muted hover:text-primary hover:bg-blue-50 rounded-md transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-primary hover:bg-blue-50 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           Editar
@@ -1172,7 +1153,7 @@ export default function ConfigSection({
                               );
                             }
                           }}
-                          className="p-1 px-2 text-[10px] font-bold text-text-muted hover:text-red-600 hover:bg-red-50 rounded-md transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-red-600 hover:bg-red-50 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           Eliminar

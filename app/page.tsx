@@ -172,6 +172,7 @@ export default function Page() {
     deleteAuxRecord,
     reorderAuxRecords,
     addSpecialDay,
+    updateSpecialDay,
     deleteSpecialDay,
     addDefaultTask,
     updateDefaultTask,
@@ -1099,6 +1100,7 @@ export default function Page() {
                   onClearDemoData={clearAllData}
                   onRefreshFromDatabase={refreshFromDatabase}
                   addSpecialDay={addSpecialDay!}
+                  updateSpecialDay={updateSpecialDay!}
                   deleteSpecialDay={deleteSpecialDay!}
                   defaultTasks={state.defaultTasks || []}
                   addDefaultTask={addDefaultTask!}
