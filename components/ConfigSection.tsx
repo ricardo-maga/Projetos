@@ -832,6 +832,34 @@ export default function ConfigSection({
 
   return (
     <div className="m3-config space-y-6" id="config-section-root">
+      {['sistema', 'campos', 'dias', 'tarefas'].includes(activeConfigTab) && (
+        <div className="space-y-4">
+          <M3SectionHeader title="Configurações da aplicação" />
+          <Tabs
+            tabs={[
+              { id: 'sistema', label: 'Aplicação' },
+              { id: 'campos', label: 'Campos auxiliares' },
+              { id: 'dias', label: 'Dias especiais' },
+              { id: 'tarefas', label: 'Tarefas modelo' },
+            ]}
+            activeTabId={activeConfigTab}
+            onChange={setActiveConfigTab}
+          />
+        </div>
+      )}
+      {['auditoria', 'importacao'].includes(activeConfigTab) && (
+        <div className="space-y-4">
+          <M3SectionHeader title="Sistema" />
+          <Tabs
+            tabs={[
+              { id: 'auditoria', label: 'Registo de auditoria' },
+              { id: 'importacao', label: 'Base de dados' },
+            ]}
+            activeTabId={activeConfigTab}
+            onChange={setActiveConfigTab}
+          />
+        </div>
+      )}
       
       {/* SISTEMA TAB */}
       {activeConfigTab === 'sistema' && (
