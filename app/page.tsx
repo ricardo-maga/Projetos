@@ -676,7 +676,7 @@ export default function Page() {
               appName={appConfig.appName}
               className="w-auto max-w-[200px] h-10 bg-transparent border-0 shadow-none p-0 shrink"
             />
-            <div className="min-w-0 hidden sm:block">
+            <div className="min-w-0 hidden md:block">
               <h1 className="text-body font-bold text-text-primary tracking-tight leading-tight truncate">{appConfig.appName}</h1>
               <p className="text-caption text-text-muted font-medium truncate">{appConfig.appDescription}</p>
             </div>
