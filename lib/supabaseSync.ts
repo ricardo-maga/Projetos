@@ -478,6 +478,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       resProjectRiskItems,
       resTicketStatuses,
       resNotifications,
+      resNotificationSettings,
       resAutomationRules,
       resActiveRoles,
       resUserRoles,
@@ -510,13 +511,14 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       client.from('project_risk_items').select('*').order('created_at', { ascending: false }),
       client.from('ticket_statuses').select('*').order('sort_order', { ascending: true }),
       client.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
+      client.from('notification_settings').select('*').order('type'),
       client.from('automation_rules').select('*').order('created_at', { ascending: false }),
       client.from('roles').select('id,name,code').eq('is_active', true).order('name'),
       client.from('user_roles').select('user_id,role_id'),
     ]);
 
-    if (resActiveRoles.error || resUserRoles.error) {
-      throw resActiveRoles.error || resUserRoles.error;
+    if (resActiveRoles.error || resUserRoles.error || resNotificationSettings.error) {
+      throw resActiveRoles.error || resUserRoles.error || resNotificationSettings.error;
     }
     const activeRoles = resActiveRoles.data || [];
     const activeRoleIds = new Set(activeRoles.map((role: any) => role.id));
@@ -977,7 +979,11 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       ticketStatuses: ticketStatuses || [],
       notifications: notifications || [],
       automationRules: automationRules || [],
-      notificationSettings: [],
+      notificationSettings: (resNotificationSettings.data || []).map((setting: any) => ({
+        id: setting.id, type: setting.type, name: setting.name,
+        enabled: setting.enabled === true, daysBefore: setting.days_before ?? 0,
+        targetGroup: setting.target_group || 'allocated',
+      })),
     };
 
     // If completely empty database (unseeded), return undefined to let /hooks/useERP seed defaults.
@@ -1902,7 +1908,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
       try {
         const mappedNotifs = state.notifications.slice(0, 100).map((n: any) => ({
           id: stringToUUID(n.id),
-          user_id: n.userId || 'all',
+          user_id: n.userId === 'all' ? null : (n.userId || null),
           title: n.title,
           message: n.message || '',
           is_read: n.isRead || false,

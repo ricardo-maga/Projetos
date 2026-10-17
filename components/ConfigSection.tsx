@@ -78,7 +78,7 @@ interface ConfigSectionProps {
   addAuxRecord?: (tableName: any, name: string, extra?: { scale?: number }) => void;
   updateAuxRecord?: (tableName: any, id: string, updates: Partial<{ name: string; scale: number; deleted: boolean }>) => void;
   deleteAuxRecord?: (tableName: any, id: string) => void;
-  updateNotificationSetting?: (id: string, updates: any) => void;
+  updateNotificationSetting?: (id: string, updates: Partial<import('../lib/types').NotificationSetting>) => Promise<{ success: boolean; message?: string }>;
   reorderAuxRecords?: (tableName: any, newItems: any[]) => void;
   state: ERPState;
   importState: (jsonStr: string) => boolean;
@@ -396,6 +396,21 @@ export default function ConfigSection({
   const activeConfigTab = activeConfigTabProp || 'sistema';
   const [usersConfigTab, setUsersConfigTab] = useState<'users' | 'roles' | 'associacoes'>('users');
   const [notificationTab, setNotificationTab] = useState<'notificacoes' | 'automacoes'>(activeConfigTab === 'automacoes' ? 'automacoes' : 'notificacoes');
+  const [savingNotificationId, setSavingNotificationId] = useState<string | null>(null);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
+  const saveNotificationSetting = async (id: string, updates: Partial<import('../lib/types').NotificationSetting>) => {
+    if (!updateNotificationSetting || savingNotificationId) return;
+    setSavingNotificationId(id);
+    setNotificationError(null);
+    try {
+      const result = await updateNotificationSetting(id, updates);
+      if (!result.success) setNotificationError(result.message || 'Não foi possível guardar a definição.');
+    } catch {
+      setNotificationError('Não foi possível guardar a definição.');
+    } finally {
+      setSavingNotificationId(null);
+    }
+  };
   useEffect(() => {
     if (activeConfigTab === 'automacoes') setNotificationTab('automacoes');
   }, [activeConfigTab]);
@@ -1549,7 +1564,8 @@ export default function ConfigSection({
         <div className="space-y-6">
           <div>
             <h3 className="text-sm font-bold text-text-primary mb-1 uppercase tracking-tight">Notificações In-App</h3>
-            <p className="text-xs text-text-muted font-medium mb-4">Configure que notificações o sistema gera e quantos dias antes (quando aplicável).</p>
+            <p className="text-xs text-text-muted font-medium mb-4">Configure os destinatários e a antecedência. Os avisos por data são enviados antes, no próprio dia e uma vez no dia seguinte.</p>
+            {notificationError && <p role="alert" className="mb-4 text-sm text-error">{notificationError}</p>}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(state.notificationSettings || []).map(ns => (
@@ -1558,9 +1574,9 @@ export default function ConfigSection({
                     <h4 className="font-bold text-sm text-text-primary">{ns.name}</h4>
                     <Switch
                       checked={ns.enabled}
-                      disabled={!canWriteConfig}
+                      disabled={!canWriteConfig || savingNotificationId !== null}
                       label={`Ativar ${ns.name}`}
-                      onChange={enabled => updateNotificationSetting?.(ns.id, { enabled })}
+                      onChange={enabled => { void saveNotificationSetting(ns.id, { enabled }); }}
                     />
                   </div>
                   
@@ -1573,8 +1589,8 @@ export default function ConfigSection({
                           min="0"
                           max="30"
                           value={ns.daysBefore}
-                          disabled={!ns.enabled || !canWriteConfig}
-                          onChange={(e) => updateNotificationSetting && updateNotificationSetting(ns.id, { daysBefore: parseInt(e.target.value) || 0 })}
+                          disabled={!ns.enabled || !canWriteConfig || savingNotificationId !== null}
+                          onChange={(e) => { void saveNotificationSetting(ns.id, { daysBefore: parseInt(e.target.value, 10) || 0 }); }}
                         />
                       </div>
                     )}
@@ -1583,8 +1599,8 @@ export default function ConfigSection({
                       <Select
                         label="Destinatários"
                         value={ns.targetGroup}
-                        disabled={!ns.enabled || !canWriteConfig}
-                        onChange={(e) => updateNotificationSetting && updateNotificationSetting(ns.id, { targetGroup: e.target.value as any })}
+                        disabled={!ns.enabled || !canWriteConfig || savingNotificationId !== null}
+                        onChange={(e) => { void saveNotificationSetting(ns.id, { targetGroup: e.target.value as 'all' | 'allocated' | 'managers' }); }}
                       >
                         <option value="all">Todos os utilizadores</option>
                         <option value="allocated">Utilizadores alocados</option>

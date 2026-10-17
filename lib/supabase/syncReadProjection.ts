@@ -5,7 +5,7 @@ export const SYNC_READ_PERMISSIONS = {
   tasks: 'tasks:read', clients: 'clients:read', projectMaterials: 'project_materials:read',
   equipmentList: 'equipment:read', userAbsences: 'absences:read', tickets: 'tickets:read',
   defaultTasks: 'config:read', automationRules: 'admin:access', auditLogs: 'admin:access',
-  notificationSettings: 'admin:access',
+  notificationSettings: 'config:read',
 } as const;
 
 // Configuration labels/colors and a minimal assignee directory are supporting

@@ -486,37 +486,8 @@ export function useERP() {
 
         logAudit('CREATE', 'PROJECT', newProj.id, newProj.title, `Criado o projeto "${newProj.title}" (Cód. Instalação: ${newProj.installProjectNo || 'N/A'})`);
 
-        setState(prev => {
-          if (!prev) return prev;
-          let newNotifs = prev.notifications || [];
-          if (newProj.projectManagerId) {
-            newNotifs = [{
-              id: genId('notif'),
-              userId: newProj.projectManagerId,
-              title: `Gestor de Projeto Atribuído: ${newProj.title}`,
-              message: `Foi designado como Gestor do projeto "${newProj.title}".`,
-              isRead: false,
-              createdDate: now,
-              linkUrl: `/projects?project=${newProj.id}`
-            }, ...newNotifs];
-          }
-          if (newProj.fieldManagerId && newProj.fieldManagerId !== newProj.projectManagerId) {
-            newNotifs = [{
-              id: genId('notif'),
-              userId: newProj.fieldManagerId,
-              title: `Encarregado de Obra: ${newProj.title}`,
-              message: `Foi designado como Encarregado de Obra do projeto "${newProj.title}".`,
-              isRead: false,
-              createdDate: now,
-              linkUrl: `/projects?project=${newProj.id}`
-            }, ...newNotifs];
-          }
-          return {
-            ...prev,
-            projects: [newProj, ...prev.projects],
-            notifications: newNotifs
-          };
-        });
+        setState(prev => prev ? ({ ...prev, projects: [newProj, ...prev.projects] }) : prev);
+        await refreshFromDatabase();
 
         setSyncStatus('synced');
         return newProj;
@@ -869,21 +840,6 @@ export function useERP() {
           let newProjects = prev.projects;
           let newNotifs = prev.notifications || [];
 
-          if (newTask.assigneeIds && newTask.assigneeIds.length > 0) {
-            const proj = prev.projects.find(p => p.id === newTask.projectId);
-            const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
-            const taskNotifs = newTask.assigneeIds.map(uid => ({
-              id: genId('notif'),
-              userId: uid,
-              title: `Nova Tarefa Atribuída: ${newTask.title}`,
-              message: `Foi-lhe atribuída a tarefa "${newTask.title}"${projTitle}.`,
-              isRead: false,
-              createdDate: now,
-              linkUrl: `/projects?project=${newTask.projectId}`
-            }));
-            newNotifs = [...taskNotifs, ...newNotifs];
-          }
-
           const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_created');
           for (const rule of activeRules) {
             for (const action of rule.actions) {
@@ -910,6 +866,7 @@ export function useERP() {
             notifications: newNotifs
           };
         });
+        await refreshFromDatabase();
 
         setSyncStatus('synced');
         return newTask;
@@ -1017,25 +974,6 @@ export function useERP() {
         let newProjects = prev.projects;
         let newNotifs = prev.notifications || [];
 
-        if (updates.assigneeIds && targetTask) {
-          const oldAssignees = new Set(targetTask.assigneeIds || []);
-          const newlyAdded = updates.assigneeIds.filter(uid => !oldAssignees.has(uid));
-          if (newlyAdded.length > 0) {
-            const proj = prev.projects.find(p => p.id === targetTask.projectId);
-            const projTitle = proj?.title ? ` no projeto "${proj.title}"` : '';
-            const assignNotifs = newlyAdded.map(uid => ({
-              id: genId('notif'),
-              userId: uid,
-              title: `Nova Tarefa Atribuída: ${updates.title || targetTask.title}`,
-              message: `Foi-lhe atribuída a tarefa "${updates.title || targetTask.title}"${projTitle}.`,
-              isRead: false,
-              createdDate: now,
-              linkUrl: `/projects?project=${targetTask.projectId}`
-            }));
-            newNotifs = [...assignNotifs, ...newNotifs];
-          }
-        }
-
         if (targetTask && updates.statusId) {
           const activeRules = (prev.automationRules || []).filter(r => r.enabled && r.triggerType === 'task_status_changed');
           for (const rule of activeRules) {
@@ -1071,6 +1009,7 @@ export function useERP() {
           notifications: newNotifs
         };
       });
+      await refreshFromDatabase();
 
       setSyncStatus('synced');
       return true;
@@ -1636,25 +1575,45 @@ export function useERP() {
   const deleteDefaultTask = (id: string) => deleteSyncedEntity('defaultTasks', id);
 
     // ==================== NOTIFICATIONS ====================
-  const updateNotificationSetting = (id: string, updates: any) => {
-    saveState(prev => ({
-      ...prev,
-      notificationSettings: (prev.notificationSettings || []).map(ns => ns.id === id ? { ...ns, ...updates } : ns)
-    }));
+  const updateNotificationSetting = async (id: string, updates: Partial<import('../lib/types').NotificationSetting>) => {
+    const setting = state?.notificationSettings?.find(item => item.id === id);
+    if (!setting) return { success: false, message: 'Definição não encontrada.' };
+    try {
+      const response = await fetch('/api/notifications/settings', {
+        method: 'PATCH', headers: getAuthHeaders(),
+        body: JSON.stringify({ type: setting.type, updates }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Erro ao guardar a definição.');
+      setState(prev => prev ? ({ ...prev, notificationSettings: (prev.notificationSettings || []).map(item =>
+        item.id === id ? { ...item, ...updates } : item) }) : prev);
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao guardar a definição.';
+      setSyncError(message);
+      return { success: false, message };
+    }
   };
 
-  const markNotificationAsRead = (id: string) => {
-    return saveState(prev => ({
-      ...prev,
-      notifications: (prev.notifications || []).map(n => n.id === id ? { ...n, isRead: true } : n)
-    }));
+  const markNotificationAsRead = async (id: string) => {
+    const response = await fetch('/api/notifications/read', {
+      method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ id }),
+    });
+    if (!response.ok) return { success: false };
+    setState(prev => prev ? ({ ...prev, notifications: (prev.notifications || []).map(n =>
+      n.id === id ? { ...n, isRead: true } : n) }) : prev);
+    return { success: true };
   };
 
   const markAllNotificationsAsRead = (userId: string) => {
-    return saveState(prev => ({
-      ...prev,
-      notifications: (prev.notifications || []).map(n => (!n.userId || n.userId === userId || n.userId === 'all') ? { ...n, isRead: true } : n)
-    }));
+    return fetch('/api/notifications/read', {
+      method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ all: true }),
+    }).then(response => {
+      if (!response.ok) return { success: false };
+      setState(prev => prev ? ({ ...prev, notifications: (prev.notifications || []).map(n =>
+        n.userId === userId || n.userId === 'all' ? { ...n, isRead: true } : n) }) : prev);
+      return { success: true };
+    });
   };
 
   const addNotification = (userId: string, title: string, message: string, linkUrl?: string) => {
