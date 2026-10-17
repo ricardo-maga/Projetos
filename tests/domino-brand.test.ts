@@ -18,9 +18,11 @@ describe('Domino brand palette', () => {
       expect(brand).toContain(`#${color}`);
     }
     expect(brand).toContain('--brand-charcoal: #1a1a1a');
-    expect(brand).toContain('html,');
-    expect(brand).toContain('body,');
-    expect(brand).toContain('#main-root[data-theme]');
+    expect(brand).toContain('html[data-theme="domino"]');
+    expect(brand).toContain('body[data-theme="domino"]');
+    expect(brand).toContain('#main-root[data-theme="domino"]');
+    expect(brand).toContain('#main-root[data-theme="default"]');
+    expect(brand).not.toContain('[data-theme],');
     expect(brand).not.toContain('data-active-tab');
   });
 

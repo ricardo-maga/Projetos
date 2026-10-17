@@ -10,9 +10,13 @@ Fonte: domino-x-one-page-brand.pdf, página 1. Alteração exclusivamente visual
 
 Texto principal: charcoal #1A1A1A. Ações principais: Domino Blue; navegação
 selecionada: Do More Blue 30%; fundo: Do More Blue 10%; cartões: branco.
-Foundation, M3 e utilitários blue legados partilham a paleta, incluindo Login.
-Os aliases são definidos no mesmo âmbito dos tokens para evitar resolver uma
-cor antiga antes de a herdar.
+Foundation, M3 e utilitários blue legados usam esta paleta quando o esquema
+**Domino Institucional** está ativo, incluindo Login. O valor persistido legado
+`default` continua a ser um alias de Domino; os seis esquemas configuráveis
+(Azul Clássico, Verde Esmeralda, Violeta Elegante, Âmbar Solar, Cinzento
+Minimal e Rosa Coral) mantêm agora as suas próprias variáveis. Os aliases são
+definidos no mesmo âmbito dos tokens para evitar resolver uma cor antiga antes
+de a herdar.
 
 Os estados configurados e os helpers canónicos permanecem intactos.
 Erros, avisos e progresso conservam a sua semântica. Acentos do Dashboard
@@ -40,7 +44,7 @@ nos componentes Button, IconButton e M3Button, anteriormente não publicados.
 - Pré-visualização SSR do Dashboard real com dados vazios e sem sessão/BD:
   inspeção visual e getComputedStyle confirmam #003B5C/branco no botão principal,
   #007A2E/branco em success, vermelho/branco em danger e #C6E0E9/#003B5C em tonal.
-  Fundo #ECF5F8 e texto #1A1A1A confirmados, mesmo com data-theme="violet".
+  Fundo #ECF5F8 e texto #1A1A1A confirmados com o esquema Domino ativo.
 
 Findings mantidos: falhas globais pré-existentes (Supabase não configurado e
 assertions de paths Windows) e impossibilidade de completar build neste ambiente.

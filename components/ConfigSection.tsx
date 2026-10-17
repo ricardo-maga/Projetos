@@ -886,7 +886,8 @@ export default function ConfigSection({
                 <label className="block text-text-muted">Esquema de cores</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {[
-                    { id: 'default', name: 'Azul Clássico', desc: 'Padrão original azul', hex: '#2563eb' },
+                    { id: 'domino', name: 'Domino Institucional', desc: 'Paleta oficial Domino', hex: '#003b5c' },
+                    { id: 'blue', name: 'Azul Clássico', desc: 'Padrão original azul', hex: '#2563eb' },
                     { id: 'emerald', name: 'Verde Esmeralda', desc: 'Moderno e sofisticado', hex: '#059669' },
                     { id: 'violet', name: 'Violeta Elegante', desc: 'Design criativo', hex: '#7c3aed' },
                     { id: 'amber', name: 'Âmbar Solar', desc: 'Quente e acolhedor', hex: '#d97706' },
@@ -910,7 +911,7 @@ export default function ConfigSection({
                         updateConfig({ theme: t.id });
                       }}
                       className={`flex items-center gap-3 p-3 rounded-control border text-left transition-all cursor-pointer ${
-                        theme === t.id
+                        (theme === t.id || (theme === 'default' && t.id === 'domino'))
                           ? 'border-slate-800 bg-surface-muted/70 ring-2 ring-slate-100'
                           : 'border-border hover:border-slate-300 hover:bg-surface-muted/40'
                       }`}
