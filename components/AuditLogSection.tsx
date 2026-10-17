@@ -121,8 +121,6 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
       case 'LOGIN':
       case 'LOGOUT':
         return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-purple-50 text-purple-700 border border-purple-200 rounded-md uppercase tracking-wider">{action}</span>;
-      case 'RESTORE':
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 rounded-md uppercase tracking-wider">Restauro</span>;
       default:
         return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-surface-muted text-text-secondary border border-border rounded-md uppercase tracking-wider">{action}</span>;
     }
@@ -240,7 +238,6 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
               <option value="UPDATE">Editar (UPDATE)</option>
               <option value="DELETE">Eliminar (DELETE)</option>
               <option value="LOGIN">Autenticação (LOGIN)</option>
-              <option value="RESTORE">Restauro (RESTORE)</option>
               <option value="SETTINGS">Definições (SETTINGS)</option>
             </select>
 

@@ -4,8 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AppConfiguration, SpecialDay, DefaultTask, ERPState } from '../lib/types';
 import { 
   Settings, RefreshCw, Key, Info, Calendar, Plus, Trash2, ListTodo, Edit2, Check, X,
-  Database, UploadCloud, DownloadCloud, CheckCircle, AlertCircle, Terminal, Copy, ExternalLink, ShieldCheck,
-  Users, GripVertical, Zap, Clock, Bell
+  Database, UploadCloud, CheckCircle, AlertCircle, Terminal, Copy, ShieldCheck,
+  Users, GripVertical, Zap, Bell
 } from 'lucide-react';
 import AutomationEditor from './AutomationEditor';
 import AuditLogSection from './AuditLogSection';
@@ -28,16 +28,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import ConfirmModal from './ConfirmModal';
-import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { 
   testSupabaseConnection, 
-  saveSnapshotToSupabase, 
-  listBackupsFromSupabase, 
-  deleteBackupFromSupabase, 
-  SUPABASE_SETUP_SQL, 
   SUPABASE_OPTIMIZE_INDEXES_SQL,
-  checkAndCreateAutoDailyBackup,
-  SupabaseBackup 
 } from '../lib/supabaseSync';
 // import Papa from 'papaparse';
 import UserSection from './UserSection';
@@ -81,7 +74,8 @@ interface ConfigSectionProps {
   updateNotificationSetting?: (id: string, updates: any) => void;
   reorderAuxRecords?: (tableName: any, newItems: any[]) => void;
   state: ERPState;
-  importState: (jsonStr: string) => boolean;
+  databaseStatus: 'idle' | 'syncing' | 'synced' | 'error';
+  databaseError?: string | null;
   addProject?: any;
   clients?: import('../lib/types').Client[];
   addClient?: any;
@@ -336,7 +330,8 @@ export default function ConfigSection({
   updateNotificationSetting,
   reorderAuxRecords,
   state,
-  importState,
+  databaseStatus,
+  databaseError,
   addProject,
   clients = [],
   addClient,
@@ -423,19 +418,10 @@ export default function ConfigSection({
   };
 
   // Supabase state management
-  const [supabaseStatus, setSupabaseStatus] = useState<'idle' | 'testing' | 'success' | 'failed'>(isSupabaseConfigured ? 'idle' : 'failed');
-  const [supabaseMessage, setSupabaseMessage] = useState(isSupabaseConfigured ? 'Pronto para testar ligação.' : 'Supabase não está configurado. Configure as variáveis ambientais.');
-  const [backups, setBackups] = useState<SupabaseBackup[]>([]);
-  const [backupsError, setBackupsError] = useState<string | null>(null);
-  const [loadingBackups, setLoadingBackups] = useState(false);
-  const [savingBackup, setSavingBackup] = useState(false);
+  const [supabaseStatus, setSupabaseStatus] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle');
+  const [supabaseMessage, setSupabaseMessage] = useState('Pronto para testar a leitura da base de dados.');
   const { busy: isSavingConfig, run: runConfigAction } = useAsyncAction();
-  const backupSaveInFlight = useRef(false);
   const connectionTestInFlight = useRef(false);
-  const autoBackupInFlight = useRef(false);
-  const [newBackupName, setNewBackupName] = useState('');
-  const [sqlCopied, setSqlCopied] = useState(false);
-  const [showSql, setShowSql] = useState(false);
   const [showIndexSql, setShowIndexSql] = useState(false);
   const [indexSqlCopied, setIndexSqlCopied] = useState(false);
 
@@ -455,7 +441,6 @@ export default function ConfigSection({
       if (result.success) {
         setSupabaseStatus('success');
         setSupabaseMessage(result.message);
-        await fetchBackups();
       } else {
         setSupabaseStatus('failed');
         setSupabaseMessage(result.message);
@@ -465,89 +450,20 @@ export default function ConfigSection({
     }
   };
 
-  const fetchBackups = async () => {
-    if (!isSupabaseConfigured) return;
-    setLoadingBackups(true);
-    setBackupsError(null);
-    const result = await listBackupsFromSupabase();
-    if (result.success && result.data) {
-      setBackups(result.data);
-    } else {
-      setBackupsError(result.message || 'Erro ao carregar backups do Supabase.');
-    }
-    setLoadingBackups(false);
-  };
-
-  // Auto-test connection on load if configured
   useEffect(() => {
-    if (isSupabaseConfigured) {
-      const timer = setTimeout(() => {
-        handleTestConnection();
-        fetchBackups();
-      }, 50);
-      return () => clearTimeout(timer);
+    if (supabaseStatus === 'testing') return;
+    if (databaseStatus === 'synced') {
+      setSupabaseStatus('success');
+      setSupabaseMessage('A aplicação leu os dados da base de dados com sucesso.');
+    } else if (databaseStatus === 'error') {
+      setSupabaseStatus('failed');
+      setSupabaseMessage(databaseError || 'Não foi possível ler a base de dados.');
+    } else if (databaseStatus === 'syncing') {
+      setSupabaseStatus('idle');
+      setSupabaseMessage('A sincronizar dados com a base de dados.');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [databaseStatus, databaseError]);
 
-
-  const handleSaveBackup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newBackupName.trim() || backupSaveInFlight.current) return;
-    backupSaveInFlight.current = true;
-    setSavingBackup(true);
-    try {
-      const result = await saveSnapshotToSupabase(state, newBackupName.trim());
-      if (result.success) {
-        alert('Cópia de segurança criada com sucesso no Supabase!');
-        setNewBackupName('');
-        await fetchBackups();
-      } else {
-        alert(result.message);
-      }
-    } finally {
-      backupSaveInFlight.current = false;
-      setSavingBackup(false);
-    }
-  };
-
-  const handleRestoreBackup = async (backup: SupabaseBackup) => {
-    askConfirmation(
-      'Restaurar Cópia de Segurança',
-      `Aviso: Isto irá substituir todos os dados atuais do portal pelos dados da cópia "${backup.name}" criada em ${new Date(backup.created_at).toLocaleString('pt-PT')}. Deseja continuar?`,
-      () => {
-        const success = importState(JSON.stringify(backup.state));
-        if (success) {
-          alert('Cópia de segurança restaurada com sucesso!');
-          window.location.reload();
-        } else {
-          alert('Erro ao restaurar a cópia de segurança. Formato de dados inválido.');
-        }
-      }
-    );
-  };
-
-  const handleDeleteBackup = async (id: string) => {
-    askConfirmation(
-      'Eliminar Cópia de Segurança',
-      'Tem a certeza que deseja eliminar esta cópia de segurança do Supabase permanentemente?',
-      async () => {
-        const result = await deleteBackupFromSupabase(id);
-        if (result.success) {
-          alert('Cópia de segurança eliminada com sucesso.');
-          fetchBackups();
-        } else {
-          alert(result.message);
-        }
-      }
-    );
-  };
-
-  const copySqlToClipboard = () => {
-    navigator.clipboard.writeText(SUPABASE_SETUP_SQL);
-    setSqlCopied(true);
-    setTimeout(() => setSqlCopied(false), 2000);
-  };
 
 
   // Special Days form state
@@ -808,113 +724,78 @@ export default function ConfigSection({
     if (!csvText.trim()) return;
     setImportingCsv(true);
     setCsvResult(null);
-
-    const PapaModule = await import('papaparse');
-    const Papa = PapaModule.default || PapaModule;
-
-    Papa.parse(csvText.trim(), {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        let successCount = 0;
-        let failedCount = 0;
-        let errors: string[] = [];
-
-        for (let index = 0; index < results.data.length; index++) {
-          const row: any = results.data[index];
-          try {
-            const getCol = (possibleNames: string[]) => {
-              const key = Object.keys(row).find(k => 
-                possibleNames.some(pn => k.toLowerCase().replace(/[^a-z0-9]/g, '').includes(pn))
-              );
-              return key ? row[key] : '';
-            };
-
-            const title = getCol(['titulo', 'projeto', 'title', 'nome']);
-            const clientName = getCol(['cliente', 'entidade', 'client']);
-            const budgetStr = getCol(['orcamento', 'budget', 'valor']);
-            const startDate = getCol(['inicio', 'start']);
-            const deliveryDate = getCol(['limite', 'entrega', 'delivery']);
-            const installProjNo = getCol(['install', 'ip']);
-            const sfOppNo = getCol(['oportunidade', 'sf', 'opp']);
-
-            if (!title) {
-              failedCount++;
-              errors.push(`Linha ${index + 2}: Título do projeto é obrigatório.`);
-              continue;
-            }
-
-            let clientId = '';
-            if (clientName) {
-              const existingClient = clients.find(c => c.clientName.toLowerCase() === clientName.toLowerCase() || c.shortName.toLowerCase() === clientName.toLowerCase());
-              if (existingClient) {
-                clientId = existingClient.id;
-              } else if (addClient) {
-                const newClient = await addClient({
-                  clientName: clientName,
-                  shortName: clientName.split(' ')[0] || clientName,
-                  location: '',
-                  notes: '',
-                });
-                if (newClient && newClient.id) {
-                  clientId = newClient.id;
-                }
-              }
-            } else {
-               if (addClient) {
-                 failedCount++;
-                 errors.push(`Linha ${index + 2}: Cliente é obrigatório.`);
-                 continue;
-               }
-            }
-
-            const budget = parseFloat(budgetStr.replace(/[^0-9.-]+/g, '')) || 0;
-
-            if (addProject) {
-              await addProject({
-                demo: false,
-                title: title,
-                clientId: clientId,
-                description: 'Importado por CSV',
-                categoryId: projectCategories[0]?.id || '',
-                categoryIds: [projectCategories[0]?.id || ''],
-                statusId: projectStatuses[0]?.id || '',
-                projectManagerId: '',
-                fieldManagerId: '',
-                salesRepId: '',
-                startDate: startDate || new Date().toISOString().split('T')[0],
-                deliveryDate: deliveryDate || '',
-                estimatedDate: '',
-                scheduledDate: '',
-                installProjectNo: installProjNo || '',
-                sfOpportunityNo: sfOppNo || '',
-                riskId: projectRisks[0]?.id || '',
-                priorityId: projectPriorities[0]?.id || '',
-                teamsInvolvedIds: [],
-                partnersIds: [],
-                documents: [],
-                budgetValue: budget,
-                deleted: false
-              });
-              successCount++;
-            }
-          } catch (e: any) {
-            failedCount++;
-            errors.push(`Linha ${index + 2}: Erro inesperado - ${e.message}`);
-          }
-        }
-
-        setCsvResult({ success: successCount, failed: failedCount, errors });
-        setImportingCsv(false);
-        if (successCount > 0) {
-           setCsvText('');
-        }
-      },
-      error: (err: any) => {
-        setCsvResult({ success: 0, failed: 1, errors: [err.message] });
-        setImportingCsv(false);
+    try {
+      if (!addProject || !currentUser?.id || !hasPermission(currentUser, 'projects_write', userGroups)) {
+        throw new Error('Sem permissão para criar projetos.');
       }
-    });
+      const PapaModule = await import('papaparse');
+      const Papa = PapaModule.default || PapaModule;
+      const parsed = Papa.parse<Record<string, string>>(csvText.trim(), { header: true, skipEmptyLines: 'greedy' });
+      if (parsed.errors.length) throw new Error(`CSV inválido: ${parsed.errors[0].message}`);
+      const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const aliases = {
+        title: ['nomedeprojeto', 'nomedoprojeto', 'titulodoprojeto', 'titulo', 'projeto'],
+        client: ['cliente'],
+        ip: ['nIP', 'numeroip', 'noip', 'ip'].map(normalize),
+        sf: ['nSF', 'numerosf', 'nosf', 'sf'].map(normalize),
+        start: ['datainicio', 'datadeinicio', 'inicio'],
+      };
+      const columns = Object.fromEntries(Object.entries(aliases).map(([field, names]) => [field, parsed.meta.fields?.find(header => names.includes(normalize(header)))])) as Record<string, string | undefined>;
+      const missing = Object.entries(columns).filter(([, header]) => !header).map(([field]) => field);
+      if (missing.length) throw new Error(`Colunas em falta: ${missing.join(', ')}.`);
+      const parseDate = (value: string) => {
+        const trimmed = value.trim();
+        const pt = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
+        const iso = pt ? `${pt[3]}-${pt[2]}-${pt[1]}` : trimmed;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || Number.isNaN(Date.parse(`${iso}T00:00:00Z`)) || new Date(`${iso}T00:00:00Z`).toISOString().slice(0, 10) !== iso) {
+          throw new Error('Data início inválida. Use AAAA-MM-DD ou DD/MM/AAAA.');
+        }
+        return iso;
+      };
+      const knownClients = new Map((clients || []).filter(c => !c.deleted).flatMap(c => [c.clientName, c.shortName].filter(Boolean).map(name => [normalize(name), c.id] as const)));
+      let success = 0;
+      const errors: string[] = [];
+      for (let index = 0; index < parsed.data.length; index++) {
+        const row = parsed.data[index];
+        try {
+          const get = (field: keyof typeof aliases) => String(row[columns[field]!] || '').trim();
+          const title = get('title');
+          const clientName = get('client');
+          if (!title || !clientName) throw new Error('Nome de projeto e cliente são obrigatórios.');
+          if (title.length > 255) throw new Error('Nome de projeto excede 255 caracteres.');
+          const startDate = parseDate(get('start'));
+          let clientId = knownClients.get(normalize(clientName));
+          if (!clientId) {
+            if (!addClient || !hasPermission(currentUser, 'clients_write', userGroups)) throw new Error(`Cliente "${clientName}" inexistente e sem permissão para o criar.`);
+            const created = await addClient({ clientName, shortName: clientName, location: '', notes: '' });
+            clientId = created?.id;
+            if (!clientId) throw new Error(`Não foi possível criar o cliente "${clientName}".`);
+            knownClients.set(normalize(clientName), clientId);
+          }
+          await addProject({
+            demo: false, title, clientId, description: 'Importado por CSV',
+            categoryId: projectCategories.find(c => !c.deleted)?.id || '',
+            categoryIds: projectCategories.find(c => !c.deleted)?.id ? [projectCategories.find(c => !c.deleted).id] : [],
+            statusId: projectStatuses.find(s => !s.deleted)?.id || '',
+            projectManagerId: currentUser.id,
+            fieldManagerId: '', salesRepId: '', startDate,
+            deliveryDate: '', estimatedDate: '', scheduledDate: '',
+            installProjectNo: get('ip'), sfOpportunityNo: get('sf'),
+            riskId: '', priorityId: '', teamsInvolvedIds: [], partnersIds: [],
+            documents: [], budgetValue: 0,
+          });
+          success++;
+        } catch (error: any) {
+          errors.push(`Linha ${index + 2}: ${error?.message || 'Erro ao importar projeto.'}`);
+        }
+      }
+      setCsvResult({ success, failed: errors.length, errors });
+      if (success && !errors.length) setCsvText('');
+    } catch (error: any) {
+      setCsvResult({ success: 0, failed: 1, errors: [error?.message || 'Erro ao ler CSV.'] });
+    } finally {
+      setImportingCsv(false);
+    }
   };
 
   return (
@@ -1622,7 +1503,7 @@ export default function ConfigSection({
         <div className="space-y-6">
           {/* CSV Import Card */}
           <div className="bg-surface rounded-card border border-border p-6 text-xs font-bold text-text-secondary animate-fade-in" id="csv-import-card">
-            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-subtle">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-control bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
                   <UploadCloud className="w-5 h-5" />
@@ -1635,13 +1516,13 @@ export default function ConfigSection({
             </div>
 
             <p className="text-text-muted text-[11px] font-normal mb-4 leading-relaxed">
-              Certifique-se de que o CSV inclui colunas para: Título do Projeto, Cliente, Orçamento, Data de Início, Data Limite, Install Project e Oportunidade SF.
+              Colunas obrigatórias: Nome de projeto, Cliente, Nº IP, Nº SF e Data início. O utilizador autenticado fica como Project Leader.
             </p>
             <div className="space-y-4">
               <textarea 
                 value={csvText}
                 onChange={e => setCsvText(e.target.value)}
-                placeholder={`Exemplo:\nTítulo, Cliente, Orçamento, Data Início\nProjeto A, Cliente X, 50000, 2024-01-01`}
+                placeholder={`Nome de projeto;Cliente;Nº IP;Nº SF;Data início\nProjeto A;Cliente X;IP-123;SF-456;2026-10-17`}
                 rows={5}
                 className="w-full p-3 border border-border rounded-control font-mono text-xs text-text-secondary focus:ring-2 focus:ring-blue-100 outline-none"
               />
@@ -1650,7 +1531,7 @@ export default function ConfigSection({
                 <button
                   type="button"
                   onClick={handleCsvImport}
-                  disabled={importingCsv || !csvText.trim()}
+                  disabled={importingCsv || !csvText.trim() || !hasPermission(currentUser, 'projects_write', userGroups)}
                   className="px-5 py-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs"
                 >
                   {importingCsv ? 'A importar...' : 'Importar Dados'}
@@ -1676,382 +1557,26 @@ export default function ConfigSection({
             </div>
           </div>
 
-          {/* Automatic Daily Backup Card */}
-          <div className="bg-surface rounded-card border border-border p-6 text-xs font-bold text-text-secondary animate-fade-in" id="auto-backup-card">
-            <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-control bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-text-primary">Gravação Automática Diária</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Política de retenção: até 10 snapshots diários e 10 snapshots semanais.</p>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="sr-only peer"
-                  checked={config.autoDailyBackupEnabled !== false}
-                  onChange={e => updateConfig({ autoDailyBackupEnabled: e.target.checked })}
-                />
-                <div className="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-              </label>
-            </div>
-
-            <div className="space-y-4">
-              <div className="p-4 bg-surface-muted border border-border/80 rounded-control space-y-3 text-text-secondary font-medium leading-relaxed">
-                <p className="text-xs">
-                  Quando ativada, a aplicação efetua automaticamente um snapshot diário completo da base de dados no Supabase.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
-                  <div className="p-3 bg-surface border border-border rounded-control flex items-center gap-2.5 shadow-2xs">
-                    <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span><strong>10 Diários:</strong> Mantém sempre os últimos 10 snapshots diários.</span>
-                  </div>
-                  <div className="p-3 bg-surface border border-border rounded-control flex items-center gap-2.5 shadow-2xs">
-                    <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
-                    <span><strong>10 Semanais:</strong> Mantém 1 snapshot de cada semana das últimas 10 semanas.</span>
-                  </div>
-                </div>
-                <div className="text-[11px] text-text-muted space-y-1 pt-1">
-                  <p>• O nome dos snapshots automáticos inclui a data e a hora de criação (ex: <code className="font-mono bg-slate-200/60 px-1.5 py-0.5 rounded text-text-primary">[Auto-Diário] 2026-09-12 12:30:00</code>).</p>
-                  <p>• À medida que novos snapshots são gravados, os mais antigos que não se enquadrem na regra são eliminados automaticamente.</p>
-                  <p>• Esta regra <strong>não influencia</strong> de todo os snapshots criados manualmente por si.</p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (autoBackupInFlight.current) return;
-                    autoBackupInFlight.current = true;
-                    setLoadingBackups(true);
-                    try {
-                      const res = await checkAndCreateAutoDailyBackup(state);
-                      alert(res.message);
-                      await fetchBackups();
-                    } finally {
-                      autoBackupInFlight.current = false;
-                      setLoadingBackups(false);
-                    }
-                  }}
-                  disabled={loadingBackups || savingBackup || !isSupabaseConfigured || config.autoDailyBackupEnabled === false}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all flex items-center gap-2 text-xs disabled:bg-slate-200 disabled:text-slate-400 cursor-pointer shadow-2xs"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loadingBackups ? 'animate-spin' : ''}`} />
-                  Executar Cópia Automática Diária Agora
-                </button>
-                <span className="text-[11px] text-slate-400 font-semibold">
-                  Estado: {config.autoDailyBackupEnabled !== false ? '✅ Gravação Automática Ativa' : '⏸️ Gravação Automática Pausada'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Supabase Integration & Backups List Card */}
+          {/* Estado da ligação à base de dados */}
           <div className="bg-surface rounded-card border border-border p-6 text-xs animate-fade-in" id="supabase-panel">
             <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-control bg-blue-50 text-primary flex items-center justify-center border border-blue-100 shrink-0">
-                  <Database className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-text-primary">Integração Supabase Cloud & Restauro</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Grave snapshots manuais ou restaure cópias guardadas na nuvem.</p>
-                </div>
+                <Database className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-extrabold text-text-primary">Ligação à base de dados</h3>
               </div>
-
-              <div className="flex items-center gap-2">
-                {isSupabaseConfigured ? (
-                  <button
-                    type="button"
-                    onClick={handleTestConnection}
-                    disabled={supabaseStatus === 'testing' || loadingBackups || savingBackup}
-                    className="px-3 py-1.5 bg-surface-muted hover:bg-slate-200 border border-border text-text-secondary font-bold rounded-lg transition-all flex items-center gap-1.5 text-xs"
-                    title="Testar ligação à base de dados"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${supabaseStatus === 'testing' ? 'animate-spin' : ''}`} />
-                    Testar Ligação
-                  </button>
-                ) : (
-                  <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 font-extrabold rounded-lg text-[10px] tracking-wide">
-                    NÃO CONFIGURADO
-                  </span>
-                )}
-              </div>
-            </div>
-
-        {/* Status Indicator Bar */}
-        <div className={`p-4 rounded-control mb-6 border ${
-          supabaseStatus === 'success' 
-            ? 'bg-emerald-50/50 border-emerald-100 text-emerald-800' 
-            : supabaseStatus === 'testing'
-            ? 'bg-blue-50/50 border-blue-100 text-blue-800'
-            : 'bg-surface-muted border-border text-text-secondary'
-        }`}>
-          <div className="flex items-start gap-2.5">
-            {supabaseStatus === 'success' ? (
-              <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-            ) : supabaseStatus === 'testing' ? (
-              <RefreshCw className="w-4 h-4 text-primary flex-shrink-0 mt-0.5 animate-spin" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
-            )}
-            <div>
-              <p className="font-bold">{supabaseMessage}</p>
-              {supabaseStatus === 'success' && (
-                <p className="text-[10px] text-emerald-600 font-medium mt-0.5">
-                  A sua aplicação está a usar ativamente o Supabase como base de dados principal. Todos os dados são guardados em tempo real na nuvem e o armazenamento local foi desativado.
-                </p>
-              )}
-              {supabaseStatus === 'failed' && !isSupabaseConfigured && (
-                <p className="text-[10px] text-text-muted font-medium mt-0.5">
-                  Atenção: O sistema não está a gravar dados localmente. Sem o Supabase, perderá os dados ao atualizar a página. Siga as instruções abaixo para ligar a sua instância do Supabase ao portal.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Instructions block for non-configured states */}
-        {!isSupabaseConfigured && (
-          <div className="space-y-4 bg-surface-muted/50 rounded-card border border-border p-4 mb-6">
-            <h4 className="font-bold text-text-primary flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-primary" />
-              Como configurar o Supabase:
-            </h4>
-            
-            <ol className="list-decimal list-inside space-y-2.5 text-text-secondary font-semibold pl-1">
-              <li>
-                Crie um projeto gratuito no <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">Supabase.com <ExternalLink className="w-3 h-3" /></a>.
-              </li>
-              <li>
-                Abra a barra lateral de <strong>Configurações do AI Studio</strong> (Menu Secrets / Chaves de API).
-              </li>
-              <li>
-                Adicione as duas seguintes variáveis de ambiente secretas:
-                <div className="mt-1.5 p-2.5 bg-slate-900 text-slate-100 rounded-lg font-mono text-[10px] space-y-1 block select-all">
-                  <div>NEXT_PUBLIC_SUPABASE_URL = <span className="text-slate-400">{'"o URL do seu projeto Supabase"'}</span></div>
-                  <div>NEXT_PUBLIC_SUPABASE_ANON_KEY = <span className="text-slate-400">{'"a chave ANON_KEY do seu projeto"'}</span></div>
-                </div>
-              </li>
-              <li>
-                Execute o script de criação de tabela no editor SQL do Supabase. Clique no botão abaixo para copiar o script necessário:
-              </li>
-            </ol>
-
-            <div className="pt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setShowSql(!showSql)}
-                className="px-3.5 py-2 bg-slate-800 text-white hover:bg-slate-700 font-bold rounded-lg transition-colors flex items-center gap-1.5"
-              >
-                <Terminal className="w-3.5 h-3.5" />
-                {showSql ? 'Ocultar Script SQL' : 'Mostrar Script SQL de Instalação'}
+              <button type="button" onClick={handleTestConnection} disabled={supabaseStatus === 'testing'}
+                className="px-3 py-1.5 bg-surface-muted hover:bg-slate-200 border border-border text-text-secondary font-bold rounded-lg flex items-center gap-1.5 disabled:opacity-50">
+                <RefreshCw className={`w-3.5 h-3.5 ${supabaseStatus === 'testing' ? 'animate-spin' : ''}`} />
+                Testar ligação
               </button>
             </div>
-
-            {showSql && (
-              <div className="mt-3 space-y-2 animate-fade-in">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-text-muted font-bold font-mono">SCRIPT SQL RECOMENDADO</span>
-                  <button
-                    type="button"
-                    onClick={copySqlToClipboard}
-                    className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold border border-blue-100 rounded transition-all flex items-center gap-1"
-                  >
-                    <Copy className="w-3 h-3" />
-                    {sqlCopied ? 'Copiado!' : 'Copiar Script'}
-                  </button>
-                </div>
-                <pre className="p-3 bg-slate-900 text-slate-200 rounded-control font-mono text-[10px] overflow-x-auto max-h-[250px] leading-relaxed border border-slate-800">
-                  {SUPABASE_SETUP_SQL}
-                </pre>
+            <div role="status" className={`p-4 rounded-control border ${supabaseStatus === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : supabaseStatus === 'failed' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-surface-muted border-border text-text-secondary'}`}>
+              <div className="flex items-start gap-2.5">
+                {supabaseStatus === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                <span>{supabaseStatus === 'testing' ? 'A testar a leitura da base de dados...' : supabaseMessage}</span>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Backup operations for configured states */}
-        {isSupabaseConfigured && (
-          <div className="space-y-6">
-            <div className="bg-surface-muted/50 rounded-card border border-border p-4">
-              <h4 className="font-bold text-text-primary mb-3 flex items-center gap-1.5">
-                <UploadCloud className="w-4 h-4 text-primary" />
-                Criar Nova Cópia de Segurança na Nuvem
-              </h4>
-
-              <form onSubmit={handleSaveBackup} className="flex flex-col sm:flex-row gap-2 items-end">
-                <div className="flex-1 w-full space-y-1">
-                  <label className="block text-[10px] text-text-muted">Nome identificador da cópia</label>
-                  <input
-                    type="text"
-                    required
-                    disabled={savingBackup || loadingBackups || supabaseStatus !== 'success'}
-                    placeholder="Ex: Cópia Completa - Linha de Montagem 3"
-                    value={newBackupName}
-                    onChange={e => setNewBackupName(e.target.value)}
-                    className="w-full p-2 border border-border rounded-lg text-text-primary font-semibold focus:ring-2 focus:ring-blue-100 outline-none disabled:bg-surface-muted disabled:text-slate-400"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={savingBackup || loadingBackups || supabaseStatus !== 'success' || !newBackupName.trim()}
-                  className="w-full sm:w-auto px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:bg-slate-200 disabled:text-slate-400"
-                >
-                  <UploadCloud className={`w-4 h-4 ${savingBackup ? 'animate-bounce' : ''}`} />
-                  {savingBackup ? 'A Gravar...' : 'Gravar no Supabase'}
-                </button>
-              </form>
-            </div>
-
-            {/* Backups List */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-extrabold text-text-primary flex items-center gap-1.5">
-                  <DownloadCloud className="w-4 h-4 text-indigo-600" />
-                  Cópias de Segurança Disponíveis no Supabase ({backups.length})
-                </h4>
-                <button
-                  type="button"
-                  onClick={fetchBackups}
-                  disabled={loadingBackups || savingBackup || supabaseStatus !== 'success'}
-                  className="px-2 py-1 text-[10px] bg-surface-muted hover:bg-slate-200 border border-border rounded-md font-bold text-text-secondary transition-all flex items-center gap-1"
-                >
-                  <RefreshCw className={`w-3 h-3 ${loadingBackups ? 'animate-spin' : ''}`} />
-                  Atualizar Lista
-                </button>
-              </div>
-
-              {loadingBackups ? (
-                <div className="p-8 text-center bg-surface-muted border border-border rounded-card flex flex-col items-center justify-center gap-2">
-                  <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                  <span className="font-bold text-text-muted">A carregar registos do Supabase...</span>
-                </div>
-              ) : backupsError ? (
-                <div className="p-6 bg-red-50/50 border border-red-200 rounded-card text-red-800">
-                  <div className="flex gap-2.5 items-start">
-                    <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-bold text-xs">Erro ao ler registos do Supabase</p>
-                      <p className="font-semibold text-[10px] text-red-600 font-mono mt-1 break-all bg-red-100/40 p-2 rounded border border-red-100">{backupsError}</p>
-                      <p className="font-semibold text-[10px] text-text-secondary mt-2">
-                        Isto geralmente ocorre se a conectividade com o Supabase estiver indisponível ou se as permissões estiverem incorretas.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 border-t border-red-100 pt-3">
-                    <button 
-                      type="button"
-                      onClick={() => setShowSql(!showSql)}
-                      className="text-[10px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-1"
-                    >
-                      {showSql ? 'Ocultar Script SQL de Configuração' : 'Ver Script SQL de Configuração'}
-                    </button>
-
-                    {showSql && (
-                      <div className="mt-3 text-left space-y-2 max-w-xl">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-text-muted font-mono">SCRIPT SQL DO SUPABASE</span>
-                          <button
-                            type="button"
-                            onClick={copySqlToClipboard}
-                            className="px-2 py-0.5 bg-surface border border-border hover:bg-surface-muted text-text-secondary font-bold rounded text-[9px]"
-                          >
-                            {sqlCopied ? 'Copiado!' : 'Copiar'}
-                          </button>
-                        </div>
-                        <pre className="p-3 bg-slate-950 text-slate-200 rounded-control font-mono text-[9px] overflow-x-auto max-h-[150px] leading-relaxed border border-slate-850">
-                          {SUPABASE_SETUP_SQL}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : backups.length === 0 ? (
-                <div className="p-8 text-center bg-surface-muted text-slate-400 font-bold border border-slate-150 rounded-card">
-                  Nenhuma cópia de segurança encontrada. As cópias de segurança da base de dados são mantidas e geridas automaticamente pelo PostgreSQL.
-                  <button 
-                    type="button"
-                    onClick={() => setShowSql(!showSql)}
-                    className="block mx-auto mt-3 text-primary hover:underline cursor-pointer"
-                  >
-                    {showSql ? 'Ocultar Script SQL' : 'Ver Script SQL de Configuração de Tabelas'}
-                  </button>
-
-                  {showSql && (
-                    <div className="mt-4 text-left space-y-2 max-w-xl mx-auto">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-text-muted font-mono">SCRIPT SQL DO SUPABASE</span>
-                        <button
-                          type="button"
-                          onClick={copySqlToClipboard}
-                          className="px-2 py-0.5 bg-surface border border-border hover:bg-surface-muted text-text-secondary font-bold rounded text-[9px]"
-                        >
-                          {sqlCopied ? 'Copiado!' : 'Copiar'}
-                        </button>
-                      </div>
-                      <pre className="p-3 bg-slate-950 text-slate-200 rounded-control font-mono text-[9px] overflow-x-auto max-h-[150px] leading-relaxed">
-                        {SUPABASE_SETUP_SQL}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="bg-surface rounded-card border border-border shadow-2xs overflow-hidden">
-                  <div className="overflow-x-auto w-full">
-                    <table className="w-full min-w-[520px] text-left border-collapse">
-                      <thead>
-                        <tr className="bg-surface-muted/90 border-b border-border/80 text-[11px] uppercase text-text-muted font-bold tracking-wider whitespace-nowrap">
-                        <th className="p-3.5">Nome da Cópia</th>
-                        <th className="p-3.5">Data de Gravação</th>
-                        <th className="p-3.5 text-right">Ações de Restauro</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-xs">
-                      {backups.map(backup => (
-                        <tr key={backup.id} className="hover:bg-surface-muted/50 transition-colors">
-                          <td className="p-3.5">
-                            <span className="text-text-primary font-bold font-mono">{backup.name}</span>
-                          </td>
-                          <td className="p-3.5 text-text-muted font-medium font-mono">
-                            {new Date(backup.created_at).toLocaleString('pt-PT')}
-                          </td>
-                          <td className="p-3.5 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                disabled={savingBackup || loadingBackups}
-                                onClick={() => handleRestoreBackup(backup)}
-                                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-lg text-indigo-700 font-extrabold text-[10px] flex items-center gap-1 transition-all cursor-pointer"
-                                title="Carregar esta cópia de segurança"
-                              >
-                                <DownloadCloud className="w-3.5 h-3.5" />
-                                Restaurar
-                              </button>
-                              <button
-                                type="button"
-                                disabled={savingBackup || loadingBackups}
-                                onClick={() => handleDeleteBackup(backup.id)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                title="Eliminar cópia permanentemente"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
-        )}
 
           {/* Auditoria de Consultas & Índices Card */}
           <div className="bg-surface rounded-card border border-border p-6 text-xs animate-fade-in" id="index-panel">
@@ -2127,7 +1652,6 @@ export default function ConfigSection({
             </div>
           )}
         </div>
-      </div>
       </div>
       )}
 
