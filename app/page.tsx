@@ -1045,6 +1045,7 @@ export default function Page() {
                   updateUser={updateUser}
                   deleteUser={deleteUser}
                   hideUsers={true}
+                  hideRoles={true}
                   appConfig={state.appConfig}
                   specialDays={state.specialDays}
                   currentUser={currentUser}
