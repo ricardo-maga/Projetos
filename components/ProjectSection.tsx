@@ -307,7 +307,7 @@ export default function ProjectSection({
     isOpen: boolean;
     title: string;
     message: string;
-    onConfirm: () => void;
+    onConfirm: () => void | Promise<void>;
   }>({
     isOpen: false,
     title: '',
@@ -315,7 +315,7 @@ export default function ProjectSection({
     onConfirm: () => {},
   });
 
-  const askConfirmation = (title: string, message: string, onConfirm: () => void) => {
+  const askConfirmation = (title: string, message: string, onConfirm: () => void | Promise<void>) => {
     setConfirmState({
       isOpen: true,
       title,
@@ -656,8 +656,7 @@ export default function ProjectSection({
   };
 
   // Submit Form
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveProjectForm = async (duplicatesConfirmed = false) => {
     await runProjectAction(async () => {
     if (!canWriteProjects) {
       alert('Não tem permissão para criar ou editar projetos.');
@@ -666,6 +665,31 @@ export default function ProjectSection({
 
     if (!editingId && (!formTitle.trim() || !clientSearchQuery.trim() || !formProjManager.trim() || formCategories.length === 0)) {
       alert('Preencha o cliente, o nome do projeto, o Project Leader e selecione pelo menos uma categoria.');
+      return;
+    }
+
+    const duplicateMessages: string[] = [];
+    for (const { field, value, label } of [
+      { field: 'ip', value: formInstallNo.trim(), label: 'Nº de IP' },
+      { field: 'sf', value: formSFNo.trim(), label: 'Oportunidade SF' },
+    ]) {
+      if (!value || duplicatesConfirmed) continue;
+      try {
+        const params = new URLSearchParams({ field, value });
+        if (editingId) params.set('excludeId', editingId);
+        const response = await fetch(`/api/v1/projects/ip-duplicate?${params}`, { headers: getAuthHeaders() });
+        if (!response.ok) throw new Error(`Não foi possível verificar ${label} na base de dados.`);
+        const result = await response.json();
+        if (result.duplicate) {
+          duplicateMessages.push(`${label} ${value} já está associado ao projeto "${result.duplicate.title}" do cliente "${result.duplicate.clientName}".`);
+        }
+      } catch (error) {
+        alert(error instanceof Error ? error.message : `Não foi possível verificar ${label}.`);
+        return;
+      }
+    }
+    if (duplicateMessages.length > 0) {
+      askConfirmation('Identificador já existente', `${duplicateMessages.join(' ')} Deseja confirmar a gravação?`, () => saveProjectForm(true));
       return;
     }
 
@@ -796,6 +820,11 @@ export default function ProjectSection({
       // Keep form open for correction on failure
     }
     });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void saveProjectForm();
   };
 
   const handleToggleTeam = (id: string) => {
