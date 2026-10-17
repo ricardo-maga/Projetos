@@ -5,7 +5,7 @@ import { AppConfiguration, SpecialDay, DefaultTask, ERPState } from '../lib/type
 import { 
   Settings, RefreshCw, Key, Info, Calendar, Plus, Trash2, ListTodo, Edit2, Check, X,
   Database, UploadCloud, CheckCircle, AlertCircle, Terminal, Copy, ShieldCheck,
-  Users, GripVertical, Zap, Bell, Search, ChevronLeft, ChevronRight
+  Users, GripVertical, Zap, Bell, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import AutomationEditor from './AutomationEditor';
 import AuditLogSection from './AuditLogSection';
@@ -478,8 +478,6 @@ export default function ConfigSection({
   const [dtDesc, setDtDesc] = useState('');
   const [dtHours, setDtHours] = useState('08:00');
   const [dtTypeId, setDtTypeId] = useState('');
-  const [dtSearch, setDtSearch] = useState('');
-  const [dtFilterTypeId, setDtFilterTypeId] = useState('');
   const [dtPage, setDtPage] = useState(0);
   const [dtPageSize, setDtPageSize] = useState(12);
   const [showDefaultTaskForm, setShowDefaultTaskForm] = useState(false);
@@ -725,11 +723,7 @@ export default function ConfigSection({
     setEditingDtId(null);
   };
 
-  const defaultTaskQuery = dtSearch.trim().toLocaleLowerCase('pt-PT');
-  const filteredDefaultTasks = defaultTasks.filter(task => {
-    const matchesType = !dtFilterTypeId || (dtFilterTypeId === 'unassigned' ? !task.taskTypeId : task.taskTypeId === dtFilterTypeId);
-    return matchesType && (!defaultTaskQuery || [task.title, task.description].some(value => value.toLocaleLowerCase('pt-PT').includes(defaultTaskQuery)));
-  });
+  const filteredDefaultTasks = defaultTasks;
   const defaultTaskTotalPages = Math.max(1, Math.ceil(filteredDefaultTasks.length / dtPageSize));
   const currentDefaultTaskPage = Math.min(dtPage, defaultTaskTotalPages - 1);
   const defaultTaskStartIndex = currentDefaultTaskPage * dtPageSize;
@@ -1038,10 +1032,6 @@ export default function ConfigSection({
         <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60 space-y-4">
           <M3SectionHeader title="Templates de tarefas" description="Crie e organize modelos reutilizáveis para as tarefas dos projetos."
             actions={canWriteConfig ? <Button type="button" onClick={() => { setDtTitle(''); setDtDesc(''); setDtHours('08:00'); setDtTypeId(''); setShowDefaultTaskForm(visible => !visible); }}><Plus aria-hidden="true" className="w-4 h-4" /> Nova tarefa</Button> : undefined} />
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-            <div className="flex-1 min-w-0 relative"><Search aria-hidden="true" className="absolute left-3 top-[2.75rem] -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none z-10" /><Input label="Pesquisar templates" type="search" placeholder="Pesquisar por título ou instruções…" value={dtSearch} onChange={e => { setDtSearch(e.target.value); setDtPage(0); }} className="pl-9" /></div>
-            <div className="w-full sm:w-64"><Select label="Tipo de tarefa" value={dtFilterTypeId} onChange={e => { setDtFilterTypeId(e.target.value); setDtPage(0); }}><option value="">Todos os tipos</option><option value="unassigned">Por defeito</option>{taskTypes.filter((type: any) => !type.deleted).map((type: any) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></div>
-          </div>
         </div>
         {canWriteConfig && showDefaultTaskForm && <form id="default-task-form" onSubmit={handleAddDefaultTask} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
           <div className="lg:col-span-4"><Input label="Título da tarefa" type="text" required placeholder="Ex.: Eletrificação de sistema" value={dtTitle} onChange={e => setDtTitle(e.target.value)} /></div>
@@ -1057,7 +1047,6 @@ export default function ConfigSection({
         {visibleDefaultTasks.length === 0 ? (
           <div role="status" className="p-10 text-center text-body-sm text-text-secondary space-y-3">
             <p>{defaultTasks.length === 0 ? 'Nenhuma tarefa por defeito configurada.' : 'Nenhum template encontrado para os filtros selecionados.'}</p>
-            {(dtSearch || dtFilterTypeId) && <Button type="button" variant="secondary" size="sm" onClick={() => { setDtSearch(''); setDtFilterTypeId(''); setDtPage(0); }}>Limpar filtros</Button>}
           </div>
         ) : (
           <div className="divide-y divide-border-subtle">
