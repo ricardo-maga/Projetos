@@ -55,24 +55,30 @@ describe('Project analytics', () => {
     expect(html).toContain('IP-123');
     expect(html).not.toContain('Sem projetos com material em falta/atraso');
   });
-  it('renders the commercial manager selector and all five period buttons', () => {
+  it('renders exclusive commercial manager buttons and all five period buttons', () => {
     const today = new Date();
     const startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const html = renderToStaticMarkup(React.createElement(ProjectAnalytics, {
       projects: [p('visible', '2020-01-01', { startDate, title: 'Projeto visível', salesRepId: 'sales' }),
+        p('other-visible', '2020-01-01', { startDate, title: 'Projeto de Bruno', salesRepId: 'bruno' }),
         p('hidden', '2020-01-01', { startDate: '2020-01-01', title: 'Projeto antigo', salesRepId: 'old' })],
-      projectStatuses: statuses, categories: [], users: [{ id: 'sales', name: 'Ana Silva' }, { id: 'old', name: 'Outro gestor' }],
+      projectStatuses: statuses, categories: [], users: [{ id: 'sales', name: 'Ana Silva' }, { id: 'bruno', name: 'Bruno Costa' }, { id: 'old', name: 'Outro gestor' }],
       onSelectProject: () => {},
     }));
     expect(html).toContain('Projetos por gestor comercial');
     expect(html).toContain('aria-label="Período dos projetos por gestor comercial"');
     expect(html).toContain(`FY${String(fiscalYearStart(today) - 1).slice(-2)}`);
     expect(html).toContain(`FY${String(fiscalYearStart(today)).slice(-2)}`);
-    expect(html).toContain('value="sales"');
-    expect(html).toContain('Ana Silva</option>');
-    expect(html).not.toContain('<option value="old"');
-    expect(html).toContain('Projeto visível');
-    expect(html).not.toContain('Projeto antigo');
+    const managerButtons = html.match(/role="group" aria-label="Gestor comercial"[\s\S]*?<\/div>/)?.[0] || '';
+    expect(managerButtons).toContain('Ana Silva</button>');
+    expect(managerButtons).toContain('Bruno Costa</button>');
+    expect(managerButtons.match(/aria-pressed="true"/g)).toHaveLength(1);
+    expect(managerButtons.match(/aria-pressed="false"/g)).toHaveLength(1);
+    expect(managerButtons).not.toContain('Outro gestor');
+    const commercialCard = html.slice(html.indexOf('Projetos por gestor comercial'));
+    expect(commercialCard).toContain('Projeto visível');
+    expect(commercialCard).not.toContain('Projeto de Bruno');
+    expect(commercialCard).not.toContain('Projeto antigo');
   });
   it('counts monthly awards by start date and sums sale values independently of the window', () => {
     const projects = [
