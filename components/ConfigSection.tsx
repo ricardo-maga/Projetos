@@ -482,6 +482,7 @@ export default function ConfigSection({
   const [dtFilterTypeId, setDtFilterTypeId] = useState('');
   const [dtPage, setDtPage] = useState(0);
   const [dtPageSize, setDtPageSize] = useState(12);
+  const [showDefaultTaskForm, setShowDefaultTaskForm] = useState(false);
 
   // Inline editing state for default tasks
   const [editingDtId, setEditingDtId] = useState<string | null>(null);
@@ -702,6 +703,7 @@ export default function ConfigSection({
     setDtDesc('');
     setDtHours('08:00');
     setDtTypeId('');
+    setShowDefaultTaskForm(false);
   };
 
   const startEditingDefaultTask = (dt: DefaultTask) => {
@@ -1035,17 +1037,21 @@ export default function ConfigSection({
       <Card className="bg-surface rounded-card border border-border overflow-hidden animate-fade-in" id="default-tasks-card">
         <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/60 space-y-4">
           <M3SectionHeader title="Templates de tarefas" description="Crie e organize modelos reutilizáveis para as tarefas dos projetos."
-            actions={canWriteConfig ? <Button type="submit" form="default-task-form"><Plus aria-hidden="true" className="w-4 h-4" /> Adicionar template</Button> : undefined} />
+            actions={canWriteConfig ? <Button type="button" onClick={() => { setDtTitle(''); setDtDesc(''); setDtHours('08:00'); setDtTypeId(''); setShowDefaultTaskForm(visible => !visible); }}><Plus aria-hidden="true" className="w-4 h-4" /> Nova tarefa</Button> : undefined} />
           <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
             <div className="flex-1 min-w-0 relative"><Search aria-hidden="true" className="absolute left-3 top-[2.75rem] -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none z-10" /><Input label="Pesquisar templates" type="search" placeholder="Pesquisar por título ou instruções…" value={dtSearch} onChange={e => { setDtSearch(e.target.value); setDtPage(0); }} className="pl-9" /></div>
             <div className="w-full sm:w-64"><Select label="Tipo de tarefa" value={dtFilterTypeId} onChange={e => { setDtFilterTypeId(e.target.value); setDtPage(0); }}><option value="">Todos os tipos</option><option value="unassigned">Por defeito</option>{taskTypes.filter((type: any) => !type.deleted).map((type: any) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></div>
           </div>
         </div>
-        {canWriteConfig && <form id="default-task-form" onSubmit={handleAddDefaultTask} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+        {canWriteConfig && showDefaultTaskForm && <form id="default-task-form" onSubmit={handleAddDefaultTask} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
           <div className="lg:col-span-4"><Input label="Título da tarefa" type="text" required placeholder="Ex.: Eletrificação de sistema" value={dtTitle} onChange={e => setDtTitle(e.target.value)} /></div>
           <div className="lg:col-span-3"><Select label="Tipo de tarefa" value={dtTypeId} onChange={e => setDtTypeId(e.target.value)}><option value="">Por defeito</option>{taskTypes.filter((type: any) => !type.deleted).map((type: any) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></div>
           <div className="lg:col-span-2"><Input label="Duração prevista" type="text" required inputMode="numeric" pattern="[0-9]{1,3}:[0-5][0-9]" placeholder="HH:MM" value={dtHours} onChange={e => setDtHours(e.target.value)} onBlur={() => setDtHours(formatHoursToHHMM(parseTimeToHours(dtHours)))} /></div>
           <div className="lg:col-span-3"><Input label="Instruções técnicas" type="text" placeholder="Instruções padrão…" value={dtDesc} onChange={e => setDtDesc(e.target.value)} /></div>
+          <div className="lg:col-span-12 flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setShowDefaultTaskForm(false)}>Cancelar</Button>
+            <Button type="submit"><Check aria-hidden="true" className="w-4 h-4" /> Guardar</Button>
+          </div>
         </form>}
 
         {visibleDefaultTasks.length === 0 ? (
