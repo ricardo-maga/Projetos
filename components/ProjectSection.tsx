@@ -27,7 +27,7 @@ import { hasPermission } from '../lib/permissions';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getAuthHeaders } from '../lib/clientAuth';
 import { normalizeTaskFromApiResponse } from '../lib/taskOperations';
-import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatToOnlyHours, getProjectStatusStyle, getTaskStatusStyle } from '../lib/utils';
+import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatHoursToHHMM, formatToOnlyHours, parseTimeToHours, getProjectStatusStyle, getTaskStatusStyle } from '../lib/utils';
 import { configuredRoleIds, userHasAnyRole } from '../lib/roleAssociations';
 import { currentForecastMonth, forecastLabel, forecastMonth, normalizeForecast, projectForecastAlert } from '../lib/projectForecast';
 
@@ -624,9 +624,8 @@ export default function ProjectSection({
       setFormDesc('');
       setFormClient('');
       setClientSearchQuery('');
-      const defaultCat = projectCategories.find(c => !c.deleted)?.id || '';
-      setFormCategory(defaultCat);
-      setFormCategories(defaultCat ? [defaultCat] : []);
+      setFormCategory('');
+      setFormCategories([]);
       setFormStatus(projectStatuses[0]?.id || '');
       setFormProjManager('');
       setFormFieldManager('');
@@ -1564,7 +1563,7 @@ export default function ProjectSection({
                 {selectedProj.demo && <span className="text-caption font-bold uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary">Demo</span>}
               </div>
               <h1 className="text-heading-lg text-text-primary tracking-tight">{selectedProj.title}</h1>
-              <p className="text-body-sm text-text-secondary font-mono">IP: {selectedProj.installProjectNo || 'S/N'} • Oportunidade SF: {selectedProj.sfOpportunityNo || 'S/N'}</p>
+              <p className="text-body-sm text-text-secondary font-mono">IP: {selectedProj.installProjectNo || 'S/N'} • Opp SF: {selectedProj.sfOpportunityNo || 'S/N'}</p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -3515,10 +3514,6 @@ export default function ProjectSection({
           <M3SectionHeader
             title={editingId ? 'Editar projeto' : 'Adicionar novo projeto'}
             description={editingId ? `ID ${editingId}` : undefined}
-            actions={<>
-              <Button type="button" variant="secondary" size="sm" disabled={isSavingProject} onClick={() => setIsEditing(false)}>Cancelar</Button>
-              <Button type="submit" size="sm" isLoading={isSavingProject}>Gravar Alterações</Button>
-            </>}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-body-sm font-bold text-text-secondary">
@@ -3570,7 +3565,7 @@ export default function ProjectSection({
                             setClientSearchQuery(`${c.clientName} (${c.shortName})`);
                             setShowClientSuggestions(false);
                           }}
-                          className={`w-full text-left p-2 rounded-lg text-body-sm transition-colors flex flex-col gap-0.5 cursor-pointer ${
+                          className={`w-full items-start text-left p-2 rounded-lg text-body-sm transition-colors flex flex-col gap-0.5 cursor-pointer ${
                             isSelected
                               ? 'bg-primary/10 text-primary font-bold'
                               : 'hover:bg-surface-muted text-text-secondary font-semibold'
@@ -4011,7 +4006,7 @@ export default function ProjectSection({
                         <div className="flex justify-between items-center gap-1 font-bold text-text-primary">
                           <span className="truncate max-w-[150px]">{dt.title}</span>
                           <span className="text-caption px-1.5 py-0.5 bg-surface-muted rounded text-text-secondary font-mono flex-shrink-0">
-                            {dt.estimatedHours}
+                            {formatHoursToHHMM(parseTimeToHours(dt.estimatedHours))}
                           </span>
                         </div>
                         <div className="text-caption text-text-muted font-normal mt-0.5 truncate max-w-[200px]">
@@ -4026,7 +4021,7 @@ export default function ProjectSection({
 
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-border-subtle">
+          <div className="sticky bottom-0 z-40 -mx-6 flex justify-end gap-3 border-t border-border-subtle bg-surface/95 px-6 py-4 shadow-[0_-8px_16px_-12px_rgba(0,0,0,0.25)] backdrop-blur">
             <Button variant="ghost" size="sm"
               type="button"
               disabled={isSavingProject}
@@ -4212,7 +4207,7 @@ export default function ProjectSection({
                       setProjectPageSize(Number(e.target.value));
                       setProjectCurrentPage(1);
                     }}
-                    className="px-2 py-1 bg-surface border border-border rounded-lg text-body-sm font-semibold text-text-secondary outline-none focus:ring-1 focus:ring-primary"
+                    className="w-20 min-w-20 px-2 py-1 bg-surface border border-border rounded-lg text-body-sm font-semibold text-text-secondary outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option value={15}>15</option>
                     <option value={25}>25</option>
