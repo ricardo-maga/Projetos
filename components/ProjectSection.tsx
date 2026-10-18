@@ -3510,13 +3510,16 @@ export default function ProjectSection({
       ) : isEditing ? (
 
         // 2. PROJECT EDIT OR CREATE FORM
-        <form onSubmit={handleSubmit} className="bg-surface rounded-card border border-border p-6 space-y-6 -sm animate-fade-in">
-          <M3SectionHeader
-            title={editingId ? 'Editar projeto' : 'Adicionar novo projeto'}
-            description={editingId ? `ID ${editingId}` : undefined}
-          />
+        <form onSubmit={handleSubmit} className="flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col overflow-hidden rounded-card border border-border bg-surface -sm animate-fade-in">
+          <div className="shrink-0 px-6 pt-6">
+            <M3SectionHeader
+              title={editingId ? 'Editar projeto' : 'Adicionar novo projeto'}
+              description={editingId ? `ID ${editingId}` : undefined}
+            />
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-body-sm font-bold text-text-secondary">
+          <div className="min-h-0 flex-1 overflow-y-auto p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-body-sm font-bold text-text-secondary">
 
             {/* Client Suggested Select */}
             <div className="space-y-1 relative" id="client-autocomplete-container">
@@ -4019,9 +4022,10 @@ export default function ProjectSection({
               </div>
             )}
 
+            </div>
           </div>
 
-          <div className="fixed bottom-4 right-4 z-50 flex justify-end gap-3 rounded-card border border-border-subtle bg-surface/95 p-3 shadow-lg backdrop-blur md:bottom-24 md:right-12">
+          <div className="flex shrink-0 justify-end gap-3 border-t border-border-subtle bg-surface px-6 py-4">
             <Button variant="ghost" size="sm"
               type="button"
               disabled={isSavingProject}
