@@ -63,7 +63,9 @@ async function handleUpdate(req: NextRequest, ctx: any) {
   const { user, requestId } = auth;
 
   try {
-    const rawBody = await req.json();
+    let rawBody: unknown;
+    try { rawBody = await req.json(); }
+    catch { return badRequest('Corpo JSON inválido.', requestId); }
     const parseResult = updateProjectSchema.safeParse(rawBody);
 
     if (!parseResult.success) {

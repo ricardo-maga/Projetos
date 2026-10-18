@@ -9,6 +9,7 @@ import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 import { createProject, listProjects } from '@/lib/projects/projectService';
+import { getIdempotentEntityId, withUserIdempotency } from '@/lib/apiIdempotency';
 
 export async function GET(req: NextRequest) {
   const auth = await requirePermission(req, 'projects_read');
@@ -58,14 +59,16 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function createProjectHandler(req: NextRequest) {
   const auth = await requirePermission(req, 'projects_write');
   if (!auth.success) return auth.response;
 
   const { user, requestId } = auth;
 
   try {
-    const rawBody = await req.json();
+    let rawBody: unknown;
+    try { rawBody = await req.json(); }
+    catch { return badRequest('Corpo JSON inválido.', requestId); }
     const parseResult = createProjectSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
@@ -107,6 +110,7 @@ export async function POST(req: NextRequest) {
 
     const finalInput = {
       ...p,
+      ...(getIdempotentEntityId(req) ? { id: getIdempotentEntityId(req) } : {}),
       statusId: validation.resolvedStatusId || p.statusId || '',
       categoryId: validation.resolvedCategoryId || p.categoryId || (effectiveCategories[0] || ''),
       categoryIds: effectiveCategories,
@@ -139,3 +143,5 @@ export async function POST(req: NextRequest) {
     return internalServerError('Erro inesperado na criação do projeto.', requestId);
   }
 }
+
+export const POST = withUserIdempotency(createProjectHandler, 'projects:create', 'projects_write');

@@ -8,6 +8,7 @@ import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 import { listTasksServer, createTaskServer } from '@/lib/tasks/taskService';
+import { getIdempotentEntityId, withUserIdempotency } from '@/lib/apiIdempotency';
 
 export async function GET(req: NextRequest) {
   const auth = await requirePermission(req, 'tasks_read');
@@ -46,14 +47,16 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function createTaskHandler(req: NextRequest) {
   const auth = await requirePermission(req, 'tasks_write');
   if (!auth.success) return auth.response;
 
   const { user, requestId } = auth;
 
   try {
-    const rawBody = await req.json();
+    let rawBody: unknown;
+    try { rawBody = await req.json(); }
+    catch { return badRequest('Corpo JSON inválido.', requestId); }
     const parseResult = createTaskSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
@@ -73,7 +76,8 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (projError) {
-        return internalServerError(`Erro ao verificar projeto associado: ${projError.message}`, requestId);
+        console.error('[API TASK PROJECT VALIDATION]', projError);
+        return internalServerError('Erro ao verificar projeto associado.', requestId);
       }
 
       if (!targetProject || targetProject.deleted) {
@@ -89,7 +93,8 @@ export async function POST(req: NextRequest) {
         .in('id', t.assignedUserIds);
 
       if (usersError) {
-        return internalServerError(`Erro ao verificar utilizadores responsáveis: ${usersError.message}`, requestId);
+        console.error('[API TASK ASSIGNEE VALIDATION]', usersError);
+        return internalServerError('Erro ao verificar utilizadores responsáveis.', requestId);
       }
 
       const activeUserIds = new Set((dbUsers || []).filter((u: any) => !u.deleted).map((u: any) => u.id));
@@ -103,6 +108,7 @@ export async function POST(req: NextRequest) {
     // 3. Delegate atomic creation to taskService
     const createRes = await createTaskServer(sb, {
       ...t,
+      ...(getIdempotentEntityId(req) ? { id: getIdempotentEntityId(req)! } : {}),
       userId: user.id,
     });
 
@@ -110,7 +116,7 @@ export async function POST(req: NextRequest) {
       if (createRes.statusCode === 400) {
         return badRequest(createRes.error || 'Erro ao criar tarefa.', requestId);
       }
-      return internalServerError(createRes.error || 'Erro ao criar tarefa.', requestId);
+      return internalServerError('Erro ao criar tarefa.', requestId);
     }
 
     await logAuditEvent({
@@ -134,3 +140,5 @@ export async function POST(req: NextRequest) {
     return internalServerError('Erro inesperado na criação da tarefa.', requestId);
   }
 }
+
+export const POST = withUserIdempotency(createTaskHandler, 'tasks:create', 'tasks_write');

@@ -1,7 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Project } from '@/lib/types';
+import { projectScopeFilter } from '@/lib/integrations/scope';
 
 export interface GetProjectsServerDataOptions {
+  allowedClientIds?: string[];
+  allowedProjectIds?: string[];
   page?: number;
   pageSize?: number;
   all?: boolean;
@@ -45,6 +48,13 @@ export async function getProjectsServerData(
 
   if (!includeDeleted) {
     query = query.eq('deleted', false);
+  }
+  if (options.allowedClientIds || options.allowedProjectIds) {
+    const scope = projectScopeFilter(options.allowedClientIds || [], options.allowedProjectIds || []);
+    if (scope.kind === 'or') query = query.or(scope.value);
+    else if (scope.kind === 'clients') query = query.in('client_id', scope.value);
+    else if (scope.kind === 'projects') query = query.in('id', scope.value);
+    else query = query.eq('id', '00000000-0000-0000-0000-000000000000');
   }
 
   // 1. Search Filter
@@ -116,7 +126,7 @@ export async function getProjectsServerData(
   }
 
   // 4. Order and Range Execution
-  query = query.order('created_at', { ascending: false });
+  query = query.order('created_at', { ascending: false }).order('id', { ascending: false });
 
   if (!fetchAll) {
     const from = (page - 1) * pageSize;

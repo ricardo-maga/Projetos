@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
+import { saveActiveStateToSupabase } from '@/lib/supabaseSync';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { ProjectMaterial } from '@/lib/types';
 import { requirePermission } from '@/lib/auth/authorization';
@@ -39,7 +39,8 @@ async function getMaterials(req: NextRequest) {
       page: pagination.page, pageSize: pagination.pageSize,
       totalPages: Math.ceil((count || 0) / pagination.pageSize), data: materials });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    console.error('[API MATERIALS GET]', error);
+    return NextResponse.json({ success: false, message: 'Falha ao consultar materiais.' }, { status: 500 });
   }
 }
 
@@ -52,7 +53,10 @@ async function createMaterial(req: NextRequest) {
   }
 
   try {
-    const parsed = createProjectMaterialSchema.safeParse(await req.json());
+    let rawBody: unknown;
+    try { rawBody = await req.json(); }
+    catch { return NextResponse.json({ success: false, message: 'Corpo JSON inválido.' }, { status: 400 }); }
+    const parsed = createProjectMaterialSchema.safeParse(rawBody);
     if (!parsed.success) {
       return NextResponse.json({
         success: false,
@@ -95,7 +99,8 @@ async function createMaterial(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Linha de material criada.', data: { ...newMaterial, syncVersion: saveResult.versions?.projectMaterials?.[newMaterial.id] } }, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    console.error('[API MATERIALS POST]', error);
+    return NextResponse.json({ success: false, message: 'Falha ao criar material.' }, { status: 500 });
   }
 }
 
