@@ -4021,7 +4021,7 @@ export default function ProjectSection({
 
           </div>
 
-          <div className="sticky bottom-0 z-40 -mx-6 flex justify-end gap-3 border-t border-border-subtle bg-surface/95 px-6 py-4 shadow-[0_-8px_16px_-12px_rgba(0,0,0,0.25)] backdrop-blur">
+          <div className="fixed bottom-4 right-4 z-50 flex justify-end gap-3 rounded-card border border-border-subtle bg-surface/95 p-3 shadow-lg backdrop-blur md:bottom-24 md:right-12">
             <Button variant="ghost" size="sm"
               type="button"
               disabled={isSavingProject}
