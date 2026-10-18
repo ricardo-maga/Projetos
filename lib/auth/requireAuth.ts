@@ -22,6 +22,7 @@ export class ForbiddenError extends AuthError { constructor(message = 'Sem permi
 export async function requireAuth(req?: Request, options: { includePermissions?: boolean } = {}): Promise<AuthenticatedUser> {
   const header = req?.headers.get('authorization');
   const token = header?.startsWith('Bearer ') ? header.slice(7).trim() : undefined;
+  if (header !== null && header !== undefined && !token) throw new AuthError('Credencial Bearer inválida.');
   
   let userAuth: any = null;
   let authError: any = null;
@@ -56,7 +57,7 @@ export async function requireAuth(req?: Request, options: { includePermissions?:
     }
   }
 
-  if (!userAuth) {
+  if (!userAuth && !token) {
     try {
       const supabaseCookie = await createClient();
       const { data, error } = await supabaseCookie.auth.getUser();

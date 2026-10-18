@@ -8,7 +8,7 @@ export async function GET() {
     info: {
       title: "ERP Gestão de Projetos & Encomendas API",
       version: "1.0.0",
-      description: "API RESTful completa para a gestão de projetos, tarefas, clientes e materiais/encomendas com validação de stock.",
+      description: "API de projetos, tarefas, clientes, tickets e materiais. O planeamento por alocações foi descontinuado.",
       contact: {
         name: "Suporte Técnico",
         email: "suporte@erp-gestao.pt"
@@ -20,6 +20,7 @@ export async function GET() {
         description: "Servidor Principal API v1"
       }
     ],
+    security: [{ BearerAuth: [] }],
     components: {
       securitySchemes: {
         BearerAuth: {
@@ -30,6 +31,15 @@ export async function GET() {
         }
       },
       schemas: {
+        PaginatedResult: {
+          type: "object",
+          required: ["success", "data", "count", "total", "page", "pageSize", "totalPages"],
+          properties: {
+            success: { type: "boolean" }, data: { type: "array", items: { type: "object" } },
+            count: { type: "integer" }, total: { type: "integer" }, page: { type: "integer" },
+            pageSize: { type: "integer" }, totalPages: { type: "integer" },
+          },
+        },
         Project: {
           type: "object",
           properties: {
@@ -128,9 +138,16 @@ export async function GET() {
         get: {
           summary: "Listar todos os projetos ativos",
           tags: ["Projetos"],
+          parameters: [
+            { name: "page", in: "query", schema: { type: "integer", minimum: 1, default: 1 } },
+            { name: "pageSize", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
+            { name: "search", in: "query", schema: { type: "string" } },
+            { name: "clientId", in: "query", schema: { type: "string", format: "uuid" } },
+          ],
           responses: {
             "200": {
-              description: "Lista de projetos devolvida com sucesso"
+              description: "Lista de projetos devolvida com sucesso",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/PaginatedResult" } } }
             }
           }
         },
@@ -287,10 +304,12 @@ export async function GET() {
           summary: "Listar tarefas de projetos",
           tags: ["Tarefas & Lembretes"],
           parameters: [
-            { name: "projectId", in: "query", required: false, schema: { type: "string" } }
+            { name: "projectId", in: "query", required: false, schema: { type: "string" } },
+            { name: "page", in: "query", schema: { type: "integer", minimum: 1, default: 1 } },
+            { name: "pageSize", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } }
           ],
           responses: {
-            "200": { description: "Lista de tarefas" }
+            "200": { description: "Lista de tarefas", content: { "application/json": { schema: { $ref: "#/components/schemas/PaginatedResult" } } } }
           }
         },
         post: {
@@ -332,5 +351,54 @@ export async function GET() {
     }
   };
 
+  const paths = openApiSpec.paths as Record<string, Record<string, any>>;
+  paths['/clients/{id}'] = {
+    get: { summary: 'Consultar cliente', tags: ['Clientes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Cliente' } } },
+    patch: { summary: 'Atualizar cliente', tags: ['Clientes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Cliente atualizado' } } },
+    put: { summary: 'Atualizar cliente', tags: ['Clientes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Cliente atualizado' } } },
+    delete: { summary: 'Eliminar cliente', tags: ['Clientes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Cliente eliminado' } } },
+  };
+  paths['/tasks/{id}'] = {
+    get: { summary: 'Consultar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Tarefa' } } },
+    patch: { summary: 'Atualizar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Tarefa atualizada' } } },
+    put: { summary: 'Atualizar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Tarefa atualizada' } } },
+    delete: { summary: 'Eliminar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Tarefa eliminada' } } },
+  };
+  paths['/projects/{id}'].patch = { ...paths['/projects/{id}'].put, summary: 'Atualizar parcialmente um projeto' };
+  paths['/projects/ip-duplicate'] = { get: { summary: 'Verificar duplicação de identificador IP ou SF', tags: ['Projetos'],
+    parameters: [
+      { name: 'field', in: 'query', required: true, schema: { type: 'string', enum: ['ip', 'sf'] } },
+      { name: 'value', in: 'query', required: true, schema: { type: 'string' } },
+      { name: 'excludeId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+    ], responses: { '200': { description: 'Resultado da verificação' } } } };
+  for (const [path, methods] of [
+    ['/planning-allocations', ['get', 'post']],
+    ['/planning-allocations/{id}', ['get', 'patch', 'delete']],
+    ['/planning/availability', ['get']],
+    ['/planning/capacity', ['get']],
+    ['/planning/resource-load', ['get']],
+  ] as const) {
+    paths[path] = {};
+    for (const method of methods) paths[path][method] = {
+      summary: 'Endpoint de planeamento descontinuado', deprecated: true, tags: ['Planeamento'],
+      responses: { '410': { description: 'PLANNING_RETIRED: utilizar datas e horas previstas da tarefa' } },
+    };
+  }
+  for (const path of ['/projects', '/tasks']) {
+    paths[path].post.parameters = [
+      ...(paths[path].post.parameters || []),
+      { name: 'Idempotency-Key', in: 'header', required: false, schema: { type: 'string', minLength: 8, maxLength: 128 },
+        description: 'Repetir o mesmo pedido devolve a resposta guardada; conteúdo diferente devolve 409.' },
+    ];
+    paths[path].post.responses['409'] ||= { description: 'Chave em utilização ou reutilizada com conteúdo diferente.' };
+  }
+  for (const path of Object.values(paths)) {
+    for (const operation of Object.values(path)) {
+      operation.responses ||= {};
+      for (const [status, description] of [['401', 'Autenticação necessária'], ['403', 'Permissão insuficiente'], ['429', 'Limite de pedidos excedido']]) {
+        operation.responses[status] ||= { description, content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } };
+      }
+    }
+  }
   return NextResponse.json(openApiSpec);
 }

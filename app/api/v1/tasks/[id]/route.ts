@@ -62,7 +62,9 @@ async function handleUpdate(req: NextRequest, ctx: any) {
   const { user, requestId } = auth;
 
   try {
-    const rawBody = await req.json();
+    let rawBody: unknown;
+    try { rawBody = await req.json(); }
+    catch { return badRequest('Corpo JSON inválido.', requestId); }
     const parseResult = updateTaskSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
@@ -80,7 +82,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
       .eq('id', id)
       .maybeSingle();
 
-    if (fetchError) return internalServerError(`Erro ao ler versão atual da tarefa: ${fetchError.message}`, requestId);
+    if (fetchError) { console.error('[API TASK UPDATE READ]', fetchError); return internalServerError('Erro ao ler versão atual da tarefa.', requestId); }
     if (!current || current.deleted) return notFound('Tarefa não encontrada.', requestId);
 
     const hasVersion = typeof current.version === 'number';
@@ -116,7 +118,8 @@ async function handleUpdate(req: NextRequest, ctx: any) {
         .maybeSingle();
 
       if (projError) {
-        return internalServerError(`Erro ao verificar projeto associado: ${projError.message}`, requestId);
+        console.error('[API TASK PROJECT CHECK]', projError);
+        return internalServerError('Erro ao verificar projeto associado.', requestId);
       }
 
       if (!targetProject || targetProject.deleted) {
@@ -125,14 +128,15 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     }
 
     // Validate assignees if updated
-    if (rawBody.assignedUserIds !== undefined && Array.isArray(updates.assignedUserIds) && updates.assignedUserIds.length > 0) {
+    if (updates.assignedUserIds !== undefined && Array.isArray(updates.assignedUserIds) && updates.assignedUserIds.length > 0) {
       const { data: dbUsers, error: usersError } = await sb
         .from('users')
         .select('id, deleted')
         .in('id', updates.assignedUserIds);
 
       if (usersError) {
-        return internalServerError(`Erro ao verificar utilizadores responsáveis: ${usersError.message}`, requestId);
+        console.error('[API TASK ASSIGNEE CHECK]', usersError);
+        return internalServerError('Erro ao verificar utilizadores responsáveis.', requestId);
       }
 
       const activeUserIds = new Set((dbUsers || []).filter((u: any) => !u.deleted).map((u: any) => u.id));
@@ -202,7 +206,7 @@ export async function DELETE(req: NextRequest, ctx: any) {
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const { data: current, error: fetchErr } = await sb.from('tasks').select('*').eq('id', id).maybeSingle();
-    if (fetchErr) return internalServerError(`Erro ao ler tarefa: ${fetchErr.message}`, requestId);
+    if (fetchErr) { console.error('[API TASK DELETE READ]', fetchErr); return internalServerError('Erro ao ler tarefa.', requestId); }
     if (!current || current.deleted) return notFound('Tarefa não encontrada.', requestId);
 
     // Historical allocations no longer block daily-planned tasks.

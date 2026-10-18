@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { saveActiveStateToSupabase, formatSupabaseError } from '@/lib/supabaseSync';
+import { saveActiveStateToSupabase } from '@/lib/supabaseSync';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { requirePermission } from '@/lib/auth/authorization';
 import { activeRelationExists, getOperationalRecord, mapProjectMaterial } from '@/lib/supabase/operationalRecords';
@@ -20,7 +20,10 @@ async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ 
   }
 
   try {
-    const parsed = updateProjectMaterialSchema.safeParse(await req.json());
+    let rawBody: unknown;
+    try { rawBody = await req.json(); }
+    catch { return NextResponse.json({ success: false, message: 'Corpo JSON inválido.' }, { status: 400 }); }
+    const parsed = updateProjectMaterialSchema.safeParse(rawBody);
     if (!parsed.success) return NextResponse.json({ success: false, message: 'Dados do material inválidos.' }, { status: 400 });
     const updates = parsed.data as Record<string, any>;
     const databaseClient = requireServerDbClient();
@@ -64,7 +67,8 @@ async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ 
       data: { ...updatedMaterial, syncVersion: saveResult.versions?.projectMaterials?.[id] }
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    console.error('[API MATERIAL UPDATE]', error);
+    return NextResponse.json({ success: false, message: 'Falha ao atualizar material.' }, { status: 500 });
   }
 }
 
@@ -92,7 +96,8 @@ async function deleteMaterial(req: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({ success: true, message: 'Linha de material eliminada.' });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: formatSupabaseError(error) }, { status: 500 });
+    console.error('[API MATERIAL DELETE]', error);
+    return NextResponse.json({ success: false, message: 'Falha ao eliminar material.' }, { status: 500 });
   }
 }
 
