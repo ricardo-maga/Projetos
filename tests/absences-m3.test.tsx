@@ -92,15 +92,12 @@ describe('Absences M3 presentation and existing actions', () => {
 });
 
 describe('Main navigation presentation boundaries', () => {
-  it('uses stable font size/weight for both menu branches and only hides Tickets visually', () => {
+  it('uses stable font size and weight for both menu branches', () => {
     const source = readFileSync(new URL('../app/page.tsx', import.meta.url), 'utf8');
     expect(source.match(/m3-nav-item w-full flex items-center gap-3 py-3 font-semibold/g)).toHaveLength(2);
     expect(source.match(/cn\("text-body truncate", isCollapsed \? 'md:hidden' : 'block'\)\}\>\{tab.label\}/g)).toHaveLength(2);
     expect(cn('text-body truncate', 'block')).toContain('text-body');
     expect(source).not.toContain('is-active font-bold');
-    expect(source).toContain("tab.id !== 'tickets'");
-    expect(source).toContain("activeTab === 'tickets'");
-    expect(source).toContain("activeTab === 'tickets' && tabs.some(tab => tab.id === 'tickets')");
     expect(source).toContain('appConfig={state.appConfig}');
   });
 });

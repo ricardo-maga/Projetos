@@ -17,7 +17,6 @@ test('snapshot omission and ordering do not delete or rewrite existing records',
   expect(changedSyncRecords([{comment:'B',id:'b'},baseline[0]],baseline)).toEqual([]);
   expect(changedSyncRecords([{id:'a',comment:'Changed'}],baseline)).toEqual([{id:'a',comment:'Changed'}]);
   expect(() => changedSyncRecords([{id:'a'},{id:'a'}],baseline)).toThrow();
-  expect(SYNC_DOMAIN_PERMISSIONS.tickets).toEqual(['tickets:write','tickets:delete']);
 });
 
 test('writer does not infer deletes from snapshot ids', () => {

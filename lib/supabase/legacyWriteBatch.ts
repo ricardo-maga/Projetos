@@ -10,7 +10,7 @@ export const LEGACY_TABLE_FIELDS = {
   user_absences: 'userAbsences',
   equipment: 'equipmentList', special_days: 'specialDays', default_tasks: 'defaultTasks',
   risk_categories: 'riskCategories', risk_statuses: 'riskStatuses', risk_priorities: 'riskPriorities',
-  ticket_statuses: 'ticketStatuses', notifications: 'notifications', automation_rules: 'automationRules', tickets: 'tickets',
+  notifications: 'notifications', automation_rules: 'automationRules',
 } as const;
 
 export type LegacyVersions = Record<string, Record<string, number>>;

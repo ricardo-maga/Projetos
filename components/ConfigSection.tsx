@@ -509,7 +509,7 @@ export default function ConfigSection({
   const [editDtTypeId, setEditDtTypeId] = useState('');
 
   // Aux tables state
-  const [activeAuxTab, setActiveAuxTab] = useState<'projectCategories' | 'projectStatuses' | 'taskStatuses' | 'taskTypes' | 'ticketStatuses' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'riskCategories' | 'riskStatuses' | 'riskPriorities'>('projectCategories');
+  const [activeAuxTab, setActiveAuxTab] = useState<'projectCategories' | 'projectStatuses' | 'taskStatuses' | 'taskTypes' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'riskCategories' | 'riskStatuses' | 'riskPriorities'>('projectCategories');
   const [newAuxName, setNewAuxName] = useState('');
   const [newAuxScale, setNewAuxScale] = useState(1);
   const [newAuxColor, setNewAuxColor] = useState('#bfdbfe');
@@ -518,7 +518,7 @@ export default function ConfigSection({
   const [editAuxScale, setEditAuxScale] = useState(1);
   const [editAuxColor, setEditAuxColor] = useState('#bfdbfe');
 
-  const isColorAuxTab = activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectRisks' || activeAuxTab === 'riskStatuses' || activeAuxTab === 'riskPriorities';
+  const isColorAuxTab = activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectRisks' || activeAuxTab === 'riskStatuses' || activeAuxTab === 'riskPriorities';
 
   // Confirmation Modal state
   const [confirmState, setConfirmState] = useState<{
@@ -551,7 +551,7 @@ export default function ConfigSection({
     if (!newAuxName.trim() || !addAuxRecord) return;
     
     const extra: any = {};
-    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') {
+    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') {
       extra.scale = Number(newAuxScale);
     }
     if (isColorAuxTab) {
@@ -572,7 +572,7 @@ export default function ConfigSection({
     if (!editAuxName.trim() || !updateAuxRecord) return;
     
     const updates: any = { name: editAuxName.trim() };
-    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') {
+    if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') {
       updates.scale = Number(editAuxScale);
     }
     if (isColorAuxTab) {
@@ -602,7 +602,6 @@ export default function ConfigSection({
       case 'projectStatuses': return projectStatuses;
       case 'taskStatuses': return (taskStatuses && taskStatuses.length > 0) ? taskStatuses : (state.taskStatuses || []);
       case 'taskTypes': return (taskTypes && taskTypes.length > 0) ? taskTypes : (state.taskTypes || []);
-      case 'ticketStatuses': return (state.ticketStatuses && state.ticketStatuses.length > 0) ? state.ticketStatuses : [];
       case 'projectRisks': return projectRisks;
       case 'projectPriorities': return projectPriorities;
       case 'projectTeams': return projectTeams;
@@ -628,7 +627,7 @@ export default function ConfigSection({
       if (a.sort_order !== undefined && b.sort_order !== undefined && a.sort_order !== b.sort_order) {
         return a.sort_order - b.sort_order;
       }
-      if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') {
+      if (activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') {
         return (a.scale ?? 0) - (b.scale ?? 0);
       }
       return 0;
@@ -1237,7 +1236,6 @@ export default function ConfigSection({
               { id: 'projectStatuses', label: 'Estados do projeto' },
               { id: 'taskTypes', label: 'Tipos de tarefa' },
               { id: 'taskStatuses', label: 'Estados de tarefa' },
-              { id: 'ticketStatuses', label: 'Estados de tickets' },
               { id: 'projectPriorities', label: 'Prioridades' },
               { id: 'projectTeams', label: 'Equipas internas' },
               { id: 'projectPartners', label: 'Parceiros externos' },
@@ -1271,7 +1269,7 @@ export default function ConfigSection({
         {/* Addition form */}
         <form onSubmit={handleAddAuxRecord} className="flex flex-col gap-3 bg-surface-muted/50 p-4 rounded-card border border-border-subtle mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-            <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
+            <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
               <label className="block text-[11px] text-text-muted font-bold">Nome da opção *</label>
               <input 
                 type="text" 
@@ -1283,13 +1281,13 @@ export default function ConfigSection({
               />
             </div>
 
-            {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses' || activeAuxTab === 'riskPriorities') && (
+            {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities') && (
               <div className="space-y-1">
-                <label className="block text-[11px] text-text-muted font-bold">Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? '1 a 10' : '1 a 3'})</label>
+                <label className="block text-[11px] text-text-muted font-bold">Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes') ? '1 a 10' : '1 a 3'})</label>
                 <input 
                   type="number"
                   min={activeAuxTab === 'projectStatuses' ? 0 : 1}
-                  max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'ticketStatuses') ? 10 : 3}
+                  max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes') ? 10 : 3}
                   required
                   value={newAuxScale}
                   onChange={e => setNewAuxScale(Number(e.target.value))}

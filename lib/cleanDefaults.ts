@@ -116,13 +116,4 @@ export const CLEAN_BASELINE_STATE: ERPState = {
   defaultTasks: [],
   automationRules: [],
   notifications: [],
-  tickets: [],
-  ticketStatuses: [
-    { id: 'tks-1', name: 'Validação Pendente', scale: 1, deleted: false, sort_order: 1 },
-    { id: 'tks-2', name: 'Aberto', scale: 2, deleted: false, sort_order: 2 },
-    { id: 'tks-3', name: 'Em Análise', scale: 3, deleted: false, sort_order: 3 },
-    { id: 'tks-4', name: 'Convertido em Tarefa', scale: 4, deleted: false, sort_order: 4 },
-    { id: 'tks-5', name: 'Resolvido', scale: 5, deleted: false, sort_order: 5 },
-    { id: 'tks-6', name: 'Cancelado', scale: 6, deleted: false, sort_order: 6 },
-  ]
 };

@@ -132,8 +132,7 @@ export async function POST(req: NextRequest) {
         (state.equipment && state.equipment.length > 0) ||
         (state.projectMaterials && state.projectMaterials.length > 0) ||
         (state.projectRiskItems && state.projectRiskItems.length > 0) ||
-        (state.notifications && state.notifications.length > 0) ||
-        (state.tickets && state.tickets.length > 0)
+        (state.notifications && state.notifications.length > 0)
       );
 
       // Se a chamada submete exclusivamente entidades administrativas sem dados de utilizador normal, rejeitar categoricamente com 403

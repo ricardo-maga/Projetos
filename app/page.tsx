@@ -14,7 +14,6 @@ import DatabaseStatusIndicator from '../components/DatabaseStatusIndicator';
 import CalendarSection from '../components/CalendarSection';
 import MyFocusSection from '../components/MyFocusSection';
 import ReportsSection from '../components/ReportsSection';
-import { TicketSection } from '../components/TicketSection';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { logAuditEventToSupabase } from '../lib/supabaseSync';
 import { hasPermission } from '../lib/permissions';
@@ -153,13 +152,6 @@ export default function Page() {
     addEquipment,
     updateEquipment,
     deleteEquipment,
-    // Tickets
-    addTicket,
-    updateTicket,
-    deleteTicket,
-    validateAndApproveTicket,
-    convertTicketToTask,
-    resolveTicketDirectly,
     addProjectMaterial,
     updateProjectMaterial,
     deleteProjectMaterial,

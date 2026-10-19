@@ -30,7 +30,5 @@ BEGIN
       END IF;
     END LOOP;
   END LOOP;
-  REVOKE ALL PRIVILEGES ON SEQUENCE public.ticket_number_seq FROM PUBLIC,anon,authenticated;
-  GRANT USAGE,SELECT,UPDATE ON SEQUENCE public.ticket_number_seq TO service_role;
 END $rpc$;
 COMMIT;

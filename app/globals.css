@@ -413,7 +413,7 @@ body[data-theme="default"],
 
 /* Opt-in migration of legacy cards, without changing status colors or table
    geometry, and respecting nested modules excluded from this phase. */
-:where(#main-root:not([data-active-tab="tickets"]) #active-tab-content) .bg-white.rounded-2xl.border:not(:where([data-m3-exclude], [data-m3-exclude] *)) {
+:where(#active-tab-content) .bg-white.rounded-2xl.border:not(:where([data-m3-exclude], [data-m3-exclude] *)) {
   border-color: var(--m3-outline-variant);
   box-shadow: none;
 }
