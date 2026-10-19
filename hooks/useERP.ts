@@ -993,13 +993,13 @@ export function useERP() {
   const deleteComment = (id: string) => deleteSyncedEntity('comments', id);
 
   // ==================== ABSENCES CRUD ====================
-  const addAbsence = (absence: Omit<UserAbsence, 'id' | 'createdDate'>) => {
+  const addAbsence = async (absence: Omit<UserAbsence, 'id' | 'createdDate'>) => {
     const newAbsence: UserAbsence = {
       ...absence,
       id: crypto.randomUUID(),
       createdDate: new Date().toISOString()
     };
-    saveState(prev => ({
+    return await saveState(prev => ({
       ...prev,
       userAbsences: [newAbsence, ...prev.userAbsences]
     }));
