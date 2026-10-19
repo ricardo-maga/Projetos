@@ -12,8 +12,10 @@ import { createProject, listProjects } from '@/lib/projects/projectService';
 import { getIdempotentEntityId, withUserIdempotency } from '@/lib/apiIdempotency';
 
 export async function GET(req: NextRequest) {
+  const startedAt = performance.now();
   const auth = await requirePermission(req, 'projects_read');
   if (!auth.success) return auth.response;
+  const authorizedAt = performance.now();
 
   const { requestId } = auth;
 
@@ -44,6 +46,8 @@ export async function GET(req: NextRequest) {
       includeDeleted: false,
     });
 
+    const queriedAt = performance.now();
+
     return NextResponse.json({
       success: true,
       count: result.data.length,
@@ -52,6 +56,10 @@ export async function GET(req: NextRequest) {
       pageSize: result.pageSize,
       totalPages: result.totalPages,
       data: result.data,
+    }, {
+      headers: {
+        'Server-Timing': `auth;dur=${(authorizedAt - startedAt).toFixed(1)}, projects;dur=${(queriedAt - authorizedAt).toFixed(1)}`,
+      },
     });
   } catch (error: any) {
     console.error('[API PROJECTS GET EXCEPTION]', error);
