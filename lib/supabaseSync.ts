@@ -287,19 +287,6 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
       statusId: stringToUUID(pri.statusId),
       priorityId: stringToUUID(pri.priorityId),
     })),
-    tickets: (state.tickets || []).map((t: any) => ({
-      ...t,
-      id: stringToUUID(t.id),
-      statusId: t.statusId ? stringToUUID(t.statusId) : undefined,
-      priorityId: t.priorityId ? stringToUUID(t.priorityId) : undefined,
-      taskTypeId: t.taskTypeId ? stringToUUID(t.taskTypeId) : undefined,
-      clientId: t.clientId ? stringToUUID(t.clientId) : undefined,
-      assignedToId: t.assignedToId ? stringToUUID(t.assignedToId) : undefined,
-      createdById: t.createdById ? stringToUUID(t.createdById) : undefined,
-      convertedTaskId: t.convertedTaskId ? stringToUUID(t.convertedTaskId) : undefined,
-      convertedProjectId: t.convertedProjectId ? stringToUUID(t.convertedProjectId) : undefined,
-    })),
-    ticketStatuses: (state.ticketStatuses || []).map((ts: any) => ({ ...ts, id: stringToUUID(ts.id) })),
     notifications: (state.notifications || []).map((n: any) => ({ ...n, id: stringToUUID(n.id) })),
     automationRules: (state.automationRules || []).map((r: any) => ({ ...r, id: stringToUUID(r.id) })),
   };
@@ -393,7 +380,6 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       resRiskStatuses,
       resRiskPriorities,
       resProjectRiskItems,
-      resTicketStatuses,
       resNotifications,
       resNotificationSettings,
       resAutomationRules,
@@ -426,7 +412,6 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       client.from('risk_statuses').select('*').order('sort_order', { ascending: true }),
       client.from('risk_priorities').select('*').order('sort_order', { ascending: true }),
       client.from('project_risk_items').select('*').order('created_at', { ascending: false }),
-      client.from('ticket_statuses').select('*').order('sort_order', { ascending: true }),
       client.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
       client.from('notification_settings').select('*').order('type'),
       client.from('automation_rules').select('*').eq('deleted', false).order('created_at', { ascending: false }),
@@ -771,51 +756,6 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       createdDate: pri.created_at || '',
     }));
 
-    let tickets: any[] = [];
-    let ticketRows: any[] = [];
-    try {
-      const resTickets = await client.from('tickets').select('*').order('created_at', { ascending: false });
-      if (!resTickets.error && resTickets.data) {
-        ticketRows = resTickets.data;
-        tickets = resTickets.data.map((t: any) => ({
-          id: t.id,
-          ticketNumber: t.ticket_number || t.ticketNumber || `TCK-${t.id.slice(0, 4)}`,
-          title: t.title || '',
-          description: t.description || '',
-          source: t.source || 'manual',
-          sourceDetails: t.source_details || t.sourceDetails || '',
-          status: t.status || 'aberto',
-          statusId: t.status_id || t.statusId || undefined,
-          priority: t.priority || 'media',
-          priorityId: t.priority_id || t.priorityId || undefined,
-          category: t.category || '',
-          taskTypeId: t.task_type_id || t.taskTypeId || undefined,
-          clientId: t.client_id || t.clientId || '',
-          requesterName: t.requester_name || t.requesterName || '',
-          requesterEmail: t.requester_email || t.requesterEmail || '',
-          requesterPhone: t.requester_phone || t.requesterPhone || '',
-          assignedToId: t.assigned_to_id || t.assignedToId || '',
-          createdById: t.created_by_id || t.createdById || '',
-          convertedTaskId: t.converted_task_id || t.convertedTaskId || '',
-          convertedProjectId: t.converted_project_id || t.convertedProjectId || '',
-          resolutionNotes: t.resolution_notes || t.resolutionNotes || '',
-          validationNotes: t.validation_notes || t.validationNotes || '',
-          createdDate: t.created_at || t.createdDate || '',
-          updatedDate: t.updated_at || t.updatedDate || '',
-          resolvedDate: t.resolved_at || t.resolvedDate || '',
-          deleted: t.deleted === true || t.deleted === 'true' || t.deleted === 1
-        }));
-      }
-    } catch (e) {}
-
-    let ticketStatuses: any[] = (resTicketStatuses?.data || []).map((ts: any) => ({
-      id: ts.id,
-      name: ts.name,
-      color: ts.color || 'blue',
-      deleted: ts.deleted === true || ts.deleted === 1 || ts.deleted === 'true',
-      sort_order: ts.sort_order ?? 0
-    }));
-
     let notifications: any[] = (resNotifications?.data || []).map((n: any) => ({
       id: n.id,
       userId: n.user_id || n.userId || 'all',
@@ -893,8 +833,6 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       riskStatuses: riskStatuses || [],
       riskPriorities: riskPriorities || [],
       projectRiskItems: projectRiskItems || [],
-      tickets: tickets || [],
-      ticketStatuses: ticketStatuses || [],
       notifications: notifications || [],
       automationRules: automationRules || [],
       notificationSettings: (resNotificationSettings.data || []).map((setting: any) => ({
@@ -922,8 +860,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       comments: resComments.data || [], userAbsences: resUserAbsences.data || [], equipmentList: resEquipment.data || [], specialDays: resSpecialDays.data || [],
       defaultTasks: resDefaultTasks.data || [], riskCategories: resRiskCategories.data || [],
       riskStatuses: resRiskStatuses.data || [], riskPriorities: resRiskPriorities.data || [],
-      ticketStatuses: resTicketStatuses.data || [], notifications: resNotifications.data || [],
-      automationRules: resAutomationRules.data || [], tickets: ticketRows,
+      notifications: resNotifications.data || [], automationRules: resAutomationRules.data || [],
     };
     for (const [field, rows] of Object.entries(revisionSources)) {
       const versions = new Map(rows.map(row => [row.id, row.sync_version]));
@@ -1150,13 +1087,10 @@ async function safeUpsertRef(
  * 
  * CONSUMIDORES LEGACY PERMITIDOS (EM TRANSIÇÃO):
  * 1. app/api/supabase/sync/route.ts (Endpoint de sincronização global)
- * 2. app/api/v1/tickets/route.ts (Migração futura)
- * 3. app/api/v1/tickets/[id]/route.ts (Migração futura)
- * 4. app/api/tickets/inbound/route.ts (Migração futura)
  * 5. app/api/v1/project-materials/route.ts (Migração futura)
  * 6. app/api/v1/project-materials/[id]/route.ts (Migração futura)
  */
-export type OperationalWriteScope = Partial<Pick<ERPState, 'tickets' | 'notifications' | 'projectMaterials'>>;
+export type OperationalWriteScope = Partial<Pick<ERPState, 'notifications' | 'projectMaterials'>>;
 
 export function isolateOperationalWrite(state: ERPState, scope: OperationalWriteScope): ERPState {
   // Keep the normalizer's collection shape, but never copy unrelated records or config.
@@ -1800,27 +1734,6 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
       return { success: false, message: `Error saving secondary entities (Stage 1) for table ${(secondaryError as any).table}: ${formatSupabaseError(secondaryError.error)}` };
     }
 
-    // Save Ticket Statuses
-    if (state.ticketStatuses && state.ticketStatuses.length > 0) {
-      try {
-        const mappedTS = state.ticketStatuses.map((ts: any) => ({
-          id: stringToUUID(ts.id),
-          name: ts.name,
-          color: ts.color || 'blue',
-          deleted: ts.deleted || false,
-          sort_order: ts.sort_order || 0
-        }));
-        const resTS = await supabase.from('ticket_statuses').upsert(mappedTS);
-        if (resTS.error) {
-          console.error('Error saving ticket_statuses:', resTS.error.message);
-          return { success: false, message: `Erro ao gravar estados de tickets: ${formatSupabaseError(resTS.error)}` };
-        }
-      } catch (e: any) {
-        console.error('ticket_statuses upsert error:', e);
-        return { success: false, message: `Exceção ao gravar estados de tickets: ${formatSupabaseError(e)}` };
-      }
-    }
-
     // Save Notifications
     if (state.notifications && state.notifications.length > 0) {
       try {
@@ -1869,48 +1782,6 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
       }
     }
 
-    // Save Tickets
-    if (state.tickets && state.tickets.length > 0) {
-      try {
-        const mappedTickets = state.tickets.map((t: any) => ({
-          id: stringToUUID(t.id),
-          ticket_number: t.ticketNumber,
-          title: t.title,
-          description: t.description || null,
-          source: t.source || 'manual',
-          source_details: t.sourceDetails || null,
-          status: t.status || 'aberto',
-          status_id: t.statusId ? stringToUUID(t.statusId) : null,
-          priority: t.priority || 'media',
-          priority_id: t.priorityId ? stringToUUID(t.priorityId) : null,
-          category: t.category || null,
-          task_type_id: t.taskTypeId ? stringToUUID(t.taskTypeId) : null,
-          client_id: t.clientId ? stringToUUID(t.clientId) : null,
-          requester_name: t.requesterName || null,
-          requester_email: t.requesterEmail || null,
-          requester_phone: t.requesterPhone || null,
-          assigned_to_id: t.assignedToId ? stringToUUID(t.assignedToId) : null,
-          created_by_id: t.createdById ? stringToUUID(t.createdById) : null,
-          converted_task_id: t.convertedTaskId ? stringToUUID(t.convertedTaskId) : null,
-          converted_project_id: t.convertedProjectId ? stringToUUID(t.convertedProjectId) : null,
-          resolution_notes: t.resolutionNotes || null,
-          validation_notes: t.validationNotes || null,
-          deleted: t.deleted || false,
-          created_at: t.createdDate || new Date().toISOString(),
-          updated_at: t.updatedDate || new Date().toISOString(),
-          resolved_at: t.resolvedDate || null,
-        }));
-        const resTickets = await supabase.from('tickets').upsert(mappedTickets);
-        if (resTickets.error) {
-          console.error('Error saving tickets:', resTickets.error.message);
-          return { success: false, message: `Erro ao gravar tickets: ${formatSupabaseError(resTickets.error)}` };
-        }
-      } catch (e: any) {
-        console.error('tickets upsert error:', e);
-        return { success: false, message: `Exceção ao gravar tickets: ${formatSupabaseError(e)}` };
-      }
-    }
-
     return await batch.commit();
   } catch (error: any) {
     console.error('Supabase relational save state error:', error);
@@ -1950,82 +1821,8 @@ ALTER TABLE IF EXISTS app_configuration ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS equipment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS special_days ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS default_tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS ticket_statuses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS notification_settings ENABLE ROW LEVEL SECURITY;
-
--- ==========================================
--- MÓDULO DE TICKETS & SUPORTE
--- ==========================================
-CREATE TABLE IF NOT EXISTS ticket_statuses (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL,
-    color TEXT DEFAULT 'blue',
-    scale INT DEFAULT 1,
-    sort_order INT DEFAULT 0,
-    deleted BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS color TEXT DEFAULT 'blue';
-ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS scale INT DEFAULT 1;
-ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0;
-ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false;
-ALTER TABLE IF EXISTS ticket_statuses ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE IF EXISTS ticket_statuses ENABLE ROW LEVEL SECURITY;
-
-CREATE TABLE IF NOT EXISTS tickets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    ticket_number TEXT,
-    title TEXT NOT NULL,
-    description TEXT,
-    source TEXT DEFAULT 'manual',
-    source_details TEXT,
-    status TEXT DEFAULT 'aberto',
-    status_id UUID,
-    priority TEXT DEFAULT 'media',
-    priority_id UUID,
-    category TEXT,
-    task_type_id UUID,
-    client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
-    requester_name TEXT,
-    requester_email TEXT,
-    requester_phone TEXT,
-    assigned_to_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    created_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    converted_task_id UUID,
-    converted_project_id UUID,
-    resolution_notes TEXT,
-    validation_notes TEXT,
-    deleted BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    resolved_at TIMESTAMPTZ
-);
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS priority_id UUID;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS task_type_id UUID;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS status_id UUID;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'manual';
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS source_details TEXT;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS client_id UUID;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS assigned_to_id UUID;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS created_by_id UUID;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS requester_name TEXT;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS requester_email TEXT;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS requester_phone TEXT;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS converted_task_id UUID;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS converted_project_id UUID;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS validation_notes TEXT;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS resolution_notes TEXT;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE IF EXISTS tickets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE IF EXISTS tickets ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets (status);
-CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets (assigned_to_id);
-CREATE INDEX IF NOT EXISTS idx_tickets_client_id ON tickets (client_id);
-CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets (created_at DESC);
 
 -- ==========================================
 -- MÓDULO DE NOTIFICAÇÕES

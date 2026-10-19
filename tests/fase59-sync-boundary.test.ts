@@ -9,9 +9,6 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
   // Allowed legacy files explicitly permitted to invoke saveActiveStateToSupabase
   const ALLOWED_LEGACY_SAVE_CALLERS = [
     'app/api/supabase/sync/route.ts',
-    'app/api/v1/tickets/route.ts',
-    'app/api/v1/tickets/[id]/route.ts',
-    'app/api/tickets/inbound/route.ts',
     'app/api/v1/project-materials/route.ts',
     'app/api/v1/project-materials/[id]/route.ts',
   ];
@@ -178,10 +175,8 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
       // Verificação de que os erros de persistência deixaram de ser suprimidos silenciosamente (FASE 61):
       expect(saveFnBody).toContain("console.error('Error saving project_materials:'");
       expect(saveFnBody).toContain("console.error('Error saving project_risk_items:'");
-      expect(saveFnBody).toContain("console.error('Error saving ticket_statuses:'");
       expect(saveFnBody).toContain("console.error('Error saving notifications:'");
       expect(saveFnBody).toContain("console.error('Error saving automation_rules:'");
-      expect(saveFnBody).toContain("console.error('Error saving tickets:'");
     });
   });
 
@@ -207,10 +202,8 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
       const routeContent = readFileSync(join(process.cwd(), 'app/api/v1/project-materials/route.ts'), 'utf-8');
       const idRouteContent = readFileSync(join(process.cwd(), 'app/api/v1/project-materials/[id]/route.ts'), 'utf-8');
 
-      // Ambas rotas usam getActiveStateFromSupabase e saveActiveStateToSupabase
-      expect(routeContent).toContain('getActiveStateFromSupabase');
+      // Ambas as rotas persistem apenas os materiais pedidos.
       expect(routeContent).toContain('saveActiveStateToSupabase');
-      expect(idRouteContent).toContain('getActiveStateFromSupabase');
       expect(idRouteContent).toContain('saveActiveStateToSupabase');
     });
   });

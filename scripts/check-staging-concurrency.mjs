@@ -33,11 +33,7 @@ try {
   const project=snapshot.data.projects.find(p=>p.title==='Projeto fictício STAGING');
   const owner=snapshot.data.users.find(u=>u.email==='admin.staging@example.com');
   assert('Fixtures canónicas',project && owner);
-  const numbers=checked(await Promise.all(Array.from({length:4},()=>db.rpc('reserve_ticket_number')))
-    .then(values=>({error:values.find(v=>v.error)?.error,data:values.map(v=>v.data)})), 'Reservas concorrentes');
-  assert('4 números distintos',new Set(numbers).size===4);
   assert('RPC de gravação recusada a anon',(await publicDb.rpc('write_legacy_batch',{p_changes:[]})).error?.code==='42501');
-  assert('Reserva recusada a anon',(await publicDb.rpc('reserve_ticket_number')).error?.code==='42501');
   const id=randomUUID(); cleanup.push(['project_materials',id]);
   checked(await db.rpc('write_legacy_batch',{p_changes:[{table_name:'project_materials',expected_version:null,row:{id,project_id:project.id,description:'QA OCC STAGING',supplier:'Fictício',quantity:1}}]}),'Criar fixture OCC');
   const contenders=await Promise.all([2,3].map(quantity=>db.rpc('write_legacy_batch',{p_changes:[{table_name:'project_materials',expected_version:1,row:{id,quantity}}]})));
@@ -72,10 +68,6 @@ try {
   assert('Criar ausência',(await request('/api/supabase/sync',token,'POST',{userAbsences:[absence]})).status===200);
   const savedAbsence=checked(await db.from('user_absences').select('user_id').eq('id',absenceId).single(),'Ausência persistida');
   assert('Utilizador da ausência preservado',savedAbsence.user_id===owner.id);
-  const created=await request('/api/v1/tickets',token,'POST',{title:'QA TICKET OCC STAGING',source:'manual'});
-  assert('Criar ticket OCC',created.status===201); const ticket=(await created.json()).data;cleanup.push(['tickets',ticket.id]);
-  assert('Primeiro PATCH com revisão aceite',(await request('/api/v1/tickets/'+ticket.id,token,'PATCH',{title:'QA TICKET CURRENT',syncVersion:ticket.syncVersion})).status===200);
-  assert('PATCH antigo recusado',(await request('/api/v1/tickets/'+ticket.id,token,'PATCH',{title:'STALE',syncVersion:ticket.syncVersion})).status===409);
   const projectResponse=await request('/api/v1/projects',token,'POST',{title:'QA CANONICAL OCC STAGING',clientId:project.clientId,statusId:project.statusId,demo:true});
   assert('Criar projeto de concorrência',projectResponse.status===201);
   const concurrentProject=(await projectResponse.json()).data; cleanup.push(['projects',concurrentProject.id]);

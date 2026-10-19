@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import { POST as createTask } from '../app/api/v1/tasks/route';
 import { POST as createMaterial } from '../app/api/v1/project-materials/route';
-import { POST as createTicket } from '../app/api/v1/tickets/route';
 import { GET as getProject } from '../app/api/v1/projects/[id]/route';
 import { GET as getTask } from '../app/api/v1/tasks/[id]/route';
 import { GET as getClient } from '../app/api/v1/clients/[id]/route';
@@ -47,7 +46,6 @@ describe('FASE 25-B — Auditoria e Correção BOLA/IDOR (Resource Authorization
         clients: [],
         tasks: [],
         projectMaterials: [],
-        tickets: [],
       } as any,
     });
 
@@ -137,29 +135,6 @@ describe('FASE 25-B — Auditoria e Correção BOLA/IDOR (Resource Authorization
       expect(json.success === false || !!json.error).toBe(true);
       const msg = json.message || json.error?.message || '';
       expect(msg.toLowerCase()).toContain('projeto');
-    });
-  });
-
-  describe('Teste C: Rejeição de referências diretas em Tickets', () => {
-    it('devolve HTTP 400 ao associar cliente ou responsável inexistente/eliminado', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/tickets', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: 'Ticket Teste BOLA/IDOR',
-          clientId: 'client-invalido-999',
-        }),
-      });
-
-      const res = await createTicket(req);
-      expect(res.status).toBe(400);
-
-      const json = await res.json();
-      expect(json.success === false || !!json.error).toBe(true);
-      const msg = json.message || json.error?.message || '';
-      expect(msg.toLowerCase()).toContain('cliente');
     });
   });
 

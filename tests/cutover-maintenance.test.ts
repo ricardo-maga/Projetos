@@ -6,7 +6,7 @@ test('maintenance is inactive unless explicitly enabled', () => {
   for (const value of [undefined, '', 'false', '1']) expect(cutoverMaintenanceResponse('/api/auth/login', value)).toBeNull();
 });
 test('maintenance blocks every API including login, inbound and sync without cache', async () => {
-  for (const path of ['/api/auth/login', '/api/tickets/inbound', '/api/supabase/sync', '/api/tasks']) {
+  for (const path of ['/api/auth/login', '/api/supabase/sync', '/api/tasks']) {
     const response = cutoverMaintenanceResponse(path, 'true')!;
     expect(response.status).toBe(503);
     expect(response.headers.get('Cache-Control')).toBe('no-store');

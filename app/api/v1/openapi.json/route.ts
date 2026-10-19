@@ -8,7 +8,7 @@ export async function GET() {
     info: {
       title: "ERP Gestão de Projetos & Encomendas API",
       version: "1.0.0",
-      description: "API de projetos, tarefas, clientes, tickets e materiais. O planeamento por alocações foi descontinuado.",
+      description: "API de projetos, tarefas, clientes e materiais. O planeamento por alocações foi descontinuado.",
       contact: {
         name: "Suporte Técnico",
         email: "suporte@erp-gestao.pt"
@@ -104,23 +104,6 @@ export async function GET() {
             contactPhone: { type: "string" }
           },
           required: ["clientName"]
-        },
-        Ticket: {
-          type: "object",
-          properties: {
-            id: { type: "string", format: "uuid" },
-            syncVersion: { type: "integer" },
-            ticketNumber: { type: "string" },
-            title: { type: "string" },
-            description: { type: "string" },
-            source: { type: "string" },
-            status: { type: "string" },
-            priority: { type: "string" },
-            clientId: { type: "string", format: "uuid" },
-            assignedToId: { type: "string", format: "uuid" },
-            createdDate: { type: "string", format: "date-time" }
-          },
-          required: ["title"]
         },
         ApiError: {
           type: "object",
@@ -263,41 +246,6 @@ export async function GET() {
             "200": { description: "Linha de material eliminada" }
           }
         }
-      },
-      "/tickets": {
-        get: {
-          summary: "Listar tickets por página",
-          tags: ["Tickets"],
-          parameters: [
-            { name: "status", in: "query", schema: { type: "string" } },
-            { name: "source", in: "query", schema: { type: "string" } },
-            { name: "assignedToId", in: "query", schema: { type: "string", format: "uuid" } },
-            { name: "clientId", in: "query", schema: { type: "string", format: "uuid" } },
-            { name: "page", in: "query", schema: { type: "integer", minimum: 1, default: 1 } },
-            { name: "pageSize", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } }
-          ],
-          responses: { "200": { description: "Página de tickets com count, total, page, pageSize, totalPages e data" },
-            "400": { description: "Parâmetros inválidos", content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } } } }
-        },
-        post: {
-          summary: "Criar ticket",
-          tags: ["Tickets"],
-          requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/Ticket" } } } },
-          responses: { "201": { description: "Ticket criado" },
-            "400": { description: "Dados inválidos", content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } } },
-            "409": { description: "Conflito de concorrência", content: { "application/json": { schema: { $ref: "#/components/schemas/ApiError" } } } } }
-        }
-      },
-      "/tickets/{id}": {
-        get: { summary: "Consultar ticket", tags: ["Tickets"], parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }
-        ], responses: { "200": { description: "Ticket encontrado" }, "404": { description: "Ticket não encontrado" } } },
-        patch: { summary: "Atualizar ticket", tags: ["Tickets"], parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }
-        ], responses: { "200": { description: "Ticket atualizado" }, "409": { description: "Versão concorrente" } } },
-        delete: { summary: "Eliminar ticket logicamente", tags: ["Tickets"], parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }
-        ], responses: { "200": { description: "Ticket eliminado" } } }
       },
       "/tasks": {
         get: {

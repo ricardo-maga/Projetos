@@ -72,7 +72,6 @@ export async function requireAuth(req?: NextRequest): Promise<AuthResult> {
 /**
  * Reutiliza requirePermission() de lib/auth/requireAuth.ts.
  * Suporta ambas as assinaturas:
- *  - requirePermission('tickets_read') -> lança AuthError/ForbiddenError ou devolve CentralUser
  *  - requirePermission(req, 'projects_read') -> devolve AuthResult (HTTP Response em caso de erro)
  */
 export async function requirePermission(

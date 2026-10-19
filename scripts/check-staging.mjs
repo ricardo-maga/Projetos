@@ -41,7 +41,7 @@ try {
     throw new Error('Sync expôs notificação de terceiro');
   if (!visible.taskStatuses.length || !visible.users.length) throw new Error('Sync perdeu referências de apresentação');
   outcomes.push({check:'Projeção de leitura, notificações e referências',pass:true});
-  for (const field of ['comments','projectRiskItems','projectMaterials','equipmentList','tickets']) {
+  for (const field of ['comments','projectRiskItems','projectMaterials','equipmentList']) {
     await expectStatus(`Snapshot misto não permite escrita em ${field}`,await request('/api/supabase/sync',viewer,
       {method:'POST',body:JSON.stringify({taskStatuses:[{id:'tampered',name:'NÃO PERSISTIR'}],
         [field]:[{id:'11111111-2222-4333-8444-555555555555',comment:'NÃO PERSISTIR',title:'NÃO PERSISTIR'}]})}),403);
