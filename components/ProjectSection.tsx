@@ -1059,15 +1059,23 @@ export default function ProjectSection({
       } catch (err) {}
 
       try {
-        const taskRes = await fetch(`/api/v1/tasks?projectId=${selectedProjectId}&pageSize=100`, { headers: getAuthHeaders() });
-        if (taskRes.ok) {
+        const rawList: any[] = [];
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const taskRes = await fetch(`/api/v1/tasks?projectId=${selectedProjectId}&pageSize=100&page=${page}`, { headers: getAuthHeaders() });
           const taskResult = await taskRes.json();
-          if (taskResult.success && isMounted) {
-            const rawList = taskResult.data || [];
-            const normalized = rawList.map((t: any) => normalizeTaskFromApiResponse(t));
-            setServerTasks(normalized);
-            setLoadedProjectIdForTasks(selectedProjectId);
+          if (!taskRes.ok || !taskResult.success || !Array.isArray(taskResult.data)) {
+            throw new Error(taskResult.message || 'Não foi possível carregar as tarefas do projeto.');
           }
+          rawList.push(...taskResult.data);
+          totalPages = Math.max(1, Number(taskResult.totalPages) || 1);
+          page += 1;
+        } while (page <= totalPages);
+        if (isMounted) {
+          const normalized = rawList.map((t: any) => normalizeTaskFromApiResponse(t));
+          setServerTasks(normalized);
+          setLoadedProjectIdForTasks(selectedProjectId);
         }
       } catch (err) {
       } finally {

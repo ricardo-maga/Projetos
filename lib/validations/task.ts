@@ -104,7 +104,9 @@ export const updateTaskSchema = z.object({
     .array(z.string())
     .optional()
     .transform((ids) => (ids ? ids.filter((id) => Boolean(id && id.trim())) : undefined)),
-  version: z.number().int().min(1, 'A versão da tarefa deve ser um número inteiro superior a 0').optional(),
+  version: z.number({ error: 'A versão da tarefa é obrigatória.' })
+    .int()
+    .min(1, 'A versão da tarefa deve ser um número inteiro superior a 0'),
 }).refine(
   (data) => {
     if (data.startTime && data.endTime) {
