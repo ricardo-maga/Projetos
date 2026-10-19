@@ -89,7 +89,6 @@ describe('Workspace visual migration boundaries', () => {
     expect(migratedCSS).not.toContain('border-collapse: separate');
     expect(migratedCSS).not.toContain('button:not(.m3-nav-item)');
     expect(migratedCSS).toContain('[data-m3-exclude]');
-    expect(migratedCSS).toContain('[data-active-tab="tickets"]');
   });
 
   it('provides keyboard focus and reduced motion', () => {

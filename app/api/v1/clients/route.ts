@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
       .order('client_name', { ascending: true })
       .range(from, to);
 
-    if (error) return internalServerError(`Erro ao consultar clientes: ${error.message}`, requestId);
+    if (error) { console.error('[API CLIENTS GET]', error); return internalServerError('Erro ao consultar clientes.', requestId); }
 
     const total = count || 0;
     const totalPages = Math.ceil(total / pageSize);
@@ -87,7 +87,9 @@ export async function POST(req: NextRequest) {
   const { user, requestId } = auth;
 
   try {
-    const rawBody = await req.json();
+    let rawBody: unknown;
+    try { rawBody = await req.json(); }
+    catch { return badRequest('Corpo JSON inválido.', requestId); }
     const parseResult = createClientSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
@@ -134,7 +136,8 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (readError || !createdRow) {
-      return internalServerError(`Erro ao ler registo persistido do cliente criado: ${readError?.message || 'Registo não encontrado.'}`, requestId);
+      console.error('[API CLIENT READ AFTER CREATE]', readError);
+      return internalServerError('Erro ao ler o cliente criado.', requestId);
     }
 
     await logAuditEvent({

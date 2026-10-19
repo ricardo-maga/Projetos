@@ -11,7 +11,7 @@ const items = [{ id: 'clientes' }, { id: 'ausencias' }, { id: 'tarefas' }, { id:
 describe('Configuration navigation regression', () => {
   it('keeps the requested primary and configuration menu order', () => {
     const primary = source.slice(source.indexOf('const tabs = React.useMemo'), source.indexOf('// Fallback if active tab'));
-    const ids = [...primary.matchAll(/id: '([^']+)'/g)].map(m => m[1]).filter(id => id !== 'tickets');
+    const ids = [...primary.matchAll(/id: '([^']+)'/g)].map(m => m[1]);
     expect(ids).toEqual(['dashboard', 'meu-foco', 'projetos', 'tarefas', 'calendario', 'configuracoes']);
     const submenu = source.match(/const configSubItems = \[([\s\S]*?)\];/)![1];
     expect([...submenu.matchAll(/id: '([^']+)'/g)].map(m => m[1])).toEqual([

@@ -10,7 +10,7 @@ try {
     if(server.exitCode!==null||Date.now()-started>30000)throw Error('Local maintenance server failed to start');
     await new Promise(resolve=>setTimeout(resolve,100));
   }
-  for(const [path,method] of [['/','GET'],['/api/auth/login','POST'],['/api/tickets/inbound','POST'],['/api/supabase/sync','POST'],['/api/v1/tasks','GET']]) {
+  for(const [path,method] of [['/','GET'],['/api/auth/login','POST'],['/api/supabase/sync','POST'],['/api/v1/tasks','GET']]) {
     const response=await fetch('http://127.0.0.1:3111'+path,{method,signal:AbortSignal.timeout(10000)});
     if(response.status!==503||response.headers.get('cache-control')!=='no-store'||response.headers.get('retry-after')!=='120')throw Error(`Maintenance runtime mismatch: ${path}`);
     checks.push({path,method,status:response.status});

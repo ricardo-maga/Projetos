@@ -16,7 +16,7 @@ DECLARE
     'project_priority_link','project_risk','project_risk_items','project_risk_link',
     'project_status','project_teams','project_teams_link','projects',
     'risk_categories','risk_priorities','risk_statuses','special_days','task_assignees',
-    'task_status','task_types','tasks','ticket_statuses','tickets','user_absences',
+    'task_status','task_types','tasks','user_absences',
     'user_groups','users'
   ];
   target text;
@@ -49,7 +49,7 @@ BEGIN
       EXECUTE format('REVOKE SELECT (%s), INSERT (%s), UPDATE (%s), REFERENCES (%s) ON TABLE public.%I FROM PUBLIC, anon, authenticated',
         columns_sql, columns_sql, columns_sql, columns_sql, target);
     END IF;
-    -- Restritiva: políticas antigas permissivas de tickets não podem sobrepor-se.
+    -- A política restritiva prevalece sobre políticas antigas permissivas.
     EXECUTE format('DROP POLICY IF EXISTS backend_only_no_direct_api ON public.%I',target);
     EXECUTE format('CREATE POLICY backend_only_no_direct_api ON public.%I AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false) WITH CHECK (false)',target);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO service_role',target);

@@ -1,7 +1,6 @@
 import { mock, spyOn } from 'bun:test';
 import * as configuration from '../../lib/supabaseClient';
 import * as serverClient from '../../lib/supabase/requireServerDbClient';
-import * as ticketNumber from '../../lib/supabase/ticketNumber';
 
 const originalConfiguration = { ...configuration };
 
@@ -10,12 +9,8 @@ const originalConfiguration = { ...configuration };
 export function installLegacyRouteHarness(databaseClient: any = {}) {
   mock.module('../../lib/supabaseClient', () => ({ ...originalConfiguration, isSupabaseConfigured: true }));
   const server = spyOn(serverClient, 'requireServerDbClient').mockReturnValue(databaseClient);
-  let sequence = 0;
-  const number = spyOn(ticketNumber, 'reserveTicketNumber').mockImplementation(async () =>
-    `TCK-${new Date().getFullYear()}-${String(++sequence).padStart(4, '0')}`);
   return () => {
     server.mockRestore();
-    number.mockRestore();
     mock.module('../../lib/supabaseClient', () => originalConfiguration);
   };
 }

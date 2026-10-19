@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .eq('deleted', false)
       .maybeSingle();
 
-    if (error) return internalServerError(`Erro ao consultar cliente: ${error.message}`, requestId);
+    if (error) { console.error('[API CLIENT GET]', error); return internalServerError('Erro ao consultar cliente.', requestId); }
     if (!client) return notFound('Cliente não encontrado.', requestId);
 
     return NextResponse.json({
@@ -70,7 +70,9 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
   const { user, requestId } = auth;
 
   try {
-    const rawBody = await req.json();
+    let rawBody: unknown;
+    try { rawBody = await req.json(); }
+    catch { return badRequest('Corpo JSON inválido.', requestId); }
     const parseResult = updateClientSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
@@ -87,7 +89,7 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       .eq('id', id)
       .maybeSingle();
 
-    if (fetchError) return internalServerError(`Erro ao ler versão atual do cliente: ${fetchError.message}`, requestId);
+    if (fetchError) { console.error('[API CLIENT UPDATE READ]', fetchError); return internalServerError('Erro ao ler versão atual do cliente.', requestId); }
     if (!current || current.deleted) return notFound('Cliente não encontrado.', requestId);
 
     const hasVersion = typeof current.version === 'number';
@@ -135,7 +137,8 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
       .maybeSingle();
 
     if (readError || !reRead) {
-      return internalServerError(`Erro ao ler registo do cliente atualizado: ${readError?.message || 'Registo não encontrado.'}`, requestId);
+      console.error('[API CLIENT READ AFTER UPDATE]', readError);
+      return internalServerError('Erro ao ler cliente atualizado.', requestId);
     }
 
     const updatedClientData = {
@@ -186,7 +189,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const { data: current, error: fetchErr } = await sb.from('clients').select('*').eq('id', id).maybeSingle();
-    if (fetchErr) return internalServerError(`Erro ao ler cliente: ${fetchErr.message}`, requestId);
+    if (fetchErr) { console.error('[API CLIENT DELETE READ]', fetchErr); return internalServerError('Erro ao ler cliente.', requestId); }
     if (!current || current.deleted) return notFound('Cliente não encontrado.', requestId);
 
     // Check for active projects associated with this client
@@ -197,7 +200,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       .eq('deleted', false);
 
     if (projErr) {
-      return internalServerError(`Erro ao verificar projetos associados ao cliente: ${projErr.message}`, requestId);
+      console.error('[API CLIENT PROJECT CHECK]', projErr);
+      return internalServerError('Erro ao verificar projetos associados ao cliente.', requestId);
     }
 
     if (activeProjects && activeProjects.length > 0) {

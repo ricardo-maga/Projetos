@@ -17,8 +17,7 @@ describe('RLS server-only boundary safeguards', () => {
     expect(code.slice(code.indexOf('export async function logAuditEventToSupabase'))).not.toContain(".from('audit_logs')");
   });
   test('all legacy route writers inject server client into read and save', () => {
-    for (const path of ['app/api/v1/tickets/route.ts','app/api/v1/tickets/[id]/route.ts',
-      'app/api/v1/project-materials/route.ts','app/api/v1/project-materials/[id]/route.ts','app/api/tickets/inbound/route.ts']) {
+    for (const path of ['app/api/v1/project-materials/route.ts','app/api/v1/project-materials/[id]/route.ts']) {
       const code = read(path);
       expect(code).not.toContain('getActiveStateFromSupabase()');
       expect(code.match(/saveActiveStateToSupabase\([^,]*, databaseClient, /g)?.length).toBeGreaterThan(0);
@@ -26,19 +25,18 @@ describe('RLS server-only boundary safeguards', () => {
     expect(read('app/api/supabase/sync/route.ts')).toContain('saveActiveStateToSupabase(state, clientToUse)');
   });
   test('operational scope contains only changed rows, never unrelated snapshots or appConfig', () => {
-    const original = { users: [{ id: 'user' }], tickets: [{ id: 'other' }],
-      notifications: [{ id: 'old' }], projectMaterials: [{ id: 'material' }],
+    const original = { users: [{ id: 'user' }], projectMaterials: [{ id: 'other' }],
+      notifications: [{ id: 'old' }],
       comments: [{ id: 'comment' }], appConfig: { appName: 'protected' } } as unknown as ERPState;
-    const scoped = isolateOperationalWrite(original, { tickets: [{ id: 'changed' }] as ERPState['tickets'] });
-    expect(scoped.tickets).toEqual([{ id: 'changed' }]);
+    const scoped = isolateOperationalWrite(original, { projectMaterials: [{ id: 'changed' }] as ERPState['projectMaterials'] });
+    expect(scoped.projectMaterials).toEqual([{ id: 'changed' }]);
     expect(scoped.users).toEqual([]);
     expect(scoped.comments).toEqual([]);
-    expect(scoped.projectMaterials).toEqual([]);
     expect(scoped.notifications).toEqual([]);
     expect(scoped.appConfig).toBeUndefined();
     expect(original.users).toEqual([{ id: 'user' }]);
   });
-  test('scoped writer touches only the requested ticket table and row', async () => {
+  test('scoped writer touches only the requested material table and row', async () => {
     const writes: { table: string; rows: any[] }[] = [];
     const client = { rpc: async (name: string, payload: any) => {
       expect(name).toBe('write_legacy_batch');
@@ -46,13 +44,13 @@ describe('RLS server-only boundary safeguards', () => {
       return { error: null, data: [] };
     } };
     const snapshot = { users: [{ id: 'user' }], materials: [{ id: 'material' }],
-      tickets: [{ id: 'old' }], comments: [{ id: 'comment' }],
+      projectMaterials: [{ id: 'old' }], comments: [{ id: 'comment' }],
       appConfig: { appName: 'protected' } } as unknown as ERPState;
     const result = await saveActiveStateToSupabase(snapshot, client as any, {
-      tickets: [{ id: '92000000-0000-4000-8000-000000000010', title: 'Scoped test' }] as ERPState['tickets']
+      projectMaterials: [{ id: '92000000-0000-4000-8000-000000000010', description: 'Scoped test' }] as ERPState['projectMaterials']
     });
     expect(result.success).toBe(true);
-    expect(writes.map(write => write.table)).toEqual(['tickets']);
+    expect(writes.map(write => write.table)).toEqual(['project_materials']);
     expect(writes[0].rows).toHaveLength(1);
     expect(writes[0].rows[0].id).toBe('92000000-0000-4000-8000-000000000010');
   });

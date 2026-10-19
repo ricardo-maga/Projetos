@@ -30,16 +30,13 @@ describe('FASE 61 — Hardening Transversal Pós-Contenção do Supabase Sync', 
       expect(saveFn).toContain('return { success: false, message: `Erro ao gravar itens de risco:');
     });
 
-    it('propaga erros de persistência em ticket_statuses, notifications, automation_rules e tickets', () => {
+    it('propaga erros de persistência em notifications e automation_rules', () => {
       const content = readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8');
       const saveFn = content.substring(
         content.indexOf('export async function saveActiveStateToSupabase'),
         content.indexOf('export const SUPABASE_SETUP_SQL')
       );
 
-      expect(saveFn).toContain('const resTS = await supabase.from(\'ticket_statuses\').upsert(mappedTS);');
-      expect(saveFn).toContain('if (resTS.error)');
-      expect(saveFn).toContain('return { success: false, message: `Erro ao gravar estados de tickets:');
 
       expect(saveFn).toContain('const resNotif = await supabase.from(\'notifications\').upsert(mappedNotifs);');
       expect(saveFn).toContain('if (resNotif.error)');
@@ -49,9 +46,6 @@ describe('FASE 61 — Hardening Transversal Pós-Contenção do Supabase Sync', 
       expect(saveFn).toContain('if (resRules.error)');
       expect(saveFn).toContain('return { success: false, message: `Erro ao gravar regras de automação:');
 
-      expect(saveFn).toContain('const resTickets = await supabase.from(\'tickets\').upsert(mappedTickets);');
-      expect(saveFn).toContain('if (resTickets.error)');
-      expect(saveFn).toContain('return { success: false, message: `Erro ao gravar tickets:');
     });
   });
 

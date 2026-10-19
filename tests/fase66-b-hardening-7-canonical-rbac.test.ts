@@ -70,7 +70,6 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
       clients_read: false, clients_write: false, clients_delete: false,
       absences_read: false, absences_write: false, absences_delete: false,
       config_read: false, config_write: false,
-      tickets_read: false, tickets_write: false, tickets_delete: false,
       quotes_read: false, quotes_write: false, quotes_delete: false,
       materials_read: false, materials_write: false, materials_delete: false,
       equipment_read: false, equipment_write: false, equipment_delete: false,

@@ -2,8 +2,6 @@ import { describe, it, expect, spyOn, beforeEach, afterEach } from 'bun:test';
 import { POST as createTask } from '../app/api/v1/tasks/route';
 import { DELETE as deleteTask } from '../app/api/v1/tasks/[id]/route';
 import { DELETE as deleteClient } from '../app/api/v1/clients/[id]/route';
-import { POST as createTicket } from '../app/api/v1/tickets/route';
-import { PATCH as updateTicket } from '../app/api/v1/tickets/[id]/route';
 import { DELETE as deletePlanningAllocation } from '../app/api/v1/planning-allocations/[id]/route';
 import * as authModule from '../lib/auth/authorization';
 import * as serverDbModule from '../lib/supabase/server';
@@ -211,18 +209,6 @@ describe('FASE 27 — Integridade CRUD Transversal', () => {
           clients: mockDbData.clients,
           projects: mockDbData.projects,
           users: mockDbData.users,
-          tickets: [
-            {
-              id: 'tck-1',
-              ticketNumber: 'TCK-2026-001',
-              title: 'Ticket Teste',
-              status: 'aberto',
-              clientId: validUUIDClient,
-              deleted: false,
-              createdDate: '2026-01-01T00:00:00.000Z',
-              updatedDate: '2026-01-01T00:00:00.000Z',
-            },
-          ],
           notifications: [],
         } as any,
       };
@@ -317,43 +303,6 @@ describe('FASE 27 — Integridade CRUD Transversal', () => {
       const res = await deleteClient(req, { params: Promise.resolve({ id: validUUIDClient }) });
       expect(res.status).toBe(200);
       expect(mockDbData.clients.find((c: any) => c.id === validUUIDClient).deleted).toBe(true);
-    });
-  });
-
-  describe('3. Tickets — Validação Relacional e Não-Exposição de Sucesso Falso', () => {
-    it('Rejeita criação de Ticket associado a Cliente inexistente (400 Bad Request)', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/tickets', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Ticket sem Cliente Válido',
-          clientId: 'client-inexistente-999',
-        }),
-      });
-
-      const res = await createTicket(req);
-      expect(res.status).toBe(400);
-      const json = await res.json();
-      expect(json.message).toContain('cliente');
-    });
-
-    it('Se gravação de persistência de Ticket falhar, não devolve 200/201 (retorna 500)', async () => {
-      syncSaveSpy.mockImplementation(async () => {
-        return { success: false, message: 'Falha simulada ao persistir tickets na base de dados' };
-      });
-
-      const req = new NextRequest('http://localhost:3000/api/v1/tickets', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Ticket com Falha na Persistência',
-        }),
-      });
-
-      const res = await createTicket(req);
-      expect(res.status).toBe(500);
-      const json = await res.json();
-      expect(json.success).toBe(false);
     });
   });
 

@@ -1,6 +1,6 @@
 // Global configuration is never writable through a non-administrative snapshot.
 export const ADMIN_SYNC_FIELDS = [
-  'users', 'userGroups', 'appConfig', 'ticketStatuses', 'automationRules',
+  'users', 'userGroups', 'appConfig', 'automationRules',
   'projectStatuses', 'projectCategories', 'projectRisks', 'projectPriorities',
   'projectTeams', 'projectPartners', 'taskStatuses', 'taskTypes', 'riskCategories',
   'riskStatuses', 'riskPriorities', 'specialDays', 'defaultTasks',
@@ -16,7 +16,6 @@ export const SYNC_DOMAIN_PERMISSIONS = {
   projectMaterials: ['project_materials:write', 'project_materials:delete'],
   equipmentList: ['equipment:write', 'equipment:delete'],
   userAbsences: ['absences:write', 'absences:delete'],
-  tickets: ['tickets:write', 'tickets:delete'],
   notifications: ['config:write', 'config:write'],
 } as const;
 

@@ -48,17 +48,32 @@ describe('Absences M3 presentation and existing actions', () => {
     expect(section).not.toMatch(/<(button|select|input|textarea)\b/);
     expect(section).not.toMatch(/text-\[(8|9|10|11)px\]|text-xs|(?:bg|text|border)-(slate|blue|rose)-/);
   });
-  it('keeps the canonical absence payload and deletion confirmation', () => {
+  it('keeps the canonical absence payload and deletion confirmation', async () => {
     const h = createSectionHarness('UserSection.tsx', { userId: 'b', startDate: '2026-10-08', endDate: '2026-10-09' });
     let added: any, deleted = '';
     let tree = h.render({ ...props, addAbsence: (value: any) => added = value, deleteAbsence: (id: string) => deleted = id });
-    find(tree, e => e.type === 'form').props.onSubmit({ preventDefault() {} });
+    await find(tree, e => e.type === 'form').props.onSubmit({ preventDefault() {} });
     expect(added).toEqual({ userId: 'b', absenceStartDate: '2026-10-08', absenceEndDate: '2026-10-09', reason: 'Vacation' });
     expect(h.state.userId).toBe('');
     tree = h.render({ ...props, deleteAbsence: (id: string) => deleted = id });
     find(tree, e => e.props?.children === 'Eliminar').props.onClick();
     expect(deleted).toBe(''); expect(h.state.confirmState.isOpen).toBe(true);
     h.state.confirmState.onConfirm(); expect(deleted).toBe('visible');
+  });
+  it('defaults and constrains the end date after selecting the start date', () => {
+    const h = createSectionHarness('UserSection.tsx');
+    let tree = h.render(props);
+    const startInput = find(tree, e => e.props?.label === 'Data de Início *');
+    const endInput = find(tree, e => e.props?.label === 'Data de fim *');
+    expect(endInput.props.disabled).toBe(true);
+    startInput.props.onChange({ target: { value: '2026-10-12' } });
+    expect(h.state.startDate).toBe('2026-10-12');
+    expect(h.state.endDate).toBe('2026-10-12');
+    tree = h.render(props);
+    const updatedEndInput = find(tree, e => e.props?.label === 'Data de fim *');
+    expect(updatedEndInput.props.disabled).toBe(false);
+    expect(updatedEndInput.props.min).toBe('2026-10-12');
+    expect(updatedEndInput.props.value).toBe('2026-10-12');
   });
   it('clears stale user selections on configuration changes and disables submission with no groups', () => {
     const h = createSectionHarness('UserSection.tsx', { userId: 'x', filterUserId: 'x' });
@@ -77,15 +92,12 @@ describe('Absences M3 presentation and existing actions', () => {
 });
 
 describe('Main navigation presentation boundaries', () => {
-  it('uses stable font size/weight for both menu branches and only hides Tickets visually', () => {
+  it('uses stable font size and weight for both menu branches', () => {
     const source = readFileSync(new URL('../app/page.tsx', import.meta.url), 'utf8');
     expect(source.match(/m3-nav-item w-full flex items-center gap-3 py-3 font-semibold/g)).toHaveLength(2);
     expect(source.match(/cn\("text-body truncate", isCollapsed \? 'md:hidden' : 'block'\)\}\>\{tab.label\}/g)).toHaveLength(2);
     expect(cn('text-body truncate', 'block')).toContain('text-body');
     expect(source).not.toContain('is-active font-bold');
-    expect(source).toContain("tab.id !== 'tickets'");
-    expect(source).toContain("activeTab === 'tickets'");
-    expect(source).toContain("activeTab === 'tickets' && tabs.some(tab => tab.id === 'tickets')");
     expect(source).toContain('appConfig={state.appConfig}');
   });
 });

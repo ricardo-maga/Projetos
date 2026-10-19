@@ -51,7 +51,6 @@ if (mode === 'check-access') {
     for (const [rpc, args] of [
       ['delete_project_transaction',{p_id:randomUUID()}],
       ['write_legacy_batch',{p_changes:[]}],
-      ['reserve_ticket_number',{}],
     ]) {
       const { error } = await client.rpc(rpc,args);
       if (error?.code !== '42501') throw new Error(`RPC ${rpc} não bloqueada`);
@@ -121,7 +120,7 @@ if (mode === 'check-access') {
   const env = { ...process.env, NEXT_PUBLIC_SUPABASE_URL:url, SUPABASE_URL:url,
     NEXT_PUBLIC_SUPABASE_ANON_KEY:anon, SUPABASE_ANON_KEY:anon, SUPABASE_SERVICE_ROLE_KEY:service,
     ERP_STAGING:'true', ERP_BOOTSTRAP_ENABLED:'false', ERP_BOOTSTRAP_SECRET:'', ERP_BOOTSTRAP_ADMIN_EMAIL:'',
-    APP_URL:'http://127.0.0.1:3110', INBOUND_TICKETS_SECRET:randomBytes(32).toString('hex'),
+    APP_URL:'http://127.0.0.1:3110',
     GEMINI_API_KEY:'', NEXT_TELEMETRY_DISABLED:'1', NEXT_IGNORE_INCORRECT_LOCKFILE:'1' };
   console.log(`STAGING ${ref} — http://127.0.0.1:3110 (sem alterar produção)`);
   const child = spawn(process.execPath,[join(root,'node_modules/next/dist/bin/next'),'dev','--hostname','127.0.0.1','--port','3110'],

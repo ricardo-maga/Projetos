@@ -26,7 +26,7 @@ interface UserSectionProps {
   userGroups: any[];
   activeRoles?: Array<{ id: string; name: string }>;
   onRefreshFromDatabase?: () => Promise<boolean>;
-  addAbsence: (abs: any) => void;
+  addAbsence: (abs: any) => Promise<{ success: boolean; message?: string }> | { success: boolean; message?: string } | void;
   deleteAbsence: (id: string) => void;
   addUser: (user: any) => Promise<string | null> | string | null | void;
   updateUser: (id: string, updates: any) => Promise<boolean> | boolean | void;
@@ -66,6 +66,7 @@ export default function UserSection({
   const canDeleteUsers = hasPermission(currentUser, 'users_delete', userGroups);
 
   const [subTab, setSubTab] = useState<'absences' | 'users' | 'roles'>(hideAbsences ? 'users' : 'absences');
+  const { busy: isSavingAbsence, run: runAbsenceAction } = useAsyncAction();
   const { busy: isSavingUser, run: runUserAction } = useAsyncAction();
   const [filterRoleId, setFilterRoleId] = useState<string>('all');
   const [rbacRoles, setRbacRoles] = useState<Array<{ id: string; name: string; code: string }>>([]);
@@ -144,46 +145,52 @@ export default function UserSection({
     }).catch(error => console.error('Falha ao carregar funções RBAC:', error));
   }, [currentUser, userGroups]);
 
-  const handleAddAbsenceSubmit = (e: React.FormEvent) => {
+  const handleAddAbsenceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canWriteAbsences) {
-      alert('Não tem permissão para registar ausências.');
-      return;
-    }
-    const activeUserId = userId;
-    if (!activeUserId || !absenceUserIds.has(activeUserId) || !startDate || !endDate) {
-      alert('Por favor, selecione um utilizador e preencha todos os campos da ausência.');
-      return;
-    }
+    await runAbsenceAction(async () => {
+      if (!canWriteAbsences) {
+        alert('Não tem permissão para registar ausências.');
+        return;
+      }
+      const activeUserId = userId;
+      if (!activeUserId || !absenceUserIds.has(activeUserId) || !startDate || !endDate) {
+        alert('Por favor, selecione um utilizador e preencha todos os campos da ausência.');
+        return;
+      }
 
-    if (startDate > endDate) {
-      alert('A data de início não pode ser posterior à data de fim.');
-      return;
-    }
+      if (startDate > endDate) {
+        alert('A data de início não pode ser posterior à data de fim.');
+        return;
+      }
 
     // Overlap / Collision check for the selected user
-    const hasOverlap = absences.some(abs => {
-      if (abs.userId !== activeUserId) return false;
-      // Intersection formula: start1 <= end2 && end1 >= start2
-      return (startDate <= abs.absenceEndDate) && (endDate >= abs.absenceStartDate);
-    });
+      const hasOverlap = absences.some(abs => {
+        if (abs.userId !== activeUserId) return false;
+        // Intersection formula: start1 <= end2 && end1 >= start2
+        return (startDate <= abs.absenceEndDate) && (endDate >= abs.absenceStartDate);
+      });
 
-    if (hasOverlap) {
-      const confirmSave = window.confirm(
-        'Atenção: O período ou dia selecionado colide com outra ausência já registada para este utilizador. Deseja mesmo gravar esta ausência?'
-      );
-      if (!confirmSave) return;
-    }
+      if (hasOverlap) {
+        const confirmSave = window.confirm(
+          'Atenção: O período ou dia selecionado colide com outra ausência já registada para este utilizador. Deseja mesmo gravar esta ausência?'
+        );
+        if (!confirmSave) return;
+      }
 
-    addAbsence({
-      userId: activeUserId,
-      absenceStartDate: startDate,
-      absenceEndDate: endDate,
-      reason,
+      const result = await addAbsence({
+        userId: activeUserId,
+        absenceStartDate: startDate,
+        absenceEndDate: endDate,
+        reason,
+      });
+      if (result && !result.success) {
+        alert(result.message || 'Não foi possível gravar a ausência na base de dados.');
+        return;
+      }
+      setUserId('');
+      setStartDate('');
+      setEndDate('');
     });
-    setUserId('');
-    setStartDate('');
-    setEndDate('');
   };
 
   const startAddUser = () => {
@@ -490,7 +497,12 @@ export default function UserSection({
                     type="date" 
                     required
                     value={startDate}
-                    onChange={e => setStartDate(e.target.value)}
+                    onChange={e => {
+                      const nextStartDate = e.target.value;
+                      setStartDate(nextStartDate);
+                      setEndDate(nextStartDate);
+                    }}
+                    disabled={isSavingAbsence}
                   />
                 </div>
 
@@ -500,6 +512,8 @@ export default function UserSection({
                     required
                     value={endDate}
                     onChange={e => setEndDate(e.target.value)}
+                    min={startDate || undefined}
+                    disabled={!startDate || isSavingAbsence}
                   />
                 </div>
 
@@ -515,10 +529,11 @@ export default function UserSection({
 
                 <Button variant="primary"
                   type="submit"
-                  disabled={!canWriteAbsences || !absenceUsers.length}
+                  disabled={!canWriteAbsences || !absenceUsers.length || isSavingAbsence}
+                  isLoading={isSavingAbsence}
                   className="w-full mt-2"
                 >
-                  Gravar Ausência
+                  {isSavingAbsence ? 'A gravar...' : 'Gravar Ausência'}
                 </Button>
               </form>
               {!absenceVisibility.groups.length && <p role="status" className="mt-3 text-body-sm text-text-secondary">Defina os Grupos Associados Tarefas nas Configurações para registar ausências.</p>}
