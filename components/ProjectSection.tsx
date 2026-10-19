@@ -3,7 +3,7 @@
 import { M3FilterChip, M3SectionHeader, M3SegmentedControl } from './M3';
 import { Tabs } from './ui/Tabs';
 import ProjectAnalytics from './ProjectAnalytics';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Project, Client, Comment, Task, TaskType, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '../lib/types';
 import { 
   Plus, Search, Edit2, Trash2, ArrowLeft, Calendar, FileText, 
@@ -30,6 +30,19 @@ import { normalizeTaskFromApiResponse } from '../lib/taskOperations';
 import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatHoursToHHMM, formatToOnlyHours, parseTimeToHours, getProjectStatusStyle, getTaskStatusStyle } from '../lib/utils';
 import { configuredRoleIds, userHasAnyRole } from '../lib/roleAssociations';
 import { currentForecastMonth, forecastLabel, forecastMonth, normalizeForecast, projectForecastAlert } from '../lib/projectForecast';
+
+type ProjectPageCacheEntry = { data: Project[]; total: number; savedAt: number };
+const projectPageCache = new Map<string, ProjectPageCacheEntry>();
+const PROJECT_CACHE_MS = 60_000;
+const PROJECT_CACHE_LIMIT = 30;
+
+function cacheProjectPage(key: string, entry: ProjectPageCacheEntry) {
+  projectPageCache.delete(key);
+  projectPageCache.set(key, entry);
+  if (projectPageCache.size > PROJECT_CACHE_LIMIT) {
+    projectPageCache.delete(projectPageCache.keys().next().value!);
+  }
+}
 
 function ForecastBadge({ project, statuses, canEdit, updateProject, compact = false }: {
   project: Project; statuses: any[]; canEdit: boolean; updateProject?: (id: string, updates: any) => Promise<unknown>; compact?: boolean;
@@ -288,6 +301,11 @@ export default function ProjectSection({
   const [pendingMaterialStatuses, setPendingMaterialStatuses] = useState<Record<string, string>>({});
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
   const [projectListView, setProjectListView] = useState<'lista' | 'analise'>('lista');
   const [filterStatusGroup, setFilterStatusGroup] = useState<'active' | 'implementation' | 'all' | 'completed'>('active');
   const [filterCategory, setFilterCategory] = useState('');
@@ -301,7 +319,7 @@ export default function ProjectSection({
   // Reset pagination when any filter or page size changes
   useEffect(() => {
     setProjectCurrentPage(1);
-  }, [search, filterCategory, filterStatus, filterManager, filterStatusGroup, projectPageSize]);
+  }, [debouncedSearch, filterCategory, filterStatus, filterManager, filterStatusGroup, projectPageSize]);
   
   const sortedStatuses = [...(projectStatuses || [])].sort((a, b) => (a.scale ?? 0) - (b.scale ?? 0));
   
@@ -947,16 +965,36 @@ export default function ProjectSection({
   const [settledProjectsKey, setSettledProjectsKey] = useState<string | null>(null);
   const [projectsLoadError, setProjectsLoadError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const lastRefreshTrigger = useRef(refreshTrigger);
+  const lastProjectsSnapshot = useRef(projects);
   const [serverSelectedProj, setServerSelectedProj] = useState<Project | null>(null);
   const [serverTasks, setServerTasks] = useState<Task[]>([]);
   const [loadedProjectIdForTasks, setLoadedProjectIdForTasks] = useState<string | null>(null);
   const [isServerTasksLoading, setIsServerTasksLoading] = useState(false);
-  const projectsQueryKey = JSON.stringify([projectCurrentPage, projectPageSize, search, filterCategory, filterStatus, filterManager, filterStatusGroup, refreshTrigger]);
-  const projectsListPending = isLoadingProjects || settledProjectsKey !== projectsQueryKey;
+  const projectsQueryKey = JSON.stringify([currentUser?.id || '', projectCurrentPage, projectPageSize, debouncedSearch, filterCategory, filterStatus, filterManager, filterStatusGroup]);
+  const cachedProjectsPage = projectPageCache.get(projectsQueryKey);
+  const projectsListPending = search !== debouncedSearch || isLoadingProjects || settledProjectsKey !== projectsQueryKey;
 
   useEffect(() => {
     if (selectedProjectId) return;
     let isMounted = true;
+    const controller = new AbortController();
+    if (lastRefreshTrigger.current !== refreshTrigger || lastProjectsSnapshot.current !== projects) {
+      lastRefreshTrigger.current = refreshTrigger;
+      lastProjectsSnapshot.current = projects;
+      projectPageCache.clear();
+    }
+    const cached = projectPageCache.get(projectsQueryKey);
+    if (cached) {
+      setServerProjects(cached.data);
+      setTotalServerProjects(cached.total);
+      setSettledProjectsKey(projectsQueryKey);
+      if (Date.now() - cached.savedAt < PROJECT_CACHE_MS) {
+        setIsLoadingProjects(false);
+        setProjectsLoadError(null);
+        return;
+      }
+    }
     const fetchProj = async () => {
       setIsLoadingProjects(true);
       setProjectsLoadError(null);
@@ -964,23 +1002,24 @@ export default function ProjectSection({
         const query = new URLSearchParams({
           page: projectCurrentPage.toString(),
           pageSize: projectPageSize.toString(),
-          search: search,
+          search: debouncedSearch,
           categoryId: filterCategory,
           statusId: filterStatus,
           managerId: filterManager,
           statusGroup: filterStatusGroup
         });
-        const res = await fetch(`/api/v1/projects?${query.toString()}`, { headers: getAuthHeaders() });
+        const res = await fetch(`/api/v1/projects?${query.toString()}`, { headers: getAuthHeaders(), signal: controller.signal });
         const result = await res.json();
         if (!res.ok || !result.success || !Array.isArray(result.data)) {
           throw new Error(result.message || 'Não foi possível carregar os projetos.');
         }
         if (isMounted) {
+          cacheProjectPage(projectsQueryKey, { data: result.data, total: result.total ?? result.count ?? 0, savedAt: Date.now() });
           setServerProjects(result.data);
           setTotalServerProjects(result.total ?? result.count ?? 0);
         }
       } catch (err) {
-        if (isMounted) setProjectsLoadError('Não foi possível carregar os projetos. Tente novamente.');
+        if (isMounted && !controller.signal.aborted) setProjectsLoadError('Não foi possível carregar os projetos. Tente novamente.');
       } finally {
         if (isMounted) {
           setSettledProjectsKey(projectsQueryKey);
@@ -989,8 +1028,8 @@ export default function ProjectSection({
       }
     };
     fetchProj();
-    return () => { isMounted = false; };
-  }, [projectCurrentPage, projectPageSize, search, filterCategory, filterStatus, filterManager, filterStatusGroup, selectedProjectId, projects, refreshTrigger, projectsQueryKey]); // Refresh after canonical project mutations.
+    return () => { isMounted = false; controller.abort(); };
+  }, [selectedProjectId, refreshTrigger, projectsQueryKey, projects]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1100,8 +1139,8 @@ export default function ProjectSection({
   const activeProjects = filteredProjects;
   // The API already filters and paginates. Never re-slice its page or fall
   // back to the global snapshot after a legitimate empty response.
-  const paginatedProjects = serverProjects;
-  const totalProjects = totalServerProjects;
+  const paginatedProjects = cachedProjectsPage?.data ?? serverProjects;
+  const totalProjects = cachedProjectsPage?.total ?? totalServerProjects;
   const totalProjectPages = Math.max(1, Math.ceil(totalProjects / projectPageSize));
   const validProjectPage = Math.min(projectCurrentPage, totalProjectPages);
   const startProjectIndex = (validProjectPage - 1) * projectPageSize;
@@ -4107,12 +4146,23 @@ export default function ProjectSection({
           </div>
 
           {/* Table list output */}
+          {projectsListPending && paginatedProjects.length > 0 && (
+            <div role="status" aria-live="polite" className="px-5 py-2 text-body-sm text-text-secondary flex items-center gap-2">
+              <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" /> A atualizar projetos…
+            </div>
+          )}
+          {projectsLoadError && paginatedProjects.length > 0 && (
+            <div role="alert" className="px-5 py-2 text-body-sm text-error flex items-center gap-3">
+              {projectsLoadError}
+              <Button variant="secondary" size="sm" onClick={() => setRefreshTrigger(value => value + 1)}>Tentar novamente</Button>
+            </div>
+          )}
           <div className="overflow-x-auto w-full">
-            {projectsListPending ? (
+            {projectsListPending && paginatedProjects.length === 0 ? (
               <div role="status" aria-live="polite" className="p-10 flex items-center justify-center gap-2 text-body-sm text-text-secondary">
                 <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" /> A carregar projetos…
               </div>
-            ) : projectsLoadError ? (
+            ) : projectsLoadError && paginatedProjects.length === 0 ? (
               <div role="alert" className="p-10 text-center space-y-3 text-body-sm text-text-secondary">
                 <p>{projectsLoadError}</p>
                 <Button variant="secondary" size="sm" onClick={() => setRefreshTrigger(value => value + 1)}>Tentar novamente</Button>
@@ -4195,7 +4245,7 @@ export default function ProjectSection({
           </div>
 
           {/* Project List Pagination Controls */}
-          {!projectsListPending && !projectsLoadError && totalProjects > 0 && (
+          {totalProjects > 0 && (!projectsListPending || cachedProjectsPage) && (
             <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-surface-muted/70 border-t border-border/80 text-body-sm gap-3 font-medium">
               <div className="flex items-center gap-3 text-text-secondary font-medium">
                 <span>
