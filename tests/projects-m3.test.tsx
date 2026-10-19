@@ -15,6 +15,8 @@ const project = {
   teamsInvolvedIds: [], partnersIds: [], deleted: false,
 };
 const statuses = [{ id: 'qa-status', name: 'Estado configurado', color: 'laranja', scale: 2 }];
+const projectQueryKey = (page = 1, group = 'active', userId = 'qa-user') =>
+  JSON.stringify([userId, page, 25, '', '', '', '', group]);
 it('forwards auxiliary priorities to the unified task modal inside Projects', () => {
   const priorities = [{ id: 'custom-priority', name: 'Prioridade configurada', scale: 2, deleted: false }];
   const h = createProjectHarness();
@@ -58,7 +60,7 @@ describe('Projects M3 presentation', () => {
       { ...project, id: 'unset' },
     ];
     const h = createProjectHarness({ serverProjects: projects,
-      settledProjectsKey: JSON.stringify([1, 25, '', '', '', '', 'active', 0]) });
+      settledProjectsKey: projectQueryKey() });
     const html = renderToStaticMarkup(h.render({ ...projectPreviewProps, projects, selectedProjectId: null }));
     expect(html.match(/Clique para alterar o Forecast/g)).toHaveLength(1);
     expect(html).not.toContain('Forecast N/D');
@@ -100,7 +102,7 @@ describe('Projects M3 presentation', () => {
       expect(h.state.serverProjects).toEqual([]);
       responses[1]({ ok: true, json: async () => ({ success: true, data: [], total: 0 }) });
       await new Promise(resolve => setTimeout(resolve, 0));
-      expect(h.state.settledProjectsKey).toBe(JSON.stringify([1, 25, '', '', '', '', 'completed', 0]));
+      expect(h.state.settledProjectsKey).toBe(projectQueryKey(1, 'completed'));
       expect(h.state.isLoadingProjects).toBe(false);
       const html = renderToStaticMarkup(h.render(projectPreviewProps));
       expect(html).toContain('Nenhum projeto encontrado');
@@ -112,7 +114,7 @@ describe('Projects M3 presentation', () => {
     let html = renderToStaticMarkup(h.render(projectPreviewProps));
     expect(html).toContain('A carregar projetos');
     expect(html).not.toContain('Nenhum projeto encontrado');
-    h.state.settledProjectsKey = JSON.stringify([1, 25, '', '', '', '', 'active', 0]);
+    h.state.settledProjectsKey = projectQueryKey();
     html = renderToStaticMarkup(h.render(projectPreviewProps));
     expect(html).toContain('Nenhum projeto encontrado');
     h.state.filterStatusGroup = 'completed';
@@ -120,9 +122,17 @@ describe('Projects M3 presentation', () => {
     expect(html).toContain('A carregar projetos');
     expect(html).not.toContain('Nenhum projeto encontrado');
   });
+  it('keeps the previous page visible while a new filter is loading', () => {
+    const h = createProjectHarness({ serverProjects: [project], totalServerProjects: 1,
+      settledProjectsKey: projectQueryKey(), isLoadingProjects: true, filterStatusGroup: 'completed' });
+    const html = renderToStaticMarkup(h.render(projectPreviewProps));
+    expect(html).toContain('A atualizar projetos');
+    expect(html).toContain('Abrir projeto Projeto M3 de exemplo');
+    expect(html).not.toContain('A carregar projetos');
+  });
   it('does not paginate server pages twice or fall back to local projects after empty/error results', () => {
     const h = createProjectHarness({ projectCurrentPage: 2, serverProjects: [project], totalServerProjects: 26,
-      settledProjectsKey: JSON.stringify([2, 25, '', '', '', '', 'active', 0]) });
+      settledProjectsKey: projectQueryKey(2) });
     let html = renderToStaticMarkup(h.render(projectPreviewProps));
     expect(html).toContain('Abrir projeto Projeto M3 de exemplo');
     h.state.serverProjects = [];
@@ -178,7 +188,7 @@ describe('Projects M3 presentation', () => {
   });
   it('renders the list with Foundation surfaces, configured badges and accessible project actions', () => {
     const h = createProjectHarness({ serverProjects: [project], totalServerProjects: 1,
-      settledProjectsKey: JSON.stringify([1, 25, '', '', '', '', 'active', 0]) });
+      settledProjectsKey: projectQueryKey() });
     const html = renderToStaticMarkup(h.render(projectPreviewProps));
     expect(html).toContain('m3-projects');
     expect(html).toContain('<h2>Lista de projetos</h2>');
@@ -193,7 +203,7 @@ describe('Projects M3 presentation', () => {
   });
 
   it('retains empty filters, soft-delete filtering and write permissions', () => {
-    const h = createProjectHarness({ settledProjectsKey: JSON.stringify([1, 25, '', '', '', '', 'active', 0]) });
+    const h = createProjectHarness({ settledProjectsKey: projectQueryKey(1, 'active', '') });
     const html = renderToStaticMarkup(h.render({ ...projectPreviewProps,
       projects: [{ ...project, deleted: true }], currentUser: undefined }));
     expect(html).toContain('Nenhum projeto encontrado para os filtros selecionados.');

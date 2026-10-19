@@ -85,9 +85,11 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     if (fetchError) { console.error('[API TASK UPDATE READ]', fetchError); return internalServerError('Erro ao ler versão atual da tarefa.', requestId); }
     if (!current || current.deleted) return notFound('Tarefa não encontrada.', requestId);
 
-    const hasVersion = typeof current.version === 'number';
-    const currentVersion = hasVersion ? current.version : (updates.version || 1);
-    if (hasVersion && updates.version !== undefined && updates.version !== currentVersion) {
+    if (typeof current.version !== 'number') {
+      return internalServerError('A tarefa não tem uma versão de concorrência válida.', requestId);
+    }
+    const currentVersion = current.version;
+    if (updates.version !== currentVersion) {
       return conflict(
         `Conflito de concorrência. A tarefa foi alterada por outro utilizador (versão atual: ${currentVersion}, versão submetida: ${updates.version}).`,
         requestId,

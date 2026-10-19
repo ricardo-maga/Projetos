@@ -65,6 +65,7 @@ describe('FASE 81-B — Correção Cirúrgica dos Findings da FASE 80', () => {
   describe('FINDING 2: Validação Parcial de Datas no updateTaskSchema', () => {
     it('Permite atualização parcial apenas com startDate sem exigir endDate', () => {
       const result = updateTaskSchema.safeParse({
+        version: 1,
         startDate: '2026-10-15',
       });
       expect(result.success).toBe(true);
@@ -75,6 +76,7 @@ describe('FASE 81-B — Correção Cirúrgica dos Findings da FASE 80', () => {
 
     it('Permite atualização parcial apenas com endDate sem exigir startDate', () => {
       const result = updateTaskSchema.safeParse({
+        version: 1,
         endDate: '2026-10-20',
       });
       expect(result.success).toBe(true);
@@ -85,6 +87,7 @@ describe('FASE 81-B — Correção Cirúrgica dos Findings da FASE 80', () => {
 
     it('Permite atualização parcial apenas com startTime sem exigir endTime', () => {
       const result = updateTaskSchema.safeParse({
+        version: 1,
         startTime: '09:00',
       });
       expect(result.success).toBe(true);
@@ -95,6 +98,7 @@ describe('FASE 81-B — Correção Cirúrgica dos Findings da FASE 80', () => {
 
     it('Rejeita quando ambas startDate e endDate são fornecidas e endDate < startDate', () => {
       const result = updateTaskSchema.safeParse({
+        version: 1,
         startDate: '2026-10-25',
         endDate: '2026-10-20',
       });
@@ -106,6 +110,7 @@ describe('FASE 81-B — Correção Cirúrgica dos Findings da FASE 80', () => {
 
     it('Rejeita quando ambas startTime e endTime são fornecidas e endTime <= startTime', () => {
       const result = updateTaskSchema.safeParse({
+        version: 1,
         startTime: '14:00',
         endTime: '13:00',
       });
@@ -117,6 +122,7 @@ describe('FASE 81-B — Correção Cirúrgica dos Findings da FASE 80', () => {
 
     it('Aceita datas e horas válidas completas em conjunto', () => {
       const result = updateTaskSchema.safeParse({
+        version: 1,
         startDate: '2026-10-10',
         endDate: '2026-10-12',
         startTime: '08:30',

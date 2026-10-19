@@ -19,16 +19,18 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.2.21
-      # bun.lock uses a legacy lockfile format rejected by Bun 1.2 in frozen mode.
-      - run: bun install --no-save
-      - run: bun run typecheck:app
-      - run: bun run test:security
-      - run: bun test tests/task-priority-transport.test.ts
-      - run: bun test tests/project-analytics.test.ts
-      - run: bun test tests/project-forecast.test.ts tests/dashboard-m3.test.tsx tests/projects-m3.test.tsx tests/my-focus-m3.test.tsx
+          bun-version: 1.3.1
+      - run: npm ci
+      - run: npm run typecheck:app
+      - run: npm run build
+      # Runs every test and rejects failures outside the reviewed baseline.
+      - run: npm run test:ci
 
   production-security-e2e:
     needs: security-and-types
@@ -36,13 +38,13 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: 1.2.21
-      - run: bun install --no-save
-      - run: bun add --no-save @playwright/test@1.55.0
-      - run: bunx playwright install --with-deps chromium
-      - run: bunx playwright test --config=playwright.config.ts
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:security
         env:
           E2E_BASE_URL: ${{ vars.E2E_BASE_URL }}
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}

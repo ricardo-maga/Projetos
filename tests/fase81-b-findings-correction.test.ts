@@ -89,7 +89,7 @@ describe('FASE 81-B — Correção Cirúrgica dos Findings da FASE 80', () => {
       updates: { startDate?: string | null; endDate?: string | null; title?: string }
     ) => {
       // 1. Zod parse individual (garante que payload parcial é syntactically valid)
-      const parseResult = updateTaskSchema.safeParse(updates);
+      const parseResult = updateTaskSchema.safeParse({ version: 1, ...updates });
       if (!parseResult.success) {
         return { valid: false, error: 'Schema validation error', details: parseResult.error.flatten() };
       }

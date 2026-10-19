@@ -14,8 +14,10 @@ export function validateAutomationRule(rule: AutomationRule, state: ERPState): s
   if (!Array.isArray(rule.actions) || rule.actions.length === 0) return 'Selecione uma ação.';
   const statusIds = new Set((rule.triggerType === 'project_status_changed' ? state.projectStatuses : state.taskStatuses)
     .filter(status => !status.deleted).map(status => status.id));
-  if (rule.triggerType !== 'task_created' && rule.triggerCondition?.toStatusId && !statusIds.has(rule.triggerCondition.toStatusId))
-    return 'O estado do evento não existe ou foi eliminado.';
+  if (rule.triggerType !== 'task_created') {
+    if (!rule.triggerCondition?.toStatusId) return 'Escolha um estado da tarefa ou do projeto para o evento.';
+    if (!statusIds.has(rule.triggerCondition.toStatusId)) return 'O estado do evento não existe ou foi eliminado.';
+  }
   const projectStatusIds = new Set(state.projectStatuses.filter(status => !status.deleted).map(status => status.id));
   const seen = new Set<string>();
   for (const action of rule.actions) {

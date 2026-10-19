@@ -397,10 +397,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       client.from('task_types').select('*').order('sort_order', { ascending: true }),
       client.from('users').select('*'),
       client.from('clients').select('*').order('created_at', { ascending: false }),
-      getProjectsServerData(client, { all: true, includeDeleted: true }).catch(err => {
-        console.warn('Error fetching projects via getProjectsServerData:', err);
-        return { data: [], total: 0 };
-      }),
+      getProjectsServerData(client, { all: true, includeDeleted: true }),
       client.from('tasks').select('*').order('created_at', { ascending: false }),
       client.from('comments').select('*').order('created_at', { ascending: true }),
       client.from('user_absences').select('*'),
@@ -419,8 +416,17 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       client.from('user_roles').select('user_id,role_id'),
     ]);
 
-    if (resActiveRoles.error || resUserRoles.error || resNotificationSettings.error) {
-      throw resActiveRoles.error || resUserRoles.error || resNotificationSettings.error;
+    const mandatoryResults = [
+      resUserGroups, resProjectStatuses, resProjectCategories, resProjectRisks,
+      resProjectPriorities, resProjectTeams, resProjectPartners, resTaskStatuses,
+      resTaskTypes, resUsers, resClients, resTasks, resComments, resUserAbsences,
+      resEquipment, resConfig, resSpecialDays, resDefaultTasks, resRiskCategories,
+      resRiskStatuses, resRiskPriorities, resProjectRiskItems, resNotificationSettings,
+      resAutomationRules, resActiveRoles, resUserRoles,
+    ];
+    const mandatoryError = mandatoryResults.find((result: any) => result?.error)?.error;
+    if (mandatoryError) {
+      throw mandatoryError;
     }
     const activeRoles = resActiveRoles.data || [];
     const activeRoleIds = new Set(activeRoles.map((role: any) => role.id));
@@ -437,14 +443,10 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     const fetchLinkData = async (tableName: string) => {
       try {
         const res = await client.from(tableName).select('*');
-        if (res.error) {
-          console.warn(`Link table ${tableName} query notice:`, res.error.message);
-          return [];
-        }
+        if (res.error) throw res.error;
         return res.data || [];
       } catch (err) {
-        console.warn(`Exception fetching link table ${tableName}:`, err);
-        return [];
+        throw new Error(`Falha ao carregar a coleção obrigatória ${tableName}: ${formatSupabaseError(err)}`);
       }
     };
 

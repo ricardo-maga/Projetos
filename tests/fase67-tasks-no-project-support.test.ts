@@ -63,6 +63,7 @@ describe('FASE 67 — TASKS: Suporte Completo a Tarefas sem Projeto', () => {
     it('edição: projeto A -> projeto B', () => {
       const projB = '22222222-2222-2222-2222-222222222222';
       const parsed = updateTaskSchema.safeParse({
+        version: 1,
         projectId: projB,
       });
       expect(parsed.success).toBe(true);
@@ -73,6 +74,7 @@ describe('FASE 67 — TASKS: Suporte Completo a Tarefas sem Projeto', () => {
 
     it('edição: projeto A -> NULL (desassociação)', () => {
       const parsed = updateTaskSchema.safeParse({
+        version: 1,
         projectId: null,
       });
       expect(parsed.success).toBe(true);
@@ -84,6 +86,7 @@ describe('FASE 67 — TASKS: Suporte Completo a Tarefas sem Projeto', () => {
     it('edição: NULL -> projeto A (associação)', () => {
       const projA = '11111111-1111-1111-1111-111111111111';
       const parsed = updateTaskSchema.safeParse({
+        version: 1,
         projectId: projA,
       });
       expect(parsed.success).toBe(true);
@@ -94,6 +97,7 @@ describe('FASE 67 — TASKS: Suporte Completo a Tarefas sem Projeto', () => {
 
     it('edição: não passar projectId mantém undefined (não alterar)', () => {
       const parsed = updateTaskSchema.safeParse({
+        version: 1,
         title: 'Novo Título',
       });
       expect(parsed.success).toBe(true);

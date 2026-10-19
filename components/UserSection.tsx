@@ -163,7 +163,7 @@ export default function UserSection({
         return;
       }
 
-    // Overlap / Collision check for the selected user
+      // Overlap / Collision check for the selected user
       const hasOverlap = absences.some(abs => {
         if (abs.userId !== activeUserId) return false;
         // Intersection formula: start1 <= end2 && end1 >= start2

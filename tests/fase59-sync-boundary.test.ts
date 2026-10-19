@@ -202,10 +202,8 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
       const routeContent = readFileSync(join(process.cwd(), 'app/api/v1/project-materials/route.ts'), 'utf-8');
       const idRouteContent = readFileSync(join(process.cwd(), 'app/api/v1/project-materials/[id]/route.ts'), 'utf-8');
 
-      // Ambas rotas usam getActiveStateFromSupabase e saveActiveStateToSupabase
-      expect(routeContent).toContain('getActiveStateFromSupabase');
+      // Ambas as rotas persistem apenas os materiais pedidos.
       expect(routeContent).toContain('saveActiveStateToSupabase');
-      expect(idRouteContent).toContain('getActiveStateFromSupabase');
       expect(idRouteContent).toContain('saveActiveStateToSupabase');
     });
   });
