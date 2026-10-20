@@ -137,14 +137,15 @@ describe('FASE 66-B-HARDENING-8 — RBAC Execution Contract Hardening', () => {
       const content = readFileSync(requireAuthPath, 'utf-8');
       // O utilizador vem estritamente de requireAuth()
       expect(content).toContain('const user = await requireAuth(');
-      expect(content).toContain('p_user_id: user.id');
+      expect(content).toContain('p_user_id: user.auth_user_id');
+      expect(content).not.toContain('p_user_id: user.id');
     });
 
     it('requirePermission() invoca a RPC PostgreSQL has_permission com o admin client', () => {
       const content = readFileSync(requireAuthPath, 'utf-8');
-      expect(content).toContain("await admin.rpc('has_permission', {");
+      expect(content).toContain("admin.rpc('has_permission', {");
       expect(content).toContain('p_permission_code: code');
-      expect(content).toContain('p_user_id: user.id');
+      expect(content).toContain('p_user_id: user.auth_user_id');
     });
 
     it('erros de infraestrutura ou autorização falham fechados (ForbiddenError / AuthError)', () => {
