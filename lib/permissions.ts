@@ -511,6 +511,7 @@ export function hasPermission(
   
   let roleId = '';
   let isAdminUser = false;
+  let hasAdministrativeFlag = false;
   
   if (typeof userOrRoleId === 'string') {
     roleId = userOrRoleId.trim();
@@ -525,6 +526,11 @@ export function hasPermission(
   } else if (typeof userOrRoleId === 'object') {
     roleId = (userOrRoleId.roleId || userOrRoleId.role_id || userOrRoleId.type || '').trim();
     if (userOrRoleId.type === 'External') return false;
+    hasAdministrativeFlag = !!(userOrRoleId.isAdmin || userOrRoleId.is_admin);
+    if (!roleId) return false;
+    if (hasAdministrativeFlag && (permissionKey === 'config_read' || permissionKey === 'config_write')) {
+      return true;
+    }
     // Session permissions are the server-calculated union across active roles.
     // An empty array is authoritative and must not fall back to hard-coded roles.
     if (Array.isArray(userOrRoleId.permissions)) {

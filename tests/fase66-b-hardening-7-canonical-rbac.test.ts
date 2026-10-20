@@ -40,6 +40,7 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
   it('5. Viewer mesmo com is_admin = true não obtém permissão funcional tasks_write na matriz da role', () => {
     const viewerRoleMatrix = DEFAULT_PERMISSIONS[CANONICAL_ROLE_IDS.VIEWER];
     expect(viewerRoleMatrix.tasks_write).toBe(false);
+    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.VIEWER, isAdmin: true }, 'tasks_write')).toBe(false);
   });
 
   // 6. Project Manager pode projects:write
@@ -63,18 +64,8 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
   // 9. Unapproved user não tem qualquer permissão
   it('9. Utilizador sem role_id não possui permissões por fallback', () => {
     expect(hasPermission({ roleId: '', isAdmin: false }, 'projects_read')).toBe(false);
-    expect(getGroupPermissions('')).toEqual({
-      projects_read: false, projects_write: false, projects_delete: false,
-      tasks_read: false, tasks_write: false, tasks_delete: false,
-      calendar_read: false, calendar_write: false,
-      clients_read: false, clients_write: false, clients_delete: false,
-      absences_read: false, absences_write: false, absences_delete: false,
-      config_read: false, config_write: false,
-      quotes_read: false, quotes_write: false, quotes_delete: false,
-      materials_read: false, materials_write: false, materials_delete: false,
-      equipment_read: false, equipment_write: false, equipment_delete: false,
-      users_read: false, users_write: false, users_delete: false,
-    });
+    expect(Object.values(getGroupPermissions('')).every(value => value === false)).toBe(true);
+    expect(hasPermission({ roleId: '', isAdmin: true }, 'config_write')).toBe(false);
   });
 
   // 10. Anonymous / Unauthenticated não tem permissões
@@ -142,12 +133,13 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
     expect(content).not.toContain("role_id: '00000000-0000-0000-0000-000000000001'");
   });
 
-  // 17. UserSection.tsx utiliza CANONICAL_ROLES_LIST
-  it('17. components/UserSection.tsx utiliza a lista de roles canónicas para a atribuição de permissões', () => {
+  // 17. UserSection.tsx usa apenas roles ativas carregadas da fonte autoritativa
+  it('17. components/UserSection.tsx utiliza roles ativas da API para a atribuição de permissões', () => {
     const filePath = join(process.cwd(), 'components/UserSection.tsx');
     const content = readFileSync(filePath, 'utf-8');
-    expect(content).toContain('CANONICAL_ROLES_LIST');
-    expect(content).toContain('CANONICAL_ROLE_IDS.TECHNICIAN');
+    expect(content).toContain('activeRoles');
+    expect(content).toContain("fetch('/api/rbac/catalog'");
+    expect(content).not.toContain('CANONICAL_ROLES_LIST');
   });
 
   // 18. Static audit check: lib/supabaseSync.ts normaliza roles antes de upsert em users
@@ -156,5 +148,19 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
     const content = readFileSync(filePath, 'utf-8');
     expect(content).toContain('role_id: normalizeRoleId(u.roleId)');
     expect(content).toContain("'ug-1': '10000000-0000-0000-0000-000000000001'");
+  });
+
+  it('19. migration alinha is_admin com os aliases usados pela API sem conceder permissões funcionais', () => {
+    const migration = readFileSync(join(
+      process.cwd(),
+      'supabase/migrations/20261019222030_align_is_admin_permission_aliases.sql',
+    ), 'utf-8');
+    expect(migration).toContain("'admin.access', 'config.manage', 'config.read', 'config.write'");
+    expect(migration).toContain('v_auth_uid := auth.uid();');
+    expect(migration).toContain('IF v_auth_uid IS NULL THEN');
+    expect(migration).not.toContain('auth.role()');
+    expect(migration).toContain('FROM public.user_roles ur');
+    expect(migration).not.toContain("'tasks.write'");
+    expect(migration).not.toContain("'projects.write'");
   });
 });
