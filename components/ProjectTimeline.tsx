@@ -1,5 +1,5 @@
 'use client';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
 import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User, UserAbsence } from '../lib/types';
 import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '../lib/projectTimeline';
@@ -44,6 +44,10 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const draggingTaskId = useRef<string | null>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const dockScrollRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const dockSlotRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
+  const [floatingDock, setFloatingDock] = useState<{ left: number; width: number; height: number } | null>(null);
   const canMove = canCreate && !!updateTask;
   const openOutsideTimeline = (action: () => void) => {
     setFullscreen(false);
@@ -125,9 +129,28 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const syncHorizontalScroll = (source: HTMLDivElement, target: HTMLDivElement | null) => {
     if (target && target.scrollLeft !== source.scrollLeft) target.scrollLeft = source.scrollLeft;
   };
+  useEffect(() => {
+    const updateDock = () => {
+      const table = tableScrollRef.current, card = cardRef.current, slot = dockSlotRef.current, dock = dockRef.current;
+      if (!table || !card || !slot || !dock) return;
+      const tableRect = table.getBoundingClientRect();
+      const slotRect = slot.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      const height = dock.offsetHeight;
+      const shouldFloat = tableRect.top < window.innerHeight && tableRect.bottom > 0 && slotRect.top > window.innerHeight - height;
+      const next = shouldFloat ? { left: cardRect.left, width: cardRect.width, height } : null;
+      setFloatingDock(previous => previous?.left === next?.left && previous?.width === next?.width && previous?.height === next?.height ? previous : next);
+    };
+    updateDock();
+    document.addEventListener('scroll', updateDock, true);
+    window.addEventListener('resize', updateDock);
+    const observer = new ResizeObserver(updateDock);
+    for (const element of [tableScrollRef.current, cardRef.current, dockRef.current]) if (element) observer.observe(element);
+    return () => { document.removeEventListener('scroll', updateDock, true); window.removeEventListener('resize', updateDock); observer.disconnect(); };
+  }, [fullscreen]);
   return <ExpandedView open={fullscreen} onClose={() => setFullscreen(false)} title="Timeline de projetos">
     <div data-project-timeline-master className={fullscreen ? 'p-3 sm:p-5' : ''}>
-    <Card className="overflow-visible">
+    <Card ref={cardRef} className="overflow-visible">
       <div className="p-4 sm:p-5 bg-surface-muted/60 border-b border-border/80 space-y-4">
         <M3SectionHeader title="Timeline de projetos" description="Eventos por projeto, tarefas e datas de entrega."
           actions={<Button variant="outline" size="sm" onClick={() => setFullscreen(value => !value)} aria-pressed={fullscreen}>
@@ -270,7 +293,9 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       </div>
       {moveError && <p role="alert" className="p-3 text-body-sm text-error">{moveError}</p>}
       {!filtered.length && <p className="p-6 text-body-sm text-text-secondary">Nenhum projeto encontrado para os filtros selecionados.</p>}
-      <div data-project-timeline-dock className="sticky bottom-0 z-40 border-t border-border bg-surface shadow-raised rounded-b-card">
+      <div ref={dockSlotRef} style={floatingDock ? { height: floatingDock.height } : undefined}>
+      <div ref={dockRef} data-project-timeline-dock className={`${floatingDock ? 'fixed bottom-0 z-40' : 'relative'} border-t border-border bg-surface shadow-raised rounded-b-card`}
+        style={floatingDock ? { left: floatingDock.left, width: floatingDock.width } : undefined}>
       <div ref={dockScrollRef} onScroll={event => syncHorizontalScroll(event.currentTarget, tableScrollRef.current)}
         className="overflow-x-auto" tabIndex={0} aria-label="Deslocar timeline na horizontal"
         data-project-timeline-horizontal-scroll><div style={{ width: timelineMinWidth, height: 1 }} /></div>
@@ -281,6 +306,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           <span className="text-caption text-text-secondary" aria-live="polite">{validPage} / {pages}</span>
           <IconButton size="sm" aria-label="Página seguinte de projetos" disabled={validPage >= pages} onClick={() => setPage(validPage + 1)}><ChevronRight className="w-4 h-4" /></IconButton>
         </nav>
+      </div>
       </div>
       </div>
       </div>
