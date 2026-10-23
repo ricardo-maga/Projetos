@@ -8,7 +8,8 @@ describe('atividade do projeto', () => {
   test('mostra todos os tipos, os estados e ordena por data sem esconder registos sem data', () => {
     const html = renderToStaticMarkup(<ProjectActivityTable
       project={{ title: 'Projeto Exemplo', createdDate: '2026-10-01', startDate: '2026-10-04', deliveryDate: '', estimatedDate: '', scheduledDate: '', forecastDate: '' } as Project}
-      tasks={[{ id: 't1', title: 'Preparação', estimatedDate: '2026-10-05', statusId: 'ts1', startDate: '', endDate: '', deleted: false } as Task]}
+      tasks={[{ id: 't1', title: 'Preparação', estimatedDate: '2026-10-05', statusId: 'ts1', startDate: '', endDate: '', deleted: false } as Task,
+        { id: 't2', title: 'Sem planeamento', estimatedDate: '', startDate: '', endDate: '', createdDate: '2026-10-08', statusId: 'ts1', deleted: false } as Task]}
       comments={[{ id: 'c1', comment: 'Material confirmado', authorId: 'u1', createdDate: '2026-10-06T10:30:00Z' } as Comment]}
       risks={[{ id: 'r1', title: 'Atraso', identificationDate: '2026-10-02', reviewDate: '2026-10-07', statusId: 'rs1', deleted: false } as ProjectRiskItem]}
       materials={[{ id: 'm1', description: 'Sensor', supplier: 'Fornecedor', expectedDeliveryDate: '', status: 'por_encomendar', deleted: false } as ProjectMaterial]}
@@ -21,5 +22,7 @@ describe('atividade do projeto', () => {
     expect(html.indexOf('Atraso')).toBeLessThan(html.indexOf('Material confirmado'));
     expect(html.indexOf('Material confirmado')).toBeLessThan(html.indexOf('Preparação'));
     expect(html.indexOf('Preparação')).toBeLessThan(html.indexOf('Sensor'));
+    expect(html).toMatch(/<td[^>]*>---<\/td>[^<]*<td[^>]*>.*?Tarefa.*?Sem planeamento/s);
+    expect(html).not.toContain('08/10/2026');
   });
 });
