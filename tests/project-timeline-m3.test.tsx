@@ -70,7 +70,7 @@ describe('Project timeline M3', () => {
     expect(scroll.props.className).toContain('overflow-x-auto overflow-y-hidden');
     const dock = find(tree, e => e.props?.['data-project-timeline-dock'] !== undefined);
     const horizontal = find(tree, e => e.props?.['data-project-timeline-horizontal-scroll'] !== undefined);
-    expect(dock.props.className).toContain('sticky bottom-0');
+    expect(dock.props.className).toContain('relative');
     expect(horizontal.props.children.props.style.width).toBe(1930);
     const tableNode = { scrollLeft: 0 }, dockNode = { scrollLeft: 0 };
     scroll.props.ref.current = tableNode;
