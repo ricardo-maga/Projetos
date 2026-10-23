@@ -44,7 +44,7 @@ export default function ProjectActivityTable({ project, tasks, comments, risks, 
   });
   tasks.filter(task => !task.deleted).forEach(task => {
     activities.push({
-      key: `task-${task.id}`, date: task.estimatedDate || task.startDate || task.createdDate || '', kind: 'Tarefa', title: task.title,
+      key: `task-${task.id}`, date: task.estimatedDate || task.startDate || '', kind: 'Tarefa', title: task.title,
       detail: [task.startDate && `Início: ${formatDate(task.startDate)}`, task.endDate && `Fim: ${formatDate(task.endDate)}`].filter(Boolean).join(' · '),
       status: taskStatuses.find(item => item.id === task.statusId)?.name || 'Sem estado',
     });
@@ -80,7 +80,7 @@ export default function ProjectActivityTable({ project, tasks, comments, risks, 
             <tbody className="divide-y divide-border-subtle">
               {activities.map(activity => (
                 <tr key={activity.key} className="align-top hover:bg-surface-muted/50">
-                  <td className="whitespace-nowrap px-4 py-3 font-semibold text-text-secondary">{formatDate(activity.date)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-semibold text-text-secondary">{activity.kind === 'Tarefa' && !activity.date ? '---' : formatDate(activity.date)}</td>
                   <td className="px-4 py-3"><span className="inline-flex rounded-control border border-border bg-surface-muted px-2 py-0.5 text-caption font-semibold text-text-secondary">{activity.kind}</span></td>
                   <td className="px-4 py-3 min-w-[240px]"><span className="block font-semibold text-text-primary whitespace-pre-wrap break-words">{activity.title}</span>{activity.detail && <span className="block text-caption text-text-muted">{activity.detail}</span>}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-text-secondary">{activity.status}</td>
