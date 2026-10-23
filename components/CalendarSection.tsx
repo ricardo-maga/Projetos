@@ -4,6 +4,7 @@ import { CalendarDays, GanttChart } from 'lucide-react';
 import type { Project, Task, UserAbsence, User, Client, SpecialDay, ProjectRiskItem, TaskType, ProjectPriority } from '../lib/types';
 import { hasPermission } from '../lib/permissions';
 import OperationalUserCalendar from './OperationalUserCalendar';
+import CalendarSubscriptions from './CalendarSubscriptions';
 import TaskDetailsModal from './TaskDetailsModal';
 import { Tabs } from './ui/Tabs';
 import ProjectTimeline from './ProjectTimeline';
@@ -37,6 +38,7 @@ export default function CalendarSection({ projects = [], tasks = [], absences = 
   };
   if (!canRead) return <Card className="p-6 text-body text-text-secondary">Sem permissão para consultar o calendário.</Card>;
   return <div className="space-y-6">
+    <CalendarSubscriptions />
     <Tabs tabs={[{ id: 'users', label: 'Calendário semanal', icon: <CalendarDays className="w-4 h-4" /> },
       { id: 'projects', label: 'Timeline de projetos', icon: <GanttChart className="w-4 h-4" /> }]}
       activeTabId={view} onChange={value => setView(value as 'users' | 'projects')} variant="line" />
