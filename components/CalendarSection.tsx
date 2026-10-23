@@ -45,7 +45,7 @@ export default function CalendarSection({ projects = [], tasks = [], absences = 
       onSelectTask={openTask} onDuplicateTask={duplicateTask} onQuickCreateTask={(userId, date, projectId) => createTask(date, userId, projectId)}
       canCreateTask={canCreate} canDuplicateTask={canWriteTasks} canMoveTask={canCreate} updateTask={updateTask} appConfig={appConfig} currentUser={currentUser} />
     : <ProjectTimeline projects={projects} tasks={tasks} clients={clients} users={users} absences={absences} projectStatuses={projectStatuses} taskStatuses={taskStatuses}
-      projectRiskItems={projectRiskItems} specialDays={specialDays} canCreate={canCreate}
+      projectRiskItems={projectRiskItems} specialDays={specialDays} canCreate={canCreate} updateTask={updateTask}
       onSelectProject={onSelectProject} onSelectTask={openTask} onCreateTask={(date, projectId) => createTask(date, undefined, projectId)} />}
     {modal && <TaskDetailsModal isOpen task={modal.task} mode={modal.mode} initialDate={modal.date} initialAssigneeId={modal.userId} initialProjectId={modal.projectId}
       onClose={() => setModal(null)} createTask={addTask} updateTask={updateTask} deleteTask={deleteTask} taskStatuses={taskStatuses} taskTypes={taskTypes}

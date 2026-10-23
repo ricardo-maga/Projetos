@@ -1,5 +1,5 @@
 import type { Client, Project, ProjectRiskItem, Task } from './types';
-import { formatDateToYYYYMMDD, isTaskOnDate, normalizeDateStr } from './operationalCalendar';
+import { addCivilDays, formatDateToYYYYMMDD, getCivilDaysDifference, isTaskOnDate, normalizeDateStr } from './operationalCalendar';
 
 export type TimelineHorizon = 7 | 14 | 21 | 28 | 'all';
 export type ProjectTimelineEvent =
@@ -10,6 +10,31 @@ export type ProjectTimelineEvents = Map<string, Map<string, ProjectTimelineEvent
 
 export function getOtherTimelineTasks(tasks: Task[], date: string): Task[] {
   return tasks.filter(task => !task.projectId && isTaskOnDate(task, date));
+}
+
+export function canDropTimelineTask(task: Task, targetProjectId: string | null): boolean {
+  return !task.deleted && (!task.projectId || task.projectId === targetProjectId);
+}
+
+export function computeTimelineTaskDropUpdates(task: Task, targetDate: string, targetProjectId: string | null): Partial<Task> | null {
+  const date = normalizeDateStr(targetDate);
+  if (!date || !canDropTimelineTask(task, targetProjectId)) return null;
+  const start = normalizeDateStr(task.startDate);
+  const end = normalizeDateStr(task.endDate);
+  const currentDate = start && end ? start : normalizeDateStr(task.estimatedDate);
+  const updates: Partial<Task> = {};
+  if (currentDate !== date) {
+    updates.estimatedDate = date;
+    if (start && end) {
+      updates.startDate = date;
+      updates.endDate = addCivilDays(date, Math.max(0, getCivilDaysDifference(start, end)));
+    } else if (start || end) {
+      updates.startDate = date;
+      updates.endDate = date;
+    }
+  }
+  if (!task.projectId && targetProjectId) updates.projectId = targetProjectId;
+  return Object.keys(updates).length ? updates : null;
 }
 
 // Presentation-only index; task dates continue to obey the operational helper.
