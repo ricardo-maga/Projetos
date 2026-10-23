@@ -67,7 +67,20 @@ describe('Project timeline M3', () => {
     expect(html.match(/scope="col"/g)).toHaveLength(15);
     expect(html).toContain('Dia especial');
     const scroll = find(tree, e => e.props?.['data-project-timeline-scroll'] !== undefined);
-    expect(scroll.props.className).toBe('overflow-x-auto overflow-y-hidden');
+    expect(scroll.props.className).toContain('overflow-x-auto overflow-y-hidden');
+    const dock = find(tree, e => e.props?.['data-project-timeline-dock'] !== undefined);
+    const horizontal = find(tree, e => e.props?.['data-project-timeline-horizontal-scroll'] !== undefined);
+    expect(dock.props.className).toContain('sticky bottom-0');
+    expect(horizontal.props.children.props.style.width).toBe(1930);
+    const tableNode = { scrollLeft: 0 }, dockNode = { scrollLeft: 0 };
+    scroll.props.ref.current = tableNode;
+    horizontal.props.ref.current = dockNode;
+    dockNode.scrollLeft = 240;
+    horizontal.props.onScroll({ currentTarget: dockNode });
+    expect(tableNode.scrollLeft).toBe(240);
+    tableNode.scrollLeft = 310;
+    scroll.props.onScroll({ currentTarget: tableNode });
+    expect(dockNode.scrollLeft).toBe(310);
     expect(find(tree, e => e.type === 'table').props.style.minWidth).toBe(1930);
     for (const period of [21, 28] as const) {
       find(tree, e => e.type === DateViewNavigator).props.onPeriodDaysChange(period);
