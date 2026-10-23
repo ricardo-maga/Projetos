@@ -25,7 +25,7 @@ it('forwards auxiliary priorities to the unified task modal inside Projects', ()
   expect(modal.props.projectPriorities).toBe(priorities);
 });
 it('keeps compact monthly navigation and hides legends and document controls without erasing metadata', () => {
-  const h = createProjectHarness();
+  const h = createProjectHarness({ projectViewTab: 'calendario' });
   const tree = h.render({ ...projectPreviewProps, selectedProjectId: project.id });
   const html = renderToStaticMarkup(tree);
   expect(html).toContain('outubro 2026');
