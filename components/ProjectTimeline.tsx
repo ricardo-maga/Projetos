@@ -1,8 +1,8 @@
 'use client';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
 import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User, UserAbsence } from '../lib/types';
-import { buildProjectTimelineEvents, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '../lib/projectTimeline';
+import { buildProjectTimelineEvents, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '../lib/projectTimeline';
 import { getOperationalCalendarDays, formatOperationalDateRange, getOperationalDayConflicts, getUserDayAbsence, isUserAssignedToTask } from '../lib/operationalCalendar';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
 import { getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '../lib/utils';
@@ -21,11 +21,13 @@ interface ProjectTimelineProps {
   users?: User[];
   absences?: UserAbsence[];
   projectRiskItems?: ProjectRiskItem[]; specialDays?: SpecialDay[]; canCreate: boolean;
-  onSelectProject?: (id: string) => void; onSelectTask: (task: Task) => void; onCreateTask: (date: string, projectId: string) => void;
+  onSelectProject?: (id: string) => void; onSelectTask: (task: Task) => void;
+  onCreateTask: (date: string, projectId?: string) => void;
+  updateTask?: (id: string, updates: Partial<Task>) => any;
 }
 const PAGE_SIZE = 50;
 export default function ProjectTimeline({ projects, clients, tasks, users = [], absences = [], projectStatuses, taskStatuses, projectRiskItems = [], specialDays = [],
-  canCreate, onSelectProject, onSelectTask, onCreateTask }: ProjectTimelineProps) {
+  canCreate, onSelectProject, onSelectTask, onCreateTask, updateTask }: ProjectTimelineProps) {
   const [anchor, setAnchor] = useState(() => new Date());
   const [periodDays, setPeriodDays] = useState<7 | 14 | 21 | 28>(7);
   const [horizon, setHorizon] = useState<TimelineHorizon>('all');
@@ -36,6 +38,10 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const [fullscreen, setFullscreen] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(new Set());
+  const [dragOverCell, setDragOverCell] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState('');
+  const draggingTaskId = useRef<string | null>(null);
+  const canMove = canCreate && !!updateTask;
   const openOutsideTimeline = (action: () => void) => {
     setFullscreen(false);
     action();
@@ -59,6 +65,49 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
     return [day.dateStr, { otherTasks, absentUsers }] as const;
   })), [days, tasks, users, absences]);
   const shift = (offset: number) => setAnchor(previous => { const next = new Date(previous); next.setDate(next.getDate() + offset); return next; });
+  const dragProps = (task: Task) => ({
+    draggable: canMove,
+    onDragStart: (event: React.DragEvent<HTMLButtonElement>) => {
+      if (!canMove) { event.preventDefault(); return; }
+      draggingTaskId.current = task.id;
+      event.dataTransfer.setData('application/x-project-timeline-task', task.id);
+      event.dataTransfer.effectAllowed = 'move';
+    },
+    onDragEnd: () => { draggingTaskId.current = null; setDragOverCell(null); },
+  });
+  const dropProps = (date: string, projectId: string | null) => {
+    const key = `${projectId || 'other'}:${date}`;
+    return {
+      onDragOver: (event: React.DragEvent<HTMLTableCellElement>) => {
+        const task = tasks.find(item => item.id === draggingTaskId.current);
+        if (!canMove || !task || !canDropTimelineTask(task, projectId)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        setDragOverCell(key);
+      },
+      onDragLeave: (event: React.DragEvent<HTMLTableCellElement>) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverCell(null);
+      },
+      onDrop: (event: React.DragEvent<HTMLTableCellElement>) => {
+        setDragOverCell(null);
+        const id = event.dataTransfer.getData('application/x-project-timeline-task');
+        if (!canMove || !id || id !== draggingTaskId.current) return;
+        const task = tasks.find(item => item.id === id);
+        if (!task) return;
+        const updates = computeTimelineTaskDropUpdates(task, date, projectId);
+        if (!canDropTimelineTask(task, projectId)) return;
+        event.preventDefault();
+        if (!updates) return;
+        setMoveError('');
+        try {
+          Promise.resolve(updateTask!(id, updates)).catch(() => setMoveError('Não foi possível mover a tarefa. Tenta novamente.'));
+        } catch {
+          setMoveError('Não foi possível mover a tarefa. Tenta novamente.');
+        }
+      },
+      'data-timeline-drop-cell': key,
+    };
+  };
   const dayStyle = (date: string, weekend: boolean) => specialDays.some(s => s.date === date) || weekend ? 'bg-surface-muted' : 'bg-surface';
   const compactDays = new Set(days.filter(day => (day.isWeekend || specialDays.some(s => s.date === day.dateStr)) &&
     !otherDays.get(day.dateStr)?.otherTasks.length && !otherDays.get(day.dateStr)?.absentUsers.length &&
@@ -103,7 +152,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           </tr></thead>
           <tbody><tr className="border-t border-border align-top">
             <th scope="row" className="p-3 text-left font-medium text-text-primary bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">Outras tarefas</th>
-            {days.map(day => <td key={day.dateStr} className={`p-2 border-l border-border ${dayStyle(day.dateStr, day.isWeekend)}`}>
+            {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, null)} className={`p-2 border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${dragOverCell === `other:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
               <div className="space-y-1">
                 {otherDays.get(day.dateStr)?.absentUsers.map(({ user, absence, conflict }) =>
                   <div key={user.id} title={conflict.tooltipText}
@@ -114,8 +163,8 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                 {otherDays.get(day.dateStr)?.otherTasks.map(task => {
                 const status = getTaskStatusStyle(task.statusId, taskStatuses);
                 const assigneeIds = task.assigneeIds || [];
-                return <Button key={task.id} variant="ghost" size="sm" title={task.title} aria-label={`Abrir tarefa ${task.title}`}
-                  className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${status.dotClass.replace('bg-', 'border-l-')}`}
+                return <Button key={task.id} {...dragProps(task)} variant="ghost" size="sm" title={task.title} aria-label={`Abrir tarefa ${task.title}`}
+                  className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${status.dotClass.replace('bg-', 'border-l-')} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
                   <span className="flex items-center gap-1 min-w-0">
                     {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
@@ -125,6 +174,8 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                   </span>
                 </Button>;
               })}</div>
+              {canCreate && <div className="flex justify-end"><IconButton size="sm" aria-label={`Criar tarefa sem projeto no dia ${day.dateStr}`} title="Criar tarefa"
+                onClick={() => openOutsideTimeline(() => onCreateTask(day.dateStr))}><Plus className="w-4 h-4" /></IconButton></div>}
             </td>)}
           </tr>{visibleProjects.map(project => { const style = getProjectStatusStyle(project.statusId, projectStatuses); const expanded = expandedProjects.has(project.id); return <tr key={project.id} className="border-t border-border align-top">
             <th scope="row" className="p-3 text-left font-medium text-text-primary space-y-1 bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">
@@ -143,13 +194,13 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               <Badge className={style.badgeClass}>{style.name}</Badge>
               </div>}
             </th>
-            {days.map(day => <td key={day.dateStr} className={`p-2 border-l border-border ${dayStyle(day.dateStr, day.isWeekend)}`}>
+            {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, project.id)} className={`p-2 border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${dragOverCell === `${project.id}:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
               {!expanded && <div className="space-y-1">
                 {(events.get(project.id)?.get(day.dateStr) || []).filter(event => event.kind === 'task').map((event, index) => {
                   const status = getTaskStatusStyle(event.task.statusId, taskStatuses);
                   const assigneeIds = event.task.assigneeIds || [];
-                  return <Button key={`compact-task-${index}`} variant="ghost" size="sm" title={event.title} aria-label={`Abrir tarefa ${event.title}`}
-                    className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${status.dotClass.replace('bg-', 'border-l-')}`}
+                  return <Button key={`compact-task-${index}`} {...dragProps(event.task)} variant="ghost" size="sm" title={event.title} aria-label={`Abrir tarefa ${event.title}`}
+                    className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${status.dotClass.replace('bg-', 'border-l-')} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     onClick={() => openOutsideTimeline(() => onSelectTask(event.task))}>
                     <span className="flex items-center gap-1 min-w-0">
                       {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
@@ -163,7 +214,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               {expanded && <div className="space-y-2">
                 {(events.get(project.id)?.get(day.dateStr) || []).map((event, index) => {
                   const status = event.kind === 'task' ? getTaskStatusStyle(event.task.statusId, taskStatuses) : undefined;
-                  return <Button key={`${event.kind}-${index}`} variant="ghost" size="sm" className={`w-full h-auto min-h-9 px-2 py-2 whitespace-normal text-left justify-start bg-surface border border-border ${status ? `border-l-4 ${status.dotClass.replace('bg-', 'border-l-')}` : ''}`}
+                  return <Button key={`${event.kind}-${index}`} {...(event.kind === 'task' ? dragProps(event.task) : {})} variant="ghost" size="sm" className={`w-full h-auto min-h-9 px-2 py-2 whitespace-normal text-left justify-start bg-surface border border-border ${status ? `border-l-4 ${status.dotClass.replace('bg-', 'border-l-')}` : ''} ${status && canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     onClick={() => openOutsideTimeline(() => event.kind === 'task' ? onSelectTask(event.task) : onSelectProject?.(project.id))}>
                     <span className="flex flex-col gap-1 min-w-0 break-words">
                       <span className="text-body-sm font-semibold">{event.kind === 'risk' && <ShieldAlert className="inline w-3.5 h-3.5 mr-1" />}{event.title}</span>
@@ -185,6 +236,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           </tr>; })}</tbody>
         </table>
       </div>
+      {moveError && <p role="alert" className="p-3 text-body-sm text-error">{moveError}</p>}
       {!filtered.length && <p className="p-6 text-body-sm text-text-secondary">Nenhum projeto encontrado para os filtros selecionados.</p>}
       <div className="p-4 border-t border-border bg-surface-muted/60 flex flex-wrap justify-between items-center gap-3">
         <p className="text-caption text-text-secondary">{filtered.length ? `${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} de ${filtered.length} projetos` : '0 projetos'} · até 50 por página</p>
