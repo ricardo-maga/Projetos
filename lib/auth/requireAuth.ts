@@ -1,5 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { GroupPermissions, getGroupPermissions } from '@/lib/permissions';
+import { GroupPermissions } from '@/lib/permissions';
 
 export interface AuthenticatedUser {
   id: string;

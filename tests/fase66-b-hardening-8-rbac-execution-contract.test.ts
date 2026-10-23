@@ -3,8 +3,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { 
   CANONICAL_ROLE_IDS, 
-  DEFAULT_PERMISSIONS, 
-  getGroupPermissions, 
+  hasPermission,
   normalizeRoleId 
 } from '@/lib/permissions';
 
@@ -70,18 +69,18 @@ describe('FASE 66-B-HARDENING-8 — RBAC Execution Contract Hardening', () => {
       expect(sql).toContain('WHERE rp.role_id = v_profile.role_id');
     });
 
-    it('na matriz canónica, Viewer não possui tasks_write nem projects_write', () => {
-      const viewerPerms = DEFAULT_PERMISSIONS[CANONICAL_ROLE_IDS.VIEWER];
-      expect(viewerPerms.tasks_write).toBe(false);
-      expect(viewerPerms.projects_write).toBe(false);
-      expect(viewerPerms.tasks_delete).toBe(false);
-      expect(viewerPerms.projects_delete).toBe(false);
+    it('sem concessões na sessão, Viewer não possui direitos funcionais', () => {
+      const viewer = { roleId: CANONICAL_ROLE_IDS.VIEWER, permissions: [] };
+      expect(hasPermission(viewer, 'tasks_write')).toBe(false);
+      expect(hasPermission(viewer, 'projects_write')).toBe(false);
+      expect(hasPermission(viewer, 'tasks_delete')).toBe(false);
+      expect(hasPermission(viewer, 'projects_delete')).toBe(false);
     });
 
-    it('na matriz canónica, Project Manager possui projects_write e tasks_write', () => {
-      const pmPerms = DEFAULT_PERMISSIONS[CANONICAL_ROLE_IDS.PROJECT_MANAGER];
-      expect(pmPerms.projects_write).toBe(true);
-      expect(pmPerms.tasks_write).toBe(true);
+    it('Project Manager usa as concessões carregadas na sessão', () => {
+      const manager = { roleId: CANONICAL_ROLE_IDS.PROJECT_MANAGER, permissions: ['projects.write', 'tasks.update'] };
+      expect(hasPermission(manager, 'projects_write')).toBe(true);
+      expect(hasPermission(manager, 'tasks_write')).toBe(true);
     });
   });
 

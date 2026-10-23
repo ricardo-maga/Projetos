@@ -353,8 +353,8 @@ export default function ConfigSection({
   toggleAutomationRule,
   onRefreshFromDatabase,
 }: ConfigSectionProps) {
-  const canReadConfig = hasPermission(currentUser, 'config_read', userGroups);
-  const canWriteConfig = hasPermission(currentUser, 'config_write', userGroups);
+  const canReadConfig = hasPermission(currentUser, 'config_read');
+  const canWriteConfig = hasPermission(currentUser, 'config_write');
   const [appName, setAppName] = useState(config.appName);
   const [appDesc, setAppDesc] = useState(config.appDescription);
   const [logo, setLogo] = useState(config.logoImagePath || config.logo || '');
@@ -756,7 +756,7 @@ export default function ConfigSection({
     setImportingCsv(true);
     setCsvResult(null);
     try {
-      if (!addProject || !currentUser?.id || !hasPermission(currentUser, 'projects_write', userGroups)) {
+      if (!addProject || !currentUser?.id || !hasPermission(currentUser, 'projects_write')) {
         throw new Error('Sem permissão para criar projetos.');
       }
       const PapaModule = await import('papaparse');
@@ -797,7 +797,7 @@ export default function ConfigSection({
           const startDate = parseDate(get('start'));
           let clientId = knownClients.get(normalize(clientName));
           if (!clientId) {
-            if (!addClient || !hasPermission(currentUser, 'clients_write', userGroups)) throw new Error(`Cliente "${clientName}" inexistente e sem permissão para o criar.`);
+            if (!addClient || !hasPermission(currentUser, 'clients_write')) throw new Error(`Cliente "${clientName}" inexistente e sem permissão para o criar.`);
             const created = await addClient({ clientName, shortName: clientName, location: '', notes: '' });
             clientId = created?.id;
             if (!clientId) throw new Error(`Não foi possível criar o cliente "${clientName}".`);
@@ -1492,7 +1492,7 @@ export default function ConfigSection({
                 <button
                   type="button"
                   onClick={handleCsvImport}
-                  disabled={importingCsv || !csvText.trim() || !hasPermission(currentUser, 'projects_write', userGroups)}
+                  disabled={importingCsv || !csvText.trim() || !hasPermission(currentUser, 'projects_write')}
                   className="px-5 py-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs"
                 >
                   {importingCsv ? 'A importar...' : 'Importar Dados'}
@@ -1628,7 +1628,7 @@ export default function ConfigSection({
           <Tabs
             tabs={[
               { id: 'users', label: 'Utilizadores', icon: <Users className="w-4 h-4" /> },
-              ...(hasPermission(currentUser, 'roles_manage' as any, userGroups)
+              ...(hasPermission(currentUser, 'roles_manage' as any)
                 ? [{ id: 'roles', label: 'Funções e permissões', icon: <ShieldCheck className="w-4 h-4" /> }]
                 : []),
               { id: 'associacoes', label: 'Associação de grupos', icon: <GripVertical className="w-4 h-4" /> },
@@ -1636,7 +1636,7 @@ export default function ConfigSection({
             activeTabId={usersConfigTab}
             onChange={tab => setUsersConfigTab(tab as 'users' | 'roles' | 'associacoes')}
           />
-          {usersConfigTab === 'roles' && hasPermission(currentUser, 'roles_manage' as any, userGroups) && (
+          {usersConfigTab === 'roles' && hasPermission(currentUser, 'roles_manage' as any) && (
             <RolePermissionSection onRolesChanged={onRefreshFromDatabase} />
           )}
       {/* ASSOCIAÇÃO DE GRUPOS, NO SUBMENU UTILIZADORES */}

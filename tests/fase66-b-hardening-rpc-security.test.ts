@@ -558,7 +558,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
     });
 
     it('lib/permissions.ts não concede permissões nem VIEWER para roles desconhecidas ou vazias', () => {
-      const { normalizeRoleId, getGroupPermissions, hasPermission, CANONICAL_ROLE_IDS } = require('@/lib/permissions');
+      const { normalizeRoleId, hasPermission } = require('@/lib/permissions');
       
       // Role vazia ou nula não pode retornar VIEWER
       expect(normalizeRoleId('')).toBe(null);
@@ -566,19 +566,8 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
       expect(normalizeRoleId(undefined as any)).toBe(null);
       expect(normalizeRoleId('role-inexistente-xyz')).toBe(null);
 
-      // getGroupPermissions para role vazia ou desconhecida devolve todas as permissões false
-      const permsEmpty = getGroupPermissions('');
-      expect(permsEmpty.projects_read).toBe(false);
-      expect(permsEmpty.tasks_write).toBe(false);
-      expect(permsEmpty.tasks_read).toBe(false);
-
-      const permsUnknown = getGroupPermissions('role-fantasma-123');
-      expect(permsUnknown.projects_read).toBe(false);
-      expect(permsUnknown.tasks_write).toBe(false);
-      expect(permsUnknown.tasks_read).toBe(false);
-
-      // hasPermission para utilizador sem role e não admin devolve false
-      expect(hasPermission({ roleId: '' }, 'tasks_read')).toBe(false);
+      // Sem permissões de sessão ou sem função, a interface falha fechada.
+      expect(hasPermission({ roleId: '', permissions: ['tasks.read'] }, 'tasks_read')).toBe(false);
       expect(hasPermission({ roleId: 'role-fantasma-123' }, 'tasks_read')).toBe(false);
       expect(hasPermission(null, 'tasks_read')).toBe(false);
     });

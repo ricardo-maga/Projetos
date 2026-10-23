@@ -57,13 +57,13 @@ export default function UserSection({
   currentUser,
   appConfig,
 }: UserSectionProps) {
-  const canReadAbsences = hasPermission(currentUser, 'absences_read', userGroups);
-  const canWriteAbsences = hasPermission(currentUser, 'absences_write', userGroups);
-  const canDeleteAbsences = hasPermission(currentUser, 'absences_delete', userGroups);
+  const canReadAbsences = hasPermission(currentUser, 'absences_read');
+  const canWriteAbsences = hasPermission(currentUser, 'absences_write');
+  const canDeleteAbsences = hasPermission(currentUser, 'absences_delete');
 
-  const canReadUsers = hasPermission(currentUser, 'users_read', userGroups);
-  const canWriteUsers = hasPermission(currentUser, 'users_write', userGroups);
-  const canDeleteUsers = hasPermission(currentUser, 'users_delete', userGroups);
+  const canReadUsers = hasPermission(currentUser, 'users_read');
+  const canWriteUsers = hasPermission(currentUser, 'users_write');
+  const canDeleteUsers = hasPermission(currentUser, 'users_delete');
 
   const [subTab, setSubTab] = useState<'absences' | 'users' | 'roles'>(hideAbsences ? 'users' : 'absences');
   const { busy: isSavingAbsence, run: runAbsenceAction } = useAsyncAction();
@@ -132,7 +132,7 @@ export default function UserSection({
   const [uRoleIds, setURoleIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!hasPermission(currentUser, 'roles_read' as any, userGroups)) return;
+    if (!hasPermission(currentUser, 'roles_read' as any)) return;
     const token = getClientToken();
     fetch('/api/rbac/catalog', {
       credentials: 'same-origin',
@@ -451,7 +451,7 @@ export default function UserSection({
     return limitedList;
   }, [visibleAbsences, filterUserId, filterYear, sortOrder]);
 
-  const canManageRoleAssignments = hasPermission(currentUser, 'roles_manage' as any, userGroups);
+  const canManageRoleAssignments = hasPermission(currentUser, 'roles_manage' as any);
   const canReadRoleAdmin = canManageRoleAssignments;
   const managementTabs: Array<{ value: 'absences' | 'users' | 'roles'; label: string }> = [
     ...(!hideAbsences ? [{ value: 'absences' as const, label: 'Ausências' }] : []),

@@ -24,9 +24,9 @@ export default function CalendarSection({ projects = [], tasks = [], absences = 
   projectPriorities = [], currentUser, userGroups = [], appConfig }: CalendarSectionProps) {
   const [view, setView] = useState<'users' | 'projects'>('users');
   const [modal, setModal] = useState<{ task: Task | null; mode: 'create' | 'edit' | 'view'; date?: string; userId?: string; projectId?: string } | null>(null);
-  const canRead = hasPermission(currentUser, 'calendar_read', userGroups);
-  const canWriteTasks = hasPermission(currentUser, 'tasks_write', userGroups);
-  const canWriteCalendar = hasPermission(currentUser, 'calendar_write', userGroups);
+  const canRead = hasPermission(currentUser, 'calendar_read');
+  const canWriteTasks = hasPermission(currentUser, 'tasks_write');
+  const canWriteCalendar = hasPermission(currentUser, 'calendar_write');
   const canCreate = canWriteTasks || canWriteCalendar;
   const openTask = (task: Task) => setModal({ task, mode: canWriteTasks ? 'edit' : 'view' });
   const createTask = (date: string, userId?: string, projectId?: string) => {

@@ -251,13 +251,13 @@ export default function ProjectSection({
   updateProjectRiskItem,
   deleteProjectRiskItem,
 }: ProjectSectionProps) {
-  const canReadProjects = hasPermission(currentUser, 'projects_read', userGroups);
-  const canWriteProjects = hasPermission(currentUser, 'projects_write', userGroups);
-  const canDeleteProjects = hasPermission(currentUser, 'projects_delete', userGroups);
+  const canReadProjects = hasPermission(currentUser, 'projects_read');
+  const canWriteProjects = hasPermission(currentUser, 'projects_write');
+  const canDeleteProjects = hasPermission(currentUser, 'projects_delete');
 
-  const canReadTasks = hasPermission(currentUser, 'tasks_read', userGroups);
-  const canWriteTasks = hasPermission(currentUser, 'tasks_write', userGroups);
-  const canDeleteTasks = hasPermission(currentUser, 'tasks_delete', userGroups);
+  const canReadTasks = hasPermission(currentUser, 'tasks_read');
+  const canWriteTasks = hasPermission(currentUser, 'tasks_write');
+  const canDeleteTasks = hasPermission(currentUser, 'tasks_delete');
   
   // Tab state inside project view: 'geral' | 'tarefas' | 'material' | 'riscos' | 'analise'
   const [activeDetailTab, setActiveDetailTab] = useState<'geral' | 'tarefas' | 'material' | 'riscos' | 'analise'>('geral');

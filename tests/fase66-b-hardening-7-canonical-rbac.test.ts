@@ -4,8 +4,6 @@ import { join } from 'path';
 import { 
   CANONICAL_ROLE_IDS, 
   ROLE_UUID_MAP, 
-  DEFAULT_PERMISSIONS, 
-  getGroupPermissions, 
   hasPermission, 
   normalizeRoleId 
 } from '@/lib/permissions';
@@ -14,45 +12,37 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
 
   // 1. Viewer não pode tasks:write
   it('1. Viewer não tem permissão para tasks_write', () => {
-    const viewerPerms = getGroupPermissions(CANONICAL_ROLE_IDS.VIEWER);
-    expect(viewerPerms.tasks_write).toBe(false);
-    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.VIEWER, isAdmin: false }, 'tasks_write')).toBe(false);
+    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.VIEWER, permissions: [] }, 'tasks_write')).toBe(false);
   });
 
   // 2. Viewer não pode projects:write
   it('2. Viewer não tem permissão para projects_write', () => {
-    const viewerPerms = getGroupPermissions(CANONICAL_ROLE_IDS.VIEWER);
-    expect(viewerPerms.projects_write).toBe(false);
-    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.VIEWER, isAdmin: false }, 'projects_write')).toBe(false);
+    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.VIEWER, permissions: [] }, 'projects_write')).toBe(false);
   });
 
   // 3. Viewer + is_admin pode admin:access
   it('3. Viewer com is_admin = true tem acesso a admin:access na UI', () => {
-    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.VIEWER, isAdmin: true }, 'config_read')).toBe(true);
+    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.VIEWER, isAdmin: true, permissions: [] }, 'config_read')).toBe(true);
   });
 
   // 4. Viewer + is_admin pode config:manage
   it('4. Viewer com is_admin = true pode gerir configurações administrativas em frontend helper', () => {
-    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.VIEWER, isAdmin: true }, 'config_write')).toBe(true);
+    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.VIEWER, isAdmin: true, permissions: [] }, 'config_write')).toBe(true);
   });
 
   // 5. Viewer + is_admin NÃO pode tasks:write (limite de role funcional mantido)
   it('5. Viewer mesmo com is_admin = true não obtém permissão funcional tasks_write na matriz da role', () => {
-    const viewerRoleMatrix = DEFAULT_PERMISSIONS[CANONICAL_ROLE_IDS.VIEWER];
-    expect(viewerRoleMatrix.tasks_write).toBe(false);
-    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.VIEWER, isAdmin: true }, 'tasks_write')).toBe(false);
+    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.VIEWER, isAdmin: true, permissions: [] }, 'tasks_write')).toBe(false);
   });
 
   // 6. Project Manager pode projects:write
   it('6. Project Manager pode realizar projects_write', () => {
-    const pmPerms = getGroupPermissions(CANONICAL_ROLE_IDS.PROJECT_MANAGER);
-    expect(pmPerms.projects_write).toBe(true);
-    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.PROJECT_MANAGER, isAdmin: false }, 'projects_write')).toBe(true);
+    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.PROJECT_MANAGER, permissions: ['projects.write'] }, 'projects_write')).toBe(true);
   });
 
   // 7. Project Manager + is_admin pode admin:access
   it('7. Project Manager com is_admin = true tem permissão de admin', () => {
-    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.PROJECT_MANAGER, isAdmin: true }, 'config_write')).toBe(true);
+    expect(hasPermission({ roleId: CANONICAL_ROLE_IDS.PROJECT_MANAGER, isAdmin: true, permissions: [] }, 'config_write')).toBe(true);
   });
 
   // 8. Deleted user não tem qualquer permissão
@@ -64,8 +54,7 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
   // 9. Unapproved user não tem qualquer permissão
   it('9. Utilizador sem role_id não possui permissões por fallback', () => {
     expect(hasPermission({ roleId: '', isAdmin: false }, 'projects_read')).toBe(false);
-    expect(Object.values(getGroupPermissions('')).every(value => value === false)).toBe(true);
-    expect(hasPermission({ roleId: '', isAdmin: true }, 'config_write')).toBe(false);
+    expect(hasPermission({ roleId: '', isAdmin: true, permissions: [] }, 'config_write')).toBe(false);
   });
 
   // 10. Anonymous / Unauthenticated não tem permissões
