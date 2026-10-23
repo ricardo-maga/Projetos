@@ -42,6 +42,8 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const [dragOverCell, setDragOverCell] = useState<string | null>(null);
   const [moveError, setMoveError] = useState('');
   const draggingTaskId = useRef<string | null>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const dockScrollRef = useRef<HTMLDivElement>(null);
   const canMove = canCreate && !!updateTask;
   const openOutsideTimeline = (action: () => void) => {
     setFullscreen(false);
@@ -120,9 +122,12 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
     !visibleProjects.some(project => (events.get(project.id)?.get(day.dateStr) || []).some(event => event.kind === 'task'))
   ).map(day => day.dateStr));
   const timelineMinWidth = 260 + days.reduce((width, day) => width + (compactDays.has(day.dateStr) ? 64 : 150), 0);
+  const syncHorizontalScroll = (source: HTMLDivElement, target: HTMLDivElement | null) => {
+    if (target && target.scrollLeft !== source.scrollLeft) target.scrollLeft = source.scrollLeft;
+  };
   return <ExpandedView open={fullscreen} onClose={() => setFullscreen(false)} title="Timeline de projetos">
     <div data-project-timeline-master className={fullscreen ? 'p-3 sm:p-5' : ''}>
-    <Card className="overflow-hidden">
+    <Card className="overflow-visible">
       <div className="p-4 sm:p-5 bg-surface-muted/60 border-b border-border/80 space-y-4">
         <M3SectionHeader title="Timeline de projetos" description="Eventos por projeto, tarefas e datas de entrega."
           actions={<Button variant="outline" size="sm" onClick={() => setFullscreen(value => !value)} aria-pressed={fullscreen}>
@@ -144,8 +149,10 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           </div>
         </div>
       </div>
-      {/* Intrinsic table height: only horizontal scrolling here; the master owns vertical scrolling. */}
-      <div className="overflow-x-auto overflow-y-hidden" data-project-timeline-scroll>
+      {/* The dock stays at the viewport bottom while the table passes through the vertical scroll area. */}
+      <div className="relative">
+      <div ref={tableScrollRef} onScroll={event => syncHorizontalScroll(event.currentTarget, dockScrollRef.current)}
+        className="project-timeline-table-scroll overflow-x-auto overflow-y-hidden" data-project-timeline-scroll>
         <table className="w-full table-fixed text-body-sm" style={{ minWidth: timelineMinWidth }}>
           <caption className="sr-only">Timeline de projetos · {formatOperationalDateRange(days)}</caption>
           <colgroup><col style={{ width: 260 }} />{days.map(day => <col key={day.dateStr} style={compactDays.has(day.dateStr) ? { width: 64 } : undefined} />)}</colgroup>
@@ -263,13 +270,19 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       </div>
       {moveError && <p role="alert" className="p-3 text-body-sm text-error">{moveError}</p>}
       {!filtered.length && <p className="p-6 text-body-sm text-text-secondary">Nenhum projeto encontrado para os filtros selecionados.</p>}
-      <div className="p-4 border-t border-border bg-surface-muted/60 flex flex-wrap justify-between items-center gap-3">
+      <div data-project-timeline-dock className="sticky bottom-0 z-40 border-t border-border bg-surface shadow-raised rounded-b-card">
+      <div ref={dockScrollRef} onScroll={event => syncHorizontalScroll(event.currentTarget, tableScrollRef.current)}
+        className="overflow-x-auto" tabIndex={0} aria-label="Deslocar timeline na horizontal"
+        data-project-timeline-horizontal-scroll><div style={{ width: timelineMinWidth, height: 1 }} /></div>
+      <div className="p-4 bg-surface-muted/60 flex flex-wrap justify-between items-center gap-3">
         <p className="text-caption text-text-secondary">{filtered.length ? `${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} de ${filtered.length} projetos` : '0 projetos'} · até 50 por página</p>
         <nav aria-label="Paginação da timeline" className="flex items-center gap-2">
           <IconButton size="sm" aria-label="Página anterior de projetos" disabled={validPage <= 1} onClick={() => setPage(validPage - 1)}><ChevronLeft className="w-4 h-4" /></IconButton>
           <span className="text-caption text-text-secondary" aria-live="polite">{validPage} / {pages}</span>
           <IconButton size="sm" aria-label="Página seguinte de projetos" disabled={validPage >= pages} onClick={() => setPage(validPage + 1)}><ChevronRight className="w-4 h-4" /></IconButton>
         </nav>
+      </div>
+      </div>
       </div>
     </Card>
     </div>

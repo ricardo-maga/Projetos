@@ -483,3 +483,7 @@ button[data-filled="true"] :where(span, svg) {
   .m3-projects .m3-project-filters .m3-segment:nth-child(-n+2) { border-bottom: 1px solid var(--m3-outline); }
 }
 
+/* The timeline's visible scrollbar lives beside its sticky pagination. */
+.project-timeline-table-scroll { scrollbar-width: none; }
+.project-timeline-table-scroll::-webkit-scrollbar { display: none; }
+
