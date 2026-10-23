@@ -124,8 +124,8 @@
 }
 
 @media (max-width: 640px) {
-  .fluent2-project-form { height: calc(100dvh - 7rem); max-height: none; }
   .fluent2-project-form > :nth-child(2) { padding: 1rem; }
   .fluent2-project-form-actions { padding: .75rem 1rem max(.75rem, env(safe-area-inset-bottom)); }
   .fluent2-project-list .m3-segmented-control { width: 100%; }
 }
+
