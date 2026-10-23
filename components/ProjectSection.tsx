@@ -3,6 +3,7 @@
 import { M3FilterChip, M3SectionHeader, M3SegmentedControl } from './M3';
 import { Tabs } from './ui/Tabs';
 import ProjectAnalytics from './ProjectAnalytics';
+import ProjectActivityTable from './ProjectActivityTable';
 import React, { useState, useEffect, useRef } from 'react';
 import { Project, Client, Comment, Task, TaskType, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '../lib/types';
 import { 
@@ -408,7 +409,8 @@ export default function ProjectSection({
   };
 
   // Project View Tab (Calendário / Cronograma)
-  const [projectViewTab, setProjectViewTab] = useState<'calendario' | 'cronograma'>('calendario');
+  const [projectViewTab, setProjectViewTab] = useState<'atividade' | 'calendario' | 'cronograma'>('atividade');
+  useEffect(() => setProjectViewTab('atividade'), [selectedProjectId]);
 
   // Full Timeline Modal State
   const [isFullTimelineModalOpen, setIsFullTimelineModalOpen] = useState(false);
@@ -1741,13 +1743,18 @@ export default function ProjectSection({
                   <p className="text-body-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{selectedProj.description || 'Sem descrição registada.'}</p>
                 </div>
 
-              {/* Tabs Switcher: Calendário vs Cronograma */}
+              {/* Vistas da atividade e planeamento do projeto */}
               <div className="space-y-4">
-                <Tabs tabs={[{ id: 'calendario', label: 'Calendário mensal', icon: <Calendar className="w-4 h-4" /> },
+                <Tabs tabs={[{ id: 'atividade', label: 'Atividade', icon: <ListTodo className="w-4 h-4" /> },
+                  { id: 'calendario', label: 'Calendário mensal', icon: <Calendar className="w-4 h-4" /> },
                   { id: 'cronograma', label: 'Cronograma', icon: <Clock className="w-4 h-4" /> }]}
-                  activeTabId={projectViewTab} onChange={id => setProjectViewTab(id as 'calendario' | 'cronograma')} variant="line" />
+                  activeTabId={projectViewTab} onChange={id => setProjectViewTab(id as 'atividade' | 'calendario' | 'cronograma')} variant="line" />
 
-                {projectViewTab === 'calendario' ? (
+                {projectViewTab === 'atividade' ? (
+                  <ProjectActivityTable project={selectedProj} tasks={projTasks} comments={projComments} risks={projRiskItems}
+                    materials={projMaterials} taskStatuses={taskStatuses} riskStatuses={riskStatuses || []}
+                    getUserName={getUserName} pendingMaterialStatuses={pendingMaterialStatuses} />
+                ) : projectViewTab === 'calendario' ? (
                   <div className="space-y-4 animate-fade-in">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <h3 className="font-bold text-text-primary text-body-sm uppercase tracking-wider flex items-center gap-2">Calendário Mensal do Projeto</h3>
