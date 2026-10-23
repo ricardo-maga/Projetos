@@ -56,7 +56,7 @@ export function getMondayOfWeek(d: Date): Date {
  */
 export function getOperationalCalendarDays(
   anchorDate: Date,
-  periodDays: 7 | 14 = 7,
+  periodDays: 7 | 14 | 21 | 28 = 7,
   alignToMonday: boolean = true
 ): CalendarDayItem[] {
   const start = alignToMonday ? getMondayOfWeek(anchorDate) : new Date(anchorDate);

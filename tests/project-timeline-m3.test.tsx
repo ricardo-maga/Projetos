@@ -58,7 +58,7 @@ describe('Project timeline M3', () => {
     find(tree, e => e.props?.['aria-label'] === 'Pesquisar na timeline').props.onChange({ target: { value: 'IP-1' } });
     expect(h.state.page).toBe(1);
   });
-  it('renders 7/14 days, shades weekend/special columns and never constrains table vertical height', () => {
+  it('renders 7, 14, 21 or 28 days, shades weekend/special columns and never constrains table vertical height', () => {
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
     let tree = h.render({ ...timelinePreviewProps, projects: [project('one')] });
     find(tree, e => e.type === DateViewNavigator).props.onPeriodDaysChange(14);
@@ -69,6 +69,18 @@ describe('Project timeline M3', () => {
     const scroll = find(tree, e => e.props?.['data-project-timeline-scroll'] !== undefined);
     expect(scroll.props.className).toBe('overflow-x-auto overflow-y-hidden');
     expect(find(tree, e => e.type === 'table').props.style.minWidth).toBe(1930);
+    for (const period of [21, 28] as const) {
+      find(tree, e => e.type === DateViewNavigator).props.onPeriodDaysChange(period);
+      tree = h.render({ ...timelinePreviewProps, projects: [project('one')] });
+      expect(renderToStaticMarkup(tree).match(/scope="col"/g)).toHaveLength(period + 1);
+      expect(find(tree, e => e.type === DateViewNavigator).props.periods).toEqual([7, 14, 21, 28]);
+    }
+    const stickyHeaders = [
+      find(tree, e => e.type === 'th' && e.props?.scope === 'col' && e.props?.children === 'Projeto'),
+      find(tree, e => e.type === 'th' && e.props?.scope === 'row' && e.props?.children === 'Outras tarefas'),
+      find(tree, e => e.type === 'th' && e.props?.scope === 'row' && e.props?.className?.includes('space-y-1')),
+    ];
+    stickyHeaders.forEach(header => expect(header.props.className).toContain('lg:sticky lg:left-0'));
     h.state.fullscreen = true;
     tree = h.render(timelinePreviewProps);
     const master = find(tree, e => e.props?.['data-project-timeline-master'] !== undefined);
@@ -102,12 +114,35 @@ describe('Project timeline M3', () => {
       { id: 'regular', projectId: 'one', title: 'Regular', estimatedDate: '2026-10-05', assigneeIds: ['u'], statusId: 'pending' },
       { id: 'deleted', projectId: null, title: 'Apagada', estimatedDate: '2026-10-05', assigneeIds: ['u'], deleted: true },
     ];
-    expect(getOtherTimelineTasks(tasks, '2026-10-05').map(task => task.id)).toEqual(['other', 'unassigned']);
-    const html = renderToStaticMarkup(createSectionHarness('ProjectTimeline.tsx', { anchor: today }).render({ ...timelinePreviewProps, projects: [project('one')], tasks }));
+    expect(getOtherTimelineTasks(tasks, '2026-10-05').map(task => task.id)).toEqual(['other']);
+    expect(buildProjectTimelineEvents([project('one')], tasks, [], false).get('one')?.get('2026-10-05')?.map(event => event.kind === 'task' ? event.task.id : null).filter(Boolean)).toEqual(['unassigned', 'regular']);
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const props = { ...timelinePreviewProps, projects: [project('one')], tasks };
+    const html = renderToStaticMarkup(h.render(props));
     expect(html.indexOf('Outras tarefas')).toBeLessThan(html.indexOf('Cliente Exemplo'));
     expect(html).toContain('Sem projeto');
     expect(html).toContain('Sem utilizador');
+    expect(html).toContain('class="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado"');
+    find(h.render(props), e => e.props?.['aria-expanded'] === false).props.onClick();
+    expect(renderToStaticMarkup(h.render(props))).toContain('class="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado"');
     expect(getTaskConflictWarnings({ date: '2026-10-05', assigneeIds: ['u'], currentTaskId: 'regular', tasks, users: [{ id: 'u', name: 'Ana' } as any] }).join(' ')).toContain('Sem projeto');
+  });
+  it('reports absences in other tasks, including days without tasks, and highlights assigned conflicts', () => {
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const props = {
+      ...timelinePreviewProps, projects: [], users: [{ id: 'u', name: 'Ana Silva' }, { id: 'gone', name: 'Inativo', deleted: true }],
+      tasks: [{ id: 'other', projectId: null, title: 'Visita', estimatedDate: '2026-10-05', assigneeIds: ['u'], statusId: 'pending' }],
+      absences: [{ id: 'a', userId: 'u', absenceStartDate: '2026-10-05', absenceEndDate: '2026-10-10', reason: 'Férias' },
+        { id: 'b', userId: 'gone', absenceStartDate: '2026-10-05', absenceEndDate: '2026-10-10', reason: 'Outra' }],
+    } as any;
+    const tree = h.render(props);
+    const html = renderToStaticMarkup(tree);
+    expect(html).toContain('Ana Silva: ⚠️ AUSENTE (1 tarefa)');
+    expect(html).toContain('Ana Silva: AUSENTE');
+    expect(html).toContain('Férias');
+    expect(html).not.toContain('Inativo:');
+    const widths = find(tree, e => e.type === 'colgroup').props.children[1].map((e: any) => e.props.style?.width);
+    expect(widths[5]).toBeUndefined();
   });
   it('shows compact task cards with status color when collapsed, then expands task details', () => {
     const task: any = { id: 't', projectId: 'one', title: 'Tarefa compacta', estimatedDate: '2026-10-10', statusId: 'custom', assigneeIds: ['u'], estimatedHours: '4' };
