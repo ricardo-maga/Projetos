@@ -2,13 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { Button } from './ui/Button';
-import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import type { CalendarFeedScope } from '../lib/calendarFeeds';
 
-const feeds: { scope: CalendarFeedScope; title: string; description: string }[] = [
-  { scope: 'mine', title: 'As minhas tarefas', description: 'Apenas tarefas que lhe estão atribuídas.' },
-  { scope: 'all', title: 'Todas as tarefas', description: 'Todas as tarefas com data marcada, com as iniciais dos responsáveis.' },
+const feeds: { scope: CalendarFeedScope; title: string }[] = [
+  { scope: 'mine', title: 'As minhas tarefas' },
+  { scope: 'all', title: 'Todas as tarefas' },
 ];
 
 export default function CalendarSubscriptions() {
@@ -71,14 +70,10 @@ export default function CalendarSubscriptions() {
     } finally { setBusy(null); }
   }
 
-  return <Card className="p-4 space-y-4">
-    <div>
-      <h3 className="font-bold text-text-primary">Calendários para Outlook</h3>
-      <p className="text-body-sm text-text-secondary">Subscreva o endereço no Outlook para receber atualizações. Importar um ficheiro .ics cria apenas uma cópia. A atualização no Outlook pode demorar mais de 24 horas.</p>
-      <p className="text-body-sm text-text-secondary">Cada endereço dá acesso aos dados desse calendário. Guarde-o em privado; ao renovar, o anterior deixa de funcionar.</p>
-    </div>
+  return <section className="border-t border-border pt-4 space-y-4" aria-labelledby="calendar-subscriptions-title">
+    <h3 id="calendar-subscriptions-title" className="font-bold text-text-primary">Subscrever calendários com aplicação externa</h3>
     {feeds.map(feed => <div key={feed.scope} className="border-t border-border-subtle pt-3 space-y-2">
-      <div><strong className="text-body-sm">{feed.title}</strong><p className="text-body-sm text-text-secondary">{feed.description}</p></div>
+      <h4 className="font-semibold text-body-sm text-text-primary">{feed.title}</h4>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="secondary" size="sm" disabled={busy !== null} onClick={() => generate(feed.scope)}>
           {configured[feed.scope] ? 'Renovar endereço' : 'Criar endereço'}
@@ -90,10 +85,9 @@ export default function CalendarSubscriptions() {
           Desativar endereço
         </Button>}
       </div>
-      {urls[feed.scope] ? <Input readOnly aria-label={`Endereço de ${feed.title}`} value={urls[feed.scope]}
-        onFocus={event => event.currentTarget.select()} />
-        : configured[feed.scope] && <p className="text-caption text-text-secondary">O endereço só é mostrado quando é criado ou renovado.</p>}
+      {urls[feed.scope] && <Input readOnly aria-label={`Endereço de ${feed.title}`} value={urls[feed.scope]}
+        onFocus={event => event.currentTarget.select()} />}
     </div>)}
     {error && <p role="alert" className="text-body-sm text-error">{error}</p>}
-  </Card>;
+  </section>;
 }

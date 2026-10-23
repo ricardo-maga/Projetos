@@ -12,6 +12,7 @@ import ConfigSection from '../components/ConfigSection';
 import NotificationDropdown from '../components/NotificationDropdown';
 import DatabaseStatusIndicator from '../components/DatabaseStatusIndicator';
 import CalendarSection from '../components/CalendarSection';
+import CalendarSubscriptions from '../components/CalendarSubscriptions';
 import MyFocusSection from '../components/MyFocusSection';
 import ReportsSection from '../components/ReportsSection';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
@@ -1214,6 +1215,7 @@ export default function Page() {
             </div>
           </form>
         )}
+        <CalendarSubscriptions />
       </Dialog>
 
     </div>
