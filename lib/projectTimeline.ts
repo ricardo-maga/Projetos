@@ -8,6 +8,10 @@ export type ProjectTimelineEvent =
   | { kind: 'risk'; date: string; title: string; risk: ProjectRiskItem };
 export type ProjectTimelineEvents = Map<string, Map<string, ProjectTimelineEvent[]>>;
 
+export function getOtherTimelineTasks(tasks: Task[], date: string): Task[] {
+  return tasks.filter(task => (!task.projectId || !task.assigneeIds?.length) && isTaskOnDate(task, date));
+}
+
 // Presentation-only index; task dates continue to obey the operational helper.
 export function buildProjectTimelineEvents(projects: Project[], tasks: Task[], risks: ProjectRiskItem[], includeRiskReviews: boolean): ProjectTimelineEvents {
   const index: ProjectTimelineEvents = new Map();
@@ -27,7 +31,7 @@ export function buildProjectTimelineEvents(projects: Project[], tasks: Task[], r
   for (const task of tasks) {
     const start = normalizeDateStr(task.startDate), end = normalizeDateStr(task.endDate);
     const date = start && end ? start : normalizeDateStr(task.estimatedDate);
-    if (task.projectId && isTaskOnDate(task, date)) add(task.projectId, { kind: 'task', date, title: task.title, task });
+    if (task.projectId && task.assigneeIds?.length && isTaskOnDate(task, date)) add(task.projectId, { kind: 'task', date, title: task.title, task });
   }
   if (includeRiskReviews) for (const risk of risks.filter(r => !r.deleted)) {
     add(risk.projectId, { kind: 'risk', date: normalizeDateStr(risk.reviewDate), title: risk.title, risk });
