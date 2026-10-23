@@ -308,6 +308,10 @@ export default function ProjectSection({
     return () => window.clearTimeout(timer);
   }, [search]);
   const [projectListView, setProjectListView] = useState<'lista' | 'analise'>('lista');
+  const [fluent2PilotEnabled, setFluent2PilotEnabled] = useState(false);
+  useEffect(() => {
+    setFluent2PilotEnabled(new URLSearchParams(window.location.search).get('projectsDesign') === 'fluent2');
+  }, []);
   const [filterStatusGroup, setFilterStatusGroup] = useState<'active' | 'implementation' | 'all' | 'completed'>('active');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -3564,7 +3568,7 @@ export default function ProjectSection({
       ) : isEditing ? (
 
         // 2. PROJECT EDIT OR CREATE FORM
-        <form onSubmit={handleSubmit} className="flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col overflow-hidden rounded-card border border-border bg-surface -sm animate-fade-in">
+        <form onSubmit={handleSubmit} className={`${fluent2PilotEnabled ? 'fluent2-project-form ' : ''}flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col overflow-hidden rounded-card border border-border bg-surface -sm animate-fade-in`}>
           <div className="shrink-0 px-6 pt-6">
             <M3SectionHeader
               title={editingId ? 'Editar projeto' : 'Adicionar novo projeto'}
@@ -4079,7 +4083,7 @@ export default function ProjectSection({
             </div>
           </div>
 
-          <div className="flex shrink-0 justify-end gap-3 border-t border-border-subtle bg-surface px-6 py-4">
+          <div className={`${fluent2PilotEnabled ? 'fluent2-project-form-actions ' : ''}flex shrink-0 justify-end gap-3 border-t border-border-subtle bg-surface px-6 py-4`}>
             <Button variant="ghost" size="sm"
               type="button"
               disabled={isSavingProject}
@@ -4101,7 +4105,7 @@ export default function ProjectSection({
       ) : (
 
         // Project list and analysis share the existing Foundation tab pattern.
-        <div className="space-y-4">
+        <div className={fluent2PilotEnabled && projectListView === 'lista' ? 'fluent2-project-list space-y-4' : 'space-y-4'}>
         <Tabs tabs={[{ id: 'lista', label: 'Lista de projetos', icon: <ListTodo className="w-4 h-4" /> }, { id: 'analise', label: 'Análise de projetos', icon: <BarChart3 className="w-4 h-4" /> }]}
           activeTabId={projectListView} onChange={id => setProjectListView(id as 'lista' | 'analise')} variant="line" />
         {projectListView === 'analise' ? <ProjectAnalytics projects={projects} projectStatuses={projectStatuses}

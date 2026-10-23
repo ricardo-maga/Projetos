@@ -1,0 +1,131 @@
+/* Opt-in pilot: ?projectsDesign=fluent2 enables these scoped project styles.
+   Remove the query parameter to restore the existing presentation immediately. */
+:is(.fluent2-project-list, .fluent2-project-form) {
+  --color-primary: #0f6cbd;
+  --color-primary-hover: #115ea3;
+  --color-primary-active: #0c3b5e;
+  --color-surface-token: #ffffff;
+  --color-surface-muted-token: #f5f7fa;
+  --color-border-token: #d6dce4;
+  --color-border-subtle-token: #e8ecf1;
+  --color-text-primary-token: #242424;
+  --color-text-secondary-token: #505866;
+  --m3-primary: #0f6cbd;
+  --m3-primary-container: #e7f1fb;
+  --m3-on-primary-container: #0f548c;
+  --m3-outline: #c9d1dc;
+  --m3-on-surface: #242424;
+  --m3-on-surface-variant: #505866;
+  color: #242424;
+  font-family: "Segoe UI", var(--font-sans), Arial, sans-serif;
+}
+
+.fluent2-project-list > :first-child {
+  border-color: #d6dce4;
+  gap: 4px;
+}
+.fluent2-project-list > :first-child > button {
+  min-height: 44px;
+  border-radius: 4px 4px 0 0;
+  font-weight: 600;
+}
+.fluent2-project-list > :first-child > button:focus-visible,
+.fluent2-project-list button:focus-visible,
+.fluent2-project-form button:focus-visible,
+.fluent2-project-form :is(input, select, textarea):focus-visible {
+  outline: 2px solid #0f6cbd;
+  outline-offset: 2px;
+}
+.fluent2-project-list > :nth-child(2),
+.fluent2-project-form {
+  border: 1px solid #d6dce4;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 5%);
+}
+.fluent2-project-list > :nth-child(2) > :first-child {
+  background: #ffffff;
+  border-bottom-color: #e8ecf1;
+}
+.fluent2-project-list .m3-section-header,
+.fluent2-project-form .m3-section-header {
+  padding: 0 0 8px;
+}
+.fluent2-project-list .m3-section-header h2,
+.fluent2-project-form .m3-section-header h2 {
+  color: #242424;
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -.015em;
+}
+.fluent2-project-list .m3-section-header p {
+  color: #616b78;
+}
+.fluent2-project-list :is(input, select),
+.fluent2-project-form :is(input, select, textarea) {
+  border-color: #c9d1dc;
+  border-radius: 4px;
+  box-shadow: none;
+}
+.fluent2-project-list :is(input, select):hover,
+.fluent2-project-form :is(input, select, textarea):hover {
+  border-color: #8a94a3;
+}
+.fluent2-project-list .m3-segmented-control {
+  border-color: #c9d1dc;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.fluent2-project-list .m3-segment {
+  border-color: #c9d1dc;
+  border-radius: 0;
+  font-size: .875rem;
+  font-weight: 500;
+}
+.fluent2-project-list .m3-segment[aria-pressed="true"] {
+  background: #e7f1fb;
+  color: #0f548c;
+  font-weight: 600;
+}
+.fluent2-project-list table thead {
+  background: #f5f7fa;
+  border-bottom-color: #d6dce4;
+  color: #505866;
+  letter-spacing: .03em;
+}
+.fluent2-project-list table tbody tr:hover {
+  background: #f5f9fd;
+}
+.fluent2-project-list > :nth-child(2) > :last-child {
+  background: #ffffff;
+  border-top-color: #e8ecf1;
+}
+.fluent2-project-form {
+  height: calc(100dvh - 10rem);
+}
+.fluent2-project-form > :nth-child(2) {
+  scrollbar-gutter: stable;
+}
+.fluent2-project-form label {
+  color: #505866;
+  font-weight: 600;
+}
+.fluent2-project-form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  background: #ffffff;
+  box-shadow: 0 -2px 6px rgb(0 0 0 / 4%);
+}
+.fluent2-project-list button,
+.fluent2-project-form-actions button {
+  border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+  .fluent2-project-form { height: calc(100dvh - 7rem); max-height: none; }
+  .fluent2-project-form > :nth-child(2) { padding: 1rem; }
+  .fluent2-project-form-actions { padding: .75rem 1rem max(.75rem, env(safe-area-inset-bottom)); }
+  .fluent2-project-list .m3-segmented-control { width: 100%; }
+}
