@@ -2,7 +2,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
 import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User, UserAbsence } from '../lib/types';
-import { buildProjectTimelineEvents, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '../lib/projectTimeline';
+import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '../lib/projectTimeline';
 import { getOperationalCalendarDays, formatOperationalDateRange, getOperationalDayConflicts, getUserDayAbsence, isUserAssignedToTask } from '../lib/operationalCalendar';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
 import { getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '../lib/utils';
@@ -38,6 +38,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const [fullscreen, setFullscreen] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(new Set());
+  const [expandedUndatedProjects, setExpandedUndatedProjects] = useState<Set<string>>(new Set());
   const [dragOverCell, setDragOverCell] = useState<string | null>(null);
   const [moveError, setMoveError] = useState('');
   const draggingTaskId = useRef<string | null>(null);
@@ -48,6 +49,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   };
   const days = useMemo(() => getOperationalCalendarDays(anchor, periodDays), [anchor, periodDays]);
   const events = useMemo(() => buildProjectTimelineEvents(projects, tasks, projectRiskItems, includeRiskReviews), [projects, tasks, projectRiskItems, includeRiskReviews]);
+  const undatedTasks = useMemo(() => buildUndatedProjectTasks(tasks), [tasks]);
   const filtered = filterProjectTimeline(projects, clients, projectStatuses, events, { search, horizon, showCompleted })
     .filter(project => !hiddenProjectIds.has(project.id));
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)), validPage = Math.min(page, pages);
@@ -75,6 +77,17 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
     },
     onDragEnd: () => { draggingTaskId.current = null; setDragOverCell(null); },
   });
+  const scheduleTask = (task: Task, date: string, projectId: string | null) => {
+    if (!canMove || !date) return;
+    const updates = computeTimelineTaskDropUpdates(task, date, projectId);
+    if (!updates) return;
+    setMoveError('');
+    try {
+      Promise.resolve(updateTask!(task.id, updates)).catch(() => setMoveError('Não foi possível mover a tarefa. Tenta novamente.'));
+    } catch {
+      setMoveError('Não foi possível mover a tarefa. Tenta novamente.');
+    }
+  };
   const dropProps = (date: string, projectId: string | null) => {
     const key = `${projectId || 'other'}:${date}`;
     return {
@@ -94,16 +107,9 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
         if (!canMove || !id || id !== draggingTaskId.current) return;
         const task = tasks.find(item => item.id === id);
         if (!task) return;
-        const updates = computeTimelineTaskDropUpdates(task, date, projectId);
         if (!canDropTimelineTask(task, projectId)) return;
         event.preventDefault();
-        if (!updates) return;
-        setMoveError('');
-        try {
-          Promise.resolve(updateTask!(id, updates)).catch(() => setMoveError('Não foi possível mover a tarefa. Tenta novamente.'));
-        } catch {
-          setMoveError('Não foi possível mover a tarefa. Tenta novamente.');
-        }
+        scheduleTask(task, date, projectId);
       },
       'data-timeline-drop-cell': key,
     };
@@ -177,7 +183,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               {canCreate && <div className="flex justify-end"><IconButton size="sm" aria-label={`Criar tarefa sem projeto no dia ${day.dateStr}`} title="Criar tarefa"
                 onClick={() => openOutsideTimeline(() => onCreateTask(day.dateStr))}><Plus className="w-4 h-4" /></IconButton></div>}
             </td>)}
-          </tr>{visibleProjects.map(project => { const style = getProjectStatusStyle(project.statusId, projectStatuses); const expanded = expandedProjects.has(project.id); return <tr key={project.id} className="border-t border-border align-top">
+          </tr>{visibleProjects.map(project => { const style = getProjectStatusStyle(project.statusId, projectStatuses); const expanded = expandedProjects.has(project.id); const pending = undatedTasks.get(project.id) || []; const undatedOpen = expandedUndatedProjects.has(project.id); return <tr key={project.id} className="border-t border-border align-top">
             <th scope="row" className="p-3 text-left font-medium text-text-primary space-y-1 bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="sm" className="min-w-0 flex-1 justify-between px-0 text-left" aria-expanded={expanded}
@@ -192,6 +198,25 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               <Button variant="ghost" size="sm" className="px-0 h-auto min-h-9 text-body whitespace-normal text-left justify-start" onClick={() => openOutsideTimeline(() => onSelectProject?.(project.id))}>{project.title}</Button>
               {project.installProjectNo && <span className="block text-caption text-text-secondary">{project.installProjectNo}</span>}
               <Badge className={style.badgeClass}>{style.name}</Badge>
+              </div>}
+              {pending.length > 0 && <div className="pt-1">
+                <Button variant="ghost" size="sm" className="w-full min-h-8 h-auto px-1 justify-between text-left text-caption" aria-expanded={undatedOpen}
+                  aria-label={`${undatedOpen ? 'Recolher' : 'Mostrar'} ${pending.length} tarefas sem data de ${project.title}`}
+                  onClick={() => setExpandedUndatedProjects(previous => { const next = new Set(previous); if (next.has(project.id)) next.delete(project.id); else next.add(project.id); return next; })}>
+                  <span>Sem data · {pending.length}</span><ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 ${undatedOpen ? 'rotate-180' : ''}`} />
+                </Button>
+                {undatedOpen && <div className="max-h-32 overflow-y-auto space-y-2 pt-1" aria-label={`Tarefas sem data de ${project.title}`}>
+                  {pending.map(task => { const taskStyle = getTaskStatusStyle(task.statusId, taskStatuses); const incomplete = Boolean(task.startDate?.trim() || task.endDate?.trim()); return <div key={task.id} className="rounded-control border border-border bg-surface-muted p-1 space-y-1">
+                    <Button {...dragProps(task)} variant="ghost" size="sm" className={`w-full h-auto min-h-8 px-1 justify-start text-left ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                      title={task.title} aria-label={`Abrir tarefa sem data ${task.title}`} onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
+                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${task.assigneeIds?.length ? taskStyle.dotClass : 'bg-error'}`} aria-hidden="true" />
+                      <span className="truncate">{task.title}</span>
+                    </Button>
+                    {incomplete && <span className="block text-caption text-warning">Data incompleta</span>}
+                    {canMove && <Input type="date" className="h-8 px-1.5 text-caption" aria-label={`Planear ${task.title} em ${project.title}`}
+                      onChange={event => scheduleTask(task, event.target.value, project.id)} />}
+                  </div>; })}
+                </div>}
               </div>}
             </th>
             {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, project.id)} className={`p-2 border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${dragOverCell === `${project.id}:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
-import { buildProjectTimelineEvents, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks } from '../lib/projectTimeline';
+import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks } from '../lib/projectTimeline';
 import { getTaskConflictWarnings } from '../lib/taskConflicts';
 import { createSectionHarness } from './fixtures/m3-section-harness';
 import { findProjectElement as find } from './fixtures/projects-m3-harness';
@@ -122,6 +122,47 @@ describe('Project timeline M3', () => {
     expect(computeTimelineTaskDropUpdates(other, '2026-10-06', null)).toEqual({ estimatedDate: '2026-10-06' });
     expect(computeTimelineTaskDropUpdates(other, '2026-10-06', 'two')).toEqual({ estimatedDate: '2026-10-06', projectId: 'two' });
     expect(computeTimelineTaskDropUpdates(other, '2026-10-05', null)).toBeNull();
+  });
+  it('groups only active project tasks without an operational date and preserves partial execution dates', () => {
+    const tasks: any = [
+      { id: 'blank', projectId: 'one', startDate: '', endDate: '', estimatedDate: '' },
+      { id: 'partial', projectId: 'one', startDate: '2026-10-04', endDate: '', estimatedDate: '' },
+      { id: 'dated', projectId: 'one', startDate: '2026-10-04', endDate: '2026-10-06', estimatedDate: '' },
+      { id: 'estimate', projectId: 'one', startDate: '', endDate: '', estimatedDate: '2026-10-05' },
+      { id: 'deleted', projectId: 'one', deleted: true },
+      { id: 'other', projectId: null },
+    ];
+    expect(buildUndatedProjectTasks(tasks).get('one')?.map(task => task.id)).toEqual(['blank', 'partial']);
+    expect(computeTimelineTaskDropUpdates(tasks[1], '2026-10-06', 'one')).toEqual({ estimatedDate: '2026-10-06' });
+    expect(tasks[1].startDate).toBe('2026-10-04');
+  });
+  it('opens compact undated tasks and schedules them by date or drag within the project', () => {
+    const task: any = { id: 'pending', projectId: 'one', title: 'Por planear', startDate: '2026-10-04', endDate: '', estimatedDate: '', assigneeIds: [], statusId: 'pending' };
+    const updates: any[] = [];
+    let selected = '';
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const props = { ...timelinePreviewProps, projects: [project('one'), project('two')], tasks: [task], updateTask: (id: string, change: any) => updates.push([id, change]), onSelectTask: (item: any) => { selected = item.id; } };
+    let tree = h.render(props);
+    expect(renderToStaticMarkup(tree)).toContain('Sem data · 1');
+    find(tree, e => e.props?.['aria-label'] === 'Mostrar 1 tarefas sem data de Projeto one').props.onClick();
+    tree = h.render(props);
+    const card = find(tree, e => e.props?.['aria-label'] === 'Abrir tarefa sem data Por planear');
+    expect(card.props.draggable).toBe(true);
+    card.props.onClick();
+    expect(selected).toBe('pending');
+    find(tree, e => e.props?.['aria-label'] === 'Planear Por planear em Projeto one').props.onChange({ target: { value: '2026-10-06' } });
+    expect(updates).toEqual([['pending', { estimatedDate: '2026-10-06' }]]);
+    const values = new Map<string, string>();
+    const dataTransfer: any = { setData: (key: string, value: string) => values.set(key, value), getData: (key: string) => values.get(key) || '' };
+    card.props.onDragStart({ dataTransfer });
+    const drop = (key: string) => find(tree, e => e.props?.['data-timeline-drop-cell'] === key).props.onDrop({ dataTransfer, preventDefault: () => {} });
+    drop('two:2026-10-07');
+    expect(updates).toHaveLength(1);
+    drop('one:2026-10-07');
+    expect(updates[1]).toEqual(['pending', { estimatedDate: '2026-10-07' }]);
+    tree = h.render({ ...props, canCreate: false });
+    expect(find(tree, e => e.props?.['aria-label'] === 'Abrir tarefa sem data Por planear').props.draggable).toBe(false);
+    expect(find(tree, e => e.props?.['aria-label'] === 'Planear Por planear em Projeto one')).toBeUndefined();
   });
   it('drops only editable timeline tasks into allowed cells', () => {
     const tasks: any = [
