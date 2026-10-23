@@ -73,7 +73,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           actions={<Button variant="outline" size="sm" onClick={() => setFullscreen(value => !value)} aria-pressed={fullscreen}>
             {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}{fullscreen ? 'Sair do ecrã cheio' : 'Ecrã cheio'}
           </Button>} />
-        <DateViewNavigator periodDays={periodDays} periods={[7, 14, 21, 28]} onPeriodDaysChange={setPeriodDays} onPrev={() => shift(-periodDays)} onNext={() => shift(periodDays)}
+        <DateViewNavigator periodDays={periodDays} periods={[7, 14, 21, 28]} navigationStepDays={7} onPeriodDaysChange={setPeriodDays} onPrev={() => shift(-7)} onNext={() => shift(7)}
           onToday={() => setAnchor(new Date())} />
         <div className="space-y-3">
           <p className="text-label font-semibold text-text-secondary">Mostrar projetos com eventos nos próximos dias</p>

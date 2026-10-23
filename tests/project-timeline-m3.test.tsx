@@ -75,6 +75,13 @@ describe('Project timeline M3', () => {
       expect(renderToStaticMarkup(tree).match(/scope="col"/g)).toHaveLength(period + 1);
       expect(find(tree, e => e.type === DateViewNavigator).props.periods).toEqual([7, 14, 21, 28]);
     }
+    const navigator = find(tree, e => e.type === DateViewNavigator);
+    expect(navigator.props.navigationStepDays).toBe(7);
+    navigator.props.onNext();
+    expect(h.state.anchor.getDate()).toBe(12);
+    navigator.props.onPrev();
+    expect(h.state.anchor.getDate()).toBe(5);
+    expect(renderToStaticMarkup(<DateViewNavigator periodDays={28} navigationStepDays={7} onPeriodDaysChange={() => {}} onPrev={() => {}} onNext={() => {}} onToday={() => {}} />)).toContain('title="Avançar 7 dias"');
     const stickyHeaders = [
       find(tree, e => e.type === 'th' && e.props?.scope === 'col' && e.props?.children === 'Projeto'),
       find(tree, e => e.type === 'th' && e.props?.scope === 'row' && e.props?.children === 'Outras tarefas'),
