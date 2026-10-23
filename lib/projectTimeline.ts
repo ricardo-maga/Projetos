@@ -12,6 +12,23 @@ export function getOtherTimelineTasks(tasks: Task[], date: string): Task[] {
   return tasks.filter(task => !task.projectId && isTaskOnDate(task, date));
 }
 
+function getTimelineTaskDate(task: Task): string {
+  const start = normalizeDateStr(task.startDate);
+  const end = normalizeDateStr(task.endDate);
+  return start && end ? start : normalizeDateStr(task.estimatedDate);
+}
+
+export function buildUndatedProjectTasks(tasks: Task[]): Map<string, Task[]> {
+  const index = new Map<string, Task[]>();
+  for (const task of tasks) {
+    if (task.deleted || !task.projectId || getTimelineTaskDate(task)) continue;
+    const projectTasks = index.get(task.projectId) || [];
+    projectTasks.push(task);
+    index.set(task.projectId, projectTasks);
+  }
+  return index;
+}
+
 export function canDropTimelineTask(task: Task, targetProjectId: string | null): boolean {
   return !task.deleted && (!task.projectId || task.projectId === targetProjectId);
 }
@@ -21,14 +38,14 @@ export function computeTimelineTaskDropUpdates(task: Task, targetDate: string, t
   if (!date || !canDropTimelineTask(task, targetProjectId)) return null;
   const start = normalizeDateStr(task.startDate);
   const end = normalizeDateStr(task.endDate);
-  const currentDate = start && end ? start : normalizeDateStr(task.estimatedDate);
+  const currentDate = getTimelineTaskDate(task);
   const updates: Partial<Task> = {};
   if (currentDate !== date) {
     updates.estimatedDate = date;
     if (start && end) {
       updates.startDate = date;
       updates.endDate = addCivilDays(date, Math.max(0, getCivilDaysDifference(start, end)));
-    } else if (start || end) {
+    } else if ((start || end) && currentDate) {
       updates.startDate = date;
       updates.endDate = date;
     }
@@ -54,8 +71,7 @@ export function buildProjectTimelineEvents(projects: Project[], tasks: Task[], r
     }
   }
   for (const task of tasks) {
-    const start = normalizeDateStr(task.startDate), end = normalizeDateStr(task.endDate);
-    const date = start && end ? start : normalizeDateStr(task.estimatedDate);
+    const date = getTimelineTaskDate(task);
     if (task.projectId && isTaskOnDate(task, date)) add(task.projectId, { kind: 'task', date, title: task.title, task });
   }
   if (includeRiskReviews) for (const risk of risks.filter(r => !r.deleted)) {
