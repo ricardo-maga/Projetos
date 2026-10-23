@@ -136,30 +136,29 @@ describe('Project timeline M3', () => {
     expect(computeTimelineTaskDropUpdates(tasks[1], '2026-10-06', 'one')).toEqual({ estimatedDate: '2026-10-06' });
     expect(tasks[1].startDate).toBe('2026-10-04');
   });
-  it('opens compact undated tasks and schedules them by date or drag within the project', () => {
+  it('opens compact undated tasks and schedules them by drag within the project', () => {
     const task: any = { id: 'pending', projectId: 'one', title: 'Por planear', startDate: '2026-10-04', endDate: '', estimatedDate: '', assigneeIds: [], statusId: 'pending' };
     const updates: any[] = [];
     let selected = '';
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
     const props = { ...timelinePreviewProps, projects: [project('one'), project('two')], tasks: [task], updateTask: (id: string, change: any) => updates.push([id, change]), onSelectTask: (item: any) => { selected = item.id; } };
     let tree = h.render(props);
-    expect(renderToStaticMarkup(tree)).toContain('Sem data · 1');
+    expect(renderToStaticMarkup(tree)).toContain('Tarefas sem data');
     find(tree, e => e.props?.['aria-label'] === 'Mostrar 1 tarefas sem data de Projeto one').props.onClick();
     tree = h.render(props);
     const card = find(tree, e => e.props?.['aria-label'] === 'Abrir tarefa sem data Por planear');
     expect(card.props.draggable).toBe(true);
     card.props.onClick();
     expect(selected).toBe('pending');
-    find(tree, e => e.props?.['aria-label'] === 'Planear Por planear em Projeto one').props.onChange({ target: { value: '2026-10-06' } });
-    expect(updates).toEqual([['pending', { estimatedDate: '2026-10-06' }]]);
+    expect(find(tree, e => e.props?.['aria-label'] === 'Planear Por planear em Projeto one')).toBeUndefined();
     const values = new Map<string, string>();
     const dataTransfer: any = { setData: (key: string, value: string) => values.set(key, value), getData: (key: string) => values.get(key) || '' };
     card.props.onDragStart({ dataTransfer });
     const drop = (key: string) => find(tree, e => e.props?.['data-timeline-drop-cell'] === key).props.onDrop({ dataTransfer, preventDefault: () => {} });
     drop('two:2026-10-07');
-    expect(updates).toHaveLength(1);
+    expect(updates).toHaveLength(0);
     drop('one:2026-10-07');
-    expect(updates[1]).toEqual(['pending', { estimatedDate: '2026-10-07' }]);
+    expect(updates[0]).toEqual(['pending', { estimatedDate: '2026-10-07' }]);
     tree = h.render({ ...props, canCreate: false });
     expect(find(tree, e => e.props?.['aria-label'] === 'Abrir tarefa sem data Por planear').props.draggable).toBe(false);
     expect(find(tree, e => e.props?.['aria-label'] === 'Planear Por planear em Projeto one')).toBeUndefined();

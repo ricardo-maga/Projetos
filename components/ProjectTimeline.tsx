@@ -196,14 +196,16 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               </div>
               {expanded && <div className="space-y-1">
               <Button variant="ghost" size="sm" className="px-0 h-auto min-h-9 text-body whitespace-normal text-left justify-start" onClick={() => openOutsideTimeline(() => onSelectProject?.(project.id))}>{project.title}</Button>
-              {project.installProjectNo && <span className="block text-caption text-text-secondary">{project.installProjectNo}</span>}
-              <Badge className={style.badgeClass}>{style.name}</Badge>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {project.installProjectNo && <span className="text-caption text-text-secondary">{project.installProjectNo}</span>}
+                <Badge className={`${style.badgeClass} px-1 py-0 text-[10px] leading-4`}>{style.name}</Badge>
+              </div>
               </div>}
               {pending.length > 0 && <div className="pt-1">
                 <Button variant="ghost" size="sm" className="w-full min-h-8 h-auto px-1 justify-between text-left text-caption" aria-expanded={undatedOpen}
                   aria-label={`${undatedOpen ? 'Recolher' : 'Mostrar'} ${pending.length} tarefas sem data de ${project.title}`}
                   onClick={() => setExpandedUndatedProjects(previous => { const next = new Set(previous); if (next.has(project.id)) next.delete(project.id); else next.add(project.id); return next; })}>
-                  <span>Sem data · {pending.length}</span><ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 ${undatedOpen ? 'rotate-180' : ''}`} />
+                  <span>Tarefas sem data</span><ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 ${undatedOpen ? 'rotate-180' : ''}`} />
                 </Button>
                 {undatedOpen && <div className="max-h-32 overflow-y-auto space-y-2 pt-1" aria-label={`Tarefas sem data de ${project.title}`}>
                   {pending.map(task => { const taskStyle = getTaskStatusStyle(task.statusId, taskStatuses); const incomplete = Boolean(task.startDate?.trim() || task.endDate?.trim()); return <div key={task.id} className="rounded-control border border-border bg-surface-muted p-1 space-y-1">
@@ -213,8 +215,6 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                       <span className="truncate">{task.title}</span>
                     </Button>
                     {incomplete && <span className="block text-caption text-warning">Data incompleta</span>}
-                    {canMove && <Input type="date" className="h-8 px-1.5 text-caption" aria-label={`Planear ${task.title} em ${project.title}`}
-                      onChange={event => scheduleTask(task, event.target.value, project.id)} />}
                   </div>; })}
                 </div>}
               </div>}
