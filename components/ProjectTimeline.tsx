@@ -1,9 +1,9 @@
 'use client';
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
-import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User } from '../lib/types';
+import { AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
+import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User, UserAbsence } from '../lib/types';
 import { buildProjectTimelineEvents, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '../lib/projectTimeline';
-import { getOperationalCalendarDays, formatOperationalDateRange } from '../lib/operationalCalendar';
+import { getOperationalCalendarDays, formatOperationalDateRange, getOperationalDayConflicts, getUserDayAbsence, isUserAssignedToTask } from '../lib/operationalCalendar';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
 import { getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '../lib/utils';
 import { M3SectionHeader, M3SegmentedControl } from './M3';
@@ -19,14 +19,15 @@ import ExpandedView from './ui/ExpandedView';
 interface ProjectTimelineProps {
   projects: Project[]; clients: Client[]; tasks: Task[]; projectStatuses: any[]; taskStatuses: any[];
   users?: User[];
+  absences?: UserAbsence[];
   projectRiskItems?: ProjectRiskItem[]; specialDays?: SpecialDay[]; canCreate: boolean;
   onSelectProject?: (id: string) => void; onSelectTask: (task: Task) => void; onCreateTask: (date: string, projectId: string) => void;
 }
 const PAGE_SIZE = 50;
-export default function ProjectTimeline({ projects, clients, tasks, users = [], projectStatuses, taskStatuses, projectRiskItems = [], specialDays = [],
+export default function ProjectTimeline({ projects, clients, tasks, users = [], absences = [], projectStatuses, taskStatuses, projectRiskItems = [], specialDays = [],
   canCreate, onSelectProject, onSelectTask, onCreateTask }: ProjectTimelineProps) {
   const [anchor, setAnchor] = useState(() => new Date());
-  const [periodDays, setPeriodDays] = useState<7 | 14>(7);
+  const [periodDays, setPeriodDays] = useState<7 | 14 | 21 | 28>(7);
   const [horizon, setHorizon] = useState<TimelineHorizon>('all');
   const [showCompleted, setShowCompleted] = useState(false);
   const [includeRiskReviews, setIncludeRiskReviews] = useState(false);
@@ -46,10 +47,21 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)), validPage = Math.min(page, pages);
   const start = (validPage - 1) * PAGE_SIZE, visibleProjects = filtered.slice(start, start + PAGE_SIZE);
   const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
+  const otherDays = useMemo(() => new Map(days.map(day => {
+    const otherTasks = getOtherTimelineTasks(tasks, day.dateStr);
+    const absentUsers = users.filter(user => !user.deleted).flatMap(user => {
+      const absence = getUserDayAbsence(absences, user.id, day.dateStr);
+      if (!absence) return [];
+      const conflict = getOperationalDayConflicts(otherTasks.filter(task => isUserAssignedToTask(task, user.id)), absence,
+        user.name, day.dateStr.split('-').reverse().join('/'));
+      return [{ user, absence, conflict }];
+    });
+    return [day.dateStr, { otherTasks, absentUsers }] as const;
+  })), [days, tasks, users, absences]);
   const shift = (offset: number) => setAnchor(previous => { const next = new Date(previous); next.setDate(next.getDate() + offset); return next; });
   const dayStyle = (date: string, weekend: boolean) => specialDays.some(s => s.date === date) || weekend ? 'bg-surface-muted' : 'bg-surface';
   const compactDays = new Set(days.filter(day => (day.isWeekend || specialDays.some(s => s.date === day.dateStr)) &&
-    !getOtherTimelineTasks(tasks, day.dateStr).length &&
+    !otherDays.get(day.dateStr)?.otherTasks.length && !otherDays.get(day.dateStr)?.absentUsers.length &&
     !visibleProjects.some(project => (events.get(project.id)?.get(day.dateStr) || []).some(event => event.kind === 'task'))
   ).map(day => day.dateStr));
   const timelineMinWidth = 260 + days.reduce((width, day) => width + (compactDays.has(day.dateStr) ? 64 : 150), 0);
@@ -61,7 +73,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           actions={<Button variant="outline" size="sm" onClick={() => setFullscreen(value => !value)} aria-pressed={fullscreen}>
             {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}{fullscreen ? 'Sair do ecrã cheio' : 'Ecrã cheio'}
           </Button>} />
-        <DateViewNavigator periodDays={periodDays} onPeriodDaysChange={setPeriodDays} onPrev={() => shift(-periodDays)} onNext={() => shift(periodDays)}
+        <DateViewNavigator periodDays={periodDays} periods={[7, 14, 21, 28]} navigationStepDays={7} onPeriodDaysChange={setPeriodDays} onPrev={() => shift(-7)} onNext={() => shift(7)}
           onToday={() => setAnchor(new Date())} />
         <div className="space-y-3">
           <p className="text-label font-semibold text-text-secondary">Mostrar projetos com eventos nos próximos dias</p>
@@ -83,16 +95,23 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           <caption className="sr-only">Timeline de projetos · {formatOperationalDateRange(days)}</caption>
           <colgroup><col style={{ width: 260 }} />{days.map(day => <col key={day.dateStr} style={compactDays.has(day.dateStr) ? { width: 64 } : undefined} />)}</colgroup>
           <thead className="text-body-sm font-semibold text-text-secondary bg-surface-muted"><tr>
-            <th scope="col" className="p-3 text-left text-body-sm font-semibold">Projeto</th>
+            <th scope="col" className="p-3 text-left text-body-sm font-semibold bg-surface-muted lg:sticky lg:left-0 lg:z-30 lg:border-r lg:border-border">Projeto</th>
             {days.map(day => <th scope="col" key={day.dateStr} className={`p-3 border-l border-border text-left text-body-sm font-semibold ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
               <span className="block">{day.weekdayShort.slice(0, 3).toUpperCase()} {day.dayNum}/{day.date.getMonth() + 1}</span>
               {specialDays.find(s => s.date === day.dateStr) && <span className="block text-caption font-normal text-text-secondary break-words">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
             </th>)}
           </tr></thead>
           <tbody><tr className="border-t border-border align-top">
-            <th scope="row" className="p-3 text-left font-medium text-text-primary">Outras tarefas</th>
+            <th scope="row" className="p-3 text-left font-medium text-text-primary bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">Outras tarefas</th>
             {days.map(day => <td key={day.dateStr} className={`p-2 border-l border-border ${dayStyle(day.dateStr, day.isWeekend)}`}>
-              <div className="space-y-1">{getOtherTimelineTasks(tasks, day.dateStr).map(task => {
+              <div className="space-y-1">
+                {otherDays.get(day.dateStr)?.absentUsers.map(({ user, absence, conflict }) =>
+                  <div key={user.id} title={conflict.tooltipText}
+                    className={`rounded-md border px-2 py-1 text-caption font-semibold ${conflict.hasConflict ? 'bg-error/10 text-error border-error/20' : 'bg-surface-muted text-text-secondary border-border'}`}>
+                    <span className="flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />{user.name}: {conflict.badgeText}</span>
+                    {absence.reason && <span className="block truncate font-normal">{absence.reason}</span>}
+                  </div>)}
+                {otherDays.get(day.dateStr)?.otherTasks.map(task => {
                 const status = getTaskStatusStyle(task.statusId, taskStatuses);
                 const assigneeIds = task.assigneeIds || [];
                 return <Button key={task.id} variant="ghost" size="sm" title={task.title} aria-label={`Abrir tarefa ${task.title}`}
@@ -100,7 +119,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                   onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
                   <span className="flex items-center gap-1 min-w-0">
                     {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
-                    {!assigneeIds.length && <span className={`w-3 h-3 rounded-full ${status.dotClass}`} aria-label={status.name} />}
+                    {!assigneeIds.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                     {assigneeIds.length > 2 && <span className="text-caption">+{assigneeIds.length - 2}</span>}
                     <span className="min-w-0 flex-1 truncate text-caption text-text-primary">{task.title}</span>
                   </span>
@@ -108,7 +127,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               })}</div>
             </td>)}
           </tr>{visibleProjects.map(project => { const style = getProjectStatusStyle(project.statusId, projectStatuses); const expanded = expandedProjects.has(project.id); return <tr key={project.id} className="border-t border-border align-top">
-            <th scope="row" className="p-3 text-left font-medium text-text-primary space-y-1">
+            <th scope="row" className="p-3 text-left font-medium text-text-primary space-y-1 bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="sm" className="min-w-0 flex-1 justify-between px-0 text-left" aria-expanded={expanded}
                   aria-label={`${expanded ? 'Recolher' : 'Expandir'} projeto de ${clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}`}
@@ -134,7 +153,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                     onClick={() => openOutsideTimeline(() => onSelectTask(event.task))}>
                     <span className="flex items-center gap-1 min-w-0">
                       {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
-                      {!assigneeIds.length && <span className={`w-3 h-3 rounded-full ${status.dotClass}`} aria-label={status.name} />}
+                      {!assigneeIds.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                       {assigneeIds.length > 2 && <span className="text-caption">+{assigneeIds.length - 2}</span>}
                       <span className="min-w-0 flex-1 truncate text-caption text-text-primary">{event.title}</span>
                     </span>
@@ -151,6 +170,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                       {event.kind === 'task' ? <><span className="text-caption text-text-secondary">{parseTaskHoursToFloat(event.task.estimatedHours)} h previstas</span>
                         <span className="flex items-center gap-1" aria-label="Técnicos alocados">
                           {(event.task.assigneeIds || []).slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
+                          {!event.task.assigneeIds?.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                           {(event.task.assigneeIds || []).length > 2 && <span className="text-caption">+{event.task.assigneeIds.length - 2}</span>}
                         </span>
                         <span className="text-caption text-text-secondary">{(event.task.assigneeIds || []).map(id => users.find(user => user.id === id)?.name).filter(Boolean).join(', ') || 'Sem utilizador alocado'}</span></>

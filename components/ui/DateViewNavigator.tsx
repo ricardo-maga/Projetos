@@ -5,9 +5,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { M3Button, M3IconButton, M3SegmentedControl } from '../M3';
 
-interface DateViewNavigatorProps {
-  periodDays: 7 | 14;
-  onPeriodDaysChange: (period: 7 | 14) => void;
+interface DateViewNavigatorProps<T extends 7 | 14 | 21 | 28> {
+  periodDays: T;
+  onPeriodDaysChange: (period: T) => void;
+  periods?: readonly T[];
+  navigationStepDays?: number;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -15,25 +17,27 @@ interface DateViewNavigatorProps {
   className?: string;
 }
 
-export default function DateViewNavigator({
+export default function DateViewNavigator<T extends 7 | 14 | 21 | 28>({
   periodDays,
   onPeriodDaysChange,
+  periods = [7, 14] as T[],
+  navigationStepDays = periodDays,
   onPrev,
   onNext,
   onToday,
   isToday = false,
   className = '',
-}: DateViewNavigatorProps) {
+}: DateViewNavigatorProps<T>) {
   return (
     <div className={cn("flex flex-wrap items-center justify-start gap-3", className)}>
-      {/* 7 vs 14 days toggle on the Left */}
+      {/* Period selection on the left */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-label font-bold text-text-primary">Período para visualização:</span>
-        <M3SegmentedControl<7 | 14>
+        <M3SegmentedControl<T>
           label="Período de visualização"
           value={periodDays}
           onChange={onPeriodDaysChange}
-          options={[{ value: 7, label: '7 dias' }, { value: 14, label: '14 dias' }]}
+          options={periods.map(value => ({ value, label: `${value} dias` }))}
         />
       </div>
 
@@ -41,7 +45,7 @@ export default function DateViewNavigator({
       <div role="group" aria-label="Navegação de datas" className="flex items-center gap-1">
         <M3IconButton
           onClick={onPrev}
-          title={`Recuar ${periodDays} dias`}
+          title={`Recuar ${navigationStepDays} dias`}
           label="Período anterior"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -55,7 +59,7 @@ export default function DateViewNavigator({
         </M3Button>
         <M3IconButton
           onClick={onNext}
-          title={`Avançar ${periodDays} dias`}
+          title={`Avançar ${navigationStepDays} dias`}
           label="Período seguinte"
         >
           <ChevronRight className="w-4 h-4" />
