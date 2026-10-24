@@ -48,7 +48,7 @@ export const projectPreviewProps: React.ComponentProps<typeof ProjectSection> = 
   selectedProjectId: null, setSelectedProjectId: () => {},
   addProject: () => {}, updateProject: () => {}, deleteProject: () => {}, addClient: () => {},
   addComment: () => {}, deleteComment: () => {}, addTask: () => {}, updateTask: () => {},
-  currentUser: { id: 'qa-user', roleId: 'ug-1' },
+  currentUser: { id: 'qa-user', roleId: 'ug-1', permissions: ['projects.read', 'projects.write', 'projects.delete', 'tasks.write'] },
 };
 
 describe('Projects M3 presentation', () => {
