@@ -40,9 +40,9 @@ export default function ClientSection({
   currentUser,
   userGroups = [],
 }: ClientSectionProps) {
-  const canReadClients = hasPermission(currentUser, 'clients_read', userGroups);
-  const canWriteClients = hasPermission(currentUser, 'clients_write', userGroups);
-  const canDeleteClients = hasPermission(currentUser, 'clients_delete', userGroups);
+  const canReadClients = hasPermission(currentUser, 'clients_read');
+  const canWriteClients = hasPermission(currentUser, 'clients_write');
+  const canDeleteClients = hasPermission(currentUser, 'clients_delete');
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);

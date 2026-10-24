@@ -446,7 +446,7 @@ export default function Page() {
   const tabs = React.useMemo(() => {
     if (!state || !currentUser) return [];
     return APP_SECTIONS.filter(section => !section.requiredPermission ||
-      hasPermission(currentUser, section.requiredPermission as any, state?.userGroups || []));
+      hasPermission(currentUser, section.requiredPermission as any));
   }, [state, currentUser]);
 
   // Fallback if active tab is not allowed
@@ -456,7 +456,7 @@ export default function Page() {
         : activeTab === 'ausencias' ? 'absences_read' : null;
       const allowed = tabs.some(t => t.id === activeTab) || (
         nestedPagePermission !== null &&
-        hasPermission(currentUser, nestedPagePermission as any, state.userGroups || [])
+        hasPermission(currentUser, nestedPagePermission as any)
       );
       if (!allowed) {
         setActiveTab('dashboard');
@@ -774,7 +774,7 @@ export default function Page() {
                   { id: 'sistema-menu', label: 'Sistema', icon: Database },
                 ];
                 const visibleConfigSubItems = configSubItems.filter(
-                  sub => !sub.permission || hasPermission(currentUser, sub.permission as any, state?.userGroups || [])
+                  sub => !sub.permission || hasPermission(currentUser, sub.permission as any)
                 );
                 const isConfigSectionActive = isActive || visibleConfigSubItems.some(
                   sub => (sub.id === 'clientes' || sub.id === 'ausencias') && sub.id === activeTab

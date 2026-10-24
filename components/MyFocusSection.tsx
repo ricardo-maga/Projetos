@@ -9,7 +9,6 @@ import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
-import { Input } from './ui/Input';
 import { assignedFocusRisks, focusHours, paginateFocus } from '../lib/myFocus';
 import { FocusPagination, useFocusPagination, FOCUS_TASK_SIZES, FOCUS_PROJECT_SIZES } from './FocusPagination';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
@@ -19,7 +18,7 @@ import { M3Button, M3IconButton, M3SegmentedControl } from './M3';
 import { 
   CheckSquare, Briefcase, Play, ShieldAlert, Calendar as CalendarIcon, ChevronLeft,
   ChevronRight, Sparkles, ArrowRight,
-  StickyNote, Plus, Trash2, FolderKanban, Flag, PartyPopper
+  CalendarDays, FolderKanban, Flag, PartyPopper
 } from 'lucide-react';
 
 interface MyFocusSectionProps {
@@ -104,51 +103,6 @@ export default function MyFocusSection({
   const focusForecastMonth = currentForecastMonth();
   const focusForecastShortMonth = forecastShortMonth(focusForecastMonth);
   const [selectedDateStr, setSelectedDateStr] = useState<string>(todayStr);
-
-  // Personal calendar notes state (stored per user in localStorage)
-  const [userNotes, setUserNotes] = useState<Record<string, string[]>>({});
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(`focus_notes_${currentUser.id}`) || '{}');
-      setUserNotes(saved && typeof saved === 'object' && !Array.isArray(saved)
-        ? Object.fromEntries(Object.entries(saved).filter(([, value]) => Array.isArray(value) && value.every(n => typeof n === 'string'))) as Record<string, string[]> : {});
-    } catch { setUserNotes({}); }
-  }, [currentUser.id]);
-
-  const [newNoteText, setNewNoteText] = useState('');
-
-  const saveNotes = (updated: Record<string, string[]>) => {
-    setUserNotes(updated);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`focus_notes_${currentUser.id}`, JSON.stringify(updated));
-      } catch (e) {
-        console.error('Error saving focus notes:', e);
-      }
-    }
-  };
-
-  const handleAddNote = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newNoteText.trim()) return;
-    const existing = userNotes[selectedDateStr] || [];
-    const updated = {
-      ...userNotes,
-      [selectedDateStr]: [...existing, newNoteText.trim()]
-    };
-    saveNotes(updated);
-    setNewNoteText('');
-  };
-
-  const handleDeleteNote = (dateStr: string, index: number) => {
-    const existing = userNotes[dateStr] || [];
-    const updatedList = existing.filter((_, i) => i !== index);
-    const updated = {
-      ...userNotes,
-      [dateStr]: updatedList
-    };
-    saveNotes(updated);
-  };
 
   // Helper clients map
   const clientsMap = useMemo(() => {
@@ -406,7 +360,6 @@ export default function MyFocusSection({
 
   const selectedDateTasks = tasksByDate.get(selectedDateStr) || [];
   const selectedDateProjects = projectsByDate.get(selectedDateStr) || [];
-  const selectedDateUserNotes = userNotes[selectedDateStr] || [];
 
   const handlePrevMonth = () => {
     setCurrentMonthDate(new Date(year, month - 1, 1));
@@ -532,7 +485,7 @@ export default function MyFocusSection({
                       <div className="flex items-start gap-3 flex-1 min-w-0">
                           <IconButton size="sm" aria-label={`Executar tarefa ${task.title}`}
                             className={`rounded-full shrink-0 ${scaleInfo.badgeClass}`}
-                            title="Executar tarefa" disabled={!hasPermission(currentUser, 'tasks_write', userGroups)}
+                            title="Executar tarefa" disabled={!hasPermission(currentUser, 'tasks_write')}
                             onClick={e => { e.stopPropagation(); openTaskDetailsModal(task, 'execute'); }}>
                             <Play className="w-4 h-4" />
                           </IconButton>
@@ -775,7 +728,6 @@ export default function MyFocusSection({
                   {calendarDays.map((cell, idx) => {
                     const dayTasks = tasksByDate.get(cell.dateStr) || [];
                     const dayProjects = projectsByDate.get(cell.dateStr) || [];
-                    const dayNotes = userNotes[cell.dateStr] || [];
 
                     const isToday = cell.dateStr === todayStr;
                     const isSelected = cell.dateStr === selectedDateStr;
@@ -785,7 +737,7 @@ export default function MyFocusSection({
                     const specialDay = specialDays.find(sd => sd.date === cell.dateStr);
                     const isSpecial = !!specialDay;
 
-                    const hasEvents = dayTasks.length > 0 || dayProjects.length > 0 || dayNotes.length > 0;
+                    const hasEvents = dayTasks.length > 0 || dayProjects.length > 0;
 
                     const cellStyleClass = isSelected
                       ? 'bg-primary/10 text-text-primary ring-2 ring-inset ring-primary z-10'
@@ -806,7 +758,7 @@ export default function MyFocusSection({
                         className={`p-2 rounded-none border-b border-r border-border-subtle text-center flex flex-col items-start justify-between min-h-20 h-auto transition-colors relative ${cellStyleClass}`}
                         title={tooltipText}
                         aria-pressed={isSelected}
-                        aria-label={`${tooltipText} · ${dayTasks.length} tarefas · ${dayProjects.length} projetos · ${dayNotes.length} notas`}
+                        aria-label={`${tooltipText} · ${dayTasks.length} tarefas · ${dayProjects.length} projetos`}
                       >
                         <div className="flex items-center justify-center w-full relative">
                           <span className={`text-body-sm ${isToday ? 'underline font-bold' : ''} ${isSpecial && !isSelected ? 'text-error font-extrabold' : ''}`}>
@@ -828,9 +780,6 @@ export default function MyFocusSection({
                             )}
                             {dayProjects.length > 0 && (
                               <span className="w-1.5 h-1.5 rounded-full bg-warning"></span>
-                            )}
-                            {dayNotes.length > 0 && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
                             )}
                           </div>
                         )}
@@ -856,13 +805,13 @@ export default function MyFocusSection({
                 </div>
               </div>
 
-              {/* SELECTED DATE DETAIL / NOTES PANEL */}
+              {/* SELECTED DATE ACTIVITIES */}
               <div className="bg-surface rounded-card p-3.5 border border-border-subtle/80 space-y-3">
                 <div className="flex items-center justify-between border-b border-border-subtle/60 pb-2">
                   <div className="flex items-center gap-1.5 text-caption font-bold text-text-primary">
-                    <StickyNote className="w-4 h-4 text-primary" />
+                    <CalendarDays className="w-4 h-4 text-primary" />
                     <span>
-                      Atividades & Notas de {new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })}
+                      Atividades de {new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })}
                     </span>
                   </div>
                   {selectedDateStr === todayStr && (
@@ -911,9 +860,9 @@ export default function MyFocusSection({
 
                 {/* EVENTS & TASKS ON SELECTED DAY */}
                 <div className="space-y-2">
-                  {selectedDateTasks.length === 0 && selectedDateProjects.length === 0 && selectedDateUserNotes.length === 0 ? (
+                  {selectedDateTasks.length === 0 && selectedDateProjects.length === 0 ? (
                     <p className="text-caption text-text-muted italic text-center py-2">
-                      Nenhum compromisso ou nota gravada para este dia.
+                      Nenhuma atividade para este dia.
                     </p>
                   ) : (
                     <>
@@ -1018,41 +967,10 @@ export default function MyFocusSection({
                         );
                       })}
 
-                      {/* PERSONAL NOTES */}
-                      {selectedDateUserNotes.map((note, idx) => (
-                        <div key={idx} className="p-2 bg-success/10 rounded-lg border border-success/20 text-caption flex items-start justify-between gap-2">
-                          <p className="text-success font-medium leading-tight flex-1">{note}</p>
-                          <Button variant="ghost" size="sm"
-                            onClick={() => handleDeleteNote(selectedDateStr, idx)}
-                            className="text-success hover:text-error p-0.5"
-                            title="Eliminar nota"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      ))}
                     </>
                   )}
                 </div>
 
-                {/* ADD PERSONAL NOTE FORM */}
-                <form onSubmit={handleAddNote} className="flex gap-1.5 pt-1">
-                  <Input
-                    aria-label="Nota pessoal para o dia selecionado"
-                    type="text"
-                    value={newNoteText}
-                    onChange={e => setNewNoteText(e.target.value)}
-                    placeholder="Adicionar nota para este dia..."
-                    className="flex-1 p-2 bg-surface border border-border-subtle rounded-lg text-caption outline-none focus:ring-1 focus:ring-primary font-medium"
-                  />
-                  <Button variant="primary" size="sm"
-                    type="submit"
-                    className="p-2 bg-primary hover:bg-primary text-white rounded-lg text-caption font-bold transition-colors flex items-center justify-center"
-                    title="Adicionar Nota"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </form>
               </div>
 
             </div>
@@ -1081,7 +999,7 @@ export default function MyFocusSection({
         clients={clients}
         absences={userAbsences}
         tasks={tasks}
-        canWrite={hasPermission(currentUser, 'tasks_write', userGroups)}
+        canWrite={hasPermission(currentUser, 'tasks_write')}
       />
 
     </div>

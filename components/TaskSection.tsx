@@ -97,9 +97,9 @@ export default function TaskSection({
   userGroups = [],
   appConfig,
 }: TaskSectionProps) {
-  const canReadTasks = hasPermission(currentUser, 'tasks_read', userGroups);
-  const canWriteTasks = hasPermission(currentUser, 'tasks_write', userGroups);
-  const canDeleteTasks = hasPermission(currentUser, 'tasks_delete', userGroups);
+  const canReadTasks = hasPermission(currentUser, 'tasks_read');
+  const canWriteTasks = hasPermission(currentUser, 'tasks_write');
+  const canDeleteTasks = hasPermission(currentUser, 'tasks_delete');
 
   // Filters state
   const [search, setSearch] = useState('');
@@ -1106,4 +1106,3 @@ export default function TaskSection({
     </div>
   );
 }
-
