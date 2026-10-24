@@ -38,7 +38,7 @@ function harness() {
   return { state, preferences, render(props: any) { cursor = 0; return exports.default(props); } };
 }
 export const focusPreviewProps: any = {
-  currentUser: { id: 'qa-focus-user', name: 'Ana Exemplo', roleId: 'ug-1' }, users: [], userGroups: [],
+  currentUser: { id: 'qa-focus-user', name: 'Ana Exemplo', roleId: 'ug-1', permissions: ['tasks.write'] }, users: [], userGroups: [],
   clients: [{ id: 'c', clientName: 'Cliente de exemplo' }],
   projects: Array.from({ length: 8 }, (_, i) => ({ id: `p${i}`, clientId: 'c', title: `Projeto ${i}`, installProjectNo: `IP-${i}`, projectManagerId: 'qa-focus-user', statusId: 'active', deliveryDate: '2026-12-01', deleted: false })),
   tasks: Array.from({ length: 23 }, (_, i) => ({ id: `t${i}`, title: `Tarefa ${i}`, projectId: 'p0', assigneeIds: ['qa-focus-user'], statusId: 'pending', estimatedHours: '02:00:00', estimatedDate: '2026-12-01', deleted: false })),
@@ -102,7 +102,7 @@ describe('My Focus M3', () => {
     action.props.onClick({ stopPropagation() {} });
     expect(h.state.taskModalState.mode).toBe('execute');
     expect(h.state.taskModalState.task.id).toBe('t0'); expect(calls).toBe(0);
-    const restricted = h.render({ ...props, currentUser: { ...props.currentUser, roleId: 'ug-4' } });
+    const restricted = h.render({ ...props, currentUser: { ...props.currentUser, roleId: 'ug-4', permissions: [] } });
     expect(find(restricted, e => e.props?.['aria-label'] === 'Executar tarefa Tarefa 0').props.disabled).toBe(true);
   });
   it('paginates independently and keeps project navigation and calendar selection', () => {

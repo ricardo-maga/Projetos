@@ -8,7 +8,7 @@ import CalendarSection from '../components/CalendarSection';
 import { isTaskOnDate } from '../lib/operationalCalendar';
 
 const props: any = { projects: [{ id: 'project', title: 'Projeto diário', statusId: 'active-project' }], tasks: [], users: [], clients: [], absences: [],
-  projectStatuses: [{ id: 'active-project', scale: 1 }], taskStatuses: [], currentUser: { id: 'qa-user', roleId: 'ug-1' }, userGroups: [] };
+  projectStatuses: [{ id: 'active-project', scale: 1 }], taskStatuses: [], currentUser: { id: 'qa-user', roleId: 'ug-1', permissions: ['calendar.read', 'calendar.write', 'tasks.write'] }, userGroups: [] };
 
 describe('Daily planning without allocation UI', () => {
   it('keeps the operational weekly calendar and two visible views', () => {

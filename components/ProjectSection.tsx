@@ -4972,6 +4972,7 @@ export default function ProjectSection({
         absences={absences}
         tasks={tasks}
         canWrite={canWriteTasks}
+        onSelectTask={task => openTaskDetailsModal(task)}
       />
 
       <ConfirmModal
