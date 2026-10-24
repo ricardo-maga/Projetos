@@ -110,6 +110,7 @@ export default function TaskDetailsModal({
   absences = [],
   tasks = [],
   canWrite = true,
+  onSelectTask,
 }: TaskDetailsModalProps) {
   // If isOpen is explicitly passed, respect it; otherwise consider open if task or initialMode is provided
   const isModalOpen = isOpen !== undefined ? isOpen : (Boolean(task) || Boolean(initialMode));
@@ -366,6 +367,15 @@ export default function TaskDetailsModal({
   }, [formStartDate, formEndDate, formEstimatedDate, effectiveMode, activeTask, formAssignees, tasks, users, absences, projects]);
 
   const selectedProject = projects.find(p => p.id === formProjectId && !p.deleted);
+  const unscheduledProjectTasks = useMemo(() => {
+    if (effectiveMode !== 'create' || !formProjectId || !onSelectTask) return [];
+    return tasks.filter(candidate => {
+      if (candidate.deleted || candidate.projectId !== formProjectId) return false;
+      if (candidate.estimatedDate || candidate.startDate || candidate.endDate) return false;
+      const status = taskStatuses.find(s => matchTaskStatusId(s.id, candidate.statusId));
+      return status?.scale !== 3 && !matchTaskStatusId(candidate.statusId, 'ts-3');
+    });
+  }, [effectiveMode, formProjectId, onSelectTask, tasks, taskStatuses]);
   const activeClient = selectedProject ? clientMap.get(selectedProject.clientId) : null;
   const clientName = activeClient ? (activeClient.clientName || activeClient.shortName || 'N/A') : 'N/A';
   const projectTitle = selectedProject ? selectedProject.title : 'N/A';
@@ -606,6 +616,25 @@ export default function TaskDetailsModal({
               {conflictWarnings.map((warn, idx) => (
                 <p key={idx} className="text-body-sm leading-relaxed">{warn}</p>
               ))}
+            </div>
+          )}
+
+          {unscheduledProjectTasks.length > 0 && (
+            <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-control space-y-2 text-body-sm text-warning shadow-2xs">
+              <p className="font-bold flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                Este projeto tem as seguintes tarefas por agendar:
+              </p>
+              <ul className="space-y-1 pl-5 list-disc">
+                {unscheduledProjectTasks.map(candidate => (
+                  <li key={candidate.id}>
+                    <button type="button" disabled={isSubmitting} onClick={() => onSelectTask?.(candidate)}
+                      className="text-left underline underline-offset-2 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50">
+                      {candidate.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
