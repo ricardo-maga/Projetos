@@ -10,7 +10,7 @@ import ProjectTimeline from '../components/ProjectTimeline';
 import TaskDetailsModal from '../components/TaskDetailsModal';
 
 const client: any = { id: 'c', clientName: 'Cliente Exemplo', shortName: 'CE', location: 'Porto', taxId: '123', contactPerson: 'Ana', contactEmail: 'ana@example.invalid', contactPhone: '123', notes: 'Nota', deleted: false };
-export const clientPreviewProps: any = { clients: [client], projects: [{ id: 'p', clientId: 'c', title: 'Projeto associado', deleted: false }], currentUser: { id: 'qa-user', roleId: 'ug-1' }, userGroups: [], addClient: () => {}, updateClient: () => {}, deleteClient: () => {}, onSelectProject: () => {} };
+export const clientPreviewProps: any = { clients: [client], projects: [{ id: 'p', clientId: 'c', title: 'Projeto associado', deleted: false }], currentUser: { id: 'qa-user', roleId: 'ug-1', permissions: ['clients.read', 'clients.write', 'clients.delete'] }, userGroups: [], addClient: () => {}, updateClient: () => {}, deleteClient: () => {}, onSelectProject: () => {} };
 describe('Clients and Calendar M3', () => {
   it('renders clients with the Projects header, Foundation fields and no local palette or tiny typography', () => {
     const h = createSectionHarness('ClientSection.tsx');
@@ -52,7 +52,7 @@ describe('Clients and Calendar M3', () => {
   it('uses Projects-style tabs with icons, forwards risks and priorities, and preserves calendar permissions/modal', () => {
     const h = createSectionHarness('CalendarSection.tsx');
     const priorities = [{ id: 'high', name: 'Alta', scale: 1, deleted: false }];
-    const props: any = { projects: [], tasks: [], clients: [], users: [], absences: [], taskStatuses: [], projectStatuses: [], projectPriorities: priorities, projectRiskItems: [{ id: 'r' }], currentUser: { id: 'qa-user', roleId: 'ug-1' } };
+    const props: any = { projects: [], tasks: [], clients: [], users: [], absences: [], taskStatuses: [], projectStatuses: [], projectPriorities: priorities, projectRiskItems: [{ id: 'r' }], currentUser: { id: 'qa-user', roleId: 'ug-1', permissions: ['calendar.read', 'calendar.write', 'tasks.write'] } };
     let tree = h.render(props);
     const tabs = find(tree, e => e.type === Tabs);
     expect(tabs.props.tabs.map((t: any) => t.label)).toEqual(['Calendário semanal', 'Timeline de projetos']);
