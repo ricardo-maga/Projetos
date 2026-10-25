@@ -242,6 +242,27 @@ describe('Project timeline M3', () => {
     expect(renderToStaticMarkup(h.render(props))).toContain('class="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado"');
     expect(getTaskConflictWarnings({ date: '2026-10-05', assigneeIds: ['u'], currentTaskId: 'regular', tasks, users: [{ id: 'u', name: 'Ana' } as any] }).join(' ')).toContain('Sem projeto');
   });
+  it('marks both sides of a cross-project conflict and formats expanded task details', () => {
+    const title = 'Tarefa longa que deve ocupar no máximo duas linhas quando o bloco está expandido';
+    const tasks: any = [
+      { id: 'other', projectId: null, title: 'Outra tarefa', estimatedDate: '2026-10-05', assigneeIds: ['u'], statusId: 'pending' },
+      { id: 'project', projectId: 'one', title, estimatedDate: '2026-10-05', assigneeIds: ['u'], estimatedHours: '8', statusId: 'pending' },
+    ];
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const props = { ...timelinePreviewProps, projects: [project('one')], tasks, users: [{ id: 'u', name: 'Ana Silva' }] } as any;
+    let tree = h.render(props);
+    for (const key of ['other:2026-10-05', 'one:2026-10-05']) {
+      expect(find(tree, e => e.props?.['data-timeline-drop-cell'] === key).props.className).toContain('project-timeline-conflict-cell');
+    }
+    expect(find(tree, e => e.props?.['data-timeline-drop-cell'] === 'one:2026-10-06').props.className).not.toContain('project-timeline-conflict-cell');
+    find(tree, e => e.props?.['aria-expanded'] === false).props.onClick();
+    tree = h.render(props);
+    const heading = find(tree, e => e.type === 'span' && e.props?.title === title);
+    expect(heading.props.className).toContain('line-clamp-2');
+    const html = renderToStaticMarkup(tree);
+    expect(html).toContain('8h</span>');
+    expect(html).not.toContain('8 h previstas');
+  });
   it('reports absences in other tasks, including days without tasks, and highlights assigned conflicts', () => {
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
     const props = {
@@ -256,6 +277,8 @@ describe('Project timeline M3', () => {
     expect(html).toContain('Ana Silva: AUSENTE');
     expect(html).toContain('Férias');
     expect(html).not.toContain('Inativo:');
+    expect(find(tree, e => e.props?.['data-timeline-drop-cell'] === 'other:2026-10-05').props.className).toContain('project-timeline-conflict-cell');
+    expect(find(tree, e => e.props?.['data-timeline-drop-cell'] === 'other:2026-10-06').props.className).not.toContain('project-timeline-conflict-cell');
     const widths = find(tree, e => e.type === 'colgroup').props.children[1].map((e: any) => e.props.style?.width);
     expect(widths[5]).toBeUndefined();
   });

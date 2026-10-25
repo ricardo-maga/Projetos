@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
 import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User, UserAbsence } from '../lib/types';
 import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '../lib/projectTimeline';
-import { getOperationalCalendarDays, formatOperationalDateRange, getOperationalDayConflicts, getUserDayAbsence, isUserAssignedToTask } from '../lib/operationalCalendar';
+import { getOperationalCalendarDays, formatOperationalDateRange, getOperationalDayConflicts, getUserDayAbsence, isTaskOnDate, isUserAssignedToTask } from '../lib/operationalCalendar';
 import { parseTaskHoursToFloat } from '../lib/taskOperations';
 import { getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '../lib/utils';
 import { M3SectionHeader, M3SegmentedControl } from './M3';
@@ -65,14 +65,25 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
   const otherDays = useMemo(() => new Map(days.map(day => {
     const otherTasks = getOtherTimelineTasks(tasks, day.dateStr);
+    const dayTasks = tasks.filter(task => isTaskOnDate(task, day.dateStr));
     const absentUsers = users.filter(user => !user.deleted).flatMap(user => {
       const absence = getUserDayAbsence(absences, user.id, day.dateStr);
       if (!absence) return [];
-      const conflict = getOperationalDayConflicts(otherTasks.filter(task => isUserAssignedToTask(task, user.id)), absence,
+      const conflict = getOperationalDayConflicts(dayTasks.filter(task => isUserAssignedToTask(task, user.id)), absence,
         user.name, day.dateStr.split('-').reverse().join('/'));
       return [{ user, absence, conflict }];
     });
     return [day.dateStr, { otherTasks, absentUsers }] as const;
+  })), [days, tasks, users, absences]);
+  const conflictTaskIds = useMemo(() => new Map(days.map(day => {
+    const dayTasks = tasks.filter(task => isTaskOnDate(task, day.dateStr));
+    const ids = new Set<string>();
+    for (const user of users.filter(user => !user.deleted)) {
+      const assigned = dayTasks.filter(task => isUserAssignedToTask(task, user.id));
+      const absence = getUserDayAbsence(absences, user.id, day.dateStr);
+      if (getOperationalDayConflicts(assigned, absence).hasConflict) assigned.forEach(task => ids.add(task.id));
+    }
+    return [day.dateStr, ids] as const;
   })), [days, tasks, users, absences]);
   const shift = (offset: number) => setAnchor(previous => { const next = new Date(previous); next.setDate(next.getDate() + offset); return next; });
   const dragProps = (task: Task) => ({
@@ -198,7 +209,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           </tr></thead>
           <tbody><tr className="border-t border-border align-top">
             <th scope="row" className="p-3 border-b border-border text-left font-medium text-text-primary bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">Outras tarefas</th>
-            {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, null)} className={`p-2 border-b border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${dragOverCell === `other:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
+            {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, null)} className={`p-2 border-b border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${otherDays.get(day.dateStr)?.otherTasks.some(task => conflictTaskIds.get(day.dateStr)?.has(task.id)) || otherDays.get(day.dateStr)?.absentUsers.some(({ conflict }) => conflict.hasConflict) ? 'project-timeline-conflict-cell' : ''} ${dragOverCell === `other:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
               <div className="space-y-1">
                 {otherDays.get(day.dateStr)?.absentUsers.map(({ user, absence, conflict }) =>
                   <div key={user.id} title={conflict.tooltipText}
@@ -259,7 +270,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                 </div>}
               </div>}
             </th>
-            {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, project.id)} className={`p-2 border-b border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${dragOverCell === `${project.id}:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
+            {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, project.id)} className={`p-2 border-b border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${(events.get(project.id)?.get(day.dateStr) || []).some(event => event.kind === 'task' && conflictTaskIds.get(day.dateStr)?.has(event.task.id)) ? 'project-timeline-conflict-cell' : ''} ${dragOverCell === `${project.id}:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
               {!expanded && <div className="space-y-1">
                 {(events.get(project.id)?.get(day.dateStr) || []).filter(event => event.kind === 'task').map((event, index) => {
                   const status = getTaskStatusStyle(event.task.statusId, taskStatuses);
@@ -281,13 +292,13 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                   const status = event.kind === 'task' ? getTaskStatusStyle(event.task.statusId, taskStatuses) : undefined;
                   return <Button key={`${event.kind}-${index}`} {...(event.kind === 'task' ? dragProps(event.task) : {})} variant="ghost" size="sm" className={`w-full h-auto min-h-9 px-2 py-2 whitespace-normal text-left justify-start bg-surface border border-border ${status ? `border-l-4 ${status.dotClass.replace('bg-', 'border-l-')}` : ''} ${status && canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     onClick={() => openOutsideTimeline(() => event.kind === 'task' ? onSelectTask(event.task) : onSelectProject?.(project.id))}>
-                    <span className="flex flex-col gap-1 min-w-0 break-words">
-                      <span className={event.kind === 'milestone' ? 'text-caption text-text-secondary' : 'text-body-sm font-semibold'}>{event.kind === 'risk' && <ShieldAlert className="inline w-3.5 h-3.5 mr-1" />}{event.title}</span>
-                      {event.kind === 'task' ? <><span className="text-caption text-text-secondary">{parseTaskHoursToFloat(event.task.estimatedHours)} h previstas</span>
-                        <span className="flex items-center gap-1" aria-label="Técnicos alocados">
+                      <span className="flex flex-col gap-1 min-w-0 break-words">
+                      <span title={event.title} className={`${event.kind === 'milestone' ? 'text-caption text-text-secondary' : 'text-body-sm font-semibold'} ${event.kind === 'task' ? 'line-clamp-2' : ''}`}>{event.kind === 'risk' && <ShieldAlert className="inline w-3.5 h-3.5 mr-1" />}{event.title}</span>
+                      {event.kind === 'task' ? <><span className="flex items-center gap-1" aria-label="Técnicos alocados">
                           {(event.task.assigneeIds || []).slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
                           {!event.task.assigneeIds?.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                           {(event.task.assigneeIds || []).length > 2 && <span className="text-caption">+{event.task.assigneeIds.length - 2}</span>}
+                          <span className="text-caption text-text-secondary">{parseTaskHoursToFloat(event.task.estimatedHours)}h</span>
                         </span>
                         </>
                         : event.kind === 'risk' ? <span className="text-caption text-text-secondary">Revisão de risco</span> : null}
