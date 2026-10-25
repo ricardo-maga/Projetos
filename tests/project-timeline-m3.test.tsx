@@ -38,6 +38,20 @@ describe('Project timeline M3', () => {
     expect(withRisks.has('none')).toBe(false);
     expect(events.get('task')?.get('2026-10-06')?.[0].kind).toBe('task');
   });
+  it('labels each project date by its meaning and keeps cell borders on collapsed rows', () => {
+    const dated = project('dated', { startDate: '2026-10-05', scheduledDate: '2026-10-06', estimatedDate: '2026-10-07', deliveryDate: '2026-10-08' });
+    const events = buildProjectTimelineEvents([dated], [], [], false).get('dated');
+    expect(events?.get('2026-10-05')?.[0].title).toBe('Adjudicação');
+    expect(events?.get('2026-10-06')?.[0].title).toBe('Data agendada');
+    expect(events?.get('2026-10-07')?.[0].title).toBe('Previsão de entrega');
+    expect(events?.get('2026-10-08')?.[0].title).toBe('Data entrega');
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const tree = h.render({ ...timelinePreviewProps, projects: [dated] });
+    const row = find(tree, e => e.type === 'th' && e.props?.scope === 'row' && e.props?.className?.includes('space-y-1'));
+    expect(row.props.className).toContain('border-b');
+    const cell = find(tree, e => e.type === 'td' && e.props?.['data-timeline-drop-cell'] === 'dated:2026-10-05');
+    expect(cell.props.className).toContain('border-b border-l');
+  });
   it('uses actual start only when both execution dates are present and supports project/client/IP searches', () => {
     const projects = [project('one'), project('two', { clientId: 'other' })];
     const tasks: any = [{ id: 't', projectId: 'one', title: 'Real', startDate: '2026-10-05', endDate: '2026-10-07', estimatedDate: '2026-12-01', assigneeIds: ['u'] }];

@@ -65,8 +65,8 @@ export function buildProjectTimelineEvents(projects: Project[], tasks: Task[], r
     index.set(projectId, dates);
   };
   for (const p of projects.filter(p => !p.deleted)) {
-    for (const [raw, title] of [[p.startDate, 'Início de projeto'], [p.scheduledDate, 'Agendamento / Instalação'],
-      [p.estimatedDate, 'Previsão de entrega real'], [p.deliveryDate, 'Prazo de entrega']]) {
+    for (const [raw, title] of [[p.startDate, 'Adjudicação'], [p.scheduledDate, 'Data agendada'],
+      [p.estimatedDate, 'Previsão de entrega'], [p.deliveryDate, 'Data entrega']]) {
       add(p.id, { kind: 'milestone', date: normalizeDateStr(raw), title });
     }
   }
