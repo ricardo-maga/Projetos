@@ -48,6 +48,8 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const dockSlotRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
   const [floatingDock, setFloatingDock] = useState<{ left: number; width: number; height: number } | null>(null);
+  const [floatingHeader, setFloatingHeader] = useState<{ left: number; width: number; height: number } | null>(null);
+  const floatingHeaderScrollRef = useRef<HTMLDivElement>(null);
   const canMove = canCreate && !!updateTask;
   const openOutsideTimeline = (action: () => void) => {
     setFullscreen(false);
@@ -128,7 +130,11 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const timelineMinWidth = 260 + days.reduce((width, day) => width + (compactDays.has(day.dateStr) ? 64 : 150), 0);
   const syncHorizontalScroll = (source: HTMLDivElement, target: HTMLDivElement | null) => {
     if (target && target.scrollLeft !== source.scrollLeft) target.scrollLeft = source.scrollLeft;
+    if (floatingHeaderScrollRef.current) floatingHeaderScrollRef.current.scrollLeft = source.scrollLeft;
   };
+  useEffect(() => {
+    if (floatingHeaderScrollRef.current && tableScrollRef.current) floatingHeaderScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+  }, [floatingHeader]);
   useEffect(() => {
     const updateDock = () => {
       const table = tableScrollRef.current, card = cardRef.current, slot = dockSlotRef.current, dock = dockRef.current;
@@ -137,6 +143,10 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       const slotRect = slot.getBoundingClientRect();
       const cardRect = card.getBoundingClientRect();
       const height = dock.offsetHeight;
+      const headerHeight = table.querySelector('thead')?.getBoundingClientRect().height || 0;
+      const nextHeader = tableRect.top < 0 && tableRect.bottom > headerHeight
+        ? { left: tableRect.left, width: tableRect.width, height: headerHeight } : null;
+      setFloatingHeader(previous => previous?.left === nextHeader?.left && previous?.width === nextHeader?.width && previous?.height === nextHeader?.height ? previous : nextHeader);
       const shouldFloat = tableRect.top < window.innerHeight && tableRect.bottom > 0 && slotRect.top > window.innerHeight - height;
       const next = shouldFloat ? { left: cardRect.left, width: cardRect.width, height } : null;
       setFloatingDock(previous => previous?.left === next?.left && previous?.width === next?.width && previous?.height === next?.height ? previous : next);
@@ -176,19 +186,19 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       <div className="relative">
       <div ref={tableScrollRef} onScroll={event => syncHorizontalScroll(event.currentTarget, dockScrollRef.current)}
         className="project-timeline-table-scroll overflow-x-auto overflow-y-hidden" data-project-timeline-scroll>
-        <table className="w-full table-fixed text-body-sm" style={{ minWidth: timelineMinWidth }}>
+        <table className="w-full table-fixed border-separate border-spacing-0 text-body-sm" style={{ minWidth: timelineMinWidth }}>
           <caption className="sr-only">Timeline de projetos · {formatOperationalDateRange(days)}</caption>
           <colgroup><col style={{ width: 260 }} />{days.map(day => <col key={day.dateStr} style={compactDays.has(day.dateStr) ? { width: 64 } : undefined} />)}</colgroup>
           <thead className="text-body-sm font-semibold text-text-secondary bg-surface-muted"><tr>
-            <th scope="col" className="p-3 text-left text-body-sm font-semibold bg-surface-muted lg:sticky lg:left-0 lg:z-30 lg:border-r lg:border-border">Projeto</th>
-            {days.map(day => <th scope="col" key={day.dateStr} className={`p-3 border-l border-border text-left text-body-sm font-semibold ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
+            <th scope="col" className="p-3 border-b border-border text-left text-body-sm font-semibold bg-surface-muted lg:sticky lg:left-0 lg:z-30 lg:border-r lg:border-border">Projeto</th>
+            {days.map(day => <th scope="col" key={day.dateStr} className={`p-3 border-b border-l border-border text-left text-body-sm font-semibold ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
               <span className="block">{day.weekdayShort.slice(0, 3).toUpperCase()} {day.dayNum}/{day.date.getMonth() + 1}</span>
               {specialDays.find(s => s.date === day.dateStr) && <span className="block text-caption font-normal text-text-secondary break-words">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
             </th>)}
           </tr></thead>
           <tbody><tr className="border-t border-border align-top">
-            <th scope="row" className="p-3 text-left font-medium text-text-primary bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">Outras tarefas</th>
-            {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, null)} className={`p-2 border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${dragOverCell === `other:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
+            <th scope="row" className="p-3 border-b border-border text-left font-medium text-text-primary bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">Outras tarefas</th>
+            {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, null)} className={`p-2 border-b border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${dragOverCell === `other:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
               <div className="space-y-1">
                 {otherDays.get(day.dateStr)?.absentUsers.map(({ user, absence, conflict }) =>
                   <div key={user.id} title={conflict.tooltipText}
@@ -213,8 +223,8 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               {canCreate && <div className="flex justify-end"><IconButton size="sm" aria-label={`Criar tarefa sem projeto no dia ${day.dateStr}`} title="Criar tarefa"
                 onClick={() => openOutsideTimeline(() => onCreateTask(day.dateStr))}><Plus className="w-4 h-4" /></IconButton></div>}
             </td>)}
-          </tr>{visibleProjects.map(project => { const style = getProjectStatusStyle(project.statusId, projectStatuses); const expanded = expandedProjects.has(project.id); const pending = undatedTasks.get(project.id) || []; const undatedOpen = expandedUndatedProjects.has(project.id); return <tr key={project.id} className="border-t border-border align-top">
-            <th scope="row" className="p-3 text-left font-medium text-text-primary space-y-1 bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">
+          </tr>{visibleProjects.map(project => { const style = getProjectStatusStyle(project.statusId, projectStatuses); const expanded = expandedProjects.has(project.id); const pending = undatedTasks.get(project.id) || []; const undatedOpen = expandedUndatedProjects.has(project.id); return <tr key={project.id} className="align-top">
+            <th scope="row" className="p-3 border-b border-border text-left font-medium text-text-primary space-y-1 bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="sm" className="min-w-0 flex-1 justify-between px-0 text-left" aria-expanded={expanded}
                   aria-label={`${expanded ? 'Recolher' : 'Expandir'} projeto de ${clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}`}
@@ -249,7 +259,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                 </div>}
               </div>}
             </th>
-            {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, project.id)} className={`p-2 border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${dragOverCell === `${project.id}:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
+            {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, project.id)} className={`p-2 border-b border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${dragOverCell === `${project.id}:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
               {!expanded && <div className="space-y-1">
                 {(events.get(project.id)?.get(day.dateStr) || []).filter(event => event.kind === 'task').map((event, index) => {
                   const status = getTaskStatusStyle(event.task.statusId, taskStatuses);
@@ -272,15 +282,15 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                   return <Button key={`${event.kind}-${index}`} {...(event.kind === 'task' ? dragProps(event.task) : {})} variant="ghost" size="sm" className={`w-full h-auto min-h-9 px-2 py-2 whitespace-normal text-left justify-start bg-surface border border-border ${status ? `border-l-4 ${status.dotClass.replace('bg-', 'border-l-')}` : ''} ${status && canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     onClick={() => openOutsideTimeline(() => event.kind === 'task' ? onSelectTask(event.task) : onSelectProject?.(project.id))}>
                     <span className="flex flex-col gap-1 min-w-0 break-words">
-                      <span className="text-body-sm font-semibold">{event.kind === 'risk' && <ShieldAlert className="inline w-3.5 h-3.5 mr-1" />}{event.title}</span>
+                      <span className={event.kind === 'milestone' ? 'text-caption text-text-secondary' : 'text-body-sm font-semibold'}>{event.kind === 'risk' && <ShieldAlert className="inline w-3.5 h-3.5 mr-1" />}{event.title}</span>
                       {event.kind === 'task' ? <><span className="text-caption text-text-secondary">{parseTaskHoursToFloat(event.task.estimatedHours)} h previstas</span>
                         <span className="flex items-center gap-1" aria-label="Técnicos alocados">
                           {(event.task.assigneeIds || []).slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
                           {!event.task.assigneeIds?.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                           {(event.task.assigneeIds || []).length > 2 && <span className="text-caption">+{event.task.assigneeIds.length - 2}</span>}
                         </span>
-                        <span className="text-caption text-text-secondary">{(event.task.assigneeIds || []).map(id => users.find(user => user.id === id)?.name).filter(Boolean).join(', ') || 'Sem utilizador alocado'}</span></>
-                        : <span className="text-caption text-text-secondary">{event.kind === 'risk' ? 'Revisão de risco' : 'Evento do projeto'}</span>}
+                        </>
+                        : event.kind === 'risk' ? <span className="text-caption text-text-secondary">Revisão de risco</span> : null}
                     </span>
                   </Button>;
                 })}
@@ -291,6 +301,20 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           </tr>; })}</tbody>
         </table>
       </div>
+      {floatingHeader && <div ref={floatingHeaderScrollRef} data-project-timeline-fixed-header aria-hidden="true"
+        className="fixed top-0 z-40 overflow-hidden pointer-events-none border-b border-border shadow-sm"
+        style={{ left: floatingHeader.left, width: floatingHeader.width, height: floatingHeader.height }}>
+        <table className="w-full table-fixed border-separate border-spacing-0 text-body-sm" style={{ minWidth: timelineMinWidth }}>
+          <colgroup><col style={{ width: 260 }} />{days.map(day => <col key={day.dateStr} style={compactDays.has(day.dateStr) ? { width: 64 } : undefined} />)}</colgroup>
+          <thead className="text-body-sm font-semibold text-text-secondary bg-surface-muted"><tr>
+            <th className="p-3 text-left text-body-sm font-semibold bg-surface-muted lg:sticky lg:left-0 lg:z-30 lg:border-r lg:border-border">Projeto</th>
+            {days.map(day => <th key={day.dateStr} className={`p-3 border-l border-border text-left text-body-sm font-semibold ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
+              <span className="block">{day.weekdayShort.slice(0, 3).toUpperCase()} {day.dayNum}/{day.date.getMonth() + 1}</span>
+              {specialDays.find(s => s.date === day.dateStr) && <span className="block text-caption font-normal text-text-secondary break-words">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
+            </th>)}
+          </tr></thead>
+        </table>
+      </div>}
       {moveError && <p role="alert" className="p-3 text-body-sm text-error">{moveError}</p>}
       {!filtered.length && <p className="p-6 text-body-sm text-text-secondary">Nenhum projeto encontrado para os filtros selecionados.</p>}
       <div ref={dockSlotRef} style={floatingDock ? { height: floatingDock.height } : undefined}>
