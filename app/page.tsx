@@ -10,7 +10,6 @@ import ClientSection from '../components/ClientSection';
 import UserSection from '../components/UserSection';
 import ConfigSection from '../components/ConfigSection';
 import NotificationDropdown from '../components/NotificationDropdown';
-import DatabaseStatusIndicator from '../components/DatabaseStatusIndicator';
 import CalendarSection from '../components/CalendarSection';
 import CalendarSubscriptions from '../components/CalendarSubscriptions';
 import MyFocusSection from '../components/MyFocusSection';
@@ -184,6 +183,17 @@ export default function Page() {
     isDbConfigured,
     refreshFromDatabase,
   } = useERP();
+
+  const [logoResult, setLogoResult] = useState<'synced' | 'error' | null>(null);
+  const previousSyncStatus = React.useRef(syncStatus);
+  React.useEffect(() => {
+    const previous = previousSyncStatus.current;
+    previousSyncStatus.current = syncStatus;
+    if (previous !== 'syncing' || (syncStatus !== 'synced' && syncStatus !== 'error')) return;
+    setLogoResult(syncStatus);
+    const timeout = window.setTimeout(() => setLogoResult(null), 2000);
+    return () => window.clearTimeout(timeout);
+  }, [syncStatus]);
 
   const hasProcessedDeepLink = React.useRef(false);
 
@@ -669,6 +679,7 @@ export default function Page() {
               logoUrl={appConfig.logoImagePath || appConfig.logo} 
               appName={appConfig.appName}
               busy={syncStatus === 'syncing' && isDbConfigured}
+              result={syncStatus === 'syncing' ? null : logoResult}
               className="w-auto max-w-[200px] h-10 bg-transparent border-0 shadow-none p-0 shrink"
             />
             <div className="min-w-0 hidden md:block">
@@ -686,7 +697,6 @@ export default function Page() {
             markAsRead={markNotificationAsRead}
             markAllAsRead={() => markAllNotificationsAsRead(currentUser.id)}
           />
-          <DatabaseStatusIndicator status={syncStatus} configured={isDbConfigured} loaded={isInitialDataLoaded} error={syncError} />
           
           <div
             onClick={() => {
@@ -709,31 +719,6 @@ export default function Page() {
               })()}
             </div>
             
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                if (currentUser) {
-                  logAuditEventToSupabase({
-                    userId: currentUser.id,
-                    userName: currentUser.name,
-                    userEmail: currentUser.email,
-                    action: 'LOGOUT',
-                    entityType: 'USER',
-                    entityId: currentUser.id,
-                    entityName: currentUser.name,
-                    details: `Sessão terminada por ${currentUser.name}`
-                  }).catch(() => {});
-                }
-                clearClientSession();
-                fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
-                setCurrentUser(null);
-              }}
-              className="p-1.5 hover:bg-error/10 text-text-muted hover:text-error rounded-full transition-colors"
-              title="Terminar sessão"
-              aria-label="Terminar sessão"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </header>
@@ -1217,6 +1202,32 @@ export default function Page() {
           </form>
         )}
         <CalendarSubscriptions />
+        <button
+          type="button"
+          onClick={() => {
+            if (currentUser) {
+              logAuditEventToSupabase({
+                userId: currentUser.id,
+                userName: currentUser.name,
+                userEmail: currentUser.email,
+                action: 'LOGOUT',
+                entityType: 'USER',
+                entityId: currentUser.id,
+                entityName: currentUser.name,
+                details: `Sessão terminada por ${currentUser.name}`
+              }).catch(() => {});
+            }
+            clearClientSession();
+            fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
+            setIsChangingPassword(false);
+            setCurrentUser(null);
+          }}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-control border border-error/30 px-4 py-2.5 text-body-sm font-semibold text-error hover:bg-error/10"
+          aria-label="Terminar sessão"
+        >
+          <LogOut className="h-4 w-4" />
+          Terminar sessão
+        </button>
       </Dialog>
 
     </div>

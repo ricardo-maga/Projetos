@@ -9,35 +9,15 @@
   animation: app-logo-breathe 1.8s ease-in-out infinite;
 }
 
-.app-logo--busy::after {
-  content: "";
-  position: absolute;
-  inset: auto auto 0 0;
-  width: 35%;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--color-primary);
-  box-shadow: 0 0 6px var(--color-primary);
-  pointer-events: none;
-  animation: app-logo-scan 1.8s ease-in-out infinite alternate;
-}
-
-.app-logo--busy.bg-blue-600::after {
-  background: white;
-  box-shadow: 0 0 6px white;
-}
+.app-logo--synced { filter: brightness(0) saturate(100%) invert(42%) sepia(93%) saturate(1055%) hue-rotate(91deg) brightness(91%) contrast(101%); }
+.app-logo--error { filter: brightness(0) saturate(100%) invert(26%) sepia(91%) saturate(3695%) hue-rotate(345deg) brightness(95%) contrast(91%); }
 
 @keyframes app-logo-breathe {
-  50% { opacity: .68; }
-}
-
-@keyframes app-logo-scan {
-  to { left: 65%; }
+  50% { opacity: .25; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-logo--busy,
-  .app-logo--busy::after { animation: none; }
+  .app-logo--busy { animation: none; }
 }
 
 .project-timeline-conflict-cell {

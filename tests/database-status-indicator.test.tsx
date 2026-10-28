@@ -36,9 +36,9 @@ describe('SQL header status indicator', () => {
   it('removes sidebar metadata, consumes the existing hook state and preserves logout/error feedback', () => {
     const source = readFileSync(new URL('../app/page.tsx', import.meta.url), 'utf8');
     expect(source).not.toContain('Nível de Acesso:'); expect(source).not.toContain('Sincronização:');
-    expect(source).toContain('status={syncStatus} configured={isDbConfigured} loaded={isInitialDataLoaded} error={syncError}');
+    expect(source).not.toContain('<DatabaseStatusIndicator');
     expect(source).toContain("busy={syncStatus === 'syncing' && isDbConfigured}");
-    expect(source.indexOf('<DatabaseStatusIndicator')).toBeLessThan(source.indexOf('id="user-profile"'));
+    expect(source).toContain("result={syncStatus === 'syncing' ? null : logoResult}");
     expect(source).toContain('aria-label="Terminar sessão"'); expect(source).toContain('clearClientSession();');
     expect(source).toContain("{syncStatus === 'error' && (");
   });

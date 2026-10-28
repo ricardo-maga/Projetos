@@ -9,6 +9,7 @@ interface AppLogoProps {
   className?: string;
   fallbackIconClassName?: string;
   busy?: boolean;
+  result?: 'synced' | 'error' | null;
 }
 
 export default function AppLogo({
@@ -17,8 +18,9 @@ export default function AppLogo({
   className = 'w-72 h-10 bg-transparent',
   fallbackIconClassName = 'w-4 h-4 text-white',
   busy = false,
+  result = null,
 }: AppLogoProps) {
-  const logoClassName = `${className}${busy ? ' app-logo--busy' : ''}`;
+  const logoClassName = `${className}${busy ? ' app-logo--busy' : result ? ` app-logo--${result}` : ''}`;
   // Normalize logo input
   let cleanLogo = (logoUrl || '').trim();
   // Strip enclosing quotes if user pasted "https://..."
