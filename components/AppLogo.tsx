@@ -8,6 +8,7 @@ interface AppLogoProps {
   appName?: string;
   className?: string;
   fallbackIconClassName?: string;
+  busy?: boolean;
 }
 
 export default function AppLogo({
@@ -15,7 +16,9 @@ export default function AppLogo({
   appName = '',
   className = 'w-72 h-10 bg-transparent',
   fallbackIconClassName = 'w-4 h-4 text-white',
+  busy = false,
 }: AppLogoProps) {
+  const logoClassName = `${className}${busy ? ' app-logo--busy' : ''}`;
   // Normalize logo input
   let cleanLogo = (logoUrl || '').trim();
   // Strip enclosing quotes if user pasted "https://..."
@@ -71,7 +74,7 @@ export default function AppLogo({
 
   if (!cleanLogo || (imageError && !svgContent)) {
     return (
-      <div className={`${className} bg-blue-600 flex items-center justify-center text-white font-extrabold shrink-0 select-none overflow-hidden px-3 gap-2 shadow-2xs`}>
+      <div className={`${logoClassName} relative bg-blue-600 flex items-center justify-center text-white font-extrabold shrink-0 select-none overflow-hidden px-3 gap-2 shadow-2xs`}>
         <Briefcase className={fallbackIconClassName} />
         {badgeText ? (
           <span className="leading-none text-xs font-black tracking-wider uppercase truncate">
@@ -87,7 +90,7 @@ export default function AppLogo({
   if (svgToRender) {
     return (
       <div 
-        className={`${className} flex items-center justify-center shrink-0 overflow-hidden [&_svg]:w-full [&_svg]:h-full [&_svg]:max-w-full [&_svg]:max-h-full [&_svg]:object-contain`}
+        className={`${logoClassName} relative flex items-center justify-center shrink-0 overflow-hidden [&_svg]:w-full [&_svg]:h-full [&_svg]:max-w-full [&_svg]:max-h-full [&_svg]:object-contain`}
         dangerouslySetInnerHTML={{ __html: svgToRender }}
       />
     );
@@ -95,7 +98,7 @@ export default function AppLogo({
 
   // 2. Standard Image URL, relative path (/logo.svg), data URI (data:image/svg+xml...) or SVG/PNG/JPG/WEBP URL
   return (
-    <div className={`${className} flex items-center justify-center shrink-0 overflow-hidden relative`}>
+    <div className={`${logoClassName} flex items-center justify-center shrink-0 overflow-hidden relative`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         key={cleanLogo}
