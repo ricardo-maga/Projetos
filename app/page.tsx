@@ -719,31 +719,6 @@ export default function Page() {
               })()}
             </div>
             
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                if (currentUser) {
-                  logAuditEventToSupabase({
-                    userId: currentUser.id,
-                    userName: currentUser.name,
-                    userEmail: currentUser.email,
-                    action: 'LOGOUT',
-                    entityType: 'USER',
-                    entityId: currentUser.id,
-                    entityName: currentUser.name,
-                    details: `Sessão terminada por ${currentUser.name}`
-                  }).catch(() => {});
-                }
-                clearClientSession();
-                fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
-                setCurrentUser(null);
-              }}
-              className="p-1.5 hover:bg-error/10 text-text-muted hover:text-error rounded-full transition-colors"
-              title="Terminar sessão"
-              aria-label="Terminar sessão"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </header>
@@ -1227,6 +1202,32 @@ export default function Page() {
           </form>
         )}
         <CalendarSubscriptions />
+        <button
+          type="button"
+          onClick={() => {
+            if (currentUser) {
+              logAuditEventToSupabase({
+                userId: currentUser.id,
+                userName: currentUser.name,
+                userEmail: currentUser.email,
+                action: 'LOGOUT',
+                entityType: 'USER',
+                entityId: currentUser.id,
+                entityName: currentUser.name,
+                details: `Sessão terminada por ${currentUser.name}`
+              }).catch(() => {});
+            }
+            clearClientSession();
+            fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
+            setIsChangingPassword(false);
+            setCurrentUser(null);
+          }}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-control border border-error/30 px-4 py-2.5 text-body-sm font-semibold text-error hover:bg-error/10"
+          aria-label="Terminar sessão"
+        >
+          <LogOut className="h-4 w-4" />
+          Terminar sessão
+        </button>
       </Dialog>
 
     </div>
