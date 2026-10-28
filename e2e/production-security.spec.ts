@@ -78,6 +78,19 @@ test('integration endpoints reject malformed credentials', async ({ request }) =
   expect(invalidKey.status()).toBe(401);
 });
 
+test('limited user can load the projected sync response', async ({ request }) => {
+  const viewerToken = await login(request, environment('E2E_VIEWER_EMAIL'), environment('E2E_VIEWER_PASSWORD'));
+  const response = await request.get('/api/supabase/sync', {
+    headers: { Authorization: `Bearer ${viewerToken}` },
+  });
+  expect(response.status()).toBe(200);
+  const body = await response.json();
+  expect(body.success).toBe(true);
+  expect(Array.isArray(body.data.users)).toBe(true);
+  expect(Array.isArray(body.data.projects)).toBe(true);
+  expect(Array.isArray(body.data.tasks)).toBe(true);
+});
+
 test('integration keys enforce scope, quotas, expiry and revocation', async ({ request }) => {
   test.setTimeout(90_000);
   const managerEmail = process.env.E2E_INTEGRATION_MANAGER_EMAIL;
