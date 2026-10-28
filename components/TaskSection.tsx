@@ -716,7 +716,7 @@ export default function TaskSection({
                   onChange={e => setFilterAssignee(e.target.value)}
                   className="h-10 text-body-sm font-semibold"
                   options={[
-                    { value: '', label: 'Qualquer Responsável' },
+                    { value: '', label: 'Qualquer responsável' },
                     ...usersWithTasks.map(u => ({ value: u.id, label: u.name }))
                   ]}
                 />

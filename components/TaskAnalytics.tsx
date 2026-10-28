@@ -446,10 +446,10 @@ export function TaskAnalytics({
           <div>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
               <Sparkles className="w-4 h-4 text-blue-500" />
-              Painel de Inteligência de Projetos
+              Painel de inteligência
             </div>
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-              Análise Avançada de Tarefas & Alocação de Equipas
+              Análise avançada de tarefas & alocação de equipas
             </h2>
             <p className="text-xs text-slate-500 mt-1">
               Métricas consolidadas de tarefas em aberto, evolução temporal, carga de trabalho futura e rentabilidade de horas por projeto.
@@ -459,7 +459,7 @@ export function TaskAnalytics({
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-xl border border-blue-100">
               <Activity className="w-3.5 h-3.5 text-blue-600" />
-              {kpis.totalAll} Tarefas Analisadas
+              {kpis.totalAll} Tarefas analisadas
             </span>
           </div>
         </div>

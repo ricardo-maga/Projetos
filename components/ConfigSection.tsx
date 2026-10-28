@@ -1651,7 +1651,7 @@ export default function ConfigSection({
 
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="block text-text-muted">Grupos para &quot;Gestor de Vendas&quot; (Escolha Múltipla)</label>
+                <label className="block text-text-muted">Grupos para &quot;Gestor de Vendas&quot;</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
                   {(state.activeRoles || []).length === 0 ? (
                     <span className="text-slate-400 font-medium">Nenhuma função ativa criada</span>
@@ -1685,7 +1685,7 @@ export default function ConfigSection({
               </div>
 
               <div className="space-y-2">
-                <label className="block text-text-muted">Grupos para &quot;Project Leader&quot; (Escolha Múltipla)</label>
+                <label className="block text-text-muted">Grupos para &quot;Project Leader&quot;</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
                   {(state.activeRoles || []).length === 0 ? (
                     <span className="text-slate-400 font-medium">Nenhuma função ativa criada</span>
@@ -1719,7 +1719,7 @@ export default function ConfigSection({
               </div>
 
               <div className="space-y-2">
-                <label className="block text-text-muted">Grupos para &quot;Técnico Responsável&quot; (Escolha Múltipla)</label>
+                <label className="block text-text-muted">Grupos para &quot;Técnico Responsável&quot;</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
                   {(state.activeRoles || []).length === 0 ? (
                     <span className="text-slate-400 font-medium">Nenhuma função ativa criada</span>

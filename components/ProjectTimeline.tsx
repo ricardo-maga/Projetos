@@ -183,12 +183,11 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           <p className="text-label font-semibold text-text-secondary">Mostrar projetos com eventos nos próximos dias</p>
           <M3SegmentedControl<TimelineHorizon> label="Projetos com eventos nos próximos dias" value={horizon}
             onChange={value => { setHorizon(value); setPage(1); }} options={[7, 14, 21, 28].map(value => ({ value: value as TimelineHorizon, label: `${value} dias` })).concat([{ value: 'all', label: 'Todos' }])} />
-          <p className="text-caption text-text-secondary">Contado a partir de hoje. “Todos” inclui os projetos ativos dos níveis 1 a 4, mesmo sem eventos.</p>
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-0 basis-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted z-10 pointer-events-none" />
               <Input aria-label="Pesquisar na timeline" placeholder="Pesquisar projeto, cliente ou nº IP…" className="pl-9 text-body-sm" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} /></div>
-            <Checkbox label="Mostrar projetos concluídos" checked={showCompleted} onChange={e => { setShowCompleted(e.target.checked); setPage(1); }} />
-            <Checkbox label="Incluir revisões de risco" checked={includeRiskReviews} onChange={e => { setIncludeRiskReviews(e.target.checked); setPage(1); }} />
+            <Checkbox label="Projetos concluídos" checked={showCompleted} onChange={e => { setShowCompleted(e.target.checked); setPage(1); }} />
+            <Checkbox label="Revisões de risco" checked={includeRiskReviews} onChange={e => { setIncludeRiskReviews(e.target.checked); setPage(1); }} />
             {hiddenProjectIds.size > 0 && <Button variant="outline" size="sm" onClick={() => setHiddenProjectIds(new Set())}>Repor todos os projetos</Button>}
           </div>
         </div>

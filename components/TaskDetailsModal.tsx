@@ -542,7 +542,7 @@ export default function TaskDetailsModal({
       title={isDuplication 
         ? `Nova Tarefa (Cópia de "${activeTask?.title}")` 
         : effectiveMode === 'create' 
-        ? 'Nova Tarefa Operacional' 
+        ? 'Nova tarefa'
         : activeTask?.title || 'Detalhes da Tarefa'}
       className="max-w-2xl max-h-[calc(100dvh-2rem)]"
       bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden p-0 max-h-none"
