@@ -14,7 +14,7 @@ function failure(error: unknown) {
 async function getAudit(req: NextRequest) {
   try {
     const user = await requireAuth(req);
-    const client = requireServerDbClient();
+    const client = requireServerDbClient(user);
     const { data: permitted, error: permissionError } = await client.rpc('has_permission', {
       p_permission_code: 'admin:access', p_user_id: user.auth_user_id,
     });
@@ -46,7 +46,7 @@ async function createAuditEvent(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Evento inválido.' }, { status: 400 });
     // Client reports are explicitly non-authoritative. Ignore caller identity,
     // timestamps, arbitrary details and entity identifiers (including secrets).
-    const { error } = await requireServerDbClient().from('audit_logs').insert({
+    const { error } = await requireServerDbClient(user).from('audit_logs').insert({
       user_id: user.id, user_name: user.name, user_email: user.email,
       action: 'CLIENT_EVENT', entity_type: 'SYSTEM', entity_name: body.action,
       details: 'Evento comunicado pelo cliente; não comprova uma operação na base de dados.',

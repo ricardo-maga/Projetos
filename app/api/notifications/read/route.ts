@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth(req);
-    const db = requireServerDbClient();
+    const db = requireServerDbClient(user);
     const body = await req.json();
     if (!body || (body.all !== true && (typeof body.id !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.id))))
       return NextResponse.json({ message: 'Pedido inválido.' }, { status: 400 });

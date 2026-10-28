@@ -17,3 +17,7 @@ test('RBAC obtains a privileged database client only after the central permissio
     client.mockRestore();
   }
 });
+
+test('privileged database access requires an authenticated actor', () => {
+  expect(() => database.requireServerDbClient({ id: '' })).toThrow(auth.AuthError);
+});

@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth(req);
 
-    const clientToUse = requireServerDbClient();
+    const clientToUse = requireServerDbClient(user);
     const codes = [...new Set([...Object.values(SYNC_READ_PERMISSIONS), 'users:read'])];
     const decisions = await Promise.all(codes.map(async code => {
       const { data, error } = await clientToUse.rpc('has_permission', { p_permission_code: code, p_user_id: user.auth_user_id });
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth(req);
 
-    const clientToUse = requireServerDbClient();
+    const clientToUse = requireServerDbClient(user);
     const state = await req.json();
     if (!state || typeof state !== 'object' || Array.isArray(state)) {
       return NextResponse.json({ success: false, message: 'Payload de sincronização inválido.' }, { status: 400 });

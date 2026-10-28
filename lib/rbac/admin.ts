@@ -4,7 +4,7 @@ import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
 export async function authorizeRbac(req: NextRequest, permission: 'roles.read' | 'roles.manage') {
   const user = await requirePermission(req, permission);
-  const db = requireServerDbClient();
+  const db = requireServerDbClient(user);
   return { user, db };
 }
 
