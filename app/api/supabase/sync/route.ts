@@ -24,22 +24,25 @@ export async function GET(req: NextRequest) {
     const user = await requireAuth(req);
 
     const clientToUse = requireServerDbClient();
-    const result = await getActiveStateFromSupabase(clientToUse);
-
-    if (!result.success || !result.data) {
-      return NextResponse.json({ 
-        success: false, 
-        message: result.message || 'Falha ao sincronizar com a base de dados.' 
-      }, { status: 500 });
-    }
-
     const codes = [...new Set([...Object.values(SYNC_READ_PERMISSIONS), 'users:read'])];
     const decisions = await Promise.all(codes.map(async code => {
       const { data, error } = await clientToUse.rpc('has_permission', { p_permission_code: code, p_user_id: user.auth_user_id });
       if (error) throw new AuthError('Não foi possível validar permissões de leitura.', 503);
       return [code, data === true] as const;
     }));
-    result.data = projectSyncRead(result.data, user.id, new Map(decisions));
+    const permissions = new Map(decisions);
+    const readableDomains = new Set(Object.entries(SYNC_READ_PERMISSIONS)
+      .filter(([, code]) => permissions.get(code) === true).map(([field]) => field));
+    if (permissions.get('users:read') === true) readableDomains.add('users');
+    const result = await getActiveStateFromSupabase(clientToUse,
+      { readableDomains, userId: user.id, skipNotifications: true });
+    if (!result.success || !result.data) {
+      return NextResponse.json({
+        success: false,
+        message: result.message || 'Falha ao sincronizar com a base de dados.',
+      }, { status: 500 });
+    }
+    result.data = projectSyncRead(result.data, user.id, permissions);
     const { data: recipientNotices, error: noticesError } = await clientToUse.from('notifications')
       .select('id,user_id,title,message,is_read,created_at,link_url')
       .or(`user_id.eq.${user.id},user_id.is.null`)
