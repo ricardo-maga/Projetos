@@ -901,6 +901,7 @@ export default function Page() {
                   absences={state.userAbsences}
                   projectMaterials={state.projectMaterials || []}
                   projectRiskItems={state.projectRiskItems || []}
+                  riskStatuses={state.riskStatuses || []}
                   comments={state.comments}
                   clients={state.clients}
                   users={state.users}

@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { ProjectRiskItem } from "./types"
+import { ProjectRiskItem, RiskStatus } from "./types"
 import { parseTaskHoursToNumber } from "./tasks/taskService"
 
 export function cn(...inputs: ClassValue[]) {
@@ -33,18 +33,20 @@ export interface CalculatedRiskDetails {
 
 export function getProjectCalculatedRisk(
   projectId: string,
-  projectRiskItems: ProjectRiskItem[] = []
+  projectRiskItems: ProjectRiskItem[] = [],
+  riskStatuses: RiskStatus[] = []
 ): CalculatedRiskDetails {
   const projectRisks = (projectRiskItems || []).filter(
-    ri => !ri.deleted && matchId(ri.projectId, projectId)
+    ri => !ri.deleted && matchId(ri.projectId, projectId) &&
+      [1, 2].includes(riskStatuses.find(status => matchId(status.id, ri.statusId))?.scale ?? 0)
   );
 
-  if (!projectRisks || projectRisks.length === 0) {
+  if (projectRisks.length === 0) {
     return {
       score: 0,
-      label: 'N/D',
-      color: 'text-slate-500 bg-slate-100 border-slate-200',
-      dot: '⚪'
+      label: 'Baixo',
+      color: 'text-emerald-700 bg-emerald-100 border-emerald-300',
+      dot: '🟢'
     };
   }
 
