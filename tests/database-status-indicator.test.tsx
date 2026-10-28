@@ -13,10 +13,10 @@ describe('SQL header status indicator', () => {
     expect(html).toContain('SQL: ativo'); expect(html).not.toContain('animate-spin');
     expect(html).toContain('não é uma monitorização permanente');
   });
-  it('spins yellow for pending operations and announces initial reads separately', () => {
+  it('shows a static pending state while the logo carries the motion', () => {
     const html = render({ status: 'syncing' });
-    expect(html).toContain('data-database-status="busy"'); expect(html).toContain('text-warning animate-spin');
-    expect(html).toContain('SQL: a gravar / sincronizar'); expect(html).toContain('motion-reduce:animate-none');
+    expect(html).toContain('data-database-status="busy"'); expect(html).toContain('text-warning');
+    expect(html).toContain('SQL: a gravar / sincronizar'); expect(html).not.toContain('animate-spin');
     expect(render({ status: 'syncing', loaded: false })).toContain('SQL: a carregar dados');
   });
   it('shows red without spinning on failure or missing configuration and escapes server errors', () => {
@@ -37,6 +37,7 @@ describe('SQL header status indicator', () => {
     const source = readFileSync(new URL('../app/page.tsx', import.meta.url), 'utf8');
     expect(source).not.toContain('Nível de Acesso:'); expect(source).not.toContain('Sincronização:');
     expect(source).toContain('status={syncStatus} configured={isDbConfigured} loaded={isInitialDataLoaded} error={syncError}');
+    expect(source).toContain("busy={syncStatus === 'syncing' && isDbConfigured}");
     expect(source.indexOf('<DatabaseStatusIndicator')).toBeLessThan(source.indexOf('id="user-profile"'));
     expect(source).toContain('aria-label="Terminar sessão"'); expect(source).toContain('clearClientSession();');
     expect(source).toContain("{syncStatus === 'error' && (");

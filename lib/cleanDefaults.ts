@@ -76,12 +76,12 @@ export const CLEAN_BASELINE_STATE: ERPState = {
     { id: 'rc-6', name: 'Segurança / Conformidade', deleted: false, sort_order: 5 },
   ],
   riskStatuses: [
-    { id: 'rs-1', name: 'Identificado', deleted: false, sort_order: 0 },
-    { id: 'rs-2', name: 'Em avaliação', deleted: false, sort_order: 1 },
-    { id: 'rs-3', name: 'Mitigação em curso', deleted: false, sort_order: 2 },
-    { id: 'rs-4', name: 'Monitorização', deleted: false, sort_order: 3 },
-    { id: 'rs-5', name: 'Fechado', deleted: false, sort_order: 4 },
-    { id: 'rs-6', name: 'Incidente', deleted: false, sort_order: 5 },
+    { id: 'rs-1', name: 'Identificado', scale: 1, deleted: false, sort_order: 0 },
+    { id: 'rs-2', name: 'Em avaliação', scale: 2, deleted: false, sort_order: 1 },
+    { id: 'rs-3', name: 'Mitigação em curso', scale: 3, deleted: false, sort_order: 2 },
+    { id: 'rs-4', name: 'Monitorização', scale: 4, deleted: false, sort_order: 3 },
+    { id: 'rs-5', name: 'Fechado', scale: 5, deleted: false, sort_order: 4 },
+    { id: 'rs-6', name: 'Incidente', scale: 6, deleted: false, sort_order: 5 },
   ],
   riskPriorities: [
     { id: 'rp-1', name: 'Baixa', scale: 1, deleted: false, sort_order: 0 },

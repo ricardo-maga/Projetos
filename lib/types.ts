@@ -177,6 +177,7 @@ export interface RiskCategory {
 export interface RiskStatus {
   id: string;
   name: string;
+  scale?: number;
   color?: string;
   deleted?: boolean;
   sort_order?: number;
