@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import * as auth from '../lib/auth/requireAuth';
 import * as database from '../lib/supabase/requireServerDbClient';
 import { authorizeRbac } from '../lib/rbac/admin';
+import { getServerDbClient } from '../lib/supabase/server';
 
 test('RBAC obtains a privileged database client only after the central permission check', async () => {
   const req = new NextRequest('http://localhost/api/rbac/roles');
@@ -18,6 +19,7 @@ test('RBAC obtains a privileged database client only after the central permissio
   }
 });
 
-test('privileged database access requires an authenticated actor', () => {
+test('privileged database access requires an authenticated actor', async () => {
   expect(() => database.requireServerDbClient({ id: '' })).toThrow(auth.AuthError);
+  await expect(getServerDbClient(new Request('http://localhost/api/v1/projects'), { id: '' })).rejects.toThrow('Authenticated actor required');
 });

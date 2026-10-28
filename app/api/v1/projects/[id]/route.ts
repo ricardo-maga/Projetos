@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, ctx: any) {
   const { requestId } = auth;
 
   try {
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const project = await getProject(sb, id);
@@ -73,7 +73,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     }
 
     const updates = parseResult.data;
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) {
       return internalServerError('Base de dados Supabase não disponível.', requestId);
     }
@@ -181,7 +181,7 @@ export async function DELETE(req: NextRequest, ctx: any) {
   const { user, requestId } = auth;
 
   try {
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) {
       return internalServerError('Base de dados Supabase não disponível.', requestId);
     }
