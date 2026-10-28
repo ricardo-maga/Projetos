@@ -348,13 +348,18 @@ function formatDbDate(dateStr: string | null | undefined): string | null {
  * NÃO deve ser utilizado por novas rotas, serviços ou funcionalidades.
  * Destina-se apenas ao suporte de rotas legadas em transição e ao endpoint de sincronização global.
  */
-export async function getActiveStateFromSupabase(customClient?: any): Promise<{ success: boolean; data?: ERPState; message?: string }> {
+export async function getActiveStateFromSupabase(
+  customClient?: any,
+  readOptions?: { readableDomains: ReadonlySet<string>; userId: string; skipNotifications?: boolean },
+): Promise<{ success: boolean; data?: ERPState; message?: string }> {
   const client = customClient || supabase;
-  if (!isSupabaseConfigured || !client) {
+  if ((!isSupabaseConfigured && !customClient) || !client) {
     return { success: false, message: 'Supabase não está configurado.' };
   }
 
   try {
+    const readable = (domain: string) => !readOptions || readOptions.readableDomains.has(domain);
+    const skipped = () => Promise.resolve({ data: [] as any[], error: null });
     // Fetch all individual tables in parallel
     const [
       resUserGroups,
@@ -385,6 +390,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       resAutomationRules,
       resActiveRoles,
       resUserRoles,
+      resOwnUser,
     ] = await Promise.all([
       client.from('user_groups').select('*'),
       client.from('project_status').select('*').order('sort_order', { ascending: true }),
@@ -395,25 +401,27 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       client.from('project_partners').select('*').order('sort_order', { ascending: true }),
       client.from('task_status').select('*').order('scale', { ascending: true }),
       client.from('task_types').select('*').order('sort_order', { ascending: true }),
-      client.from('users').select('*'),
-      client.from('clients').select('*').order('created_at', { ascending: false }),
-      getProjectsServerData(client, { all: true, includeDeleted: true }),
-      client.from('tasks').select('*').order('created_at', { ascending: false }),
-      client.from('comments').select('*').order('created_at', { ascending: true }),
-      client.from('user_absences').select('*'),
-      client.from('equipment').select('*').order('created_at', { ascending: false }),
+      client.from('users').select(readable('users') ? '*' : 'id,type,name,role_id,approved,deleted,created_at,sync_version'),
+      readable('clients') ? client.from('clients').select('*').order('created_at', { ascending: false }) : skipped(),
+      readable('projects') ? getProjectsServerData(client, { all: true, includeDeleted: true }) : skipped(),
+      readable('tasks') ? client.from('tasks').select('*').order('created_at', { ascending: false }) : skipped(),
+      readable('comments') ? client.from('comments').select('*').order('created_at', { ascending: true }) : skipped(),
+      readable('userAbsences') ? client.from('user_absences').select('*') : skipped(),
+      readable('equipmentList') ? client.from('equipment').select('*').order('created_at', { ascending: false }) : skipped(),
       client.from('app_configuration').select('*').limit(1),
       client.from('special_days').select('*'),
-      client.from('default_tasks').select('*'),
+      readable('defaultTasks') ? client.from('default_tasks').select('*') : skipped(),
       client.from('risk_categories').select('*').order('sort_order', { ascending: true }),
       client.from('risk_statuses').select('*').order('sort_order', { ascending: true }),
       client.from('risk_priorities').select('*').order('sort_order', { ascending: true }),
-      client.from('project_risk_items').select('*').order('created_at', { ascending: false }),
-      client.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
-      client.from('notification_settings').select('*').order('type'),
-      client.from('automation_rules').select('*').eq('deleted', false).order('created_at', { ascending: false }),
+      readable('projectRiskItems') ? client.from('project_risk_items').select('*').order('created_at', { ascending: false }) : skipped(),
+      readOptions?.skipNotifications ? skipped() : client.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
+      readable('notificationSettings') ? client.from('notification_settings').select('*').order('type') : skipped(),
+      readable('automationRules') ? client.from('automation_rules').select('*').eq('deleted', false).order('created_at', { ascending: false }) : skipped(),
       client.from('roles').select('id,name,code').eq('is_active', true).order('name'),
       client.from('user_roles').select('user_id,role_id'),
+      readOptions && !readable('users') ? client.from('users').select('*').eq('id', readOptions.userId).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
 
     const mandatoryResults = [
@@ -422,7 +430,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       resTaskTypes, resUsers, resClients, resTasks, resComments, resUserAbsences,
       resEquipment, resConfig, resSpecialDays, resDefaultTasks, resRiskCategories,
       resRiskStatuses, resRiskPriorities, resProjectRiskItems, resNotificationSettings,
-      resAutomationRules, resActiveRoles, resUserRoles,
+      resAutomationRules, resActiveRoles, resUserRoles, resOwnUser,
     ];
     const mandatoryError = mandatoryResults.find((result: any) => result?.error)?.error;
     if (mandatoryError) {
@@ -440,7 +448,8 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     let projectsData: Project[] = (resProjects as any)?.data || [];
 
     // Fetch relational link tables with safe queries
-    const fetchLinkData = async (tableName: string) => {
+    const fetchLinkData = async (tableName: string, required = true) => {
+      if (!required) return [];
       try {
         const res = await client.from(tableName).select('*');
         if (res.error) throw res.error;
@@ -451,13 +460,13 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     };
 
     const [riskLinkRows, priorityLinkRows, teamLinkRows, partnerLinkRows, assigneeLinkRows, categoryLinkRows, projectMaterialsRows] = await Promise.all([
-      fetchLinkData('project_risk_link'),
-      fetchLinkData('project_priority_link'),
-      fetchLinkData('project_teams_link'),
-      fetchLinkData('project_partners_link'),
-      fetchLinkData('task_assignees'),
-      fetchLinkData('project_category_link'),
-      fetchLinkData('project_materials'),
+      fetchLinkData('project_risk_link', readable('projects')),
+      fetchLinkData('project_priority_link', readable('projects')),
+      fetchLinkData('project_teams_link', readable('projects')),
+      fetchLinkData('project_partners_link', readable('projects')),
+      fetchLinkData('task_assignees', readable('tasks')),
+      fetchLinkData('project_category_link', readable('projects')),
+      fetchLinkData('project_materials', readable('projectMaterials')),
     ]);
 
     // Build lookup maps for fast association
@@ -634,7 +643,9 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       createdDate: c.created_at || '',
     }));
 
-    const users: User[] = (resUsers.data || []).map((u: any) => ({
+    const users: User[] = (resUsers.data || []).map((row: any) => {
+      const u = row.id === resOwnUser.data?.id ? resOwnUser.data : row;
+      return {
       id: u.id,
       type: u.type as any,
       name: u.name,
@@ -646,7 +657,8 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
       deleted: u.deleted || false,
       createdDate: u.created_at || '',
       isAdmin: u.is_admin || false,
-    }));
+      };
+    });
 
     const comments: Comment[] = (resComments.data || []).map((c: any) => ({
       id: c.id,
