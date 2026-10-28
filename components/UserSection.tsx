@@ -471,7 +471,7 @@ export default function UserSection({
       />}
       {subTab === 'absences' && (
         <div className="space-y-6">
-          <Card className="p-4 sm:p-5 bg-surface-muted/60"><M3SectionHeader title="Registo de ausências" description="Planeamento de ausências dos grupos associados às tarefas." /></Card>
+          <Card className="p-4 sm:p-5 bg-surface-muted/60"><M3SectionHeader title="Registo de ausências" description="Planeamento de ausências de utilizadores." /></Card>
           {/* Top Row: Form & Calendar */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
             
@@ -542,7 +542,7 @@ export default function UserSection({
             {/* Monthly Calendar View */}
             <Card className="xl:col-span-8 p-4 sm:p-5 space-y-4 min-w-0">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">
-              <M3SectionHeader title="Calendário mensal" description="Ausências dos grupos associados às tarefas." />
+              <M3SectionHeader title="Calendário mensal" description="Ausências registadas." />
 
               {/* Calendar Navigator */}
               <div className="flex flex-wrap items-center gap-2 select-none">
