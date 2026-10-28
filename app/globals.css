@@ -4,6 +4,42 @@
 @source "../lib";
 @source "../hooks";
 
+/* Keep the configured logo recognizable while it signals a pending SQL request. */
+.app-logo--busy {
+  animation: app-logo-breathe 1.8s ease-in-out infinite;
+}
+
+.app-logo--busy::after {
+  content: "";
+  position: absolute;
+  inset: auto auto 0 0;
+  width: 35%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  box-shadow: 0 0 6px var(--color-primary);
+  pointer-events: none;
+  animation: app-logo-scan 1.8s ease-in-out infinite alternate;
+}
+
+.app-logo--busy.bg-blue-600::after {
+  background: white;
+  box-shadow: 0 0 6px white;
+}
+
+@keyframes app-logo-breathe {
+  50% { opacity: .68; }
+}
+
+@keyframes app-logo-scan {
+  to { left: 65%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-logo--busy,
+  .app-logo--busy::after { animation: none; }
+}
+
 .project-timeline-conflict-cell {
   background-image: repeating-linear-gradient(135deg, rgb(251 146 60 / 12%) 0 22px, transparent 22px 44px);
 }

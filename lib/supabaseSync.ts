@@ -724,6 +724,7 @@ export async function getActiveStateFromSupabase(customClient?: any): Promise<{ 
     const riskStatuses: RiskStatus[] = (resRiskStatuses.data || []).map((rs: any) => ({
       id: rs.id,
       name: rs.name,
+      scale: rs.scale ?? 1,
       color: rs.color || '#bfdbfe',
       deleted: rs.deleted || false,
       sort_order: rs.sort_order || 0,
@@ -1190,10 +1191,11 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
       safeUpsertRef(supabase, 'risk_statuses', (state.riskStatuses || []).map((rs: any) => ({
         id: stringToUUID(rs.id),
         name: rs.name,
+        scale: rs.scale ?? 1,
         color: rs.color || '#bfdbfe',
         deleted: rs.deleted || false,
         sort_order: rs.sort_order || 0
-      })), ['id', 'name', 'deleted']),
+      })), ['id', 'name', 'scale', 'deleted']),
       safeUpsertRef(supabase, 'risk_priorities', (state.riskPriorities || []).map((rp: any) => ({
         id: stringToUUID(rp.id),
         name: rp.name,

@@ -668,6 +668,7 @@ export default function Page() {
             <AppLogo 
               logoUrl={appConfig.logoImagePath || appConfig.logo} 
               appName={appConfig.appName}
+              busy={syncStatus === 'syncing' && isDbConfigured}
               className="w-auto max-w-[200px] h-10 bg-transparent border-0 shadow-none p-0 shrink"
             />
             <div className="min-w-0 hidden md:block">
