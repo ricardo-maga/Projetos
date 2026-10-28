@@ -45,4 +45,6 @@ As listas normais de projetos e tarefas têm uma ordenação estável por data d
 
 ## Ativação
 
+O teste de segurança em produção verifica sempre a rejeição de chaves malformadas. Para testar criação, âmbito, quotas, expiração e revogação em CI, configurar os secrets `E2E_INTEGRATION_MANAGER_EMAIL` e `E2E_INTEGRATION_MANAGER_PASSWORD` com uma conta de teste ativa que tenha `roles.manage`. O teste cria credenciais temporárias e revoga-as no fim; não altera projetos nem tarefas. Sem estes secrets, essa parte é assinalada como *skipped*, não como validada.
+
 Aplicar as migrações `20261018210000_external_api_integrations.sql`, `20261018211000_api_idempotency.sql` e `20261018212000_integration_changes.sql` no Supabase de destino antes de utilizar as rotas. Confirmar que o RPC `consume_rate_limit` está disponível e que a chave administrativa do Supabase está configurada apenas no servidor. Validar em ambiente de teste um cliente autorizado, outro não autorizado, expiração, revogação, duplicação de pedidos e resposta `429` antes de distribuir credenciais.

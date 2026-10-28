@@ -70,3 +70,80 @@ test('admin session and Supabase Data API boundaries are valid', async ({ reques
     expect(response.status()).toBeGreaterThanOrEqual(400);
   }
 });
+
+test('integration endpoints reject malformed credentials', async ({ request }) => {
+  const invalidKey = await request.get('/api/integrations/v1/projects', {
+    headers: { Authorization: 'Bearer erp_int_invalid' },
+  });
+  expect(invalidKey.status()).toBe(401);
+});
+
+test('integration keys enforce scope, quotas, expiry and revocation', async ({ request }) => {
+  test.setTimeout(90_000);
+  const managerEmail = process.env.E2E_INTEGRATION_MANAGER_EMAIL;
+  const managerPassword = process.env.E2E_INTEGRATION_MANAGER_PASSWORD;
+  test.skip(!managerEmail || !managerPassword,
+    'Set E2E_INTEGRATION_MANAGER_EMAIL and E2E_INTEGRATION_MANAGER_PASSWORD for an account with roles.manage.');
+  const adminToken = await login(request, managerEmail!, managerPassword!);
+  const adminHeaders = { Authorization: `Bearer ${adminToken}` };
+  const projectsResponse = await request.get('/api/v1/projects?page=1&pageSize=1', { headers: adminHeaders });
+  expect(projectsResponse.status()).toBe(200);
+  const projects = await projectsResponse.json();
+  const projectId = projects.data?.[0]?.id as string | undefined;
+  expect(projectId, 'The production integration test needs an existing project').toBeTruthy();
+
+  const createdIds: string[] = [];
+  const createKey = async (expiresInMs: number, rateLimitPerMinute: number) => {
+    const response = await request.post('/api/integrations', {
+      headers: adminHeaders,
+      data: {
+        name: `CI integration probe ${Date.now()}`,
+        permissions: ['projects:read', 'tasks:read'],
+        projectIds: [projectId],
+        expiresAt: new Date(Date.now() + expiresInMs).toISOString(),
+        rateLimitPerMinute,
+      },
+    });
+    expect(response.status()).toBe(201);
+    const body = await response.json();
+    expect(body.key).toMatch(/^erp_int_/);
+    createdIds.push(body.data.id);
+    return body.key as string;
+  };
+
+  try {
+    const key = await createKey(60_000, 4);
+    const headers = { Authorization: `Bearer ${key}` };
+    const scoped = await request.get('/api/integrations/v1/projects?page=1&pageSize=25', { headers });
+    expect(scoped.status()).toBe(200);
+    const page = await scoped.json();
+    expect(page.data.length).toBeGreaterThan(0);
+    expect(page.data.every((project: { id: string }) => project.id === projectId)).toBe(true);
+
+    const outside = await request.get('/api/integrations/v1/tasks?projectId=00000000-0000-4000-8000-000000000000', { headers });
+    expect(outside.status()).toBe(404);
+    const changes = await request.get(`/api/integrations/v1/tasks/changes?projectId=${projectId}&since=2026-01-01T00%3A00%3A00Z`, { headers });
+    expect(changes.status()).toBe(200);
+    const fourth = await request.get('/api/integrations/v1/projects?page=1&pageSize=1', { headers });
+    expect(fourth.status()).toBe(200);
+    const limited = await request.get('/api/integrations/v1/projects?page=1&pageSize=1', { headers });
+    expect(limited.status()).toBe(429);
+    expect(Number(limited.headers()['retry-after'])).toBeGreaterThan(0);
+
+    const revoked = await request.delete(`/api/integrations/${createdIds[0]}`, { headers: adminHeaders });
+    expect(revoked.status()).toBe(200);
+    const afterRevocation = await request.get('/api/integrations/v1/projects', { headers });
+    expect(afterRevocation.status()).toBe(401);
+
+    const expiringKey = await createKey(3_000, 10);
+    await new Promise(resolve => setTimeout(resolve, 3_200));
+    const afterExpiry = await request.get('/api/integrations/v1/projects', {
+      headers: { Authorization: `Bearer ${expiringKey}` },
+    });
+    expect(afterExpiry.status()).toBe(401);
+  } finally {
+    for (const id of createdIds) {
+      await request.delete(`/api/integrations/${id}`, { headers: adminHeaders });
+    }
+  }
+});
