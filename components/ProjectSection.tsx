@@ -1240,19 +1240,6 @@ export default function ProjectSection({
     }
   };
 
-  const getProjectCalculatedRisk = (projId: string, riskItems?: ProjectRiskItem[]) => {
-    const items = (riskItems || []).filter(ri => matchId(ri.projectId, projId) && !ri.deleted);
-    if (items.length === 0) {
-      return { score: 0, label: 'N/D', color: 'text-slate-500 bg-slate-100 border-slate-200', dot: '⚪' };
-    }
-    let maxScore = 0;
-    items.forEach(ri => {
-      const score = (ri.probability || 1) * (ri.impact || 1);
-      if (score > maxScore) maxScore = score;
-    });
-    return getRiskLevelDetails(1, maxScore);
-  };
-
   // All existing suppliers across project materials and partners for autocomplete
   const supplierSet = new Set<string>();
   (projectMaterials || []).forEach(m => { if (m.supplier && m.supplier.trim()) supplierSet.add(m.supplier.trim()); });
@@ -1623,7 +1610,7 @@ export default function ProjectSection({
                 </span>
               )}
               {(() => {
-                const calcRisk = getProjectCalculatedRisk(selectedProj.id, projectRiskItems);
+                const calcRisk = getProjectCalculatedRisk(selectedProj.id, projectRiskItems, riskStatuses);
                 return (
                   <span className={`text-body-sm font-extrabold uppercase px-3 py-1.5 rounded-control border flex items-center gap-1.5 ${calcRisk.color}`}>
                     <span>{calcRisk.dot}</span>
@@ -4197,7 +4184,7 @@ export default function ProjectSection({
                 </thead>
                 <tbody className="text-body-sm divide-y divide-border-subtle">
                   {paginatedProjects.map(proj => {
-                    const calcRisk = getProjectCalculatedRisk(proj.id, projectRiskItems);
+                    const calcRisk = getProjectCalculatedRisk(proj.id, projectRiskItems, riskStatuses);
                     const isCritical = calcRisk.score >= 16;
                     return (
                       <tr

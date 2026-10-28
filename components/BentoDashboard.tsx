@@ -9,7 +9,7 @@ import { IconButton } from './ui/IconButton';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import React, { useState, useMemo } from 'react';
-import { Project, Task, Comment, UserAbsence, Client, ProjectMaterial, ProjectRiskItem } from '../lib/types';
+import { Project, Task, Comment, UserAbsence, Client, ProjectMaterial, ProjectRiskItem, RiskStatus } from '../lib/types';
 import { ChevronLeft, ChevronRight, Package, Search } from 'lucide-react';
 import { stringToUUID } from '../lib/supabaseSync';
 import { getProjectCalculatedRisk, matchTaskStatusId, parseTimeToHours, getProjectStatusStyle } from '../lib/utils';
@@ -21,6 +21,7 @@ interface BentoDashboardProps {
   absences: UserAbsence[];
   projectMaterials?: ProjectMaterial[];
   projectRiskItems?: ProjectRiskItem[];
+  riskStatuses?: RiskStatus[];
   comments: Comment[];
   clients: Client[];
   users: any[];
@@ -38,6 +39,7 @@ export default function BentoDashboard({
   absences,
   projectMaterials = [],
   projectRiskItems = [],
+  riskStatuses = [],
   comments,
   clients,
   users,
@@ -490,7 +492,7 @@ export default function BentoDashboard({
                 {displayedProjects.map((project) => {
                   const deliveryDate = project.scheduledDate || project.estimatedDate || project.deliveryDate;
                   const overdueOrToday = isOverdueOrToday(deliveryDate);
-                  const calcRisk = getProjectCalculatedRisk(project.id, projectRiskItems);
+                  const calcRisk = getProjectCalculatedRisk(project.id, projectRiskItems, riskStatuses);
                   const isCritical = calcRisk.score >= 16;
                   
                   // Check missing materials for this project
