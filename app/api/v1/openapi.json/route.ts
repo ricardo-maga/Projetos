@@ -329,6 +329,7 @@ export async function GET() {
     paths[path] = {};
     for (const method of methods) paths[path][method] = {
       summary: 'Endpoint de planeamento descontinuado', deprecated: true, tags: ['Planeamento'],
+      ...(path.includes('{id}') ? { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }] } : {}),
       responses: { '410': { description: 'PLANNING_RETIRED: utilizar datas e horas previstas da tarefa' } },
     };
   }
