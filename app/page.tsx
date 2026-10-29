@@ -30,7 +30,7 @@ import {
   Bell, ShieldCheck, Database, ListTodo, Loader2, Eye, EyeOff, AlertCircle
 } from 'lucide-react';
 
-import { clearClientSession, setClientSession, getClientToken } from '../lib/clientAuth';
+import { clearClientSession, setClientUser } from '../lib/clientAuth';
 
 const CONFIG_TAB_SLUGS: Record<string, string> = {
   sistema: 'configuration',
@@ -64,7 +64,6 @@ export default function Page() {
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const loginInFlight = React.useRef(false);
@@ -78,25 +77,19 @@ export default function Page() {
   const [changePasswordError, setChangePasswordError] = useState('');
   const [changePasswordSuccess, setChangePasswordSuccess] = useState(false);
 
-  // Restore session from HttpOnly cookies or active bearer token
+  // Restore the server-managed cookie session.
   React.useEffect(() => {
     const restoreSession = async () => {
       try {
-        const token = getClientToken();
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-        const res = await fetch('/api/auth/session', { method: 'GET', headers });
+        clearClientSession(); // Remove credentials left by older browser sessions.
+        const res = await fetch('/api/auth/session', { method: 'GET', credentials: 'same-origin' });
         let data: any = null;
         try {
           data = await res.json();
         } catch {}
 
         if (res.ok && data && data.success && data.user) {
-          if (data.token) {
-            setClientSession(data.token, data.user);
-          }
+          setClientUser(data.user);
           setCurrentUser(data.user);
         } else {
           if (res.status === 401) {
@@ -331,8 +324,7 @@ export default function Page() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: loginEmail.trim(),
-          password: loginPassword,
-          rememberMe
+          password: loginPassword
         })
       });
 
@@ -354,16 +346,13 @@ export default function Page() {
 
       if (res.ok && data?.success) {
         
-        // Save bearer token for robust cross-origin, iframe and API requests
-        if (data.token) {
-          setClientSession(data.token, data.user, rememberMe);
-        }
+        setClientUser(data.user);
 
         // Show loading screen immediately and activate user session
         setIsTransitioning(true);
         setCurrentUser(data.user);
 
-        // Fetch authoritative database records directly using the active session token
+        // Fetch authoritative database records using the server-managed session.
         try {
           await refreshFromDatabase();
         } catch (refreshErr) {
@@ -423,8 +412,7 @@ export default function Page() {
     }
 
     const nameChanged = Boolean(profileName && profileName !== currentUser.name);
-    const token = getClientToken();
-    const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+    const headers = { 'Content-Type': 'application/json' };
     if (newPassword) {
       const response = await fetch('/api/auth/password', { method: 'POST', headers, body: JSON.stringify({ password: newPassword }) });
       if (!response.ok) { setChangePasswordError('Não foi possível alterar a password.'); return; }
@@ -436,6 +424,7 @@ export default function Page() {
         setChangePasswordError(newPassword ? 'A password foi alterada, mas não foi possível atualizar o nome.' : 'Não foi possível atualizar o nome.');
         return;
       }
+      setClientUser({ ...currentUser, name: profileName });
       setCurrentUser({ ...currentUser, name: profileName });
       await refreshFromDatabase();
     }
@@ -558,22 +547,6 @@ export default function Page() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between py-1">
-              <label className={`flex items-center gap-2 text-xs font-semibold select-none ${isLoggingIn ? 'text-slate-400 cursor-not-allowed' : 'text-slate-600 cursor-pointer'}`}>
-                <input 
-                  type="checkbox" 
-                  checked={rememberMe}
-                  onChange={e => setRememberMe(e.target.checked)}
-                  disabled={isLoggingIn}
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
-                />
-                Lembrar
-              </label>
-              <span className="text-[10px] text-slate-400">
-                {rememberMe ? '30 dias' : '8 horas'}
-              </span>
-            </div>
-            
             <button 
               type="submit"
               disabled={isLoggingIn}

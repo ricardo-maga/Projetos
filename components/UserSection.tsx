@@ -16,7 +16,6 @@ import Card from './ui/Card';
 import Badge from './ui/Badge';
 import { M3SectionHeader, M3SegmentedControl } from './M3';
 import { getAbsenceVisibility } from '../lib/absenceVisibility';
-import { getClientToken } from '../lib/clientAuth';
 import RolePermissionSection from './RolePermissionSection';
 import { useAsyncAction } from '../hooks/useAsyncAction';
 
@@ -133,10 +132,8 @@ export default function UserSection({
 
   useEffect(() => {
     if (!hasPermission(currentUser, 'roles_read' as any)) return;
-    const token = getClientToken();
     fetch('/api/rbac/catalog', {
       credentials: 'same-origin',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
     }).then(async response => {
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível carregar as funções.');
@@ -216,11 +213,10 @@ export default function UserSection({
   };
 
   const assignUserRoles = async (targetUserId: string, roleIds: string[]) => {
-    const token = getClientToken();
     const response = await fetch(`/api/rbac/users/${targetUserId}/roles`, {
       method: 'PUT',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ roleIds }),
     });
     const result = await response.json();

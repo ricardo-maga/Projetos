@@ -86,7 +86,7 @@ async function createMaterial(req: NextRequest) {
       costPrice: Number(body.costPrice) || 0,
       salePrice: Number(body.salePrice) || 0,
       expectedDeliveryDate: body.expectedDeliveryDate || '',
-      status: body.status === 'em_stock' ? 'em_stock' : 'encomendado',
+      status: body.status || 'por_encomendar',
       deleted: false,
       createdDate: new Date().toISOString()
     };

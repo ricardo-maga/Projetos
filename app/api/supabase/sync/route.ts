@@ -33,6 +33,8 @@ export async function GET(req: NextRequest) {
     const permissions = new Map(decisions);
     const readableDomains = new Set(Object.entries(SYNC_READ_PERMISSIONS)
       .filter(([, code]) => permissions.get(code) === true).map(([field]) => field));
+    // Project materials have a paginated, permission-checked domain API.
+    readableDomains.delete('projectMaterials');
     if (permissions.get('users:read') === true) readableDomains.add('users');
     const result = await getActiveStateFromSupabase(clientToUse,
       { readableDomains, userId: user.id, skipNotifications: true });
@@ -109,6 +111,7 @@ export async function POST(req: NextRequest) {
     delete state.projects;
     delete state.tasks;
     delete state.clients;
+    delete state.projectMaterials;
     delete (state as any).planningAllocations;
     delete (state as any).planningCapacity;
     delete (state as any).planningResourceLoad;
@@ -133,7 +136,6 @@ export async function POST(req: NextRequest) {
         (state.comments && state.comments.length > 0) ||
         (state.userAbsences && state.userAbsences.length > 0) ||
         (state.equipment && state.equipment.length > 0) ||
-        (state.projectMaterials && state.projectMaterials.length > 0) ||
         (state.projectRiskItems && state.projectRiskItems.length > 0) ||
         (state.notifications && state.notifications.length > 0)
       );

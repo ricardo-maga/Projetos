@@ -17,11 +17,24 @@ function environment(name: (typeof required)[number]) {
 }
 
 async function login(request: APIRequestContext, email: string, password: string) {
-  const response = await request.post('/api/auth/login', { data: { email, password, rememberMe: false } });
+  if (email.toLowerCase() === 'ricardo75@gmail.com') throw new Error('A conta desativada não pode ser usada em testes.');
+  const response = await request.post('/api/auth/login', { data: { email, password } });
   expect(response.status()).toBe(200);
   const body = await response.json();
-  expect(body.token).toBeTruthy();
-  return body.token as string;
+  expect(body.success).toBe(true);
+  expect(body.token).toBeUndefined();
+}
+
+async function supabaseToken(request: APIRequestContext, email: string, password: string) {
+  if (email.toLowerCase() === 'ricardo75@gmail.com') throw new Error('A conta desativada não pode ser usada em testes.');
+  const response = await request.post(`${environment('E2E_SUPABASE_URL')}/auth/v1/token?grant_type=password`, {
+    headers: { apikey: environment('E2E_SUPABASE_ANON_KEY') },
+    data: { email, password },
+  });
+  expect(response.status()).toBe(200);
+  const body = await response.json();
+  expect(body.access_token).toBeTruthy();
+  return body.access_token as string;
 }
 
 test.beforeEach(() => required.forEach(environment));
@@ -30,19 +43,17 @@ test('anonymous and limited users cannot bypass server authorization', async ({ 
   const anonymousAttempt = await request.get('/api/v1/tasks');
   expect(anonymousAttempt.status()).toBe(401);
 
-  const viewerToken = await login(request, environment('E2E_VIEWER_EMAIL'), environment('E2E_VIEWER_PASSWORD'));
-  const writeAttempt = await request.post('/api/v1/projects', {
-    headers: { Authorization: `Bearer ${viewerToken}` },
-    data: {},
-  });
+  await login(request, environment('E2E_VIEWER_EMAIL'), environment('E2E_VIEWER_PASSWORD'));
+  const writeAttempt = await request.post('/api/v1/projects', { data: {} });
   expect(writeAttempt.status()).toBe(403);
 });
 
 test('admin session and Supabase Data API boundaries are valid', async ({ request }) => {
-  const adminToken = await login(request, environment('E2E_ADMIN_EMAIL'), environment('E2E_ADMIN_PASSWORD'));
-  const profile = await request.get('/api/auth/me', { headers: { Authorization: `Bearer ${adminToken}` } });
+  await login(request, environment('E2E_ADMIN_EMAIL'), environment('E2E_ADMIN_PASSWORD'));
+  const profile = await request.get('/api/auth/me');
   expect(profile.status()).toBe(200);
 
+  const adminToken = await supabaseToken(request, environment('E2E_ADMIN_EMAIL'), environment('E2E_ADMIN_PASSWORD'));
   const headers = {
     apikey: environment('E2E_SUPABASE_ANON_KEY'),
     Authorization: `Bearer ${adminToken}`,
@@ -79,10 +90,8 @@ test('integration endpoints reject malformed credentials', async ({ request }) =
 });
 
 test('limited user can load the projected sync response', async ({ request }) => {
-  const viewerToken = await login(request, environment('E2E_VIEWER_EMAIL'), environment('E2E_VIEWER_PASSWORD'));
-  const response = await request.get('/api/supabase/sync', {
-    headers: { Authorization: `Bearer ${viewerToken}` },
-  });
+  await login(request, environment('E2E_VIEWER_EMAIL'), environment('E2E_VIEWER_PASSWORD'));
+  const response = await request.get('/api/supabase/sync');
   expect(response.status()).toBe(200);
   const body = await response.json();
   expect(body.success).toBe(true);
@@ -97,8 +106,8 @@ test('integration keys enforce scope, quotas, expiry and revocation', async ({ r
   const managerPassword = process.env.E2E_INTEGRATION_MANAGER_PASSWORD;
   test.skip(!managerEmail || !managerPassword,
     'Set E2E_INTEGRATION_MANAGER_EMAIL and E2E_INTEGRATION_MANAGER_PASSWORD for an account with roles.manage.');
-  const adminToken = await login(request, managerEmail!, managerPassword!);
-  const adminHeaders = { Authorization: `Bearer ${adminToken}` };
+  await login(request, managerEmail!, managerPassword!);
+  const adminHeaders = {};
   const projectsResponse = await request.get('/api/v1/projects?page=1&pageSize=1', { headers: adminHeaders });
   expect(projectsResponse.status()).toBe(200);
   const projects = await projectsResponse.json();

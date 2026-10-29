@@ -33,6 +33,9 @@ export interface GroupPermissions {
   materials_read?: boolean;
   materials_write?: boolean;
   materials_delete?: boolean;
+  project_materials_read?: boolean;
+  project_materials_write?: boolean;
+  project_materials_delete?: boolean;
   equipment_read?: boolean;
   equipment_write?: boolean;
   equipment_delete?: boolean;

@@ -50,11 +50,10 @@ export async function POST(req: NextRequest) {
       permissions: [...new Set((permissionRows || []).map((item: any) => item.code))],
     };
     await logAuditEvent({ action: 'LOGIN', userId: profile.id, entity: 'users', entityId: profile.id, ip, details: { method: 'supabase_auth' } });
-    // Return authenticated user details and active session token for API / bearer authentication
+    // The browser session is carried by Supabase SSR cookies.
     return NextResponse.json({ 
       success: true, 
       user, 
-      token: signIn.session?.access_token || null,
       requestId 
     });
   } catch (error) { console.error('[LOGIN ERROR]', error); return internalServerError('Erro inesperado durante a autenticação.', requestId); }

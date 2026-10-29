@@ -25,6 +25,7 @@ import { mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } 
 import { getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
 import { getAuthHeaders, getClientUser, clearClientSession } from '../lib/clientAuth';
 import { apiCreateTask, apiUpdateTask, apiDeleteTask, parseTaskHoursToFloat } from '../lib/taskOperations';
+import { listProjectMaterials, createProjectMaterial as apiCreateProjectMaterial, updateProjectMaterial as apiUpdateProjectMaterial, deleteProjectMaterial as apiDeleteProjectMaterial } from '../lib/projectMaterials/client';
 
 const STORAGE_KEY = 'gestao_projetos_erp_state_v1';
 
@@ -74,6 +75,7 @@ export function useERP() {
         if (syncResult.success) {
           if (syncResult.data) {
             const mapped = mapStateToUUIDs(syncResult.data);
+            mapped.projectMaterials = await listProjectMaterials();
             
             // Try fetching audit logs
             if (isSupabaseConfigured) {
@@ -91,26 +93,11 @@ export function useERP() {
             console.log('Authoritative data loaded from Supabase SQL database');
             return true;
           } else {
-            // Database is connected but empty/unseeded. Initialize with clean baseline
-            const freshState = mapStateToUUIDs(CLEAN_BASELINE_STATE);
-            const initRes = await fetch('/api/supabase/sync', {
-              method: 'POST',
-              headers,
-              body: JSON.stringify(freshState),
-            });
-            const initJson = await initRes.json().catch(() => ({}));
-            if (initRes.ok && initJson.success) {
-              setState(freshState);
-              setSyncStatus('synced');
-              setSyncError(null);
-              setIsInitialDataLoaded(true);
-              return true;
-            } else {
-              setSyncStatus('error');
-              setSyncError(initJson.message || 'Erro ao inicializar tabelas na base de dados.');
-              setIsInitialDataLoaded(false);
-              return false;
-            }
+            // A missing authoritative snapshot must never trigger a browser write.
+            setSyncStatus('error');
+            setSyncError('A base de dados não devolveu um estado válido. Contacte o administrador.');
+            setIsInitialDataLoaded(false);
+            return false;
           }
         } else {
           setSyncStatus('error');
@@ -267,7 +254,7 @@ export function useERP() {
 
   // Reset to clean default baseline (no mock data)
   const resetToDefault = () => {
-    if (confirm('Aviso: Esta ação irá repor as tabelas de configuração limpas e remover todos os projetos, tarefas e materiais diretamente na base de dados. Deseja continuar?')) {
+    if (confirm('Esta ação irá repor as definições disponíveis para sincronização. Deseja continuar?')) {
       saveState(CLEAN_BASELINE_STATE);
     }
   };
@@ -1295,32 +1282,26 @@ export function useERP() {
   };
 
   // ==================== PROJECT MATERIALS CRUD ====================
-  const addProjectMaterial = (pm: Omit<import('../lib/types').ProjectMaterial, 'id' | 'deleted' | 'createdDate'>) => {
-    const newPM: import('../lib/types').ProjectMaterial = {
-      ...pm,
-      id: genId('pm'),
-      deleted: false,
-      createdDate: new Date().toISOString()
-    };
-    saveState(prev => ({
-      ...prev,
-      projectMaterials: [newPM, ...(prev.projectMaterials || [])]
-    }));
-    return newPM;
+  const addProjectMaterial = async (pm: Omit<import('../lib/types').ProjectMaterial, 'id' | 'deleted' | 'createdDate'>) => {
+    const created = await apiCreateProjectMaterial(pm);
+    setState(prev => prev ? ({ ...prev, projectMaterials: [created, ...(prev.projectMaterials || [])] }) : prev);
+    return created;
   };
 
-  const updateProjectMaterial = (id: string, updates: Partial<Omit<import('../lib/types').ProjectMaterial, 'id' | 'createdDate'>>) => {
-    saveState(prev => ({
-      ...prev,
-      projectMaterials: (prev.projectMaterials || []).map(p => matchId(p.id, id) ? { ...p, ...updates } as import('../lib/types').ProjectMaterial : p)
-    }));
+  const updateProjectMaterial = async (id: string, updates: Partial<Omit<import('../lib/types').ProjectMaterial, 'id' | 'createdDate'>>) => {
+    const current = state?.projectMaterials?.find(p => matchId(p.id, id));
+    const updated = await apiUpdateProjectMaterial(id, { ...updates, syncVersion: current?.syncVersion });
+    setState(prev => prev ? ({ ...prev,
+      projectMaterials: (prev.projectMaterials || []).map(p => matchId(p.id, id) ? updated : p),
+    }) : prev);
+    return updated;
   };
 
-  const deleteProjectMaterial = (id: string) => {
-    saveState(prev => ({
-      ...prev,
-      projectMaterials: (prev.projectMaterials || []).map(p => matchId(p.id, id) ? { ...p, deleted: true } : p)
-    }));
+  const deleteProjectMaterial = async (id: string) => {
+    await apiDeleteProjectMaterial(id);
+    setState(prev => prev ? ({ ...prev,
+      projectMaterials: (prev.projectMaterials || []).filter(p => !matchId(p.id, id)),
+    }) : prev);
   };
 
   // ==================== PROJECT RISK ITEMS CRUD ====================
