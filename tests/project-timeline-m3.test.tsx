@@ -282,12 +282,12 @@ describe('Project timeline M3', () => {
     const widths = find(tree, e => e.type === 'colgroup').props.children[1].map((e: any) => e.props.style?.width);
     expect(widths[5]).toBeUndefined();
   });
-  it('shows compact task cards with status color when collapsed, then expands task details', () => {
+  it('keeps compact task cards visible while project details expand and collapse', () => {
     const task: any = { id: 't', projectId: 'one', title: 'Tarefa compacta', estimatedDate: '2026-10-10', statusId: 'custom', assigneeIds: ['u'], estimatedHours: '4' };
     const props: any = { ...timelinePreviewProps, projects: [project('one')], tasks: [task], users: [{ id: 'u', name: 'Ana Silva' }], taskStatuses: [{ id: 'custom', name: 'Estado tarefa exclusivo', color: 'verde' }] };
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
     let tree = h.render(props), html = renderToStaticMarkup(tree);
-    expect(html).toContain('Cliente Exemplo'); expect(html).not.toContain('Projeto one');
+    expect(html).toContain('Cliente Exemplo'); expect(html).not.toContain('>Projeto one<');
     expect(html).toContain('Tarefa compacta'); expect(html).not.toContain('IP-one');
     expect(html).toContain('AS'); expect(html).toContain('border-l-4'); expect(html).not.toContain('Estado tarefa exclusivo');
     expect(find(tree, e => e.props?.['aria-label'] === 'Criar tarefa em Projeto one no dia 2026-10-10')).toBeDefined();
@@ -302,10 +302,12 @@ describe('Project timeline M3', () => {
     expect(widths[5]).toBeUndefined(); expect(widths[6]).toBe(64);
     find(tree, e => e.props?.['aria-expanded'] === false).props.onClick();
     tree = h.render(props); html = renderToStaticMarkup(tree);
-    expect(html).toContain('Tarefa compacta'); expect(html).toContain('Ana Silva'); expect(html).toContain('4 h previstas'); expect(html).toContain('AS');
+    expect(html).toContain('Tarefa compacta'); expect(html).toContain('Ana Silva'); expect(html).toContain('4h'); expect(html).toContain('AS');
     expect(html).toContain('border-l-4'); expect(html).not.toContain('Estado tarefa exclusivo');
     expect(html).toContain('IP-one'); expect(html).not.toContain('IP:');
     find(tree, e => e.props?.['aria-expanded'] === true).props.onClick();
-    expect(renderToStaticMarkup(h.render(props))).not.toContain('Tarefa compacta');
+    html = renderToStaticMarkup(h.render(props));
+    expect(html).toContain('Tarefa compacta');
+    expect(html).not.toContain('>IP-one<');
   });
 });

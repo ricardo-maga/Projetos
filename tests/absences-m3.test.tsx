@@ -12,8 +12,8 @@ const groups = [{ id: 'custom-z', name: 'Zebra' }, { id: 'custom-a', name: 'Águ
 const users = [{ id: 'z', name: 'Zé', roleId: 'custom-z' }, { id: 'a', name: 'Ana', roleId: 'custom-a' }, { id: 'b', name: 'Bia', roleId: 'custom-a' }, { id: 'x', name: 'Pessoa excluída', roleId: 'custom-x' }, { id: 'd', name: 'Pessoa eliminada', roleId: 'custom-a', deleted: true }, { id: 'dg', name: 'Grupo eliminado', roleId: 'custom-d' }];
 const config = { taskAssigneeGroupIds: ['custom-z', 'custom-a', 'custom-d'] };
 const absence = (id: string, userId: string) => ({ id, userId, absenceStartDate: '2026-10-05', absenceEndDate: '2026-10-06', createdDate: '2026-10-01', reason: 'Vacation' });
-const props: any = { users, userGroups: groups, appConfig: config, absences: [absence('visible', 'a'), absence('excluded', 'x'), absence('deleted', 'd')], hideUsers: true,
-  currentUser: { id: 'qa-user', roleId: 'ug-1' }, specialDays: [], addAbsence: () => {}, deleteAbsence: () => {}, addUser: () => {}, updateUser: () => {}, deleteUser: () => {} };
+const props: any = { users, userGroups: groups, activeRoles: groups, appConfig: config, absences: [absence('visible', 'a'), absence('excluded', 'x'), absence('deleted', 'd')], hideUsers: true,
+  currentUser: { id: 'qa-user', roleId: 'ug-1', permissions: ['absences.read', 'absences.create', 'absences.delete', 'users.read'] }, specialDays: [], addAbsence: () => {}, deleteAbsence: () => {}, addUser: () => {}, updateUser: () => {}, deleteUser: () => {} };
 
 describe('Absences configured group visibility', () => {
   it('sorts only configured active groups and their active users alphabetically without collapsing unknown custom roles', () => {
@@ -51,7 +51,7 @@ describe('Absences M3 presentation and existing actions', () => {
   it('keeps the canonical absence payload and deletion confirmation', async () => {
     const h = createSectionHarness('UserSection.tsx', { userId: 'b', startDate: '2026-10-08', endDate: '2026-10-09' });
     let added: any, deleted = '';
-    let tree = h.render({ ...props, addAbsence: (value: any) => added = value, deleteAbsence: (id: string) => deleted = id });
+    let tree = h.render({ ...props, addAbsence: (value: any) => { added = value; return { success: true }; }, deleteAbsence: (id: string) => deleted = id });
     await find(tree, e => e.type === 'form').props.onSubmit({ preventDefault() {} });
     expect(added).toEqual({ userId: 'b', absenceStartDate: '2026-10-08', absenceEndDate: '2026-10-09', reason: 'Vacation' });
     expect(h.state.userId).toBe('');

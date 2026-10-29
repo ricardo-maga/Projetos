@@ -1,23 +1,5 @@
 [
-  "Absences M3 presentation and existing actions > renders configured optgroups, filters both calendar and records, and uses Foundation controls",
-  "Absences M3 presentation and existing actions > keeps the canonical absence payload and deletion confirmation",
-  "Absences M3 presentation and existing actions > defaults and constrains the end date after selecting the start date",
-  "Absences M3 presentation and existing actions > clears stale user selections on configuration changes and disables submission with no groups",
-  "Absences M3 presentation and existing actions > does not filter the independent user directory by task groups",
-  "Compact weekly calendar > shows one warning beside quick creation and preserves the creation callback",
-  "Compact weekly calendar > collapses tasks to client names, expands independently and preserves opening the task",
-  "Clients and Calendar M3 > renders clients with the Projects header, Foundation fields and no local palette or tiny typography",
-  "Clients and Calendar M3 > preserves client creation payload, failed submits and edit/delete permissions",
-  "Clients and Calendar M3 > preserves deletion confirmation and opens client project links in the Foundation Dialog",
-  "Daily planning without allocation UI > renders task hours on the project timeline and opens the existing task modal",
   "Dashboard first-row indicators > shares the same M3 card and responsive breakpoints with Projects analysis",
   "Domino brand palette > uses brand accents for Dashboard summaries while preserving status styling",
-  "FASE 92 — UI and execution allowlist > real delete handler keeps confirmation, cancellation and the existing deletion callback",
-  "FASE 92 — UI and execution allowlist > real submit sends only allowed fields, preserving success and loading handling",
-  "FASE 92 — UI and execution allowlist > real submit preserves errors and prevents forbidden/repeated submissions",
-  "FASE 92 — UI and execution allowlist > keeps temporal validation before persistence",
-  "FASE 92 — UI and execution allowlist > renders planning read-only, execution editable, and exactly one status group first",
-  "Project timeline M3 > shows compact task cards with status color when collapsed, then expands task details",
-  "backend-only RLS proposal static safeguards (not a PostgreSQL execution test) > explicit scope contains the 40 reported tables without public branding",
-  "User list group filter > filters canonical and legacy memberships, keeps custom groups distinct and excludes deleted users"
+  "backend-only RLS proposal static safeguards (not a PostgreSQL execution test) > explicit scope contains the 40 reported tables without public branding"
 ]

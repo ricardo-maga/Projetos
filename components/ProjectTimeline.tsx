@@ -227,6 +227,8 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                     {!assigneeIds.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                     {assigneeIds.length > 2 && <span className="text-caption">+{assigneeIds.length - 2}</span>}
                     <span className="min-w-0 flex-1 truncate text-caption text-text-primary">{task.title}</span>
+                    {task.estimatedHours != null && task.estimatedHours !== '' &&
+                      <span className="text-caption text-text-secondary">{parseTaskHoursToFloat(task.estimatedHours)}h</span>}
                   </span>
                 </Button>;
               })}</div>
@@ -282,6 +284,8 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                       {!assigneeIds.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                       {assigneeIds.length > 2 && <span className="text-caption">+{assigneeIds.length - 2}</span>}
                       <span className="min-w-0 flex-1 truncate text-caption text-text-primary">{event.title}</span>
+                      {event.task.estimatedHours != null && event.task.estimatedHours !== '' &&
+                        <span className="text-caption text-text-secondary">{parseTaskHoursToFloat(event.task.estimatedHours)}h</span>}
                     </span>
                   </Button>;
                 })}
