@@ -66,7 +66,8 @@ export function createAdminClient() {
  * Prefers the service role admin client when available, or passes the request's
  * Bearer authorization token so Row-Level Security (RLS) identifies the user.
  */
-export async function getServerDbClient(req?: Request) {
+export async function getServerDbClient(req: Request, actor: { id: string }) {
+  if (!actor?.id) throw new Error('Authenticated actor required for database access.');
   const admin = createAdminClient();
   if (admin) return admin;
 

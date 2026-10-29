@@ -27,7 +27,7 @@ async function getMaterials(req: NextRequest) {
     if (projectId && !isUuid(projectId))
       return NextResponse.json({ success: false, message: 'Filtro de projeto inválido.' }, { status: 400 });
 
-    const databaseClient = requireServerDbClient();
+    const databaseClient = requireServerDbClient(auth.user);
     let query = databaseClient.from('project_materials').select('*', { count: 'exact' }).eq('deleted', false);
     if (projectId) query = query.eq('project_id', projectId);
     const from = (pagination.page - 1) * pagination.pageSize;
@@ -65,7 +65,7 @@ async function createMaterial(req: NextRequest) {
     }
     const body = parsed.data;
 
-    const databaseClient = requireServerDbClient();
+    const databaseClient = requireServerDbClient(auth.user);
     // Validate that target project exists and is not deleted
     const projectExists = await activeRelationExists(databaseClient, 'projects', body.projectId);
     if (!projectExists) {

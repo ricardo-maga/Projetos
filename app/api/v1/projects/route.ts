@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { page, pageSize, search, statusId, categoryId, managerId, clientId, statusGroup } = queryResult.data;
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
 
     if (!sb) {
       return internalServerError('Base de dados Supabase não disponível.', requestId);
@@ -84,7 +84,7 @@ async function createProjectHandler(req: NextRequest) {
     }
 
     const p = parseResult.data;
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) {
       return internalServerError('Base de dados Supabase não disponível.', requestId);
     }

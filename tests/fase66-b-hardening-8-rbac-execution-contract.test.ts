@@ -128,8 +128,11 @@ describe('FASE 66-B-HARDENING-8 — RBAC Execution Contract Hardening', () => {
     it('requireAuth() autentica primeiro e valida o perfil na base de dados', () => {
       const content = readFileSync(requireAuthPath, 'utf-8');
       expect(content).toContain('supabase.auth.getUser(');
-      expect(content).toContain('profile.deleted');
-      expect(content).toContain('profile.approved');
+      expect(content).toContain("import { profileEligibility } from './profileEligibility';");
+      expect(content).toContain('const eligibility = profileEligibility(profile);');
+      expect(content).toContain("if (eligibility === 'deleted') throw new AuthError");
+      expect(content).toContain("if (eligibility === 'pending') throw new ForbiddenError");
+      expect(content).toContain("if (eligibility === 'external') throw new ForbiddenError");
     });
 
     it('requirePermission() nunca confia num user_id vindo de input de cliente', () => {

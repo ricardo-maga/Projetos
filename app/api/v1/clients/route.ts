@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const to = from + pageSize - 1;
 
   try {
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     let query = sb
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     }
 
     const c = parseResult.data;
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const newId = c.id || crypto.randomUUID();

@@ -28,7 +28,7 @@ export async function GET(req: NextRequest, ctx: any) {
   const { requestId } = auth;
 
   try {
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const result = await getTaskServer(sb, id);
@@ -72,7 +72,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     }
 
     const updates = parseResult.data;
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     // 1. Fetch current version and dates for validation
@@ -204,7 +204,7 @@ export async function DELETE(req: NextRequest, ctx: any) {
   const { user, requestId } = auth;
 
   try {
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const { data: current, error: fetchErr } = await sb.from('tasks').select('*').eq('id', id).maybeSingle();

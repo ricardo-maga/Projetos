@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
+import { requireIntegrationKeyLookupClient, requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 import { checkRateLimit } from '@/lib/rateLimit';
 
 export type Integration = {
@@ -19,7 +19,7 @@ export async function authenticateIntegration(req: NextRequest, permission: 'pro
   if (!key) return { response: NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Credencial de integração inválida.', requestId } }, { status: 401 }) };
 
   try {
-    const db = requireServerDbClient();
+    const db = requireIntegrationKeyLookupClient();
     const hash = createHash('sha256').update(key).digest('hex');
     const { data, error } = await db.from('api_integrations')
       .select('id,permissions,client_ids,project_ids,rate_limit_per_minute,expires_at,revoked_at')

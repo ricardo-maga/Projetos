@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthError, ForbiddenError, requireAuth } from '@/lib/auth/requireAuth';
+import { AuthError, requirePermission } from '@/lib/auth/requireAuth';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
 export async function authorizeRbac(req: NextRequest, permission: 'roles.read' | 'roles.manage') {
-  const user = await requireAuth(req);
-  const db = requireServerDbClient();
-  const { data, error } = await db.rpc('has_permission', {
-    p_permission_code: permission,
-    p_user_id: user.auth_user_id,
-  });
-  if (error) throw new AuthError('Não foi possível validar as permissões.', 503);
-  if (data !== true) throw new ForbiddenError('Apenas utilizadores autorizados podem gerir funções.');
+  const user = await requirePermission(req, permission);
+  const db = requireServerDbClient(user);
   return { user, db };
 }
 
