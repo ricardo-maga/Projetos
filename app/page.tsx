@@ -35,6 +35,7 @@ const SectionLoading = () => (
 // initial bundle because it is the default view after authentication.
 const ProjectSection = dynamic(() => import('../components/ProjectSection'), { loading: SectionLoading });
 const TaskSection = dynamic(() => import('../components/TaskSection'), { loading: SectionLoading });
+const MechanicalDesignSection = dynamic(() => import('../components/MechanicalDesignSection'), { loading: SectionLoading });
 const ClientSection = dynamic(() => import('../components/ClientSection'), { loading: SectionLoading });
 const UserSection = dynamic(() => import('../components/UserSection'), { loading: SectionLoading });
 const ConfigSection = dynamic(() => import('../components/ConfigSection'), { loading: SectionLoading });
@@ -997,6 +998,11 @@ export default function Page() {
                   userGroups={state.userGroups}
                   appConfig={state.appConfig}
                 />
+              )}
+
+              {activeTab === 'desenho-mecanico' && (
+                <MechanicalDesignSection currentUser={currentUser} users={state.users}
+                  projects={state.projects} onTasksChanged={refreshFromDatabase} />
               )}
 
               {activeTab === 'calendario' && (

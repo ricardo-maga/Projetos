@@ -1,0 +1,52 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth/authorization';
+import { createAdminClient } from '@/lib/supabase/server';
+import { runIdempotent, getIdempotentEntityId } from '@/lib/apiIdempotency';
+import { createDesignSchema } from '@/lib/mechanicalDesign';
+import { listMechanicalDesign, designRpcError } from '@/lib/mechanicalDesignServer';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (!auth.success) return auth.response;
+  if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode consultar pedidos de desenho.' }, { status: 403 });
+  try {
+    const db = createAdminClient();
+    if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
+    const page = Number(new URL(req.url).searchParams.get('page') || 1);
+    if (!Number.isInteger(page) || page < 1 || page > 10000) return NextResponse.json({ success: false, message: 'Página inválida.' }, { status: 400 });
+    const [{ count, error }, rows] = await Promise.all([
+      db.from('work_requests').select('id', { count: 'exact', head: true }).eq('kind','mechanical_design'),
+      listMechanicalDesign(db, undefined, page),
+    ]);
+    if (error) throw error;
+    return NextResponse.json({ success: true, data: rows, page, total: count || 0 });
+  } catch (error) {
+    console.error('[MECHANICAL DESIGN LIST]', error);
+    return NextResponse.json({ success: false, message: 'Não foi possível consultar os pedidos.' }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (!auth.success) return auth.response;
+  if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode criar pedidos de desenho.' }, { status: 403 });
+  if (!req.headers.has('Idempotency-Key')) return NextResponse.json({ success: false, message: 'Idempotency-Key obrigatória.' }, { status: 400 });
+  return runIdempotent(req, auth.user.id, 'mechanical_design:create', async (claimedReq) => {
+    const parsed = createDesignSchema.safeParse(await claimedReq.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ success: false, message: 'Dados do pedido inválidos.', details: parsed.error.flatten() }, { status: 400 });
+    const db = createAdminClient();
+    if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
+    const { data, error } = await db.rpc('create_mechanical_design_request', {
+      p_id: getIdempotentEntityId(claimedReq), p_actor_id: auth.user.id,
+      p_owner_id: parsed.data.ownerId, p_title: parsed.data.title,
+      p_instructions: parsed.data.instructions, p_deliverables: parsed.data.deliverables,
+      p_project_id: parsed.data.projectId || null,
+      p_planned_start_date: parsed.data.plannedStartDate,
+      p_planned_end_date: parsed.data.plannedEndDate,
+    });
+    if (error) { const mapped = designRpcError(error); return NextResponse.json({ success: false, message: mapped.message }, { status: mapped.status }); }
+    return NextResponse.json({ success: true, data: { id: data } }, { status: 201 });
+  });
+}
