@@ -30,6 +30,7 @@ jobs:
       - run: npm run typecheck:app
       - run: npm run build
       - run: npm run check:openapi
+      - run: npm run check:migrations
       # Runs every test and rejects failures outside the reviewed baseline.
       - run: npm run test:ci
 

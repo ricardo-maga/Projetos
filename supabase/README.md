@@ -1,113 +1,24 @@
-# Guia de Transição para Base de Dados Supabase (PostgreSQL)
+# Base de dados Supabase
 
-Este diretório contém o script SQL e as diretrizes completas para migrar a estrutura de dados atual em memória do ERP/Gestor de Projetos para uma base de dados na cloud **Supabase** (PostgreSQL).
+O PostgreSQL é a fonte de verdade dos dados operacionais. A aplicação acede aos
+dados por APIs no servidor, que validam autenticação e permissões antes de usar
+o cliente administrativo. O browser usa apenas a chave pública para a sessão.
+Não executar `schema.sql` nem os scripts `001`–`010` sobre staging ou produção:
+são material histórico de instalação, não uma sequência de migrations já
+reconciliada com o histórico remoto.
 
----
+## Alterações de esquema e permissões
 
-## 📂 Ficheiros Disponíveis
-- `schema.sql`: Script completo de DDL (criação de tabelas com chaves primárias, estrangeiras e RLS) e DML (seed/importação de todos os dados de demonstração atuais de forma fidedigna).
+1. Consultar [o inventário e o procedimento](../docs/database-baseline.md) para
+   confirmar o projeto Supabase alvo, o estado das migrations e os grants.
+2. Criar a migration com `supabase migration new <nome>` e acrescentar SQL
+   idempotente. Não alterar versões de migrations já aplicadas.
+3. Executar `npm run check:migrations`, validar em staging, consultar os advisors
+   e repetir as consultas de verificação.
+4. Publicar o código e aplicar em produção na ordem exigida pelas dependências.
+   Confirmar o histórico remoto, as permissões e o comportamento da API.
 
----
-
-## 🚀 Como Configurar no Supabase
-
-1. **Criar Conta e Projeto**:
-   - Vá a [Supabase](https://supabase.com) e crie um projeto.
-   - Guarde a palavra-passe da base de dados e anote o **Project URL** e a **API Anon Key**.
-
-2. **Executar o Script SQL**:
-   - No painel lateral do Supabase, clique em **SQL Editor** (ícone `SQL`).
-   - Clique em **New Query** (Nova consulta).
-   - Abra o ficheiro `/supabase/schema.sql` deste projeto, copie todo o conteúdo e cole-o no SQL Editor do Supabase.
-   - Clique em **Run** (Executar).
-   - *Sucesso!* Todas as tabelas, relacionamentos, políticas de segurança e dados de demonstração serão provisionados instantaneamente.
-
----
-
-## 🛠️ Conectar a Aplicação Next.js ao Supabase
-
-### 1. Instalar a Dependência Oficial
-No terminal do projeto, execute o seguinte comando para adicionar o cliente oficial do Supabase:
-```bash
-npm install @supabase/supabase-js
-```
-
-### 2. Adicionar as Variáveis de Ambiente
-No seu ficheiro `.env` ou `.env.local`, adicione as credenciais obtidas no painel do Supabase:
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://seu-id-de-projeto.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-publica-anonima
-```
-
-### 3. Criar o Cliente Supabase em Código
-Crie um ficheiro em `lib/supabaseClient.ts`:
-```typescript
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-```
-
----
-
-## 🔄 Mapeamento e Sincronização em `useERP.ts`
-
-Para substituir o `localStorage` por queries diretas à base de dados, poderá ajustar o hook `useERP.ts` para ler e gravar diretamente nas tabelas usando o cliente `supabase`.
-
-### Exemplo de Carregamento de Dados (Fetch)
-```typescript
-import { supabase } from '../lib/supabaseClient';
-
-// Exemplo de como carregar os projetos no useEffect:
-const fetchProjects = async () => {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('deleted', false)
-    .order('created_date', { ascending: false });
-
-  if (!error && data) {
-    // Nota: Como o Postgres retorna snake_case por defeito nas colunas,
-    // pode mapear os campos ou simplesmente ler os dados correspondentes.
-    setProjects(data);
-  }
-};
-```
-
-### Exemplo de Criação de Registo (Insert)
-```typescript
-const addProject = async (newProject) => {
-  const { data, error } = await supabase
-    .from('projects')
-    .insert([
-      {
-        title: newProject.title,
-        description: newProject.description,
-        client_id: newProject.clientId,
-        category_id: newProject.categoryId,
-        status_id: newProject.statusId,
-        project_manager_id: newProject.projectManagerId,
-        // ... restantes campos mapeados
-      }
-    ])
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Erro ao criar projeto:', error);
-  } else {
-    // Atualizar estado local do React
-    setProjects(prev => [data, ...prev]);
-  }
-};
-```
-
----
-
-## 🛡️ Segurança e Row Level Security (RLS)
-
-O script `schema.sql` ativa o **Row Level Security (RLS)** por omissão em todas as tabelas e cria políticas permissivas que exigem que o utilizador esteja autenticado (`authenticated`).
-
-Quando implementar a autenticação do Supabase (por exemplo, login por email/password ou OAuth), as políticas garantirão que apenas utilizadores legítimos possam ver ou modificar os dados do seu ERP.
+O ficheiro [access_inventory.sql](diagnostics/access_inventory.sql) contém
+consultas de metadados sem leitura de registos de utilizadores. A CI valida a
+nomenclatura e unicidade das novas migrations; a comparação com o histórico de
+staging e produção é uma verificação separada.

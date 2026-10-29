@@ -13,6 +13,7 @@
     "lint": "next lint",
     "typecheck:app": "tsc --noEmit --incremental false -p tsconfig.application.json",
     "check:openapi": "node scripts/check-openapi.mjs",
+    "check:migrations": "node scripts/check-migration-files.mjs",
     "test:security": "bun test tests/bola-idor-auth.test.ts tests/rls-server-boundaries.test.ts tests/security-concurrency-migrations.test.ts tests/sync-auth.test.ts tests/sync-payload-security.test.ts tests/transversal-crud-integrity.test.ts tests/role-associations.test.ts",
     "test": "bun test tests",
     "test:full": "bun test tests",

@@ -1,19 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useERP } from '../hooks/useERP';
 import { useAsyncAction } from '../hooks/useAsyncAction';
 import BentoDashboard from '../components/BentoDashboard';
-import ProjectSection from '../components/ProjectSection';
-import TaskSection from '../components/TaskSection';
-import ClientSection from '../components/ClientSection';
-import UserSection from '../components/UserSection';
-import ConfigSection from '../components/ConfigSection';
 import NotificationDropdown from '../components/NotificationDropdown';
-import CalendarSection from '../components/CalendarSection';
-import CalendarSubscriptions from '../components/CalendarSubscriptions';
-import MyFocusSection from '../components/MyFocusSection';
-import ReportsSection from '../components/ReportsSection';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { logAuditEventToSupabase } from '../lib/supabaseSync';
 import { hasPermission } from '../lib/permissions';
@@ -31,6 +23,25 @@ import {
 } from 'lucide-react';
 
 import { clearClientSession, setClientUser } from '../lib/clientAuth';
+
+const SectionLoading = () => (
+  <div role="status" aria-live="polite" className="flex min-h-48 items-center justify-center gap-3 text-text-muted">
+    <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+    A carregar secção...
+  </div>
+);
+
+// Load feature screens when their tab is visited. The dashboard stays in the
+// initial bundle because it is the default view after authentication.
+const ProjectSection = dynamic(() => import('../components/ProjectSection'), { loading: SectionLoading });
+const TaskSection = dynamic(() => import('../components/TaskSection'), { loading: SectionLoading });
+const ClientSection = dynamic(() => import('../components/ClientSection'), { loading: SectionLoading });
+const UserSection = dynamic(() => import('../components/UserSection'), { loading: SectionLoading });
+const ConfigSection = dynamic(() => import('../components/ConfigSection'), { loading: SectionLoading });
+const CalendarSection = dynamic(() => import('../components/CalendarSection'), { loading: SectionLoading });
+const CalendarSubscriptions = dynamic(() => import('../components/CalendarSubscriptions'), { loading: SectionLoading });
+const MyFocusSection = dynamic(() => import('../components/MyFocusSection'), { loading: SectionLoading });
+const ReportsSection = dynamic(() => import('../components/ReportsSection'), { loading: SectionLoading });
 
 const CONFIG_TAB_SLUGS: Record<string, string> = {
   sistema: 'configuration',
