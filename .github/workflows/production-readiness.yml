@@ -34,6 +34,9 @@ jobs:
       - run: npm run test:ci
 
   production-security-e2e:
+    # E2E_BASE_URL points at production; PR code must not be tested against the
+    # still-unmodified production deployment.
+    if: github.event_name != 'pull_request'
     needs: security-and-types
     runs-on: ubuntu-24.04
     environment: production
