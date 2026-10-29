@@ -1,5 +1,7 @@
 # Inventário da base de dados — 29 de outubro de 2026
 
+Para o mapa completo entre versões locais, produção e staging, e os bloqueios ao `db push` automático, consultar [migration-reconciliation.md](migration-reconciliation.md). Esse inventário foi atualizado após este baseline e regista uma migration adicional em staging.
+
 ## Projetos e histórico
 
 | Ambiente | Projeto Supabase | Migrations registadas após esta fase | Últimas versões desta fase |
