@@ -23,7 +23,7 @@ export async function DELETE(req: NextRequest) {
       || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.id))
       return NextResponse.json({ success: false, message: 'Entidade ou ID inválido.' }, { status: 400 });
     const target = targets[body.entity as keyof typeof targets];
-    const db = requireServerDbClient();
+    const db = requireServerDbClient(user);
     const can = async (code: string) => {
       const { data, error } = await db.rpc('has_permission', { p_permission_code: code, p_user_id: user.auth_user_id });
       if (error) throw new AuthError('Serviço de autorização indisponível.', 503);

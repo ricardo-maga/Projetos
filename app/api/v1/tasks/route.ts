@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const result = await listTasksServer(sb, parseResult.data);
@@ -64,7 +64,7 @@ async function createTaskHandler(req: NextRequest) {
     }
 
     const t = parseResult.data;
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     // 1. Validate associated project ONLY if provided

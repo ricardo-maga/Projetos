@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { GroupPermissions } from '@/lib/permissions';
+import { profileEligibility } from './profileEligibility';
 
 export interface AuthenticatedUser {
   id: string;
@@ -80,9 +81,11 @@ export async function requireAuth(req?: Request, options: { includePermissions?:
     .select('id, auth_user_id, name, email, role_id, is_admin, type, approved, deleted')
     .eq('auth_user_id', userAuth.id).maybeSingle();
 
-  if (profileError || !profile || profile.deleted) throw new AuthError('Utilizador não encontrado ou inativo.');
-  if (!profile.approved) throw new ForbiddenError('A conta aguarda aprovação por um administrador.');
-  if (profile.type === 'External') throw new ForbiddenError('Este utilizador não está autorizado a aceder ao sistema interno.');
+  if (profileError || !profile) throw new AuthError('Utilizador não encontrado ou inativo.');
+  const eligibility = profileEligibility(profile);
+  if (eligibility === 'deleted') throw new AuthError('Utilizador não encontrado ou inativo.');
+  if (eligibility === 'pending') throw new ForbiddenError('A conta aguarda aprovação por um administrador.');
+  if (eligibility === 'external') throw new ForbiddenError('Este utilizador não está autorizado a aceder ao sistema interno.');
 
   const { data: assignments, error: assignmentsError } = await admin.from('user_roles').select('role_id').eq('user_id', profile.id);
   if (assignmentsError) throw new AuthError('Não foi possível carregar as funções do utilizador.', 503);
@@ -122,7 +125,7 @@ export async function requireAuth(req?: Request, options: { includePermissions?:
     type: profile.type || 'Team',
   };
 }
-export async function requirePermission(reqOrCode: Request | keyof GroupPermissions, permissionCode?: keyof GroupPermissions): Promise<AuthenticatedUser> {
+export async function requirePermission(reqOrCode: Request | keyof GroupPermissions | string, permissionCode?: keyof GroupPermissions | string): Promise<AuthenticatedUser> {
   const code = typeof reqOrCode === 'string' ? reqOrCode : permissionCode;
   if (!code) throw new ForbiddenError();
   // The RPC is authoritative for this permission. Loading the entire permission

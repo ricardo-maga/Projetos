@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { requestId } = auth;
 
   try {
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const { data: client, error } = await sb
@@ -80,7 +80,7 @@ async function handleUpdate(req: NextRequest, paramsPromise: Promise<{ id: strin
     }
 
     const updates = parseResult.data;
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const { data: current, error: fetchError } = await sb
@@ -185,7 +185,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { user, requestId } = auth;
 
   try {
-    const sb = (await getServerDbClient(req)) || defaultSupabase;
+    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
 
     const { data: current, error: fetchErr } = await sb.from('clients').select('*').eq('id', id).maybeSingle();

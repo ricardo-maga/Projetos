@@ -13,7 +13,7 @@ const groups = new Set(['all', 'allocated', 'managers']);
 export async function PATCH(req: NextRequest) {
   try {
     const user = await requireAuth(req);
-    const db = requireServerDbClient();
+    const db = requireServerDbClient(user);
     const { data: allowed, error: permissionError } = await db.rpc('has_permission', {
       p_permission_code: 'config:write', p_user_id: user.auth_user_id,
     });

@@ -26,7 +26,7 @@ export async function runIdempotent(req: NextRequest, principal: string, operati
   const entityId = asUuid(keyHash);
   const claimToken = randomUUID();
   try {
-    const db = requireServerDbClient();
+    const db = requireServerDbClient({ id: principal });
     const { error: insertError } = await db.from('api_idempotency').insert({
       key_hash: keyHash, request_hash: requestHash, entity_id: entityId, claim_token: claimToken,
     });

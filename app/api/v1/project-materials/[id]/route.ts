@@ -26,7 +26,7 @@ async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ 
     const parsed = updateProjectMaterialSchema.safeParse(rawBody);
     if (!parsed.success) return NextResponse.json({ success: false, message: 'Dados do material inválidos.' }, { status: 400 });
     const updates = parsed.data as Record<string, any>;
-    const databaseClient = requireServerDbClient();
+    const databaseClient = requireServerDbClient(auth.user);
     const existingMaterial = await getOperationalRecord(databaseClient, 'project_materials', id, mapProjectMaterial);
     if (!existingMaterial) {
       return NextResponse.json({ success: false, message: 'Material não encontrado.' }, { status: 404 });
@@ -82,7 +82,7 @@ async function deleteMaterial(req: NextRequest, { params }: { params: Promise<{ 
   }
 
   try {
-    const databaseClient = requireServerDbClient();
+    const databaseClient = requireServerDbClient(auth.user);
     const existingMaterial = await getOperationalRecord(databaseClient, 'project_materials', id, mapProjectMaterial);
     if (!existingMaterial) {
       return NextResponse.json({ success: false, message: 'Material não encontrado.' }, { status: 404 });

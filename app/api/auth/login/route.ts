@@ -7,6 +7,7 @@ import { loginSchema } from '@/lib/validations/auth';
 import { rateLimitExceeded, validationError, unauthorized, forbidden, internalServerError } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { profileEligibility } from '@/lib/auth/profileEligibility';
 
 export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
@@ -26,9 +27,11 @@ export async function POST(req: NextRequest) {
     const { data: profile, error: profileError } = await admin.from('users')
       .select('id, auth_user_id, name, email, role_id, is_admin, type, approved, deleted')
       .eq('auth_user_id', signIn.user.id).maybeSingle();
-    if (profileError || !profile || profile.deleted) { await supabase.auth.signOut(); return unauthorized('A conta não está autorizada para aceder à aplicação.', requestId); }
-    if (!profile.approved) { await supabase.auth.signOut(); return forbidden('Este utilizador ainda aguarda aprovação por um administrador.', requestId); }
-    if (profile.type === 'External') { await supabase.auth.signOut(); return forbidden('Este utilizador não está autorizado a aceder ao sistema interno.', requestId); }
+    if (profileError || !profile) { await supabase.auth.signOut(); return unauthorized('A conta não está autorizada para aceder à aplicação.', requestId); }
+    const eligibility = profileEligibility(profile);
+    if (eligibility === 'deleted') { await supabase.auth.signOut(); return unauthorized('A conta não está autorizada para aceder à aplicação.', requestId); }
+    if (eligibility === 'pending') { await supabase.auth.signOut(); return forbidden('Este utilizador ainda aguarda aprovação por um administrador.', requestId); }
+    if (eligibility === 'external') { await supabase.auth.signOut(); return forbidden('Este utilizador não está autorizado a aceder ao sistema interno.', requestId); }
     const { data: userRoles, error: userRolesError } = await admin.from('user_roles').select('role_id').eq('user_id', profile.id);
     const roleIds = [...new Set((userRoles || []).map((item: any) => item.role_id).filter(Boolean))];
     const { data: roles, error: rolesError } = roleIds.length ? await admin.from('roles').select('id,code,name').eq('is_active', true).in('id', roleIds) : { data: [], error: null };
