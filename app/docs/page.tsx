@@ -164,12 +164,12 @@ export default function ApiDocsPage() {
                 <ShieldCheck className="w-5 h-5 text-blue-400" /> Autenticação & Cabeçalhos
               </h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Todos os pedidos à API RESTful requerem o envio do token de autorização Bearer no cabeçalho <code className="text-emerald-400">Authorization</code> se a sessão estiver ativa.
+                Os pedidos feitos pela aplicação usam a sessão por cookie. Integrações externas autenticam-se com um token Bearer no cabeçalho <code className="text-emerald-400">Authorization</code>.
               </p>
               <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl font-mono text-xs text-slate-300 space-y-2">
-                <p className="text-slate-500">{`// Exemplo de cabeçalhos num pedido HTTP:`}</p>
+                <p className="text-slate-500">{`// Exemplo para uma integração externa:`}</p>
                 <p><span className="text-blue-400">Content-Type:</span> application/json</p>
-                <p><span className="text-blue-400">Authorization:</span> Bearer &lt;seu_token_jwt&gt;</p>
+                <p><span className="text-blue-400">Authorization:</span> Bearer &lt;chave_de_integracao&gt;</p>
               </div>
             </div>
 

@@ -17,20 +17,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const response = NextResponse.json({
-    success: true,
-    message: 'Sessão terminada com sucesso.',
-  });
-
-  // Clear legacy cookie
-  response.cookies.set('erp_session', '', {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 0,
-  });
-
   // Clear Supabase session cookies if present
   try {
     const supabase = await createClient();
@@ -41,5 +27,16 @@ export async function POST(req: NextRequest) {
     console.warn('[LOGOUT] Supabase sign out warning:', error);
   }
 
+  const response = NextResponse.json({
+    success: true,
+    message: 'Sessão terminada com sucesso.',
+  });
+  response.cookies.set('erp_session', '', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  });
   return response;
 }

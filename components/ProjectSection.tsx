@@ -195,9 +195,9 @@ interface ProjectSectionProps {
   currentUser?: any;
   userGroups?: any[];
   projectMaterials?: ProjectMaterial[];
-  addProjectMaterial?: (pm: any) => void;
-  updateProjectMaterial?: (id: string, updates: any) => void;
-  deleteProjectMaterial?: (id: string) => void;
+  addProjectMaterial?: (pm: any) => Promise<ProjectMaterial>;
+  updateProjectMaterial?: (id: string, updates: any) => Promise<ProjectMaterial>;
+  deleteProjectMaterial?: (id: string) => Promise<void>;
   projectRiskItems?: ProjectRiskItem[];
   riskCategories?: RiskCategory[];
   riskStatuses?: RiskStatus[];
@@ -253,6 +253,8 @@ export default function ProjectSection({
 }: ProjectSectionProps) {
   const canReadProjects = hasPermission(currentUser, 'projects_read');
   const canWriteProjects = hasPermission(currentUser, 'projects_write');
+  const canWriteMaterials = hasPermission(currentUser, 'project_materials_write');
+  const canDeleteMaterials = hasPermission(currentUser, 'project_materials_delete');
   const canDeleteProjects = hasPermission(currentUser, 'projects_delete');
 
   const canReadTasks = hasPermission(currentUser, 'tasks_read');
@@ -269,6 +271,7 @@ export default function ProjectSection({
   const [isSavingProjectStatus, setIsSavingProjectStatus] = useState(false);
   const projectStatusSaveInFlight = React.useRef(false);
   const riskSaveInFlight = React.useRef(false);
+  const materialSaveInFlight = React.useRef(false);
   const [editingRiskId, setEditingRiskId] = useState<string | null>(null);
   const [riskTitle, setRiskTitle] = useState('');
   const [riskCategoryId, setRiskCategoryId] = useState('');
@@ -1276,19 +1279,22 @@ export default function ProjectSection({
     setIsSupplierAutocompleteOpen(false);
   };
 
-  const handleSaveMaterial = (e: React.FormEvent) => {
+  const handleSaveMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (materialSaveInFlight.current) return;
     if (!selectedProj || !matDesc.trim() || !matSupplier.trim()) {
       alert('Descrição e Fornecedor são campos obrigatórios.');
       return;
     }
-    if (!canWriteProjects) {
+    if (!canWriteMaterials) {
       alert('Não tem permissão para registar materiais no projeto.');
       return;
     }
 
+    materialSaveInFlight.current = true;
+    try {
     if (editingMaterialId && updateProjectMaterial) {
-      updateProjectMaterial(editingMaterialId, {
+      await updateProjectMaterial(editingMaterialId, {
         description: matDesc.trim(),
         supplier: matSupplier.trim(),
         quantity: Number(matQty) || 1,
@@ -1301,7 +1307,7 @@ export default function ProjectSection({
       });
       setEditingMaterialId(null);
     } else if (addProjectMaterial) {
-      addProjectMaterial({
+      await addProjectMaterial({
         projectId: selectedProj.id,
         description: matDesc.trim(),
         supplier: matSupplier.trim(),
@@ -1327,10 +1333,15 @@ export default function ProjectSection({
     setMatDeliveryDate('');
     setMatStatus('por_encomendar');
     setIsSupplierAutocompleteOpen(false);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Não foi possível guardar o material.');
+    } finally {
+      materialSaveInFlight.current = false;
+    }
   };
 
   const handleToggleMaterialStatus = (pm: ProjectMaterial) => {
-    if (!canWriteProjects || !updateProjectMaterial) return;
+    if (!canWriteMaterials || !updateProjectMaterial) return;
 
     const initialStatus = pm.status || 'por_encomendar';
     const currentStatus = pendingMaterialStatuses[pm.id] || initialStatus;
@@ -1363,7 +1374,20 @@ export default function ProjectSection({
     // Only debounce and write to DB if the target status differs from initial status
     if (nextStatus !== initialStatus) {
       const timer = setTimeout(() => {
-        updateProjectMaterial(pm.id, { status: nextStatus });
+        void updateProjectMaterial(pm.id, { status: nextStatus }).then(() => {
+          setPendingMaterialStatuses(prev => {
+            const copy = { ...prev };
+            delete copy[pm.id];
+            return copy;
+          });
+        }).catch(error => {
+          setPendingMaterialStatuses(prev => {
+            const copy = { ...prev };
+            delete copy[pm.id];
+            return copy;
+          });
+          alert(error instanceof Error ? error.message : 'Não foi possível atualizar o material.');
+        });
         materialDebounceTimersMap.delete(pm.id);
       }, 500);
       materialDebounceTimersMap.set(pm.id, timer);
@@ -1384,8 +1408,8 @@ export default function ProjectSection({
     setIsMaterialModalOpen(true);
   };
 
-  const handleDeleteMaterial = (id: string) => {
-    if (!canWriteProjects || !deleteProjectMaterial) return;
+  const handleDeleteMaterial = async (id: string) => {
+    if (!canDeleteMaterials || !deleteProjectMaterial) return;
     if (confirm('Tem a certeza que deseja eliminar esta linha de material?')) {
       const existingTimer = materialDebounceTimersMap.get(id);
       if (existingTimer) {
@@ -1397,7 +1421,8 @@ export default function ProjectSection({
         delete copy[id];
         return copy;
       });
-      deleteProjectMaterial(id);
+      try { await deleteProjectMaterial(id); }
+      catch (error) { alert(error instanceof Error ? error.message : 'Não foi possível eliminar o material.'); }
     }
   };
 
@@ -2827,7 +2852,7 @@ export default function ProjectSection({
                     Acompanhamento de encomendas e stock de materiais do projeto
                   </p>
                 </div>
-                {canWriteProjects && (
+                {canWriteMaterials && (
                   <button
                     type="button"
                     onClick={handleOpenAddMaterialModal}
@@ -2891,7 +2916,7 @@ export default function ProjectSection({
                                   <th className="px-3 py-3 text-right">P. Custo</th>
                                   <th className="px-3 py-3 text-right">P. Venda</th>
                                   <th className="px-4 py-3 text-center">Estado do Material</th>
-                                  {canWriteProjects && <th className="px-3 py-3 text-center">Ações</th>}
+                                  {(canWriteMaterials || canDeleteMaterials) && <th className="px-3 py-3 text-center">Ações</th>}
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100 font-medium">
@@ -2912,7 +2937,7 @@ export default function ProjectSection({
                                       <td className="px-4 py-3 text-center">
                                         <button
                                           type="button"
-                                          disabled={!canWriteProjects}
+                                          disabled={!canWriteMaterials}
                                           onClick={() => handleToggleMaterialStatus(item)}
                                           className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 mx-auto cursor-pointer ${
                                             isEmArmazem
@@ -2921,7 +2946,7 @@ export default function ProjectSection({
                                               ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
                                               : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
                                           }`}
-                                          title={canWriteProjects ? 'Clique para alterar estado (Por encomendar / Encomendado / Em armazém)' : ''}
+                                          title={canWriteMaterials ? 'Clique para alterar estado (Por encomendar / Encomendado / Em armazém)' : ''}
                                         >
                                           {isEmArmazem ? (
                                             <>
@@ -2941,24 +2966,24 @@ export default function ProjectSection({
                                           )}
                                         </button>
                                       </td>
-                                      {canWriteProjects && (
+                                      {(canWriteMaterials || canDeleteMaterials) && (
                                         <td className="px-3 py-3 text-center space-x-1">
-                                          <button
+                                          {canWriteMaterials && <button
                                             type="button"
                                             onClick={() => handleEditMaterial(item)}
                                             className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
                                             title="Editar"
                                           >
                                             <Edit2 className="w-3.5 h-3.5" />
-                                          </button>
-                                          <button
+                                          </button>}
+                                          {canDeleteMaterials && <button
                                             type="button"
                                             onClick={() => handleDeleteMaterial(item.id)}
                                             className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
                                             title="Eliminar"
                                           >
                                             <Trash2 className="w-3.5 h-3.5" />
-                                          </button>
+                                          </button>}
                                         </td>
                                       )}
                                     </tr>
@@ -2974,7 +2999,7 @@ export default function ProjectSection({
               </div>
 
               {/* MODAL FORM: Registar material */}
-              {isMaterialModalOpen && canWriteProjects && (
+              {isMaterialModalOpen && canWriteMaterials && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
                   <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 border border-slate-100 my-8">
                     {/* Modal Header */}

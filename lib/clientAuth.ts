@@ -2,42 +2,18 @@
 
 const TOKEN_KEY = 'erp_session_token';
 const USER_KEY = 'erp_session_user';
+let currentUser: any | null = null;
 
-export function getClientToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || null;
-  } catch {
-    return null;
-  }
+export function setClientUser(user: any | null) {
+  currentUser = user;
 }
 
 export function getClientUser(): any | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const userStr = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
-    return userStr ? JSON.parse(userStr) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function setClientSession(token: string, user?: any, rememberMe: boolean = true) {
-  if (typeof window === 'undefined') return;
-  try {
-    if (rememberMe) {
-      localStorage.setItem(TOKEN_KEY, token);
-      if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
-    } else {
-      sessionStorage.setItem(TOKEN_KEY, token);
-      if (user) sessionStorage.setItem(USER_KEY, JSON.stringify(user));
-    }
-  } catch (e) {
-    console.warn('Could not store client session token:', e);
-  }
+  return currentUser;
 }
 
 export function clearClientSession() {
+  currentUser = null;
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(TOKEN_KEY);
@@ -54,10 +30,6 @@ export function getAuthHeaders(extraHeaders?: Record<string, string>): Record<st
     'Content-Type': 'application/json',
     ...(extraHeaders || {}),
   };
-  const token = getClientToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
   return headers;
 }
 

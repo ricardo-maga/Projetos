@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LoaderCircle, Plus, ShieldCheck } from 'lucide-react';
-import { getClientToken } from '@/lib/clientAuth';
 import Button from './ui/Button';
 import { M3Card, M3SectionHeader } from './M3';
 
@@ -26,11 +25,10 @@ export default function RolePermissionSection({ onRolesChanged }: { onRolesChang
   const [message, setMessage] = useState('');
 
   const request = useCallback(async (url: string, init?: RequestInit) => {
-    const token = getClientToken();
     const response = await fetch(url, {
       ...init,
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(init?.headers || {}) },
+      headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
     });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível concluir a operação.');

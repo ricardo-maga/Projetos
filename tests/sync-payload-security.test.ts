@@ -10,6 +10,12 @@ test('notification recipients may change only their own read flag', () => {
   expect(isOwnNotificationReadChange({...old,isRead:true},[],'u')).toBe(false);
 });
 
+test('project materials are excluded from global snapshot writes', () => {
+  expect('projectMaterials' in SYNC_DOMAIN_PERMISSIONS).toBe(false);
+  const route = readFileSync(new URL('../app/api/supabase/sync/route.ts', import.meta.url), 'utf8');
+  expect(route).toContain('delete state.projectMaterials;');
+});
+
 test('snapshot omission and ordering do not delete or rewrite existing records', () => {
   const baseline = [{id:'a',comment:'A'},{id:'b',comment:'B'}];
   expect(changedSyncRecords([baseline[1]],baseline)).toEqual([]);
