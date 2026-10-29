@@ -51,7 +51,8 @@ export async function runIdempotent(req: NextRequest, principal: string, operati
     }
 
     // A previous worker may have persisted the entity but failed before storing the response.
-    const table = operation === 'projects:create' ? 'projects' : 'tasks';
+    const table = operation === 'projects:create' ? 'projects'
+      : operation === 'mechanical_design:create' ? 'work_requests' : 'tasks';
     const { data: persisted, error: persistedError } = await db.from(table).select('id').eq('id', entityId).maybeSingle();
     if (persistedError) throw persistedError;
     if (persisted)

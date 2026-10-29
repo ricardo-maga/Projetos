@@ -93,6 +93,26 @@ export async function GET() {
           },
           required: ["title", "taskTypeId", "statusId"]
         },
+        MechanicalDesignRequest: {
+          type: "object",
+          required: ["id", "title", "status", "ownerId", "plannedStartDate", "plannedEndDate", "tasks"],
+          properties: {
+            id: { type: "string", format: "uuid" }, title: { type: "string" },
+            status: { type: "string", enum: ["submitted", "accepted", "rejected", "delivered"] },
+            requesterId: { type: "string", format: "uuid" }, ownerId: { type: "string", format: "uuid" },
+            projectId: { type: "string", format: "uuid", nullable: true },
+            plannedStartDate: { type: "string", format: "date" }, plannedEndDate: { type: "string", format: "date" },
+            instructions: { type: "string" }, deliverables: { type: "string" },
+            fileIdentifier: { type: "string" }, fileRevision: { type: "string" },
+            version: { type: "integer" },
+            tasks: { type: "array", items: { type: "object", properties: {
+              id: { type: "string", format: "uuid" }, title: { type: "string" },
+              statusId: { type: "string", format: "uuid" }, version: { type: "integer" },
+              isInitial: { type: "boolean" }, estimatedDays: { type: "number", multipleOf: 0.5 },
+              assigneeIds: { type: "array", items: { type: "string", format: "uuid" } },
+            } } },
+          },
+        },
         Client: {
           type: "object",
           properties: {
@@ -300,6 +320,40 @@ export async function GET() {
   };
 
   const paths = openApiSpec.paths as Record<string, Record<string, any>>;
+  paths['/mechanical-design'] = {
+    get: { summary: 'Listar pedidos de desenho mecânico', tags: ['Desenho mecânico'],
+      parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } }],
+      responses: { '200': { description: 'Pedidos e total de registos' } } },
+    post: { summary: 'Criar pedido e tarefa inicial numa transação', tags: ['Desenho mecânico'],
+      parameters: [{ name: 'Idempotency-Key', in: 'header', required: true, schema: { type: 'string', minLength: 8, maxLength: 128 } }],
+      requestBody: { required: true, content: { 'application/json': { schema: { type: 'object',
+        required: ['title', 'ownerId', 'plannedStartDate', 'plannedEndDate'], properties: {
+          title: { type: 'string', minLength: 2, maxLength: 200 }, ownerId: { type: 'string', format: 'uuid' },
+          projectId: { type: 'string', format: 'uuid', nullable: true }, instructions: { type: 'string' },
+          deliverables: { type: 'string' }, plannedStartDate: { type: 'string', format: 'date' },
+          plannedEndDate: { type: 'string', format: 'date' },
+        } } } } },
+      responses: { '201': { description: 'Pedido criado; data contém o identificador' },
+        '409': { description: 'Chave repetida com conteúdo diferente ou versão em conflito' } } },
+  };
+  paths['/mechanical-design/{id}'] = {
+    get: { summary: 'Consultar pedido, tarefas e histórico', tags: ['Desenho mecânico'],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      responses: { '200': { description: 'Pedido de desenho', content: { 'application/json': { schema: { $ref: '#/components/schemas/MechanicalDesignRequest' } } } },
+        '404': { description: 'Pedido inexistente' } } },
+    patch: { summary: 'Gerir aceitação, desenvolvimento, tarefas e entrega', tags: ['Desenho mecânico'],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      requestBody: { required: true, content: { 'application/json': { schema: { type: 'object',
+        required: ['action'], properties: {
+          action: { type: 'string', enum: ['accept', 'reject', 'edit', 'file', 'deliver', 'add_task', 'assign_task', 'start', 'block', 'resume', 'complete', 'reopen'] },
+          version: { type: 'integer', description: 'Versão do pedido para operações de gestão' },
+          taskVersion: { type: 'integer', description: 'Versão da tarefa para ações de execução' },
+          taskId: { type: 'string', format: 'uuid' }, reason: { type: 'string' },
+          assigneeIds: { type: 'array', items: { type: 'string', format: 'uuid' } },
+          estimatedDays: { type: 'number', multipleOf: 0.5 },
+        } } } } },
+      responses: { '200': { description: 'Pedido atualizado' }, '409': { description: 'Versão desatualizada' } } },
+  };
   paths['/clients/{id}'] = {
     get: { summary: 'Consultar cliente', tags: ['Clientes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Cliente' } } },
     patch: { summary: 'Atualizar cliente', tags: ['Clientes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Cliente atualizado' } } },
