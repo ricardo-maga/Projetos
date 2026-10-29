@@ -126,7 +126,7 @@ BEGIN
   RETURN p_id;
 END; $$;
 REVOKE ALL ON FUNCTION public.create_mechanical_design_request(uuid,uuid,uuid,text,text,text,uuid,date,date) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.create_mechanical_design_request(uuid,uuid,uuid,text,text,text,uuid,date,date) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.create_mechanical_design_request(uuid,uuid,uuid,text,text,text,uuid,date,date) TO service_role;
 
 CREATE FUNCTION public.manage_mechanical_design_request(
   p_id uuid, p_actor_id uuid, p_expected_version integer, p_action text,
@@ -205,7 +205,7 @@ BEGIN
   RETURN p_expected_version+1;
 END; $$;
 REVOKE ALL ON FUNCTION public.manage_mechanical_design_request(uuid,uuid,integer,text,uuid[],text,text,text,text,numeric,date,date) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.manage_mechanical_design_request(uuid,uuid,integer,text,uuid[],text,text,text,text,numeric,date,date) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.manage_mechanical_design_request(uuid,uuid,integer,text,uuid[],text,text,text,text,numeric,date,date) TO service_role;
 
 CREATE FUNCTION public.add_mechanical_design_task(
   p_request_id uuid,p_actor_id uuid,p_expected_version integer,p_title text,
@@ -241,7 +241,7 @@ BEGIN
   RETURN v_task;
 END; $$;
 REVOKE ALL ON FUNCTION public.add_mechanical_design_task(uuid,uuid,integer,text,text,uuid[],numeric) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.add_mechanical_design_task(uuid,uuid,integer,text,text,uuid[],numeric) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.add_mechanical_design_task(uuid,uuid,integer,text,text,uuid[],numeric) TO service_role;
 
 CREATE FUNCTION public.mechanical_design_task_action(
   p_request_id uuid,p_task_id uuid,p_actor_id uuid,p_expected_task_version integer,
@@ -288,7 +288,7 @@ BEGIN
   RETURN p_expected_task_version+1;
 END; $$;
 REVOKE ALL ON FUNCTION public.mechanical_design_task_action(uuid,uuid,uuid,integer,text,text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.mechanical_design_task_action(uuid,uuid,uuid,integer,text,text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.mechanical_design_task_action(uuid,uuid,uuid,integer,text,text) TO service_role;
 
 -- Existing generic task RPCs must not bypass the request lifecycle.
 CREATE FUNCTION public.guard_mechanical_design_task_write() RETURNS trigger
@@ -356,4 +356,4 @@ BEGIN
   RETURN p_expected_version+1;
 END; $$;
 REVOKE ALL ON FUNCTION public.assign_mechanical_design_task(uuid,uuid,uuid,integer,uuid[]) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.assign_mechanical_design_task(uuid,uuid,uuid,integer,uuid[]) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.assign_mechanical_design_task(uuid,uuid,uuid,integer,uuid[]) TO service_role;
