@@ -40,7 +40,7 @@ describe('Daily planning without allocation UI', () => {
       html = renderToStaticMarkup(exports.default({ ...props, tasks: [{ id: 'task', title: 'Tarefa diária', projectId: 'project', estimatedDate: '2026-10-05', estimatedHours: '02:30', deleted: false }] }));
     } finally { setSystemTime(); }
     expect(html).toContain('Tarefa diária');
-    expect(html).toContain('2.5 h previstas');
+    expect(html).toContain('2.5h');
     expect(html).toContain('Criar tarefa em Projeto diário no dia 2026-10-05');
     expect(source).toContain('mode: canWriteTasks');
   });

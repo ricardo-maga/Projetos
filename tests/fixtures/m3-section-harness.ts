@@ -28,6 +28,24 @@ export function createSectionHarness(file: string, initial: Record<string, any> 
   };
   const require = createRequire(url), exports: any = {};
   const js = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true } }).outputText;
-  new Function('require', 'exports', js)((id: string) => id === 'react' ? isolated : require(id), exports);
+  const harnessAsyncAction = () => {
+    let running = false;
+    return {
+      busy: false,
+      async run(action: () => Promise<unknown> | unknown) {
+        if (running) return undefined;
+        running = true;
+        try { return await action(); }
+        finally { running = false; }
+      },
+    };
+  };
+  new Function('require', 'exports', js)((id: string) => {
+    if (id === 'react') return isolated;
+    // The source component runs outside a React renderer in this harness.
+    // Keep the async guard without invoking React hooks from an imported module.
+    if (id.endsWith('/hooks/useAsyncAction')) return { useAsyncAction: harnessAsyncAction };
+    return require(id);
+  }, exports);
   return { state, refs, effects, render(props: any) { cursor = 0; refCursor = 0; effects.length = 0; return exports.default(props); } };
 }

@@ -22,9 +22,9 @@ afterEach(() => { globalThis.fetch = realFetch; });
 // Execute the real submit-handler source, with isolated state/API doubles.
 function submitContext(overrides: Record<string, any> = {}) {
   const context: Record<string, any> = {
-    effectiveMode: 'execute', canWrite: true, isSubmitting: false,
+    effectiveMode: 'execute', canWrite: true, isSubmitting: false, submittingRef: { current: false },
     formTitle: values.title, formProjectId: values.projectId, projects: [],
-    formDescription: values.description, formTypeId: values.taskTypeId,
+    formDescription: values.description, formTypeId: values.taskTypeId, formPriorityId: null,
     formEstimatedDate: values.estimatedDate, formEstimatedHours: '100',
     formStatusId: values.statusId, formAssignees: values.assigneeIds,
     formActualHours: '3', formStartDate: values.startDate, formStartTime: values.startTime,
@@ -65,7 +65,7 @@ describe('FASE 92 — UI and execution allowlist', () => {
       let deleted = false;
       let closed = false;
       let confirmed = '';
-      const context = { activeTask: { id: 'qa-task', title: 'Original' }, deleteTask: async (id: string) => { expect(id).toBe('qa-task'); deleted = true; }, window: { confirm: (message: string) => { confirmed = message; return accepted; } }, setIsSubmitting: () => {}, onDeleteSuccess: undefined, onClose: () => { closed = true; }, setFormError: () => {} };
+      const context = { activeTask: { id: 'qa-task', title: 'Original' }, submittingRef: { current: false }, deleteTask: async (id: string) => { expect(id).toBe('qa-task'); deleted = true; }, window: { confirm: (message: string) => { confirmed = message; return accepted; } }, setIsSubmitting: () => {}, onDeleteSuccess: undefined, onClose: () => { closed = true; }, setFormError: () => {} };
       const remove = new Function(...Object.keys(context), `${js}; return handleDelete;`)(...Object.values(context));
       await remove();
       expect(confirmed).toContain('Tem a certeza');
@@ -92,7 +92,7 @@ describe('FASE 92 — UI and execution allowlist', () => {
     expect(failed.context.error).toBe('Conflict');
     expect(failed.context.closed).toBeUndefined();
     expect(failed.context.busy).toBe(false);
-    for (const overrides of [{ canWrite: false }, { isSubmitting: true }]) {
+    for (const overrides of [{ canWrite: false }, { submittingRef: { current: true } }]) {
       const blocked = submitContext(overrides);
       await blocked.submit();
       expect(blocked.context.payload).toBeUndefined();
@@ -107,7 +107,7 @@ describe('FASE 92 — UI and execution allowlist', () => {
   it('renders planning read-only, execution editable, and exactly one status group first', () => {
     const html = renderToStaticMarkup(<TaskDetailsModal isOpen mode="execute" taskStatuses={statuses} users={[]} projects={[]} clients={[]} onClose={() => {}} />);
     expect(html.match(/role="radiogroup"/g)?.length).toBe(1);
-    expect(html.indexOf('role="radiogroup"')).toBeLessThan(html.indexOf('Dados de Planeamento'));
+    expect(html.indexOf('role="radiogroup"')).toBeLessThan(html.indexOf('Dados de planeamento'));
     for (const field of ['formTitle', 'formEstimatedDate', 'formEstimatedHours', 'formDescription', 'projectSearchQuery']) {
       const tag = html.match(new RegExp(`<(input|textarea)[^>]*id="task-${field}"[^>]*>`))?.[0];
       expect(tag).toContain('readOnly');

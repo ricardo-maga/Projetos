@@ -1,12 +1,18 @@
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { assessFullTestRun } from './full-test-regression-gate.mjs';
 
 const knownFailures = new Set(JSON.parse(
   await readFile(new URL('../tests/known-failures.json', import.meta.url), 'utf8'),
 ));
 
-const command = process.env.BUN_BIN || (process.platform === 'win32' ? 'bun.cmd' : 'bun');
-const child = spawn(command, ['test', 'tests'], {
+// Windows workstations do not necessarily have Bun on PATH. Use a pinned
+// package there; CI installs the same version directly with setup-bun.
+const command = process.env.BUN_BIN || (process.platform === 'win32' ? 'npx.cmd' : 'bun');
+const args = process.env.BUN_BIN || process.platform !== 'win32'
+  ? ['test', 'tests']
+  : ['--yes', 'bun@1.3.1', 'test', 'tests'];
+const child = spawn(command, args, {
   cwd: new URL('..', import.meta.url),
   env: process.env,
   shell: process.platform === 'win32',
@@ -26,14 +32,7 @@ const exitCode = await new Promise((resolve, reject) => {
   child.once('close', resolve);
 });
 
-const actualFailures = new Set();
-for (const line of output.split(/\r?\n/)) {
-  const match = line.match(/^\(fail\) (.*?)(?: \[\d+(?:\.\d+)?ms\])?$/);
-  if (match) actualFailures.add(match[1]);
-}
-
-const unexpected = [...actualFailures].filter(name => !knownFailures.has(name));
-const resolved = [...knownFailures].filter(name => !actualFailures.has(name));
+const { actualFailures, unexpected, resolved, errors } = assessFullTestRun(output, exitCode, knownFailures);
 
 console.log(`\nFull-suite regression gate: ${actualFailures.size} failing, ${unexpected.length} new, ${resolved.length} resolved.`);
 if (resolved.length) {
@@ -43,8 +42,8 @@ if (resolved.length) {
 if (unexpected.length) {
   console.error('Unexpected failures:');
   unexpected.forEach(name => console.error(`- ${name}`));
-  process.exitCode = 1;
-} else if (exitCode !== 0 && actualFailures.size === 0) {
-  console.error(`The test runner exited with ${exitCode} without reporting test failures.`);
+}
+if (errors.length) {
+  errors.forEach(error => console.error(error));
   process.exitCode = 1;
 }
