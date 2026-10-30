@@ -20,7 +20,7 @@ describe('Desenho mecânico', () => {
     expect(isMechanicalDesignManager({ ...profile, type: 'External' })).toBe(false);
   });
   it('tem entrada própria na navegação e apresenta um percurso distinto de Tasks', () => {
-    expect(APP_SECTIONS.find(section => section.id === 'desenho-mecanico')).toMatchObject({
+    expect(APP_SECTIONS.find(section => section.id === 'mechanical-design')).toMatchObject({
       label: 'Desenho mecânico', requiredPermission: 'mechanical_design_read',
     });
     const html = renderToStaticMarkup(<MechanicalDesignSection currentUser={{ id: id(1), name: 'Ana', approved: true,

@@ -65,6 +65,7 @@ const CONFIG_SLUG_TABS = Object.fromEntries(
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedMechanicalRequestId, setSelectedMechanicalRequestId] = useState<string | null>(null);
   const [activeConfigTab, setActiveConfigTab] = useState('sistema');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -239,6 +240,7 @@ export default function Page() {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
       const projectParam = params.get('project');
+      const requestParam = params.get('request');
       
       if (tabParam) {
         const configTab = CONFIG_SLUG_TABS[tabParam];
@@ -250,12 +252,13 @@ export default function Page() {
             setActiveConfigTab(configTab);
           }
         } else {
-          setActiveTab(tabParam);
+          setActiveTab(({ 'meu-foco': 'my-focus', 'relatorios': 'reports', 'desenho-mecanico': 'mechanical-design' } as Record<string,string>)[tabParam] || tabParam);
         }
       }
       if (projectParam) {
         setSelectedProjectId(projectParam);
       }
+      if (requestParam) setSelectedMechanicalRequestId(requestParam);
     }
   }, [mounted, state]);
 
@@ -899,7 +902,7 @@ export default function Page() {
                 />
               )}
 
-              {activeTab === 'meu-foco' && (
+              {activeTab === 'my-focus' && (
                 <MyFocusSection 
                   key={currentUser.id}
                   currentUser={currentUser}
@@ -919,11 +922,12 @@ export default function Page() {
                   addTask={addTask}
                   deleteTask={deleteTask}
                   onSelectProject={handleSelectProject}
+                  onSelectMechanicalRequest={id => { setSelectedMechanicalRequestId(id); handleTabChange('mechanical-design'); }}
                   appConfig={state.appConfig}
                 />
               )}
 
-              {activeTab === 'relatorios' && (
+              {activeTab === 'reports' && (
                 <ReportsSection
                   projects={state.projects || []}
                   tasks={state.tasks || []}
@@ -1000,9 +1004,10 @@ export default function Page() {
                 />
               )}
 
-              {activeTab === 'desenho-mecanico' && (
+              {activeTab === 'mechanical-design' && (
                 <MechanicalDesignSection currentUser={currentUser} users={state.users}
                   projects={state.projects} projectStatuses={state.projectStatuses} projectPriorities={state.projectPriorities}
+                  initialRequestId={selectedMechanicalRequestId}
                   onTasksChanged={refreshFromDatabase} />
               )}
 

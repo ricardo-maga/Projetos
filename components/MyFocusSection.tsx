@@ -13,6 +13,8 @@ import { assignedFocusRisks, focusHours, paginateFocus } from '../lib/myFocus';
 import { FocusPagination, useFocusPagination, FOCUS_TASK_SIZES, FOCUS_PROJECT_SIZES } from './FocusPagination';
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { hasPermission } from '../lib/permissions';
+import { isMechanicalDesignManager, type DesignRequest } from '../lib/mechanicalDesign';
+import { getAuthHeaders } from '../lib/clientAuth';
 import { currentForecastMonth, forecastMonth, forecastShortMonth } from '../lib/projectForecast';
 import { M3Button, M3IconButton, M3SegmentedControl } from './M3';
 import { 
@@ -39,6 +41,7 @@ interface MyFocusSectionProps {
   updateTask: (id: string, updates: any) => void;
   deleteTask?: (id: string) => void;
   onSelectProject: (id: string) => void;
+  onSelectMechanicalRequest?: (id: string) => void;
   appConfig?: any;
 }
 
@@ -60,10 +63,38 @@ export default function MyFocusSection({
   updateTask,
   deleteTask,
   onSelectProject,
+  onSelectMechanicalRequest,
   appConfig
 }: MyFocusSectionProps) {
   // Task filter state
   const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'completed'>('pending');
+  const [designRequests, setDesignRequests] = useState<DesignRequest[]>([]);
+  const [designLoadError, setDesignLoadError] = useState(false);
+  const canSeeDesignRequests = isMechanicalDesignManager(currentUser) && hasPermission(currentUser, 'mechanical_design_read');
+  useEffect(() => {
+    if (!canSeeDesignRequests) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const rows: DesignRequest[] = [];
+        for (let page = 1; !cancelled; page += 1) {
+          const response = await fetch(`/api/v1/mechanical-design?owner=mine&page=${page}`, { cache: 'no-store', headers: getAuthHeaders() });
+          if (!response.ok) throw new Error('Falha ao consultar desenho mecânico');
+          const payload = await response.json();
+          if (!payload.success) throw new Error('Falha ao consultar desenho mecânico');
+          rows.push(...(payload.data || []));
+          if (rows.length >= payload.total || !payload.data?.length) break;
+        }
+        if (!cancelled) { setDesignRequests(rows); setDesignLoadError(false); }
+      } catch { if (!cancelled) setDesignLoadError(true); }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [canSeeDesignRequests, currentUser.id]);
+  const visibleDesignRequests = designRequests.filter(request =>
+    taskFilter === 'all' || (taskFilter === 'pending' ? !['rejected','delivered'].includes(request.status)
+      : ['rejected','delivered'].includes(request.status)));
+  const pendingDesignCount = designRequests.filter(request => !['rejected','delivered'].includes(request.status)).length;
 
   // Project filter state ('active' | 'all' | 'completed')
   const [projectFilter, setProjectFilter] = useState<'active' | 'all' | 'completed'>('active');
@@ -404,7 +435,7 @@ export default function MyFocusSection({
           <div className="m3-focus-banner__stats flex flex-wrap md:flex-nowrap items-center gap-3 p-3 rounded-card">
             <div className="m3-focus-banner__stat text-center px-3 border-r">
               <p className="m3-focus-banner__label text-caption font-medium">Tarefas pendentes</p>
-              <p className="m3-focus-banner__value text-heading-md font-semibold">{pendingTasksCount}</p>
+              <p className="m3-focus-banner__value text-heading-md font-semibold">{pendingTasksCount + pendingDesignCount}</p>
             </div>
             <div className="m3-focus-banner__stat text-center px-3 border-r">
               <p className="m3-focus-banner__label text-caption font-medium">Projetos em gestão</p>
@@ -443,8 +474,8 @@ export default function MyFocusSection({
                 value={taskFilter}
                 onChange={value => { setTaskFilter(value); taskPagination.update({ ...taskPagination.preference, page: 1 }); }}
                 options={[
-                  { value: 'pending', label: `Pendentes (${pendingTasksCount})` },
-                  { value: 'all', label: `Todas (${myAssignedTasks.length})` },
+                  { value: 'pending', label: `Pendentes (${pendingTasksCount + pendingDesignCount})` },
+                  { value: 'all', label: `Todas (${myAssignedTasks.length + designRequests.length})` },
                   { value: 'completed', label: 'Concluídas' },
                 ]}
               />
@@ -452,7 +483,17 @@ export default function MyFocusSection({
 
             {/* TASK LIST */}
             <div className="divide-y divide-border-subtle">
-              {filteredTasks.length === 0 ? (
+              {designLoadError && <p role="alert" className="p-4 text-body-sm text-error">Não foi possível carregar os pedidos de desenho.</p>}
+              {visibleDesignRequests.map(request => <button key={`design-${request.id}`} type="button"
+                onClick={() => onSelectMechanicalRequest?.(request.id)}
+                className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-surface-muted">
+                <span><span className="block font-semibold text-text-primary">{request.title}</span>
+                  <span className="text-caption text-text-secondary">Desenho mecânico · {request.tasks.length} tarefa(s) · prazo {request.plannedEndDate || 'por definir'}</span></span>
+                <Badge variant={request.status === 'delivered' ? 'success' : request.status === 'rejected' ? 'error' : 'primary'}>
+                  {request.status === 'submitted' ? 'Por aceitar' : request.status === 'accepted' ? 'Em desenvolvimento' : request.status === 'delivered' ? 'Entregue' : 'Recusado'}
+                </Badge>
+              </button>)}
+              {filteredTasks.length === 0 && visibleDesignRequests.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
                   <div className="w-12 h-12 bg-surface-muted text-text-muted rounded-card flex items-center justify-center mx-auto">
                     <CheckSquare className="w-6 h-6" />

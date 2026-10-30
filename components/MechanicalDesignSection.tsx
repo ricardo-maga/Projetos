@@ -34,15 +34,17 @@ interface Props {
   projects: Project[];
   projectStatuses: ProjectStatus[];
   projectPriorities: ProjectPriority[];
+  initialRequestId?: string | null;
   onTasksChanged: () => Promise<unknown>;
 }
 
-export default function MechanicalDesignSection({ currentUser, users, projects, projectStatuses, projectPriorities, onTasksChanged }: Props) {
+export default function MechanicalDesignSection({ currentUser, users, projects, projectStatuses, projectPriorities, initialRequestId, onTasksChanged }: Props) {
   const [requests, setRequests] = useState<DesignRequest[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [eligibleExecutorIds, setEligibleExecutorIds] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => { if (initialRequestId) setSelectedId(initialRequestId); }, [initialRequestId]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
@@ -120,6 +122,16 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   }, []);
 
   useEffect(() => { void load(1); }, [load]);
+  useEffect(() => {
+    if (!initialRequestId || requests.some(request => request.id === initialRequestId)) return;
+    let cancelled = false;
+    void fetch(`/api/v1/mechanical-design/${initialRequestId}`, { cache: 'no-store', headers: getAuthHeaders() })
+      .then(response => response.ok ? response.json() : null)
+      .then(result => { if (!cancelled && result?.success) setRequests(current =>
+        current.some(request => request.id === initialRequestId) ? current : [result.data, ...current]); })
+      .catch(() => { /* The list retains its own error state. */ });
+    return () => { cancelled = true; };
+  }, [initialRequestId, requests]);
   useEffect(() => {
     if (!selected) return;
     setInstructions(selected.instructions); setDeliverables(selected.deliverables);
