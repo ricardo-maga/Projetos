@@ -6,7 +6,7 @@ import { M3Button, M3Card, M3SectionHeader } from './M3';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import Textarea from './ui/Textarea';
-import type { Project, ProjectStatus, User } from '../lib/types';
+import type { Project, ProjectPriority, ProjectStatus, User } from '../lib/types';
 import { getAuthHeaders, getApiErrorMessage } from '../lib/clientAuth';
 import { TASK_STATUS, isMechanicalDesignManager, type DesignRequest, type DesignTask } from '../lib/mechanicalDesign';
 import { hasPermission } from '../lib/permissions';
@@ -33,10 +33,11 @@ interface Props {
   users: User[];
   projects: Project[];
   projectStatuses: ProjectStatus[];
+  projectPriorities: ProjectPriority[];
   onTasksChanged: () => Promise<unknown>;
 }
 
-export default function MechanicalDesignSection({ currentUser, users, projects, projectStatuses, onTasksChanged }: Props) {
+export default function MechanicalDesignSection({ currentUser, users, projects, projectStatuses, projectPriorities, onTasksChanged }: Props) {
   const [requests, setRequests] = useState<DesignRequest[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -57,6 +58,8 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   const [createUsage, setCreateUsage] = useState('');
   const [createProjectStatusId, setCreateProjectStatusId] = useState('');
   const [createOtherManagerIds, setCreateOtherManagerIds] = useState<string[]>([]);
+  const [createRequestedForId, setCreateRequestedForId] = useState('');
+  const [createPriorityId, setCreatePriorityId] = useState('');
   const [createStartDate, setCreateStartDate] = useState('');
   const [createEndDate, setCreateEndDate] = useState('');
   const [createInstructions, setCreateInstructions] = useState('');
@@ -68,6 +71,8 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   const [usage, setUsage] = useState('');
   const [projectStatusId, setProjectStatusId] = useState('');
   const [otherManagerIds, setOtherManagerIds] = useState<string[]>([]);
+  const [requestedForId, setRequestedForId] = useState('');
+  const [priorityId, setPriorityId] = useState('');
   const [fileIdentifier, setFileIdentifier] = useState('');
   const [fileRevision, setFileRevision] = useState('');
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
@@ -79,13 +84,16 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   const [newTaskEstimatedDays, setNewTaskEstimatedDays] = useState('1');
   const [reopenReason, setReopenReason] = useState('');
 
-  const activeUsers = users.filter(user => user.approved && !user.deleted && user.type !== 'External');
+  const alphabetical = (a: User, b: User) => a.name.localeCompare(b.name, 'pt', { sensitivity: 'base' });
+  const allUsers = [...users].filter(user => !user.deleted).sort(alphabetical);
+  const activeUsers = allUsers.filter(user => user.approved && user.type !== 'External');
   const executorUsers = activeUsers.filter(user => eligibleExecutorIds.includes(user.id));
   const managerUsers = activeUsers.filter(isMechanicalDesignManager);
   const availableProjects = projects.filter(project => !project.deleted);
   const projectSuggestions = availableProjects.filter(project =>
     `${project.title} ${project.installProjectNo || ''}`.toLocaleLowerCase('pt-PT').includes(projectSearchQuery.trim().toLocaleLowerCase('pt-PT'))).slice(0, 12);
   const statusOptions = [...projectStatuses].sort((a, b) => (a.scale ?? 0) - (b.scale ?? 0));
+  const priorityOptions = [...projectPriorities].filter(priority => !priority.deleted).sort((a, b) => (a.scale ?? 0) - (b.scale ?? 0));
   const canCreate = hasPermission(currentUser, 'mechanical_design_create');
   const canExecute = hasPermission(currentUser, 'mechanical_design_execute');
   const selected = requests.find(request => request.id === selectedId) || null;
@@ -117,6 +125,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
     setInstructions(selected.instructions); setDeliverables(selected.deliverables);
     setUsage(selected.usage); setProjectStatusId(selected.projectStatusId || '');
     setOtherManagerIds(selected.otherManagerIds);
+    setRequestedForId(selected.requestedForId || ''); setPriorityId(selected.priorityId || '');
     setFileIdentifier(selected.fileIdentifier); setFileRevision(selected.fileRevision);
     setPlannedStartDate(selected.plannedStartDate); setPlannedEndDate(selected.plannedEndDate);
     setAssigneeIds(selected.tasks.find(task => task.isInitial)?.assigneeIds || []);
@@ -156,11 +165,13 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
       title, ownerId, projectId: projectId || null, instructions: createInstructions, deliverables: createDeliverables,
       plannedStartDate: createStartDate, plannedEndDate: createEndDate, usage: createUsage,
       projectStatusId: createProjectStatusId || null, otherManagerIds: createOtherManagerIds,
+      requestedForId: createRequestedForId || null, priorityId: createPriorityId || null,
     }, 'Pedido criado com a tarefa inicial.', createKey.current);
     if (result) { createKey.current = crypto.randomUUID(); setSelectedId(result.id); setTitle('');
       setCreateInstructions(''); setCreateDeliverables(''); setCreateStartDate(''); setCreateEndDate('');
       setProjectId(''); setProjectSearchQuery(''); setCreateUsage(''); setCreateProjectStatusId('');
       setCreateOtherManagerIds([]); setShowCreate(false); }
+    if (result) { setCreateRequestedForId(''); setCreatePriorityId(''); }
   };
 
   const act = async (body: object, message: string) => {
@@ -238,7 +249,15 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
             </select></label>
           <Input label="Início previsto" type="date" required value={createStartDate} onChange={event => setCreateStartDate(event.target.value)} />
           <Input label="Fim previsto" type="date" required min={createStartDate || undefined} value={createEndDate} onChange={event => setCreateEndDate(event.target.value)} />
-          <fieldset className="rounded-control border border-border bg-surface-muted/50 p-4 md:col-span-2"><legend className="px-1 font-semibold">Outros intervenientes</legend>
+          <label className="block">Requisitante
+            <select aria-label="Requisitante" value={createRequestedForId} onChange={event => setCreateRequestedForId(event.target.value)} className="mt-1 w-full rounded-control border border-border bg-surface p-3 text-text-primary">
+              <option value="">Sem requisitante</option>{allUsers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+            </select></label>
+          <label className="block">Prioridade
+            <select aria-label="Prioridade" value={createPriorityId} onChange={event => setCreatePriorityId(event.target.value)} className="mt-1 w-full rounded-control border border-border bg-surface p-3 text-text-primary">
+              <option value="">Sem prioridade</option>{priorityOptions.map(priority => <option key={priority.id} value={priority.id}>{priority.name}</option>)}
+            </select></label>
+          <fieldset className="rounded-control border border-border bg-surface-muted/50 p-4 md:col-span-2"><legend className="px-1 font-semibold">Outros responsáveis</legend>
             <div className="flex flex-wrap gap-3">{managerUsers.filter(user => user.id !== ownerId).map(user =>
               <label key={user.id} className="inline-flex items-center gap-2"><input type="checkbox" checked={createOtherManagerIds.includes(user.id)}
                 onChange={() => toggleManager(user.id, true)} />{user.name}</label>)}</div>
@@ -267,7 +286,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
         <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-heading-sm font-bold">{selected.title}</h3>
             <p className="mt-1 text-text-secondary">Gestor de projeto: {nameOf(selected.ownerId)}</p>
-            {selected.otherManagerIds.length > 0 && <p className="text-caption text-text-secondary">Outros intervenientes: {selected.otherManagerIds.map(nameOf).join(', ')}</p>}</div>
+            {selected.otherManagerIds.length > 0 && <p className="text-caption text-text-secondary">Outros responsáveis: {selected.otherManagerIds.map(nameOf).sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })).join(', ')}</p>}</div>
             <Badge variant={statusVariant[selected.status]}>{statusLabel[selected.status]}</Badge>
             {selected.projectId && <span className="text-caption">Projeto: {projects.find(project => project.id === selected.projectId)?.title || 'Indisponível'}</span>}</div>
           {canManage && selected.status === 'submitted' && <div className="space-y-3">
@@ -291,15 +310,26 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
             <Input label="Fim previsto" type="date" min={plannedStartDate || undefined} disabled={!canEditDetails} value={plannedEndDate} onChange={event => setPlannedEndDate(event.target.value)} />
             <Input label="Identificação do ficheiro" value={fileIdentifier} disabled={!(canManage || (isAssigned && canExecute)) || selected.status !== 'accepted'} onChange={event => setFileIdentifier(event.target.value)} />
             <Input label="Revisão do ficheiro" value={fileRevision} disabled={!(canManage || (isAssigned && canExecute)) || selected.status !== 'accepted'} onChange={event => setFileRevision(event.target.value)} /></div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-label font-semibold text-text-secondary">Requisitante
+              <select aria-label="Requisitante" value={requestedForId} disabled={!canEditDetails} onChange={event => setRequestedForId(event.target.value)} className="mt-1 w-full rounded-control border border-border bg-surface p-3 text-text-primary">
+                <option value="">Sem requisitante</option>{allUsers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+              </select></label>
+            <label className="block text-label font-semibold text-text-secondary">Prioridade
+              <select aria-label="Prioridade" value={priorityId} disabled={!canEditDetails} onChange={event => setPriorityId(event.target.value)} className="mt-1 w-full rounded-control border border-border bg-surface p-3 text-text-primary">
+                <option value="">Sem prioridade</option>{priorityOptions.map(priority => <option key={priority.id} value={priority.id}>{priority.name}</option>)}
+              </select></label>
+          </div>
           <fieldset className="rounded-control border border-border bg-surface-muted/50 p-4" disabled={!canEditDetails}>
-            <legend className="px-1 font-semibold">Outros intervenientes</legend>
+            <legend className="px-1 font-semibold">Outros responsáveis</legend>
             <div className="flex flex-wrap gap-3">{managerUsers.filter(user => user.id !== selected.ownerId).map(user =>
               <label key={user.id} className="inline-flex items-center gap-2"><input type="checkbox" checked={otherManagerIds.includes(user.id)}
                 onChange={() => toggleManager(user.id, false)} />{user.name}</label>)}</div>
           </fieldset>
           {canEditDetails && <M3Button tone="outlined" disabled={busy || !plannedStartDate || !plannedEndDate} onClick={() => void act({ action: 'edit', version: selected.version,
             instructions, deliverables, fileIdentifier, fileRevision, plannedStartDate, plannedEndDate,
-            usage, projectStatusId: projectStatusId || null, otherManagerIds }, 'Dados do pedido guardados.')}>Guardar detalhes</M3Button>}
+            usage, projectStatusId: projectStatusId || null, otherManagerIds,
+            requestedForId: requestedForId || null, priorityId: priorityId || null }, 'Dados do pedido guardados.')}>Guardar detalhes</M3Button>}
           {isAssigned && canExecute && selected.status === 'accepted' && <M3Button tone="outlined" disabled={busy || !fileIdentifier.trim() || !fileRevision.trim()}
             onClick={() => void act({ action: 'file', version: selected.version, fileIdentifier, fileRevision }, 'Ficheiro e revisão guardados.')}>Guardar ficheiro/revisão</M3Button>}
         </M3Card>
@@ -310,7 +340,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
             return <div key={task.id} className="rounded-control border border-border p-3 space-y-2">
               <div className="flex flex-wrap justify-between gap-2"><div><p className="font-semibold">{task.title}{task.isInitial ? ' · tarefa inicial' : ''}</p>
                 {task.description && <p className="text-text-secondary">{task.description}</p>}</div><span>{taskLabel[task.statusId] || 'Estado desconhecido'}</span></div>
-              <p className="text-caption text-text-secondary">Responsáveis: {task.assigneeIds.map(nameOf).join(', ') || 'Por atribuir'} · Estimativa: {task.estimatedDays ?? 'por definir'} dia(s)</p>
+              <p className="text-caption text-text-secondary">Responsáveis: {task.assigneeIds.map(nameOf).sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })).join(', ') || 'Por atribuir'} · Estimativa: {task.estimatedDays ?? 'por definir'} dia(s)</p>
               {canManage && selected.status === 'accepted' && <div className="space-y-2">
                 {assigningTaskId === task.id ? <><fieldset><legend className="text-label font-semibold">Alterar desenhadores</legend>
                   <div className="flex flex-wrap gap-3">{executorUsers.map(user => <label key={user.id} className="inline-flex items-center gap-1">

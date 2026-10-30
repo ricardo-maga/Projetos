@@ -9,7 +9,7 @@ export function isMechanicalDesignManager(user: Pick<User, 'roleId' | 'roleIds' 
   return roleIds.some(roleId => normalizeRoleId(roleId) === CANONICAL_ROLE_IDS.PROJECT_MANAGER);
 }
 
-const uuid = z.string().uuid();
+const uuid = z.guid();
 const date = z.iso.date();
 const estimatedDays = z.number().min(0.5).max(999).refine(value => Number.isInteger(value * 2));
 export const createDesignSchema = z.object({
@@ -23,6 +23,8 @@ export const createDesignSchema = z.object({
   usage: z.string().max(10000).default(''),
   projectStatusId: uuid.nullable().default(null),
   otherManagerIds: z.array(uuid).max(30).default([]),
+  requestedForId: uuid.nullable().default(null),
+  priorityId: uuid.nullable().default(null),
 }).refine(value => value.plannedEndDate >= value.plannedStartDate, { path: ['plannedEndDate'] });
 export const manageDesignSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('accept'), version: z.number().int().positive(), assigneeIds: z.array(uuid).min(1), estimatedDays }),
@@ -30,7 +32,8 @@ export const manageDesignSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('edit'), version: z.number().int().positive(), instructions: z.string().max(10000),
     deliverables: z.string().max(10000), fileIdentifier: z.string().max(300), fileRevision: z.string().max(100),
     plannedStartDate: date, plannedEndDate: date, usage: z.string().max(10000).optional(),
-    projectStatusId: uuid.nullable().optional(), otherManagerIds: z.array(uuid).max(30).optional()
+    projectStatusId: uuid.nullable().optional(), otherManagerIds: z.array(uuid).max(30).optional(),
+    requestedForId: uuid.nullable().optional(), priorityId: uuid.nullable().optional()
   }).refine(value => value.plannedEndDate >= value.plannedStartDate, { path: ['plannedEndDate'] })
     .refine(value => [value.usage, value.projectStatusId, value.otherManagerIds].every(item => item === undefined) ||
       [value.usage, value.projectStatusId, value.otherManagerIds].every(item => item !== undefined), { path: ['usage'] }),
@@ -63,6 +66,7 @@ export interface DesignRequest {
   createdAt: string; deliveredAt: string | null; deliveredBy: string | null;
   instructions: string; deliverables: string; fileIdentifier: string; fileRevision: string;
   usage: string; projectStatusId: string | null; otherManagerIds: string[];
+  requestedForId: string | null; priorityId: string | null;
   tasks: DesignTask[];
   events: { action: string; actorId: string; occurredAt: string; taskId?: string }[];
 }
@@ -92,6 +96,7 @@ export function mapDesignRows(requests: any[], details: any[], links: any[], tas
       instructions: detail.instructions || '', deliverables: detail.deliverables || '',
       fileIdentifier: detail.file_identifier || '', fileRevision: detail.file_revision || '',
       usage: detail.usage_text || '', projectStatusId: detail.project_status_id || null,
+      requestedForId: detail.requested_for_id || null, priorityId: detail.priority_id || null,
       otherManagerIds: otherManagers.filter(manager => manager.request_id === row.id).map(manager => manager.user_id),
       tasks: linkMap.get(row.id) || [], events: [
         ...requestEvents.filter(event => event.request_id === row.id).map(event => ({ action: event.action,

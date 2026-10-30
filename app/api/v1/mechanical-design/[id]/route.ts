@@ -56,7 +56,19 @@ export async function PATCH(req: NextRequest, context: Context) {
         p_actor_id: auth.user.id, p_expected_task_version: taskInput.taskVersion,
         p_action: taskInput.action, p_reason: taskInput.reason || null });
     } else if (input.action === 'edit') {
-      if (input.usage !== undefined && input.projectStatusId !== undefined && input.otherManagerIds !== undefined) {
+      if (input.usage !== undefined && input.projectStatusId !== undefined && input.otherManagerIds !== undefined &&
+          input.requestedForId !== undefined && input.priorityId !== undefined) {
+        result = await db.rpc('edit_mechanical_design_request_v3', {
+          p_id: id, p_actor_id: auth.user.id, p_expected_version: input.version,
+          p_instructions: input.instructions, p_deliverables: input.deliverables,
+          p_file_identifier: input.fileIdentifier, p_file_revision: input.fileRevision,
+          p_planned_start_date: input.plannedStartDate, p_planned_end_date: input.plannedEndDate,
+          p_usage_text: input.usage, p_project_status_id: input.projectStatusId,
+          p_other_manager_ids: input.otherManagerIds,
+          p_requested_for_id: input.requestedForId ?? null,
+          p_priority_id: input.priorityId ?? null,
+        });
+      } else if (input.usage !== undefined && input.projectStatusId !== undefined && input.otherManagerIds !== undefined) {
         result = await db.rpc('edit_mechanical_design_request_v2', {
           p_id: id, p_actor_id: auth.user.id, p_expected_version: input.version,
           p_instructions: input.instructions, p_deliverables: input.deliverables,
