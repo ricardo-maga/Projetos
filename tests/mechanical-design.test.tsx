@@ -25,12 +25,12 @@ describe('Desenho mecânico', () => {
     });
     const html = renderToStaticMarkup(<MechanicalDesignSection currentUser={{ id: id(1), name: 'Ana', approved: true,
       deleted: false, type: 'Team', email: '', roleId: CANONICAL_ROLE_IDS.TECHNICIAN,
-      permissions: ['mechanical_design.read','mechanical_design.create'] } as any} users={[]} projects={[]} projectStatuses={[]} onTasksChanged={async () => {}} />);
+      permissions: ['mechanical_design.read','mechanical_design.create'] } as any} users={[]} projects={[]} projectStatuses={[]} projectPriorities={[]} onTasksChanged={async () => {}} />);
     expect(html).toContain('Desenho mecânico');
     expect(html).toContain('Novo pedido');
     const readOnly = renderToStaticMarkup(<MechanicalDesignSection currentUser={{ id: id(1), name: 'Ana', approved: true,
       deleted: false, type: 'Team', email: '', roleId: CANONICAL_ROLE_IDS.VIEWER,
-      permissions: ['mechanical_design.read'] } as any} users={[]} projects={[]} projectStatuses={[]} onTasksChanged={async () => {}} />);
+      permissions: ['mechanical_design.read'] } as any} users={[]} projects={[]} projectStatuses={[]} projectPriorities={[]} onTasksChanged={async () => {}} />);
     expect(readOnly).not.toContain('Novo pedido');
   });
 
@@ -40,6 +40,7 @@ describe('Desenho mecânico', () => {
       projectStatusId: id(7), otherManagerIds: [id(8)] };
     expect(createDesignSchema.safeParse(create).success).toBe(false);
     expect(createDesignSchema.safeParse({ ...create, plannedEndDate: '2026-11-06' }).success).toBe(true);
+    expect(createDesignSchema.safeParse({ ...create, plannedEndDate: '2026-11-06', projectStatusId: '99999999-9999-9999-9999-999999999901' }).success).toBe(true);
     expect(createDesignSchema.safeParse({ title: create.title, ownerId: create.ownerId,
       plannedStartDate: create.plannedStartDate, plannedEndDate: '2026-11-06' }).success).toBe(true);
     expect(createDesignSchema.safeParse({ ...create, plannedStartDate: '' }).success).toBe(false);
@@ -60,7 +61,7 @@ describe('Desenho mecânico', () => {
       project_id: null, version: 2, created_at: '2026-10-29', delivered_at: null, delivered_by: null,
       planned_start_date: '2026-11-01', planned_end_date: '2026-11-07',
     }], [{ request_id: requestId, instructions: 'Modelar suporte', deliverables: 'Ficheiro CAD',
-      usage_text: 'Linha de produção', project_status_id: id(7) }], [
+      usage_text: 'Linha de produção', project_status_id: id(7), requested_for_id: id(9), priority_id: id(8) }], [
       { request_id: requestId, task_id: firstId, is_initial: true, estimated_days: 1 },
       { request_id: requestId, task_id: extraId, is_initial: false, estimated_days: 0.5 },
     ], [
@@ -77,6 +78,8 @@ describe('Desenho mecânico', () => {
     expect(rows[0].tasks[0].assigneeIds).toEqual([id(6)]);
     expect(rows[0].usage).toBe('Linha de produção');
     expect(rows[0].projectStatusId).toBe(id(7));
+    expect(rows[0].requestedForId).toBe(id(9));
+    expect(rows[0].priorityId).toBe(id(8));
     expect(rows[0].otherManagerIds).toEqual([id(8)]);
   });
 });
