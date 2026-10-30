@@ -39,13 +39,16 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ success: false, message: 'Dados do pedido inválidos.', details: parsed.error.flatten() }, { status: 400 });
     const db = createAdminClient();
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
-    const { data, error } = await db.rpc('create_mechanical_design_request', {
+    const { data, error } = await db.rpc('create_mechanical_design_request_v2', {
       p_id: getIdempotentEntityId(claimedReq), p_actor_id: auth.user.id,
       p_owner_id: parsed.data.ownerId, p_title: parsed.data.title,
       p_instructions: parsed.data.instructions, p_deliverables: parsed.data.deliverables,
       p_project_id: parsed.data.projectId || null,
       p_planned_start_date: parsed.data.plannedStartDate,
       p_planned_end_date: parsed.data.plannedEndDate,
+      p_usage_text: parsed.data.usage,
+      p_project_status_id: parsed.data.projectStatusId,
+      p_other_manager_ids: parsed.data.otherManagerIds,
     });
     if (error) { const mapped = designRpcError(error); return NextResponse.json({ success: false, message: mapped.message }, { status: mapped.status }); }
     return NextResponse.json({ success: true, data: { id: data } }, { status: 201 });

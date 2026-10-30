@@ -1,17 +1,21 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ClipboardList, Plus, RefreshCw } from 'lucide-react';
+import { ClipboardList, Plus, RefreshCw, Search } from 'lucide-react';
 import { M3Button, M3Card, M3SectionHeader } from './M3';
 import { Input } from './ui/Input';
+import { Badge } from './ui/Badge';
 import Textarea from './ui/Textarea';
-import type { Project, User } from '../lib/types';
+import type { Project, ProjectStatus, User } from '../lib/types';
 import { getAuthHeaders, getApiErrorMessage } from '../lib/clientAuth';
 import { TASK_STATUS, isMechanicalDesignManager, type DesignRequest, type DesignTask } from '../lib/mechanicalDesign';
 import { hasPermission } from '../lib/permissions';
 
 const statusLabel: Record<DesignRequest['status'], string> = {
   submitted: 'Por aceitar', accepted: 'Em desenvolvimento', rejected: 'Recusado', delivered: 'Entregue',
+};
+const statusVariant: Record<DesignRequest['status'], 'warning' | 'primary' | 'error' | 'success'> = {
+  submitted: 'warning', accepted: 'primary', rejected: 'error', delivered: 'success',
 };
 const taskLabel: Record<string, string> = {
   [TASK_STATUS.pending]: 'Por iniciar', [TASK_STATUS.progress]: 'Em curso',
@@ -28,10 +32,11 @@ interface Props {
   currentUser: User;
   users: User[];
   projects: Project[];
+  projectStatuses: ProjectStatus[];
   onTasksChanged: () => Promise<unknown>;
 }
 
-export default function MechanicalDesignSection({ currentUser, users, projects, onTasksChanged }: Props) {
+export default function MechanicalDesignSection({ currentUser, users, projects, projectStatuses, onTasksChanged }: Props) {
   const [requests, setRequests] = useState<DesignRequest[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -47,6 +52,11 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   const [title, setTitle] = useState('');
   const [ownerId, setOwnerId] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [projectSearchQuery, setProjectSearchQuery] = useState('');
+  const [showProjectSuggestions, setShowProjectSuggestions] = useState(false);
+  const [createUsage, setCreateUsage] = useState('');
+  const [createProjectStatusId, setCreateProjectStatusId] = useState('');
+  const [createOtherManagerIds, setCreateOtherManagerIds] = useState<string[]>([]);
   const [createStartDate, setCreateStartDate] = useState('');
   const [createEndDate, setCreateEndDate] = useState('');
   const [createInstructions, setCreateInstructions] = useState('');
@@ -55,6 +65,9 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   const [plannedEndDate, setPlannedEndDate] = useState('');
   const [instructions, setInstructions] = useState('');
   const [deliverables, setDeliverables] = useState('');
+  const [usage, setUsage] = useState('');
+  const [projectStatusId, setProjectStatusId] = useState('');
+  const [otherManagerIds, setOtherManagerIds] = useState<string[]>([]);
   const [fileIdentifier, setFileIdentifier] = useState('');
   const [fileRevision, setFileRevision] = useState('');
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
@@ -69,11 +82,16 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   const activeUsers = users.filter(user => user.approved && !user.deleted && user.type !== 'External');
   const executorUsers = activeUsers.filter(user => eligibleExecutorIds.includes(user.id));
   const managerUsers = activeUsers.filter(isMechanicalDesignManager);
+  const availableProjects = projects.filter(project => !project.deleted);
+  const projectSuggestions = availableProjects.filter(project =>
+    `${project.title} ${project.installProjectNo || ''}`.toLocaleLowerCase('pt-PT').includes(projectSearchQuery.trim().toLocaleLowerCase('pt-PT'))).slice(0, 12);
+  const statusOptions = [...projectStatuses].sort((a, b) => (a.scale ?? 0) - (b.scale ?? 0));
   const canCreate = hasPermission(currentUser, 'mechanical_design_create');
   const canExecute = hasPermission(currentUser, 'mechanical_design_execute');
   const selected = requests.find(request => request.id === selectedId) || null;
   const canManage = Boolean(selected && isMechanicalDesignManager(currentUser) && hasPermission(currentUser, 'mechanical_design_manage') &&
     (selected.ownerId === currentUser.id || hasPermission(currentUser, 'mechanical_design_coordinate')));
+  const canEditDetails = Boolean(canManage && selected && ['submitted', 'accepted'].includes(selected.status));
   const canReopen = Boolean(selected && selected.ownerId === currentUser.id && isMechanicalDesignManager(currentUser) &&
     hasPermission(currentUser, 'mechanical_design_manage'));
   const isAssigned = Boolean(selected?.tasks.some(task => task.assigneeIds.includes(currentUser.id)));
@@ -97,10 +115,12 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   useEffect(() => {
     if (!selected) return;
     setInstructions(selected.instructions); setDeliverables(selected.deliverables);
+    setUsage(selected.usage); setProjectStatusId(selected.projectStatusId || '');
+    setOtherManagerIds(selected.otherManagerIds);
     setFileIdentifier(selected.fileIdentifier); setFileRevision(selected.fileRevision);
     setPlannedStartDate(selected.plannedStartDate); setPlannedEndDate(selected.plannedEndDate);
     setAssigneeIds(selected.tasks.find(task => task.isInitial)?.assigneeIds || []);
-  }, [selectedId, selected?.version]);
+  }, [selected]);
 
   const send = async (url: string, method: 'POST' | 'PATCH', body: object, message: string, idempotencyKey?: string) => {
     if (inFlight.current) return;
@@ -128,12 +148,19 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
 
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (projectSearchQuery.trim() && !projectId) {
+      setError('Selecione um projeto da lista de sugestões ou limpe o campo para criar um pedido independente.');
+      return;
+    }
     const result = await send('/api/v1/mechanical-design', 'POST', {
       title, ownerId, projectId: projectId || null, instructions: createInstructions, deliverables: createDeliverables,
-      plannedStartDate: createStartDate, plannedEndDate: createEndDate,
+      plannedStartDate: createStartDate, plannedEndDate: createEndDate, usage: createUsage,
+      projectStatusId: createProjectStatusId || null, otherManagerIds: createOtherManagerIds,
     }, 'Pedido criado com a tarefa inicial.', createKey.current);
     if (result) { createKey.current = crypto.randomUUID(); setSelectedId(result.id); setTitle('');
-      setCreateInstructions(''); setCreateDeliverables(''); setCreateStartDate(''); setCreateEndDate(''); setProjectId(''); setShowCreate(false); }
+      setCreateInstructions(''); setCreateDeliverables(''); setCreateStartDate(''); setCreateEndDate('');
+      setProjectId(''); setProjectSearchQuery(''); setCreateUsage(''); setCreateProjectStatusId('');
+      setCreateOtherManagerIds([]); setShowCreate(false); }
   };
 
   const act = async (body: object, message: string) => {
@@ -150,45 +177,98 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   };
 
   const toggleAssignee = (id: string) => setAssigneeIds(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
+  const toggleManager = (id: string, creation: boolean) => {
+    const update = (current: string[]) => current.includes(id) ? current.filter(value => value !== id) : [...current, id];
+    if (creation) setCreateOtherManagerIds(update);
+    else setOtherManagerIds(update);
+  };
+  const selectProject = (project: Project) => {
+    setProjectId(project.id);
+    setProjectSearchQuery(project.title);
+    setShowProjectSuggestions(false);
+  };
   const allComplete = Boolean(selected?.tasks.length) && selected!.tasks.every(task => task.statusId === TASK_STATUS.complete);
 
   return <div className="space-y-5">
     <M3SectionHeader title="Desenho mecânico" description="Pedidos, desenvolvimento e entregas da equipa de desenho."
-      actions={<M3Button tone="outlined" onClick={() => void load()}><RefreshCw className="h-4 w-4" />Atualizar</M3Button>} />
+      actions={<div className="flex flex-wrap gap-2">
+        {canCreate && <M3Button onClick={() => setShowCreate(value => !value)}><Plus className="h-4 w-4" />Novo pedido</M3Button>}
+        <M3Button tone="outlined" onClick={() => void load()}><RefreshCw className="h-4 w-4" />Atualizar</M3Button>
+      </div>} />
     {error && <p role="alert" className="rounded-control border border-error/30 bg-error/10 p-3 text-error">{error}</p>}
     {notice && <p role="status" className="rounded-control border border-success/30 bg-success/10 p-3 text-text-primary">{notice}</p>}
-    <div className="grid gap-5 lg:grid-cols-[minmax(250px,360px)_minmax(0,1fr)]">
-      <div className="space-y-3">
-        {canCreate && <M3Button onClick={() => { setOwnerId(''); setShowCreate(value => !value); }}><Plus className="h-4 w-4" />Novo pedido</M3Button>}
-        {canCreate && showCreate && <M3Card className="space-y-3 p-4"><h3 className="font-semibold">Novo pedido de desenho</h3>
-          <form onSubmit={event => void create(event)} className="space-y-3">
-            <Input label="Pedido" value={title} onChange={event => setTitle(event.target.value)} required minLength={2} maxLength={200} />
-            <label className="block text-label font-semibold text-text-secondary">Gestor de projeto responsável
-              <select className="mt-1 w-full rounded-control border border-border bg-surface p-3" value={ownerId} onChange={event => setOwnerId(event.target.value)} required>
-                <option value="">Selecionar</option>{managerUsers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
-              </select></label>
-            {managerUsers.length === 0 && <p className="text-caption text-error">Não há gestores de projeto ativos disponíveis para receber o pedido.</p>}
-            <label className="block text-label font-semibold text-text-secondary">Projeto associado (opcional)
-              <select className="mt-1 w-full rounded-control border border-border bg-surface p-3" value={projectId} onChange={event => setProjectId(event.target.value)}>
-                <option value="">Pedido independente</option>{projects.filter(project => !project.deleted).map(project =>
-                  <option key={project.id} value={project.id}>{project.title}</option>)}</select></label>
-            <Textarea label="Instruções" value={createInstructions} onChange={event => setCreateInstructions(event.target.value)} maxLength={10000} />
-            <Textarea label="Entregáveis" value={createDeliverables} onChange={event => setCreateDeliverables(event.target.value)} maxLength={10000} />
-            <div className="grid gap-2 sm:grid-cols-2"><Input label="Início previsto" type="date" required value={createStartDate} onChange={event => setCreateStartDate(event.target.value)} />
-              <Input label="Fim previsto" type="date" required min={createStartDate || undefined} value={createEndDate} onChange={event => setCreateEndDate(event.target.value)} /></div>
-            <M3Button type="submit" isLoading={busy} disabled={!ownerId}>Criar pedido</M3Button>
-          </form></M3Card>}
+    {canCreate && showCreate && <M3Card className="overflow-visible border border-border bg-surface p-6 shadow-sm">
+      <h3 className="mb-5 text-heading-sm font-bold text-text-primary">Adicionar novo pedido de desenho</h3>
+      <form onSubmit={event => void create(event)} className="space-y-5">
+        <div className="grid gap-5 text-body-sm font-semibold text-text-secondary md:grid-cols-2">
+          <Input label="Nome do pedido" value={title} onChange={event => setTitle(event.target.value)} required minLength={2} maxLength={200} />
+          <label className="block">Gestor de projeto *
+            <select aria-label="Gestor de projeto" className="mt-1 w-full rounded-control border border-border bg-surface p-3 text-text-primary" value={ownerId}
+              onChange={event => { setOwnerId(event.target.value); setCreateOtherManagerIds(ids => ids.filter(id => id !== event.target.value)); }} required>
+              <option value="">Selecionar gestor</option>{managerUsers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+            </select></label>
+          <div className="relative md:col-span-2">
+            <label htmlFor="design-project-search" className="block">Projeto associado (opcional)</label>
+            <div className="relative mt-1">
+              <Input id="design-project-search" aria-label="Projeto associado" type="text" role="combobox"
+                aria-expanded={showProjectSuggestions} aria-controls="design-project-suggestions" autoComplete="off"
+                value={projectSearchQuery} onChange={event => { setProjectSearchQuery(event.target.value); setProjectId(''); setShowProjectSuggestions(true); }}
+                onFocus={() => setShowProjectSuggestions(true)} onBlur={() => setTimeout(() => setShowProjectSuggestions(false), 250)}
+                placeholder="Pesquisar projeto por nome..." className="w-full pr-9" />
+              <Search aria-hidden="true" className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-text-muted" />
+            </div>
+            {showProjectSuggestions && <div id="design-project-suggestions" role="listbox" className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-control border border-border bg-surface p-1 shadow-lg">
+              <button type="button" role="option" aria-selected={!projectId} className="w-full rounded-control p-2 text-left text-body-sm hover:bg-surface-muted"
+                onMouseDown={event => event.preventDefault()} onClick={() => { setProjectId(''); setProjectSearchQuery(''); setShowProjectSuggestions(false); }}>Pedido independente</button>
+              {projectSuggestions.map(project => <button key={project.id} type="button" role="option" aria-selected={projectId === project.id}
+                className="w-full rounded-control p-2 text-left text-body-sm hover:bg-surface-muted" onMouseDown={event => event.preventDefault()}
+                onClick={() => selectProject(project)}><span className="block font-semibold">{project.title}</span>
+                {project.installProjectNo && <span className="text-caption text-text-muted">{project.installProjectNo}</span>}</button>)}
+              {!projectSuggestions.length && <p className="p-2 text-body-sm text-text-muted">Nenhum projeto encontrado</p>}
+            </div>}
+          </div>
+          <Textarea label="Descrição" value={createInstructions} onChange={event => setCreateInstructions(event.target.value)} maxLength={10000} rows={4} />
+          <Textarea label="Notas de execução" value={createDeliverables} onChange={event => setCreateDeliverables(event.target.value)} maxLength={10000} rows={4} />
+          <Textarea label="Utilização" value={createUsage} onChange={event => setCreateUsage(event.target.value)} maxLength={10000} rows={4} />
+          <label className="block">Estado do projeto
+            <select aria-label="Estado do projeto" value={createProjectStatusId} onChange={event => setCreateProjectStatusId(event.target.value)}
+              className="mt-1 w-full rounded-control border border-border bg-surface p-3 text-text-primary">
+              <option value="">Selecionar estado</option>{statusOptions.filter(status => !status.deleted).map(status =>
+                <option key={status.id} value={status.id}>{status.name}</option>)}
+            </select></label>
+          <Input label="Início previsto" type="date" required value={createStartDate} onChange={event => setCreateStartDate(event.target.value)} />
+          <Input label="Fim previsto" type="date" required min={createStartDate || undefined} value={createEndDate} onChange={event => setCreateEndDate(event.target.value)} />
+          <fieldset className="rounded-control border border-border bg-surface-muted/50 p-4 md:col-span-2"><legend className="px-1 font-semibold">Outros intervenientes</legend>
+            <div className="flex flex-wrap gap-3">{managerUsers.filter(user => user.id !== ownerId).map(user =>
+              <label key={user.id} className="inline-flex items-center gap-2"><input type="checkbox" checked={createOtherManagerIds.includes(user.id)}
+                onChange={() => toggleManager(user.id, true)} />{user.name}</label>)}</div>
+          </fieldset>
+        </div>
+        {managerUsers.length === 0 && <p className="text-caption text-error">Não há gestores de projeto ativos disponíveis para receber o pedido.</p>}
+        <div className="flex justify-end gap-2"><M3Button tone="outlined" onClick={() => setShowCreate(false)}>Cancelar</M3Button>
+          <M3Button type="submit" isLoading={busy} disabled={!ownerId || !createStartDate || !createEndDate}>Criar pedido</M3Button></div>
+      </form>
+    </M3Card>}
+    <div className="grid gap-5 lg:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]">
+      <M3Card className="space-y-3 border border-border bg-surface p-4 shadow-sm">
+        <div className="border-b border-border pb-3"><h3 className="font-bold text-text-primary">Pedidos de desenho</h3>
+          <p className="text-caption text-text-secondary">{total} pedido(s) · selecione para consultar o desenvolvimento</p></div>
         {loading ? <p role="status">A carregar pedidos…</p> : requests.length === 0 ? <p className="text-text-secondary">Ainda não há pedidos de desenho.</p> :
           <div className="space-y-2">{requests.map(request => <button key={request.id} type="button"
-            className={`w-full rounded-control border p-3 text-left ${selectedId === request.id ? 'border-primary bg-primary/10' : 'border-border bg-surface'}`}
+            className={`w-full rounded-control border p-3 text-left transition-colors ${selectedId === request.id ? 'border-primary bg-primary/10' : 'border-border bg-surface hover:bg-surface-muted'}`}
             onClick={() => setSelectedId(request.id)}>
-            <span className="block font-semibold">{request.title}</span><span className="text-caption text-text-secondary">{statusLabel[request.status]} · {request.tasks.length} tarefa(s)</span>
+            <span className="block font-semibold text-text-primary">{request.title}</span>
+            <span className="mt-2 flex flex-wrap items-center gap-2"><Badge variant={statusVariant[request.status]}>{statusLabel[request.status]}</Badge>
+              <span className="text-caption text-text-secondary">{request.tasks.length} tarefa(s)</span></span>
+            <span className="block text-caption text-text-muted">{nameOf(request.ownerId)} · {request.plannedEndDate || 'Sem prazo'}</span>
           </button>)}{requests.length < total && <M3Button tone="outlined" disabled={busy} onClick={() => void load(page + 1)}>Carregar mais</M3Button>}</div>}
-      </div>
+      </M3Card>
       <div>{selected ? <div className="space-y-4">
-        <M3Card className="space-y-3 p-5">
+        <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-heading-sm font-bold">{selected.title}</h3>
-            <p className="text-text-secondary">{statusLabel[selected.status]} · Responsável: {nameOf(selected.ownerId)}</p></div>
+            <p className="mt-1 text-text-secondary">Gestor de projeto: {nameOf(selected.ownerId)}</p>
+            {selected.otherManagerIds.length > 0 && <p className="text-caption text-text-secondary">Outros intervenientes: {selected.otherManagerIds.map(nameOf).join(', ')}</p>}</div>
+            <Badge variant={statusVariant[selected.status]}>{statusLabel[selected.status]}</Badge>
             {selected.projectId && <span className="text-caption">Projeto: {projects.find(project => project.id === selected.projectId)?.title || 'Indisponível'}</span>}</div>
           {canManage && selected.status === 'submitted' && <div className="space-y-3">
             <fieldset className="space-y-1"><legend className="font-medium">Desenhadores da tarefa inicial</legend>
@@ -198,14 +278,28 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
             <div className="flex flex-wrap gap-2"><M3Button isLoading={busy} disabled={!assigneeIds.length || Number(estimatedDays) < 0.5} onClick={() => void act({ action: 'accept', version: selected.version, assigneeIds, estimatedDays: Number(estimatedDays) }, 'Pedido aceite e atribuído.')}>Aceitar e atribuir</M3Button>
               <M3Button tone="outlined" disabled={busy} onClick={() => void act({ action: 'reject', version: selected.version }, 'Pedido recusado.')}>Recusar</M3Button></div>
           </div>}
-          <div className="grid gap-3 sm:grid-cols-2"><Textarea label="Instruções" value={instructions} disabled={!canManage || selected.status === 'delivered'} onChange={event => setInstructions(event.target.value)} />
-            <Textarea label="Entregáveis" value={deliverables} disabled={!canManage || selected.status === 'delivered'} onChange={event => setDeliverables(event.target.value)} />
-            <Input label="Início previsto" type="date" disabled={!canManage || selected.status === 'delivered'} value={plannedStartDate} onChange={event => setPlannedStartDate(event.target.value)} />
-            <Input label="Fim previsto" type="date" min={plannedStartDate || undefined} disabled={!canManage || selected.status === 'delivered'} value={plannedEndDate} onChange={event => setPlannedEndDate(event.target.value)} />
+          <div className="grid gap-4 sm:grid-cols-2"><Textarea label="Descrição" value={instructions} disabled={!canEditDetails} onChange={event => setInstructions(event.target.value)} />
+            <Textarea label="Notas de execução" value={deliverables} disabled={!canEditDetails} onChange={event => setDeliverables(event.target.value)} />
+            <Textarea label="Utilização" value={usage} maxLength={10000} disabled={!canEditDetails} onChange={event => setUsage(event.target.value)} />
+            <label className="block text-label font-semibold text-text-secondary">Estado do projeto
+              <select aria-label="Estado do projeto" value={projectStatusId} disabled={!canEditDetails}
+                onChange={event => setProjectStatusId(event.target.value)} className="mt-1 w-full rounded-control border border-border bg-surface p-3 text-text-primary">
+                <option value="">Selecionar estado</option>{statusOptions.filter(status => !status.deleted || status.id === projectStatusId).map(status =>
+                  <option key={status.id} value={status.id}>{status.name}</option>)}
+              </select></label>
+            <Input label="Início previsto" type="date" required disabled={!canEditDetails} value={plannedStartDate} onChange={event => setPlannedStartDate(event.target.value)} />
+            <Input label="Fim previsto" type="date" min={plannedStartDate || undefined} disabled={!canEditDetails} value={plannedEndDate} onChange={event => setPlannedEndDate(event.target.value)} />
             <Input label="Identificação do ficheiro" value={fileIdentifier} disabled={!(canManage || (isAssigned && canExecute)) || selected.status !== 'accepted'} onChange={event => setFileIdentifier(event.target.value)} />
             <Input label="Revisão do ficheiro" value={fileRevision} disabled={!(canManage || (isAssigned && canExecute)) || selected.status !== 'accepted'} onChange={event => setFileRevision(event.target.value)} /></div>
-          {canManage && ['submitted','accepted'].includes(selected.status) && <M3Button tone="outlined" disabled={busy} onClick={() => void act({ action: 'edit', version: selected.version,
-            instructions, deliverables, fileIdentifier, fileRevision, plannedStartDate, plannedEndDate }, 'Dados do pedido guardados.')}>Guardar detalhes</M3Button>}
+          <fieldset className="rounded-control border border-border bg-surface-muted/50 p-4" disabled={!canEditDetails}>
+            <legend className="px-1 font-semibold">Outros intervenientes</legend>
+            <div className="flex flex-wrap gap-3">{managerUsers.filter(user => user.id !== selected.ownerId).map(user =>
+              <label key={user.id} className="inline-flex items-center gap-2"><input type="checkbox" checked={otherManagerIds.includes(user.id)}
+                onChange={() => toggleManager(user.id, false)} />{user.name}</label>)}</div>
+          </fieldset>
+          {canEditDetails && <M3Button tone="outlined" disabled={busy || !plannedStartDate || !plannedEndDate} onClick={() => void act({ action: 'edit', version: selected.version,
+            instructions, deliverables, fileIdentifier, fileRevision, plannedStartDate, plannedEndDate,
+            usage, projectStatusId: projectStatusId || null, otherManagerIds }, 'Dados do pedido guardados.')}>Guardar detalhes</M3Button>}
           {isAssigned && canExecute && selected.status === 'accepted' && <M3Button tone="outlined" disabled={busy || !fileIdentifier.trim() || !fileRevision.trim()}
             onClick={() => void act({ action: 'file', version: selected.version, fileIdentifier, fileRevision }, 'Ficheiro e revisão guardados.')}>Guardar ficheiro/revisão</M3Button>}
         </M3Card>
@@ -237,7 +331,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
           {canManage && selected.status === 'accepted' && <form className="space-y-2 border-t border-border pt-3" onSubmit={event => { event.preventDefault(); void act({ action: 'add_task', version: selected.version,
             title: newTaskTitle, description: newTaskDescription, assigneeIds, estimatedDays: Number(newTaskEstimatedDays) }, 'Tarefa de desenvolvimento acrescentada.').then(result => { if (result) { setNewTaskTitle(''); setNewTaskDescription(''); } }); }}>
             <h4 className="font-semibold">Acrescentar tarefa de desenvolvimento</h4><Input label="Título da tarefa" required minLength={2} value={newTaskTitle} onChange={event => setNewTaskTitle(event.target.value)} />
-            <Textarea label="Instruções desta tarefa" value={newTaskDescription} onChange={event => setNewTaskDescription(event.target.value)} />
+            <Textarea label="Descrição da tarefa" value={newTaskDescription} onChange={event => setNewTaskDescription(event.target.value)} />
             <Input label="Estimativa (dias, passos de 0,5)" type="number" min="0.5" step="0.5" required value={newTaskEstimatedDays} onChange={event => setNewTaskEstimatedDays(event.target.value)} />
             <fieldset><legend className="text-label font-semibold">Desenhadores</legend><div className="flex flex-wrap gap-3">{executorUsers.map(user => <label key={user.id} className="inline-flex items-center gap-1">
               <input type="checkbox" checked={assigneeIds.includes(user.id)} onChange={() => toggleAssignee(user.id)} />{user.name}</label>)}</div></fieldset>

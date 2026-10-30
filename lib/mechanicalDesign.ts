@@ -20,13 +20,20 @@ export const createDesignSchema = z.object({
   plannedEndDate: date,
   instructions: z.string().max(10000).default(''),
   deliverables: z.string().max(10000).default(''),
+  usage: z.string().max(10000).default(''),
+  projectStatusId: uuid.nullable().default(null),
+  otherManagerIds: z.array(uuid).max(30).default([]),
 }).refine(value => value.plannedEndDate >= value.plannedStartDate, { path: ['plannedEndDate'] });
 export const manageDesignSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('accept'), version: z.number().int().positive(), assigneeIds: z.array(uuid).min(1), estimatedDays }),
   z.object({ action: z.literal('reject'), version: z.number().int().positive() }),
   z.object({ action: z.literal('edit'), version: z.number().int().positive(), instructions: z.string().max(10000),
     deliverables: z.string().max(10000), fileIdentifier: z.string().max(300), fileRevision: z.string().max(100),
-    plannedStartDate: date, plannedEndDate: date }).refine(value => value.plannedEndDate >= value.plannedStartDate, { path: ['plannedEndDate'] }),
+    plannedStartDate: date, plannedEndDate: date, usage: z.string().max(10000).optional(),
+    projectStatusId: uuid.nullable().optional(), otherManagerIds: z.array(uuid).max(30).optional()
+  }).refine(value => value.plannedEndDate >= value.plannedStartDate, { path: ['plannedEndDate'] })
+    .refine(value => [value.usage, value.projectStatusId, value.otherManagerIds].every(item => item === undefined) ||
+      [value.usage, value.projectStatusId, value.otherManagerIds].every(item => item !== undefined), { path: ['usage'] }),
   z.object({ action: z.literal('deliver'), version: z.number().int().positive() }),
   z.object({ action: z.literal('file'), version: z.number().int().positive(),
     fileIdentifier: z.string().trim().min(1).max(300), fileRevision: z.string().trim().min(1).max(100) }),
@@ -55,12 +62,13 @@ export interface DesignRequest {
   plannedStartDate: string; plannedEndDate: string;
   createdAt: string; deliveredAt: string | null; deliveredBy: string | null;
   instructions: string; deliverables: string; fileIdentifier: string; fileRevision: string;
+  usage: string; projectStatusId: string | null; otherManagerIds: string[];
   tasks: DesignTask[];
   events: { action: string; actorId: string; occurredAt: string; taskId?: string }[];
 }
 
 export function mapDesignRows(requests: any[], details: any[], links: any[], tasks: any[], assignees: any[],
-  requestEvents: any[] = [], taskEvents: any[] = []): DesignRequest[] {
+  requestEvents: any[] = [], taskEvents: any[] = [], otherManagers: any[] = []): DesignRequest[] {
   const detailMap = new Map(details.map(row => [row.request_id, row]));
   const taskMap = new Map(tasks.map(row => [row.id, row]));
   const assigneeMap = new Map<string, string[]>();
@@ -83,6 +91,8 @@ export function mapDesignRows(requests: any[], details: any[], links: any[], tas
       createdAt: row.created_at, deliveredAt: row.delivered_at, deliveredBy: row.delivered_by,
       instructions: detail.instructions || '', deliverables: detail.deliverables || '',
       fileIdentifier: detail.file_identifier || '', fileRevision: detail.file_revision || '',
+      usage: detail.usage_text || '', projectStatusId: detail.project_status_id || null,
+      otherManagerIds: otherManagers.filter(manager => manager.request_id === row.id).map(manager => manager.user_id),
       tasks: linkMap.get(row.id) || [], events: [
         ...requestEvents.filter(event => event.request_id === row.id).map(event => ({ action: event.action,
           actorId: event.actor_id, occurredAt: event.occurred_at })),

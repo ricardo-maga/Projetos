@@ -29,21 +29,23 @@ export async function listMechanicalDesign(db: SupabaseClient, id?: string, page
   if (!requests?.length) return [];
   const ids = requests.map(row => row.id);
   const [{ data: details, error: detailError }, { data: links, error: linkError },
+    { data: otherManagers, error: otherManagersError },
     { data: requestEvents, error: requestEventsError }, { data: taskEvents, error: taskEventsError }] = await Promise.all([
     db.from('mechanical_design_details').select('*').in('request_id', ids),
     db.from('work_request_tasks').select('*').in('request_id', ids),
+    db.from('mechanical_design_other_managers').select('request_id,user_id').in('request_id', ids).eq('active', true),
     db.from('work_request_events').select('request_id,action,actor_id,occurred_at').in('request_id', ids),
     db.from('work_task_events').select('request_id,task_id,action,actor_id,occurred_at').in('request_id', ids),
   ]);
-  if (detailError || linkError || requestEventsError || taskEventsError) throw detailError || linkError || requestEventsError || taskEventsError;
+  if (detailError || linkError || otherManagersError || requestEventsError || taskEventsError) throw detailError || linkError || otherManagersError || requestEventsError || taskEventsError;
   const taskIds = (links || []).map(row => row.task_id);
-  if (!taskIds.length) return mapDesignRows(requests, details || [], links || [], [], [], requestEvents || [], taskEvents || []);
+  if (!taskIds.length) return mapDesignRows(requests, details || [], links || [], [], [], requestEvents || [], taskEvents || [], otherManagers || []);
   const [{ data: tasks, error: taskError }, { data: assignees, error: assigneeError }] = await Promise.all([
     db.from('tasks').select('id,task_title,task_description,status_id,version').in('id', taskIds),
     db.from('task_assignees').select('task_id,user_id').in('task_id', taskIds),
   ]);
   if (taskError || assigneeError) throw taskError || assigneeError;
-  return mapDesignRows(requests, details || [], links || [], tasks || [], assignees || [], requestEvents || [], taskEvents || []);
+  return mapDesignRows(requests, details || [], links || [], tasks || [], assignees || [], requestEvents || [], taskEvents || [], otherManagers || []);
 }
 
 export function designRpcError(error: { code?: string; message?: string }) {
