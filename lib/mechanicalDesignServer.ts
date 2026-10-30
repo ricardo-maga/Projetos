@@ -1,6 +1,24 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { mapDesignRows } from './mechanicalDesign';
 
+export async function listEligibleDesignExecutors(db: SupabaseClient): Promise<string[]> {
+  const { data: permission, error: permissionError } = await db.from('permissions').select('id')
+    .eq('code', 'mechanical_design.execute').eq('is_active', true).maybeSingle();
+  if (permissionError) throw permissionError;
+  if (!permission) return [];
+  const { data: grants, error: grantsError } = await db.from('role_permissions').select('role_id').eq('permission_id', permission.id);
+  if (grantsError) throw grantsError;
+  const roleIds = [...new Set((grants || []).map(row => row.role_id))];
+  if (!roleIds.length) return [];
+  const { data: roles, error: rolesError } = await db.from('roles').select('id').eq('is_active', true).in('id', roleIds);
+  if (rolesError) throw rolesError;
+  const activeRoleIds = (roles || []).map(row => row.id);
+  if (!activeRoleIds.length) return [];
+  const { data: assignments, error: assignmentsError } = await db.from('user_roles').select('user_id').in('role_id', activeRoleIds);
+  if (assignmentsError) throw assignmentsError;
+  return [...new Set((assignments || []).map(row => row.user_id))];
+}
+
 export async function listMechanicalDesign(db: SupabaseClient, id?: string, page = 1, pageSize = 50) {
   let query = db.from('work_requests').select('id,title,status,requester_id,area_owner_id,project_id,planned_start_date,planned_end_date,version,created_at,delivered_at,delivered_by')
     .eq('kind', 'mechanical_design').order('created_at', { ascending: false });

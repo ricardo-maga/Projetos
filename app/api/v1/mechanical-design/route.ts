@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/authorization';
+import { requirePermission } from '@/lib/auth/authorization';
 import { createAdminClient } from '@/lib/supabase/server';
 import { runIdempotent, getIdempotentEntityId } from '@/lib/apiIdempotency';
 import { createDesignSchema } from '@/lib/mechanicalDesign';
-import { listMechanicalDesign, designRpcError } from '@/lib/mechanicalDesignServer';
+import { listMechanicalDesign, listEligibleDesignExecutors, designRpcError } from '@/lib/mechanicalDesignServer';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requirePermission(req, 'mechanical_design.read');
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode consultar pedidos de desenho.' }, { status: 403 });
   try {
@@ -16,12 +16,13 @@ export async function GET(req: NextRequest) {
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
     const page = Number(new URL(req.url).searchParams.get('page') || 1);
     if (!Number.isInteger(page) || page < 1 || page > 10000) return NextResponse.json({ success: false, message: 'Página inválida.' }, { status: 400 });
-    const [{ count, error }, rows] = await Promise.all([
+    const [{ count, error }, rows, eligibleExecutorIds] = await Promise.all([
       db.from('work_requests').select('id', { count: 'exact', head: true }).eq('kind','mechanical_design'),
       listMechanicalDesign(db, undefined, page),
+      listEligibleDesignExecutors(db),
     ]);
     if (error) throw error;
-    return NextResponse.json({ success: true, data: rows, page, total: count || 0 });
+    return NextResponse.json({ success: true, data: rows, page, total: count || 0, eligibleExecutorIds });
   } catch (error) {
     console.error('[MECHANICAL DESIGN LIST]', error);
     return NextResponse.json({ success: false, message: 'Não foi possível consultar os pedidos.' }, { status: 500 });
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requirePermission(req, 'mechanical_design.create');
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode criar pedidos de desenho.' }, { status: 403 });
   if (!req.headers.has('Idempotency-Key')) return NextResponse.json({ success: false, message: 'Idempotency-Key obrigatória.' }, { status: 400 });

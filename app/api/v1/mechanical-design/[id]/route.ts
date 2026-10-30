@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/authorization';
+import { requireAuth, requirePermission } from '@/lib/auth/authorization';
 import { createAdminClient } from '@/lib/supabase/server';
 import { manageDesignSchema } from '@/lib/mechanicalDesign';
 import { listMechanicalDesign, designRpcError } from '@/lib/mechanicalDesignServer';
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ id: string }> };
 
 export async function GET(req: NextRequest, context: Context) {
-  const auth = await requireAuth(req);
+  const auth = await requirePermission(req, 'mechanical_design.read');
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode consultar pedidos de desenho.' }, { status: 403 });
   const { id } = await context.params;
@@ -34,6 +34,10 @@ export async function PATCH(req: NextRequest, context: Context) {
   if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ success: false, message: 'Identificador inválido.' }, { status: 400 });
   const parsed = manageDesignSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: 'Operação inválida.', details: parsed.error.flatten() }, { status: 400 });
+  const requiredPermission = ['start','block','resume','complete','file','deliver'].includes(parsed.data.action)
+    ? 'mechanical_design.execute' : 'mechanical_design.manage';
+  const permission = await requirePermission(req, requiredPermission);
+  if (!permission.success) return permission.response;
   try {
     const db = createAdminClient();
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
