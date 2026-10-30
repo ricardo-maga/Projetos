@@ -1,4 +1,13 @@
 import { z } from 'zod';
+import { CANONICAL_ROLE_IDS, normalizeRoleId } from './permissions';
+import type { User } from './types';
+
+/** Uses the current RBAC assignments, including an additional Project Manager role. */
+export function isMechanicalDesignManager(user: Pick<User, 'roleId' | 'roleIds' | 'approved' | 'deleted' | 'type'>): boolean {
+  if (!user.approved || user.deleted || user.type === 'External') return false;
+  const roleIds = Array.isArray(user.roleIds) ? user.roleIds : [user.roleId];
+  return roleIds.some(roleId => normalizeRoleId(roleId) === CANONICAL_ROLE_IDS.PROJECT_MANAGER);
+}
 
 const uuid = z.string().uuid();
 const date = z.iso.date();
