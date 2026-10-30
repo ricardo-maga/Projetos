@@ -1002,7 +1002,8 @@ export default function Page() {
 
               {activeTab === 'desenho-mecanico' && (
                 <MechanicalDesignSection currentUser={currentUser} users={state.users}
-                  projects={state.projects} onTasksChanged={refreshFromDatabase} />
+                  projects={state.projects} projectStatuses={state.projectStatuses}
+                  onTasksChanged={refreshFromDatabase} />
               )}
 
               {activeTab === 'calendario' && (
