@@ -20,11 +20,18 @@ describe('Desenho mecânico', () => {
     expect(isMechanicalDesignManager({ ...profile, type: 'External' })).toBe(false);
   });
   it('tem entrada própria na navegação e apresenta um percurso distinto de Tasks', () => {
-    expect(APP_SECTIONS.find(section => section.id === 'desenho-mecanico')?.label).toBe('Desenho mecânico');
+    expect(APP_SECTIONS.find(section => section.id === 'desenho-mecanico')).toMatchObject({
+      label: 'Desenho mecânico', requiredPermission: 'mechanical_design_read',
+    });
     const html = renderToStaticMarkup(<MechanicalDesignSection currentUser={{ id: id(1), name: 'Ana', approved: true,
-      deleted: false, type: 'Team', email: '', roleId: '' } as any} users={[]} projects={[]} onTasksChanged={async () => {}} />);
+      deleted: false, type: 'Team', email: '', roleId: CANONICAL_ROLE_IDS.TECHNICIAN,
+      permissions: ['mechanical_design.read','mechanical_design.create'] } as any} users={[]} projects={[]} onTasksChanged={async () => {}} />);
     expect(html).toContain('Desenho mecânico');
     expect(html).toContain('Novo pedido');
+    const readOnly = renderToStaticMarkup(<MechanicalDesignSection currentUser={{ id: id(1), name: 'Ana', approved: true,
+      deleted: false, type: 'Team', email: '', roleId: CANONICAL_ROLE_IDS.VIEWER,
+      permissions: ['mechanical_design.read'] } as any} users={[]} projects={[]} onTasksChanged={async () => {}} />);
+    expect(readOnly).not.toContain('Novo pedido');
   });
 
   it('exige prazo coerente, atribuição e estimativas em meios dias', () => {

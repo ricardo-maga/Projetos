@@ -9,6 +9,13 @@ export interface GroupPermissions {
   tasks_write: boolean;
   tasks_delete: boolean;
 
+  // Pedidos e tarefas de desenho mecânico
+  mechanical_design_read: boolean;
+  mechanical_design_create: boolean;
+  mechanical_design_manage: boolean;
+  mechanical_design_execute: boolean;
+  mechanical_design_coordinate: boolean;
+
   // 3. CALENDARIO E AGENDAMENTO
   calendar_read: boolean;
   calendar_write: boolean;
@@ -91,6 +98,11 @@ export const EMPTY_PERMISSIONS: GroupPermissions = {
   tasks_read: false,
   tasks_write: false,
   tasks_delete: false,
+  mechanical_design_read: false,
+  mechanical_design_create: false,
+  mechanical_design_manage: false,
+  mechanical_design_execute: false,
+  mechanical_design_coordinate: false,
   calendar_read: false,
   calendar_write: false,
   clients_read: false,

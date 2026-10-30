@@ -35,6 +35,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   const [requests, setRequests] = useState<DesignRequest[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [eligibleExecutorIds, setEligibleExecutorIds] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -66,11 +67,15 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   const [reopenReason, setReopenReason] = useState('');
 
   const activeUsers = users.filter(user => user.approved && !user.deleted && user.type !== 'External');
+  const executorUsers = activeUsers.filter(user => eligibleExecutorIds.includes(user.id));
   const managerUsers = activeUsers.filter(isMechanicalDesignManager);
+  const canCreate = hasPermission(currentUser, 'mechanical_design_create');
+  const canExecute = hasPermission(currentUser, 'mechanical_design_execute');
   const selected = requests.find(request => request.id === selectedId) || null;
-  const canManage = Boolean(selected && isMechanicalDesignManager(currentUser) &&
-    (selected.ownerId === currentUser.id || hasPermission(currentUser, 'projects_write')));
-  const canReopen = Boolean(selected && selected.ownerId === currentUser.id && isMechanicalDesignManager(currentUser));
+  const canManage = Boolean(selected && isMechanicalDesignManager(currentUser) && hasPermission(currentUser, 'mechanical_design_manage') &&
+    (selected.ownerId === currentUser.id || hasPermission(currentUser, 'mechanical_design_coordinate')));
+  const canReopen = Boolean(selected && selected.ownerId === currentUser.id && isMechanicalDesignManager(currentUser) &&
+    hasPermission(currentUser, 'mechanical_design_manage'));
   const isAssigned = Boolean(selected?.tasks.some(task => task.assigneeIds.includes(currentUser.id)));
   const nameOf = (id: string) => users.find(user => user.id === id)?.name || 'Utilizador indisponível';
 
@@ -80,6 +85,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(getApiErrorMessage(result, 'Falha ao carregar pedidos.'));
       setRequests(current => targetPage === 1 ? result.data : [...current, ...result.data.filter((row: DesignRequest) => !current.some(item => item.id === row.id))]);
+      setEligibleExecutorIds(result.eligibleExecutorIds || []);
       setPage(targetPage); setTotal(result.total);
       setError('');
     } catch (failure) {
@@ -153,8 +159,8 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
     {notice && <p role="status" className="rounded-control border border-success/30 bg-success/10 p-3 text-text-primary">{notice}</p>}
     <div className="grid gap-5 lg:grid-cols-[minmax(250px,360px)_minmax(0,1fr)]">
       <div className="space-y-3">
-        <M3Button onClick={() => { setOwnerId(''); setShowCreate(value => !value); }}><Plus className="h-4 w-4" />Novo pedido</M3Button>
-        {showCreate && <M3Card className="space-y-3 p-4"><h3 className="font-semibold">Novo pedido de desenho</h3>
+        {canCreate && <M3Button onClick={() => { setOwnerId(''); setShowCreate(value => !value); }}><Plus className="h-4 w-4" />Novo pedido</M3Button>}
+        {canCreate && showCreate && <M3Card className="space-y-3 p-4"><h3 className="font-semibold">Novo pedido de desenho</h3>
           <form onSubmit={event => void create(event)} className="space-y-3">
             <Input label="Pedido" value={title} onChange={event => setTitle(event.target.value)} required minLength={2} maxLength={200} />
             <label className="block text-label font-semibold text-text-secondary">Gestor de projeto responsável
@@ -186,7 +192,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
             {selected.projectId && <span className="text-caption">Projeto: {projects.find(project => project.id === selected.projectId)?.title || 'Indisponível'}</span>}</div>
           {canManage && selected.status === 'submitted' && <div className="space-y-3">
             <fieldset className="space-y-1"><legend className="font-medium">Desenhadores da tarefa inicial</legend>
-              <div className="flex flex-wrap gap-3">{activeUsers.map(user => <label key={user.id} className="inline-flex items-center gap-1">
+              <div className="flex flex-wrap gap-3">{executorUsers.map(user => <label key={user.id} className="inline-flex items-center gap-1">
                 <input type="checkbox" checked={assigneeIds.includes(user.id)} onChange={() => toggleAssignee(user.id)} />{user.name}</label>)}</div></fieldset>
             <Input label="Estimativa da tarefa inicial (dias)" type="number" min="0.5" step="0.5" required value={estimatedDays} onChange={event => setEstimatedDays(event.target.value)} />
             <div className="flex flex-wrap gap-2"><M3Button isLoading={busy} disabled={!assigneeIds.length || Number(estimatedDays) < 0.5} onClick={() => void act({ action: 'accept', version: selected.version, assigneeIds, estimatedDays: Number(estimatedDays) }, 'Pedido aceite e atribuído.')}>Aceitar e atribuir</M3Button>
@@ -196,11 +202,11 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
             <Textarea label="Entregáveis" value={deliverables} disabled={!canManage || selected.status === 'delivered'} onChange={event => setDeliverables(event.target.value)} />
             <Input label="Início previsto" type="date" disabled={!canManage || selected.status === 'delivered'} value={plannedStartDate} onChange={event => setPlannedStartDate(event.target.value)} />
             <Input label="Fim previsto" type="date" min={plannedStartDate || undefined} disabled={!canManage || selected.status === 'delivered'} value={plannedEndDate} onChange={event => setPlannedEndDate(event.target.value)} />
-            <Input label="Identificação do ficheiro" value={fileIdentifier} disabled={!(canManage || isAssigned) || selected.status !== 'accepted'} onChange={event => setFileIdentifier(event.target.value)} />
-            <Input label="Revisão do ficheiro" value={fileRevision} disabled={!(canManage || isAssigned) || selected.status !== 'accepted'} onChange={event => setFileRevision(event.target.value)} /></div>
+            <Input label="Identificação do ficheiro" value={fileIdentifier} disabled={!(canManage || (isAssigned && canExecute)) || selected.status !== 'accepted'} onChange={event => setFileIdentifier(event.target.value)} />
+            <Input label="Revisão do ficheiro" value={fileRevision} disabled={!(canManage || (isAssigned && canExecute)) || selected.status !== 'accepted'} onChange={event => setFileRevision(event.target.value)} /></div>
           {canManage && ['submitted','accepted'].includes(selected.status) && <M3Button tone="outlined" disabled={busy} onClick={() => void act({ action: 'edit', version: selected.version,
             instructions, deliverables, fileIdentifier, fileRevision, plannedStartDate, plannedEndDate }, 'Dados do pedido guardados.')}>Guardar detalhes</M3Button>}
-          {isAssigned && selected.status === 'accepted' && <M3Button tone="outlined" disabled={busy || !fileIdentifier.trim() || !fileRevision.trim()}
+          {isAssigned && canExecute && selected.status === 'accepted' && <M3Button tone="outlined" disabled={busy || !fileIdentifier.trim() || !fileRevision.trim()}
             onClick={() => void act({ action: 'file', version: selected.version, fileIdentifier, fileRevision }, 'Ficheiro e revisão guardados.')}>Guardar ficheiro/revisão</M3Button>}
         </M3Card>
         <M3Card className="space-y-4 p-5"><div className="flex items-center gap-2"><ClipboardList className="h-5 w-5" /><h3 className="text-heading-sm font-bold">Tarefas de desenvolvimento</h3></div>
@@ -213,17 +219,17 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
               <p className="text-caption text-text-secondary">Responsáveis: {task.assigneeIds.map(nameOf).join(', ') || 'Por atribuir'} · Estimativa: {task.estimatedDays ?? 'por definir'} dia(s)</p>
               {canManage && selected.status === 'accepted' && <div className="space-y-2">
                 {assigningTaskId === task.id ? <><fieldset><legend className="text-label font-semibold">Alterar desenhadores</legend>
-                  <div className="flex flex-wrap gap-3">{activeUsers.map(user => <label key={user.id} className="inline-flex items-center gap-1">
+                  <div className="flex flex-wrap gap-3">{executorUsers.map(user => <label key={user.id} className="inline-flex items-center gap-1">
                     <input type="checkbox" checked={assignmentDraft.includes(user.id)} onChange={() => setAssignmentDraft(current =>
                       current.includes(user.id) ? current.filter(id => id !== user.id) : [...current, user.id])} />{user.name}</label>)}</div></fieldset>
                   <M3Button tone="outlined" disabled={busy || !assignmentDraft.length} onClick={() => void act({ action: 'assign_task', version: selected.version,
                     taskId: task.id, assigneeIds: assignmentDraft }, 'Desenhadores atualizados.').then(result => { if (result) setAssigningTaskId(null); })}>Guardar responsáveis</M3Button></>
                 : <M3Button tone="text" disabled={busy} onClick={() => { setAssigningTaskId(task.id); setAssignmentDraft(task.assigneeIds); }}>Alterar responsáveis</M3Button>}
               </div>}
-              {selected.status === 'accepted' && (assigned || (canManage && task.statusId === TASK_STATUS.complete)) && <div className="flex flex-wrap gap-2">
-                {assigned && task.statusId === TASK_STATUS.pending && <M3Button tone="outlined" disabled={busy} onClick={() => void taskAction(task,'start')}>Iniciar</M3Button>}
-                {assigned && task.statusId === TASK_STATUS.progress && <><M3Button tone="outlined" disabled={busy} onClick={() => void taskAction(task,'block')}>Bloquear</M3Button><M3Button disabled={busy} onClick={() => void taskAction(task,'complete')}>Concluir</M3Button></>}
-                {assigned && task.statusId === TASK_STATUS.blocked && <M3Button tone="outlined" disabled={busy} onClick={() => void taskAction(task,'resume')}>Retomar</M3Button>}
+              {selected.status === 'accepted' && ((assigned && canExecute) || (canManage && task.statusId === TASK_STATUS.complete)) && <div className="flex flex-wrap gap-2">
+                {assigned && canExecute && task.statusId === TASK_STATUS.pending && <M3Button tone="outlined" disabled={busy} onClick={() => void taskAction(task,'start')}>Iniciar</M3Button>}
+                {assigned && canExecute && task.statusId === TASK_STATUS.progress && <><M3Button tone="outlined" disabled={busy} onClick={() => void taskAction(task,'block')}>Bloquear</M3Button><M3Button disabled={busy} onClick={() => void taskAction(task,'complete')}>Concluir</M3Button></>}
+                {assigned && canExecute && task.statusId === TASK_STATUS.blocked && <M3Button tone="outlined" disabled={busy} onClick={() => void taskAction(task,'resume')}>Retomar</M3Button>}
                 {canReopen && task.statusId === TASK_STATUS.complete && <div className="flex flex-wrap gap-2"><Input aria-label="Justificação da reabertura" placeholder="Motivo da reabertura" value={reopenReason} onChange={event => setReopenReason(event.target.value)} /><M3Button tone="outlined" disabled={busy || reopenReason.trim().length < 5} onClick={() => void taskAction(task,'reopen')}>Reabrir</M3Button></div>}
               </div>}
             </div>;
@@ -233,11 +239,11 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
             <h4 className="font-semibold">Acrescentar tarefa de desenvolvimento</h4><Input label="Título da tarefa" required minLength={2} value={newTaskTitle} onChange={event => setNewTaskTitle(event.target.value)} />
             <Textarea label="Instruções desta tarefa" value={newTaskDescription} onChange={event => setNewTaskDescription(event.target.value)} />
             <Input label="Estimativa (dias, passos de 0,5)" type="number" min="0.5" step="0.5" required value={newTaskEstimatedDays} onChange={event => setNewTaskEstimatedDays(event.target.value)} />
-            <fieldset><legend className="text-label font-semibold">Desenhadores</legend><div className="flex flex-wrap gap-3">{activeUsers.map(user => <label key={user.id} className="inline-flex items-center gap-1">
+            <fieldset><legend className="text-label font-semibold">Desenhadores</legend><div className="flex flex-wrap gap-3">{executorUsers.map(user => <label key={user.id} className="inline-flex items-center gap-1">
               <input type="checkbox" checked={assigneeIds.includes(user.id)} onChange={() => toggleAssignee(user.id)} />{user.name}</label>)}</div></fieldset>
             <M3Button type="submit" isLoading={busy} disabled={!assigneeIds.length}><Plus className="h-4 w-4" />Acrescentar tarefa</M3Button>
           </form>}
-          {selected.status === 'accepted' && allComplete && selected.tasks.some(task => task.assigneeIds.includes(currentUser.id)) &&
+          {selected.status === 'accepted' && allComplete && canExecute && selected.tasks.some(task => task.assigneeIds.includes(currentUser.id)) &&
             <M3Button disabled={busy || !selected.fileIdentifier || !selected.fileRevision} onClick={() => void act({ action: 'deliver', version: selected.version }, 'Entrega confirmada.')}>Confirmar entrega</M3Button>}
           {selected.status === 'delivered' && <p>Entrega confirmada por {nameOf(selected.deliveredBy || '')}.</p>}
         </M3Card>
