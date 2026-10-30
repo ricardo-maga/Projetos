@@ -13,7 +13,7 @@ describe('Configuration navigation regression', () => {
   it('keeps the requested primary and configuration menu order', () => {
     const primary = sectionCatalog.slice(sectionCatalog.indexOf('export const APP_SECTIONS'), sectionCatalog.indexOf('];', sectionCatalog.indexOf('export const APP_SECTIONS')));
     const ids = [...primary.matchAll(/id: '([^']+)'/g)].map(m => m[1]);
-    expect(ids).toEqual(['dashboard', 'meu-foco', 'projetos', 'desenho-mecanico', 'tarefas', 'relatorios', 'calendario', 'configuracoes']);
+    expect(ids).toEqual(['dashboard', 'my-focus', 'projetos', 'mechanical-design', 'tarefas', 'reports', 'calendario', 'configuracoes']);
     const submenu = source.match(/const configSubItems = \[([\s\S]*?)\];/)![1];
     expect([...submenu.matchAll(/id: '([^']+)'/g)].map(m => m[1])).toEqual([
       'aplicacao-menu', 'clientes', 'ausencias', 'utilizadores', 'notificacoes', 'sistema-menu',

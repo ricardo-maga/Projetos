@@ -19,11 +19,12 @@ export async function listEligibleDesignExecutors(db: SupabaseClient): Promise<s
   return [...new Set((assignments || []).map(row => row.user_id))];
 }
 
-export async function listMechanicalDesign(db: SupabaseClient, id?: string, page = 1, pageSize = 50) {
+export async function listMechanicalDesign(db: SupabaseClient, id?: string, page = 1, pageSize = 50, ownerId?: string) {
   let query = db.from('work_requests').select('id,title,status,requester_id,area_owner_id,project_id,planned_start_date,planned_end_date,version,created_at,delivered_at,delivered_by')
     .eq('kind', 'mechanical_design').order('created_at', { ascending: false });
   if (id) query = query.eq('id', id);
-  else query = query.range((page - 1) * pageSize, page * pageSize - 1);
+  else if (ownerId) query = query.eq('area_owner_id', ownerId);
+  if (!id) query = query.range((page - 1) * pageSize, page * pageSize - 1);
   const { data: requests, error } = await query;
   if (error) throw error;
   if (!requests?.length) return [];
