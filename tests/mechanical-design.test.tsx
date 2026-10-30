@@ -2,12 +2,23 @@ import { describe, expect, it } from 'bun:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import MechanicalDesignSection from '../components/MechanicalDesignSection';
-import { createDesignSchema, manageDesignSchema, mapDesignRows, TASK_STATUS } from '../lib/mechanicalDesign';
+import { createDesignSchema, isMechanicalDesignManager, manageDesignSchema, mapDesignRows, TASK_STATUS } from '../lib/mechanicalDesign';
 import { APP_SECTIONS } from '../lib/sectionCatalog';
+import { CANONICAL_ROLE_IDS } from '../lib/permissions';
 
 const id = (digit: number) => `${digit}`.repeat(8) + '-1111-4111-8111-111111111111';
 
 describe('Desenho mecânico', () => {
+  it('reconhece apenas gestores de projeto ativos, incluindo atribuições adicionais', () => {
+    const profile = { roleId: CANONICAL_ROLE_IDS.TECHNICIAN,
+      roleIds: [CANONICAL_ROLE_IDS.TECHNICIAN, CANONICAL_ROLE_IDS.PROJECT_MANAGER],
+      approved: true, deleted: false, type: 'Team' as const };
+    expect(isMechanicalDesignManager(profile)).toBe(true);
+    expect(isMechanicalDesignManager({ ...profile, roleIds: [CANONICAL_ROLE_IDS.TECHNICIAN] })).toBe(false);
+    expect(isMechanicalDesignManager({ ...profile, roleIds: [], roleId: CANONICAL_ROLE_IDS.PROJECT_MANAGER })).toBe(false);
+    expect(isMechanicalDesignManager({ ...profile, deleted: true })).toBe(false);
+    expect(isMechanicalDesignManager({ ...profile, type: 'External' })).toBe(false);
+  });
   it('tem entrada própria na navegação e apresenta um percurso distinto de Tasks', () => {
     expect(APP_SECTIONS.find(section => section.id === 'desenho-mecanico')?.label).toBe('Desenho mecânico');
     const html = renderToStaticMarkup(<MechanicalDesignSection currentUser={{ id: id(1), name: 'Ana', approved: true,

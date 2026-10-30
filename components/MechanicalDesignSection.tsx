@@ -7,7 +7,7 @@ import { Input } from './ui/Input';
 import Textarea from './ui/Textarea';
 import type { Project, User } from '../lib/types';
 import { getAuthHeaders, getApiErrorMessage } from '../lib/clientAuth';
-import { TASK_STATUS, type DesignRequest, type DesignTask } from '../lib/mechanicalDesign';
+import { TASK_STATUS, isMechanicalDesignManager, type DesignRequest, type DesignTask } from '../lib/mechanicalDesign';
 import { hasPermission } from '../lib/permissions';
 
 const statusLabel: Record<DesignRequest['status'], string> = {
@@ -66,8 +66,11 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   const [reopenReason, setReopenReason] = useState('');
 
   const activeUsers = users.filter(user => user.approved && !user.deleted && user.type !== 'External');
+  const managerUsers = activeUsers.filter(isMechanicalDesignManager);
   const selected = requests.find(request => request.id === selectedId) || null;
-  const canManage = selected && (selected.ownerId === currentUser.id || hasPermission(currentUser, 'projects_write'));
+  const canManage = Boolean(selected && isMechanicalDesignManager(currentUser) &&
+    (selected.ownerId === currentUser.id || hasPermission(currentUser, 'projects_write')));
+  const canReopen = Boolean(selected && selected.ownerId === currentUser.id && isMechanicalDesignManager(currentUser));
   const isAssigned = Boolean(selected?.tasks.some(task => task.assigneeIds.includes(currentUser.id)));
   const nameOf = (id: string) => users.find(user => user.id === id)?.name || 'Utilizador indisponível';
 
@@ -154,10 +157,11 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
         {showCreate && <M3Card className="space-y-3 p-4"><h3 className="font-semibold">Novo pedido de desenho</h3>
           <form onSubmit={event => void create(event)} className="space-y-3">
             <Input label="Pedido" value={title} onChange={event => setTitle(event.target.value)} required minLength={2} maxLength={200} />
-            <label className="block text-label font-semibold text-text-secondary">Responsável da área
+            <label className="block text-label font-semibold text-text-secondary">Gestor de projeto responsável
               <select className="mt-1 w-full rounded-control border border-border bg-surface p-3" value={ownerId} onChange={event => setOwnerId(event.target.value)} required>
-                <option value="">Selecionar</option>{activeUsers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+                <option value="">Selecionar</option>{managerUsers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
               </select></label>
+            {managerUsers.length === 0 && <p className="text-caption text-error">Não há gestores de projeto ativos disponíveis para receber o pedido.</p>}
             <label className="block text-label font-semibold text-text-secondary">Projeto associado (opcional)
               <select className="mt-1 w-full rounded-control border border-border bg-surface p-3" value={projectId} onChange={event => setProjectId(event.target.value)}>
                 <option value="">Pedido independente</option>{projects.filter(project => !project.deleted).map(project =>
@@ -220,7 +224,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
                 {assigned && task.statusId === TASK_STATUS.pending && <M3Button tone="outlined" disabled={busy} onClick={() => void taskAction(task,'start')}>Iniciar</M3Button>}
                 {assigned && task.statusId === TASK_STATUS.progress && <><M3Button tone="outlined" disabled={busy} onClick={() => void taskAction(task,'block')}>Bloquear</M3Button><M3Button disabled={busy} onClick={() => void taskAction(task,'complete')}>Concluir</M3Button></>}
                 {assigned && task.statusId === TASK_STATUS.blocked && <M3Button tone="outlined" disabled={busy} onClick={() => void taskAction(task,'resume')}>Retomar</M3Button>}
-                {canManage && task.statusId === TASK_STATUS.complete && <div className="flex flex-wrap gap-2"><Input aria-label="Justificação da reabertura" placeholder="Motivo da reabertura" value={reopenReason} onChange={event => setReopenReason(event.target.value)} /><M3Button tone="outlined" disabled={busy || reopenReason.trim().length < 5} onClick={() => void taskAction(task,'reopen')}>Reabrir</M3Button></div>}
+                {canReopen && task.statusId === TASK_STATUS.complete && <div className="flex flex-wrap gap-2"><Input aria-label="Justificação da reabertura" placeholder="Motivo da reabertura" value={reopenReason} onChange={event => setReopenReason(event.target.value)} /><M3Button tone="outlined" disabled={busy || reopenReason.trim().length < 5} onClick={() => void taskAction(task,'reopen')}>Reabrir</M3Button></div>}
               </div>}
             </div>;
           })}
