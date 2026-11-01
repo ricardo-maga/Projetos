@@ -135,7 +135,6 @@ export async function POST(req: NextRequest) {
       const hasNonAdminPayload = Boolean(
         (state.comments && state.comments.length > 0) ||
         (state.userAbsences && state.userAbsences.length > 0) ||
-        (state.equipment && state.equipment.length > 0) ||
         (state.projectRiskItems && state.projectRiskItems.length > 0) ||
         (state.notifications && state.notifications.length > 0)
       );

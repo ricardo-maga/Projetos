@@ -8,7 +8,7 @@ export const LEGACY_TABLE_FIELDS = {
   users: 'users', app_configuration: 'appConfig',
   project_materials: 'projectMaterials', project_risk_items: 'projectRiskItems', comments: 'comments',
   user_absences: 'userAbsences',
-  equipment: 'equipmentList', special_days: 'specialDays', default_tasks: 'defaultTasks',
+  special_days: 'specialDays', default_tasks: 'defaultTasks',
   risk_categories: 'riskCategories', risk_statuses: 'riskStatuses', risk_priorities: 'riskPriorities',
   notifications: 'notifications', automation_rules: 'automationRules',
 } as const;

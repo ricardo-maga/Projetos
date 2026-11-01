@@ -17,7 +17,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Limpeza de tabelas antigas para permitir reconstrução limpa (Descomentar se desejar limpar)
 -- DROP TABLE IF EXISTS portal_erp_snapshots CASCADE;
--- DROP TABLE IF EXISTS equipment CASCADE;
 -- DROP TABLE IF EXISTS bill_of_materials CASCADE;
 -- DROP TABLE IF EXISTS quotes CASCADE;
 -- DROP TABLE IF EXISTS material CASCADE;
@@ -334,22 +333,6 @@ CREATE TABLE IF NOT EXISTS default_tasks (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- ==========================================
--- 24. TABLE `equipment`
--- ==========================================
-CREATE TABLE IF NOT EXISTS equipment (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    serial_number TEXT NULL,
-    brand TEXT NULL,
-    model TEXT NULL,
-    project_id UUID NULL REFERENCES projects(id) ON DELETE SET NULL,
-    status TEXT NULL,
-    installation_date DATE NULL,
-    deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-
 -- ============================================================================
 -- SEED DATA DE FACTO (COM CONVERSÃO DE IDS EM MEMÓRIA PARA UUIDS CONSISTENTES)
 -- ============================================================================
@@ -488,12 +471,6 @@ INSERT INTO user_absences (id, user_id, absence_start_date, absence_end_date, re
 INSERT INTO app_configuration (id, app_name, app_description, footer_text, logo_url) VALUES
 ('33333333-4444-5555-6666-777777777777', 'Gestão de Projetos e ERP', 'Plataforma integrada de planeamento, orçamentação e controlo de projetos industriais.', '© 2026 Gestão de Projetos e ERP. Todos os direitos reservados.', '');
 
--- 24. Seed equipment
-INSERT INTO equipment (id, serial_number, brand, model, project_id, status, installation_date, deleted, created_at) VALUES
-('22222222-1111-4444-3333-999999999991', 'EQ-SN-99120', 'Dibal', 'Dibal LS-4000', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Active', '2026-06-29', FALSE, '2026-06-29T11:00:00Z'),
-('22222222-1111-4444-3333-999999999992', 'EQ-SN-10294', 'Cognex', 'In-Sight 8402', NULL, 'Inactive', NULL, FALSE, '2026-07-05T09:00:00Z');
-
-
 -- ============================================================================
 -- SEGURANÇA: ROW LEVEL SECURITY (RLS) POLICIES
 -- ============================================================================
@@ -518,7 +495,6 @@ ALTER TABLE task_assignees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_absences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_configuration ENABLE ROW LEVEL SECURITY;
-ALTER TABLE equipment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE special_days ENABLE ROW LEVEL SECURITY;
 ALTER TABLE default_tasks ENABLE ROW LEVEL SECURITY;
 
@@ -544,7 +520,6 @@ CREATE POLICY "Full access to auth users on task_assignees" ON task_assignees FO
 CREATE POLICY "Full access to auth users on comments" ON comments FOR ALL TO authenticated USING (true);
 CREATE POLICY "Full access to auth users on user_absences" ON user_absences FOR ALL TO authenticated USING (true);
 CREATE POLICY "Full access to auth users on app_configuration" ON app_configuration FOR ALL TO authenticated USING (true);
-CREATE POLICY "Full access to auth users on equipment" ON equipment FOR ALL TO authenticated USING (true);
 CREATE POLICY "Full access to auth users on special_days" ON special_days FOR ALL TO authenticated USING (true);
 CREATE POLICY "Full access to auth users on default_tasks" ON default_tasks FOR ALL TO authenticated USING (true);
 

@@ -13,7 +13,6 @@ export function stripAdministrativeSyncFields(state: Record<string, unknown>) {
 export const SYNC_DOMAIN_PERMISSIONS = {
   comments: ['projects:write', 'projects:delete'],
   projectRiskItems: ['projects:write', 'projects:delete'],
-  equipmentList: ['equipment:write', 'equipment:delete'],
   userAbsences: ['absences:write', 'absences:delete'],
   notifications: ['config:write', 'config:write'],
 } as const;
