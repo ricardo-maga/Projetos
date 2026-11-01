@@ -16,6 +16,12 @@ export interface GroupPermissions {
   mechanical_design_execute: boolean;
   mechanical_design_coordinate: boolean;
 
+  presales_read: boolean;
+  presales_create: boolean;
+  presales_manage: boolean;
+  presales_execute: boolean;
+  presales_coordinate: boolean;
+
   // 3. CALENDARIO E AGENDAMENTO
   calendar_read: boolean;
   calendar_write: boolean;
@@ -103,6 +109,11 @@ export const EMPTY_PERMISSIONS: GroupPermissions = {
   mechanical_design_manage: false,
   mechanical_design_execute: false,
   mechanical_design_coordinate: false,
+  presales_read: false,
+  presales_create: false,
+  presales_manage: false,
+  presales_execute: false,
+  presales_coordinate: false,
   calendar_read: false,
   calendar_write: false,
   clients_read: false,

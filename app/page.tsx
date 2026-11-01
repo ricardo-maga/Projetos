@@ -36,6 +36,7 @@ const SectionLoading = () => (
 const ProjectSection = dynamic(() => import('../components/ProjectSection'), { loading: SectionLoading });
 const TaskSection = dynamic(() => import('../components/TaskSection'), { loading: SectionLoading });
 const MechanicalDesignSection = dynamic(() => import('../components/MechanicalDesignSection'), { loading: SectionLoading });
+const PresalesSection = dynamic(() => import('../components/PresalesSection'), { loading: SectionLoading });
 const ClientSection = dynamic(() => import('../components/ClientSection'), { loading: SectionLoading });
 const UserSection = dynamic(() => import('../components/UserSection'), { loading: SectionLoading });
 const ConfigSection = dynamic(() => import('../components/ConfigSection'), { loading: SectionLoading });
@@ -66,6 +67,7 @@ export default function Page() {
   const [mounted, setMounted] = React.useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMechanicalRequestId, setSelectedMechanicalRequestId] = useState<string | null>(null);
+  const [selectedPresalesRequestId, setSelectedPresalesRequestId] = useState<string | null>(null);
   const [activeConfigTab, setActiveConfigTab] = useState('sistema');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -258,7 +260,8 @@ export default function Page() {
       if (projectParam) {
         setSelectedProjectId(projectParam);
       }
-      if (requestParam) setSelectedMechanicalRequestId(requestParam);
+      if (requestParam && tabParam === 'presales') setSelectedPresalesRequestId(requestParam);
+      else if (requestParam) setSelectedMechanicalRequestId(requestParam);
     }
   }, [mounted, state]);
 
@@ -923,6 +926,7 @@ export default function Page() {
                   deleteTask={deleteTask}
                   onSelectProject={handleSelectProject}
                   onSelectMechanicalRequest={id => { setSelectedMechanicalRequestId(id); handleTabChange('mechanical-design'); }}
+                  onSelectPresalesRequest={id => { setSelectedPresalesRequestId(id); handleTabChange('presales'); }}
                   appConfig={state.appConfig}
                 />
               )}
@@ -1009,6 +1013,11 @@ export default function Page() {
                   projects={state.projects} projectStatuses={state.projectStatuses} projectPriorities={state.projectPriorities}
                   initialRequestId={selectedMechanicalRequestId}
                   onTasksChanged={refreshFromDatabase} />
+              )}
+
+              {activeTab === 'presales' && (
+                <PresalesSection currentUser={currentUser} users={state.users} projects={state.projects}
+                  initialRequestId={selectedPresalesRequestId} onTasksChanged={refreshFromDatabase} />
               )}
 
               {activeTab === 'calendario' && (

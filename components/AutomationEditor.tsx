@@ -86,7 +86,7 @@ export default function AutomationEditor({
     setRuleDescription(rule.description || '');
     setRuleEnabled(rule.enabled);
     setTriggerType(rule.triggerType);
-    setTriggerToStatusId(rule.triggerCondition?.toStatusId || '');
+    setTriggerToStatusId(rule.triggerCondition?.toPresalesStatus || rule.triggerCondition?.toStatusId || '');
 
     // Parse actions
     const hasDefaultTasks = rule.actions.some(a => a.type === 'create_default_tasks');
@@ -114,7 +114,7 @@ export default function AutomationEditor({
     if (triggerType === 'project_status_changed' && actionCreateDefaultTasks) {
       actions.push({ type: 'create_default_tasks' });
     }
-    if (triggerType !== 'project_status_changed' && actionChangeProjectStatus && targetProjectStatusId) {
+    if (['task_created','task_status_changed'].includes(triggerType) && actionChangeProjectStatus && targetProjectStatusId) {
       actions.push({
         type: 'change_project_status',
         params: { targetStatusId: targetProjectStatusId }
@@ -140,7 +140,10 @@ export default function AutomationEditor({
       description: ruleDescription.trim() || undefined,
       enabled: ruleEnabled,
       triggerType,
-      triggerCondition: triggerType !== 'task_created' && triggerToStatusId ? { toStatusId: triggerToStatusId } : undefined,
+      triggerCondition: triggerType === 'presales_status_changed' && triggerToStatusId
+        ? { toPresalesStatus: triggerToStatusId as 'submitted'|'accepted'|'suspended'|'won'|'lost' }
+        : !['task_created','presales_created','presales_status_changed'].includes(triggerType) && triggerToStatusId
+          ? { toStatusId: triggerToStatusId } : undefined,
       actions
     };
 
@@ -174,7 +177,7 @@ export default function AutomationEditor({
   const handleExecuteTest = () => {
     if (!testRuleId) return;
     const rule = automationRules.find(r => r.id === testRuleId);
-    setTestFeedback(`A regra "${rule?.name || ''}" executaria ${rule?.actions.length || 0} ação(ões) no projeto selecionado. Esta pré-visualização não alterou dados.`);
+    setTestFeedback(`A regra "${rule?.name || ''}" executaria ${rule?.actions.length || 0} ação(ões) ${rule?.triggerType.startsWith('presales_') ? 'num pedido Presales' : 'no projeto selecionado'}. Esta pré-visualização não alterou dados.`);
   };
 
   const getTriggerLabel = (rule: AutomationRule) => {
@@ -193,6 +196,11 @@ export default function AutomationEditor({
       }
       case 'task_created':
         return 'Ao criar uma nova tarefa';
+      case 'presales_created':
+        return 'Ao criar um pedido Presales';
+      case 'presales_status_changed':
+        return rule.triggerCondition?.toPresalesStatus
+          ? `Ao mudar Presales para "${rule.triggerCondition.toPresalesStatus}"` : 'Ao alterar o estado Presales';
       default:
         return 'Evento do sistema';
     }
@@ -479,6 +487,8 @@ export default function AutomationEditor({
                       <option value="project_status_changed">Ao alterar o estado de um Projeto</option>
                       <option value="task_status_changed">Ao alterar o estado de uma Tarefa</option>
                       <option value="task_created">Ao criar uma nova Tarefa</option>
+                      <option value="presales_created">Ao criar um pedido Presales</option>
+                      <option value="presales_status_changed">Ao alterar o estado Presales</option>
                     </select>
                   </div>
 
@@ -517,6 +527,15 @@ export default function AutomationEditor({
                       </select>
                     </div>
                   )}
+                  {triggerType === 'presales_status_changed' && <div>
+                    <label className="block text-xs font-semibold text-text-secondary mb-1">Estado Presales de destino</label>
+                    <select value={triggerToStatusId} onChange={e => setTriggerToStatusId(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold">
+                      <option value="">Qualquer estado</option>
+                      <option value="submitted">Por aceitar</option><option value="accepted">Em preparação</option>
+                      <option value="suspended">Suspenso</option><option value="won">Ganho</option><option value="lost">Perdido</option>
+                    </select>
+                  </div>}
                 </div>
               </div>
 
@@ -545,7 +564,7 @@ export default function AutomationEditor({
                   </label>}
 
                   {/* Action 2: Change Project Status */}
-                  {triggerType !== 'project_status_changed' && <div className="p-3 bg-surface-muted border border-border rounded-control space-y-2">
+                  {['task_created','task_status_changed'].includes(triggerType) && <div className="p-3 bg-surface-muted border border-border rounded-control space-y-2">
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input
                         type="checkbox"
@@ -654,11 +673,11 @@ export default function AutomationEditor({
               </button>
             </div>
 
-            <p className="text-xs text-text-secondary">
-                  Selecione um projeto para consultar as ações previstas. Nenhum dado será alterado:
-            </p>
+            <p className="text-xs text-text-secondary">{automationRules.find(rule => rule.id === testRuleId)?.triggerType.startsWith('presales_')
+              ? 'Pré-visualização da regra Presales. Nenhum dado será alterado.'
+              : 'Selecione um projeto para consultar as ações previstas. Nenhum dado será alterado:'}</p>
 
-            <div>
+            {!automationRules.find(rule => rule.id === testRuleId)?.triggerType.startsWith('presales_') && <div>
               <label className="block text-xs font-semibold text-text-secondary mb-1">Projeto para Teste</label>
               <select
                 value={selectedTestProjectId}
@@ -669,7 +688,7 @@ export default function AutomationEditor({
                   <option key={p.id} value={p.id}>{p.title}</option>
                 ))}
               </select>
-            </div>
+            </div>}
 
             {testFeedback && (
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-control text-emerald-800 text-xs font-semibold flex items-center gap-2">

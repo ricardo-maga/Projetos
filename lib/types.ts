@@ -304,10 +304,11 @@ export interface AutomationRule {
   name: string;
   description?: string;
   enabled: boolean;
-  triggerType: 'project_status_changed' | 'task_status_changed' | 'task_created';
+  triggerType: 'project_status_changed' | 'task_status_changed' | 'task_created' | 'presales_created' | 'presales_status_changed';
   triggerCondition?: {
     fromStatusId?: string;
     toStatusId?: string;
+    toPresalesStatus?: 'submitted' | 'accepted' | 'suspended' | 'won' | 'lost';
   };
   actions: AutomationAction[];
   deleted?: boolean;
@@ -316,7 +317,7 @@ export interface AutomationRule {
 
 export interface NotificationSetting {
   id: string;
-  type: string; // 'new_project', 'project_allocation', 'task_allocation', 'task_due_date', 'project_due_date', 'project_scheduled_date'
+  type: string;
   name: string;
   enabled: boolean;
   daysBefore: number;

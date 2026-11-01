@@ -1,10 +1,12 @@
 import type { AutomationRule, ERPState } from '../types';
 
-const EVENTS = new Set(['project_status_changed', 'task_status_changed', 'task_created']);
+const EVENTS = new Set(['project_status_changed', 'task_status_changed', 'task_created', 'presales_created', 'presales_status_changed']);
 const ACTIONS: Record<string, Set<string>> = {
   project_status_changed: new Set(['create_default_tasks', 'send_notification']),
   task_status_changed: new Set(['change_project_status', 'send_notification']),
   task_created: new Set(['change_project_status', 'send_notification']),
+  presales_created: new Set(['send_notification']),
+  presales_status_changed: new Set(['send_notification']),
 };
 
 export function validateAutomationRule(rule: AutomationRule, state: ERPState): string | null {
@@ -14,7 +16,10 @@ export function validateAutomationRule(rule: AutomationRule, state: ERPState): s
   if (!Array.isArray(rule.actions) || rule.actions.length === 0) return 'Selecione uma ação.';
   const statusIds = new Set((rule.triggerType === 'project_status_changed' ? state.projectStatuses : state.taskStatuses)
     .filter(status => !status.deleted).map(status => status.id));
-  if (rule.triggerType !== 'task_created') {
+  if (rule.triggerType === 'presales_status_changed') {
+    if (rule.triggerCondition?.toPresalesStatus && !['submitted','accepted','suspended','won','lost'].includes(rule.triggerCondition.toPresalesStatus))
+      return 'Estado Presales inválido.';
+  } else if (rule.triggerType !== 'task_created' && rule.triggerType !== 'presales_created') {
     if (!rule.triggerCondition?.toStatusId) return 'Escolha um estado da tarefa ou do projeto para o evento.';
     if (!statusIds.has(rule.triggerCondition.toStatusId)) return 'O estado do evento não existe ou foi eliminado.';
   }
