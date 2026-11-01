@@ -111,7 +111,6 @@ export const CLEAN_BASELINE_STATE: ERPState = {
   tasks: [],
   comments: [],
   userAbsences: [],
-  equipmentList: [],
   specialDays: [],
   defaultTasks: [],
   automationRules: [],

@@ -22,7 +22,7 @@
 
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { ERPState, Project, Task, Comment, UserAbsence, User, Client, Equipment, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem, AuditLog } from './types';
+import { ERPState, Project, Task, Comment, UserAbsence, User, Client, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem, AuditLog } from './types';
 import { getProjectsServerData } from './projects/projectService';
 import { normalizeRoleId } from './permissions';
 import { getAuthHeaders } from './clientAuth';
@@ -251,12 +251,6 @@ export function mapStateToUUIDs(state: ERPState): ERPState {
       id: stringToUUID(a.id),
       userId: stringToUUID(a.userId),
     })),
-    equipmentList: (state.equipmentList || []).map((e: any) => ({
-      ...e,
-      id: stringToUUID(e.id),
-      projectId: stringToUUID(e.projectId),
-      clientId: stringToUUID(e.clientId),
-    })),
     specialDays: (state.specialDays || []).map((sd: any) => ({
       ...sd,
       id: stringToUUID(sd.id),
@@ -377,7 +371,6 @@ export async function getActiveStateFromSupabase(
       resTasks,
       resComments,
       resUserAbsences,
-      resEquipment,
       resConfig,
       resSpecialDays,
       resDefaultTasks,
@@ -407,7 +400,6 @@ export async function getActiveStateFromSupabase(
       readable('tasks') ? client.from('tasks').select('*').order('created_at', { ascending: false }) : skipped(),
       readable('comments') ? client.from('comments').select('*').order('created_at', { ascending: true }) : skipped(),
       readable('userAbsences') ? client.from('user_absences').select('*') : skipped(),
-      readable('equipmentList') ? client.from('equipment').select('*').order('created_at', { ascending: false }) : skipped(),
       client.from('app_configuration').select('*').limit(1),
       client.from('special_days').select('*'),
       readable('defaultTasks') ? client.from('default_tasks').select('*') : skipped(),
@@ -428,7 +420,7 @@ export async function getActiveStateFromSupabase(
       resUserGroups, resProjectStatuses, resProjectCategories, resProjectRisks,
       resProjectPriorities, resProjectTeams, resProjectPartners, resTaskStatuses,
       resTaskTypes, resUsers, resClients, resTasks, resComments, resUserAbsences,
-      resEquipment, resConfig, resSpecialDays, resDefaultTasks, resRiskCategories,
+      resConfig, resSpecialDays, resDefaultTasks, resRiskCategories,
       resRiskStatuses, resRiskPriorities, resProjectRiskItems, resNotificationSettings,
       resAutomationRules, resActiveRoles, resUserRoles, resOwnUser,
     ];
@@ -677,19 +669,6 @@ export async function getActiveStateFromSupabase(
       createdDate: a.created_at || '',
     }));
 
-    const equipmentList: Equipment[] = (resEquipment.data || []).map((e: any) => ({
-      id: e.id,
-      serialNumber: e.serial_number || '',
-      brand: e.brand || '',
-      model: e.model || '',
-      projectId: e.project_id || '',
-      clientId: '',
-      status: e.status || '',
-      installationDate: e.installation_date || '',
-      deleted: e.deleted || false,
-      createdDate: e.created_at || '',
-    }));
-
     const specialDays: SpecialDay[] = (resSpecialDays.data || []).map((sd: any) => ({
       id: sd.id,
       date: sd.date || '',
@@ -841,7 +820,6 @@ export async function getActiveStateFromSupabase(
       userAbsences,
       appConfig,
       projectMaterials,
-      equipmentList,
       specialDays,
       defaultTasks,
       riskCategories: riskCategories || [],
@@ -872,7 +850,7 @@ export async function getActiveStateFromSupabase(
       projectPartners: resProjectPartners.data || [], taskStatuses: resTaskStatuses.data || [],
       taskTypes: resTaskTypes.data || [], users: resUsers.data || [],
       projectMaterials: projectMaterialsRows || [], projectRiskItems: resProjectRiskItems.data || [],
-      comments: resComments.data || [], userAbsences: resUserAbsences.data || [], equipmentList: resEquipment.data || [], specialDays: resSpecialDays.data || [],
+      comments: resComments.data || [], userAbsences: resUserAbsences.data || [], specialDays: resSpecialDays.data || [],
       defaultTasks: resDefaultTasks.data || [], riskCategories: resRiskCategories.data || [],
       riskStatuses: resRiskStatuses.data || [], riskPriorities: resRiskPriorities.data || [],
       notifications: resNotifications.data || [], automationRules: resAutomationRules.data || [],
@@ -1666,7 +1644,7 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
     }
     */
 
-    // 6. Comments, User Absences, Equipment List, Special Days, Default Tasks
+    // 6. Comments, User Absences, Special Days, Default Tasks
     // Omission in a cached snapshot never authorizes a database deletion.
 
     const validProjIds = new Set(state.projects.map((p: any) => p.id));
@@ -1707,25 +1685,6 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
           };
         });
         return supabase.from('user_absences').upsert(mappedAbsences).then(res => ({ ...res, table: 'user_absences' }));
-      })() : Promise.resolve({ error: null }),
-
-      // Equipment List
-      (state.equipmentList && state.equipmentList.length > 0) ? (() => {
-        const mappedEquipment = state.equipmentList.map((e: any) => {
-          const pid = e.projectId ? stringToUUID(e.projectId) : null;
-          return {
-            id: e.id,
-            serial_number: e.serialNumber,
-            brand: e.brand,
-            model: e.model,
-            project_id: pid,
-            status: e.status,
-            installation_date: formatDbDate(e.installationDate) || null,
-            deleted: e.deleted,
-            created_at: e.createdDate || new Date().toISOString()
-          };
-        });
-        return supabase.from('equipment').upsert(mappedEquipment).then(res => ({ ...res, table: 'equipment' }));
       })() : Promise.resolve({ error: null }),
 
       // Special Days
@@ -1834,7 +1793,6 @@ ALTER TABLE IF EXISTS task_assignees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS user_absences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS app_configuration ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS equipment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS special_days ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS default_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS notifications ENABLE ROW LEVEL SECURITY;

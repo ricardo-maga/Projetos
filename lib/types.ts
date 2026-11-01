@@ -262,20 +262,6 @@ export interface ProjectMaterial {
   createdDate?: string;
 }
 
-export interface Equipment {
-  id: string;
-  serialNumber: string;
-  brand: string;
-  model: string;
-  projectId: string; // Relation: Projects table (or empty)
-  clientId: string; // Relation: Clients table (or empty)
-  projectIdOrClientId?: string;
-  status: 'Active' | 'Inactive' | 'Decommissioned' | string;
-  installationDate: string;
-  deleted: boolean;
-  createdDate: string;
-}
-
 export interface SpecialDay {
   id: string;
   date: string; // YYYY-MM-DD
@@ -367,7 +353,6 @@ export interface ERPState {
   appConfig: AppConfiguration;
   clients: Client[];
   projectMaterials?: ProjectMaterial[];
-  equipmentList: Equipment[];
   specialDays: SpecialDay[];
   defaultTasks?: DefaultTask[];
   notificationSettings?: NotificationSetting[];

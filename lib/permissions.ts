@@ -49,9 +49,6 @@ export interface GroupPermissions {
   project_materials_read?: boolean;
   project_materials_write?: boolean;
   project_materials_delete?: boolean;
-  equipment_read?: boolean;
-  equipment_write?: boolean;
-  equipment_delete?: boolean;
   users_read?: boolean;
   users_write?: boolean;
   users_delete?: boolean;
@@ -128,9 +125,6 @@ export const EMPTY_PERMISSIONS: GroupPermissions = {
   materials_read: false,
   materials_write: false,
   materials_delete: false,
-  equipment_read: false,
-  equipment_write: false,
-  equipment_delete: false,
   users_read: false,
   users_write: false,
   users_delete: false,

@@ -105,14 +105,12 @@ CREATE INDEX IF NOT EXISTS idx_project_teams_link_team ON project_teams_link (te
 CREATE INDEX IF NOT EXISTS idx_project_partners_link_partner ON project_partners_link (partner_id);
 
 -- ============================================================================
--- 8. TABELAS AUXILIARES (`clients`, `equipment`, etc.)
+-- 8. TABELAS AUXILIARES (`clients`, etc.)
 -- ============================================================================
 CREATE INDEX IF NOT EXISTS idx_clients_deleted ON clients (deleted);
 CREATE INDEX IF NOT EXISTS idx_clients_name ON clients (client_name) WHERE deleted = FALSE;
 CREATE INDEX IF NOT EXISTS idx_clients_created_at ON clients (created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_equipment_project_id ON equipment (project_id);
-CREATE INDEX IF NOT EXISTS idx_equipment_deleted ON equipment (deleted);
 
 CREATE INDEX IF NOT EXISTS idx_user_absences_user_dates ON user_absences (user_id, absence_start_date, absence_end_date);
 
@@ -124,4 +122,3 @@ ANALYZE comments;
 ANALYZE project_materials;
 ANALYZE project_risk_items;
 ANALYZE clients;
-ANALYZE equipment;
