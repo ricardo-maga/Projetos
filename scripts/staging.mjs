@@ -121,7 +121,7 @@ if (mode === 'check-access') {
     NEXT_PUBLIC_SUPABASE_ANON_KEY:anon, SUPABASE_ANON_KEY:anon, SUPABASE_SERVICE_ROLE_KEY:service,
     ERP_STAGING:'true', ERP_BOOTSTRAP_ENABLED:'false', ERP_BOOTSTRAP_SECRET:'', ERP_BOOTSTRAP_ADMIN_EMAIL:'',
     APP_URL:'http://127.0.0.1:3110',
-    GEMINI_API_KEY:'', NEXT_TELEMETRY_DISABLED:'1', NEXT_IGNORE_INCORRECT_LOCKFILE:'1' };
+    NEXT_TELEMETRY_DISABLED:'1', NEXT_IGNORE_INCORRECT_LOCKFILE:'1' };
   console.log(`STAGING ${ref} — http://127.0.0.1:3110 (sem alterar produção)`);
   const child = spawn(process.execPath,[join(root,'node_modules/next/dist/bin/next'),'dev','--hostname','127.0.0.1','--port','3110'],
     { cwd:root,env,stdio:'inherit' });
