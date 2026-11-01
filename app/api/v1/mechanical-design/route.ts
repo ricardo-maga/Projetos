@@ -18,8 +18,8 @@ export async function GET(req: NextRequest) {
     const onlyMine = new URL(req.url).searchParams.get('owner') === 'mine';
     if (!Number.isInteger(page) || page < 1 || page > 10000) return NextResponse.json({ success: false, message: 'Página inválida.' }, { status: 400 });
     const [{ count, error }, rows, eligibleExecutorIds] = await Promise.all([
-      onlyMine ? db.from('work_requests').select('id', { count: 'exact', head: true }).eq('kind','mechanical_design').eq('area_owner_id',auth.user.id)
-        : db.from('work_requests').select('id', { count: 'exact', head: true }).eq('kind','mechanical_design'),
+      onlyMine ? db.from('work_requests').select('id', { count: 'exact', head: true }).eq('kind','mechanical_design').is('deleted_at',null).eq('area_owner_id',auth.user.id)
+        : db.from('work_requests').select('id', { count: 'exact', head: true }).eq('kind','mechanical_design').is('deleted_at',null),
       listMechanicalDesign(db, undefined, page, 50, onlyMine ? auth.user.id : undefined),
       listEligibleDesignExecutors(db),
     ]);

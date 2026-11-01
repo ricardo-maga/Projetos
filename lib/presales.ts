@@ -22,19 +22,23 @@ export const createPresalesSchema = z.object({
   plannedStartDate: date, plannedEndDate: date,
   requirements: z.string().max(10000).default(''), outcome: z.string().max(10000).default(''),
   commercialManagerId: id.nullable().default(null), projectManagerId: id.nullable().default(null),
-}).refine(value => value.plannedEndDate >= value.plannedStartDate, { path: ['plannedEndDate'] });
+  originCode: z.enum(['email','phone','whatsapp','in_person','other']).nullable().default(null),
+  priorityId: id.nullable().default(null), opportunitySf: z.string().max(300).default(''),
+}).refine(value => value.plannedEndDate > value.plannedStartDate, { path: ['plannedEndDate'] });
 export const presalesActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('edit'), version: z.number().int().positive(),
     title: z.string().trim().min(2).max(200), plannedStartDate: date, plannedEndDate: date,
     requirements: z.string().max(10000), outcome: z.string().max(10000),
-    commercialManagerId: id.nullable(), projectManagerId: id.nullable() })
-    .refine(value => value.plannedEndDate >= value.plannedStartDate, { path: ['plannedEndDate'] }),
+    commercialManagerId: id.nullable(), projectManagerId: id.nullable(),
+    originCode: z.enum(['email','phone','whatsapp','in_person','other']).nullable(),
+    priorityId: id.nullable(), opportunitySf: z.string().max(300) })
+    .refine(value => value.plannedEndDate > value.plannedStartDate, { path: ['plannedEndDate'] }),
   z.object({ action: z.literal('accept'), version: z.number().int().positive(),
     assigneeIds: z.array(id).min(1).max(30), estimatedDays: days }),
   z.object({ action: z.enum(['suspend','resume','won','lost','publish','new_revision']), version: z.number().int().positive() }),
   z.object({ action: z.literal('add_task'), version: z.number().int().positive(),
     title: z.string().trim().min(2).max(200), description: z.string().max(10000).default(''),
-    assigneeIds: z.array(id).min(1).max(30), estimatedDays: days }),
+    assigneeIds: z.array(id).min(1).max(30), estimatedDays: days.nullable().default(null) }),
   z.object({ action: z.literal('assign_task'), version: z.number().int().positive(), taskId: id,
     assigneeIds: z.array(id).min(1).max(30) }),
   z.object({ action: z.literal('task_action'), version: z.number().int().positive(), taskId: id,
@@ -56,9 +60,10 @@ export interface PresalesItem { id: string; title: string; unit: string; quantit
 export interface PresalesRevision { id: string; revisionNumber: number; publishedBy: string; publishedAt: string;
   documentSnapshot: PresalesDocument; itemsSnapshot: PresalesItem[]; contactsSnapshot: Record<string, unknown> }
 export interface PresalesRequest {
-  id: string; title: string; status: 'submitted'|'accepted'|'suspended'|'won'|'lost';
+  id: string; processNumber: number | null; title: string; status: 'submitted'|'accepted'|'suspended'|'won'|'lost';
   requesterId: string; ownerId: string; version: number; plannedStartDate: string; plannedEndDate: string;
   requirements: string; outcome: string; commercialManagerId: string|null; projectManagerId: string|null;
+  originCode: string|null; priorityId: string|null; opportunitySf: string;
   executionProjectId: string|null; document: PresalesDocument; documentLocked: boolean;
   tasks: PresalesTask[]; items: PresalesItem[]; revisions: PresalesRevision[];
 }

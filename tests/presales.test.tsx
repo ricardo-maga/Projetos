@@ -15,18 +15,18 @@ describe('Presales', () => {
     });
     const user = { id, name: 'Ana', approved: true, deleted: false, type: 'Team', email: '',
       roleId: CANONICAL_ROLE_IDS.PROJECT_MANAGER, permissions: ['presales.read','presales.create'] } as any;
-    expect(renderToStaticMarkup(<PresalesSection currentUser={user} users={[]} projects={[]} onTasksChanged={async () => {}} />))
+    expect(renderToStaticMarkup(<PresalesSection currentUser={user} users={[]} projects={[]} projectPriorities={[]} onTasksChanged={async () => {}} />))
       .toContain('Novo Presales');
-    expect(renderToStaticMarkup(<PresalesSection currentUser={{ ...user, permissions: ['presales.read'] }} users={[]} projects={[]} onTasksChanged={async () => {}} />))
+    expect(renderToStaticMarkup(<PresalesSection currentUser={{ ...user, permissions: ['presales.read'] }} users={[]} projects={[]} projectPriorities={[]} onTasksChanged={async () => {}} />))
       .not.toContain('Novo Presales');
   });
-  it('exige prazo coerente e atribuição em meios dias', () => {
+  it('exige entrega posterior ao pedido e aceita tarefas sem estimativa', () => {
     const input = { title: 'Proposta técnica', ownerId: id, plannedStartDate: '2026-11-01',
       plannedEndDate: '2026-11-10', requirements: 'Requisitos', outcome: 'Solução' };
     expect(createPresalesSchema.safeParse(input).success).toBe(true);
     expect(createPresalesSchema.safeParse({ ...input, plannedEndDate: '2026-10-31' }).success).toBe(false);
-    expect(presalesActionSchema.safeParse({ action: 'accept', version: 1, assigneeIds: [id], estimatedDays: 0.5 }).success).toBe(true);
-    expect(presalesActionSchema.safeParse({ action: 'accept', version: 1, assigneeIds: [id], estimatedDays: 0.75 }).success).toBe(false);
+    expect(createPresalesSchema.safeParse({ ...input, plannedEndDate: input.plannedStartDate }).success).toBe(false);
+    expect(presalesActionSchema.safeParse({ action: 'add_task', version: 1, title: 'Desenhar solução', assigneeIds: [id] }).success).toBe(true);
   });
   it('valida secções ordenáveis e linhas escolhidas para o documento', () => {
     const blocks = [

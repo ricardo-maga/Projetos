@@ -32,7 +32,7 @@ export async function personalPresalesIds(db: SupabaseClient, userId: string) {
 export async function listPresales(db: SupabaseClient, options: { id?: string; page?: number; ownerId?: string; assignedIds?: string[] } = {}) {
   const page = options.page || 1;
   let query = db.from('work_requests').select('id,title,status,requester_id,area_owner_id,version,planned_start_date,planned_end_date')
-    .eq('kind', 'presales').order('created_at', { ascending: false });
+    .eq('kind', 'presales').is('deleted_at', null).order('created_at', { ascending: false });
   if (options.id) query = query.eq('id', options.id);
   else if (options.ownerId) {
     const ids = options.assignedIds || [];
@@ -64,11 +64,12 @@ export async function listPresales(db: SupabaseClient, options: { id?: string; p
   return requests.map(row => {
     const detail = detailMap.get(row.id);
     return {
-      id: row.id, title: row.title, status: row.status, requesterId: row.requester_id,
+      id: row.id, processNumber: detail?.process_number == null ? null : Number(detail.process_number), title: row.title, status: row.status, requesterId: row.requester_id,
       ownerId: row.area_owner_id, version: row.version,
       plannedStartDate: row.planned_start_date || '', plannedEndDate: row.planned_end_date || '',
       requirements: detail?.technical_requirements || '', outcome: detail?.technical_outcome || '',
       commercialManagerId: detail?.commercial_manager_id || null, projectManagerId: detail?.project_manager_id || null,
+      originCode: detail?.origin_code || null, priorityId: detail?.priority_id || null, opportunitySf: detail?.opportunity_sf || '',
       executionProjectId: detail?.execution_project_id || null,
       document: detail?.document_draft || { schemaVersion: 1, blocks: [] }, documentLocked: Boolean(detail?.document_locked),
       tasks: links.filter(link => link.request_id === row.id).map(link => {
