@@ -39,7 +39,7 @@ describe('Configuration navigation regression', () => {
     const applicationTabs = configSource.match(/title="Configurações da aplicação" \/>([\s\S]*?)activeTabId=\{activeConfigTab\}/)![1];
     const systemTabs = configSource.match(/title="Sistema" \/>([\s\S]*?)activeTabId=\{activeConfigTab\}/)![1];
     expect([...applicationTabs.matchAll(/label: '([^']+)'/g)].map(m => m[1])).toEqual([
-      'Aplicação', 'Campos auxiliares', 'Dias especiais', 'Tarefas modelo',
+      'Aplicação', 'Campos auxiliares', 'Dias especiais', 'Tarefas modelo', 'Templates Presales',
     ]);
     expect([...systemTabs.matchAll(/label: '([^']+)'/g)].map(m => m[1])).toEqual([
       'Registo de auditoria', 'Base de dados',

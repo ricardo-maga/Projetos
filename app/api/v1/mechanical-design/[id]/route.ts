@@ -106,3 +106,17 @@ export async function PATCH(req: NextRequest, context: Context) {
     return NextResponse.json({ success: false, message: 'Não foi possível gravar a operação.' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest, context: Context) {
+  const auth = await requirePermission(req, 'mechanical_design.manage');
+  if (!auth.success) return auth.response;
+  const { id } = await context.params;
+  const version = Number(new URL(req.url).searchParams.get('version'));
+  if (!z.string().uuid().safeParse(id).success || !Number.isInteger(version) || version < 1)
+    return NextResponse.json({ success: false, message: 'Pedido ou versão inválidos.' }, { status: 400 });
+  const db = createAdminClient();
+  if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
+  const { error } = await db.rpc('archive_work_request', { p_id: id, p_actor_id: auth.user.id, p_expected_version: version });
+  if (error) { const mapped = designRpcError(error); return NextResponse.json({ success: false, message: mapped.message }, { status: mapped.status }); }
+  return NextResponse.json({ success: true });
+}

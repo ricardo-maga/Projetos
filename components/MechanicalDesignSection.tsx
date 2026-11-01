@@ -12,7 +12,7 @@ import { TASK_STATUS, isMechanicalDesignManager, type DesignRequest, type Design
 import { hasPermission } from '../lib/permissions';
 
 const statusLabel: Record<DesignRequest['status'], string> = {
-  submitted: 'Por aceitar', accepted: 'Em desenvolvimento', rejected: 'Recusado', delivered: 'Entregue',
+  submitted: 'Por atribuir', accepted: 'Em desenvolvimento', rejected: 'Recusado', delivered: 'Entregue',
 };
 const statusVariant: Record<DesignRequest['status'], 'warning' | 'primary' | 'error' | 'success'> = {
   submitted: 'warning', accepted: 'primary', rejected: 'error', delivered: 'success',
@@ -82,7 +82,6 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   const [assignmentDraft, setAssignmentDraft] = useState<string[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [estimatedDays, setEstimatedDays] = useState('1');
   const [newTaskEstimatedDays, setNewTaskEstimatedDays] = useState('1');
   const [reopenReason, setReopenReason] = useState('');
 
@@ -198,6 +197,18 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
       ...(action === 'reopen' ? { reason: reopenReason } : {}) }, 'Estado da tarefa guardado.');
     if (action === 'reopen' && result) setReopenReason('');
   };
+  const deleteRequest = async () => {
+    if (!selected || busy || !window.confirm(`Eliminar o pedido ${selected.title}?`)) return;
+    setBusy(true); setError('');
+    try {
+      const response = await fetch(`/api/v1/mechanical-design/${selected.id}?version=${selected.version}`, { method: 'DELETE', headers: getAuthHeaders() });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(getApiErrorMessage(result,'Não foi possível eliminar.'));
+      setRequests(current => current.filter(row => row.id !== selected.id)); setSelectedId(null); setTotal(current => Math.max(0,current-1));
+      await onTasksChanged();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Não foi possível eliminar.'); }
+    finally { setBusy(false); }
+  };
 
   const toggleAssignee = (id: string) => setAssigneeIds(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
   const toggleManager = (id: string, creation: boolean) => {
@@ -295,20 +306,13 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
           </button>)}{requests.length < total && <M3Button tone="outlined" disabled={busy} onClick={() => void load(page + 1)}>Carregar mais</M3Button>}</div>}
       </M3Card>
       <div>{selected ? <div className="space-y-4">
+        {canManage && <M3Button tone="outlined" disabled={busy} onClick={() => void deleteRequest()}>Eliminar pedido</M3Button>}
         <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-heading-sm font-bold">{selected.title}</h3>
             <p className="mt-1 text-text-secondary">Gestor de projeto: {nameOf(selected.ownerId)}</p>
             {selected.otherManagerIds.length > 0 && <p className="text-caption text-text-secondary">Outros responsáveis: {selected.otherManagerIds.map(nameOf).sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })).join(', ')}</p>}</div>
             <Badge variant={statusVariant[selected.status]}>{statusLabel[selected.status]}</Badge>
             {selected.projectId && <span className="text-caption">Projeto: {projects.find(project => project.id === selected.projectId)?.title || 'Indisponível'}</span>}</div>
-          {canManage && selected.status === 'submitted' && <div className="space-y-3">
-            <fieldset className="space-y-1"><legend className="font-medium">Desenhadores da tarefa inicial</legend>
-              <div className="flex flex-wrap gap-3">{executorUsers.map(user => <label key={user.id} className="inline-flex items-center gap-1">
-                <input type="checkbox" checked={assigneeIds.includes(user.id)} onChange={() => toggleAssignee(user.id)} />{user.name}</label>)}</div></fieldset>
-            <Input label="Estimativa da tarefa inicial (dias)" type="number" min="0.5" step="0.5" required value={estimatedDays} onChange={event => setEstimatedDays(event.target.value)} />
-            <div className="flex flex-wrap gap-2"><M3Button isLoading={busy} disabled={!assigneeIds.length || Number(estimatedDays) < 0.5} onClick={() => void act({ action: 'accept', version: selected.version, assigneeIds, estimatedDays: Number(estimatedDays) }, 'Pedido aceite e atribuído.')}>Aceitar e atribuir</M3Button>
-              <M3Button tone="outlined" disabled={busy} onClick={() => void act({ action: 'reject', version: selected.version }, 'Pedido recusado.')}>Recusar</M3Button></div>
-          </div>}
           <div className="grid gap-4 sm:grid-cols-2"><Textarea label="Descrição" value={instructions} disabled={!canEditDetails} onChange={event => setInstructions(event.target.value)} />
             <Textarea label="Notas de execução" value={deliverables} disabled={!canEditDetails} onChange={event => setDeliverables(event.target.value)} />
             <Textarea label="Utilização" value={usage} maxLength={10000} disabled={!canEditDetails} onChange={event => setUsage(event.target.value)} />

@@ -8,6 +8,7 @@ import {
   Users, GripVertical, Zap, Bell, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import AutomationEditor from './AutomationEditor';
+import PresalesTemplatesSettings from './PresalesTemplatesSettings';
 import AuditLogSection from './AuditLogSection';
 import AppLogo from './AppLogo';
 import {
@@ -831,7 +832,7 @@ export default function ConfigSection({
 
   return (
     <div className="m3-config space-y-6" id="config-section-root">
-      {['sistema', 'campos', 'dias', 'tarefas'].includes(activeConfigTab) && (
+      {['sistema', 'campos', 'dias', 'tarefas', 'presales'].includes(activeConfigTab) && (
         <div className="space-y-4">
           <M3SectionHeader title="Configurações da aplicação" />
           <Tabs
@@ -840,6 +841,7 @@ export default function ConfigSection({
               { id: 'campos', label: 'Campos auxiliares' },
               { id: 'dias', label: 'Dias especiais' },
               { id: 'tarefas', label: 'Tarefas modelo' },
+              { id: 'presales', label: 'Templates Presales' },
             ]}
             activeTabId={activeConfigTab}
             onChange={setActiveConfigTab}
@@ -861,6 +863,7 @@ export default function ConfigSection({
       )}
       
       {/* SISTEMA TAB */}
+      {activeConfigTab === 'presales' && canReadConfig && <PresalesTemplatesSettings canWrite={canWriteConfig} />}
       {activeConfigTab === 'sistema' && (
       <form onSubmit={handleSubmit} className="w-full">
         <Card className="bg-surface rounded-card border border-border overflow-hidden animate-fade-in" id="core-config-card">

@@ -1031,7 +1031,7 @@ export default function Page() {
               )}
 
               {activeTab === 'presales' && (
-                <PresalesSection currentUser={currentUser} users={state.users} projects={state.projects}
+                <PresalesSection currentUser={currentUser} users={state.users} projects={state.projects} projectPriorities={state.projectPriorities || []}
                   initialRequestId={selectedPresalesRequestId} onTasksChanged={refreshFromDatabase} />
               )}
 

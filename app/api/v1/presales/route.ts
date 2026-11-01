@@ -18,16 +18,17 @@ export async function GET(req: NextRequest) {
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
     const mine = new URL(req.url).searchParams.get('scope') === 'mine';
     const assignedIds = mine ? await personalPresalesIds(db, auth.user.id) : [];
-    let countQuery = db.from('work_requests').select('id', { count: 'exact', head: true }).eq('kind', 'presales');
+    let countQuery = db.from('work_requests').select('id', { count: 'exact', head: true }).eq('kind', 'presales').is('deleted_at', null);
     if (mine) countQuery = assignedIds.length ? countQuery.or(`area_owner_id.eq.${auth.user.id},id.in.(${assignedIds.join(',')})`)
       : countQuery.eq('area_owner_id', auth.user.id);
-    const [countResult, rows, managerIds, executorIds] = await Promise.all([
+    const [countResult, rows, managerIds, executorIds, originsResult] = await Promise.all([
       countQuery, listPresales(db, { page, ownerId: mine ? auth.user.id : undefined, assignedIds }),
       usersWithPresalesPermission(db, 'presales.manage'), usersWithPresalesPermission(db, 'presales.execute'),
+      db.from('presales_origins').select('code,label,sort_order').eq('active',true).order('sort_order'),
     ]);
-    if (countResult.error) throw countResult.error;
+    if (countResult.error || originsResult.error) throw countResult.error || originsResult.error;
     return NextResponse.json({ success: true, data: rows, total: countResult.count || 0,
-      page, eligibleManagerIds: managerIds, eligibleExecutorIds: executorIds });
+      page, eligibleManagerIds: managerIds, eligibleExecutorIds: executorIds, origins: originsResult.data || [] });
   } catch (error) {
     console.error('[PRESALES LIST]', error);
     return NextResponse.json({ success: false, message: 'Não foi possível consultar Presales.' }, { status: 500 });
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     const db = createAdminClient();
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
     const id = getIdempotentEntityId(claimedReq);
-    const { error } = await db.rpc('presales_mutate', {
+    const { error } = await db.rpc('presales_mutate_v2', {
       p_id: id, p_actor_id: auth.user.id, p_expected_version: null, p_action: 'create', p_payload: parsed.data,
     });
     if (error) return presalesError(error);
