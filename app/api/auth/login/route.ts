@@ -8,6 +8,8 @@ import { rateLimitExceeded, validationError, unauthorized, forbidden, internalSe
 import { logAuditEvent } from '@/lib/audit';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { profileEligibility } from '@/lib/auth/profileEligibility';
+import { cookies } from 'next/headers';
+import { preferenceCookieLifetime, sessionPreference, SESSION_PREFERENCE_COOKIE } from '@/lib/auth/sessionPersistence';
 
 export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
@@ -19,7 +21,8 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return validationError('Dados de login inválidos.', requestId, parsed.error.flatten());
 
   try {
-    const supabase = await createClient();
+    const preference = sessionPreference(parsed.data.rememberMe);
+    const supabase = await createClient(undefined, preference);
     const { data: signIn, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email.trim().toLowerCase(), password: parsed.data.password });
     if (error || !signIn.user) return unauthorized('Email ou palavra-passe incorretos.', requestId);
     const admin = createAdminClient();
@@ -50,6 +53,13 @@ export async function POST(req: NextRequest) {
       permissions: [...new Set((permissionRows || []).map((item: any) => item.code))],
     };
     await logAuditEvent({ action: 'LOGIN', userId: profile.id, entity: 'users', entityId: profile.id, ip, details: { method: 'supabase_auth' } });
+    (await cookies()).set(SESSION_PREFERENCE_COOKIE, preference, {
+      ...preferenceCookieLifetime(parsed.data.rememberMe),
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
     // The browser session is carried by Supabase SSR cookies.
     return NextResponse.json({ 
       success: true, 

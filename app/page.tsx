@@ -78,6 +78,7 @@ export default function Page() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -342,7 +343,8 @@ export default function Page() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: loginEmail.trim(),
-          password: loginPassword
+          password: loginPassword,
+          rememberMe
         })
       });
 
@@ -563,6 +565,22 @@ export default function Page() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between py-1">
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={e => setRememberMe(e.target.checked)}
+                  disabled={isLoggingIn}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                />
+                Lembrar login
+              </label>
+              <span className="text-[10px] text-slate-400">
+                {rememberMe ? '30 dias' : 'Até fechar o navegador'}
+              </span>
             </div>
 
             <button 
