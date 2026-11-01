@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAuth, AuthError } from '@/lib/auth/requireAuth';
 import { withCanonicalErrors } from '@/lib/apiErrors';
+import { SESSION_PREFERENCE_COOKIE } from '@/lib/auth/sessionPersistence';
 
 async function getAuthenticatedUserSession(req?: NextRequest) {
   try {
@@ -61,6 +62,7 @@ async function postSession(req: NextRequest) {
         path: '/',
         maxAge: 0,
       });
+      response.cookies.delete(SESSION_PREFERENCE_COOKIE);
       return response;
     }
 
@@ -91,6 +93,7 @@ async function deleteSession(_req: NextRequest) {
       path: '/',
       maxAge: 0,
     });
+    response.cookies.delete(SESSION_PREFERENCE_COOKIE);
     return response;
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error?.message || 'Erro ao encerrar sessão.' }, { status: 500 });

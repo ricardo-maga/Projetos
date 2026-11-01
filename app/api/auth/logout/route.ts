@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logAuditEvent } from '@/lib/audit';
 import { authenticateRequest } from '@/lib/auth/authorization';
+import { SESSION_PREFERENCE_COOKIE } from '@/lib/auth/sessionPersistence';
 
 export async function POST(req: NextRequest) {
   const auth = await authenticateRequest(req);
@@ -38,5 +39,6 @@ export async function POST(req: NextRequest) {
     path: '/',
     maxAge: 0,
   });
+  response.cookies.delete(SESSION_PREFERENCE_COOKIE);
   return response;
 }
