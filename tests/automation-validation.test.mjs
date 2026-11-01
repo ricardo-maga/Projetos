@@ -19,6 +19,17 @@ test('accepts supported task status notifications', () => {
   assert.equal(validateAutomationRule(rule(), state), null);
 });
 
+test('accepts Presales events only with notification actions', () => {
+  assert.equal(validateAutomationRule(rule({ triggerType: 'presales_created', triggerCondition: undefined }), state), null);
+  assert.equal(validateAutomationRule(rule({ triggerType: 'presales_status_changed',
+    triggerCondition: { toPresalesStatus: 'won' } }), state), null);
+  assert.match(validateAutomationRule(rule({ triggerType: 'presales_status_changed',
+    triggerCondition: { toPresalesStatus: 'unknown' } }), state), /Presales inválido/);
+  assert.match(validateAutomationRule(rule({ triggerType: 'presales_created', actions: [
+    { type: 'change_project_status', params: { targetStatusId: 'project-status' } },
+  ] }), state), /não suportada/);
+});
+
 test('rejects retired quotes and unsupported action combinations', () => {
   assert.match(validateAutomationRule(rule({ triggerType: 'quote_approved' }), state), /descontinuado/);
   assert.match(validateAutomationRule(rule({ actions: [{ type: 'create_default_tasks' }] }), state), /não suportada/);

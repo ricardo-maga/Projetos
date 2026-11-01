@@ -1420,7 +1420,7 @@ export default function ConfigSection({
                           onChange={enabled => { void saveNotificationSetting(ns.id, { enabled }); }} />
                       </div>
                       <div className="flex items-center gap-4">
-                        {['task_due_date', 'project_due_date', 'project_scheduled_date'].includes(ns.type) && (
+                        {['task_due_date', 'project_due_date', 'project_scheduled_date', 'presales_due_date'].includes(ns.type) && (
                           <div className="space-y-1 flex-1">
                             <Input label="Dias de antecedência" type="number" min="0" max="30" value={ns.daysBefore}
                               disabled={!ns.enabled || !canWriteConfig || savingNotificationId !== null}

@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 const types = new Set([
   'new_project', 'project_allocation', 'task_allocation',
   'task_due_date', 'project_due_date', 'project_scheduled_date',
+  'presales_assignment', 'presales_due_date', 'presales_result',
 ]);
 const groups = new Set(['all', 'allocated', 'managers']);
 

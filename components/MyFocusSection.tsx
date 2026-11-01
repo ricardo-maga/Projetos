@@ -14,6 +14,7 @@ import { FocusPagination, useFocusPagination, FOCUS_TASK_SIZES, FOCUS_PROJECT_SI
 import TaskDetailsModal, { TaskModalMode } from './TaskDetailsModal';
 import { hasPermission } from '../lib/permissions';
 import { isMechanicalDesignManager, type DesignRequest } from '../lib/mechanicalDesign';
+import type { PresalesRequest } from '../lib/presales';
 import { getAuthHeaders } from '../lib/clientAuth';
 import { currentForecastMonth, forecastMonth, forecastShortMonth } from '../lib/projectForecast';
 import { M3Button, M3IconButton, M3SegmentedControl } from './M3';
@@ -42,6 +43,7 @@ interface MyFocusSectionProps {
   deleteTask?: (id: string) => void;
   onSelectProject: (id: string) => void;
   onSelectMechanicalRequest?: (id: string) => void;
+  onSelectPresalesRequest?: (id: string) => void;
   appConfig?: any;
 }
 
@@ -64,12 +66,39 @@ export default function MyFocusSection({
   deleteTask,
   onSelectProject,
   onSelectMechanicalRequest,
+  onSelectPresalesRequest,
   appConfig
 }: MyFocusSectionProps) {
   // Task filter state
   const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'completed'>('pending');
   const [designRequests, setDesignRequests] = useState<DesignRequest[]>([]);
   const [designLoadError, setDesignLoadError] = useState(false);
+  const [presalesRequests, setPresalesRequests] = useState<PresalesRequest[]>([]);
+  const [presalesLoadError, setPresalesLoadError] = useState(false);
+  const canSeePresales = hasPermission(currentUser, 'presales_read');
+  useEffect(() => {
+    if (!canSeePresales) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const rows: PresalesRequest[] = [];
+        for (let page = 1; !cancelled; page += 1) {
+          const response = await fetch(`/api/v1/presales?scope=mine&page=${page}`, { cache: 'no-store', headers: getAuthHeaders() });
+          if (!response.ok) throw new Error('Falha ao consultar Presales');
+          const payload = await response.json();
+          if (!payload.success) throw new Error('Falha ao consultar Presales');
+          rows.push(...(payload.data || []));
+          if (rows.length >= payload.total || !payload.data?.length) break;
+        }
+        if (!cancelled) { setPresalesRequests(rows); setPresalesLoadError(false); }
+      } catch { if (!cancelled) setPresalesLoadError(true); }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [canSeePresales, currentUser.id]);
+  const visiblePresalesRequests = presalesRequests.filter(request => taskFilter === 'all' ||
+    (taskFilter === 'pending' ? !['won','lost'].includes(request.status) : ['won','lost'].includes(request.status)));
+  const pendingPresalesCount = presalesRequests.filter(request => !['won','lost'].includes(request.status)).length;
   const canSeeDesignRequests = isMechanicalDesignManager(currentUser) && hasPermission(currentUser, 'mechanical_design_read');
   useEffect(() => {
     if (!canSeeDesignRequests) return;
@@ -435,7 +464,7 @@ export default function MyFocusSection({
           <div className="m3-focus-banner__stats flex flex-wrap md:flex-nowrap items-center gap-3 p-3 rounded-card">
             <div className="m3-focus-banner__stat text-center px-3 border-r">
               <p className="m3-focus-banner__label text-caption font-medium">Tarefas pendentes</p>
-              <p className="m3-focus-banner__value text-heading-md font-semibold">{pendingTasksCount + pendingDesignCount}</p>
+              <p className="m3-focus-banner__value text-heading-md font-semibold">{pendingTasksCount + pendingDesignCount + pendingPresalesCount}</p>
             </div>
             <div className="m3-focus-banner__stat text-center px-3 border-r">
               <p className="m3-focus-banner__label text-caption font-medium">Projetos em gestão</p>
@@ -474,8 +503,8 @@ export default function MyFocusSection({
                 value={taskFilter}
                 onChange={value => { setTaskFilter(value); taskPagination.update({ ...taskPagination.preference, page: 1 }); }}
                 options={[
-                  { value: 'pending', label: `Pendentes (${pendingTasksCount + pendingDesignCount})` },
-                  { value: 'all', label: `Todas (${myAssignedTasks.length + designRequests.length})` },
+                  { value: 'pending', label: `Pendentes (${pendingTasksCount + pendingDesignCount + pendingPresalesCount})` },
+                  { value: 'all', label: `Todas (${myAssignedTasks.length + designRequests.length + presalesRequests.length})` },
                   { value: 'completed', label: 'Concluídas' },
                 ]}
               />
@@ -484,6 +513,17 @@ export default function MyFocusSection({
             {/* TASK LIST */}
             <div className="divide-y divide-border-subtle">
               {designLoadError && <p role="alert" className="p-4 text-body-sm text-error">Não foi possível carregar os pedidos de desenho.</p>}
+              {presalesLoadError && <p role="alert" className="p-4 text-body-sm text-error">Não foi possível carregar Presales.</p>}
+              {visiblePresalesRequests.map(request => <button key={`presales-${request.id}`} type="button"
+                onClick={() => onSelectPresalesRequest?.(request.id)}
+                className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-surface-muted">
+                <span><span className="block font-semibold text-text-primary">{request.title}</span>
+                  <span className="text-caption text-text-secondary">Presales · {request.tasks.length} tarefa(s) · prazo {request.plannedEndDate}</span></span>
+                <Badge variant={request.status === 'won' ? 'success' : request.status === 'lost' ? 'error' : 'primary'}>
+                  {request.status === 'submitted' ? 'Por aceitar' : request.status === 'accepted' ? 'Em preparação'
+                    : request.status === 'suspended' ? 'Suspenso' : request.status === 'won' ? 'Ganho' : 'Perdido'}
+                </Badge>
+              </button>)}
               {visibleDesignRequests.map(request => <button key={`design-${request.id}`} type="button"
                 onClick={() => onSelectMechanicalRequest?.(request.id)}
                 className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-surface-muted">
@@ -493,7 +533,7 @@ export default function MyFocusSection({
                   {request.status === 'submitted' ? 'Por aceitar' : request.status === 'accepted' ? 'Em desenvolvimento' : request.status === 'delivered' ? 'Entregue' : 'Recusado'}
                 </Badge>
               </button>)}
-              {filteredTasks.length === 0 && visibleDesignRequests.length === 0 ? (
+              {filteredTasks.length === 0 && visibleDesignRequests.length === 0 && visiblePresalesRequests.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
                   <div className="w-12 h-12 bg-surface-muted text-text-muted rounded-card flex items-center justify-center mx-auto">
                     <CheckSquare className="w-6 h-6" />
