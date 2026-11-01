@@ -1,6 +1,14 @@
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { ADMIN_SYNC_FIELDS, stripAdministrativeSyncFields, changedSyncRecords, SYNC_DOMAIN_PERMISSIONS, isOwnNotificationReadChange } from '../lib/supabase/syncPayload';
+import { ADMIN_SYNC_FIELDS, stripAdministrativeSyncFields, changedSyncRecords, SYNC_DOMAIN_PERMISSIONS, isOwnNotificationReadChange, buildLegacySyncPayload } from '../lib/supabase/syncPayload';
+
+test('retired equipment records cannot enter snapshot or legacy writes', () => {
+  const record = { id: 'equipment-1', brand: 'Example' };
+  expect(buildLegacySyncPayload({}, { equipmentList: [record] })).toEqual({});
+  expect('equipmentList' in SYNC_DOMAIN_PERMISSIONS).toBe(false);
+  const writer = readFileSync(new URL('../lib/supabase/legacyWriteBatch.ts', import.meta.url), 'utf8');
+  expect(writer).not.toContain("equipment: 'equipmentList'");
+});
 
 test('notification recipients may change only their own read flag', () => {
   const old = {id:'n',userId:'u',title:'Original',isRead:false};

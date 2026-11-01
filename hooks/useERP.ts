@@ -18,7 +18,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { applyLegacyVersions } from '../lib/supabase/legacyWriteBatch';
 import { buildLegacySyncPayload } from '../lib/supabase/syncPayload';
-import { ERPState, AppConfiguration, Project, Task, Comment, UserAbsence, User, Client, Equipment, SpecialDay } from '../lib/types';
+import { ERPState, AppConfiguration, Project, Task, Comment, UserAbsence, User, Client, SpecialDay } from '../lib/types';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
@@ -1332,34 +1332,6 @@ export function useERP() {
     }));
   };
 
-  // ==================== EQUIPMENT CRUD ====================
-  const addEquipment = (equipment: Omit<Equipment, 'id' | 'deleted' | 'createdDate'>) => {
-    const newEq: Equipment = {
-      ...equipment,
-      id: genId('eq'),
-      deleted: false,
-      createdDate: new Date().toISOString()
-    };
-    saveState(prev => ({
-      ...prev,
-      equipmentList: [newEq, ...prev.equipmentList]
-    }));
-  };
-
-  const updateEquipment = (id: string, updates: Partial<Omit<Equipment, 'id' | 'createdDate'>>) => {
-    saveState(prev => ({
-      ...prev,
-      equipmentList: prev.equipmentList.map(eq => eq.id === id ? { ...eq, ...updates } as Equipment : eq)
-    }));
-  };
-
-  const deleteEquipment = (id: string) => {
-    saveState(prev => ({
-      ...prev,
-      equipmentList: prev.equipmentList.map(eq => eq.id === id ? { ...eq, deleted: true } : eq)
-    }));
-  };
-
   // ==================== APP CONFIGURATION ====================
   const updateConfig = (updates: Record<string, any>) => {
     return saveState(prev => ({
@@ -1588,11 +1560,6 @@ export function useERP() {
     addProjectRiskItem,
     updateProjectRiskItem,
     deleteProjectRiskItem,
-    
-    addEquipment,
-    updateEquipment,
-    deleteEquipment,
-
     
     updateConfig,
     
