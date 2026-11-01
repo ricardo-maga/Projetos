@@ -22,6 +22,7 @@ describe('Public branding with modern Supabase keys', () => {
       let receivedKey = '';
       const server = loadModule('lib/supabase/server.ts', {
         '@supabase/ssr': {}, 'next/headers': {},
+        '@/lib/auth/sessionPersistence': { authCookieLifetime: () => ({}), SESSION_PREFERENCE_COOKIE: 'erp_remember_login' },
         '@supabase/supabase-js': { createClient: (_url: string, key: string) => { receivedKey = key; return {}; } },
       }, env);
       expect(server.createAdminClient()).not.toBeNull();
