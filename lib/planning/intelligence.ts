@@ -5,6 +5,9 @@ export interface PlanningBlock { taskId: string; userId: string; date: string; h
 export interface PlanningTask {
   id: string; title: string; projectId: string | null; estimatedDate: string | null;
   assigneeIds: string[]; version: number; deleted?: boolean; statusId?: string;
+  completedDate?: string | null;
+  executionLocationKind?: 'inherit' | 'site' | 'company' | 'remote' | 'unknown';
+  executionSiteId?: string | null;
 }
 export interface PlanningPerson { id: string; name: string; deleted?: boolean; approved?: boolean }
 export interface PlanningAbsence { userId: string; start: string; end: string; fullDay?: boolean }
