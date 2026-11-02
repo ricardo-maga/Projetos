@@ -117,7 +117,7 @@ export default function RolePermissionSection({ onRolesChanged }: { onRolesChang
           <div className="border-b border-border pb-4"><h3 className="font-semibold text-text-primary">Matriz de permissões</h3><p className="mt-1 text-sm text-text-secondary">Permissões para: <span className="font-semibold text-primary">{activeRoles.find(role => role.id === roleId)?.name || 'Selecione uma função'}</span></p></div>
           {modules.map(module => (
             <fieldset key={module} disabled={busy} className="rounded-xl border border-border bg-surface-muted/40 p-4">
-              <legend className="px-1 text-sm font-semibold capitalize text-text-primary">{module === 'mechanical_design' ? 'Desenho mecânico' : module}</legend>
+              <legend className="px-1 text-sm font-semibold capitalize text-text-primary">{module === 'mechanical_design' ? 'Desenho mecânico' : module === 'planning_center' ? 'Centro de Planeamento' : module}</legend>
               <div className="grid gap-2 sm:grid-cols-2">
                 {editablePermissions.filter(permission => permission.module === module).map(permission => (
                   <label key={permission.id} className="flex cursor-pointer items-start gap-3 rounded-lg p-2 text-sm text-text-primary transition-colors hover:bg-surface">
