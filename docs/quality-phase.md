@@ -1,5 +1,9 @@
 # Fase de Qualidade — 29 de outubro de 2026
 
+Atualização de 2 de novembro de 2026: os três testes de apresentação/rascunho pendentes foram alinhados com o CSS atual e com os 35 alvos que o rascunho SQL realmente enumera. A revisão visual autenticada e os quatro testes físicos de BD continuam a ser verificações independentes.
+
+Revisão autenticada de produção em 2 de novembro: Projetos apresentou a lista paginada e os estados; Dashboard apresentou os quatro cartões de resumo em duas colunas no viewport observado, o Forecast e os estilos dos estados; Auditoria apresentou os registos recentes. Não foram executadas mutações pela interface. A suite local após `npm ci` registou 1041 aprovados, 4 ignorados e zero falhas. A consulta de auditoria passou a ser pedida apenas ao entrar nessa vista; as restantes entidades continuam dependentes do snapshot global.
+
 ## Controlos de release
 
 O workflow `production-readiness.yml` executa typecheck, lint, build,

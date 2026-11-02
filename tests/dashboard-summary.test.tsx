@@ -41,13 +41,18 @@ describe('Dashboard first-row indicators', () => {
       task('completed', { statusId: 't3' }), task('other', { statusId: 't4' }), task('deleted', { deleted: true }), task('unknown', { statusId: 'missing' })];
     expect(buildDashboardSummary([], tasks, statuses, taskStatuses, now).openTasks).toBe(3);
   });
-  it('shares the same M3 card and responsive breakpoints with Projects analysis', () => {
+  it('shares the M3 metric card and uses the dashboard container breakpoint', () => {
     const html = renderToStaticMarkup(<MetricCard title="Tarefas abertas" value={3} />);
     expect(html).toContain('p-5 space-y-2'); expect(html).toContain('text-heading-lg'); expect(html).toContain('>3</p>');
     for (const file of ['BentoDashboard.tsx', 'ProjectAnalytics.tsx']) {
       const source = readFileSync(new URL(`../components/${file}`, import.meta.url), 'utf8');
       expect(source).toContain("from './ui/MetricCard'");
-      expect(source).toContain('grid gap-4 sm:grid-cols-2 xl:grid-cols-4');
     }
+    const dashboard = readFileSync(new URL('../components/BentoDashboard.tsx', import.meta.url), 'utf8');
+    const css = readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8');
+    expect(dashboard).toContain('m3-dashboard-summary md:col-span-12 grid gap-4');
+    expect(css).toContain('.m3-dashboard { container: dashboard / inline-size; }');
+    expect(css).toContain('@container dashboard (min-width: 560px)');
+    expect(css).toContain('.m3-dashboard-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }');
   });
 });

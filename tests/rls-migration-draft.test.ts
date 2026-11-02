@@ -15,11 +15,11 @@ describe('backend-only RLS proposal static safeguards (not a PostgreSQL executio
     expect(rpc).toContain('GRANT EXECUTE ON FUNCTION');
     expect(rpc).not.toMatch(/CREATE OR REPLACE FUNCTION|DROP FUNCTION/i);
   });
-  test('explicit scope contains the 40 reported tables without public branding', () => {
+  test('historical draft explicitly scopes its 35 targets without public branding', () => {
     const array = sql.match(/targets constant text\[\] := ARRAY\[([\s\S]*?)\];/)![1];
     const names = [...array.matchAll(/'([^']+)'/g)].map(match => match[1]);
-    expect(names.length).toBe(40);
-    expect(new Set(names).size).toBe(40);
+    expect(names.length).toBe(35);
+    expect(new Set(names).size).toBe(35);
     expect(names).toContain('users');
     expect(names).toContain('audit_logs');
     expect(names).toContain('erp_tasks');

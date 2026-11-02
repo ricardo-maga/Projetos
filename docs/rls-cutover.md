@@ -1,5 +1,7 @@
 # Proposta RLS — acesso às 40 tabelas exclusivamente pelo backend
 
+**Nota histórica (2026-11-02):** o relatório desta proposta contava 40 tabelas, mas o rascunho SQL em `supabase/security-drafts/20261005_backend_only_rls.sql` enumera explicitamente 35. O teste estático verifica esses 35 alvos reais do ficheiro. Este rascunho não é uma migration executável e não deve ser usado para reconstruir nem alterar os projetos atuais sem novo inventário.
+
 Estado: **aplicada e testada apenas em staging; produção bloqueada**.
 Resumo atual: contenção/concorrência/regressão concluídas com findings em staging;
 Preparação posterior dos cinco pontos em `docs/production-readiness.md`: tipos
