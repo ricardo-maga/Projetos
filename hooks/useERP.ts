@@ -63,12 +63,15 @@ export function useERP() {
   const [auditStatus, setAuditStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const [materialsStatus, setMaterialsStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const materialsGeneration = useRef(0);
+  const [configRuntimeStatus, setConfigRuntimeStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const configRuntimeGeneration = useRef(0);
   const [isDbConfigured, setIsDbConfigured] = useState<boolean>(false);
 
 
   // Authoritative fetch directly from database (bypasses any local stale cache)
   const refreshFromDatabase = useCallback(async (): Promise<boolean> => {
     materialsGeneration.current += 1;
+    configRuntimeGeneration.current += 1;
     setSyncStatus('syncing');
     setSyncError(null);
     try {
@@ -82,6 +85,7 @@ export function useERP() {
             setState(mapped);
             setAuditStatus('idle');
             setMaterialsStatus('idle');
+            setConfigRuntimeStatus('idle');
             setSyncStatus('synced');
             setSyncError(null);
             setIsInitialDataLoaded(true);
@@ -135,6 +139,24 @@ export function useERP() {
     } catch {
       if (generation !== materialsGeneration.current) return;
       setMaterialsStatus('error');
+    }
+  }, []);
+
+  const loadConfigRuntime = useCallback(async () => {
+    const generation = configRuntimeGeneration.current;
+    setConfigRuntimeStatus('loading');
+    try {
+      const response = await fetch('/api/supabase/config-runtime', { credentials: 'same-origin', cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok || result?.success !== true || !Array.isArray(result.data?.notificationSettings) || !Array.isArray(result.data?.automationRules)) {
+        throw new Error('Resposta inválida ao carregar as configurações.');
+      }
+      if (generation !== configRuntimeGeneration.current) return;
+      setState(prev => prev ? { ...prev, notificationSettings: result.data.notificationSettings, automationRules: result.data.automationRules } : null);
+      setConfigRuntimeStatus('loaded');
+    } catch {
+      if (generation !== configRuntimeGeneration.current) return;
+      setConfigRuntimeStatus('error');
     }
   }, []);
 
@@ -1608,6 +1630,8 @@ export function useERP() {
     auditStatus,
     loadProjectMaterials,
     materialsStatus,
+    loadConfigRuntime,
+    configRuntimeStatus,
     saveState,
 
   };

@@ -192,6 +192,8 @@ export default function Page() {
     auditStatus,
     loadProjectMaterials,
     materialsStatus,
+    loadConfigRuntime,
+    configRuntimeStatus,
   } = useERP();
 
   React.useEffect(() => {
@@ -206,6 +208,13 @@ export default function Page() {
       void loadProjectMaterials();
     }
   }, [currentUser, isInitialDataLoaded, requiresProjectMaterials, materialsStatus, loadProjectMaterials]);
+
+  const requiresConfigRuntime = activeTab === 'configuracoes' && (activeConfigTab === 'notificacoes' || activeConfigTab === 'automacoes');
+  React.useEffect(() => {
+    if (currentUser && isInitialDataLoaded && requiresConfigRuntime && configRuntimeStatus === 'idle') {
+      void loadConfigRuntime();
+    }
+  }, [currentUser, isInitialDataLoaded, requiresConfigRuntime, configRuntimeStatus, loadConfigRuntime]);
 
   const [logoResult, setLogoResult] = useState<'synced' | 'error' | null>(null);
   const previousSyncStatus = React.useRef(syncStatus);
@@ -1114,7 +1123,14 @@ export default function Page() {
                 />
               )}
 
-              {activeTab === 'configuracoes' && (
+              {requiresConfigRuntime && configRuntimeStatus !== 'loaded' && (
+                <div role="status" className="rounded-card border border-border bg-surface p-6 text-body-sm text-text-secondary">
+                  {configRuntimeStatus === 'error' ? (
+                    <><p>Não foi possível carregar as notificações e automações.</p><button type="button" className="mt-3 text-primary font-semibold" onClick={() => void loadConfigRuntime()}>Tentar novamente</button></>
+                  ) : 'A carregar notificações e automações…'}
+                </div>
+              )}
+              {activeTab === 'configuracoes' && (!requiresConfigRuntime || configRuntimeStatus === 'loaded') && (
                 <ConfigSection 
                   activeConfigTab={activeConfigTab}
                   onChangeConfigTab={handleConfigTabChange}

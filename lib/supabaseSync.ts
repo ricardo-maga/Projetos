@@ -344,7 +344,7 @@ function formatDbDate(dateStr: string | null | undefined): string | null {
  */
 export async function getActiveStateFromSupabase(
   customClient?: any,
-  readOptions?: { readableDomains: ReadonlySet<string>; userId: string; skipNotifications?: boolean },
+  readOptions?: { readableDomains: ReadonlySet<string>; userId: string; skipNotifications?: boolean; skipConfigRuntime?: boolean },
 ): Promise<{ success: boolean; data?: ERPState; message?: string }> {
   const client = customClient || supabase;
   if ((!isSupabaseConfigured && !customClient) || !client) {
@@ -408,8 +408,8 @@ export async function getActiveStateFromSupabase(
       client.from('risk_priorities').select('*').order('sort_order', { ascending: true }),
       readable('projectRiskItems') ? client.from('project_risk_items').select('*').order('created_at', { ascending: false }) : skipped(),
       readOptions?.skipNotifications ? skipped() : client.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
-      readable('notificationSettings') ? client.from('notification_settings').select('*').order('type') : skipped(),
-      readable('automationRules') ? client.from('automation_rules').select('*').eq('deleted', false).order('created_at', { ascending: false }) : skipped(),
+      readable('notificationSettings') && !readOptions?.skipConfigRuntime ? client.from('notification_settings').select('*').order('type') : skipped(),
+      readable('automationRules') && !readOptions?.skipConfigRuntime ? client.from('automation_rules').select('*').eq('deleted', false).order('created_at', { ascending: false }) : skipped(),
       client.from('roles').select('id,name,code').eq('is_active', true).order('name'),
       client.from('user_roles').select('user_id,role_id'),
       readOptions && !readable('users') ? client.from('users').select('*').eq('id', readOptions.userId).maybeSingle()
