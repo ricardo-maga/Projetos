@@ -15,7 +15,7 @@
  * ============================================================================
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { applyLegacyVersions } from '../lib/supabase/legacyWriteBatch';
 import { buildLegacySyncPayload } from '../lib/supabase/syncPayload';
 import { ERPState, AppConfiguration, Project, Task, Comment, UserAbsence, User, Client, SpecialDay } from '../lib/types';
@@ -61,11 +61,14 @@ export function useERP() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [auditStatus, setAuditStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const [materialsStatus, setMaterialsStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const materialsGeneration = useRef(0);
   const [isDbConfigured, setIsDbConfigured] = useState<boolean>(false);
 
 
   // Authoritative fetch directly from database (bypasses any local stale cache)
   const refreshFromDatabase = useCallback(async (): Promise<boolean> => {
+    materialsGeneration.current += 1;
     setSyncStatus('syncing');
     setSyncError(null);
     try {
@@ -76,10 +79,9 @@ export function useERP() {
         if (syncResult.success) {
           if (syncResult.data) {
             const mapped = mapStateToUUIDs(syncResult.data);
-            mapped.projectMaterials = await listProjectMaterials();
-            
             setState(mapped);
             setAuditStatus('idle');
+            setMaterialsStatus('idle');
             setSyncStatus('synced');
             setSyncError(null);
             setIsInitialDataLoaded(true);
@@ -119,6 +121,20 @@ export function useERP() {
       setSyncError(msg);
       setIsInitialDataLoaded(false);
       return false;
+    }
+  }, []);
+
+  const loadProjectMaterials = useCallback(async () => {
+    const generation = materialsGeneration.current;
+    setMaterialsStatus('loading');
+    try {
+      const materials = await listProjectMaterials();
+      if (generation !== materialsGeneration.current) return;
+      setState(prev => prev ? { ...prev, projectMaterials: materials } : null);
+      setMaterialsStatus('loaded');
+    } catch {
+      if (generation !== materialsGeneration.current) return;
+      setMaterialsStatus('error');
     }
   }, []);
 
@@ -1590,6 +1606,8 @@ export function useERP() {
     refreshFromDatabase,
     loadAuditLogs,
     auditStatus,
+    loadProjectMaterials,
+    materialsStatus,
     saveState,
 
   };
