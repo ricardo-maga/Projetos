@@ -8,6 +8,10 @@ Continuação da fase de dados: `project_materials` deixou de bloquear o snapsho
 
 Consultas de catálogo, apenas de leitura, em produção e staging confirmaram `tasks_project_id_fkey` validada com `ON DELETE RESTRICT`, `planning_allocations_task_id_fkey` validada com ação padrão `NO ACTION`, e `tasks.project_id` anulável. Isto confirma o schema esperado para três cenários, mas não prova o comportamento da API nem substitui os quatro testes físicos ignorados.
 
+Continuação: o GET global deixou de consultar `notification_settings` e `automation_rules`. A vista de Notificações/Automações pede esses dados a `/api/supabase/config-runtime`, que verifica `config:read` e `admin:access` separadamente no servidor. Os testes de fronteira confirmam que cada permissão só permite consultar o respetivo domínio.
+
+O ramo temporário Supabase foi recusado pelo projeto: Branching requer plano Pro. Em alternativa, `supabase/diagnostics/physical_integrity_rollback.sql` foi executado numa única transação em staging, terminada com `ROLLBACK`. Passaram cinco cenários físicos: `project_id` nulo, eliminação de Task sem Allocation, eliminação de Project sem Tasks, bloqueio de Task com Allocation e bloqueio da RPC de eliminação de Project com Task ativa. Uma consulta posterior encontrou zero Tasks e zero Projects de teste. Os quatro testes Bun que requerem chave privilegiada continuam ignorados; esta execução SQL não valida o caminho HTTP/applicacional desses testes.
+
 ## Controlos de release
 
 O workflow `production-readiness.yml` executa typecheck, lint, build,
