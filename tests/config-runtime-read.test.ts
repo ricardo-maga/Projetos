@@ -29,6 +29,7 @@ describe('Config runtime read boundary', () => {
     spies.push(spyOn(authBoundary, 'requireAuth').mockRejectedValue(new authBoundary.AuthError('Sessão inválida.', 401)));
     const response = await GET(request());
     expect(response.status).toBe(401);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect((await response.json()).data).toBeUndefined();
   });
 
