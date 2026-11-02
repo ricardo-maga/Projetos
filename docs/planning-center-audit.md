@@ -42,6 +42,15 @@ para `.next-staging`; esta variável foi ajustada para `false` apenas nesta bran
 e o segundo build ficou `READY`. URL validado:
 `https://projex-qq2hgyip4-gestao-de-projetos.vercel.app/internal/planning-preview`.
 
+Um ensaio de login no Preview revelou que staging não continha os objetos da
+migration histórica `distributed_rate_limits`, embora a aplicação já chamasse
+`consume_rate_limit`. A migration aditiva
+`restore_distributed_rate_limits_staging_compat` repõe a definição original em
+staging sem enfraquecer o limite de tentativas. Um login com credenciais fictícias
+inválidas passou de 500 para 401 no mesmo deployment; o acesso direto à RPC
+continua negado a `authenticated` e permitido a `service_role`. Ainda falta
+confirmar um login válido e a interface com uma sessão de staging autorizada.
+
 Antes de declarar a implementação completa: integrar com segurança o automatismo
 legado de modelos e os restantes ecrãs consumidores do motor, validar os testes
 autenticados de UI/RBAC. O
