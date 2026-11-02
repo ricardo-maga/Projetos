@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, AuthError, ForbiddenError } from '@/lib/auth/requireAuth';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
+const noStore = { 'Cache-Control': 'private, no-store' };
+
 export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth(req);
@@ -15,7 +17,7 @@ export async function GET(req: NextRequest) {
     }));
     const [canReadSettings, canReadAutomations] = checks;
     if (!canReadSettings && !canReadAutomations) {
-      return NextResponse.json({ success: false, message: 'Sem permissão para consultar configurações.' }, { status: 403 });
+      return NextResponse.json({ success: false, message: 'Sem permissão para consultar configurações.' }, { status: 403, headers: noStore });
     }
 
     const [settingsResult, rulesResult] = await Promise.all([
@@ -35,10 +37,10 @@ export async function GET(req: NextRequest) {
         actions: row.actions || [], enabled: row.enabled !== false, deleted: row.deleted === true,
         createdDate: row.created_at || '', syncVersion: row.sync_version,
       })),
-    } }, { headers: { 'Cache-Control': 'no-store' } });
+    } }, { headers: noStore });
   } catch (error) {
-    if (error instanceof ForbiddenError) return NextResponse.json({ success: false, message: error.message }, { status: 403 });
-    if (error instanceof AuthError) return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode || 401 });
-    return NextResponse.json({ success: false, message: 'Não foi possível consultar as configurações.' }, { status: 503 });
+    if (error instanceof ForbiddenError) return NextResponse.json({ success: false, message: error.message }, { status: 403, headers: noStore });
+    if (error instanceof AuthError) return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode || 401, headers: noStore });
+    return NextResponse.json({ success: false, message: 'Não foi possível consultar as configurações.' }, { status: 503, headers: noStore });
   }
 }
