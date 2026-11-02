@@ -60,6 +60,7 @@ export function useERP() {
   const [isInitialDataLoaded, setIsInitialDataLoaded] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [auditStatus, setAuditStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const [isDbConfigured, setIsDbConfigured] = useState<boolean>(false);
 
 
@@ -77,16 +78,8 @@ export function useERP() {
             const mapped = mapStateToUUIDs(syncResult.data);
             mapped.projectMaterials = await listProjectMaterials();
             
-            // Try fetching audit logs
-            if (isSupabaseConfigured) {
-              fetchAuditLogsFromSupabase(100).then(res => {
-                if (res.success && res.data) {
-                  setState(prev => prev ? { ...prev, auditLogs: res.data } : null);
-                }
-              }).catch(() => {});
-            }
-
             setState(mapped);
+            setAuditStatus('idle');
             setSyncStatus('synced');
             setSyncError(null);
             setIsInitialDataLoaded(true);
@@ -126,6 +119,18 @@ export function useERP() {
       setSyncError(msg);
       setIsInitialDataLoaded(false);
       return false;
+    }
+  }, []);
+
+  const loadAuditLogs = useCallback(async () => {
+    setAuditStatus('loading');
+    try {
+      const result = await fetchAuditLogsFromSupabase(100);
+      if (!result.success || !result.data) throw new Error(result.message || 'Não foi possível carregar a auditoria.');
+      setState(prev => prev ? { ...prev, auditLogs: result.data! } : null);
+      setAuditStatus('loaded');
+    } catch {
+      setAuditStatus('error');
     }
   }, []);
 
@@ -1583,6 +1588,8 @@ export function useERP() {
     deleteAutomationRule,
     toggleAutomationRule,
     refreshFromDatabase,
+    loadAuditLogs,
+    auditStatus,
     saveState,
 
   };

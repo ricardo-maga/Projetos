@@ -188,7 +188,15 @@ export default function Page() {
     syncError,
     isDbConfigured,
     refreshFromDatabase,
+    loadAuditLogs,
+    auditStatus,
   } = useERP();
+
+  React.useEffect(() => {
+    if (currentUser && isInitialDataLoaded && activeTab === 'configuracoes' && activeConfigTab === 'auditoria' && auditStatus === 'idle') {
+      void loadAuditLogs();
+    }
+  }, [currentUser, isInitialDataLoaded, activeTab, activeConfigTab, auditStatus, loadAuditLogs]);
 
   const [logoResult, setLogoResult] = useState<'synced' | 'error' | null>(null);
   const previousSyncStatus = React.useRef(syncStatus);
@@ -1122,6 +1130,7 @@ export default function Page() {
                   state={state}
                   databaseStatus={syncStatus}
                   databaseError={syncError}
+                  auditStatus={auditStatus}
                   addProject={addProject}
                   clients={state.clients}
                   addClient={addClient}
