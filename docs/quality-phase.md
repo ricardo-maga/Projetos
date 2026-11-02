@@ -4,6 +4,10 @@ Atualização de 2 de novembro de 2026: os três testes de apresentação/rascun
 
 Revisão autenticada de produção em 2 de novembro: Projetos apresentou a lista paginada e os estados; Dashboard apresentou os quatro cartões de resumo em duas colunas no viewport observado, o Forecast e os estilos dos estados; Auditoria apresentou os registos recentes. Não foram executadas mutações pela interface. A suite local após `npm ci` registou 1041 aprovados, 4 ignorados e zero falhas. A consulta de auditoria passou a ser pedida apenas ao entrar nessa vista; as restantes entidades continuam dependentes do snapshot global.
 
+Continuação da fase de dados: `project_materials` deixou de bloquear o snapshot inicial. A API paginada é chamada quando se abre Dashboard, Projetos ou Relatórios; essas vistas mostram carregamento ou erro até terem materiais, evitando indicadores calculados sobre uma lista vazia. As outras entidades partilhadas e as mutações legadas ainda dependem do snapshot global. Os quatro testes físicos SQL continuam ignorados: o Docker local está indisponível e os testes existentes escrevem em staging com uma chave privilegiada, pelo que não devem ser executados sobre dados reais sem uma base isolada.
+
+Consultas de catálogo, apenas de leitura, em produção e staging confirmaram `tasks_project_id_fkey` validada com `ON DELETE RESTRICT`, `planning_allocations_task_id_fkey` validada com ação padrão `NO ACTION`, e `tasks.project_id` anulável. Isto confirma o schema esperado para três cenários, mas não prova o comportamento da API nem substitui os quatro testes físicos ignorados.
+
 ## Controlos de release
 
 O workflow `production-readiness.yml` executa typecheck, lint, build,

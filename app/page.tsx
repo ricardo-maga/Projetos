@@ -190,6 +190,8 @@ export default function Page() {
     refreshFromDatabase,
     loadAuditLogs,
     auditStatus,
+    loadProjectMaterials,
+    materialsStatus,
   } = useERP();
 
   React.useEffect(() => {
@@ -197,6 +199,13 @@ export default function Page() {
       void loadAuditLogs();
     }
   }, [currentUser, isInitialDataLoaded, activeTab, activeConfigTab, auditStatus, loadAuditLogs]);
+
+  const requiresProjectMaterials = activeTab === 'dashboard' || activeTab === 'projetos' || activeTab === 'reports';
+  React.useEffect(() => {
+    if (currentUser && isInitialDataLoaded && requiresProjectMaterials && materialsStatus === 'idle') {
+      void loadProjectMaterials();
+    }
+  }, [currentUser, isInitialDataLoaded, requiresProjectMaterials, materialsStatus, loadProjectMaterials]);
 
   const [logoResult, setLogoResult] = useState<'synced' | 'error' | null>(null);
   const previousSyncStatus = React.useRef(syncStatus);
@@ -908,7 +917,14 @@ export default function Page() {
 
             {/* Content view switcher */}
             <div id="active-tab-content" key={`${activeTab}-${navKey}`} className="animate-fade-in">
-              {activeTab === 'dashboard' && (
+              {requiresProjectMaterials && materialsStatus !== 'loaded' && (
+                <div role="status" className="rounded-card border border-border bg-surface p-6 text-body-sm text-text-secondary">
+                  {materialsStatus === 'error' ? (
+                    <><p>Não foi possível carregar os materiais dos projetos.</p><button type="button" className="mt-3 text-primary font-semibold" onClick={() => void loadProjectMaterials()}>Tentar novamente</button></>
+                  ) : 'A carregar materiais dos projetos…'}
+                </div>
+              )}
+              {activeTab === 'dashboard' && materialsStatus === 'loaded' && (
                 <BentoDashboard 
                   projects={state.projects}
                   tasks={state.tasks}
@@ -954,7 +970,7 @@ export default function Page() {
                 />
               )}
 
-              {activeTab === 'reports' && (
+              {activeTab === 'reports' && materialsStatus === 'loaded' && (
                 <ReportsSection
                   projects={state.projects || []}
                   tasks={state.tasks || []}
@@ -966,7 +982,7 @@ export default function Page() {
                 />
               )}
 
-              {activeTab === 'projetos' && (
+              {activeTab === 'projetos' && materialsStatus === 'loaded' && (
                 <ProjectSection 
                   projects={state.projects}
                   clients={state.clients}
