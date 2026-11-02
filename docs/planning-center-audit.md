@@ -27,7 +27,7 @@ limites desta entrega; a integração dos consumidores antigos permanece gradual
 - Ensaio da RPC com `BEGIN … ROLLBACK` devolveu versão 2; a edição legada posterior na mesma transação removeu o bloco. Após rollback, a tarefa permaneceu na versão 1, com data original e zero blocos.
 - `task_plan_blocks` tem RLS ativo; `anon` e `authenticated` não têm `SELECT`, nem `EXECUTE` na RPC. `service_role` tem ambos. O advisor de staging regista RLS sem política, que neste caso representa negação de acesso direto.
 - Criação repetida de tarefa por requisito, atribuição de instalação do projeto/tarefa e rejeição de instalação de outro cliente foram ensaiadas em transações com rollback. As tabelas `task_plan_blocks`, `project_task_requirements` e `client_sites` ficaram vazias após os ensaios.
-- Rota local sem sessão: página 404; API de leitura e cinco APIs de escrita devolvem 401. Testes autenticados de interface, perfis RBAC e Preview Vercel ainda pendentes.
+- Rota local sem sessão: página 404; API de leitura e cinco APIs de escrita devolvem 401. No Preview Vercel, o acesso sem SSO redireciona para a autenticação Vercel; com acesso técnico ao deployment mas sem sessão da aplicação, a API devolve 401 e a página 404. Testes autenticados de interface e perfis RBAC ainda pendentes.
 
 ## Entrega e próximos gates
 
@@ -35,9 +35,16 @@ Acesso experimental: `/internal/planning-preview`, sem entrada no menu e desativ
 por omissão. Ativar `PLANNING_PREVIEW_ENABLED=true` apenas em desenvolvimento ou
 Preview protegido; a produção devolve 404 independentemente do flag.
 
+O deployment Preview da branch usa variáveis Supabase de staging restritas a
+`codex/planning-center-20261102`. A proteção SSO está ativa para o URL do
+deployment. O primeiro build falhou porque `ERP_STAGING=true` alterava `distDir`
+para `.next-staging`; esta variável foi ajustada para `false` apenas nesta branch,
+e o segundo build ficou `READY`. URL validado:
+`https://projex-qq2hgyip4-gestao-de-projetos.vercel.app/internal/planning-preview`.
+
 Antes de declarar a implementação completa: integrar com segurança o automatismo
 legado de modelos e os restantes ecrãs consumidores do motor, validar os testes
-autenticados de UI/RBAC e confirmar a proteção e o alvo de dados do Preview. O
+autenticados de UI/RBAC. O
 catálogo está inicialmente vazio: um configurador autorizado deve associar modelos
 a categorias antes de aparecerem requisitos de projeto. A reconciliação
 histórica documentada em `database-baseline.md` e `migration-reconciliation.md`
