@@ -398,7 +398,7 @@ export default function ConfigSection({
   const [usersConfigTab, setUsersConfigTab] = useState<'users' | 'roles' | 'associacoes'>('users');
   const [notificationTab, setNotificationTab] = useState<'notificacoes' | 'automacoes'>(activeConfigTab === 'automacoes' ? 'automacoes' : 'notificacoes');
   useEffect(() => {
-    if (activeConfigTab === 'automacoes') setNotificationTab('automacoes');
+    if (activeConfigTab === 'automacoes' || activeConfigTab === 'notificacoes') setNotificationTab(activeConfigTab);
   }, [activeConfigTab]);
   const setActiveConfigTab = (tab: string) => {
     if (onChangeConfigTab) onChangeConfigTab(tab);
