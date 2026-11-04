@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     readableDomains.delete('projectMaterials');
     if (permissions.get('users:read') === true) readableDomains.add('users');
     const result = await getActiveStateFromSupabase(clientToUse,
-      { readableDomains, userId: user.id, skipNotifications: true, skipConfigRuntime: true });
+      { readableDomains, userId: user.id, skipNotifications: true, skipConfigRuntime: true, skipDefaultTasks: true });
     if (!result.success || !result.data) {
       return NextResponse.json({
         success: false,

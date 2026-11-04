@@ -194,6 +194,8 @@ export default function Page() {
     materialsStatus,
     loadConfigRuntime,
     configRuntimeStatus,
+    loadDefaultTasks,
+    defaultTasksStatus,
   } = useERP();
 
   React.useEffect(() => {
@@ -215,6 +217,14 @@ export default function Page() {
       void loadConfigRuntime();
     }
   }, [currentUser, isInitialDataLoaded, requiresConfigRuntime, configRuntimeStatus, loadConfigRuntime]);
+
+  const requiresDefaultTasks = Boolean(currentUser && hasPermission(currentUser, 'config_read')) &&
+    (activeTab === 'projetos' || (activeTab === 'configuracoes' && activeConfigTab === 'tarefas'));
+  React.useEffect(() => {
+    if (currentUser && isInitialDataLoaded && requiresDefaultTasks && defaultTasksStatus === 'idle') {
+      void loadDefaultTasks();
+    }
+  }, [currentUser, isInitialDataLoaded, requiresDefaultTasks, defaultTasksStatus, loadDefaultTasks]);
 
   const [logoResult, setLogoResult] = useState<'synced' | 'error' | null>(null);
   const previousSyncStatus = React.useRef(syncStatus);
@@ -933,6 +943,13 @@ export default function Page() {
                   ) : 'A carregar materiais dos projetos…'}
                 </div>
               )}
+              {requiresDefaultTasks && defaultTasksStatus !== 'loaded' && (
+                <div role="status" className="rounded-card border border-border bg-surface p-6 text-body-sm text-text-secondary">
+                  {defaultTasksStatus === 'error' ? (
+                    <><p>Não foi possível carregar os templates de tarefas.</p><button type="button" className="mt-3 text-primary font-semibold" onClick={() => void loadDefaultTasks()}>Tentar novamente</button></>
+                  ) : 'A carregar templates de tarefas…'}
+                </div>
+              )}
               {activeTab === 'dashboard' && materialsStatus === 'loaded' && (
                 <BentoDashboard 
                   projects={state.projects}
@@ -991,7 +1008,7 @@ export default function Page() {
                 />
               )}
 
-              {activeTab === 'projetos' && materialsStatus === 'loaded' && (
+              {activeTab === 'projetos' && materialsStatus === 'loaded' && (!requiresDefaultTasks || defaultTasksStatus === 'loaded') && (
                 <ProjectSection 
                   projects={state.projects}
                   clients={state.clients}
@@ -1130,7 +1147,7 @@ export default function Page() {
                   ) : 'A carregar notificações e automações…'}
                 </div>
               )}
-              {activeTab === 'configuracoes' && (!requiresConfigRuntime || configRuntimeStatus === 'loaded') && (
+              {activeTab === 'configuracoes' && (!requiresConfigRuntime || configRuntimeStatus === 'loaded') && (!requiresDefaultTasks || defaultTasksStatus === 'loaded') && (
                 <ConfigSection 
                   activeConfigTab={activeConfigTab}
                   onChangeConfigTab={handleConfigTabChange}

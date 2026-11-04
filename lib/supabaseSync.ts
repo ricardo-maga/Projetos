@@ -344,7 +344,7 @@ function formatDbDate(dateStr: string | null | undefined): string | null {
  */
 export async function getActiveStateFromSupabase(
   customClient?: any,
-  readOptions?: { readableDomains: ReadonlySet<string>; userId: string; skipNotifications?: boolean; skipConfigRuntime?: boolean },
+  readOptions?: { readableDomains: ReadonlySet<string>; userId: string; skipNotifications?: boolean; skipConfigRuntime?: boolean; skipDefaultTasks?: boolean },
 ): Promise<{ success: boolean; data?: ERPState; message?: string }> {
   const client = customClient || supabase;
   if ((!isSupabaseConfigured && !customClient) || !client) {
@@ -402,7 +402,7 @@ export async function getActiveStateFromSupabase(
       readable('userAbsences') ? client.from('user_absences').select('*') : skipped(),
       client.from('app_configuration').select('*').limit(1),
       client.from('special_days').select('*'),
-      readable('defaultTasks') ? client.from('default_tasks').select('*') : skipped(),
+      readable('defaultTasks') && !readOptions?.skipDefaultTasks ? client.from('default_tasks').select('*') : skipped(),
       client.from('risk_categories').select('*').order('sort_order', { ascending: true }),
       client.from('risk_statuses').select('*').order('sort_order', { ascending: true }),
       client.from('risk_priorities').select('*').order('sort_order', { ascending: true }),
