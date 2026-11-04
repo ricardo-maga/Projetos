@@ -37,7 +37,7 @@ const SectionLoading = () => (
 const ProjectSection = dynamic(() => import('../components/ProjectSection'), { loading: SectionLoading });
 const TaskSection = dynamic(() => import('../components/TaskSection'), { loading: SectionLoading });
 const MechanicalDesignSection = dynamic(() => import('../components/MechanicalDesignSection'), { loading: SectionLoading });
-const PresalesSection = dynamic(() => import('../components/PresalesSection'), { loading: SectionLoading });
+const PresalesSection = dynamic(() => import('../components/PresalesRegistrySection'), { loading: SectionLoading });
 const ClientSection = dynamic(() => import('../components/ClientSection'), { loading: SectionLoading });
 const UserSection = dynamic(() => import('../components/UserSection'), { loading: SectionLoading });
 const ConfigSection = dynamic(() => import('../components/ConfigSection'), { loading: SectionLoading });
@@ -954,7 +954,7 @@ export default function Page() {
               )}
 
               {activeTab === 'presales' && (
-                <PresalesSection currentUser={currentUser} users={state.users} projects={state.projects} projectPriorities={state.projectPriorities || []}
+                <PresalesSection currentUser={currentUser} users={state.users} clients={state.clients || []} projectPriorities={state.projectPriorities || []}
                   initialRequestId={selectedPresalesRequestId} onTasksChanged={refreshFromDatabase} />
               )}
 

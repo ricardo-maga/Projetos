@@ -70,6 +70,10 @@ export async function listPresales(db: SupabaseClient, options: { id?: string; p
       requirements: detail?.technical_requirements || '', outcome: detail?.technical_outcome || '',
       commercialManagerId: detail?.commercial_manager_id || null, projectManagerId: detail?.project_manager_id || null,
       originCode: detail?.origin_code || null, priorityId: detail?.priority_id || null, opportunitySf: detail?.opportunity_sf || '',
+      clientId: detail?.client_id || null, description: detail?.request_description || '',
+      startedOn: detail?.started_on || null, completedOn: detail?.completed_on || null,
+      potentialValue: detail?.potential_value == null ? null : Number(detail.potential_value),
+      saleDate: detail?.sale_date || null, saleValue: detail?.sale_value == null ? null : Number(detail.sale_value),
       executionProjectId: detail?.execution_project_id || null,
       document: detail?.document_draft || { schemaVersion: 1, blocks: [] }, documentLocked: Boolean(detail?.document_locked),
       tasks: links.filter(link => link.request_id === row.id).map(link => {

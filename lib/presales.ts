@@ -64,6 +64,8 @@ export interface PresalesRequest {
   requesterId: string; ownerId: string; version: number; plannedStartDate: string; plannedEndDate: string;
   requirements: string; outcome: string; commercialManagerId: string|null; projectManagerId: string|null;
   originCode: string|null; priorityId: string|null; opportunitySf: string;
+  clientId: string|null; description: string; startedOn: string|null; completedOn: string|null;
+  potentialValue: number|null; saleDate: string|null; saleValue: number|null;
   executionProjectId: string|null; document: PresalesDocument; documentLocked: boolean;
   tasks: PresalesTask[]; items: PresalesItem[]; revisions: PresalesRevision[];
 }
