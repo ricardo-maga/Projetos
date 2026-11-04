@@ -1,5 +1,21 @@
 # Fase de Qualidade — 29 de outubro de 2026
 
+Atualização de 4 de novembro de 2026: o GET inicial deixou também de ler `default_tasks`. Projetos e Configurações → Templates de tarefas carregam essa coleção apenas quando necessária e quando o utilizador tem `config:read`; o endpoint dedicado volta a validar a permissão no servidor. O carregamento apresenta erro e repetição explícitos, evitando mostrar uma lista vazia como se fosse autoritativa.
+
+A navegação principal, os links diretos e o estado de seleção foram extraídos de `app/page.tsx` para `hooks/usePageNavigation.ts`. As verificações de permissão e a composição das vistas continuam na página; esta extração reduz a concentração de responsabilidades sem alterar os URLs existentes.
+
+Atualização de 2 de novembro de 2026: os três testes de apresentação/rascunho pendentes foram alinhados com o CSS atual e com os 35 alvos que o rascunho SQL realmente enumera. A revisão visual autenticada e os quatro testes físicos de BD continuam a ser verificações independentes.
+
+Revisão autenticada de produção em 2 de novembro: Projetos apresentou a lista paginada e os estados; Dashboard apresentou os quatro cartões de resumo em duas colunas no viewport observado, o Forecast e os estilos dos estados; Auditoria apresentou os registos recentes. Não foram executadas mutações pela interface. A suite local após `npm ci` registou 1041 aprovados, 4 ignorados e zero falhas. A consulta de auditoria passou a ser pedida apenas ao entrar nessa vista; as restantes entidades continuam dependentes do snapshot global.
+
+Continuação da fase de dados: `project_materials` deixou de bloquear o snapshot inicial. A API paginada é chamada quando se abre Dashboard, Projetos ou Relatórios; essas vistas mostram carregamento ou erro até terem materiais, evitando indicadores calculados sobre uma lista vazia. As outras entidades partilhadas e as mutações legadas ainda dependem do snapshot global. Os quatro testes físicos SQL continuam ignorados: o Docker local está indisponível e os testes existentes escrevem em staging com uma chave privilegiada, pelo que não devem ser executados sobre dados reais sem uma base isolada.
+
+Consultas de catálogo, apenas de leitura, em produção e staging confirmaram `tasks_project_id_fkey` validada com `ON DELETE RESTRICT`, `planning_allocations_task_id_fkey` validada com ação padrão `NO ACTION`, e `tasks.project_id` anulável. Isto confirma o schema esperado para três cenários, mas não prova o comportamento da API nem substitui os quatro testes físicos ignorados.
+
+Continuação: o GET global deixou de consultar `notification_settings` e `automation_rules`. A vista de Notificações/Automações pede esses dados a `/api/supabase/config-runtime`, que verifica `config:read` e `admin:access` separadamente no servidor. Os testes de fronteira confirmam que cada permissão só permite consultar o respetivo domínio.
+
+O ramo temporário Supabase foi recusado pelo projeto: Branching requer plano Pro. Em alternativa, `supabase/diagnostics/physical_integrity_rollback.sql` foi executado numa única transação em staging, terminada com `ROLLBACK`. Passaram cinco cenários físicos: `project_id` nulo, eliminação de Task sem Allocation, eliminação de Project sem Tasks, bloqueio de Task com Allocation e bloqueio da RPC de eliminação de Project com Task ativa. Uma consulta posterior encontrou zero Tasks e zero Projects de teste. Os quatro testes Bun que requerem chave privilegiada continuam ignorados; esta execução SQL não valida o caminho HTTP/applicacional desses testes.
+
 ## Controlos de release
 
 O workflow `production-readiness.yml` executa typecheck, lint, build,

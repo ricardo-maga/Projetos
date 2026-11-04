@@ -81,6 +81,7 @@ interface ConfigSectionProps {
   state: ERPState;
   databaseStatus: 'idle' | 'syncing' | 'synced' | 'error';
   databaseError?: string | null;
+  auditStatus?: 'idle' | 'loading' | 'loaded' | 'error';
   addProject?: any;
   clients?: import('../lib/types').Client[];
   addClient?: any;
@@ -337,6 +338,7 @@ export default function ConfigSection({
   state,
   databaseStatus,
   databaseError,
+  auditStatus = 'idle',
   addProject,
   clients = [],
   addClient,
@@ -1621,7 +1623,9 @@ export default function ConfigSection({
 
       {/* AUDITORIA TAB */}
       {activeConfigTab === 'auditoria' && (
-        <AuditLogSection auditLogs={state.auditLogs || []} currentUser={currentUser} />
+        auditStatus === 'loaded'
+          ? <AuditLogSection auditLogs={state.auditLogs || []} currentUser={currentUser} />
+          : <p role="status" className="text-body-sm text-text-secondary">{auditStatus === 'error' ? 'Não foi possível carregar a auditoria. Recarregue os dados para tentar novamente.' : 'A carregar auditoria…'}</p>
       )}
 
       {/* UTILIZADORES TAB */}

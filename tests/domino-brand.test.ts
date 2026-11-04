@@ -44,10 +44,10 @@ describe('Domino brand palette', () => {
     expect(brand).not.toMatch(/\.(bg|text)-(emerald|rose|indigo|green)-/);
   });
 
-  it('uses brand accents for Dashboard summaries while preserving status styling', () => {
+  it('uses shared neutral metric cards and preserves configured project status styling', () => {
     const source = readFileSync(new URL('../components/BentoDashboard.tsx', import.meta.url), 'utf8');
-    expect(source).toContain('bg-brand-green/10 text-brand-green');
-    expect(source).toContain('bg-brand-accent/10 text-brand-accent');
+    expect(source).toContain('<MetricCard title="Projetos ativos"');
+    expect(source).toContain('<MetricCard title="Tarefas abertas"');
     expect(source).toContain('getProjectStatusStyle');
   });
 });

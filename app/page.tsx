@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useERP } from '../hooks/useERP';
+import { usePageNavigation } from '../hooks/usePageNavigation';
 import { useAsyncAction } from '../hooks/useAsyncAction';
 import BentoDashboard from '../components/BentoDashboard';
 import NotificationDropdown from '../components/NotificationDropdown';
@@ -45,32 +46,8 @@ const CalendarSubscriptions = dynamic(() => import('../components/CalendarSubscr
 const MyFocusSection = dynamic(() => import('../components/MyFocusSection'), { loading: SectionLoading });
 const ReportsSection = dynamic(() => import('../components/ReportsSection'), { loading: SectionLoading });
 
-const CONFIG_TAB_SLUGS: Record<string, string> = {
-  sistema: 'configuration',
-  campos: 'aux-fields',
-  dias: 'special-days',
-  clientes: 'clients',
-  ausencias: 'absences',
-  tarefas: 'task-templates',
-  utilizadores: 'users',
-  notificacoes: 'notifications',
-  automacoes: 'automations',
-  auditoria: 'audit-log',
-  importacao: 'import-database',
-};
-
-const CONFIG_SLUG_TABS = Object.fromEntries(
-  Object.entries(CONFIG_TAB_SLUGS).map(([tab, slug]) => [slug, tab])
-);
-
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedMechanicalRequestId, setSelectedMechanicalRequestId] = useState<string | null>(null);
-  const [selectedPresalesRequestId, setSelectedPresalesRequestId] = useState<string | null>(null);
-  const [activeConfigTab, setActiveConfigTab] = useState('sistema');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   // Login state
@@ -188,7 +165,51 @@ export default function Page() {
     syncError,
     isDbConfigured,
     refreshFromDatabase,
+    loadAuditLogs,
+    auditStatus,
+    loadProjectMaterials,
+    materialsStatus,
+    loadConfigRuntime,
+    configRuntimeStatus,
+    loadDefaultTasks,
+    defaultTasksStatus,
   } = useERP();
+
+  const {
+    activeTab, setActiveTab, activeConfigTab, selectedProjectId,
+    selectedMechanicalRequestId, setSelectedMechanicalRequestId,
+    selectedPresalesRequestId, setSelectedPresalesRequestId,
+    sidebarOpen, setSidebarOpen, navKey,
+    handleTabChange, handleConfigTabChange, handleSelectProject,
+  } = usePageNavigation(mounted, Boolean(state));
+
+  React.useEffect(() => {
+    if (currentUser && isInitialDataLoaded && activeTab === 'configuracoes' && activeConfigTab === 'auditoria' && auditStatus === 'idle') {
+      void loadAuditLogs();
+    }
+  }, [currentUser, isInitialDataLoaded, activeTab, activeConfigTab, auditStatus, loadAuditLogs]);
+
+  const requiresProjectMaterials = activeTab === 'dashboard' || activeTab === 'projetos' || activeTab === 'reports';
+  React.useEffect(() => {
+    if (currentUser && isInitialDataLoaded && requiresProjectMaterials && materialsStatus === 'idle') {
+      void loadProjectMaterials();
+    }
+  }, [currentUser, isInitialDataLoaded, requiresProjectMaterials, materialsStatus, loadProjectMaterials]);
+
+  const requiresConfigRuntime = activeTab === 'configuracoes' && (activeConfigTab === 'notificacoes' || activeConfigTab === 'automacoes');
+  React.useEffect(() => {
+    if (currentUser && isInitialDataLoaded && requiresConfigRuntime && configRuntimeStatus === 'idle') {
+      void loadConfigRuntime();
+    }
+  }, [currentUser, isInitialDataLoaded, requiresConfigRuntime, configRuntimeStatus, loadConfigRuntime]);
+
+  const requiresDefaultTasks = Boolean(currentUser && hasPermission(currentUser, 'config_read')) &&
+    (activeTab === 'projetos' || (activeTab === 'configuracoes' && activeConfigTab === 'tarefas'));
+  React.useEffect(() => {
+    if (currentUser && isInitialDataLoaded && requiresDefaultTasks && defaultTasksStatus === 'idle') {
+      void loadDefaultTasks();
+    }
+  }, [currentUser, isInitialDataLoaded, requiresDefaultTasks, defaultTasksStatus, loadDefaultTasks]);
 
   const [logoResult, setLogoResult] = useState<'synced' | 'error' | null>(null);
   const previousSyncStatus = React.useRef(syncStatus);
@@ -200,68 +221,6 @@ export default function Page() {
     const timeout = window.setTimeout(() => setLogoResult(null), 2000);
     return () => window.clearTimeout(timeout);
   }, [syncStatus]);
-
-  const hasProcessedDeepLink = React.useRef(false);
-
-  const [navKey, setNavKey] = useState(0);
-
-  const scrollToTop = React.useCallback(() => {
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-      const mainElem = document.getElementById('main-content');
-      if (mainElem) mainElem.scrollTop = 0;
-      const bodyWrapper = document.getElementById('body-wrapper');
-      if (bodyWrapper) bodyWrapper.scrollTop = 0;
-      const activeContent = document.getElementById('active-tab-content');
-      if (activeContent) activeContent.scrollTop = 0;
-      const mainRoot = document.getElementById('main-root');
-      if (mainRoot) mainRoot.scrollTop = 0;
-    }
-  }, []);
-
-  // Ensure scroll is at top whenever active tab, selected project, or nav key changes
-  React.useEffect(() => {
-    scrollToTop();
-    const timer = setTimeout(scrollToTop, 0);
-    const raf = requestAnimationFrame(scrollToTop);
-    return () => {
-      clearTimeout(timer);
-      cancelAnimationFrame(raf);
-    };
-  }, [activeTab, selectedProjectId, navKey, scrollToTop]);
-
-  // Handle direct deep links
-  React.useEffect(() => {
-    if (mounted && state && !hasProcessedDeepLink.current) {
-      hasProcessedDeepLink.current = true;
-      const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get('tab');
-      const projectParam = params.get('project');
-      const requestParam = params.get('request');
-      
-      if (tabParam) {
-        const configTab = CONFIG_SLUG_TABS[tabParam];
-        if (configTab) {
-          if (configTab === 'clientes' || configTab === 'ausencias') {
-            setActiveTab(configTab);
-          } else {
-            setActiveTab('configuracoes');
-            setActiveConfigTab(configTab);
-          }
-        } else {
-          setActiveTab(({ 'meu-foco': 'my-focus', 'relatorios': 'reports', 'desenho-mecanico': 'mechanical-design' } as Record<string,string>)[tabParam] || tabParam);
-        }
-      }
-      if (projectParam) {
-        setSelectedProjectId(projectParam);
-      }
-      if (requestParam && tabParam === 'presales') setSelectedPresalesRequestId(requestParam);
-      else if (requestParam) setSelectedMechanicalRequestId(requestParam);
-    }
-  }, [mounted, state]);
 
   // Synchronize active theme attribute on document.documentElement for global styling
   React.useEffect(() => {
@@ -276,56 +235,6 @@ export default function Page() {
       }
     }
   }, [state?.appConfig?.theme]);
-
-  const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
-    setSelectedProjectId(null);
-    setNavKey(prev => prev + 1);
-    setSidebarOpen(false);
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      params.set('tab', tabId === 'configuracoes'
-        ? CONFIG_TAB_SLUGS[activeConfigTab] || CONFIG_TAB_SLUGS.sistema
-        : tabId);
-      params.delete('project');
-      window.history.pushState(null, '', '?' + params.toString());
-      scrollToTop();
-    }
-  };
-
-  const handleConfigTabChange = (configTab: string) => {
-    const isNestedPage = configTab === 'clientes' || configTab === 'ausencias';
-    setActiveTab(isNestedPage ? configTab : 'configuracoes');
-    setActiveConfigTab(configTab);
-    setSelectedProjectId(null);
-    setNavKey(prev => prev + 1);
-    setSidebarOpen(false);
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      params.set('tab', CONFIG_TAB_SLUGS[configTab] || CONFIG_TAB_SLUGS.sistema);
-      params.delete('project');
-      window.history.pushState(null, '', '?' + params.toString());
-      scrollToTop();
-    }
-  };
-
-  const handleSelectProject = (projId: string | null) => {
-    setSelectedProjectId(projId);
-    if (projId) {
-      setActiveTab('projetos');
-    }
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (projId) {
-        params.set('tab', 'projetos');
-        params.set('project', projId);
-      } else {
-        params.delete('project');
-      }
-      window.history.pushState(null, '', '?' + params.toString());
-      scrollToTop();
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -900,7 +809,21 @@ export default function Page() {
 
             {/* Content view switcher */}
             <div id="active-tab-content" key={`${activeTab}-${navKey}`} className="animate-fade-in">
-              {activeTab === 'dashboard' && (
+              {requiresProjectMaterials && materialsStatus !== 'loaded' && (
+                <div role="status" className="rounded-card border border-border bg-surface p-6 text-body-sm text-text-secondary">
+                  {materialsStatus === 'error' ? (
+                    <><p>Não foi possível carregar os materiais dos projetos.</p><button type="button" className="mt-3 text-primary font-semibold" onClick={() => void loadProjectMaterials()}>Tentar novamente</button></>
+                  ) : 'A carregar materiais dos projetos…'}
+                </div>
+              )}
+              {requiresDefaultTasks && defaultTasksStatus !== 'loaded' && (
+                <div role="status" className="rounded-card border border-border bg-surface p-6 text-body-sm text-text-secondary">
+                  {defaultTasksStatus === 'error' ? (
+                    <><p>Não foi possível carregar os templates de tarefas.</p><button type="button" className="mt-3 text-primary font-semibold" onClick={() => void loadDefaultTasks()}>Tentar novamente</button></>
+                  ) : 'A carregar templates de tarefas…'}
+                </div>
+              )}
+              {activeTab === 'dashboard' && materialsStatus === 'loaded' && (
                 <BentoDashboard 
                   projects={state.projects}
                   tasks={state.tasks}
@@ -946,7 +869,7 @@ export default function Page() {
                 />
               )}
 
-              {activeTab === 'reports' && (
+              {activeTab === 'reports' && materialsStatus === 'loaded' && (
                 <ReportsSection
                   projects={state.projects || []}
                   tasks={state.tasks || []}
@@ -958,7 +881,7 @@ export default function Page() {
                 />
               )}
 
-              {activeTab === 'projetos' && (
+              {activeTab === 'projetos' && materialsStatus === 'loaded' && (!requiresDefaultTasks || defaultTasksStatus === 'loaded') && (
                 <ProjectSection 
                   projects={state.projects}
                   clients={state.clients}
@@ -1090,7 +1013,14 @@ export default function Page() {
                 />
               )}
 
-              {activeTab === 'configuracoes' && (
+              {requiresConfigRuntime && configRuntimeStatus !== 'loaded' && (
+                <div role="status" className="rounded-card border border-border bg-surface p-6 text-body-sm text-text-secondary">
+                  {configRuntimeStatus === 'error' ? (
+                    <><p>Não foi possível carregar as notificações e automações.</p><button type="button" className="mt-3 text-primary font-semibold" onClick={() => void loadConfigRuntime()}>Tentar novamente</button></>
+                  ) : 'A carregar notificações e automações…'}
+                </div>
+              )}
+              {activeTab === 'configuracoes' && (!requiresConfigRuntime || configRuntimeStatus === 'loaded') && (!requiresDefaultTasks || defaultTasksStatus === 'loaded') && (
                 <ConfigSection 
                   activeConfigTab={activeConfigTab}
                   onChangeConfigTab={handleConfigTabChange}
@@ -1122,6 +1052,7 @@ export default function Page() {
                   state={state}
                   databaseStatus={syncStatus}
                   databaseError={syncError}
+                  auditStatus={auditStatus}
                   addProject={addProject}
                   clients={state.clients}
                   addClient={addClient}

@@ -15,7 +15,7 @@
  * ============================================================================
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { applyLegacyVersions } from '../lib/supabase/legacyWriteBatch';
 import { buildLegacySyncPayload } from '../lib/supabase/syncPayload';
 import { ERPState, AppConfiguration, Project, Task, Comment, UserAbsence, User, Client, SpecialDay } from '../lib/types';
@@ -60,11 +60,21 @@ export function useERP() {
   const [isInitialDataLoaded, setIsInitialDataLoaded] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [auditStatus, setAuditStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const [materialsStatus, setMaterialsStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const materialsGeneration = useRef(0);
+  const [configRuntimeStatus, setConfigRuntimeStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const configRuntimeGeneration = useRef(0);
+  const [defaultTasksStatus, setDefaultTasksStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const defaultTasksGeneration = useRef(0);
   const [isDbConfigured, setIsDbConfigured] = useState<boolean>(false);
 
 
   // Authoritative fetch directly from database (bypasses any local stale cache)
   const refreshFromDatabase = useCallback(async (): Promise<boolean> => {
+    materialsGeneration.current += 1;
+    configRuntimeGeneration.current += 1;
+    defaultTasksGeneration.current += 1;
     setSyncStatus('syncing');
     setSyncError(null);
     try {
@@ -75,18 +85,11 @@ export function useERP() {
         if (syncResult.success) {
           if (syncResult.data) {
             const mapped = mapStateToUUIDs(syncResult.data);
-            mapped.projectMaterials = await listProjectMaterials();
-            
-            // Try fetching audit logs
-            if (isSupabaseConfigured) {
-              fetchAuditLogsFromSupabase(100).then(res => {
-                if (res.success && res.data) {
-                  setState(prev => prev ? { ...prev, auditLogs: res.data } : null);
-                }
-              }).catch(() => {});
-            }
-
             setState(mapped);
+            setAuditStatus('idle');
+            setMaterialsStatus('idle');
+            setConfigRuntimeStatus('idle');
+            setDefaultTasksStatus('idle');
             setSyncStatus('synced');
             setSyncError(null);
             setIsInitialDataLoaded(true);
@@ -126,6 +129,68 @@ export function useERP() {
       setSyncError(msg);
       setIsInitialDataLoaded(false);
       return false;
+    }
+  }, []);
+
+  const loadProjectMaterials = useCallback(async () => {
+    const generation = materialsGeneration.current;
+    setMaterialsStatus('loading');
+    try {
+      const materials = await listProjectMaterials();
+      if (generation !== materialsGeneration.current) return;
+      setState(prev => prev ? { ...prev, projectMaterials: materials } : null);
+      setMaterialsStatus('loaded');
+    } catch {
+      if (generation !== materialsGeneration.current) return;
+      setMaterialsStatus('error');
+    }
+  }, []);
+
+  const loadConfigRuntime = useCallback(async () => {
+    const generation = configRuntimeGeneration.current;
+    setConfigRuntimeStatus('loading');
+    try {
+      const response = await fetch('/api/supabase/config-runtime', { credentials: 'same-origin', cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok || result?.success !== true || !Array.isArray(result.data?.notificationSettings) || !Array.isArray(result.data?.automationRules)) {
+        throw new Error('Resposta inválida ao carregar as configurações.');
+      }
+      if (generation !== configRuntimeGeneration.current) return;
+      setState(prev => prev ? { ...prev, notificationSettings: result.data.notificationSettings, automationRules: result.data.automationRules } : null);
+      setConfigRuntimeStatus('loaded');
+    } catch {
+      if (generation !== configRuntimeGeneration.current) return;
+      setConfigRuntimeStatus('error');
+    }
+  }, []);
+
+  const loadDefaultTasks = useCallback(async () => {
+    const generation = defaultTasksGeneration.current;
+    setDefaultTasksStatus('loading');
+    try {
+      const response = await fetch('/api/supabase/default-tasks', { credentials: 'same-origin', cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok || result?.success !== true || !Array.isArray(result.data)) {
+        throw new Error('Resposta inválida ao carregar os templates de tarefas.');
+      }
+      if (generation !== defaultTasksGeneration.current) return;
+      setState(prev => prev ? { ...prev, defaultTasks: result.data } : null);
+      setDefaultTasksStatus('loaded');
+    } catch {
+      if (generation !== defaultTasksGeneration.current) return;
+      setDefaultTasksStatus('error');
+    }
+  }, []);
+
+  const loadAuditLogs = useCallback(async () => {
+    setAuditStatus('loading');
+    try {
+      const result = await fetchAuditLogsFromSupabase(100);
+      if (!result.success || !result.data) throw new Error(result.message || 'Não foi possível carregar a auditoria.');
+      setState(prev => prev ? { ...prev, auditLogs: result.data! } : null);
+      setAuditStatus('loaded');
+    } catch {
+      setAuditStatus('error');
     }
   }, []);
 
@@ -1583,6 +1648,14 @@ export function useERP() {
     deleteAutomationRule,
     toggleAutomationRule,
     refreshFromDatabase,
+    loadAuditLogs,
+    auditStatus,
+    loadProjectMaterials,
+    materialsStatus,
+    loadConfigRuntime,
+    configRuntimeStatus,
+    loadDefaultTasks,
+    defaultTasksStatus,
     saveState,
 
   };
