@@ -266,6 +266,7 @@ export interface SpecialDay {
   id: string;
   date: string; // YYYY-MM-DD
   name: string;
+  syncVersion?: number;
 }
 
 export interface DefaultTask {

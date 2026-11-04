@@ -4,6 +4,8 @@ Atualização de 4 de novembro de 2026: o GET inicial deixou também de ler `def
 
 Continuação: a criação e edição de templates passaram para a API dedicada, com validação de `config:write`, leitura de retorno autoritativa e controlo de concorrência por `sync_version` na edição. A interface mantém o formulário aberto em caso de erro. O POST de sincronização global recusa `defaultTasks` com `410`; a escrita dessa tabela foi retirada do lote legado. A eliminação explícita continua na rota de entidade existente.
 
+Continuação: a criação e edição de dias especiais passaram para uma API dedicada com `config:write`, validação de data, retorno autoritativo e controlo de concorrência por `sync_version`. O POST de sincronização global recusa `specialDays` com `410`, e a escrita desta tabela saiu do lote legado. A eliminação explícita continua na rota de entidade existente. A leitura ainda integra o snapshot global porque o calendário e outras vistas partilham estes dados.
+
 A navegação principal, os links diretos e o estado de seleção foram extraídos de `app/page.tsx` para `hooks/usePageNavigation.ts`. As verificações de permissão e a composição das vistas continuam na página; esta extração reduz a concentração de responsabilidades sem alterar os URLs existentes.
 
 A configuração das notificações in-app foi extraída para `components/NotificationSettingsPanel.tsx`, mantendo a validação de escrita e a apresentação de erros. Os links diretos de Notificações e Automações passam também a selecionar o respetivo separador interno ao alternar entre eles. O inventário de migrations foi atualizado separadamente em `docs/migration-reconciliation.md` com leituras de 4 de novembro.
