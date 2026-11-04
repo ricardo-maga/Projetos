@@ -387,7 +387,7 @@ export default function Page() {
         setActiveTab('dashboard');
       }
     }
-  }, [activeTab, tabs, mounted, state, currentUser]);
+  }, [activeTab, tabs, mounted, state, currentUser, setActiveTab]);
 
   // useERP exposes a clean baseline before authenticated data loads; never let
   // its default branding override the public configuration on a fresh login.

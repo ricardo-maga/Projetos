@@ -8,6 +8,7 @@ import {
   Users, GripVertical, Zap, Bell, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import AutomationEditor from './AutomationEditor';
+import NotificationSettingsPanel from './NotificationSettingsPanel';
 import AuditLogSection from './AuditLogSection';
 import AppLogo from './AppLogo';
 import {
@@ -40,7 +41,6 @@ import Tabs from './ui/Tabs';
 import Card from './ui/Card';
 import Input from './ui/Input';
 import Select from './ui/Select';
-import Switch from './ui/Switch';
 import { M3SectionHeader, M3Button } from './M3';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
@@ -394,25 +394,10 @@ export default function ConfigSection({
   }
 
   const activeConfigTab = activeConfigTabProp || 'sistema';
-  const [savingNotificationId, setSavingNotificationId] = useState<string | null>(null);
-  const [notificationError, setNotificationError] = useState<string | null>(null);
-  const saveNotificationSetting = async (id: string, updates: Partial<import('../lib/types').NotificationSetting>) => {
-    if (!updateNotificationSetting || savingNotificationId) return;
-    setSavingNotificationId(id);
-    setNotificationError(null);
-    try {
-      const result = await updateNotificationSetting(id, updates);
-      if (!result.success) setNotificationError(result.message || 'Não foi possível guardar a definição.');
-    } catch {
-      setNotificationError('Não foi possível guardar a definição.');
-    } finally {
-      setSavingNotificationId(null);
-    }
-  };
   const [usersConfigTab, setUsersConfigTab] = useState<'users' | 'roles' | 'associacoes'>('users');
   const [notificationTab, setNotificationTab] = useState<'notificacoes' | 'automacoes'>(activeConfigTab === 'automacoes' ? 'automacoes' : 'notificacoes');
   useEffect(() => {
-    if (activeConfigTab === 'automacoes') setNotificationTab('automacoes');
+    if (activeConfigTab === 'automacoes' || activeConfigTab === 'notificacoes') setNotificationTab(activeConfigTab);
   }, [activeConfigTab]);
   const setActiveConfigTab = (tab: string) => {
     if (onChangeConfigTab) onChangeConfigTab(tab);
@@ -1407,43 +1392,11 @@ export default function ConfigSection({
             onChange={tab => setNotificationTab(tab as 'notificacoes' | 'automacoes')}
           />
           {notificationTab === 'notificacoes' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-sm font-bold text-text-primary mb-1 uppercase tracking-tight">Notificações In-App</h3>
-                <p className="text-xs text-text-muted font-medium mb-4">Configure os destinatários e a antecedência. Os avisos por data são enviados antes, no próprio dia e uma vez no dia seguinte.</p>
-                {notificationError && <p role="alert" className="mb-4 text-sm text-error">{notificationError}</p>}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {(state.notificationSettings || []).map(ns => (
-                    <Card key={ns.id} className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-bold text-sm text-text-primary">{ns.name}</h4>
-                        <Switch checked={ns.enabled} disabled={!canWriteConfig || savingNotificationId !== null}
-                          label={`Ativar ${ns.name}`}
-                          onChange={enabled => { void saveNotificationSetting(ns.id, { enabled }); }} />
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {['task_due_date', 'project_due_date', 'project_scheduled_date', 'presales_due_date'].includes(ns.type) && (
-                          <div className="space-y-1 flex-1">
-                            <Input label="Dias de antecedência" type="number" min="0" max="30" value={ns.daysBefore}
-                              disabled={!ns.enabled || !canWriteConfig || savingNotificationId !== null}
-                              onChange={e => { void saveNotificationSetting(ns.id, { daysBefore: parseInt(e.target.value, 10) || 0 }); }} />
-                          </div>
-                        )}
-                        <div className="space-y-1 flex-1">
-                          <Select label="Destinatários" value={ns.targetGroup}
-                            disabled={!ns.enabled || !canWriteConfig || savingNotificationId !== null}
-                            onChange={e => { void saveNotificationSetting(ns.id, { targetGroup: e.target.value as 'all' | 'allocated' | 'managers' }); }}>
-                            <option value="all">Todos os utilizadores</option>
-                            <option value="allocated">Utilizadores alocados</option>
-                            <option value="managers">Gestores</option>
-                          </Select>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <NotificationSettingsPanel
+              settings={state.notificationSettings || []}
+              canWrite={canWriteConfig}
+              updateSetting={updateNotificationSetting}
+            />
           )}
           {notificationTab === 'automacoes' && (
             <AutomationEditor
