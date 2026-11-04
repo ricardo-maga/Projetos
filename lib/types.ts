@@ -274,6 +274,7 @@ export interface DefaultTask {
   description: string;
   estimatedHours: string;
   taskTypeId?: string;
+    syncVersion?: number;
 }
 
 export interface AutomationAction {

@@ -39,6 +39,6 @@ describe('Task template read boundary', () => {
     } as any));
     const response = await GET(request());
     expect(response.status).toBe(200);
-    expect((await response.json()).data).toEqual([{ id: 'a', title: 'Preparar', description: '', estimatedHours: '2', taskTypeId: 'type-1' }]);
+    expect((await response.json()).data).toEqual([{ id: 'a', title: 'Preparar', description: '', estimatedHours: '2', taskTypeId: 'type-1', syncVersion: 1 }]);
   });
 });

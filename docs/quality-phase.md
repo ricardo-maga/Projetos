@@ -2,6 +2,8 @@
 
 Atualização de 4 de novembro de 2026: o GET inicial deixou também de ler `default_tasks`. Projetos e Configurações → Templates de tarefas carregam essa coleção apenas quando necessária e quando o utilizador tem `config:read`; o endpoint dedicado volta a validar a permissão no servidor. O carregamento apresenta erro e repetição explícitos, evitando mostrar uma lista vazia como se fosse autoritativa.
 
+Continuação: a criação e edição de templates passaram para a API dedicada, com validação de `config:write`, leitura de retorno autoritativa e controlo de concorrência por `sync_version` na edição. A interface mantém o formulário aberto em caso de erro. O POST de sincronização global recusa `defaultTasks` com `410`; a escrita dessa tabela foi retirada do lote legado. A eliminação explícita continua na rota de entidade existente.
+
 A navegação principal, os links diretos e o estado de seleção foram extraídos de `app/page.tsx` para `hooks/usePageNavigation.ts`. As verificações de permissão e a composição das vistas continuam na página; esta extração reduz a concentração de responsabilidades sem alterar os URLs existentes.
 
 A configuração das notificações in-app foi extraída para `components/NotificationSettingsPanel.tsx`, mantendo a validação de escrita e a apresentação de erros. Os links diretos de Notificações e Automações passam também a selecionar o respetivo separador interno ao alternar entre eles. O inventário de migrations foi atualizado separadamente em `docs/migration-reconciliation.md` com leituras de 4 de novembro.

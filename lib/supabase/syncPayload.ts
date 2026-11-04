@@ -3,7 +3,7 @@ export const ADMIN_SYNC_FIELDS = [
   'users', 'userGroups', 'appConfig', 'automationRules',
   'projectStatuses', 'projectCategories', 'projectRisks', 'projectPriorities',
   'projectTeams', 'projectPartners', 'taskStatuses', 'taskTypes', 'riskCategories',
-  'riskStatuses', 'riskPriorities', 'specialDays', 'defaultTasks',
+  'riskStatuses', 'riskPriorities', 'specialDays',
 ] as const;
 
 export function stripAdministrativeSyncFields(state: Record<string, unknown>) {
