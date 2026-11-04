@@ -65,6 +65,8 @@ export function useERP() {
   const materialsGeneration = useRef(0);
   const [configRuntimeStatus, setConfigRuntimeStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const configRuntimeGeneration = useRef(0);
+  const [defaultTasksStatus, setDefaultTasksStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const defaultTasksGeneration = useRef(0);
   const [isDbConfigured, setIsDbConfigured] = useState<boolean>(false);
 
 
@@ -72,6 +74,7 @@ export function useERP() {
   const refreshFromDatabase = useCallback(async (): Promise<boolean> => {
     materialsGeneration.current += 1;
     configRuntimeGeneration.current += 1;
+    defaultTasksGeneration.current += 1;
     setSyncStatus('syncing');
     setSyncError(null);
     try {
@@ -86,6 +89,7 @@ export function useERP() {
             setAuditStatus('idle');
             setMaterialsStatus('idle');
             setConfigRuntimeStatus('idle');
+            setDefaultTasksStatus('idle');
             setSyncStatus('synced');
             setSyncError(null);
             setIsInitialDataLoaded(true);
@@ -157,6 +161,24 @@ export function useERP() {
     } catch {
       if (generation !== configRuntimeGeneration.current) return;
       setConfigRuntimeStatus('error');
+    }
+  }, []);
+
+  const loadDefaultTasks = useCallback(async () => {
+    const generation = defaultTasksGeneration.current;
+    setDefaultTasksStatus('loading');
+    try {
+      const response = await fetch('/api/supabase/default-tasks', { credentials: 'same-origin', cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok || result?.success !== true || !Array.isArray(result.data)) {
+        throw new Error('Resposta inválida ao carregar os templates de tarefas.');
+      }
+      if (generation !== defaultTasksGeneration.current) return;
+      setState(prev => prev ? { ...prev, defaultTasks: result.data } : null);
+      setDefaultTasksStatus('loaded');
+    } catch {
+      if (generation !== defaultTasksGeneration.current) return;
+      setDefaultTasksStatus('error');
     }
   }, []);
 
@@ -1632,6 +1654,8 @@ export function useERP() {
     materialsStatus,
     loadConfigRuntime,
     configRuntimeStatus,
+    loadDefaultTasks,
+    defaultTasksStatus,
     saveState,
 
   };
