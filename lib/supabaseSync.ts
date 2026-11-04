@@ -1694,13 +1694,6 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
         name: sd.name
       }))).then(res => ({ ...res, table: 'special_days' })) : Promise.resolve({ error: null }),
 
-      // Default Tasks
-      (state.defaultTasks && state.defaultTasks.length > 0) ? supabase.from('default_tasks').upsert(state.defaultTasks.map((dt: any) => ({
-        id: dt.id,
-        title: dt.title,
-        description: dt.description || null,
-        estimated_hours: dt.estimatedHours || null
-      }))).then(res => ({ ...res, table: 'default_tasks' })) : Promise.resolve({ error: null }),
     ]);
 
     const secondaryError = secondaryResults.find(r => r && r.error);

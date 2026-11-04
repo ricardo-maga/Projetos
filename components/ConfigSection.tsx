@@ -61,8 +61,8 @@ interface ConfigSectionProps {
   updateSpecialDay: (id: string, updates: Partial<SpecialDay>) => void;
   deleteSpecialDay: (id: string) => void;
   defaultTasks?: DefaultTask[];
-  addDefaultTask?: (title: string, description: string, estimatedHours: string, taskTypeId?: string) => void;
-  updateDefaultTask?: (id: string, updates: Partial<DefaultTask>) => void;
+  addDefaultTask?: (title: string, description: string, estimatedHours: string, taskTypeId?: string) => Promise<{ success: boolean; message?: string }>;
+  updateDefaultTask?: (id: string, updates: Partial<DefaultTask>) => Promise<{ success: boolean; message?: string }>;
   deleteDefaultTask?: (id: string) => void;
   projectCategories?: any[];
   projectStatuses?: any[];
@@ -487,6 +487,8 @@ export default function ConfigSection({
   const [dtPage, setDtPage] = useState(0);
   const [dtPageSize, setDtPageSize] = useState(12);
   const [showDefaultTaskForm, setShowDefaultTaskForm] = useState(false);
+  const [defaultTaskError, setDefaultTaskError] = useState<string | null>(null);
+  const [savingDefaultTask, setSavingDefaultTask] = useState(false);
 
   // Inline editing state for default tasks
   const [editingDtId, setEditingDtId] = useState<string | null>(null);
@@ -693,14 +695,21 @@ export default function ConfigSection({
     finishSave();
   };
 
-  const handleAddDefaultTask = (e: React.FormEvent) => {
+  const handleAddDefaultTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canWriteConfig) {
       alert('Não tem permissão para alterar as configurações.');
       return;
     }
-    if (!dtTitle.trim() || !addDefaultTask) return;
-    addDefaultTask(dtTitle.trim(), dtDesc.trim(), formatHoursToHHMM(parseTimeToHours(dtHours)), dtTypeId || undefined);
+    if (!dtTitle.trim() || !addDefaultTask || savingDefaultTask) return;
+    setSavingDefaultTask(true);
+    setDefaultTaskError(null);
+    const result = await addDefaultTask(dtTitle.trim(), dtDesc.trim(), formatHoursToHHMM(parseTimeToHours(dtHours)), dtTypeId || undefined);
+    setSavingDefaultTask(false);
+    if (!result.success) {
+      setDefaultTaskError(result.message || 'Não foi possível guardar o template de tarefa.');
+      return;
+    }
     setDtTitle('');
     setDtDesc('');
     setDtHours('08:00');
@@ -716,14 +725,21 @@ export default function ConfigSection({
     setEditDtTypeId(dt.taskTypeId || '');
   };
 
-  const handleSaveEditDefaultTask = (id: string) => {
-    if (!editDtTitle.trim() || !updateDefaultTask) return;
-    updateDefaultTask(id, {
+  const handleSaveEditDefaultTask = async (id: string) => {
+    if (!editDtTitle.trim() || !updateDefaultTask || savingDefaultTask) return;
+    setSavingDefaultTask(true);
+    setDefaultTaskError(null);
+    const result = await updateDefaultTask(id, {
       title: editDtTitle.trim(),
       description: editDtDesc.trim(),
       estimatedHours: formatHoursToHHMM(parseTimeToHours(editDtHours)),
       taskTypeId: editDtTypeId || undefined
     });
+    setSavingDefaultTask(false);
+    if (!result.success) {
+      setDefaultTaskError(result.message || 'Não foi possível alterar o template de tarefa.');
+      return;
+    }
     setEditingDtId(null);
   };
 
@@ -1056,6 +1072,7 @@ export default function ConfigSection({
           <M3SectionHeader title="Templates de tarefas" description="Crie e organize modelos reutilizáveis para as tarefas dos projetos."
             actions={canWriteConfig ? <Button type="button" onClick={() => { setDtTitle(''); setDtDesc(''); setDtHours('08:00'); setDtTypeId(''); setShowDefaultTaskForm(visible => !visible); }}><Plus aria-hidden="true" className="w-4 h-4" /> Nova tarefa</Button> : undefined} />
         </div>
+        {defaultTaskError && <p role="alert" className="p-4 text-body-sm text-error">{defaultTaskError}</p>}
         {canWriteConfig && showDefaultTaskForm && <form id="default-task-form" onSubmit={handleAddDefaultTask} className="p-4 sm:p-5 border-b border-border-subtle grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
           <div className="lg:col-span-4"><Input label="Título da tarefa" type="text" required placeholder="Ex.: Eletrificação de sistema" value={dtTitle} onChange={e => setDtTitle(e.target.value)} /></div>
           <div className="lg:col-span-3"><Select label="Tipo de tarefa" value={dtTypeId} onChange={e => setDtTypeId(e.target.value)}><option value="">Por defeito</option>{taskTypes.filter((type: any) => !type.deleted).map((type: any) => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></div>
@@ -1063,7 +1080,7 @@ export default function ConfigSection({
           <div className="lg:col-span-3"><Input label="Instruções técnicas" type="text" placeholder="Instruções padrão…" value={dtDesc} onChange={e => setDtDesc(e.target.value)} /></div>
           <div className="lg:col-span-12 flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setShowDefaultTaskForm(false)}>Cancelar</Button>
-            <Button type="submit"><Check aria-hidden="true" className="w-4 h-4" /> Guardar</Button>
+            <Button type="submit" disabled={savingDefaultTask}><Check aria-hidden="true" className="w-4 h-4" /> Guardar</Button>
           </div>
         </form>}
 
@@ -1158,6 +1175,7 @@ export default function ConfigSection({
                         </button>
                         <button 
                           onClick={() => handleSaveEditDefaultTask(dt.id)}
+                          disabled={savingDefaultTask}
                           className="px-2 py-1 text-label font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Check className="w-3.5 h-3.5" />
