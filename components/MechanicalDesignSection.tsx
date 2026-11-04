@@ -306,6 +306,19 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
           </button>)}{requests.length < total && <M3Button tone="outlined" disabled={busy} onClick={() => void load(page + 1)}>Carregar mais</M3Button>}</div>}
       </M3Card>
       <div>{selected ? <div className="space-y-4">
+        {canManage && selected.status === 'accepted' && <M3Card className="space-y-3 border border-primary/30 bg-surface p-5">
+          <h3 className="text-heading-sm font-bold">Nova tarefa de desenho</h3>
+          <form className="grid gap-3 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); void act({ action: 'add_task', version: selected.version,
+            title: newTaskTitle, description: newTaskDescription, assigneeIds, estimatedDays: Number(newTaskEstimatedDays) }, 'Tarefa acrescentada.').then(result => {
+              if (result) { setNewTaskTitle(''); setNewTaskDescription(''); }
+            }); }}>
+            <Input label="Nome da tarefa" required minLength={2} value={newTaskTitle} onChange={event => setNewTaskTitle(event.target.value)} />
+            <Input label="Estimativa em dias" type="number" min="0.5" step="0.5" required value={newTaskEstimatedDays} onChange={event => setNewTaskEstimatedDays(event.target.value)} />
+            <Textarea label="Descrição da tarefa" value={newTaskDescription} onChange={event => setNewTaskDescription(event.target.value)} />
+            <fieldset><legend className="font-semibold">Desenhadores</legend>{executorUsers.map(user => <label key={user.id} className="mr-3 inline-flex items-center gap-1"><input type="checkbox" checked={assigneeIds.includes(user.id)} onChange={() => toggleAssignee(user.id)} />{user.name}</label>)}</fieldset>
+            <M3Button type="submit" isLoading={busy} disabled={!assigneeIds.length}><Plus className="h-4 w-4" />Criar tarefa</M3Button>
+          </form>
+        </M3Card>}
         {canManage && <M3Button tone="outlined" disabled={busy} onClick={() => void deleteRequest()}>Eliminar pedido</M3Button>}
         <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-heading-sm font-bold">{selected.title}</h3>
@@ -374,15 +387,6 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
               </div>}
             </div>;
           })}
-          {canManage && selected.status === 'accepted' && <form className="space-y-2 border-t border-border pt-3" onSubmit={event => { event.preventDefault(); void act({ action: 'add_task', version: selected.version,
-            title: newTaskTitle, description: newTaskDescription, assigneeIds, estimatedDays: Number(newTaskEstimatedDays) }, 'Tarefa de desenvolvimento acrescentada.').then(result => { if (result) { setNewTaskTitle(''); setNewTaskDescription(''); } }); }}>
-            <h4 className="font-semibold">Acrescentar tarefa de desenvolvimento</h4><Input label="Título da tarefa" required minLength={2} value={newTaskTitle} onChange={event => setNewTaskTitle(event.target.value)} />
-            <Textarea label="Descrição da tarefa" value={newTaskDescription} onChange={event => setNewTaskDescription(event.target.value)} />
-            <Input label="Estimativa (dias, passos de 0,5)" type="number" min="0.5" step="0.5" required value={newTaskEstimatedDays} onChange={event => setNewTaskEstimatedDays(event.target.value)} />
-            <fieldset><legend className="text-label font-semibold">Desenhadores</legend><div className="flex flex-wrap gap-3">{executorUsers.map(user => <label key={user.id} className="inline-flex items-center gap-1">
-              <input type="checkbox" checked={assigneeIds.includes(user.id)} onChange={() => toggleAssignee(user.id)} />{user.name}</label>)}</div></fieldset>
-            <M3Button type="submit" isLoading={busy} disabled={!assigneeIds.length}><Plus className="h-4 w-4" />Acrescentar tarefa</M3Button>
-          </form>}
           {selected.status === 'accepted' && allComplete && canExecute && selected.tasks.some(task => task.assigneeIds.includes(currentUser.id)) &&
             <M3Button disabled={busy || !selected.fileIdentifier || !selected.fileRevision} onClick={() => void act({ action: 'deliver', version: selected.version }, 'Entrega confirmada.')}>Confirmar entrega</M3Button>}
           {selected.status === 'delivered' && <p>Entrega confirmada por {nameOf(selected.deliveredBy || '')}.</p>}

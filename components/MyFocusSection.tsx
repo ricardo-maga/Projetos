@@ -90,7 +90,7 @@ export default function MyFocusSection({
           rows.push(...(payload.data || []));
           if (rows.length >= payload.total || !payload.data?.length) break;
         }
-        if (!cancelled) { setPresalesRequests(rows); setPresalesLoadError(false); }
+        if (!cancelled) { setPresalesRequests(rows.filter(request => request.tasks.length > 0)); setPresalesLoadError(false); }
       } catch { if (!cancelled) setPresalesLoadError(true); }
     };
     void load();
