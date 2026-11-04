@@ -673,6 +673,7 @@ export async function getActiveStateFromSupabase(
       id: sd.id,
       date: sd.date || '',
       name: sd.name || '',
+      syncVersion: Number(sd.sync_version) || 1,
     }));
 
     const defaultTasks: DefaultTask[] = (resDefaultTasks.data || []).map((dt: any) => ({
@@ -1686,13 +1687,6 @@ export async function saveActiveStateToSupabase(rawState: ERPState, databaseClie
         });
         return supabase.from('user_absences').upsert(mappedAbsences).then(res => ({ ...res, table: 'user_absences' }));
       })() : Promise.resolve({ error: null }),
-
-      // Special Days
-      (state.specialDays && state.specialDays.length > 0) ? supabase.from('special_days').upsert(state.specialDays.map((sd: any) => ({
-        id: sd.id,
-        date: formatDbDate(sd.date),
-        name: sd.name
-      }))).then(res => ({ ...res, table: 'special_days' })) : Promise.resolve({ error: null }),
 
     ]);
 

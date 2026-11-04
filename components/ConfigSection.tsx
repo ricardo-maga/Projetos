@@ -57,8 +57,8 @@ interface ConfigSectionProps {
   updateConfig: (updates: Partial<AppConfiguration>) => Promise<{ success: boolean; message?: string }>;
   onResetDemoData?: () => void;
   onClearDemoData?: () => void;
-  addSpecialDay: (date: string, name: string) => void;
-  updateSpecialDay: (id: string, updates: Partial<SpecialDay>) => void;
+  addSpecialDay: (date: string, name: string) => Promise<{ success: boolean; message?: string }>;
+  updateSpecialDay: (id: string, updates: Partial<SpecialDay>) => Promise<{ success: boolean; message?: string }>;
   deleteSpecialDay: (id: string) => void;
   defaultTasks?: DefaultTask[];
   addDefaultTask?: (title: string, description: string, estimatedHours: string, taskTypeId?: string) => Promise<{ success: boolean; message?: string }>;
@@ -478,6 +478,8 @@ export default function ConfigSection({
   const [sdPageSize, setSdPageSize] = useState(25);
   const [showSpecialDayForm, setShowSpecialDayForm] = useState(false);
   const [editingSpecialDayId, setEditingSpecialDayId] = useState<string | null>(null);
+  const [specialDayError, setSpecialDayError] = useState<string | null>(null);
+  const [savingSpecialDay, setSavingSpecialDay] = useState(false);
 
   // Default Tasks form state
   const [dtTitle, setDtTitle] = useState('');
@@ -673,11 +675,16 @@ export default function ConfigSection({
       alert('Não tem permissão para alterar as configurações.');
       return;
     }
-    if (!sdDate || !sdName) return;
+    if (!sdDate || !sdName.trim() || savingSpecialDay) return;
 
-    const finishSave = () => {
-      if (editingSpecialDayId) updateSpecialDay(editingSpecialDayId, { date: sdDate, name: sdName });
-      else addSpecialDay(sdDate, sdName);
+    const finishSave = async () => {
+      setSavingSpecialDay(true);
+      setSpecialDayError(null);
+      const result = editingSpecialDayId
+        ? await updateSpecialDay(editingSpecialDayId, { date: sdDate, name: sdName })
+        : await addSpecialDay(sdDate, sdName);
+      setSavingSpecialDay(false);
+      if (!result.success) { setSpecialDayError(result.message || 'Não foi possível guardar o dia especial.'); return; }
       setSdDate('');
       setSdName('');
       setEditingSpecialDayId(null);
@@ -975,11 +982,13 @@ export default function ConfigSection({
                 if (showSpecialDayForm) {
                   setShowSpecialDayForm(false);
                   setEditingSpecialDayId(null);
+                  setSpecialDayError(null);
                   return;
                 }
                 setSdDate('');
                 setSdName('');
                 setEditingSpecialDayId(null);
+                setSpecialDayError(null);
                 setShowSpecialDayForm(true);
               }}><Plus aria-hidden="true" className="w-4 h-4" /> Novo dia especial</Button> : undefined} />
           </div>
@@ -989,8 +998,9 @@ export default function ConfigSection({
               <Input label="Nome" type="text" required placeholder="Ex.: Natal" value={sdName} onChange={e => setSdName(e.target.value)} />
               <div className="sm:col-span-2 flex justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={() => { setShowSpecialDayForm(false); setEditingSpecialDayId(null); }}>Cancelar</Button>
-                <Button type="submit"><Check aria-hidden="true" className="w-4 h-4" /> Guardar</Button>
+                <Button type="submit" disabled={savingSpecialDay}><Check aria-hidden="true" className="w-4 h-4" /> Guardar</Button>
               </div>
+              {specialDayError && <p role="alert" className="sm:col-span-2 text-error text-body-sm">{specialDayError}</p>}
             </form>
           )}
           {(() => {
@@ -1024,12 +1034,14 @@ export default function ConfigSection({
                               setEditingSpecialDayId(null);
                               setSdDate(sd.date);
                               setSdName(sd.name);
+                              setSpecialDayError(null);
                               setShowSpecialDayForm(true);
                             }}><Copy aria-hidden="true" className="w-4 h-4" />Duplicar</Button>
                             <Button type="button" variant="ghost" size="sm" onClick={() => {
                               setEditingSpecialDayId(sd.id);
                               setSdDate(sd.date);
                               setSdName(sd.name);
+                              setSpecialDayError(null);
                               setShowSpecialDayForm(true);
                             }}><Edit2 aria-hidden="true" className="w-4 h-4" />Editar</Button>
                             <IconButton type="button" variant="ghost" aria-label={`Eliminar dia especial: ${sd.name}, ${sd.date}`} className="text-text-secondary hover:text-error hover:bg-error/10"

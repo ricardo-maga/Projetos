@@ -107,6 +107,9 @@ export async function POST(req: NextRequest) {
     if (Object.hasOwn(state, 'defaultTasks')) {
       return NextResponse.json({ success: false, message: 'Use a API de templates de tarefas.' }, { status: 410 });
     }
+    if (Object.hasOwn(state, 'specialDays')) {
+      return NextResponse.json({ success: false, message: 'Use a API de dias especiais.' }, { status: 410 });
+    }
 
     // FASE 26: As entidades com APIs próprias dedicadas e robustas (/api/v1/projects, /api/v1/tasks,
     // /api/v1/clients, /api/v1/planning-allocations) são server-authoritative e NÃO devem

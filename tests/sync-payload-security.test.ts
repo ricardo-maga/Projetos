@@ -24,6 +24,14 @@ test('project materials are excluded from global snapshot writes', () => {
   expect(route).toContain('delete state.projectMaterials;');
 });
 
+test('special days are excluded from legacy writes and rejected by the legacy endpoint', () => {
+  expect(buildLegacySyncPayload({}, { specialDays: [{ id: 'day-1', date: '2026-12-25', name: 'Natal' }] })).toEqual({});
+  const route = readFileSync(new URL('../app/api/supabase/sync/route.ts', import.meta.url), 'utf8');
+  expect(route).toContain("Object.hasOwn(state, 'specialDays')");
+  const writer = readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8');
+  expect(writer).not.toContain("supabase.from('special_days').upsert");
+});
+
 test('snapshot omission and ordering do not delete or rewrite existing records', () => {
   const baseline = [{id:'a',comment:'A'},{id:'b',comment:'B'}];
   expect(changedSyncRecords([baseline[1]],baseline)).toEqual([]);
@@ -48,7 +56,7 @@ test('non-admin snapshots cannot retain any administrative reference entity', ()
   expect(Object.keys(state)).toEqual(['comments']);
   expect(ADMIN_SYNC_FIELDS).toContain('taskStatuses');
   expect(ADMIN_SYNC_FIELDS).toContain('projectStatuses');
-  expect(ADMIN_SYNC_FIELDS).toContain('specialDays');
+  expect(ADMIN_SYNC_FIELDS).not.toContain('specialDays');
 });
 
 test('absence lookup failure stops before persistence and omitted branding is not written', () => {
