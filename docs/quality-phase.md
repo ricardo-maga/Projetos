@@ -4,6 +4,8 @@ Atualização de 4 de novembro de 2026: o GET inicial deixou também de ler `def
 
 A navegação principal, os links diretos e o estado de seleção foram extraídos de `app/page.tsx` para `hooks/usePageNavigation.ts`. As verificações de permissão e a composição das vistas continuam na página; esta extração reduz a concentração de responsabilidades sem alterar os URLs existentes.
 
+A configuração das notificações in-app foi extraída para `components/NotificationSettingsPanel.tsx`, mantendo a validação de escrita e a apresentação de erros. Os links diretos de Notificações e Automações passam também a selecionar o respetivo separador interno ao alternar entre eles. O inventário de migrations foi atualizado separadamente em `docs/migration-reconciliation.md` com leituras de 4 de novembro.
+
 Atualização de 2 de novembro de 2026: os três testes de apresentação/rascunho pendentes foram alinhados com o CSS atual e com os 35 alvos que o rascunho SQL realmente enumera. A revisão visual autenticada e os quatro testes físicos de BD continuam a ser verificações independentes.
 
 Revisão autenticada de produção em 2 de novembro: Projetos apresentou a lista paginada e os estados; Dashboard apresentou os quatro cartões de resumo em duas colunas no viewport observado, o Forecast e os estilos dos estados; Auditoria apresentou os registos recentes. Não foram executadas mutações pela interface. A suite local após `npm ci` registou 1041 aprovados, 4 ignorados e zero falhas. A consulta de auditoria passou a ser pedida apenas ao entrar nessa vista; as restantes entidades continuam dependentes do snapshot global.
