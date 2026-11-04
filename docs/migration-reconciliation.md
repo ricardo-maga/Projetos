@@ -1,5 +1,13 @@
 # Reconciliação do histórico de migrations — 29 de outubro de 2026
 
+## Reavaliação de 4 de novembro de 2026
+
+Uma nova leitura de `supabase_migrations.schema_migrations` encontrou **63 entradas em staging** e **57 em produção**. Há 46 nomes comuns, todos com versões diferentes; 17 nomes existem apenas em staging e 11 apenas em produção. O repositório contém agora 84 ficheiros SQL em `supabase/migrations`. Os números da tabela histórica abaixo refletem apenas 29 de outubro e não devem ser usados como estado atual.
+
+No catálogo `public`, staging tem 71 tabelas e produção 67. Em ambos os ambientes, zero tabelas estão sem RLS, zero concedem `SELECT` a `anon` e duas concedem `SELECT` a `authenticated`. Estes totais não demonstram equivalência dos schemas, das políticas ou dos dados. As últimas entradas registadas são `restore_distributed_rate_limits_staging_compat` (staging, `20261102193743`) e `exclude_archived_request_reminders` (produção, `20261101233110`).
+
+O histórico continua incompatível com publicação automática por `db push`. Não foi alterado nenhum ambiente nesta reavaliação. A reconstrução e os quatro testes físicos automatizados continuam pendentes: o Docker local não disponibiliza daemon e o utilizador decidiu não criar um ramo Supabase temporário. É necessário comparar o SQL efetivamente aplicado, schema, RLS, grants, funções e constraints antes de definir a baseline ou reparar metadados. A [mudança anunciada para Supabase CLI v3](https://supabase.com/changelog/supabase-cli-v3) em 4 de novembro também exige rever os comandos de CI antes de qualquer atualização da CLI.
+
 Leitura de metadados em produção (`lydxxrzbytfzrsuxptsm`) e staging (`caaiydcycrnwcqefdldz`), cerca das 22:40 UTC. Não foram consultados registos de utilizadores nem alteradas as bases de dados.
 
 ## Resultado
