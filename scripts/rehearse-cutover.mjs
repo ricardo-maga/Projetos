@@ -14,9 +14,9 @@ if (inspect.HostConfig.NetworkMode !== 'none' || Object.keys(inspect.HostConfig.
 const countsSQL = `SELECT jsonb_build_object('users',(SELECT count(*) FROM public.users),'auth_users',(SELECT count(*) FROM auth.users),'projects',(SELECT count(*) FROM public.projects),'tasks',(SELECT count(*) FROM public.tasks),'comments',(SELECT count(*) FROM public.comments),'risks',(SELECT count(*) FROM public.project_risk_items));`;
 const before = query(countsSQL);
 for (const path of [
-  'supabase/migrations/20261005160525_legacy_atomic_writes.sql',
-  'supabase/migrations/20261005161953_security_function_hardening.sql',
-  'supabase/migrations/20261005162756_legacy_conflict_http_status.sql',
+  'database/history/legacy-repository/20261005160525_legacy_atomic_writes.sql',
+  'database/history/legacy-repository/20261005161953_security_function_hardening.sql',
+  'database/history/legacy-repository/20261005162756_legacy_conflict_http_status.sql',
   'supabase/security-drafts/20261005_backend_only_rls.sql',
   'supabase/security-drafts/20261005_backend_rpc_access.sql',
 ]) {

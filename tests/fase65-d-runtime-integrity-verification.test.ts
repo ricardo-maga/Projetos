@@ -529,9 +529,9 @@ describe('FASE 65-D — PostgreSQL Runtime Integrity Verification', () => {
 
   describe('6. Auditoria de Migrations SQL', () => {
     it('confirma que todas as migrações de planning respeitam os requisitos estruturais e relacionais', () => {
-      const mig1 = readFileSync(join(process.cwd(), 'supabase/migrations/20260918000000_create_planning_tables.sql'), 'utf-8');
-      const mig2 = readFileSync(join(process.cwd(), 'supabase/migrations/20260928010000_planning_allocations_exclusion_constraint.sql'), 'utf-8');
-      const mig3 = readFileSync(join(process.cwd(), 'supabase/migrations/20260928020000_planning_allocations_integrity_hardening.sql'), 'utf-8');
+      const mig1 = readFileSync(join(process.cwd(), 'database/history/legacy-repository/20260918000000_create_planning_tables.sql'), 'utf-8');
+      const mig2 = readFileSync(join(process.cwd(), 'database/history/legacy-repository/20260928010000_planning_allocations_exclusion_constraint.sql'), 'utf-8');
+      const mig3 = readFileSync(join(process.cwd(), 'database/history/legacy-repository/20260928020000_planning_allocations_integrity_hardening.sql'), 'utf-8');
 
       // Mig1: Initial creation with FKs
       expect(mig1).toContain('CREATE TABLE planning_allocations');

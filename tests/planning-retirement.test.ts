@@ -42,8 +42,8 @@ describe('Retirement of allocation backend', () => {
     }
   });
   it('new migration changes only the obsolete guard, retaining authorization, OCC and grants', () => {
-    const old = read('../supabase/migrations/20261001000000_harden_delete_task_planning_allocations_check.sql');
-    const sql = read('../supabase/migrations/20261005000000_retire_task_allocation_delete_guard.sql');
+    const old = read('../database/history/legacy-repository/20261001000000_harden_delete_task_planning_allocations_check.sql');
+    const sql = read('../database/history/legacy-repository/20261005000000_retire_task_allocation_delete_guard.sql');
     const strip = (s: string) => s.split('\n').filter(line => !line.trim().startsWith('--')).join('\n').replace(/\s+/g, ' ').trim();
     const functionStart = old.indexOf('CREATE OR REPLACE FUNCTION');
     const guardStart = old.indexOf('  -- 3. Hardening Invariant');

@@ -462,7 +462,7 @@ describe('FASE 66-B — Tasks Persistence Boundary & Project Decoupling', () => 
 
   describe('3. Auditoria de Migration SQL e Ausência de Fallbacks', () => {
     it('confirma a existência da migration de desacoplamento de project_id nas RPCs', () => {
-      const migrationFile = join(process.cwd(), 'supabase/migrations/20260928030000_tasks_atomic_rpcs_project_decoupling.sql');
+      const migrationFile = join(process.cwd(), 'database/history/legacy-repository/20260928030000_tasks_atomic_rpcs_project_decoupling.sql');
       expect(existsSync(migrationFile)).toBe(true);
       const content = readFileSync(migrationFile, 'utf-8');
       expect(content).toContain('p_update_project_id');

@@ -1,4 +1,31 @@
-# Reconciliação do histórico de migrations — 29 de outubro de 2026
+# Reconciliação do histórico de migrations
+
+## Baselines reconstruídas em 5 de novembro de 2026
+
+Produção é a referência funcional. Staging mantém as suas funcionalidades adicionais de planeamento, requisitos e automações; não se transportaram essas estruturas para produção para igualar contagens.
+
+Foram recuperados os **59 scripts SQL registados em produção** e os **65 de staging** para `database/history/{production,staging}`, com quebras de linha normalizadas para LF no Git. Os 86 ficheiros que antes estavam em `supabase/migrations` foram preservados em `database/history/legacy-repository`: são evidência histórica e continuam acessíveis aos testes, mas já não são uma sequência executável. Os hashes SHA-256 do conteúdo SQL normalizado e das duas baselines estão em `database/{production,staging}/history-manifest.json` e são verificados por `npm run check:migrations`.
+
+As baselines executáveis são `supabase/migrations/20261105000000_production_baseline.sql` e `database/staging/supabase/migrations/20261105000000_staging_baseline.sql`. Cada uma foi aplicada com `supabase db reset` numa base local vazia. O dump inclui `public`, `private` e `notification_internal`; foi necessário instalar `btree_gist` antes das constraints e repor os grants efetivos das tabelas, que o dump isolado não reproduzia a partir das permissões por defeito. Nenhum dado de negócio foi copiado para a base local.
+
+Comparação dos catálogos `public` após reconstrução:
+
+| Objeto | Produção remota / local | Staging remoto / local |
+| --- | --- | --- |
+| Tabelas/vistas | 67 / 67 | 71 / 71 |
+| Colunas | 563 / 563 | 590 / 590 |
+| Constraints | 235 / 235 | 263 / 263 |
+| Índices | 145 / 145 | 155 / 155 |
+| Funções | 56 / 56 | 66 / 66 |
+| Políticas RLS | 85 / 85 | 85 / 85 |
+| Triggers | 43 / 43 | 51 / 51 |
+| Grants de tabela | 468 / 468 | 496 / 496 |
+
+As assinaturas de todos estes grupos coincidem com as remotas, exceto uma constraint em cada ambiente: `notification_settings_target_group`. O `pg_dump` reescreve casts redundantes da mesma expressão; o nome, a lista de valores aceites e a validação coincidem. `supabase/diagnostics/catalog_fingerprint.sql` e `catalog_objects.sql` permitem repetir a comparação sem consultar linhas de negócio.
+
+Os históricos remotos foram relidos depois da captura e mantinham 59 e 65 versões, sem novas entradas. A CLI v3 exige `--remote=<ref>` para visar um projeto hospedado e `--yes` para alterações remotas. A aplicação das baselines aos ambientes remotos requer apenas a reconciliação de `supabase_migrations.schema_migrations`; os schemas de produção e staging não devem ser recriados por `db push`.
+
+Os quatro testes SQL automatizados da FASE 79 permanecem ignorados conforme decisão do projeto. A reconstrução de schema local não é a execução desses testes nem valida dados, jobs Cron ou fluxos autenticados.
 
 ## Reavaliação de 4 de novembro de 2026
 

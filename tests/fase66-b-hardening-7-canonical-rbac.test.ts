@@ -65,7 +65,7 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
 
   // 11. service_role sem utilizador não obtém bypass genérico na migration RPC
   it('11. Migration RPC has_permission() recusa service_role sem auth.uid() e sem utilizador válido', () => {
-    const sqlPath = join(process.cwd(), 'supabase/migrations/20260928040000_normalize_users_role_id_canonical_rbac.sql');
+    const sqlPath = join(process.cwd(), 'database/history/legacy-repository/20260928040000_normalize_users_role_id_canonical_rbac.sql');
     const content = readFileSync(sqlPath, 'utf-8');
     expect(content).toContain('IF v_auth_uid IS NULL THEN');
     expect(content).toContain('RETURN FALSE;');
@@ -74,7 +74,7 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
 
   // 12. p_user_id fornecido por authenticated não permite impersonation
   it('12. Migration RPC força auth.uid() quando auth.role() = authenticated ignorando p_user_id do cliente', () => {
-    const sqlPath = join(process.cwd(), 'supabase/migrations/20260928040000_normalize_users_role_id_canonical_rbac.sql');
+    const sqlPath = join(process.cwd(), 'database/history/legacy-repository/20260928040000_normalize_users_role_id_canonical_rbac.sql');
     const content = readFileSync(sqlPath, 'utf-8');
     expect(content).toContain("IF auth.role() = 'authenticated' THEN");
     expect(content).toContain('v_auth_uid := auth.uid();');
@@ -142,7 +142,7 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
   it('19. migration alinha is_admin com os aliases usados pela API sem conceder permissões funcionais', () => {
     const migration = readFileSync(join(
       process.cwd(),
-      'supabase/migrations/20261019222030_align_is_admin_permission_aliases.sql',
+      'database/history/legacy-repository/20261019222030_align_is_admin_permission_aliases.sql',
     ), 'utf-8');
     expect(migration).toContain("'admin.access', 'config.manage', 'config.read', 'config.write'");
     expect(migration).toContain('v_auth_uid := auth.uid();');

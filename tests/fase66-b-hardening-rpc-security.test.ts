@@ -493,7 +493,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
 
     it('a função public.has_permission() na migration SQL consulta role_permissions e NÃO possui CASE/IF hardcoded de roles', () => {
       const sqlContent = readFileSync(
-        join(process.cwd(), 'supabase/migrations/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
+        join(process.cwd(), 'database/history/legacy-repository/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
         'utf-8'
       );
       // Confirma que consulta a tabela relacional role_permissions
@@ -508,7 +508,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
     });
 
     it('a migration 20260928040000_normalize_users_role_id_canonical_rbac.sql normaliza FK de users.role_id para roles(id)', () => {
-      const sqlPath = join(process.cwd(), 'supabase/migrations/20260928040000_normalize_users_role_id_canonical_rbac.sql');
+      const sqlPath = join(process.cwd(), 'database/history/legacy-repository/20260928040000_normalize_users_role_id_canonical_rbac.sql');
       expect(existsSync(sqlPath)).toBe(true);
       const content = readFileSync(sqlPath, 'utf-8');
       expect(content).toContain('ALTER TABLE public.users');
@@ -519,7 +519,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
     });
 
     it('a migration 20260928040000 implementa explicitamente o mapeamento semântico de user_groups para roles prevenindo colisão de UUIDs', () => {
-      const sqlPath = join(process.cwd(), 'supabase/migrations/20260928040000_normalize_users_role_id_canonical_rbac.sql');
+      const sqlPath = join(process.cwd(), 'database/history/legacy-repository/20260928040000_normalize_users_role_id_canonical_rbac.sql');
       const content = readFileSync(sqlPath, 'utf-8');
 
       // ug-1: Administrator (...0001) -> SUPER_ADMIN (...001)
@@ -573,7 +573,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
     });
 
     it('a migration 20260928040000 possui proteção de replay safety para não degradar roles já canónicas', () => {
-      const sqlPath = join(process.cwd(), 'supabase/migrations/20260928040000_normalize_users_role_id_canonical_rbac.sql');
+      const sqlPath = join(process.cwd(), 'database/history/legacy-repository/20260928040000_normalize_users_role_id_canonical_rbac.sql');
       const content = readFileSync(sqlPath, 'utf-8');
 
       // Verifica deteção prévia da constraint apontando para roles
@@ -594,7 +594,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
 
     it('a migration SQL popula role_permissions via INSERT ... SELECT canónico baseado em roles.code e permissions.code', () => {
       const sqlContent = readFileSync(
-        join(process.cwd(), 'supabase/migrations/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
+        join(process.cwd(), 'database/history/legacy-repository/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
         'utf-8'
       );
       expect(sqlContent).toContain('INSERT INTO public.role_permissions (role_id, permission_id)');
@@ -620,7 +620,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
 
     it('migration SQL 20260928030000 inclui verificações de is_approved(), has_permission() e códigos de erro estruturados', () => {
       const sqlContent = readFileSync(
-        join(process.cwd(), 'supabase/migrations/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
+        join(process.cwd(), 'database/history/legacy-repository/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
         'utf-8'
       );
       expect(sqlContent).toContain("auth.role() = 'authenticated'");
@@ -636,7 +636,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
 
     it('migration SQL utiliza delimitadores nomeados ($function$) consistentes e não possui dollar quoting ambíguo ou quebrado', () => {
       const sqlContent = readFileSync(
-        join(process.cwd(), 'supabase/migrations/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
+        join(process.cwd(), 'database/history/legacy-repository/20260928030000_tasks_atomic_rpcs_project_decoupling.sql'),
         'utf-8'
       );
       // Sem anonymous dollar quotes ($$)

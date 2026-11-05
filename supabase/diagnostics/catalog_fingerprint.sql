@@ -1,0 +1,12 @@
+-- Read-only structural fingerprint of application-owned public objects.
+-- Run against each environment and compare both counts and fingerprints.
+with objects as (
+select 'table' kind, n.nspname||'.'||c.relname object, md5(concat_ws(':',c.relkind::text,c.relrowsecurity::text,c.relforcerowsecurity::text,coalesce(pg_get_viewdef(c.oid,true),''))) signature from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in ('r','p','v','m')
+union all select 'column', n.nspname||'.'||c.relname||'.'||a.attname, md5(concat_ws(':',format_type(a.atttypid,a.atttypmod),a.attnotnull::text,coalesce(pg_get_expr(d.adbin,d.adrelid),''),a.attidentity::text,a.attgenerated::text)) from pg_attribute a join pg_class c on c.oid=a.attrelid join pg_namespace n on n.oid=c.relnamespace left join pg_attrdef d on d.adrelid=a.attrelid and d.adnum=a.attnum where n.nspname='public' and c.relkind in ('r','p','v','m') and a.attnum>0 and not a.attisdropped
+union all select 'constraint', n.nspname||'.'||c.relname||'.'||x.conname, md5(concat_ws(':',x.contype::text,pg_get_constraintdef(x.oid,true),x.convalidated::text)) from pg_constraint x join pg_class c on c.oid=x.conrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='public'
+union all select 'index', n.nspname||'.'||c.relname, md5(pg_get_indexdef(c.oid)) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='i'
+union all select 'policy', p.schemaname||'.'||p.tablename||'.'||p.policyname, md5(concat_ws(':',p.cmd,p.permissive,array_to_string(p.roles,','),coalesce(p.qual,''),coalesce(p.with_check,''))) from pg_policies p where p.schemaname='public'
+union all select 'trigger', n.nspname||'.'||c.relname||'.'||t.tgname, md5(pg_get_triggerdef(t.oid,true)) from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and not t.tgisinternal
+union all select 'function', n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')', md5(pg_get_functiondef(p.oid)) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public'
+union all select 'grant', table_schema||'.'||table_name||'.'||grantee||'.'||privilege_type, md5(is_grantable) from information_schema.role_table_grants where table_schema='public' and grantee in ('anon','authenticated','service_role')
+) select kind, count(*) count, md5(string_agg(object||':'||signature,E'\n' order by object,signature)) fingerprint from objects group by kind order by kind;

@@ -1,0 +1,5 @@
+BEGIN;
+DROP TABLE IF EXISTS public.bill_of_materials CASCADE;
+DROP TABLE IF EXISTS public.quotes CASCADE;
+DROP TABLE IF EXISTS public.material CASCADE;
+COMMIT;;

@@ -10,7 +10,7 @@ import {
 describe('FASE 66-B-HARDENING-8 — RBAC Execution Contract Hardening', () => {
   const migrationPath = join(
     process.cwd(), 
-    'supabase/migrations/20260929010000_rbac_execution_contract_hardening.sql'
+    'database/history/legacy-repository/20260929010000_rbac_execution_contract_hardening.sql'
   );
 
   // =========================================================================
