@@ -13,7 +13,7 @@ import type { PlanningAllocationDTO } from '@/lib/planning/types';
 describe('FASE 70 — TASKS ↔ PLANNING INTEGRITY HARDENING', () => {
   const migrationPath = join(
     process.cwd(),
-    'supabase/migrations/20261001000000_harden_delete_task_planning_allocations_check.sql'
+    'database/history/legacy-repository/20261001000000_harden_delete_task_planning_allocations_check.sql'
   );
 
   describe('1. Migration SQL de Integridade Canónica (delete_task_atomic)', () => {

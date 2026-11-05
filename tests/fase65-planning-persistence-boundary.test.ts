@@ -40,7 +40,7 @@ describe('FASE 65 — Planning Persistence Boundary', () => {
   describe('2. Tasks e Projects como Fontes Únicas de Verdade (SSOT)', () => {
     it('garante que planning_allocations referencia task_id e não duplica campos de tarefas ou projetos', () => {
       const sql = readFileSync(
-        join(process.cwd(), 'supabase/migrations/20260918000000_create_planning_tables.sql'),
+        join(process.cwd(), 'database/history/legacy-repository/20260918000000_create_planning_tables.sql'),
         'utf-8'
       );
 

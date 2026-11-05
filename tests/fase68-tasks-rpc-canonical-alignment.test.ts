@@ -8,7 +8,7 @@ describe('FASE 68 — TASKS ATOMIC RPC / POSTGRESQL CANONICAL ALIGNMENT', () => 
   describe('1. Migration Canonical Integrity & Contract Verification', () => {
     const migrationPath = join(
       process.cwd(),
-      'supabase/migrations/20260930000000_fix_tasks_atomic_rpcs_coalesce_type_mismatch.sql'
+      'database/history/legacy-repository/20260930000000_fix_tasks_atomic_rpcs_coalesce_type_mismatch.sql'
     );
 
     it('a migration canónica 20260930000000 existe e define search_path = public', () => {

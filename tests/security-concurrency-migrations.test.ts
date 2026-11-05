@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-const read = (name: string) => readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8');
+const read = (name: string) => readFileSync(new URL(`../database/history/legacy-repository/${name}`, import.meta.url), 'utf8');
 test('legacy OCC migration is transactional, scoped and backend-only', () => {
   const sql = read('20261005160525_legacy_atomic_writes.sql');
   expect(sql).toContain('FOR UPDATE');

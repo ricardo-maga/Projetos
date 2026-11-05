@@ -19,7 +19,7 @@ function stagingClient() {
 describe('FASE 79 — Hardening da Integridade Física Projects → Tasks + Consolidação do Project Persistence Boundary', () => {
   const migrationPath = join(
     process.cwd(),
-    'supabase/migrations/20261002010000_harden_tasks_project_foreign_key.sql'
+    'database/history/legacy-repository/20261002010000_harden_tasks_project_foreign_key.sql'
   );
 
   describe('1. Migration SQL de Hardening e Boundary Canónico', () => {

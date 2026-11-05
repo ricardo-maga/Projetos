@@ -9,7 +9,7 @@ describe('FASE 65-FINAL-B — Garantia de Integridade Concorrente em Planning', 
     it('confirma a existência da migration com EXCLUDE USING gist e btree_gist', () => {
       const migrationPath = join(
         process.cwd(),
-        'supabase/migrations/20260928010000_planning_allocations_exclusion_constraint.sql'
+        'database/history/legacy-repository/20260928010000_planning_allocations_exclusion_constraint.sql'
       );
       expect(existsSync(migrationPath)).toBe(true);
 

@@ -7,7 +7,7 @@ describe('FASE 64 — Auditoria e Canonicalização do Domínio Planning', () =>
   describe('1. Fonte de Verdade Persistente e Esquema PostgreSQL', () => {
     it('confirma a existência das tabelas de planeamento e colunas de controlo no esquema de migração', () => {
       const sql = readFileSync(
-        join(process.cwd(), 'supabase/migrations/20260918000000_create_planning_tables.sql'),
+        join(process.cwd(), 'database/history/legacy-repository/20260918000000_create_planning_tables.sql'),
         'utf-8'
       );
 

@@ -10,7 +10,7 @@ describe('FASE 65-FINAL-C — Planning Database Integrity Hardening', () => {
     it('garante que a migration de hardening define NOT NULL em todas as colunas essenciais', () => {
       const hardeningPath = join(
         process.cwd(),
-        'supabase/migrations/20260928020000_planning_allocations_integrity_hardening.sql'
+        'database/history/legacy-repository/20260928020000_planning_allocations_integrity_hardening.sql'
       );
       expect(existsSync(hardeningPath)).toBe(true);
 
@@ -26,7 +26,7 @@ describe('FASE 65-FINAL-C — Planning Database Integrity Hardening', () => {
     it('confirma que a migration original de planning_allocations já declarava NOT NULL nas colunas-chave', () => {
       const initialPath = join(
         process.cwd(),
-        'supabase/migrations/20260918000000_create_planning_tables.sql'
+        'database/history/legacy-repository/20260918000000_create_planning_tables.sql'
       );
       expect(existsSync(initialPath)).toBe(true);
 
@@ -43,7 +43,7 @@ describe('FASE 65-FINAL-C — Planning Database Integrity Hardening', () => {
     it('confirma a CHECK CONSTRAINT estrutural para garantir start_time < end_time no PostgreSQL', () => {
       const hardeningPath = join(
         process.cwd(),
-        'supabase/migrations/20260928020000_planning_allocations_integrity_hardening.sql'
+        'database/history/legacy-repository/20260928020000_planning_allocations_integrity_hardening.sql'
       );
       const sql = readFileSync(hardeningPath, 'utf-8');
 
@@ -101,7 +101,7 @@ describe('FASE 65-FINAL-C — Planning Database Integrity Hardening', () => {
     it('garante que a exclusion constraint EXCLUDE USING gist está ativa com filtro status = CONFIRMED', () => {
       const exclusionMigrationPath = join(
         process.cwd(),
-        'supabase/migrations/20260928010000_planning_allocations_exclusion_constraint.sql'
+        'database/history/legacy-repository/20260928010000_planning_allocations_exclusion_constraint.sql'
       );
       const sql = readFileSync(exclusionMigrationPath, 'utf-8');
 

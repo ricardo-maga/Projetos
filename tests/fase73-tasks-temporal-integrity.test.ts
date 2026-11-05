@@ -155,7 +155,7 @@ function createMockDb(initialTasks: any[] = [], initialAllocations: any[] = []) 
 
 describe('FASE 73-B — VALIDAÇÃO FINAL DA INTEGRIDADE TEMPORAL E PREPARAÇÃO DA MIGRATION SUPABASE', () => {
   describe('1. Verificação da Migration SQL & Assinaturas RPC', () => {
-    const migrationPath = path.join(process.cwd(), 'supabase/migrations/20261002000000_task_temporal_integrity_constraints.sql');
+    const migrationPath = path.join(process.cwd(), 'database/history/legacy-repository/20261002000000_task_temporal_integrity_constraints.sql');
     const migrationContent = fs.readFileSync(migrationPath, 'utf8');
 
     it('1. As assinaturas canónicas das RPCs não estão duplicadas/overloaded inadvertidamente (DROP IF EXISTS presente)', () => {

@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.delete_project_transaction(uuid, integer, uuid) FROM PUBLIC, anon, authenticated; GRANT EXECUTE ON FUNCTION public.delete_project_transaction(uuid, integer, uuid) TO service_role;;
