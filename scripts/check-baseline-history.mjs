@@ -7,7 +7,9 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const generated = process.argv.includes('--generate');
 
 function sha256(path) {
-  return createHash('sha256').update(readFileSync(path)).digest('hex');
+  // Git stores these SQL files with LF; normalize Windows checkout line endings.
+  const sql = readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
+  return createHash('sha256').update(sql).digest('hex');
 }
 
 for (const environment of ['production', 'staging']) {
