@@ -11,6 +11,7 @@ import { SYNC_READ_PERMISSIONS, projectSyncRead } from '@/lib/supabase/syncReadP
 import { prepareCommentChanges } from '@/lib/supabase/commentIdentity';
 import { stable } from '@/lib/supabase/syncPayload';
 import { validateAutomationRule } from '@/lib/automation/validateRule';
+import { isSyncPartition, SYNC_PARTITIONS } from '@/lib/supabase/syncPartitions';
 
 export async function GET(req: NextRequest) {
   if (!isSupabaseConfigured) {
@@ -24,18 +25,29 @@ export async function GET(req: NextRequest) {
     const user = await requireAuth(req);
 
     const clientToUse = requireServerDbClient(user);
-    const codes = [...new Set([...Object.values(SYNC_READ_PERMISSIONS), 'users:read'])];
+    const requestedPartition = new URL(req.url).searchParams.get('partition');
+    const partition = requestedPartition && isSyncPartition(requestedPartition) ? requestedPartition : null;
+    if (!requestedPartition)
+      return NextResponse.json({ success: false, message: 'Use uma partição de dados.' }, { status: 410 });
+    if (!partition)
+      return NextResponse.json({ success: false, message: 'Partição de dados inválida.' }, { status: 400 });
+    const requested = new Set<string>(SYNC_PARTITIONS[partition].map(String));
+    const codes = [...new Set([
+      ...Object.entries(SYNC_READ_PERMISSIONS).filter(([field]) => requested.has(field)).map(([, code]) => code),
+      ...(requested.has('users') ? ['users:read'] : []),
+    ])];
     const decisions = await Promise.all(codes.map(async code => {
       const { data, error } = await clientToUse.rpc('has_permission', { p_permission_code: code, p_user_id: user.auth_user_id });
       if (error) throw new AuthError('Não foi possível validar permissões de leitura.', 503);
       return [code, data === true] as const;
     }));
     const permissions = new Map(decisions);
-    const readableDomains = new Set(Object.entries(SYNC_READ_PERMISSIONS)
-      .filter(([, code]) => permissions.get(code) === true).map(([field]) => field));
+    const readableDomains = new Set(requested);
+    for (const [field, code] of Object.entries(SYNC_READ_PERMISSIONS))
+      if (permissions.get(code) !== true) readableDomains.delete(field);
     // Project materials have a paginated, permission-checked domain API.
     readableDomains.delete('projectMaterials');
-    if (permissions.get('users:read') === true) readableDomains.add('users');
+    if (permissions.get('users:read') !== true) readableDomains.delete('users');
     const result = await getActiveStateFromSupabase(clientToUse,
       { readableDomains, userId: user.id, skipNotifications: true, skipConfigRuntime: true, skipDefaultTasks: true });
     if (!result.success || !result.data) {
@@ -45,29 +57,32 @@ export async function GET(req: NextRequest) {
       }, { status: 500 });
     }
     result.data = projectSyncRead(result.data, user.id, permissions);
-    const { data: recipientNotices, error: noticesError } = await clientToUse.from('notifications')
-      .select('id,user_id,title,message,is_read,created_at,link_url')
-      .or(`user_id.eq.${user.id},user_id.is.null`)
-      .order('created_at', { ascending: false }).limit(200);
-    if (noticesError) throw noticesError;
-    result.data.notifications = (recipientNotices || []).map(notice => ({
-      id: notice.id, userId: notice.user_id || 'all', title: notice.title,
-      message: notice.message || '', isRead: notice.is_read === true,
-      createdDate: notice.created_at, linkUrl: notice.link_url || undefined,
-    }));
-    const visibleIds = result.data.notifications.map(notification => notification.id);
-    if (visibleIds.length) {
-      const { data: reads, error: readsError } = await clientToUse.from('notification_reads')
-        .select('notification_id').eq('user_id', user.id).in('notification_id', visibleIds);
-      if (readsError) throw readsError;
-      const readIds = new Set((reads || []).map(read => read.notification_id));
-      result.data.notifications = result.data.notifications.map(notification => ({
-        ...notification,
-        isRead: readIds.has(notification.id) || (notification.userId !== 'all' && notification.isRead),
+    if (requested.has('notifications')) {
+      const { data: recipientNotices, error: noticesError } = await clientToUse.from('notifications')
+        .select('id,user_id,title,message,is_read,created_at,link_url')
+        .or(`user_id.eq.${user.id},user_id.is.null`)
+        .order('created_at', { ascending: false }).limit(200);
+      if (noticesError) throw noticesError;
+      result.data.notifications = (recipientNotices || []).map(notice => ({
+        id: notice.id, userId: notice.user_id || 'all', title: notice.title,
+        message: notice.message || '', isRead: notice.is_read === true,
+        createdDate: notice.created_at, linkUrl: notice.link_url || undefined,
       }));
+      const visibleIds = result.data.notifications.map(notification => notification.id);
+      if (visibleIds.length) {
+        const { data: reads, error: readsError } = await clientToUse.from('notification_reads')
+          .select('notification_id').eq('user_id', user.id).in('notification_id', visibleIds);
+        if (readsError) throw readsError;
+        const readIds = new Set((reads || []).map(read => read.notification_id));
+        result.data.notifications = result.data.notifications.map(notification => ({
+          ...notification,
+          isRead: readIds.has(notification.id) || (notification.userId !== 'all' && notification.isRead),
+        }));
+      }
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, data: Object.fromEntries(SYNC_PARTITIONS[partition]
+      .map(field => [field, result.data![field]])) });
   } catch (error: any) {
     if (error instanceof ForbiddenError) {
       return NextResponse.json({
@@ -181,7 +196,16 @@ export async function POST(req: NextRequest) {
 
     // Authorize every submitted domain before the first write. Unchanged cached
     // rows are not writes; omitted rows are never interpreted as deletions.
-    const baseline = await getActiveStateFromSupabase(clientToUse);
+    const changedDomains = new Set<string>(Object.keys(state));
+    if (changedDomains.has('automationRules')) {
+      changedDomains.add('projectStatuses');
+      changedDomains.add('taskStatuses');
+    }
+    const baseline = await getActiveStateFromSupabase(clientToUse, {
+      readableDomains: changedDomains,
+      userId: user.id,
+      skipDefaultTasks: true,
+    });
     if (!baseline.success || !baseline.data) throw new AuthError('Não foi possível validar o snapshot atual.', 503);
     const writableFields = new Set<string>([...ADMIN_SYNC_FIELDS, ...Object.keys(SYNC_DOMAIN_PERMISSIONS)]);
     for (const field of Object.keys(state)) if (!writableFields.has(field)) delete state[field];

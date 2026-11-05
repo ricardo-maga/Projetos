@@ -26,6 +26,7 @@ import { getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
 import { getAuthHeaders, getClientUser, clearClientSession } from '../lib/clientAuth';
 import { apiCreateTask, apiUpdateTask, apiDeleteTask, parseTaskHoursToFloat } from '../lib/taskOperations';
 import { listProjectMaterials, createProjectMaterial as apiCreateProjectMaterial, updateProjectMaterial as apiUpdateProjectMaterial, deleteProjectMaterial as apiDeleteProjectMaterial } from '../lib/projectMaterials/client';
+import { mergeSyncPartitions, SYNC_PARTITIONS, type SyncPartition } from '../lib/supabase/syncPartitions';
 
 const STORAGE_KEY = 'gestao_projetos_erp_state_v1';
 
@@ -60,6 +61,7 @@ export function useERP() {
   const [isInitialDataLoaded, setIsInitialDataLoaded] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
+  const refreshGeneration = useRef(0);
   const [auditStatus, setAuditStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const [materialsStatus, setMaterialsStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const materialsGeneration = useRef(0);
@@ -72,6 +74,7 @@ export function useERP() {
 
   // Authoritative fetch directly from database (bypasses any local stale cache)
   const refreshFromDatabase = useCallback(async (): Promise<boolean> => {
+    const generation = ++refreshGeneration.current;
     materialsGeneration.current += 1;
     configRuntimeGeneration.current += 1;
     defaultTasksGeneration.current += 1;
@@ -79,39 +82,29 @@ export function useERP() {
     setSyncError(null);
     try {
       const headers = getAuthHeaders();
-      const syncRes = await fetch('/api/supabase/sync', { headers });
-      if (syncRes.ok) {
-        const syncResult = await syncRes.json();
-        if (syncResult.success) {
-          if (syncResult.data) {
-            const mapped = mapStateToUUIDs(syncResult.data);
-            setState(mapped);
-            setAuditStatus('idle');
-            setMaterialsStatus('idle');
-            setConfigRuntimeStatus('idle');
-            setDefaultTasksStatus('idle');
-            setSyncStatus('synced');
-            setSyncError(null);
-            setIsInitialDataLoaded(true);
-            console.log('Authoritative data loaded from Supabase SQL database');
-            return true;
-          } else {
-            // A missing authoritative snapshot must never trigger a browser write.
-            setSyncStatus('error');
-            setSyncError('A base de dados não devolveu um estado válido. Contacte o administrador.');
-            setIsInitialDataLoaded(false);
-            return false;
-          }
-        } else {
-          setSyncStatus('error');
-          setSyncError(syncResult.message || 'Erro retornado pela base de dados.');
-          setIsInitialDataLoaded(false);
-          return false;
-        }
+      const responses = await Promise.all((Object.keys(SYNC_PARTITIONS) as SyncPartition[]).map(async partition => {
+        const response = await fetch(`/api/supabase/sync?partition=${partition}`, { headers, cache: 'no-store' });
+        const body = await response.json().catch(() => ({}));
+        return { partition, response, body };
+      }));
+      if (generation !== refreshGeneration.current) return false;
+      const failed = responses.find(({ response }) => response.status === 401)
+        || responses.find(({ response, body }) => !response.ok || body.success !== true || !body.data);
+      if (!failed) {
+        const parts = Object.fromEntries(responses.map(({ partition, body }) => [partition, body.data])) as Record<SyncPartition, unknown>;
+        const mapped = mapStateToUUIDs(mergeSyncPartitions(parts));
+        setState(mapped);
+        setAuditStatus('idle');
+        setMaterialsStatus('idle');
+        setConfigRuntimeStatus('idle');
+        setDefaultTasksStatus('idle');
+        setSyncStatus('synced');
+        setSyncError(null);
+        setIsInitialDataLoaded(true);
+        return true;
       } else {
-        const errJson = await syncRes.json().catch(() => ({}));
-        const msg = errJson.message || `Erro do servidor ao contactar a base de dados (Status: ${syncRes.status}).`;
-        if (syncRes.status === 401) {
+        const msg = failed.body.message || `Erro do servidor ao contactar a base de dados (Status: ${failed.response.status}).`;
+        if (failed.response.status === 401) {
           // Sessão não autenticada ou expirada: manter não carregado para que o ecrã de login seja exibido
           setSyncStatus('idle');
           setSyncError(null);
@@ -124,6 +117,7 @@ export function useERP() {
         return false;
       }
     } catch (err: any) {
+      if (generation !== refreshGeneration.current) return false;
       const msg = err?.message || 'Erro de rede ao contactar a base de dados.';
       setSyncStatus('error');
       setSyncError(msg);

@@ -1,5 +1,7 @@
 # Fase de Qualidade — 29 de outubro de 2026
 
+Atualização de 5 de novembro de 2026: a leitura inicial foi repartida por diretório, trabalho e atividade. O GET integral foi retirado, e a comparação de escrita consulta apenas os domínios alterados. Ver [migração do snapshot](snapshot-migration.md). As notas abaixo descrevem as etapas anteriores e não representam o estado final da leitura inicial.
+
 Atualização de 4 de novembro de 2026: o GET inicial deixou também de ler `default_tasks`. Projetos e Configurações → Templates de tarefas carregam essa coleção apenas quando necessária e quando o utilizador tem `config:read`; o endpoint dedicado volta a validar a permissão no servidor. O carregamento apresenta erro e repetição explícitos, evitando mostrar uma lista vazia como se fosse autoritativa.
 
 Continuação: a criação e edição de templates passaram para a API dedicada, com validação de `config:write`, leitura de retorno autoritativa e controlo de concorrência por `sync_version` na edição. A interface mantém o formulário aberto em caso de erro. O POST de sincronização global recusa `defaultTasks` com `410`; a escrita dessa tabela foi retirada do lote legado. A eliminação explícita continua na rota de entidade existente.
