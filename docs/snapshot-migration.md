@@ -1,0 +1,7 @@
+# Migração da leitura do snapshot global
+
+O carregamento inicial da aplicação usa três partições autenticadas de `/api/supabase/sync`: `directory` (configuração, referências e diretório de utilizadores), `work` (clientes, projetos e tarefas) e `activity` (comentários, ausências, riscos e notificações). O servidor devolve apenas os campos pedidos e consulta apenas as respetivas tabelas operacionais. As leituras de materiais, templates, automações, configurações de notificações e auditoria já usam os seus carregadores próprios.
+
+O cliente inicia as três leituras em paralelo e só disponibiliza a interface quando todas têm sucesso e contêm os campos esperados. Uma resposta incompleta, erro de permissão ou falha de base de dados mantém a interface em erro; a falta de autenticação conserva o ecrã de login. O `ERPState` continua a ser uma cache de apresentação, montada a partir de respostas autoritativas. A chamada GET sem partição devolve HTTP 410 após autenticação, impedindo a antiga transferência integral.
+
+O POST legado continua a receber **apenas alterações** de coleções sem API dedicada. A comparação de concorrência no servidor lê apenas os domínios alterados e, quando necessário, os estados de projeto/tarefa usados para validar automações. Projetos, tarefas, clientes, materiais, templates e dias especiais mantêm os respetivos caminhos de escrita dedicados. A extração das restantes escritas do lote legado para serviços por domínio é trabalho arquitetural distinto; este POST não transporta um snapshot integral da cache.

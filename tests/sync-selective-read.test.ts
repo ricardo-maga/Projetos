@@ -59,4 +59,7 @@ test('sync read fetches an authorized domain without reading unrelated domains',
   expect(tables.has('clients')).toBe(true);
   expect(tables.has('tasks')).toBe(false);
   expect(tables.has('project_materials')).toBe(false);
+  expect(tables.has('project_status')).toBe(false);
+  expect(tables.has('special_days')).toBe(false);
+  expect(tables.has('risk_categories')).toBe(false);
 });

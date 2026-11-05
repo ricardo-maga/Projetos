@@ -198,6 +198,9 @@ describe('FASE 25-A — Correção do acesso ao endpoint de Sync (/api/supabase/
         // Dados legítimos do Global Sync devem ser preservados
         expect(savedPayload.comments).toBeDefined();
         expect(savedPayload.comments.length).toBe(1);
+        const readOptions = readSpy.mock.calls.at(-1)?.[1];
+        expect(readOptions.readableDomains.has('comments')).toBe(true);
+        expect(readOptions.readableDomains.has('projects')).toBe(false);
       } finally {
         authSpy.mockRestore();
         saveSpy.mockRestore();

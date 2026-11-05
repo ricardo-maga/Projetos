@@ -298,7 +298,7 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
   }
 
   try {
-    const res = await fetch('/api/supabase/sync', { method: 'GET', headers: getAuthHeaders(), cache: 'no-store' });
+    const res = await fetch('/api/supabase/sync?partition=directory', { method: 'GET', headers: getAuthHeaders(), cache: 'no-store' });
     const data = await res.json().catch(() => null);
 
     if (res.ok && data?.success) {
@@ -385,33 +385,33 @@ export async function getActiveStateFromSupabase(
       resUserRoles,
       resOwnUser,
     ] = await Promise.all([
-      client.from('user_groups').select('*'),
-      client.from('project_status').select('*').order('sort_order', { ascending: true }),
-      client.from('project_category').select('*').order('sort_order', { ascending: true }),
-      client.from('project_risk').select('*').order('sort_order', { ascending: true }),
-      client.from('project_priority').select('*').order('sort_order', { ascending: true }),
-      client.from('project_teams').select('*').order('sort_order', { ascending: true }),
-      client.from('project_partners').select('*').order('sort_order', { ascending: true }),
-      client.from('task_status').select('*').order('scale', { ascending: true }),
-      client.from('task_types').select('*').order('sort_order', { ascending: true }),
+      readable('userGroups') ? client.from('user_groups').select('*') : skipped(),
+      readable('projectStatuses') ? client.from('project_status').select('*').order('sort_order', { ascending: true }) : skipped(),
+      readable('projectCategories') ? client.from('project_category').select('*').order('sort_order', { ascending: true }) : skipped(),
+      readable('projectRisks') ? client.from('project_risk').select('*').order('sort_order', { ascending: true }) : skipped(),
+      readable('projectPriorities') ? client.from('project_priority').select('*').order('sort_order', { ascending: true }) : skipped(),
+      readable('projectTeams') ? client.from('project_teams').select('*').order('sort_order', { ascending: true }) : skipped(),
+      readable('projectPartners') ? client.from('project_partners').select('*').order('sort_order', { ascending: true }) : skipped(),
+      readable('taskStatuses') ? client.from('task_status').select('*').order('scale', { ascending: true }) : skipped(),
+      readable('taskTypes') || readable('tasks') ? client.from('task_types').select('*').order('sort_order', { ascending: true }) : skipped(),
       client.from('users').select(readable('users') ? '*' : 'id,type,name,role_id,approved,deleted,created_at,sync_version'),
       readable('clients') ? client.from('clients').select('*').order('created_at', { ascending: false }) : skipped(),
       readable('projects') ? getProjectsServerData(client, { all: true, includeDeleted: true }) : skipped(),
       readable('tasks') ? client.from('tasks').select('*').order('created_at', { ascending: false }) : skipped(),
       readable('comments') ? client.from('comments').select('*').order('created_at', { ascending: true }) : skipped(),
       readable('userAbsences') ? client.from('user_absences').select('*') : skipped(),
-      client.from('app_configuration').select('*').limit(1),
-      client.from('special_days').select('*'),
+      readable('appConfig') ? client.from('app_configuration').select('*').limit(1) : skipped(),
+      readable('specialDays') ? client.from('special_days').select('*') : skipped(),
       readable('defaultTasks') && !readOptions?.skipDefaultTasks ? client.from('default_tasks').select('*') : skipped(),
-      client.from('risk_categories').select('*').order('sort_order', { ascending: true }),
-      client.from('risk_statuses').select('*').order('sort_order', { ascending: true }),
-      client.from('risk_priorities').select('*').order('sort_order', { ascending: true }),
+      readable('riskCategories') ? client.from('risk_categories').select('*').order('sort_order', { ascending: true }) : skipped(),
+      readable('riskStatuses') ? client.from('risk_statuses').select('*').order('sort_order', { ascending: true }) : skipped(),
+      readable('riskPriorities') ? client.from('risk_priorities').select('*').order('sort_order', { ascending: true }) : skipped(),
       readable('projectRiskItems') ? client.from('project_risk_items').select('*').order('created_at', { ascending: false }) : skipped(),
-      readOptions?.skipNotifications ? skipped() : client.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
+      readOptions?.skipNotifications || !readable('notifications') ? skipped() : client.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
       readable('notificationSettings') && !readOptions?.skipConfigRuntime ? client.from('notification_settings').select('*').order('type') : skipped(),
       readable('automationRules') && !readOptions?.skipConfigRuntime ? client.from('automation_rules').select('*').eq('deleted', false).order('created_at', { ascending: false }) : skipped(),
-      client.from('roles').select('id,name,code').eq('is_active', true).order('name'),
-      client.from('user_roles').select('user_id,role_id'),
+      readable('activeRoles') || readable('users') ? client.from('roles').select('id,name,code').eq('is_active', true).order('name') : skipped(),
+      readable('users') ? client.from('user_roles').select('user_id,role_id') : skipped(),
       readOptions && !readable('users') ? client.from('users').select('*').eq('id', readOptions.userId).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
     ]);
