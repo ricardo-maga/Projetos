@@ -10,5 +10,7 @@ coverage/
 .staging-transfer/
 .next-staging/
 supabase/.temp/
+database/staging/supabase/.temp/
+.baseline-*/
 *.tsbuildinfo
 .vercel/
