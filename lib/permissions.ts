@@ -25,6 +25,8 @@ export interface GroupPermissions {
   // 3. CALENDARIO E AGENDAMENTO
   calendar_read: boolean;
   calendar_write: boolean;
+  planning_center_read?: boolean;
+  planning_center_write?: boolean;
 
   // 4. CLIENTES
   clients_read: boolean;
@@ -113,6 +115,8 @@ export const EMPTY_PERMISSIONS: GroupPermissions = {
   presales_coordinate: false,
   calendar_read: false,
   calendar_write: false,
+  planning_center_read: false,
+  planning_center_write: false,
   clients_read: false,
   clients_write: false,
   clients_delete: false,
