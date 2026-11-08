@@ -7,7 +7,7 @@ describe('Compact weekly calendar', () => {
   it('shows one warning beside quick creation and preserves the creation callback', () => {
     const task: any = { id: 'a', title: 'Tarefa', assigneeIds: ['u'], estimatedDate: '2026-10-07', statusId: 's', deleted: false };
     let created = '';
-    const h = createSectionHarness('OperationalUserCalendar.tsx', { selectedUserIds: ['u'], anchorDate: new Date(2026, 9, 7) });
+    const h = createSectionHarness('../domains/calendar/ui/OperationalUserCalendar.tsx', { selectedUserIds: ['u'], anchorDate: new Date(2026, 9, 7) });
     const tree = h.render({ tasks: [task, { ...task, id: 'b' }], users: [{ id: 'u', name: 'Técnico Teste', type: 'Team', roleId: 'ug-3' }],
       appConfig: { taskAssigneeGroupIds: ['ug-3'] }, projects: [], clients: [], taskStatuses: [], canCreateTask: true, onSelectTask() {},
       onQuickCreateTask: (user: string, date: string) => created = `${user}:${date}` });
@@ -24,7 +24,7 @@ describe('Compact weekly calendar', () => {
     let opened = '';
     const task: any = { id: 't', projectId: 'p', title: 'Detalhes privados da tarefa', statusId: 's', assigneeIds: ['u'], estimatedDate: '2026-10-07', estimatedHours: '2', deleted: false };
     const props: any = { tasks: [task], users: [{ id: 'u', name: 'Técnico Teste', type: 'Team', roleId: 'ug-3' }], appConfig: { taskAssigneeGroupIds: ['ug-3'] }, projects: [{ id: 'p', title: 'Projeto Exemplo', clientId: 'c' }], clients: [{ id: 'c', clientName: 'Cliente Exemplo' }], taskStatuses: [{ id: 's', name: 'Em curso', color: '#005a75', scale: 2 }], onSelectTask: (t: any) => opened = t.id, specialDays: [{ date: '2026-10-05', name: 'Feriado' }] };
-    const h = createSectionHarness('OperationalUserCalendar.tsx', { selectedUserIds: ['u'], anchorDate: new Date(2026, 9, 7) });
+    const h = createSectionHarness('../domains/calendar/ui/OperationalUserCalendar.tsx', { selectedUserIds: ['u'], anchorDate: new Date(2026, 9, 7) });
     let tree = h.render(props);
     let html = renderToStaticMarkup(tree);
     expect(html).toContain('Cliente Exemplo');

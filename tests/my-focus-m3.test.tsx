@@ -10,7 +10,7 @@ import { assignedFocusRisks, focusHours, paginateFocus, readFocusPagination } fr
 import { currentForecastMonth, forecastShortMonth, offsetForecastMonth } from '../lib/projectForecast';
 
 function harness() {
-  const url = new URL('../components/MyFocusSection.tsx', import.meta.url);
+  const url = new URL('../domains/monitoring/ui/MyFocusSection.tsx', import.meta.url);
   const source = readFileSync(url, 'utf8');
   const ast = ts.createSourceFile('MyFocusSection.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const names: string[] = [];
@@ -91,7 +91,7 @@ describe('My Focus M3', () => {
     expect(html).not.toContain('Notificações'); expect(html).not.toContain('Progresso das Tarefas');
     // Configured status helpers may legitimately emit palette classes. The
     // section itself must use semantic tokens rather than local palette maps.
-    expect(readFileSync(new URL('../components/MyFocusSection.tsx', import.meta.url), 'utf8')).not.toMatch(/(?:bg|text|border)-(?:slate|blue|indigo)-/);
+    expect(readFileSync(new URL('../domains/monitoring/ui/MyFocusSection.tsx', import.meta.url), 'utf8')).not.toMatch(/(?:bg|text|border)-(?:slate|blue|indigo)-/);
   });
   it('opens execute mode without mutating status; retains permission guard', () => {
     let calls = 0;

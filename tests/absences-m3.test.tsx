@@ -35,7 +35,7 @@ describe('Absences configured group visibility', () => {
 
 describe('Absences M3 presentation and existing actions', () => {
   it('renders configured optgroups, filters both calendar and records, and uses Foundation controls', () => {
-    const h = createSectionHarness('UserSection.tsx', { currentCalendarDate: new Date(2026, 9, 1) });
+    const h = createSectionHarness('../domains/absences/ui/AbsencesSection.tsx', { currentCalendarDate: new Date(2026, 9, 1) });
     const tree = h.render(props), html = renderToStaticMarkup(tree);
     expect(html).toContain('Registo de ausências'); expect(html).toContain('Calendário mensal');
     expect(html).toContain('Ausências registadas'); expect(html).toContain('rounded-card');
@@ -43,13 +43,13 @@ describe('Absences M3 presentation and existing actions', () => {
     expect(html).not.toContain('Pessoa excluída'); expect(html).not.toContain('Pessoa eliminada');
     expect(html).toContain('Ana (Ausente:');
     expect(html.match(/Confirmar Eliminação/g)).toBeNull();
-    const source = readFileSync(new URL('../components/UserSection.tsx', import.meta.url), 'utf8');
-    const section = source.slice(source.indexOf("{subTab === 'absences' && ("), source.indexOf("{subTab === 'users' && ("));
+    const source = readFileSync(new URL('../domains/absences/ui/AbsencesSection.tsx', import.meta.url), 'utf8');
+    const section = source.slice(source.indexOf('  return ('));
     expect(section).not.toMatch(/<(button|select|input|textarea)\b/);
     expect(section).not.toMatch(/text-\[(8|9|10|11)px\]|text-xs|(?:bg|text|border)-(slate|blue|rose)-/);
   });
   it('keeps the canonical absence payload and deletion confirmation', async () => {
-    const h = createSectionHarness('UserSection.tsx', { userId: 'b', startDate: '2026-10-08', endDate: '2026-10-09' });
+    const h = createSectionHarness('../domains/absences/ui/AbsencesSection.tsx', { userId: 'b', startDate: '2026-10-08', endDate: '2026-10-09' });
     let added: any, deleted = '';
     let tree = h.render({ ...props, addAbsence: (value: any) => { added = value; return { success: true }; }, deleteAbsence: (id: string) => deleted = id });
     await find(tree, e => e.type === 'form').props.onSubmit({ preventDefault() {} });
@@ -61,7 +61,7 @@ describe('Absences M3 presentation and existing actions', () => {
     h.state.confirmState.onConfirm(); expect(deleted).toBe('visible');
   });
   it('defaults and constrains the end date after selecting the start date', () => {
-    const h = createSectionHarness('UserSection.tsx');
+    const h = createSectionHarness('../domains/absences/ui/AbsencesSection.tsx');
     let tree = h.render(props);
     const startInput = find(tree, e => e.props?.label === 'Data de Início *');
     const endInput = find(tree, e => e.props?.label === 'Data de fim *');
@@ -76,7 +76,7 @@ describe('Absences M3 presentation and existing actions', () => {
     expect(updatedEndInput.props.value).toBe('2026-10-12');
   });
   it('clears stale user selections on configuration changes and disables submission with no groups', () => {
-    const h = createSectionHarness('UserSection.tsx', { userId: 'x', filterUserId: 'x' });
+    const h = createSectionHarness('../domains/absences/ui/AbsencesSection.tsx', { userId: 'x', filterUserId: 'x' });
     h.render(props); h.effects.forEach(fn => fn());
     expect(h.state.userId).toBe(''); expect(h.state.filterUserId).toBe('all');
     const html = renderToStaticMarkup(h.render({ ...props, appConfig: { taskAssigneeGroupIds: [] } }));
@@ -85,7 +85,7 @@ describe('Absences M3 presentation and existing actions', () => {
     expect(html).toContain('disabled=""');
   });
   it('does not filter the independent user directory by task groups', () => {
-    const h = createSectionHarness('UserSection.tsx', { subTab: 'users' });
+    const h = createSectionHarness('../domains/administration/ui/UserSection.tsx', { subTab: 'users' });
     const html = renderToStaticMarkup(h.render({ ...props, hideUsers: false, hideAbsences: true }));
     expect(html).toContain('Pessoa excluída');
   });

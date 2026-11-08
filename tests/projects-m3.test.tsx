@@ -35,7 +35,7 @@ it('keeps compact monthly navigation and hides legends and document controls wit
   for (const label of ['Mês anterior', 'Mês seguinte']) {
     expect(findProjectElement(tree, e => e.props?.['aria-label'] === label).props.size).toBe('sm');
   }
-  const source = readFileSync(new URL('../components/ProjectSection.tsx', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../domains/projects/ui/ProjectSection.tsx', import.meta.url), 'utf8');
   expect(source).not.toContain('Esquemas Técnicos / Documentos (Anexos)');
   expect(source).toContain('setFormDocs(proj.documents || [])');
   expect(source).toContain('documents: formDocs');
@@ -223,7 +223,7 @@ describe('Projects M3 presentation', () => {
   });
 
   it('preserves the delete confirmation/dependency guard and the unified task modal', () => {
-    const source = readFileSync(new URL('../components/ProjectSection.tsx', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../domains/projects/ui/ProjectSection.tsx', import.meta.url), 'utf8');
     expect(source).toContain('Confirmar Eliminação de Projeto');
     expect(source).toContain('if (projTasks.length > 0)');
     expect(source).toContain('await deleteProject(selectedProj.id)');

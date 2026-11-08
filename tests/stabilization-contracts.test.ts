@@ -9,7 +9,7 @@ describe('stabilization contracts', () => {
   });
 
   test('project details request every page of tasks', () => {
-    const source = readFileSync(new URL('../components/ProjectSection.tsx', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../domains/projects/ui/ProjectSection.tsx', import.meta.url), 'utf8');
     expect(source).toContain('pageSize=100&page=${page}');
     expect(source).toContain('while (page <= totalPages)');
   });

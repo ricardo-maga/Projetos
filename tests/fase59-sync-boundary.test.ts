@@ -28,8 +28,8 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
       expect(content).not.toContain('getActiveStateFromSupabase');
     });
 
-    it('lib/projects/projectService.ts não importa nem consome supabaseSync', () => {
-      const content = readFileSync(join(process.cwd(), 'lib/projects/projectService.ts'), 'utf-8');
+    it('domains/projects/modules/projectService.ts não importa nem consome supabaseSync', () => {
+      const content = readFileSync(join(process.cwd(), 'domains/projects/modules/projectService.ts'), 'utf-8');
       expect(content).not.toContain('supabaseSync');
       expect(content).not.toContain('saveActiveStateToSupabase');
       expect(content).not.toContain('getActiveStateFromSupabase');

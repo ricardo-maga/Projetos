@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
 it('places configured priority beside task type, outside the date/hour grid', () => {
-  const source = readFileSync('components/TaskDetailsModal.tsx', 'utf8');
+  const source = readFileSync('domains/tasks/ui/TaskDetailsModal.tsx', 'utf8');
   const ast = ts.createSourceFile('modal.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   let row = '';
   function visit(node: ts.Node) {

@@ -7,7 +7,7 @@ import { notFound, conflict, validationError, internalServerError, badRequest } 
 import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
-import { getTaskServer, updateTaskServer, deleteTaskServer } from '@/lib/tasks/taskService';
+import { getTaskServer, updateTaskServer, deleteTaskServer } from '@/domains/tasks/modules/taskService';
 
 async function getIdFromParams(input: any): Promise<string> {
   if (!input) return '';

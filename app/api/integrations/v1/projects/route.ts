@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateIntegration } from '@/lib/integrations/auth';
-import { queryProjectSchema } from '@/lib/validations/project';
-import { listProjects } from '@/lib/projects/projectService';
+import { queryProjectSchema } from '@/domains/projects/contracts/project';
+import { listProjects } from '@/domains/projects/modules/projectService';
 
 export const dynamic = 'force-dynamic';
 

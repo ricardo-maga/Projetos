@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
-import { updateClientSchema } from '@/lib/validations/client';
+import { updateClientSchema } from '@/domains/clients/contracts/client';
 import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';

@@ -24,7 +24,7 @@ describe('Daily planning without allocation UI', () => {
     expect(isTaskOnDate({ ...task, startDate: '2026-10-06', endDate: '2026-10-07' }, '2026-10-06')).toBe(true);
   });
   it('renders task hours on the project timeline and opens the existing task modal', () => {
-    const url = new URL('../components/CalendarSection.tsx', import.meta.url);
+    const url = new URL('../domains/calendar/ui/CalendarSection.tsx', import.meta.url);
     const source = readFileSync(url, 'utf8');
     const js = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true } }).outputText;
     const states = ['projects', null];
@@ -45,7 +45,7 @@ describe('Daily planning without allocation UI', () => {
     expect(source).toContain('mode: canWriteTasks');
   });
   it('removes allocation queries and props from application and task/calendar consumers', () => {
-    for (const path of ['../app/page.tsx', '../hooks/useERP.ts', '../components/TaskSection.tsx', '../components/CalendarSection.tsx']) {
+    for (const path of ['../app/page.tsx', '../hooks/useERP.ts', '../domains/tasks/ui/TaskSection.tsx', '../domains/calendar/ui/CalendarSection.tsx']) {
       const source = readFileSync(new URL(path, import.meta.url), 'utf8');
       expect(source).not.toContain('planningAllocations');
       expect(source).not.toContain('fetchPlanningCapacity');
@@ -53,7 +53,7 @@ describe('Daily planning without allocation UI', () => {
     }
   });
   it('keeps task drag-and-drop available to users who can write tasks or the calendar', () => {
-    const source = readFileSync(new URL('../components/CalendarSection.tsx', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../domains/calendar/ui/CalendarSection.tsx', import.meta.url), 'utf8');
     expect(source).toContain('canMoveTask={canCreate}');
   });
 });

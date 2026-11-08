@@ -5,7 +5,11 @@ import { createRequire } from 'node:module';
 
 // Isolated hooks for the real component, leaving its children and handlers intact.
 export function createSectionHarness(file: string, initial: Record<string, any> = {}) {
-  const url = new URL(`../../components/${file}`, import.meta.url);
+  const moved: Record<string, string> = {
+    'ClientSection.tsx': '../../domains/clients/ui/ClientSection.tsx',
+    'ProjectTimeline.tsx': '../../domains/projects/ui/ProjectTimeline.tsx',
+  };
+  const url = new URL(moved[file] || `../../components/${file}`, import.meta.url);
   const source = readFileSync(url, 'utf8');
   const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const names: string[] = [];

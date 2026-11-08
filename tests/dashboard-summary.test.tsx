@@ -44,11 +44,9 @@ describe('Dashboard first-row indicators', () => {
   it('shares the M3 metric card and uses the dashboard container breakpoint', () => {
     const html = renderToStaticMarkup(<MetricCard title="Tarefas abertas" value={3} />);
     expect(html).toContain('p-5 space-y-2'); expect(html).toContain('text-heading-lg'); expect(html).toContain('>3</p>');
-    for (const file of ['BentoDashboard.tsx', 'ProjectAnalytics.tsx']) {
-      const source = readFileSync(new URL(`../components/${file}`, import.meta.url), 'utf8');
-      expect(source).toContain("from './ui/MetricCard'");
-    }
-    const dashboard = readFileSync(new URL('../components/BentoDashboard.tsx', import.meta.url), 'utf8');
+    expect(readFileSync(new URL('../domains/monitoring/ui/BentoDashboard.tsx', import.meta.url), 'utf8')).toContain("from '@/components/ui/MetricCard'");
+    expect(readFileSync(new URL('../domains/projects/ui/ProjectAnalytics.tsx', import.meta.url), 'utf8')).toContain("from '@/components/ui/MetricCard'");
+    const dashboard = readFileSync(new URL('../domains/monitoring/ui/BentoDashboard.tsx', import.meta.url), 'utf8');
     const css = readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8');
     expect(dashboard).toContain('m3-dashboard-summary md:col-span-12 grid gap-4');
     expect(css).toContain('.m3-dashboard { container: dashboard / inline-size; }');

@@ -80,7 +80,7 @@ describe('FASE 61 — Hardening Transversal Pós-Contenção do Supabase Sync', 
 
       const taskRoute = readFileSync(join(process.cwd(), 'app/api/v1/tasks/route.ts'), 'utf-8');
       expect(taskRoute).toContain('if (!createRes.success');
-      const taskServiceContent = readFileSync(join(process.cwd(), 'lib/tasks/taskService.ts'), 'utf-8');
+      const taskServiceContent = readFileSync(join(process.cwd(), 'domains/tasks/modules/taskService.ts'), 'utf-8');
       expect(taskServiceContent).toContain('if (rpcError)');
     });
   });

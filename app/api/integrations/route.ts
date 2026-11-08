@@ -2,7 +2,7 @@ import { randomBytes, createHash } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AuthError } from '@/lib/auth/requireAuth';
-import { authorizeRbac } from '@/lib/rbac/admin';
+import { authorizeRbac } from '@/domains/administration/modules/rbacAdmin';
 import { logAuditEvent } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';

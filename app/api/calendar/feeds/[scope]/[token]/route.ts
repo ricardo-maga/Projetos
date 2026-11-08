@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { calendarFeedDb, hashFeedToken, loadCalendarFeedData, validFeedScope } from '@/lib/calendarFeedServer';
-import { renderCalendarFeed } from '@/lib/calendarFeeds';
+import { calendarFeedDb, hashFeedToken, loadCalendarFeedData, validFeedScope } from '@/domains/calendar/data/calendarFeedServer';
+import { renderCalendarFeed } from '@/domains/calendar/modules/calendarFeeds';
 
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ scope: string; token: string }> };

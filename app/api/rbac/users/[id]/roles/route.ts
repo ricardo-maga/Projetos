@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authorizeRbac, databaseError, rbacError } from '@/lib/rbac/admin';
+import { authorizeRbac, databaseError, rbacError } from '@/domains/administration/modules/rbacAdmin';
 import { withCanonicalErrors } from '@/lib/apiErrors';
 
 export const dynamic = 'force-dynamic';

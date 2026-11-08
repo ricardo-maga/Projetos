@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateIntegration } from '@/lib/integrations/auth';
 import { queryTaskSchema } from '@/lib/validations/task';
-import { listTasksServer } from '@/lib/tasks/taskService';
+import { listTasksServer } from '@/domains/tasks/modules/taskService';
 import { projectInIntegrationScope } from '@/lib/integrations/scope';
 
 export const dynamic = 'force-dynamic';

@@ -5,7 +5,7 @@ import { createClientSchema, updateClientSchema } from '../lib/validations/clien
 
 describe('FASE 33-C1 — Verificação Estática de Contrato da API de Clients com o Schema Real da BD', () => {
 
-  describe('1. Validações — lib/validations/client.ts', () => {
+  describe('1. Validações — domains/clients/contracts/client.ts', () => {
     it('Schema de CREATE aceita clientName, shortName, location, taxId e rejeita name/code/address como substitutos', () => {
       const valid = createClientSchema.safeParse({
         clientName: 'Cliente Teste Real',
@@ -129,8 +129,8 @@ describe('FASE 33-C1 — Verificação Estática de Contrato da API de Clients c
     });
   });
 
-  describe('6. Static Code Analysis / Contract Checks — hooks/useERP.ts', () => {
-    const useERPContent = readFileSync(join(process.cwd(), 'hooks', 'useERP.ts'), 'utf-8');
+  describe('6. Static Code Analysis / Contract Checks — domains/clients/modules/clientActions.ts', () => {
+    const useERPContent = readFileSync(join(process.cwd(), 'domains', 'clients', 'modules', 'clientActions.ts'), 'utf-8');
 
     it('1-6. addClient envia apenas campos canónicos (clientName, shortName, location, taxId, contactEmail) e não envia name/code/email/phone/address', () => {
       const addStart = useERPContent.indexOf('const addClient =');
@@ -221,7 +221,7 @@ describe('FASE 33-C1 — Verificação Estática de Contrato da API de Clients c
 
     it('16. deleteClient só altera o estado após sucesso da API', () => {
       const deleteStart = useERPContent.indexOf('const deleteClient =');
-      const deleteEnd = useERPContent.indexOf('// ==================== PROJECT MATERIALS CRUD');
+      const deleteEnd = useERPContent.indexOf('return { addClient, updateClient, deleteClient };');
       const deleteBlock = useERPContent.substring(deleteStart, deleteEnd);
 
       expect(deleteBlock.includes('if (res.ok && result.success)')).toBe(true);

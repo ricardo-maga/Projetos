@@ -5,8 +5,8 @@ import dynamic from 'next/dynamic';
 import { useERP } from '../hooks/useERP';
 import { usePageNavigation } from '../hooks/usePageNavigation';
 import { useAsyncAction } from '../hooks/useAsyncAction';
-import BentoDashboard from '../components/BentoDashboard';
-import NotificationDropdown from '../components/NotificationDropdown';
+import BentoDashboard from '@/domains/monitoring/ui/BentoDashboard';
+import NotificationDropdown from '@/domains/communication/ui/NotificationDropdown';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { logAuditEventToSupabase } from '../lib/supabaseSync';
 import { hasPermission } from '../lib/permissions';
@@ -34,17 +34,17 @@ const SectionLoading = () => (
 
 // Load feature screens when their tab is visited. The dashboard stays in the
 // initial bundle because it is the default view after authentication.
-const ProjectSection = dynamic(() => import('../components/ProjectSection'), { loading: SectionLoading });
-const TaskSection = dynamic(() => import('../components/TaskSection'), { loading: SectionLoading });
+const ProjectSection = dynamic(() => import('@/domains/projects/ui/ProjectSection'), { loading: SectionLoading });
+const TaskSection = dynamic(() => import('@/domains/tasks/ui/TaskSection'), { loading: SectionLoading });
 const MechanicalDesignSection = dynamic(() => import('../components/MechanicalDesignSection'), { loading: SectionLoading });
 const PresalesSection = dynamic(() => import('../components/PresalesRegistrySection'), { loading: SectionLoading });
-const ClientSection = dynamic(() => import('../components/ClientSection'), { loading: SectionLoading });
-const UserSection = dynamic(() => import('../components/UserSection'), { loading: SectionLoading });
-const ConfigSection = dynamic(() => import('../components/ConfigSection'), { loading: SectionLoading });
-const CalendarSection = dynamic(() => import('../components/CalendarSection'), { loading: SectionLoading });
-const CalendarSubscriptions = dynamic(() => import('../components/CalendarSubscriptions'), { loading: SectionLoading });
-const MyFocusSection = dynamic(() => import('../components/MyFocusSection'), { loading: SectionLoading });
-const ReportsSection = dynamic(() => import('../components/ReportsSection'), { loading: SectionLoading });
+const ClientSection = dynamic(() => import('@/domains/clients/ui/ClientSection'), { loading: SectionLoading });
+const AbsencesSection = dynamic(() => import('@/domains/absences/ui/AbsencesSection'), { loading: SectionLoading });
+const ConfigSection = dynamic(() => import('@/domains/administration/ui/ConfigSection'), { loading: SectionLoading });
+const CalendarSection = dynamic(() => import('@/domains/calendar/ui/CalendarSection'), { loading: SectionLoading });
+const CalendarSubscriptions = dynamic(() => import('@/domains/calendar/ui/CalendarSubscriptions'), { loading: SectionLoading });
+const MyFocusSection = dynamic(() => import('@/domains/monitoring/ui/MyFocusSection'), { loading: SectionLoading });
+const ReportsSection = dynamic(() => import('@/domains/reports/ui/ReportsSection'), { loading: SectionLoading });
 
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
@@ -994,19 +994,12 @@ export default function Page() {
               )}
 
               {activeTab === 'ausencias' && (
-                <UserSection 
+                <AbsencesSection
                   absences={state.userAbsences}
                   users={state.users}
-                  userGroups={state.userGroups}
                   activeRoles={state.activeRoles}
-                  onRefreshFromDatabase={refreshFromDatabase}
                   addAbsence={addAbsence}
                   deleteAbsence={deleteAbsence}
-                  addUser={addUser}
-                  updateUser={updateUser}
-                  deleteUser={deleteUser}
-                  hideUsers={true}
-                  hideRoles={true}
                   appConfig={state.appConfig}
                   specialDays={state.specialDays}
                   currentUser={currentUser}

@@ -18,7 +18,7 @@ describe('Clients and Calendar M3', () => {
     const html = renderToStaticMarkup(tree);
     expect(html).toContain('Lista de clientes'); expect(html).toContain('Cliente Exemplo');
     expect(html).toContain('text-body-sm'); expect(html).toContain('rounded-card');
-    const source = readFileSync(new URL('../components/ClientSection.tsx', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../domains/clients/ui/ClientSection.tsx', import.meta.url), 'utf8');
     expect(source).not.toMatch(/<(button|input|select|textarea)\b/);
     expect(source).not.toMatch(/text-\[(9|10|11)px\]|text-xs|(?:bg|text|border)-(slate|blue)-/);
   });
@@ -50,7 +50,7 @@ describe('Clients and Calendar M3', () => {
     expect(selected).toBe('p'); expect(h.state.selectedClientForModal).toBe(null);
   });
   it('uses Projects-style tabs with icons, forwards risks and priorities, and preserves calendar permissions/modal', () => {
-    const h = createSectionHarness('CalendarSection.tsx');
+    const h = createSectionHarness('../domains/calendar/ui/CalendarSection.tsx');
     const priorities = [{ id: 'high', name: 'Alta', scale: 1, deleted: false }];
     const props: any = { projects: [], tasks: [], clients: [], users: [], absences: [], taskStatuses: [], projectStatuses: [], projectPriorities: priorities, projectRiskItems: [{ id: 'r' }], currentUser: { id: 'qa-user', roleId: 'ug-1', permissions: ['calendar.read', 'calendar.write', 'tasks.write'] } };
     let tree = h.render(props);

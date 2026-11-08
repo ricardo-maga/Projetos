@@ -17,7 +17,7 @@ test('Foundation Badge forwards the accessible native title', () => {
   expect(renderToStaticMarkup(React.createElement(Badge, { title: 'Falha de gravação', children: 'Erro' }))).toContain('title="Falha de gravação"');
 });
 test('project import closes the existing modal, not a removed form state', () => {
-  const source = read('components/ProjectSection.tsx');
+  const source = read('domains/projects/ui/ProjectSection.tsx');
   expect(source).not.toContain('setShowAddTaskForm');
   expect(source).toContain('setTaskModalState(prev => ({ ...prev, isOpen: false, task: null }))');
 });

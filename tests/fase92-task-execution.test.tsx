@@ -10,9 +10,9 @@ import { getTaskStatusStyle, getUserInitials } from '../lib/utils';
 import { apiUpdateTask, validateTaskExecutionTimes, parseTaskHoursToFloat } from '../lib/taskOperations';
 import { updateTaskServer } from '../lib/tasks/taskService';
 
-const source = readFileSync(new URL('../components/TaskDetailsModal.tsx', import.meta.url), 'utf8');
-const taskSource = readFileSync(new URL('../components/TaskSection.tsx', import.meta.url), 'utf8');
-const projectSource = readFileSync(new URL('../components/ProjectSection.tsx', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../domains/tasks/ui/TaskDetailsModal.tsx', import.meta.url), 'utf8');
+const taskSource = readFileSync(new URL('../domains/tasks/ui/TaskSection.tsx', import.meta.url), 'utf8');
+const projectSource = readFileSync(new URL('../domains/projects/ui/ProjectSection.tsx', import.meta.url), 'utf8');
 const statuses = [{ id: 'ts-1', name: 'Configurado A', color: 'laranja' }, { id: 'ts-2', name: 'Configurado B', color: 'vermelho' }];
 const values = { projectId: 'do-not-update', title: 'Injected title', description: 'Injected description', taskTypeId: 'tt-1', estimatedDate: '2026-12-01', estimatedHours: 100, completedDate: '2026-12-02', statusId: 'ts-2', assigneeIds: ['eligible'], actualHours: 3, startDate: '2026-10-04', startTime: '09:00', endDate: '2026-10-04', endTime: '12:00', notes: 'Execution' };
 const allowed = ['statusId', 'assigneeIds', 'actualHours', 'startDate', 'startTime', 'endDate', 'endTime', 'notes'].sort();

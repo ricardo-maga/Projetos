@@ -2,13 +2,13 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
-import { createProjectSchema, queryProjectSchema } from '@/lib/validations/project';
-import { validateProjectRelations } from '@/lib/validations/projectRelations';
+import { createProjectSchema, queryProjectSchema } from '@/domains/projects/contracts/project';
+import { validateProjectRelations } from '@/domains/projects/contracts/projectRelations';
 import { validationError, badRequest, internalServerError } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
-import { createProject, listProjects } from '@/lib/projects/projectService';
+import { createProject, listProjects } from '@/domains/projects/modules/projectService';
 import { getIdempotentEntityId, withUserIdempotency } from '@/lib/apiIdempotency';
 
 export async function GET(req: NextRequest) {
