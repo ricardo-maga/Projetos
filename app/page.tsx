@@ -1049,8 +1049,6 @@ export default function Page() {
                   addProject={addProject}
                   clients={state.clients}
                   addClient={addClient}
-                  addAbsence={addAbsence}
-                  deleteAbsence={deleteAbsence}
                   addUser={addUser}
                   updateUser={updateUser}
                   deleteUser={deleteUser}

@@ -83,8 +83,6 @@ interface ConfigSectionProps {
   addProject?: any;
   clients?: import('@/lib/types').Client[];
   addClient?: any;
-  addAbsence?: any;
-  deleteAbsence?: any;
   addUser?: any;
   updateUser?: any;
   deleteUser?: any;
@@ -340,8 +338,6 @@ export default function ConfigSection({
   addProject,
   clients = [],
   addClient,
-  addAbsence,
-  deleteAbsence,
   addUser,
   updateUser,
   deleteUser,
