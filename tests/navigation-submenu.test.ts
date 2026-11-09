@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const source = readFileSync('app/page.tsx', 'utf8');
 const sectionCatalog = readFileSync('lib/sectionCatalog.ts', 'utf8');
-const configSource = readFileSync('components/ConfigSection.tsx', 'utf8');
+const configSource = readFileSync('domains/administration/ui/ConfigSection.tsx', 'utf8');
 const sectionExpression = source.match(/const isConfigSectionActive = ([\s\S]*?);/)![1];
 const selectionExpression = source.match(/const isSubActive = ([\s\S]*?);/)![1];
 const allowedBlock = source.match(/const nestedPagePermission = ([\s\S]*?)\n      if \(!allowed\)/)![0].split('\n      if')[0];

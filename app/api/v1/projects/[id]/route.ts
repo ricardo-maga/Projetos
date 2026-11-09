@@ -2,13 +2,13 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
-import { updateProjectSchema } from '@/lib/validations/project';
-import { validateProjectRelations } from '@/lib/validations/projectRelations';
+import { updateProjectSchema } from '@/domains/projects/contracts/project';
+import { validateProjectRelations } from '@/domains/projects/contracts/projectRelations';
 import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
-import { getProject, updateProject, deleteProject } from '@/lib/projects/projectService';
+import { getProject, updateProject, deleteProject } from '@/domains/projects/modules/projectService';
 
 async function getIdFromParams(input: any): Promise<string> {
   if (!input) return '';

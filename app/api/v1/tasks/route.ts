@@ -7,7 +7,7 @@ import { validationError, badRequest, internalServerError } from '@/lib/apiError
 import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
-import { listTasksServer, createTaskServer } from '@/lib/tasks/taskService';
+import { listTasksServer, createTaskServer } from '@/domains/tasks/modules/taskService';
 import { getIdempotentEntityId, withUserIdempotency } from '@/lib/apiIdempotency';
 
 export async function GET(req: NextRequest) {

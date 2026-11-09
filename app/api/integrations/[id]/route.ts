@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthError } from '@/lib/auth/requireAuth';
-import { authorizeRbac } from '@/lib/rbac/admin';
+import { authorizeRbac } from '@/domains/administration/modules/rbacAdmin';
 import { logAuditEvent } from '@/lib/audit';
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

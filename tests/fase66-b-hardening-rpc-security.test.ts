@@ -609,7 +609,7 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
 
   describe('3. Auditoria Determinística de SQLSTATE sem Parsing de Texto', () => {
     it('taskService.ts não utiliza rpcError.message?.includes(...) para mapear erros da boundary', () => {
-      const content = readFileSync(join(process.cwd(), 'lib/tasks/taskService.ts'), 'utf-8');
+      const content = readFileSync(join(process.cwd(), 'domains/tasks/modules/taskService.ts'), 'utf-8');
       expect(content).not.toContain('rpcError.message?.includes(');
       expect(content).not.toContain('rpcError.message.includes(');
       expect(content).toContain("rpcError.code === 'P0001'");
@@ -659,14 +659,14 @@ describe('FASE 66-B-HARDENING — Tasks RPC Security & Deterministic Errors', ()
 
   describe('4. Auditoria de Writers e Ausência de Fallbacks', () => {
     it('garante que não existem chamadas .insert() diretas na tabela tasks fora de RPCs', () => {
-      const taskServiceContent = readFileSync(join(process.cwd(), 'lib/tasks/taskService.ts'), 'utf-8');
+      const taskServiceContent = readFileSync(join(process.cwd(), 'domains/tasks/modules/taskService.ts'), 'utf-8');
       expect(taskServiceContent).not.toContain(".from('tasks').insert(");
       expect(taskServiceContent).not.toContain(".from('tasks').update(");
       expect(taskServiceContent).not.toContain(".from('tasks').delete(");
     });
 
     it('garante que não existem escritas (.insert/.update/.delete) na tabela task_assignees fora de RPCs', () => {
-      const taskServiceContent = readFileSync(join(process.cwd(), 'lib/tasks/taskService.ts'), 'utf-8');
+      const taskServiceContent = readFileSync(join(process.cwd(), 'domains/tasks/modules/taskService.ts'), 'utf-8');
       expect(taskServiceContent).not.toContain(".from('task_assignees').insert(");
       expect(taskServiceContent).not.toContain(".from('task_assignees').update(");
       expect(taskServiceContent).not.toContain(".from('task_assignees').delete(");

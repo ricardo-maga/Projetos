@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthError, requirePermission } from '@/lib/auth/requireAuth';
-import { calendarFeedDb, hashFeedToken, validFeedScope } from '@/lib/calendarFeedServer';
+import { calendarFeedDb, hashFeedToken, validFeedScope } from '@/domains/calendar/data/calendarFeedServer';
 import { checkRateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';

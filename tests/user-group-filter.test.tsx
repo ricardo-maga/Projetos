@@ -6,7 +6,7 @@ import { CANONICAL_ROLE_IDS } from '../lib/permissions';
 
 describe('User list group filter', () => {
   it('filters role assignments, keeps custom groups distinct and excludes deleted users', () => {
-    const h = createSectionHarness('UserSection.tsx', {
+    const h = createSectionHarness('../domains/administration/ui/UserSection.tsx', {
       rbacRoles: [
         { id: CANONICAL_ROLE_IDS.TECHNICIAN, name: 'Técnico', code: 'technician' },
         { id: CANONICAL_ROLE_IDS.COMMERCIAL, name: 'Comercial', code: 'commercial' },

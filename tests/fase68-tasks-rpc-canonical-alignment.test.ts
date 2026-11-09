@@ -406,7 +406,7 @@ describe('FASE 68 — TASKS ATOMIC RPC / POSTGRESQL CANONICAL ALIGNMENT', () => 
     });
 
     it('18. Zero fallbacks de escrita direta em tasks ou task_assignees no domínio taskService', () => {
-      const code = readFileSync(join(process.cwd(), 'lib/tasks/taskService.ts'), 'utf-8');
+      const code = readFileSync(join(process.cwd(), 'domains/tasks/modules/taskService.ts'), 'utf-8');
       expect(code).not.toContain("sb.from('tasks').insert");
       expect(code).not.toContain("sb.from('tasks').update");
       expect(code).not.toContain("sb.from('task_assignees').insert");

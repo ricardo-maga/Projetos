@@ -341,12 +341,12 @@ describe('FASE 63 — Desacoplamento e Persistência Atómica do domínio Tasks'
 
     it('os endpoints /api/v1/tasks importam e consomem o taskService', () => {
       const mainRoute = readFileSync(join(process.cwd(), 'app/api/v1/tasks/route.ts'), 'utf-8');
-      expect(mainRoute).toContain('from \'@/lib/tasks/taskService\'');
+      expect(mainRoute).toContain('from \'@/domains/tasks/modules/taskService\'');
       expect(mainRoute).toContain('listTasksServer(');
       expect(mainRoute).toContain('createTaskServer(');
 
       const itemRoute = readFileSync(join(process.cwd(), 'app/api/v1/tasks/[id]/route.ts'), 'utf-8');
-      expect(itemRoute).toContain('from \'@/lib/tasks/taskService\'');
+      expect(itemRoute).toContain('from \'@/domains/tasks/modules/taskService\'');
       expect(itemRoute).toContain('getTaskServer(');
       expect(itemRoute).toContain('updateTaskServer(');
       expect(itemRoute).toContain('deleteTaskServer(');

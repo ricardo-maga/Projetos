@@ -98,7 +98,7 @@ describe('Dashboard M3 presentation', () => {
   });
 
   it('keeps callbacks, pagination and keyboard project activation in the presentation', () => {
-    const source = readFileSync(new URL('../components/BentoDashboard.tsx', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../domains/monitoring/ui/BentoDashboard.tsx', import.meta.url), 'utf8');
     expect(source).toContain("onNavigate('tarefas')");
     expect(source).toContain("onNavigate('ausencias')");
     expect(source).toContain('hasActiveProjectScale');

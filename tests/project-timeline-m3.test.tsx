@@ -218,7 +218,7 @@ describe('Project timeline M3', () => {
     expect(find(readOnly, e => e.props?.['aria-label']?.startsWith('Criar tarefa sem projeto'))).toBeUndefined();
   });
   it('uses Foundation controls and semantic palette tokens', () => {
-    const source = readFileSync(new URL('../components/ProjectTimeline.tsx', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../domains/projects/ui/ProjectTimeline.tsx', import.meta.url), 'utf8');
     expect(source).not.toMatch(/<(button|input|select|textarea)\b/);
     expect(source).not.toMatch(/(?:bg|text|border)-(?:slate|blue|indigo)-/);
   });

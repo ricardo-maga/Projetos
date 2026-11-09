@@ -6,7 +6,7 @@ import { createRequire } from 'node:module';
 // Runs the real component with isolated state/effects; no DB, session or global
 // module mocks. Children remain the actual Foundation and domain components.
 export function createProjectHarness(initialState: Record<string, any> = {}) {
-  const sourceUrl = new URL('../../components/ProjectSection.tsx', import.meta.url);
+  const sourceUrl = new URL('../../domains/projects/ui/ProjectSection.tsx', import.meta.url);
   const source = readFileSync(sourceUrl, 'utf8');
   const ast = ts.createSourceFile('ProjectSection.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const stateNames: string[] = [];
@@ -43,7 +43,7 @@ export function createProjectHarness(initialState: Record<string, any> = {}) {
   const exports: Record<string, any> = {};
   new Function('require', 'exports', js)((id: string) => {
     if (id === 'react') return isolatedReact;
-    if (id === '../hooks/useAsyncAction') {
+    if (id.endsWith('/hooks/useAsyncAction')) {
       return { useAsyncAction: () => ({ busy: false, run: (action: () => Promise<unknown>) => action() }) };
     }
     return requireActual(id);

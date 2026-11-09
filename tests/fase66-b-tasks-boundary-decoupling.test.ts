@@ -473,7 +473,7 @@ describe('FASE 66-B — Tasks Persistence Boundary & Project Decoupling', () => 
     });
 
     it('garante que taskService não possui fallbacks nem escritas manuais paralelas', () => {
-      const serviceFile = join(process.cwd(), 'lib/tasks/taskService.ts');
+      const serviceFile = join(process.cwd(), 'domains/tasks/modules/taskService.ts');
       const content = readFileSync(serviceFile, 'utf-8');
       expect(content).toContain("sb.rpc('create_task_atomic'");
       expect(content).toContain("sb.rpc('update_task_atomic'");

@@ -123,10 +123,10 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
   });
 
   // 17. UserSection.tsx usa apenas roles ativas carregadas da fonte autoritativa
-  it('17. components/UserSection.tsx utiliza roles ativas da API para a atribuição de permissões', () => {
-    const filePath = join(process.cwd(), 'components/UserSection.tsx');
+  it('17. domains/administration/ui/UserSection.tsx utiliza roles ativas da API para a atribuição de permissões', () => {
+    const filePath = join(process.cwd(), 'domains/administration/ui/UserSection.tsx');
     const content = readFileSync(filePath, 'utf-8');
-    expect(content).toContain('activeRoles');
+    expect(content).toContain('setRbacRoles((result.roles || []).filter((role: any) => role.is_active))');
     expect(content).toContain("fetch('/api/rbac/catalog'");
     expect(content).not.toContain('CANONICAL_ROLES_LIST');
   });

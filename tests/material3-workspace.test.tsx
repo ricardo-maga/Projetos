@@ -98,7 +98,7 @@ describe('Workspace visual migration boundaries', () => {
   });
 
   it('renders the weekly calendar once, without unsupported props', () => {
-    const source = readFileSync(new URL('../components/CalendarSection.tsx', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../domains/calendar/ui/CalendarSection.tsx', import.meta.url), 'utf8');
     expect(source.match(/<OperationalUserCalendar\b/g)).toHaveLength(1);
     expect(source).not.toContain('renderTopBarOnly');
   });

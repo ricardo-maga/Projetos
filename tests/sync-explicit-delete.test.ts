@@ -11,11 +11,17 @@ test('explicit deletion checks permissions and uses a single id with ownership p
 });
 test('UI deletes only after authoritative confirmation and never writes a filtered snapshot', () => {
   const hook=read('hooks/useERP.ts');
-  const helper=hook.slice(hook.indexOf('const deleteSyncedEntity'),hook.indexOf('// ==================== ABSENCES CRUD'));
+  const helper=hook.slice(hook.indexOf('const deleteSyncedEntity'),hook.indexOf('const { addComment'));
   expect(helper).toContain("method: 'DELETE'");
   expect(helper.indexOf('if (!response.ok || !result.success)')).toBeLessThan(helper.indexOf('setState('));
   expect(helper).not.toContain('saveState(');
-  for(const name of ['deleteComment','deleteAbsence','deleteSpecialDay','deleteDefaultTask']) {
-    expect(hook).toMatch(new RegExp(`const ${name} = \\(id: string\\) => deleteSyncedEntity`));
+  const actions = [
+    'domains/projects/modules/commentActions.ts',
+    'domains/absences/modules/absenceActions.ts',
+    'domains/calendar/modules/specialDayActions.ts',
+    'domains/tasks/modules/defaultTaskActions.ts',
+  ];
+  for (const [index, name] of ['deleteComment','deleteAbsence','deleteSpecialDay','deleteDefaultTask'].entries()) {
+    expect(read(actions[index])).toMatch(new RegExp(`const ${name} = \\(id: string\\) => deleteSyncedEntity`));
   }
 });

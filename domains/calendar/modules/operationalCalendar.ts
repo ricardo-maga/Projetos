@@ -1,0 +1,416 @@
+import { Task, Project, User, UserAbsence } from '@/lib/types';
+
+export interface CalendarDayItem {
+  date: Date;
+  dateStr: string; // YYYY-MM-DD
+  dayNum: number;
+  weekdayShort: string; // Seg, Ter, Qua...
+  weekdayFull: string;
+  monthShort: string;
+  year: number;
+  isToday: boolean;
+  isWeekend: boolean;
+}
+
+export interface DayConflictInfo {
+  hasConflict: boolean;
+  isAbsent: boolean;
+  hasMultipleTasks: boolean;
+  taskCount: number;
+  badgeText?: string;
+  tooltipText?: string;
+}
+
+/**
+ * Normalizes a date or date string to YYYY-MM-DD
+ */
+export function normalizeDateStr(d?: string | null): string {
+  if (!d) return '';
+  return d.trim().slice(0, 10);
+}
+
+/**
+ * Returns the YYYY-MM-DD string for a Date instance in local time
+ */
+export function formatDateToYYYYMMDD(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Finds the Monday of the week containing the given date
+ */
+export function getMondayOfWeek(d: Date): Date {
+  const result = new Date(d);
+  result.setHours(12, 0, 0, 0); // Avoid midnight DST boundary issues
+  const day = result.getDay(); // 0 is Sunday, 1 is Monday, ... 6 is Saturday
+  const diff = day === 0 ? -6 : 1 - day;
+  result.setDate(result.getDate() + diff);
+  return result;
+}
+
+/**
+ * Generates continuous calendar days starting from Monday of the week
+ */
+export function getOperationalCalendarDays(
+  anchorDate: Date,
+  periodDays: 7 | 14 | 21 | 28 = 7,
+  alignToMonday: boolean = true
+): CalendarDayItem[] {
+  const start = alignToMonday ? getMondayOfWeek(anchorDate) : new Date(anchorDate);
+  start.setHours(12, 0, 0, 0);
+
+  const todayStr = formatDateToYYYYMMDD(new Date());
+  const days: CalendarDayItem[] = [];
+
+  for (let i = 0; i < periodDays; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const dateStr = formatDateToYYYYMMDD(d);
+    const dayOfWeek = d.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    const weekdayShort = d.toLocaleDateString('pt-PT', { weekday: 'short' }).replace('.', '');
+    const weekdayFull = d.toLocaleDateString('pt-PT', { weekday: 'long' });
+    const monthShort = d.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '');
+
+    days.push({
+      date: d,
+      dateStr,
+      dayNum: d.getDate(),
+      weekdayShort: weekdayShort.charAt(0).toUpperCase() + weekdayShort.slice(1),
+      weekdayFull: weekdayFull.charAt(0).toUpperCase() + weekdayFull.slice(1),
+      monthShort: monthShort.charAt(0).toUpperCase() + monthShort.slice(1),
+      year: d.getFullYear(),
+      isToday: dateStr === todayStr,
+      isWeekend,
+    });
+  }
+
+  return days;
+}
+
+/**
+ * Formats a readable interval label in Portuguese
+ * e.g., "22 a 28 de setembro de 2026 (7 dias)"
+ */
+export function formatOperationalDateRange(days: CalendarDayItem[]): string {
+  if (days.length === 0) return '';
+  const first = days[0];
+  const last = days[days.length - 1];
+
+  const firstMonth = first.date.toLocaleDateString('pt-PT', { month: 'long' });
+  const lastMonth = last.date.toLocaleDateString('pt-PT', { month: 'long' });
+
+  if (first.year === last.year) {
+    if (firstMonth === lastMonth) {
+      return `${first.dayNum} a ${last.dayNum} de ${firstMonth} de ${first.year} (${days.length} dias)`;
+    }
+    return `${first.dayNum} de ${firstMonth} a ${last.dayNum} de ${lastMonth} de ${first.year} (${days.length} dias)`;
+  }
+
+  return `${first.dayNum} de ${firstMonth} de ${first.year} a ${last.dayNum} de ${lastMonth} de ${last.year} (${days.length} dias)`;
+}
+
+/**
+ * Checks whether a task is active and scheduled on the given date (YYYY-MM-DD).
+ * Regra FASE 73:
+ * - Caso B: Se START_DATE e END_DATE estiverem ambas preenchidas -> usa START_DATE como data operacional.
+ * - Caso A: Caso contrário (START_DATE e END_DATE não preenchidas em conjunto) -> usa ESTIMATED_DATE.
+ * Não aceita estados parciais nem usa START_DATE isoladamente.
+ */
+export function isTaskOnDate(task: Task, dateStr: string): boolean {
+  if (!task || task.deleted) return false;
+  const targetDate = normalizeDateStr(dateStr);
+  if (!targetDate) return false;
+
+  const startDate = normalizeDateStr(task.startDate);
+  const endDate = normalizeDateStr(task.endDate);
+  const estDate = normalizeDateStr(task.estimatedDate);
+
+  // Caso B: START_DATE e END_DATE preenchidas em conjunto
+  if (startDate && endDate) {
+    return targetDate === startDate;
+  }
+
+  // Caso A: START_DATE e END_DATE não preenchidas em conjunto -> usar ESTIMATED_DATE
+  if (estDate) {
+    return targetDate === estDate;
+  }
+
+  return false;
+}
+
+/**
+ * Matches user id safely
+ */
+export function matchUserId(idA?: string | null, idB?: string | null): boolean {
+  if (!idA || !idB) return false;
+  if (idA === idB) return true;
+  return idA.replace(/[-]/g, '').toLowerCase() === idB.replace(/[-]/g, '').toLowerCase();
+}
+
+/**
+ * Checks whether a user is assigned to a task
+ */
+export function isUserAssignedToTask(task: Task, userId: string): boolean {
+  if (!task) return false;
+  const ids = Array.isArray(task.assigneeIds) ? task.assigneeIds : [];
+  if (ids.some(aid => matchUserId(aid, userId))) return true;
+
+  // Single assigneeId backwards compatibility
+  const singleId = (task as any).assigneeId || (task as any).userId || (task as any).user_id;
+  if (singleId && matchUserId(singleId, userId)) return true;
+
+  return false;
+}
+
+/**
+ * Returns active tasks for a specific user and date, applying optional project and status filters
+ */
+export function getUserDayTasks(
+  tasks: Task[],
+  userId: string,
+  dateStr: string,
+  filters?: { projectId?: string; statusId?: string }
+): Task[] {
+  if (!tasks || !Array.isArray(tasks)) return [];
+
+  const seenIds = new Set<string>();
+  const result: Task[] = [];
+
+  for (const task of tasks) {
+    if (task.deleted) continue;
+    if (seenIds.has(task.id)) continue;
+
+    if (!isUserAssignedToTask(task, userId)) continue;
+    if (!isTaskOnDate(task, dateStr)) continue;
+
+    if (filters?.projectId && task.projectId !== filters.projectId) continue;
+    if (filters?.statusId && task.statusId !== filters.statusId) continue;
+
+    seenIds.add(task.id);
+    result.push(task);
+  }
+
+  return result;
+}
+
+/**
+ * Finds user absence for a specific date
+ */
+export function getUserDayAbsence(absences: any[], userId: string, dateStr: string): any | undefined {
+  if (!absences || !Array.isArray(absences)) return undefined;
+  const targetDate = normalizeDateStr(dateStr);
+  if (!targetDate) return undefined;
+
+  return absences.find(abs => {
+    if (abs.deleted) return false;
+    const uMatch = matchUserId(abs.userId, userId) || matchUserId(abs.user_id, userId);
+    if (!uMatch) return false;
+
+    const rawStart = abs.absenceStartDate || abs.startDate || abs.start_date;
+    const rawEnd = abs.absenceEndDate || abs.endDate || abs.end_date || rawStart;
+    if (!rawStart) return false;
+
+    const start = normalizeDateStr(rawStart);
+    const end = normalizeDateStr(rawEnd || rawStart);
+
+    return targetDate >= start && targetDate <= end;
+  });
+}
+
+/**
+ * Detects conflicts for a user on a given day:
+ * - Absent with assigned tasks
+ * - Multiple tasks on the same day
+ * - Absence
+ */
+export function getOperationalDayConflicts(
+  userTasks: Task[],
+  userAbsence: any | undefined,
+  userName: string = 'Utilizador',
+  dateFormatted: string = ''
+): DayConflictInfo {
+  const isAbsent = !!userAbsence;
+  const taskCount = userTasks.length;
+  const hasMultipleTasks = taskCount > 1;
+
+  if (isAbsent && taskCount > 0) {
+    const taskWord = taskCount === 1 ? 'tarefa' : 'tarefas';
+    return {
+      hasConflict: true,
+      isAbsent: true,
+      hasMultipleTasks,
+      taskCount,
+      badgeText: `⚠️ AUSENTE (${taskCount} ${taskWord})`,
+      tooltipText: `⚠️ Conflito crítico: ${userName} está ausente em ${dateFormatted} mas tem ${taskCount} ${taskWord} atribuída(s).`,
+    };
+  }
+
+  if (isAbsent) {
+    const reason = userAbsence?.reason || 'Ausente';
+    return {
+      hasConflict: false,
+      isAbsent: true,
+      hasMultipleTasks: false,
+      taskCount: 0,
+      badgeText: 'AUSENTE',
+      tooltipText: `${userName} está ausente (${reason}) em ${dateFormatted}.`,
+    };
+  }
+
+  if (hasMultipleTasks) {
+    return {
+      hasConflict: true,
+      isAbsent: false,
+      hasMultipleTasks: true,
+      taskCount,
+      badgeText: `⚠️ ${taskCount} tarefas`,
+      tooltipText: `Aviso operacional: ${userName} tem ${taskCount} tarefas planeadas para ${dateFormatted}.`,
+    };
+  }
+
+  return {
+    hasConflict: false,
+    isAbsent: false,
+    hasMultipleTasks: false,
+    taskCount,
+  };
+}
+
+export interface TaskDropUpdatesResult {
+  hasChanges: boolean;
+  updates: {
+    assigneeIds?: string[];
+    estimatedDate?: string;
+    startDate?: string;
+    endDate?: string;
+  };
+}
+
+/**
+ * Safely parses YYYY-MM-DD components into year, month, day numbers
+ */
+export function parseDateParts(dateStr: string): { year: number; month: number; day: number } | null {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr.trim());
+  if (!match) return null;
+  return {
+    year: parseInt(match[1], 10),
+    month: parseInt(match[2], 10),
+    day: parseInt(match[3], 10),
+  };
+}
+
+/**
+ * Adds an integer number of civil calendar days to a YYYY-MM-DD string.
+ * Uses UTC date calculations to prevent any daylight saving time (DST) shifts.
+ */
+export function addCivilDays(dateStr: string, days: number): string {
+  const parts = parseDateParts(dateStr);
+  if (!parts) return dateStr;
+  const utcDate = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days));
+  const y = utcDate.getUTCFullYear();
+  const m = String(utcDate.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(utcDate.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Calculates the civil days difference between two YYYY-MM-DD strings (end - start).
+ * E.g., 2026-10-05 and 2026-10-08 -> 3 days difference (4 inclusive days).
+ */
+export function getCivilDaysDifference(startDateStr: string, endDateStr: string): number {
+  const startParts = parseDateParts(startDateStr);
+  const endParts = parseDateParts(endDateStr);
+  if (!startParts || !endParts) return 0;
+  const startUtc = Date.UTC(startParts.year, startParts.month - 1, startParts.day);
+  const endUtc = Date.UTC(endParts.year, endParts.month - 1, endParts.day);
+  return Math.round((endUtc - startUtc) / 86400000);
+}
+
+/**
+ * Computes updates for a task when dropped onto a calendar cell (targetUserId, targetDateStr).
+ * When multiple assignees are present, substitutes sourceUserId with targetUserId, maintaining other assignees.
+ * Preserves the exact inclusive multi-day duration when moving tasks with real start/end dates.
+ */
+export function computeTaskDropUpdates(
+  task: Task,
+  sourceUserId: string,
+  targetUserId: string,
+  targetDateStr: string
+): TaskDropUpdatesResult {
+  if (!task) return { hasChanges: false, updates: {} };
+
+  const currentAssigneeIds: string[] = Array.isArray(task.assigneeIds)
+    ? [...task.assigneeIds]
+    : ((task as any).assignedTo ? [(task as any).assignedTo] : []);
+
+  const userChanged = sourceUserId ? sourceUserId !== targetUserId : !currentAssigneeIds.includes(targetUserId);
+  const currentEffectiveDate = (task.startDate && task.endDate)
+    ? normalizeDateStr(task.startDate)
+    : (task.estimatedDate ? normalizeDateStr(task.estimatedDate) : normalizeDateStr(task.startDate));
+
+  const targetDateNormalized = normalizeDateStr(targetDateStr);
+  const dateChanged = currentEffectiveDate !== targetDateNormalized;
+
+  if (!userChanged && !dateChanged) {
+    return { hasChanges: false, updates: {} };
+  }
+
+  const updates: {
+    assigneeIds?: string[];
+    estimatedDate?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {};
+
+  if (userChanged) {
+    let updatedAssigneeIds: string[];
+    if (sourceUserId && currentAssigneeIds.includes(sourceUserId)) {
+      // Substitui o utilizador antigo pelo novo, mantendo os outros
+      updatedAssigneeIds = currentAssigneeIds.map(uid => uid === sourceUserId ? targetUserId : uid);
+    } else if (currentAssigneeIds.length === 0) {
+      updatedAssigneeIds = [targetUserId];
+    } else {
+      updatedAssigneeIds = [...currentAssigneeIds, targetUserId];
+    }
+    updates.assigneeIds = Array.from(new Set(updatedAssigneeIds));
+  }
+
+  if (dateChanged) {
+    updates.estimatedDate = targetDateStr;
+
+    const hasStartDate = Boolean(task.startDate && task.startDate.trim());
+    const hasEndDate = Boolean(task.endDate && task.endDate.trim());
+
+    if (hasStartDate && hasEndDate) {
+      const cleanStart = task.startDate!.trim();
+      const cleanEnd = task.endDate!.trim();
+      const durationDays = getCivilDaysDifference(cleanStart, cleanEnd);
+
+      if (durationDays > 0) {
+        // Multi-day task: preserve the exact duration (civil delta)
+        updates.startDate = targetDateStr;
+        updates.endDate = addCivilDays(targetDateStr, durationDays);
+      } else {
+        // Single-day execution task (startDate === endDate or inverted)
+        updates.startDate = targetDateStr;
+        updates.endDate = targetDateStr;
+      }
+    } else if (hasStartDate && !hasEndDate) {
+      // Partial start date only -> normalize to targetDateStr
+      updates.startDate = targetDateStr;
+      updates.endDate = targetDateStr;
+    } else if (!hasStartDate && hasEndDate) {
+      // Partial end date only -> normalize to targetDateStr
+      updates.startDate = targetDateStr;
+      updates.endDate = targetDateStr;
+    }
+  }
+
+  return { hasChanges: true, updates };
+}

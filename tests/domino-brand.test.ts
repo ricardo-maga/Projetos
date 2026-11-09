@@ -45,7 +45,7 @@ describe('Domino brand palette', () => {
   });
 
   it('uses shared neutral metric cards and preserves configured project status styling', () => {
-    const source = readFileSync(new URL('../components/BentoDashboard.tsx', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../domains/monitoring/ui/BentoDashboard.tsx', import.meta.url), 'utf8');
     expect(source).toContain('<MetricCard title="Projetos ativos"');
     expect(source).toContain('<MetricCard title="Tarefas abertas"');
     expect(source).toContain('getProjectStatusStyle');
