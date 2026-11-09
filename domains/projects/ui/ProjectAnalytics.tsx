@@ -1,7 +1,7 @@
 'use client';
 import React, { useMemo, useState } from 'react';
 import type { Client, Project, ProjectMaterial } from '@/lib/types';
-import { buildProjectAnalytics, commercialProjectsInWindow, fiscalYearStart, projectAnalyticsDate, type CommercialProjectWindow } from '@/lib/projectAnalytics';
+import { buildProjectAnalytics, commercialProjectsInWindow, fiscalYearStart, projectAnalyticsDate, type CommercialProjectWindow } from '@/domains/projects/modules/projectAnalytics';
 import { Card } from '@/components/ui/Card';
 import { MetricCard } from '@/components/ui/MetricCard';
 import { Badge } from '@/components/ui/Badge';

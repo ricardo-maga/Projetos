@@ -1,6 +1,6 @@
 import { Task } from '@/lib/types';
 import { getAuthHeaders, getApiErrorMessage } from '@/lib/clientAuth';
-import { getTaskConflictWarnings, TaskConflictParams } from '@/lib/taskConflicts';
+import { getTaskConflictWarnings, TaskConflictParams } from '@/domains/tasks/modules/taskConflicts';
 import { parseTaskHoursToNumber } from '@/domains/tasks/modules/taskService';
 
 export { getTaskConflictWarnings, type TaskConflictParams };

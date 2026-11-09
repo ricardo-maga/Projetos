@@ -13,7 +13,7 @@ import { Project, Task, Comment, UserAbsence, Client, ProjectMaterial, ProjectRi
 import { ChevronLeft, ChevronRight, Package, Search } from 'lucide-react';
 import { stringToUUID } from '@/lib/supabaseSync';
 import { getProjectCalculatedRisk, matchTaskStatusId, parseTimeToHours, getProjectStatusStyle } from '@/lib/utils';
-import { currentForecastMonth, forecastMonth, offsetForecastMonth } from '@/lib/projectForecast';
+import { currentForecastMonth, forecastMonth, offsetForecastMonth } from '@/domains/projects/modules/projectForecast';
 
 interface BentoDashboardProps {
   projects: Project[];

@@ -29,7 +29,7 @@ import { Select } from '@/components/ui/Select';
 import Textarea from '@/components/ui/Textarea';
 import { SingleChoice } from '@/components/ui/SingleChoice';
 import { getTaskTypeName, formatToOnlyHours, getDefaultTaskStatusId, getTaskStatusStyle, matchTaskStatusId } from '@/lib/utils';
-import { getTaskConflictWarnings } from '@/lib/taskConflicts';
+import { getTaskConflictWarnings } from '@/domains/tasks/modules/taskConflicts';
 import { validateTaskExecutionTimes, parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
 import type { TaskUpdateInput } from '@/domains/tasks/modules/taskOperations';
 

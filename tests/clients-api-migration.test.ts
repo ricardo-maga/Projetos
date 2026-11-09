@@ -42,90 +42,40 @@ describe('FASE 33-C1 — Verificação Estática de Contrato da API de Clients c
     });
   });
 
-  describe('2. Rota GET /api/v1/clients (Collection) — app/api/v1/clients/route.ts', () => {
-    const routeContent = readFileSync(join(process.cwd(), 'app', 'api', 'v1', 'clients', 'route.ts'), 'utf-8');
+  describe('2–4. Fronteiras HTTP, serviço e persistência de Clientes', () => {
+    const collection = readFileSync(join(process.cwd(), 'app/api/v1/clients/route.ts'), 'utf-8');
+    const item = readFileSync(join(process.cwd(), 'app/api/v1/clients/[id]/route.ts'), 'utf-8');
+    const repository = readFileSync(join(process.cwd(), 'domains/clients/data/clientRepository.ts'), 'utf-8');
+    const mapper = readFileSync(join(process.cwd(), 'domains/clients/data/clientMapper.ts'), 'utf-8');
+    const service = readFileSync(join(process.cwd(), 'domains/clients/modules/clientService.ts'), 'utf-8');
 
-    it('1. GET usa client_name e 2. GET devolve clientName', () => {
-      expect(routeContent.includes("order('client_name'")).toBe(true);
-      expect(routeContent.includes('clientName: row.client_name')).toBe(true);
+    it('mantém autorização e validação HTTP nas rotas, sem queries de Clientes', () => {
+      expect(collection).toContain("requirePermission(req, 'clients_read')");
+      expect(collection).toContain("requirePermission(req, 'clients_write')");
+      expect(item).toContain("requirePermission(req, 'clients_delete')");
+      expect(collection).toContain('queryClientSchema.safeParse');
+      expect(item).toContain('updateClientSchema.safeParse');
+      expect(collection + item).not.toContain(".from('clients')");
+      expect(collection).toContain('listClients(db, parsed.data)');
+      expect(item).toContain('editClient(db, id, parsed.data, user.id)');
     });
 
-    it('3. GET usa short_name e 4. GET devolve shortName', () => {
-      expect(routeContent.includes('shortName: row.short_name')).toBe(true);
+    it('concentra filtros, paginação e colunas SQL no repositório e mapeador', () => {
+      expect(repository).toContain(".eq('deleted', false)");
+      expect(repository).toContain(".order('client_name', { ascending: true }).range(from, to)");
+      expect(repository).toContain('client_name.ilike');
+      expect(mapper).toContain('clientName: row.client_name');
+      expect(mapper).toContain('taxId: row.tax_id');
+      expect(mapper).toContain('createdDate: row.created_at');
     });
 
-    it('5. GET usa location e 6. GET devolve location', () => {
-      expect(routeContent.includes('location: row.location')).toBe(true);
-    });
-
-    it('7. GET devolve taxId mapeado de tax_id', () => {
-      expect(routeContent.includes('taxId: row.tax_id')).toBe(true);
-    });
-
-    it('Pesquisa textual utiliza colunas reais client_name, short_name, location, tax_id', () => {
-      expect(routeContent.includes('client_name.ilike')).toBe(true);
-      expect(routeContent.includes('short_name.ilike')).toBe(true);
-      expect(routeContent.includes('tax_id.ilike')).toBe(true);
-      expect(routeContent.includes('location.ilike')).toBe(true);
-    });
-  });
-
-  describe('3. Rota POST /api/v1/clients — app/api/v1/clients/route.ts', () => {
-    const routeContent = readFileSync(join(process.cwd(), 'app', 'api', 'v1', 'clients', 'route.ts'), 'utf-8');
-    const postStart = routeContent.indexOf('export async function POST');
-    const postBlock = routeContent.substring(postStart);
-
-    it('8. POST escreve client_name, 9. short_name, 10. location, 11. tax_id', () => {
-      expect(postBlock.includes('client_name: c.clientName')).toBe(true);
-      expect(postBlock.includes('short_name: c.shortName')).toBe(true);
-      expect(postBlock.includes('location: c.location')).toBe(true);
-      expect(postBlock.includes('tax_id: c.taxId')).toBe(true);
-      expect(postBlock.includes('contact_email: c.contactEmail')).toBe(true);
-      expect(postBlock.includes('contact_phone: c.contactPhone')).toBe(true);
-    });
-
-    it('POST efetua re-leitura autoritativa da BD após inserção', () => {
-      expect(postBlock.includes('Re-leitura autoritativa')).toBe(true);
-      expect(postBlock.includes('.from(\'clients\')')).toBe(true);
-      expect(postBlock.includes('createdRow.client_name')).toBe(true);
-    });
-  });
-
-  describe('4. Rota GET & PATCH /api/v1/clients/[id] — app/api/v1/clients/[id]/route.ts', () => {
-    const idRouteContent = readFileSync(join(process.cwd(), 'app', 'api', 'v1', 'clients', '[id]', 'route.ts'), 'utf-8');
-
-    it('GET individual devolve clientName, shortName, location, taxId a partir de client_name, short_name, location, tax_id', () => {
-      const getStart = idRouteContent.indexOf('export async function GET');
-      const getEnd = idRouteContent.indexOf('export async function PATCH');
-      const getBlock = idRouteContent.substring(getStart, getEnd);
-
-      expect(getBlock.includes('clientName: client.client_name')).toBe(true);
-      expect(getBlock.includes('shortName: client.short_name')).toBe(true);
-      expect(getBlock.includes('location: client.location')).toBe(true);
-      expect(getBlock.includes('taxId: client.tax_id')).toBe(true);
-    });
-
-    it('12. PATCH atualiza client_name, 13. short_name, 14. location, 15. tax_id', () => {
-      const patchStart = idRouteContent.indexOf('async function handleUpdate');
-      const patchBlock = idRouteContent.substring(patchStart);
-
-      expect(patchBlock.includes('updatePayload.client_name = updates.clientName')).toBe(true);
-      expect(patchBlock.includes('updatePayload.short_name = updates.shortName')).toBe(true);
-      expect(patchBlock.includes('updatePayload.location = updates.location')).toBe(true);
-      expect(patchBlock.includes('updatePayload.tax_id = updates.taxId')).toBe(true);
-      expect(patchBlock.includes('updatePayload.contact_email = updates.contactEmail')).toBe(true);
-      expect(patchBlock.includes('updatePayload.contact_phone = updates.contactPhone')).toBe(true);
-    });
-
-    it('16. PATCH devolve dados do read-back da BD', () => {
-      const patchStart = idRouteContent.indexOf('async function handleUpdate');
-      const patchBlock = idRouteContent.substring(patchStart);
-
-      expect(patchBlock.includes('Re-leitura autoritativa')).toBe(true);
-      expect(patchBlock.includes('reRead.client_name')).toBe(true);
-      expect(patchBlock.includes('reRead.short_name')).toBe(true);
-      expect(patchBlock.includes('reRead.location')).toBe(true);
-      expect(patchBlock.includes('reRead.tax_id')).toBe(true);
+    it('mantém releitura autoritativa, concorrência e auditoria no serviço', () => {
+      expect(service).toContain('findClient(db, id)');
+      expect(service).toContain('currentVersion + 1');
+      expect(service).toContain('findActiveProjects(db, id)');
+      expect(service).toContain("action: 'CLIENT_CREATED'");
+      expect(service).toContain("action: 'CLIENT_UPDATED'");
+      expect(service).toContain("action: 'CLIENT_DELETED'");
     });
   });
 

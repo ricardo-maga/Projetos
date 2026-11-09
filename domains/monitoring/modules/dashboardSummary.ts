@@ -1,5 +1,5 @@
 import type { Project, Task, TaskStatus } from '@/lib/types';
-import { buildProjectAnalytics } from '@/lib/projectAnalytics';
+import { buildProjectAnalytics } from '@/domains/projects/modules/projectAnalytics';
 import { matchTaskStatusId } from '@/lib/utils';
 
 export function buildDashboardSummary(projects: Project[], tasks: Task[], projectStatuses: any[], taskStatuses: TaskStatus[], now = new Date()) {

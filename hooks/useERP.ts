@@ -16,8 +16,17 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createAbsenceActions } from '@/domains/absences/modules/absenceActions';
+import { createUserActions } from '@/domains/administration/modules/userActions';
+import { createProjectMaterialActions } from '@/domains/projects/modules/projectMaterialActions';
+import { createProjectRiskActions } from '@/domains/projects/modules/projectRiskActions';
+import { createConfigActions } from '@/domains/administration/modules/configActions';
+import { createSpecialDayActions } from '@/domains/calendar/modules/specialDayActions';
+import { createDefaultTaskActions } from '@/domains/tasks/modules/defaultTaskActions';
+import { createCommunicationActions } from '@/domains/communication/modules/communicationActions';
 import { createProjectActions } from '@/domains/projects/modules/projectActions';
 import { createTaskActions } from '@/domains/tasks/modules/taskActions';
+import { createCommentActions } from '@/domains/projects/modules/commentActions';
 import { createClientActions } from '@/domains/clients/modules/clientActions';
 import { applyLegacyVersions } from '../lib/supabase/legacyWriteBatch';
 import { buildLegacySyncPayload } from '../lib/supabase/syncPayload';
@@ -448,21 +457,6 @@ export function useERP() {
     isDbConfigured, state, setState, setSyncStatus, setSyncError, logAudit, refreshFromDatabase, getApiErrorMessage,
   });
 
-  // ==================== COMMENTS CRUD ====================
-  const addComment = (projectId: string, authorId: string, text: string) => {
-    const newComment: Comment = {
-      id: genId('com'),
-      projectId,
-      authorId,
-      comment: text,
-      createdDate: new Date().toISOString()
-    };
-    saveState(prev => ({
-      ...prev,
-      comments: [...prev.comments, newComment]
-    }));
-  };
-
   const deleteSyncedEntity = async (entity: 'comments' | 'userAbsences' | 'specialDays' | 'defaultTasks', id: string) => {
     setSyncStatus('syncing');
     setSyncError(null);
@@ -482,354 +476,28 @@ export function useERP() {
       return { success: false, message: error.message };
     }
   };
-  const deleteComment = (id: string) => deleteSyncedEntity('comments', id);
+  const { addComment, deleteComment } = createCommentActions({ saveState, genId, deleteSyncedEntity });
 
-  // ==================== ABSENCES CRUD ====================
-  const addAbsence = async (absence: Omit<UserAbsence, 'id' | 'createdDate'>) => {
-    const newAbsence: UserAbsence = {
-      ...absence,
-      id: crypto.randomUUID(),
-      createdDate: new Date().toISOString()
-    };
-    return await saveState(prev => ({
-      ...prev,
-      userAbsences: [newAbsence, ...prev.userAbsences]
-    }));
-  };
+  const { addAbsence, deleteAbsence } = createAbsenceActions({ saveState, deleteSyncedEntity });
 
-  const deleteAbsence = (id: string) => deleteSyncedEntity('userAbsences', id);
-
-  // ==================== USERS CRUD ====================
-  const addUser = async (user: Pick<User, 'name' | 'email' | 'type'> & { password: string }) => {
-    const response = await fetch('/api/users', {
-      method: 'POST', headers: getAuthHeaders(),
-      body: JSON.stringify({ name: user.name, email: user.email, type: user.type, password: user.password }),
-    });
-    const result = await response.json();
-    if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível criar o utilizador.');
-    await refreshFromDatabase();
-    return result.id as string;
-  };
-
-  const updateUser = async (id: string, updates: Partial<Omit<User, 'id' | 'createdDate'>> & { password?: string }) => {
-    const existing = state?.users?.find(u => u.id === id);
-    if (!existing) throw new Error('Utilizador não encontrado.');
-    const response = await fetch('/api/users', {
-      method: 'PATCH', headers: getAuthHeaders(),
-      body: JSON.stringify({ id, name: updates.name ?? existing.name, email: updates.email ?? existing.email,
-        type: updates.type ?? existing.type, password: updates.password }),
-    });
-    const result = await response.json();
-    if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível atualizar o utilizador.');
-    await refreshFromDatabase();
-    return true;
-  };
-
-  const deleteUser = (id: string) => {
-    const existingUser = state?.users?.find(u => u.id === id);
-    logAudit('DELETE', 'USER', id, existingUser?.name, `Eliminado utilizador "${existingUser?.name || id}"`);
-    return saveState(prev => ({
-      ...prev,
-      users: prev.users.map(u => u.id === id ? { ...u, deleted: true } : u)
-    }));
-  };
+  const { addUser, updateUser, deleteUser } = createUserActions({ state, saveState, refreshFromDatabase, logAudit });
 
   const { addClient, updateClient, deleteClient } = createClientActions({
     isDbConfigured, state, setState, setSyncStatus, setSyncError, matchId, logAudit, getApiErrorMessage,
   });
 
-  // ==================== PROJECT MATERIALS CRUD ====================
-  const addProjectMaterial = async (pm: Omit<import('../lib/types').ProjectMaterial, 'id' | 'deleted' | 'createdDate'>) => {
-    const created = await apiCreateProjectMaterial(pm);
-    setState(prev => prev ? ({ ...prev, projectMaterials: [created, ...(prev.projectMaterials || [])] }) : prev);
-    return created;
-  };
+  const { addProjectMaterial, updateProjectMaterial, deleteProjectMaterial } = createProjectMaterialActions({ state, setState, matchId });
 
-  const updateProjectMaterial = async (id: string, updates: Partial<Omit<import('../lib/types').ProjectMaterial, 'id' | 'createdDate'>>) => {
-    const current = state?.projectMaterials?.find(p => matchId(p.id, id));
-    const updated = await apiUpdateProjectMaterial(id, { ...updates, syncVersion: current?.syncVersion });
-    setState(prev => prev ? ({ ...prev,
-      projectMaterials: (prev.projectMaterials || []).map(p => matchId(p.id, id) ? updated : p),
-    }) : prev);
-    return updated;
-  };
+  const { addProjectRiskItem, updateProjectRiskItem, deleteProjectRiskItem } = createProjectRiskActions({ saveState, genId, matchId });
 
-  const deleteProjectMaterial = async (id: string) => {
-    await apiDeleteProjectMaterial(id);
-    setState(prev => prev ? ({ ...prev,
-      projectMaterials: (prev.projectMaterials || []).filter(p => !matchId(p.id, id)),
-    }) : prev);
-  };
+  const { updateConfig, addAuxRecord, updateAuxRecord, deleteAuxRecord, reorderAuxRecords } = createConfigActions({ saveState, genId });
 
-  // ==================== PROJECT RISK ITEMS CRUD ====================
-  const addProjectRiskItem = (risk: Omit<import('../lib/types').ProjectRiskItem, 'id' | 'deleted' | 'createdDate'>) => {
-    const newRisk: import('../lib/types').ProjectRiskItem = {
-      ...risk,
-      id: genId('pri'),
-      deleted: false,
-      createdDate: new Date().toISOString()
-    };
-    return saveState(prev => ({
-      ...prev,
-      projectRiskItems: [newRisk, ...(prev.projectRiskItems || [])]
-    }));
-  };
+  const { addSpecialDay, updateSpecialDay, deleteSpecialDay } = createSpecialDayActions({ state, setState, setSyncStatus, setSyncError, isDbConfigured, deleteSyncedEntity, refreshFromDatabase, getApiErrorMessage });
 
-  const updateProjectRiskItem = (id: string, updates: Partial<Omit<import('../lib/types').ProjectRiskItem, 'id' | 'createdDate'>>) => {
-    return saveState(prev => ({
-      ...prev,
-      projectRiskItems: (prev.projectRiskItems || []).map(r => matchId(r.id, id) ? { ...r, ...updates } as import('../lib/types').ProjectRiskItem : r)
-    }));
-  };
+  const { addDefaultTask, updateDefaultTask, deleteDefaultTask } = createDefaultTaskActions({ state, setState, setSyncStatus, setSyncError, isDbConfigured, deleteSyncedEntity, loadDefaultTasks, getApiErrorMessage });
 
-  const deleteProjectRiskItem = (id: string) => {
-    return saveState(prev => ({
-      ...prev,
-      projectRiskItems: (prev.projectRiskItems || []).map(r => matchId(r.id, id) ? { ...r, deleted: true } : r)
-    }));
-  };
+  const { updateNotificationSetting, markNotificationAsRead, markAllNotificationsAsRead, addNotification, addAutomationRule, updateAutomationRule, deleteAutomationRule, toggleAutomationRule } = createCommunicationActions({ state, setState, setSyncError, saveState, genId });
 
-  // ==================== APP CONFIGURATION ====================
-  const updateConfig = (updates: Record<string, any>) => {
-    return saveState(prev => ({
-      ...prev,
-      appConfig: { ...prev.appConfig, ...updates }
-    }));
-  };
-
-  // ==================== AUX TABLES CRUD ====================
-  type AuxTableName = 'projectStatuses' | 'projectCategories' | 'projectRisks' | 'projectPriorities' | 'projectTeams' | 'projectPartners' | 'userGroups' | 'taskStatuses' | 'taskTypes' | 'riskCategories' | 'riskStatuses' | 'riskPriorities';
-
-  const addAuxRecord = (tableName: AuxTableName, name: string, extra?: { scale?: number }) => {
-    const isUUIDTable = ['taskTypes', 'taskStatuses', 'userGroups', 'projectCategories', 'projectStatuses', 'projectRisks', 'projectPriorities', 'projectTeams', 'projectPartners', 'riskCategories', 'riskStatuses', 'riskPriorities'].includes(tableName);
-    const prefix = tableName === 'taskTypes' ? 'tt' : tableName === 'taskStatuses' ? 'ts' : tableName.slice(0, 3);
-    const id = isUUIDTable ? crypto.randomUUID() : genId(prefix);
-    
-    saveState(prev => {
-      const newRecord = {
-        id,
-        name,
-        deleted: false,
-        sort_order: (prev[tableName] as any[] || []).length,
-        ...(extra || {})
-      };
-      return {
-        ...prev,
-        [tableName]: [...(prev[tableName] as any[] || []), newRecord]
-      };
-    });
-  };
-
-  const updateAuxRecord = (tableName: AuxTableName, id: string, updates: any) => {
-    saveState(prev => ({
-      ...prev,
-      [tableName]: (prev[tableName] as any[] || []).map(item => item.id === id ? { ...item, ...updates } : item)
-    }));
-  };
-
-  const deleteAuxRecord = (tableName: AuxTableName, id: string) => {
-    saveState(prev => ({
-      ...prev,
-      [tableName]: (prev[tableName] as any[] || []).map(item => item.id === id ? { ...item, deleted: true } : item)
-    }));
-  };
-
-  const reorderAuxRecords = (tableName: AuxTableName, newItems: any[]) => {
-    saveState(prev => ({
-      ...prev,
-      [tableName]: newItems.map((item, index) => ({ ...item, sort_order: index }))
-    }));
-  };
-
-  // ==================== SPECIAL DAYS ====================
-  const writeSpecialDay = async (url: string, method: 'POST' | 'PATCH', payload: Record<string, unknown>) => {
-    if (!isDbConfigured) return { success: false, message: 'A base de dados não está configurada.' };
-    setSyncStatus('syncing');
-    setSyncError(null);
-    try {
-      const response = await fetch(url, {
-        method, headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || result.success !== true || !result.data?.id) {
-        const message = getApiErrorMessage(result, 'Não foi possível guardar o dia especial.');
-        if (response.status === 409) void refreshFromDatabase();
-        if (response.status === 401) {
-          clearClientSession();
-          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message } }));
-        }
-        setSyncStatus('error');
-        setSyncError(message);
-        return { success: false, message };
-      }
-      setState(prev => prev ? ({ ...prev, specialDays: method === 'POST'
-        ? [...(prev.specialDays || []), result.data]
-        : (prev.specialDays || []).map(day => day.id === result.data.id ? result.data : day) }) : prev);
-      setSyncStatus('synced');
-      return { success: true };
-    } catch {
-      const message = 'Falha de comunicação ao guardar o dia especial.';
-      setSyncStatus('error');
-      setSyncError(message);
-      return { success: false, message };
-    }
-  };
-
-  const addSpecialDay = (date: string, name: string) =>
-    writeSpecialDay('/api/supabase/special-days', 'POST', { date, name });
-
-  const updateSpecialDay = (id: string, updates: Partial<SpecialDay>) => {
-    const current = state?.specialDays?.find(day => day.id === id);
-    if (!current?.syncVersion) return Promise.resolve({ success: false, message: 'Recarregue os dias especiais antes de alterar.' });
-    return writeSpecialDay(`/api/supabase/special-days/${id}`, 'PATCH', {
-      date: updates.date, name: updates.name, syncVersion: current.syncVersion,
-    });
-  };
-
-  const deleteSpecialDay = (id: string) => deleteSyncedEntity('specialDays', id);
-
-  // ==================== DEFAULT TASKS ====================
-  const writeDefaultTask = async (url: string, method: 'POST' | 'PATCH', payload: Record<string, unknown>) => {
-    if (!isDbConfigured) return { success: false, message: 'A base de dados não está configurada.' };
-    setSyncStatus('syncing');
-    setSyncError(null);
-    try {
-      const response = await fetch(url, {
-        method, headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || result.success !== true || !result.data?.id) {
-        const message = getApiErrorMessage(result, 'Não foi possível guardar o template de tarefa.');
-        if (response.status === 409) void loadDefaultTasks();
-        if (response.status === 401) {
-          clearClientSession();
-          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message } }));
-        }
-        setSyncStatus('error');
-        setSyncError(message);
-        return { success: false, message };
-      }
-      setState(prev => prev ? ({ ...prev, defaultTasks: method === 'POST'
-        ? [...(prev.defaultTasks || []), result.data]
-        : (prev.defaultTasks || []).map(task => task.id === result.data.id ? result.data : task) }) : prev);
-      setSyncStatus('synced');
-      return { success: true };
-    } catch {
-      const message = 'Falha de comunicação ao guardar o template de tarefa.';
-      setSyncStatus('error');
-      setSyncError(message);
-      return { success: false, message };
-    }
-  };
-
-  const addDefaultTask = (title: string, description: string, estimatedHours: string, taskTypeId?: string) =>
-    writeDefaultTask('/api/supabase/default-tasks', 'POST', { title, description, estimatedHours, taskTypeId });
-
-  const updateDefaultTask = (id: string, updates: Partial<{ title: string; description: string; estimatedHours: string; taskTypeId?: string }>) => {
-    const current = state?.defaultTasks?.find(task => task.id === id);
-    if (!current?.syncVersion) return Promise.resolve({ success: false, message: 'Recarregue os templates de tarefas antes de alterar.' });
-    return writeDefaultTask(`/api/supabase/default-tasks/${id}`, 'PATCH', {
-      ...updates,
-      ...(Object.hasOwn(updates, 'taskTypeId') ? { taskTypeId: updates.taskTypeId ?? null } : {}),
-      syncVersion: current.syncVersion,
-    });
-  };
-
-  const deleteDefaultTask = (id: string) => deleteSyncedEntity('defaultTasks', id);
-
-    // ==================== NOTIFICATIONS ====================
-  const updateNotificationSetting = async (id: string, updates: Partial<import('../lib/types').NotificationSetting>) => {
-    const setting = state?.notificationSettings?.find(item => item.id === id);
-    if (!setting) return { success: false, message: 'Definição não encontrada.' };
-    try {
-      const response = await fetch('/api/notifications/settings', {
-        method: 'PATCH', headers: getAuthHeaders(),
-        body: JSON.stringify({ type: setting.type, updates }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.message || 'Erro ao guardar a definição.');
-      setState(prev => prev ? ({ ...prev, notificationSettings: (prev.notificationSettings || []).map(item =>
-        item.id === id ? { ...item, ...updates } : item) }) : prev);
-      return { success: true };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro ao guardar a definição.';
-      setSyncError(message);
-      return { success: false, message };
-    }
-  };
-
-  const markNotificationAsRead = async (id: string) => {
-    const response = await fetch('/api/notifications/read', {
-      method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ id }),
-    });
-    if (!response.ok) return { success: false };
-    setState(prev => prev ? ({ ...prev, notifications: (prev.notifications || []).map(n =>
-      n.id === id ? { ...n, isRead: true } : n) }) : prev);
-    return { success: true };
-  };
-
-  const markAllNotificationsAsRead = (userId: string) => {
-    return fetch('/api/notifications/read', {
-      method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ all: true }),
-    }).then(response => {
-      if (!response.ok) return { success: false };
-      setState(prev => prev ? ({ ...prev, notifications: (prev.notifications || []).map(n =>
-        n.userId === userId || n.userId === 'all' ? { ...n, isRead: true } : n) }) : prev);
-      return { success: true };
-    });
-  };
-
-  const addNotification = (userId: string, title: string, message: string, linkUrl?: string) => {
-    const newNotif = {
-      id: genId('notif'),
-      userId,
-      title,
-      message,
-      isRead: false,
-      createdDate: new Date().toISOString(),
-      linkUrl
-    };
-    saveState(prev => ({
-      ...prev,
-      notifications: [newNotif, ...(prev.notifications || [])]
-    }));
-  };
-
-  // ==================== AUTOMATION RULES ====================
-  const addAutomationRule = (rule: Omit<import('../lib/types').AutomationRule, 'id' | 'createdDate'>) => {
-    const newRule: import('../lib/types').AutomationRule = {
-      ...rule,
-      id: genId('rule'),
-      createdDate: new Date().toISOString()
-    };
-    return saveState(prev => ({
-      ...prev,
-      automationRules: [newRule, ...(prev.automationRules || [])]
-    }));
-  };
-
-  const updateAutomationRule = (id: string, updates: Partial<import('../lib/types').AutomationRule>) => {
-    return saveState(prev => ({
-      ...prev,
-      automationRules: (prev.automationRules || []).map(r => r.id === id ? { ...r, ...updates } as import('../lib/types').AutomationRule : r)
-    }));
-  };
-
-  const deleteAutomationRule = (id: string) => {
-    return saveState(prev => ({
-      ...prev,
-      automationRules: (prev.automationRules || []).map(r => r.id === id ? { ...r, deleted: true, enabled: false } : r)
-    }));
-  };
-
-  const toggleAutomationRule = (id: string) => {
-    return saveState(prev => ({
-      ...prev,
-      automationRules: (prev.automationRules || []).map(r => r.id === id ? { ...r, enabled: !r.enabled } : r)
-    }));
-  };
 
 
   return {

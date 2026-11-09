@@ -16,7 +16,7 @@ import { hasPermission } from '@/lib/permissions';
 import { isMechanicalDesignManager, type DesignRequest } from '@/lib/mechanicalDesign';
 import type { PresalesRequest } from '@/lib/presales';
 import { getAuthHeaders } from '@/lib/clientAuth';
-import { currentForecastMonth, forecastMonth, forecastShortMonth } from '@/lib/projectForecast';
+import { currentForecastMonth, forecastMonth, forecastShortMonth } from '@/domains/projects/modules/projectForecast';
 import { M3Button, M3IconButton, M3SegmentedControl } from '@/components/M3';
 import {
   CheckSquare, Briefcase, Play, ShieldAlert, Calendar as CalendarIcon, ChevronLeft,

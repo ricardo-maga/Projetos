@@ -75,8 +75,8 @@ describe('FASE 61 — Hardening Transversal Pós-Contenção do Supabase Sync', 
     });
 
     it('as rotas REST de clientes e tarefas verificam erros de base de dados e não engolem excepções', () => {
-      const clientRoute = readFileSync(join(process.cwd(), 'app/api/v1/clients/route.ts'), 'utf-8');
-      expect(clientRoute).toContain('if (insertError)');
+      const clientService = readFileSync(join(process.cwd(), 'domains/clients/modules/clientService.ts'), 'utf-8');
+      expect(clientService).toContain('if (insertError)');
 
       const taskRoute = readFileSync(join(process.cwd(), 'app/api/v1/tasks/route.ts'), 'utf-8');
       expect(taskRoute).toContain('if (!createRes.success');

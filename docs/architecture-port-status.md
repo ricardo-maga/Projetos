@@ -1,32 +1,28 @@
 # Reconciliação da arquitetura com a main
 
-Estado em 2026-11-08. O porte foi feito a partir da `main` publicada, sem aplicar o snapshot antigo em bloco. As implementações atuais de Presales, Desenho Mecânico, sincronização particionada e autorização foram conservadas.
+Estado em 2026-11-09. O porte foi feito a partir da `main` publicada, sem aplicar o snapshot antigo em bloco. Foram conservadas as implementações atuais de Presales, Desenho Mecânico, sincronização particionada e autorização.
 
 ## Fronteiras estabelecidas
 
 - As interfaces de Clientes, Projetos, Tarefas, Calendário, Ausências, Acompanhamento, Relatórios, Administração e Comunicação têm entradas próprias em `domains/`.
-- As regras e serviços atuais de Projetos, Tarefas, Calendário, Ausências, Acompanhamento, Relatórios, Administração e Comunicação residem em módulos de domínio. Os caminhos anteriores em `lib/` e `components/` reexportam para compatibilidade com consumidores ainda existentes.
-- `UserSection` trata apenas utilizadores e permissões. `AbsencesSection` contém estado, filtragem, calendário e operações de ausências próprios.
-- A configuração de notificações e automações passou a `CommunicationSettingsSection`. `ConfigSection` continua a compor essa área com as restantes configurações.
-- As operações cliente de Clientes, Projetos e Tarefas foram extraídas de `useERP` para os módulos dos respetivos domínios. O hook conserva o estado de apresentação, a sincronização herdada e as operações dos outros domínios.
-- As rotas ativas de Projetos e Tarefas importam os contratos e serviços do respetivo domínio. Os contratos HTTP e OpenAPI foram preservados.
+- As regras e serviços atuais residem nos módulos dos respetivos domínios. Os adaptadores anteriores em `lib/` e `components/` continuam disponíveis para testes, ferramentas e consumidores de compatibilidade; o código interno ativo importa diretamente os módulos dos domínios.
+- As rotas de Clientes delegam agora em contrato, serviço, repositório e mapeador de domínio. Mantêm permissões, formato HTTP, releitura autoritativa, auditoria e proteção de projetos associados.
+- `useERP` mantém o carregamento particionado, a sincronização herdada e o estado de apresentação; as operações de Clientes, Projetos, Tarefas, Ausências, Calendário, Administração e Comunicação delegam em módulos de domínio. `deleteSyncedEntity` permanece como ponte para as tabelas auxiliares ainda servidas pelo endpoint legado de sincronização.
+- `ConfigSection` compõe Sistema, Base de Dados e Auditoria. Utilizadores e associações de grupos, dados de referência, dias especiais, templates de tarefas e comunicação têm componentes próprios. As secções com formulários permanecem montadas durante a troca de separadores para preservar alterações por gravar.
+- As rotas ativas de Projetos e Tarefas importam contratos e serviços do respetivo domínio. Os contratos HTTP e OpenAPI foram preservados.
 
-## Trabalho ainda necessário para fechar a fase 7
+## Compatibilidade controlada
 
-1. Extrair os casos de uso e a persistência de Clientes das rotas atuais sem perder as alterações da `main` posteriores ao snapshot. O serviço antigo do snapshot não pode substituir as rotas atuais diretamente.
-2. Reduzir as restantes operações de vários domínios em `useERP` e a escrita de compatibilidade do snapshot, mantendo as APIs autoritativas e o controlo de concorrência.
-3. Dividir as restantes capacidades de `ConfigSection` pelos domínios proprietários e remover importações internas através de adaptadores legados.
-4. Remover reexportações de compatibilidade apenas depois de localizar e migrar todos os consumidores, incluindo testes e integrações externas.
-5. Validar os fluxos autenticados de interface e API num ambiente de pré-visualização. Typecheck, testes simulados e build não provam este fluxo.
+Os reexports em `components/` e `lib/` são entradas históricas usadas por testes, ferramentas de pré-visualização e possíveis consumidores externos. A sua remoção seria uma alteração de compatibilidade distinta desta migração; só deve ocorrer após inventário de consumidores externos. A escrita de dados auxiliares continua a usar a API de sincronização existente, agora encapsulada em `domains/administration/modules/configActions.ts`.
 
 Não foram introduzidas migrações SQL. A leitura das migrações aplicadas e das colunas relevantes em produção e staging não identificou alterações de esquema necessárias para este porte. Os rascunhos SQL do snapshot antigo não foram executados.
 
-## Verificação local
+## Verificação
 
 - `npm run typecheck:app`: passou.
 - `npm run check:openapi`: 16 paths v1 e 4 de integrações, passou.
-- `npx --yes bun@1.3.1 test tests`: 1061 passaram, 4 saltados, 0 falharam.
+- `npx --yes bun@1.3.1 test tests`: 1056 passaram, 4 saltados, 0 falharam.
 - `npm run build`: passou.
 - `git diff --check`: passou.
 
-Estas verificações não concluem a fase 7 nem equivalem a uma validação autenticada ou a uma publicação em produção.
+A validação autenticada da interface e API em pré-visualização é um passo de aceitação separado. Typecheck, testes simulados, CI e build não a substituem. Não foi usada a conta desativada indicada em `AGENTS.md`.

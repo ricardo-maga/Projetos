@@ -30,7 +30,7 @@ import { getAuthHeaders } from '@/lib/clientAuth';
 import { normalizeTaskFromApiResponse } from '@/domains/tasks/modules/taskOperations';
 import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatHoursToHHMM, formatToOnlyHours, parseTimeToHours, getProjectStatusStyle, getTaskStatusStyle } from '@/lib/utils';
 import { configuredRoleIds, userHasAnyRole } from '@/lib/roleAssociations';
-import { currentForecastMonth, forecastLabel, forecastMonth, normalizeForecast, projectForecastAlert } from '@/lib/projectForecast';
+import { currentForecastMonth, forecastLabel, forecastMonth, normalizeForecast, projectForecastAlert } from '@/domains/projects/modules/projectForecast';
 
 type ProjectPageCacheEntry = { data: Project[]; total: number; savedAt: number };
 const projectPageCache = new Map<string, ProjectPageCacheEntry>();

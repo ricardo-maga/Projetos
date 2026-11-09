@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
 import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User, UserAbsence } from '@/lib/types';
-import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '@/lib/projectTimeline';
+import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '@/domains/projects/modules/projectTimeline';
 import { getOperationalCalendarDays, formatOperationalDateRange, getOperationalDayConflicts, getUserDayAbsence, isTaskOnDate, isUserAssignedToTask } from '@/domains/calendar/modules/operationalCalendar';
 import { parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
 import { getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '@/lib/utils';
