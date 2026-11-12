@@ -146,8 +146,9 @@ export function useERP() {
       if (generation !== materialsGeneration.current) return;
       setState(prev => prev ? { ...prev, projectMaterials: materials } : null);
       setMaterialsStatus('loaded');
-    } catch {
+    } catch (error) {
       if (generation !== materialsGeneration.current) return;
+      console.error('[PROJECT MATERIALS LOAD]', error);
       setMaterialsStatus('error');
     }
   }, []);
@@ -177,13 +178,14 @@ export function useERP() {
       const response = await fetch('/api/supabase/default-tasks', { credentials: 'same-origin', cache: 'no-store' });
       const result = await response.json();
       if (!response.ok || result?.success !== true || !Array.isArray(result.data)) {
-        throw new Error('Resposta inválida ao carregar os templates de tarefas.');
+        throw new Error(`Falha ao carregar templates de tarefas (HTTP ${response.status}): ${result?.message || 'Resposta inválida.'}`);
       }
       if (generation !== defaultTasksGeneration.current) return;
       setState(prev => prev ? { ...prev, defaultTasks: result.data } : null);
       setDefaultTasksStatus('loaded');
-    } catch {
+    } catch (error) {
       if (generation !== defaultTasksGeneration.current) return;
+      console.error('[DEFAULT TASKS LOAD]', error);
       setDefaultTasksStatus('error');
     }
   }, []);
