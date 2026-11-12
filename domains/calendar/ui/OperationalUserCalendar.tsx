@@ -679,6 +679,7 @@ export default function OperationalUserCalendar({
                                 const project = getProject(task.projectId);
                                 const projectLabel = getProjectLabel(task.projectId);
                                 const clientName = project ? getClientName(project.clientId) : '';
+                                const cardTitle = !task.projectId ? task.title : (clientName || 'Sem cliente');
                                 const tStyle = getTaskStatusStyle(task.statusId, taskStatuses);
                                 const statusName = tStyle.name;
                                 const cardKey = `${cellKey}_${task.id}`;
@@ -715,13 +716,13 @@ export default function OperationalUserCalendar({
                                     <Button type="button" variant="ghost" size="sm"
                                       className="w-full justify-between gap-1 px-0 text-left"
                                       aria-expanded={isExpanded}
-                                      aria-label={`${isExpanded ? 'Recolher' : 'Expandir'} tarefa de ${clientName || 'Sem cliente'}`}
+                                      aria-label={`${isExpanded ? 'Recolher' : 'Expandir'} tarefa de ${cardTitle}`}
                                       onClick={() => setExpandedTaskCards(previous => {
                                         const next = new Set(previous);
                                         if (next.has(cardKey)) next.delete(cardKey); else next.add(cardKey);
                                         return next;
                                       })}>
-                                      <span className="text-body-sm font-bold truncate">{clientName || 'Sem cliente'}</span>
+                                      <span className="text-body-sm font-bold truncate">{cardTitle}</span>
                                       <ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                                     </Button>
                                     {isExpanded && <div className="space-y-1">
