@@ -4,6 +4,21 @@ import { createSectionHarness } from './fixtures/m3-section-harness';
 import { findProjectElement as find } from './fixtures/projects-m3-harness';
 
 describe('Compact weekly calendar', () => {
+  it('uses the task title only when no project is assigned', () => {
+    const task: any = { id: 'without-project', title: 'Preparar equipamento', statusId: 's', assigneeIds: ['u'], estimatedDate: '2026-10-07', deleted: false };
+    const props: any = {
+      tasks: [task, { ...task, id: 'project-without-client', projectId: 'p', title: 'Outra tarefa' }],
+      users: [{ id: 'u', name: 'Técnico Teste', type: 'Team', roleId: 'ug-3' }],
+      projects: [{ id: 'p', title: 'Projeto Exemplo' }], clients: [], taskStatuses: [],
+      appConfig: { taskAssigneeGroupIds: ['ug-3'] }, onSelectTask() {},
+    };
+    const h = createSectionHarness('../domains/calendar/ui/OperationalUserCalendar.tsx', { selectedUserIds: ['u'], anchorDate: new Date(2026, 9, 7) });
+    const html = renderToStaticMarkup(h.render(props));
+    expect(html).toContain('Expandir tarefa de Preparar equipamento');
+    expect(html).toContain('Expandir tarefa de Sem cliente');
+    expect(html).not.toContain('Outra tarefa');
+  });
+
   it('shows one warning beside quick creation and preserves the creation callback', () => {
     const task: any = { id: 'a', title: 'Tarefa', assigneeIds: ['u'], estimatedDate: '2026-10-07', statusId: 's', deleted: false };
     let created = '';
