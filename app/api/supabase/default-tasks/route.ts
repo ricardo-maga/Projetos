@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     if (error instanceof ForbiddenError) return NextResponse.json({ success: false, message: error.message }, { status: 403, headers: noStore });
     if (error instanceof AuthError) return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode || 401, headers: noStore });
+    console.error('[DEFAULT TASKS GET]', error);
     return NextResponse.json({ success: false, message: 'Não foi possível consultar os templates de tarefas.' }, { status: 503, headers: noStore });
   }
 }

@@ -809,18 +809,26 @@ export default function Page() {
 
             {/* Content view switcher */}
             <div id="active-tab-content" key={`${activeTab}-${navKey}`} className="animate-fade-in">
-              {requiresProjectMaterials && materialsStatus !== 'loaded' && (
-                <div role="status" className="rounded-card border border-border bg-surface p-6 text-body-sm text-text-secondary">
-                  {materialsStatus === 'error' ? (
-                    <><p>Não foi possível carregar os materiais dos projetos.</p><button type="button" className="mt-3 text-primary font-semibold" onClick={() => void loadProjectMaterials()}>Tentar novamente</button></>
-                  ) : 'A carregar materiais dos projetos…'}
-                </div>
-              )}
-              {requiresDefaultTasks && defaultTasksStatus !== 'loaded' && (
-                <div role="status" className="rounded-card border border-border bg-surface p-6 text-body-sm text-text-secondary">
-                  {defaultTasksStatus === 'error' ? (
-                    <><p>Não foi possível carregar os templates de tarefas.</p><button type="button" className="mt-3 text-primary font-semibold" onClick={() => void loadDefaultTasks()}>Tentar novamente</button></>
-                  ) : 'A carregar templates de tarefas…'}
+              {((requiresProjectMaterials && materialsStatus !== 'loaded') || (requiresDefaultTasks && defaultTasksStatus !== 'loaded')) && (
+                <div
+                  role="status"
+                  aria-label={(requiresProjectMaterials && materialsStatus === 'error') || (requiresDefaultTasks && defaultTasksStatus === 'error') ? 'Não foi possível abrir a secção' : 'A carregar secção'}
+                  className="flex min-h-48 items-center justify-center text-text-muted"
+                >
+                  {(requiresProjectMaterials && materialsStatus === 'error') || (requiresDefaultTasks && defaultTasksStatus === 'error') ? (
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 text-primary font-semibold"
+                      onClick={() => {
+                        if (requiresProjectMaterials && materialsStatus === 'error') void loadProjectMaterials();
+                        if (requiresDefaultTasks && defaultTasksStatus === 'error') void loadDefaultTasks();
+                      }}
+                    >
+                      <RefreshCw className="h-5 w-5" aria-hidden="true" /> Tentar novamente
+                    </button>
+                  ) : (
+                    <Loader2 className="h-8 w-8 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                  )}
                 </div>
               )}
               {activeTab === 'dashboard' && materialsStatus === 'loaded' && (
