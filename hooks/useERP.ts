@@ -481,7 +481,7 @@ export function useERP() {
   };
   const { addComment, deleteComment } = createCommentActions({ saveState, genId, deleteSyncedEntity });
 
-  const { addAbsence, deleteAbsence } = createAbsenceActions({ saveState, deleteSyncedEntity });
+  const { addAbsence, deleteAbsence } = createAbsenceActions({ setState, deleteSyncedEntity });
 
   const { addUser, updateUser, deleteUser } = createUserActions({ state, saveState, refreshFromDatabase, logAudit });
 
