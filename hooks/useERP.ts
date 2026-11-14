@@ -165,8 +165,9 @@ export function useERP() {
       if (generation !== configRuntimeGeneration.current) return;
       setState(prev => prev ? { ...prev, notificationSettings: result.data.notificationSettings, automationRules: result.data.automationRules } : null);
       setConfigRuntimeStatus('loaded');
-    } catch {
+    } catch (error) {
       if (generation !== configRuntimeGeneration.current) return;
+      console.error('[CONFIG RUNTIME LOAD]', error);
       setConfigRuntimeStatus('error');
     }
   }, []);

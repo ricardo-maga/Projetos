@@ -1016,10 +1016,10 @@ export default function Page() {
               )}
 
               {requiresConfigRuntime && configRuntimeStatus !== 'loaded' && (
-                <div role="status" className="rounded-card border border-border bg-surface p-6 text-body-sm text-text-secondary">
+                <div role="status" aria-label={configRuntimeStatus === 'error' ? 'Não foi possível abrir a secção' : 'A carregar secção'} className="flex min-h-48 items-center justify-center text-text-muted">
                   {configRuntimeStatus === 'error' ? (
-                    <><p>Não foi possível carregar as notificações e automações.</p><button type="button" className="mt-3 text-primary font-semibold" onClick={() => void loadConfigRuntime()}>Tentar novamente</button></>
-                  ) : 'A carregar notificações e automações…'}
+                    <button type="button" className="flex items-center gap-2 text-primary font-semibold" onClick={() => void loadConfigRuntime()}><RefreshCw className="h-5 w-5" aria-hidden="true" /> Tentar novamente</button>
+                  ) : <Loader2 className="h-8 w-8 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
                 </div>
               )}
               {activeTab === 'configuracoes' && (!requiresConfigRuntime || configRuntimeStatus === 'loaded') && (!requiresDefaultTasks || defaultTasksStatus === 'loaded') && (
