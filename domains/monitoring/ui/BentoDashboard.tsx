@@ -2,6 +2,7 @@
 
 import { M3SectionHeader } from '@/components/M3';
 import { Card } from '@/components/ui/Card';
+import MarkdownCommentBody from '@/components/ui/MarkdownCommentBody';
 import { MetricCard } from '@/components/ui/MetricCard';
 import { buildDashboardSummary } from '@/domains/monitoring/modules/dashboardSummary';
 import { Button } from '@/components/ui/Button';
@@ -781,7 +782,7 @@ export default function BentoDashboard({
                           {proj ? `${getClientName(proj.clientId)} - ${proj.title}` : 'Desconhecido'}
                         </span>
                       </div>
-                      <p className="text-text-primary italic mt-0.5 font-medium whitespace-pre-wrap">&quot;{com.comment}&quot;</p>
+                      <MarkdownCommentBody text={com.comment} />
                     </div>
                     <div className="text-caption text-text-muted mt-2 font-bold font-mono">
                       {formattedDate}
