@@ -1682,9 +1682,8 @@ export default function ProjectSection({
               {(() => {
                 const calcRisk = getProjectCalculatedRisk(selectedProj.id, projectRiskItems, riskStatuses);
                 return (
-                  <span className={`text-body-sm font-extrabold uppercase px-3 py-1.5 rounded-control border flex items-center gap-1.5 ${calcRisk.color}`}>
-                    <span>{calcRisk.dot}</span>
-                    <span>Risco: {calcRisk.label}</span>
+                  <span className={`text-caption font-extrabold uppercase px-2 py-0.5 rounded border inline-flex items-center gap-1 ${calcRisk.color}`}>
+                    Risco: {calcRisk.label} ({calcRisk.count})
                   </span>
                 );
               })()}
@@ -4312,8 +4311,7 @@ export default function ProjectSection({
                         <td className="px-5 py-4">
                           <div className="flex flex-col gap-1 items-start">
                             <span className={`text-caption font-extrabold uppercase px-2 py-0.5 rounded border inline-flex items-center gap-1 ${calcRisk.color}`}>
-                              <span>{calcRisk.dot}</span>
-                              <span>Risco: {calcRisk.label}</span>
+                              Risco: {calcRisk.label} ({calcRisk.count})
                             </span>
                             <span className="text-caption text-text-secondary font-medium pl-0.5">
                               Prioridade: {getPriorityName(proj.priorityId)}
