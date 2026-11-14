@@ -1,7 +1,7 @@
 import { getAuthHeaders } from '@/lib/clientAuth';
 import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 
-export function createCommunicationActions({ state, setState, setSyncError, saveState, genId }: Pick<LegacyActionContext, 'state' | 'setState' | 'setSyncError' | 'saveState' | 'genId'>) {
+export function createCommunicationActions({ state, setState, setSyncError, refreshFromDatabase }: Pick<LegacyActionContext, 'state' | 'setState' | 'setSyncError' | 'refreshFromDatabase'>) {
     // ==================== NOTIFICATIONS ====================
   const updateNotificationSetting = async (id: string, updates: Partial<import('@/lib/types').NotificationSetting>) => {
     const setting = state?.notificationSettings?.find(item => item.id === id);
@@ -44,54 +44,42 @@ export function createCommunicationActions({ state, setState, setSyncError, save
     });
   };
 
-  const addNotification = (userId: string, title: string, message: string, linkUrl?: string) => {
-    const newNotif = {
-      id: genId('notif'),
-      userId,
-      title,
-      message,
-      isRead: false,
-      createdDate: new Date().toISOString(),
-      linkUrl
-    };
-    saveState(prev => ({
-      ...prev,
-      notifications: [newNotif, ...(prev.notifications || [])]
-    }));
+  // ==================== AUTOMATION RULES ====================
+  const writeRule = async (url: string, method: 'POST' | 'PATCH' | 'DELETE', body: unknown) => {
+    try {
+      const response = await fetch(url, { method,
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const result = await response.json();
+      if (!response.ok || result.success !== true) {
+        if (response.status === 409) void refreshFromDatabase();
+        return { success: false, message: result.message || 'Não foi possível guardar a regra.' };
+      }
+      if (method === 'POST') setState(prev => prev ? ({ ...prev, automationRules: [result.data, ...(prev.automationRules || [])] }) : prev);
+      else if (method === 'PATCH') setState(prev => prev ? ({ ...prev, automationRules: (prev.automationRules || []).map(rule => rule.id === result.data.id ? result.data : rule) }) : prev);
+      else setState(prev => prev ? ({ ...prev, automationRules: (prev.automationRules || []).filter(rule => rule.id !== result.id) }) : prev);
+      return { success: true };
+    } catch { return { success: false, message: 'Falha de comunicação ao guardar a regra.' }; }
   };
 
-  // ==================== AUTOMATION RULES ====================
-  const addAutomationRule = (rule: Omit<import('@/lib/types').AutomationRule, 'id' | 'createdDate'>) => {
-    const newRule: import('@/lib/types').AutomationRule = {
-      ...rule,
-      id: genId('rule'),
-      createdDate: new Date().toISOString()
-    };
-    return saveState(prev => ({
-      ...prev,
-      automationRules: [newRule, ...(prev.automationRules || [])]
-    }));
-  };
+  const addAutomationRule = (rule: Omit<import('@/lib/types').AutomationRule, 'id' | 'createdDate'>) =>
+    writeRule('/api/v1/automation-rules', 'POST', rule);
 
   const updateAutomationRule = (id: string, updates: Partial<import('@/lib/types').AutomationRule>) => {
-    return saveState(prev => ({
-      ...prev,
-      automationRules: (prev.automationRules || []).map(r => r.id === id ? { ...r, ...updates } as import('@/lib/types').AutomationRule : r)
-    }));
+    const current = state?.automationRules?.find(rule => rule.id === id);
+    if (!current?.syncVersion) return Promise.resolve({ success: false, message: 'Recarregue as regras antes de alterar.' });
+    return writeRule(`/api/v1/automation-rules/${encodeURIComponent(id)}`, 'PATCH', { ...current, ...updates, syncVersion: current.syncVersion });
   };
 
   const deleteAutomationRule = (id: string) => {
-    return saveState(prev => ({
-      ...prev,
-      automationRules: (prev.automationRules || []).map(r => r.id === id ? { ...r, deleted: true, enabled: false } : r)
-    }));
+    const current = state?.automationRules?.find(rule => rule.id === id);
+    if (!current?.syncVersion) return Promise.resolve({ success: false, message: 'Recarregue as regras antes de eliminar.' });
+    return writeRule(`/api/v1/automation-rules/${encodeURIComponent(id)}`, 'DELETE', { syncVersion: current.syncVersion });
   };
 
   const toggleAutomationRule = (id: string) => {
-    return saveState(prev => ({
-      ...prev,
-      automationRules: (prev.automationRules || []).map(r => r.id === id ? { ...r, enabled: !r.enabled } : r)
-    }));
+    const current = state?.automationRules?.find(rule => rule.id === id);
+    if (!current) return Promise.resolve({ success: false, message: 'Regra não encontrada.' });
+    return updateAutomationRule(id, { enabled: !current.enabled });
   };
-  return { updateNotificationSetting, markNotificationAsRead, markAllNotificationsAsRead, addNotification, addAutomationRule, updateAutomationRule, deleteAutomationRule, toggleAutomationRule };
+  return { updateNotificationSetting, markNotificationAsRead, markAllNotificationsAsRead, addAutomationRule, updateAutomationRule, deleteAutomationRule, toggleAutomationRule };
 }

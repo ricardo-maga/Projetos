@@ -196,7 +196,7 @@ interface ProjectSectionProps {
   updateProject: (id: string, updates: any) => Promise<unknown>;
   deleteProject: (id: string) => void;
   addClient: (c: any) => any;
-  addComment: (projectId: string, authorId: string, text: string) => void;
+  addComment: (projectId: string, authorId: string, text: string) => Promise<{ success: boolean; message?: string }>;
   deleteComment: (id: string) => void;
   addTask: (task: any) => any;
   addTasks?: (tasks: any[]) => any;
@@ -221,7 +221,7 @@ interface ProjectSectionProps {
   riskPriorities?: RiskPriority[];
   addProjectRiskItem?: (item: any) => Promise<{ success: boolean; message?: string }>;
   updateProjectRiskItem?: (id: string, updates: any) => Promise<{ success: boolean; message?: string }>;
-  deleteProjectRiskItem?: (id: string) => void;
+  deleteProjectRiskItem?: (id: string) => Promise<{ success: boolean; message?: string }>;
 }
 
 export default function ProjectSection({
@@ -1542,7 +1542,10 @@ export default function ProjectSection({
     askConfirmation(
       'Eliminar Risco',
       'Tem a certeza que deseja eliminar este item de risco? Esta operação não pode ser revertida.',
-      () => deleteProjectRiskItem(id)
+      async () => {
+        const result = await deleteProjectRiskItem(id);
+        if (!result.success) alert(result.message || 'Não foi possível eliminar o risco.');
+      }
     );
   };
 
@@ -2402,9 +2405,10 @@ export default function ProjectSection({
 
                 {/* Comment input form */}
                 <MarkdownCommentComposer value={newCommentText} onChange={setNewCommentText}
-                  onSubmit={text => {
+                  onSubmit={async text => {
                     if (!selectedProjectId) return;
-                    addComment(selectedProjectId, currentUser?.id || 'u-1', text);
+                    const result = await addComment(selectedProjectId, currentUser?.id || '', text);
+                    if (!result?.success) { alert(result?.message || 'Não foi possível gravar o comentário.'); return; }
                     setNewCommentText('');
                   }} />
               </div>

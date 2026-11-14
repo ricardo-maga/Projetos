@@ -116,8 +116,6 @@ export default function Page() {
     isInitialDataLoaded,
     loading,
     state,
-    resetToDefault,
-    clearAllData,
     addProject,
     updateProject,
     deleteProject,
@@ -155,7 +153,6 @@ export default function Page() {
     updateNotificationSetting,
     markNotificationAsRead,
     markAllNotificationsAsRead,
-    addNotification,
     addAutomationRule,
     updateAutomationRule,
     deleteAutomationRule,
@@ -1029,8 +1026,6 @@ export default function Page() {
                   config={appConfig}
                   specialDays={state.specialDays}
                   updateConfig={updateConfig}
-                  onResetDemoData={resetToDefault}
-                  onClearDemoData={clearAllData}
                   onRefreshFromDatabase={refreshFromDatabase}
                   addSpecialDay={addSpecialDay!}
                   updateSpecialDay={updateSpecialDay!}
