@@ -9,7 +9,7 @@ export interface TaskDTO {
   taskTypeId: string;
   priorityId: string | null;
   estimatedHours: number;
-  actualHours: number;
+  actualHours: number | null;
   startDate: string;
   startTime: string;
   endDate: string;
@@ -35,7 +35,7 @@ export interface CreateTaskParams {
   taskTypeId?: string | null;
   priorityId?: string | null;
   estimatedHours?: number;
-  actualHours?: number;
+  actualHours?: number | null;
   startDate?: string | null;
   startTime?: string | null;
   endDate?: string | null;
@@ -57,7 +57,7 @@ export interface UpdateTaskParams {
   taskTypeId?: string | null;
   priorityId?: string | null;
   estimatedHours?: number;
-  actualHours?: number;
+  actualHours?: number | null;
   startDate?: string | null;
   startTime?: string | null;
   endDate?: string | null;
@@ -179,7 +179,7 @@ export function mapRowToTaskDTO(row: any, assigneesMap: Record<string, string[]>
     taskTypeId: row.task_type_id || row.taskTypeId || '',
     priorityId: row.priority_id || row.priorityId || null,
     estimatedHours: parseTaskHoursToNumber(row.estimated_hours ?? row.estimatedHours),
-    actualHours: parseTaskHoursToNumber(row.actual_hours ?? row.actualHours),
+    actualHours: (row.actual_hours ?? row.actualHours) == null ? null : parseTaskHoursToNumber(row.actual_hours ?? row.actualHours),
     startDate: row.start_date || '',
     startTime: row.start_time || '',
     endDate: row.end_date || '',
@@ -240,9 +240,9 @@ export async function createTaskServer(
 ): Promise<{ success: boolean; data?: TaskDTO; error?: string; statusCode?: number }> {
   const newId = params.id || crypto.randomUUID();
   const estH = parseTaskHoursToNumber(params.estimatedHours);
-  const actH = parseTaskHoursToNumber(params.actualHours);
+  const actH = params.actualHours == null || params.actualHours === 0 ? null : parseTaskHoursToNumber(params.actualHours);
   const estimatedHoursStr = `${estH} hours`;
-  const actualHoursStr = `${actH} hours`;
+  const actualHoursStr = actH === null ? null : `${actH} hours`;
 
   const finalProjectId = params.projectId ? params.projectId.trim() : null;
   const resolvedStatus = resolveStatusUuid(params.statusId);
@@ -313,7 +313,7 @@ export async function updateTaskServer(
   const finalProjectId = hasProjectUpdate && params.projectId ? params.projectId.trim() : null;
 
   const estH = params.estimatedHours !== undefined ? parseTaskHoursToNumber(params.estimatedHours) : undefined;
-  const actH = params.actualHours !== undefined ? parseTaskHoursToNumber(params.actualHours) : undefined;
+  const actH = params.actualHours !== undefined ? (params.actualHours == null ? 0 : parseTaskHoursToNumber(params.actualHours)) : undefined;
   const estimatedHoursStr = estH !== undefined ? `${estH} hours` : null;
   const actualHoursStr = actH !== undefined ? `${actH} hours` : null;
 

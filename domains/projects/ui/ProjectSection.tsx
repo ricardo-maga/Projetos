@@ -818,7 +818,7 @@ export default function ProjectSection({
                 estimatedDate: '',
                 description: dt.description || '',
                 estimatedHours: dt.estimatedHours || '08:00',
-                actualHours: '00:00',
+                actualHours: null,
                 startDate: '',
                 startTime: '',
                 endDate: '',
@@ -2702,7 +2702,7 @@ export default function ProjectSection({
                             estimatedDate: '',
                             description: dt.description || '',
                             estimatedHours: dt.estimatedHours || '08:00',
-                            actualHours: '00:00',
+                            actualHours: null,
                             startDate: '',
                             startTime: '',
                             endDate: '',
@@ -3398,7 +3398,7 @@ export default function ProjectSection({
                 const taskCountsByType: Record<string, { count: number; workloadMins: number; estMins: number; actMins: number }> = {};
                 const taskCountsByTech: Record<string, { count: number; workloadMins: number }> = {};
 
-                const parseMins = (timeStr?: string) => {
+                const parseMins = (timeStr?: string | null) => {
                   if (!timeStr) return 0;
                   const parts = timeStr.split(':').map(Number);
                   if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
@@ -3410,7 +3410,7 @@ export default function ProjectSection({
                 projTasks.forEach(t => {
                   const estM = parseMins(t.estimatedHours);
                   const actM = parseMins(t.actualHours);
-                  const taskWorkload = actM > 0 ? actM : estM;
+                  const taskWorkload = (actM > 0 ? actM : estM) * (t.assigneeIds?.length || 0);
 
                   totalWorkloadMins += taskWorkload;
                   totalEstMins += estM;
@@ -3424,7 +3424,7 @@ export default function ProjectSection({
                         taskCountsByTech[uName] = { count: 0, workloadMins: 0 };
                       }
                       taskCountsByTech[uName].count += 1;
-                      taskCountsByTech[uName].workloadMins += taskWorkload;
+                      taskCountsByTech[uName].workloadMins += actM > 0 ? actM : estM;
                     });
                   } else {
                     const unassigned = 'Sem Técnico Atribuído';
@@ -3432,7 +3432,7 @@ export default function ProjectSection({
                       taskCountsByTech[unassigned] = { count: 0, workloadMins: 0 };
                     }
                     taskCountsByTech[unassigned].count += 1;
-                    taskCountsByTech[unassigned].workloadMins += taskWorkload;
+                    taskCountsByTech[unassigned].workloadMins += 0;
                   }
 
                   const typeName = getTaskTypeName(t.taskTypeId, taskTypes) || 'Geral';

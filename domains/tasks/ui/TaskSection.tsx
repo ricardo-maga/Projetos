@@ -269,7 +269,7 @@ export default function TaskSection({
     activeTasks.forEach(t => {
       const targetDate = getTaskEffectiveDate(t);
       if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end) {
-        const isActualHoursFilled = t.actualHours !== undefined && t.actualHours !== null && String(t.actualHours).trim() !== '';
+        const isActualHoursFilled = parseTaskHoursToFloat(t.actualHours) > 0;
         const baseHours = isActualHoursFilled
           ? parseTaskHoursToFloat(t.actualHours)
           : parseTaskHoursToFloat(t.estimatedHours);

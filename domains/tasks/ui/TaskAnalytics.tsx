@@ -84,7 +84,7 @@ export function TaskAnalytics({
   const taskHours = useCallback((task: Task) => {
     const actual = parseTimeToHours(task.actualHours);
     const hours = actual > 0 ? actual : parseTimeToHours(task.estimatedHours);
-    return hours * Math.max(1, task.assigneeIds?.length || 0);
+    return hours * (task.assigneeIds?.length || 0);
   }, []);
 
   // Helper to map status scale
@@ -147,7 +147,7 @@ export function TaskAnalytics({
       return t.estimatedDate < todayStr;
     });
 
-    const totalEstHoursOpen = openTasks.reduce((acc, t) => acc + parseTimeToHours(t.estimatedHours), 0);
+    const totalEstHoursOpen = openTasks.reduce((acc, t) => acc + parseTimeToHours(t.estimatedHours) * (t.assigneeIds?.length || 0), 0);
     const hours30d = filteredTasks.reduce((acc, t) => {
       const daysAgo = getDaysAgo(t.startDate || t.estimatedDate || t.createdDate);
       return daysAgo !== null && daysAgo >= 0 && daysAgo < 30 ? acc + taskHours(t) : acc;
@@ -368,7 +368,7 @@ export function TaskAnalytics({
       if (daysAhead === null || daysAhead > 30) return;
 
       const estH = parseTimeToHours(t.estimatedHours);
-      const assignees = t.assigneeIds && t.assigneeIds.length > 0 ? t.assigneeIds : ['unassigned'];
+      const assignees = t.assigneeIds || [];
       // Every assignee carries the task's full planned workload.
       const hoursPerUser = estH;
 
