@@ -44,7 +44,7 @@ export interface Task {
   estimatedDate: string;
   description: string;
   estimatedHours: string; // e.g. "08:00"
-  actualHours: string; // e.g. "04:30"
+  actualHours: string | null; // null means no actual hours were recorded
   startDate: string;
   startTime: string;
   endDate: string;

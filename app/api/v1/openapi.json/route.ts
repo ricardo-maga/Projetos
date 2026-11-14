@@ -89,6 +89,7 @@ export async function GET() {
             taskTypeId: { type: "string", format: "uuid", example: "33333333-3333-3333-3333-333333333304", description: "ID do Tipo de Tarefa (configurável em Campos Auxiliares)" },
             isMilestone: { type: "boolean", default: false, description: "Retrocompatibilidade (Indica se é um Lembrete)" },
             estimatedHours: { type: "number", example: 8 },
+            actualHours: { type: "number", nullable: true, description: "NULL quando não há horas reais registadas; ao concluir sem valor, a previsão é copiada." },
             estimatedDate: { type: "string", format: "date" }
           },
           required: ["title", "taskTypeId", "statusId"]

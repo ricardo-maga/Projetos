@@ -255,7 +255,7 @@ export default function BentoDashboard({
       let pendingHours = 0;
 
       projTasks.forEach(t => {
-        const numUsers = t.assigneeIds && t.assigneeIds.length > 0 ? t.assigneeIds.length : 1;
+        const numUsers = t.assigneeIds?.length || 0;
         const actualH = parseTimeToHours(t.actualHours);
         const estH = parseTimeToHours(t.estimatedHours || '08:00');
         const isDone = getTaskScale(t.statusId) === 3;

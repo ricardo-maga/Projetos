@@ -62,7 +62,7 @@ export interface TaskCreateInput {
   taskTypeId?: string | null;
   priorityId?: string | null;
   estimatedHours?: number | string;
-  actualHours?: number | string;
+  actualHours?: number | string | null;
   startDate?: string | null;
   startTime?: string | null;
   endDate?: string | null;
@@ -81,7 +81,7 @@ export interface TaskUpdateInput {
   taskTypeId?: string | null;
   priorityId?: string | null;
   estimatedHours?: number | string;
-  actualHours?: number | string;
+  actualHours?: number | string | null;
   startDate?: string | null;
   startTime?: string | null;
   endDate?: string | null;
@@ -149,7 +149,7 @@ export function normalizeTaskFromApiResponse(data: any): Task {
     taskTypeId: data.taskTypeId || data.task_type_id || undefined,
     priorityId: data.priorityId || data.priority_id || undefined,
     estimatedHours: String(parseTaskHoursToNumber(data.estimatedHours ?? data.estimated_hours)),
-    actualHours: String(parseTaskHoursToNumber(data.actualHours ?? data.actual_hours)),
+    actualHours: (data.actualHours ?? data.actual_hours) == null ? null : String(parseTaskHoursToNumber(data.actualHours ?? data.actual_hours)),
     startDate: data.startDate || data.start_date || undefined,
     startTime: data.startTime || data.start_time || undefined,
     endDate: data.endDate || data.end_date || undefined,
@@ -278,7 +278,7 @@ export async function apiCreateTask(input: TaskCreateInput): Promise<TaskOperati
     taskTypeId: input.taskTypeId || undefined,
     priorityId: input.priorityId || null,
     estimatedHours: parseTaskHoursToFloat(input.estimatedHours),
-    actualHours: parseTaskHoursToFloat(input.actualHours),
+    actualHours: input.actualHours == null || input.actualHours === '' || parseTaskHoursToFloat(input.actualHours) === 0 ? null : parseTaskHoursToFloat(input.actualHours),
     startDate: input.startDate || undefined,
     startTime: input.startTime || undefined,
     endDate: input.endDate || undefined,
@@ -348,7 +348,7 @@ export async function apiUpdateTask(
   if (updates.taskTypeId !== undefined) patchPayload.taskTypeId = updates.taskTypeId;
   if (updates.priorityId !== undefined) patchPayload.priorityId = updates.priorityId;
   if (updates.estimatedHours !== undefined) patchPayload.estimatedHours = parseTaskHoursToFloat(updates.estimatedHours);
-  if (updates.actualHours !== undefined) patchPayload.actualHours = parseTaskHoursToFloat(updates.actualHours);
+  if (updates.actualHours !== undefined) patchPayload.actualHours = updates.actualHours == null || updates.actualHours === '' || parseTaskHoursToFloat(updates.actualHours) === 0 ? null : parseTaskHoursToFloat(updates.actualHours);
   if (updates.startDate !== undefined) patchPayload.startDate = updates.startDate;
   if (updates.startTime !== undefined) patchPayload.startTime = updates.startTime;
   if (updates.endDate !== undefined) patchPayload.endDate = updates.endDate;

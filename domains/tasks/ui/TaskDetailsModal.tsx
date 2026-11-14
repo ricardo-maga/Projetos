@@ -152,7 +152,7 @@ export default function TaskDetailsModal({
   const [formPriorityId, setFormPriorityId] = useState('');
   const [formEstimatedDate, setFormEstimatedDate] = useState('');
   const [formEstimatedHours, setFormEstimatedHours] = useState('08:00');
-  const [formActualHours, setFormActualHours] = useState('0');
+  const [formActualHours, setFormActualHours] = useState('');
   const [formStartDate, setFormStartDate] = useState('');
   const [formStartTime, setFormStartTime] = useState('');
   const [formEndDate, setFormEndDate] = useState('');
@@ -194,7 +194,7 @@ export default function TaskDetailsModal({
         setFormPriorityId(activeTask.priorityId || projectPriorities.filter(p => !p.deleted).sort((a, b) => a.scale - b.scale)[0]?.id || '');
         setFormEstimatedDate(activeTask.estimatedDate || '');
         setFormEstimatedHours(formatToOnlyHours(activeTask.estimatedHours) || '08:00');
-        setFormActualHours('0'); // Reset actual hours to 0 on duplicate
+        setFormActualHours('');
         setFormStartDate(''); // Clear execution start date on duplicate
         setFormStartTime(''); // Clear execution start time on duplicate
         setFormEndDate(''); // Clear execution end date on duplicate
@@ -224,7 +224,7 @@ export default function TaskDetailsModal({
         // "Data planeada" prevalece, sem datas reais de início e fim inicialmente preenchidas
         setFormEstimatedDate(initialDate || '');
         setFormEstimatedHours('08:00');
-        setFormActualHours('0');
+        setFormActualHours('');
         setFormStartDate('');
         setFormStartTime('');
         setFormEndDate('');
@@ -247,7 +247,7 @@ export default function TaskDetailsModal({
       setFormPriorityId(activeTask.priorityId || '');
       setFormEstimatedDate(activeTask.estimatedDate || '');
       setFormEstimatedHours(formatToOnlyHours(activeTask.estimatedHours) || '0');
-      setFormActualHours(formatToOnlyHours(activeTask.actualHours) || '0');
+      setFormActualHours(activeTask.actualHours == null ? '' : formatToOnlyHours(activeTask.actualHours));
       setFormStartDate(activeTask.startDate || '');
       setFormStartTime(activeTask.startTime || '');
       setFormEndDate(activeTask.endDate || '');
@@ -256,14 +256,6 @@ export default function TaskDetailsModal({
       setFormAssignees(getEffectiveAssignees(activeTask));
       setFormError(null);
 
-      // If in execute mode, suggest completed status if currently pending and set default actual hours if 0
-      if (effectiveMode === 'execute') {
-        const estH = formatToOnlyHours(activeTask.estimatedHours) || '0';
-        const actH = formatToOnlyHours(activeTask.actualHours) || '0';
-        if (actH === '0' && estH !== '0') {
-          setFormActualHours(estH);
-        }
-      }
     }
   }, [effectiveMode, activeTask, initialProjectId, initialDate, initialAssigneeId, initialAssigneeIds, projects, taskStatuses, getProjectDisplayLabel]);
 
@@ -463,7 +455,7 @@ export default function TaskDetailsModal({
           priorityId: formPriorityId || undefined,
           estimatedDate: formEstimatedDate || undefined,
           estimatedHours: parseTaskHoursToFloat(formEstimatedHours),
-          actualHours: parseTaskHoursToFloat(formActualHours),
+          actualHours: formActualHours.trim() ? parseTaskHoursToFloat(formActualHours) || null : null,
           startDate: formStartDate || undefined,
           startTime: formStartTime || undefined,
           endDate: formEndDate || undefined,
@@ -487,7 +479,7 @@ export default function TaskDetailsModal({
           priorityId: formPriorityId || null,
           estimatedDate: formEstimatedDate || '',
           estimatedHours: parseTaskHoursToFloat(formEstimatedHours),
-          actualHours: parseTaskHoursToFloat(formActualHours),
+          actualHours: formActualHours.trim() ? parseTaskHoursToFloat(formActualHours) || null : null,
           startDate: formStartDate || '',
           startTime: formStartTime || '',
           endDate: formEndDate || '',
