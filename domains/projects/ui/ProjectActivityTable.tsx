@@ -50,7 +50,7 @@ export default function ProjectActivityTable({ project, tasks, comments, risks, 
     });
   });
   comments.forEach(comment => activities.push({
-    key: `comment-${comment.id}`, date: comment.createdDate, kind: 'Comentário', title: comment.comment,
+    key: `comment-${comment.id}`, date: comment.createdDate, kind: 'Comentário', title: comment.comment.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/<\/?u>/g, '').replace(/[#*~_`]/g, '').replace(/\s+/g, ' ').trim(),
     detail: `Comentário de ${getUserName(comment.authorId)} em ${formatDate(comment.createdDate)}`, status: '—',
   }));
   risks.filter(risk => !risk.deleted).forEach(risk => activities.push({
@@ -82,7 +82,7 @@ export default function ProjectActivityTable({ project, tasks, comments, risks, 
                 <tr key={activity.key} className="align-top hover:bg-surface-muted/50">
                   <td className="whitespace-nowrap px-4 py-3 font-semibold text-text-secondary">{activity.kind === 'Tarefa' && !activity.date ? '---' : formatDate(activity.date)}</td>
                   <td className="px-4 py-3"><span className="inline-flex rounded-control border border-border bg-surface-muted px-2 py-0.5 text-caption font-semibold text-text-secondary">{activity.kind}</span></td>
-                  <td className="px-4 py-3 min-w-[240px]"><span className="block font-semibold text-text-primary whitespace-pre-wrap break-words">{activity.title}</span>{activity.detail && <span className="block text-caption text-text-muted">{activity.detail}</span>}</td>
+                  <td className="px-4 py-3 min-w-[240px] max-w-[480px]"><span className="block font-semibold text-text-primary whitespace-pre-wrap break-words line-clamp-2 [overflow-wrap:anywhere]">{activity.title}</span>{activity.detail && <span className="block text-caption text-text-muted">{activity.detail}</span>}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-text-secondary">{activity.status}</td>
                 </tr>
               ))}
