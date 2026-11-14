@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AuthError, ForbiddenError, requireAuth } from '@/lib/auth/requireAuth';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
+import { notificationTypes } from '@/lib/notificationCatalog';
+
 export const dynamic = 'force-dynamic';
 
-const types = new Set([
-  'new_project', 'project_allocation', 'task_allocation',
-  'task_due_date', 'project_due_date', 'project_scheduled_date',
-  'presales_assignment', 'presales_due_date', 'presales_result',
-]);
+const types = new Set(Object.keys(notificationTypes));
 const groups = new Set(['all', 'allocated', 'managers']);
 
 export async function PATCH(req: NextRequest) {

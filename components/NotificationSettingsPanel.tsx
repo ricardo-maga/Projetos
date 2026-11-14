@@ -1,5 +1,7 @@
 'use client';
 
+import { FlaskConical } from 'lucide-react';
+import { getAuthHeaders } from '@/lib/clientAuth';
 import { useState } from 'react';
 import type { NotificationSetting } from '../lib/types';
 import Input from './ui/Input';
@@ -13,15 +15,36 @@ interface Props {
 }
 
 const sections = [
-  { title: 'Projetos', types: ['new_project', 'project_allocation', 'project_due_date', 'project_scheduled_date'] },
-  { title: 'Presales', types: ['presales_assignment', 'presales_due_date', 'presales_result'] },
+  { title: 'Projetos', types: ['new_project', 'project_allocation', 'project_due_date', 'project_scheduled_date', 'project_comment', 'project_closed'] },
   { title: 'Tarefas', types: ['task_allocation', 'task_due_date'] },
+  { title: 'Presales', types: ['presales_assignment', 'presales_due_date', 'presales_result'] },
+  { title: 'Projetos mecânicos', types: ['mechanical_design_assignment', 'mechanical_design_due_date', 'mechanical_design_result'] },
 ];
-const dateTypes = new Set(['task_due_date', 'project_due_date', 'project_scheduled_date', 'presales_due_date']);
+const dateTypes = new Set(['task_due_date', 'project_due_date', 'project_scheduled_date', 'presales_due_date', 'mechanical_design_due_date']);
 
 export default function NotificationSettingsPanel({ settings, canWrite, updateSetting }: Props) {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const testNotification = async (setting: NotificationSetting) => {
+    if (testingId) return;
+    setTestingId(setting.id);
+    setError(null);
+    setFeedback(null);
+    try {
+      const response = await fetch('/api/notifications/test', {
+        method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ type: setting.type }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Não foi possível enviar o teste.');
+      setFeedback('Notificação de teste enviada para si.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Não foi possível enviar o teste.');
+    } finally { setTestingId(null); }
+  };
 
   const save = async (id: string, updates: Partial<NotificationSetting>) => {
     if (!updateSetting || savingId) return;
@@ -49,7 +72,7 @@ export default function NotificationSettingsPanel({ settings, canWrite, updateSe
               <th scope="col" className="px-5 py-3.5">Notificação</th>
               <th scope="col" className="px-5 py-3.5">Dias de antecedência</th>
               <th scope="col" className="px-5 py-3.5">Utilizadores</th>
-              <th scope="col" className="px-5 py-3.5">Ativar/desativar</th>
+              <th scope="col" className="w-32 px-3 py-3.5">Comandos</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle">
@@ -72,10 +95,18 @@ export default function NotificationSettingsPanel({ settings, canWrite, updateSe
                     <option value="managers">Gestores</option>
                   </Select>
                 </td>
-                <td className="px-5 py-3">
-                  <Switch checked={ns.enabled} disabled={!canWrite || savingId !== null}
-                    label={`Ativar ${ns.name}`}
-                    onChange={enabled => { void save(ns.id, { enabled }); }} />
+                <td className="w-32 px-3 py-3">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={ns.enabled} disabled={!canWrite || savingId !== null}
+                      ariaLabel={`Ativar/desativar ${ns.name}`}
+                      onChange={enabled => { void save(ns.id, { enabled }); }} />
+                    <button type="button" aria-label={`Testar ${ns.name}`} title={`Testar ${ns.name}`}
+                      disabled={!canWrite || testingId !== null}
+                      onClick={() => { void testNotification(ns); }}
+                      className="flex h-11 w-11 items-center justify-center rounded-control text-text-secondary hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50">
+                      <FlaskConical className={`h-4 w-4 ${testingId === ns.id ? 'animate-pulse' : ''}`} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -91,6 +122,7 @@ export default function NotificationSettingsPanel({ settings, canWrite, updateSe
   return (
     <div className="space-y-5">
       <p className="text-sm text-text-secondary">Configure os destinatários e a antecedência. Os avisos por data são enviados antes, no próprio dia e uma vez no dia seguinte.</p>
+      {feedback && <p role="status" className="text-sm text-text-secondary">{feedback}</p>}
       {error && <p role="alert" className="text-sm text-error">{error}</p>}
       {sections.map(section => renderTable(section.title, section.types.flatMap(type => settings.filter(setting => setting.type === type))))}
       {otherSettings.length > 0 && renderTable('Outras notificações', otherSettings)}
