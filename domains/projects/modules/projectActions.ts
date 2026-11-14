@@ -289,7 +289,6 @@ export function createProjectActions({
           };
         });
 
-        await refreshFromDatabase();
         setSyncStatus('synced');
         return true;
       } else {
