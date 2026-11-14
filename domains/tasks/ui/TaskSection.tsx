@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Task, Project, Client, TaskType, ProjectPriority } from '@/lib/types';
+import { Task, Project, Client, TaskType, ProjectPriority, ProjectStatus } from '@/lib/types';
 import {
   Plus,
   Search,
@@ -56,6 +56,7 @@ interface TaskSectionProps {
   users: any[];
   absences?: any[];
   taskStatuses: any[];
+  projectStatuses: ProjectStatus[];
   taskTypes?: TaskType[];
   projectPriorities?: ProjectPriority[];
   addTask: (t: any) => void;
@@ -88,6 +89,7 @@ export default function TaskSection({
   users,
   absences = [],
   taskStatuses,
+  projectStatuses,
   taskTypes = [],
   projectPriorities = [],
   addTask,
@@ -1068,6 +1070,7 @@ export default function TaskSection({
             projects={projects}
             taskTypes={taskTypes || []}
             taskStatuses={taskStatuses}
+            projectStatuses={projectStatuses}
             users={users}
             clients={clients}
           />

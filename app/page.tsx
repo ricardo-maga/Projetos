@@ -939,6 +939,7 @@ export default function Page() {
                 <TaskSection 
                   tasks={state.tasks}
                   projects={state.projects}
+                  projectStatuses={state.projectStatuses}
                   clients={state.clients}
                   users={state.users}
                   absences={state.userAbsences || []}
