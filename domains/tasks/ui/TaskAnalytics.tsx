@@ -38,7 +38,7 @@ import {
   Info,
   ListFilter
 } from 'lucide-react';
-import { Task, Project, TaskType, TaskStatus, User, Client } from '@/lib/types';
+import { Task, Project, ProjectStatus, TaskType, TaskStatus, User, Client } from '@/lib/types';
 import { parseTimeToHours, formatHoursToHHMM, getUserInitials } from '@/lib/utils';
 
 interface TaskAnalyticsProps {
@@ -46,6 +46,7 @@ interface TaskAnalyticsProps {
   projects: Project[];
   taskTypes: TaskType[];
   taskStatuses: TaskStatus[];
+  projectStatuses: ProjectStatus[];
   users: User[];
   clients?: Client[];
 }
@@ -68,6 +69,7 @@ export function TaskAnalytics({
   projects,
   taskTypes,
   taskStatuses,
+  projectStatuses,
   users,
   clients = []
 }: TaskAnalyticsProps) {
@@ -404,8 +406,12 @@ export function TaskAnalytics({
   // 6. PROJETOS ATIVOS COM MAIS HORAS GASTAS E PREVISTAS
   // -------------------------------------------------------------
   const activeProjectsHours = useMemo(() => {
-    const activeProjs = projects.filter(p => !p.deleted);
-    const clientMap = new Map(clients.map(c => [c.id, c.clientName || c.shortName]));
+    const projectStatusScale = new Map(projectStatuses.map(status => [status.id, status.scale]));
+    const activeProjs = projects.filter(p => {
+      const scale = projectStatusScale.get(p.statusId);
+      return !p.deleted && scale !== undefined && scale >= 1 && scale <= 4;
+    });
+    const clientMap = new Map(clients.map(c => [c.id, c]));
 
     const projectStats = activeProjs.map(proj => {
       const projTasks = activeTasks.filter(t => t.projectId === proj.id);
@@ -418,10 +424,16 @@ export function TaskAnalytics({
 
       const completedTasksCount = projTasks.filter(t => getTaskScale(t.statusId) === 3).length;
 
+      const client = clientMap.get(proj.clientId);
+      const clientName = client?.clientName || client?.shortName || proj.clientContactName || 'Cliente Direto';
+      const clientShortName = client?.shortName?.trim() || clientName;
+      const chartTitle = proj.title.length > 32 ? `${proj.title.slice(0, 31)}…` : proj.title;
+
       return {
         id: proj.id,
         title: proj.title,
-        clientName: clientMap.get(proj.clientId) || proj.clientContactName || 'Cliente Direto',
+        clientName,
+        chartLabel: `${clientShortName} · ${chartTitle}`,
         totalTasks: projTasks.length,
         openTasksCount,
         completedTasksCount,
@@ -434,7 +446,7 @@ export function TaskAnalytics({
     return projectStats
       .filter(p => p.totalTasks > 0)
       .sort((a, b) => b.hours - a.hours);
-  }, [projects, activeTasks, clients, getTaskScale, taskHours]);
+  }, [projects, projectStatuses, activeTasks, clients, getTaskScale, taskHours]);
 
   return (
     <div className="space-y-8 animate-fadeIn pb-12">
@@ -947,10 +959,14 @@ export function TaskAnalytics({
               >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                 <XAxis type="number" unit="h" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis dataKey="title" type="category" width={140} tick={{ fontSize: 11, fill: '#334155' }} />
+                <YAxis dataKey="chartLabel" type="category" width={280} tick={{ fontSize: 11, fill: '#334155' }} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
                   formatter={(val: any) => [`${val}h`]}
+                  labelFormatter={(label: any) => {
+                    const project = activeProjectsHours.find(p => p.chartLabel === label);
+                    return project ? `${project.clientName} - ${project.title}` : label;
+                  }}
                 />
                 <Bar dataKey="hours" name="Horas" fill="#3b82f6" radius={[0, 6, 6, 0]} maxBarSize={20} />
               </BarChart>
