@@ -119,6 +119,7 @@ describe('My Focus M3', () => {
     const calendar = find(tree, e => e.props?.id === 'card-monthly-calendar');
     const day = find(calendar, e => e.props?.['aria-pressed'] !== undefined);
     day.props.onClick(); expect(h.state.selectedDateStr).toBeDefined();
+    tree = h.render({ ...focusPreviewProps, onSelectProject: (id: string) => projectId = id });
     const managedProject = find(find(tree, e => e.props?.id === 'card-managed-projects'), e => e.props?.onClick);
     managedProject.props.onClick();
     expect(projectId).toBe('p0');
