@@ -3,7 +3,7 @@ import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 import type { ReferenceCollection } from '../data/referenceData';
 
 type Row = { id: string; syncVersion?: number; sync_version?: number; deleted?: boolean };
-const versionOf = (row: Row) => Number(row.syncVersion ?? row.sync_version) || 0;
+const versionOf = (row: Row) => Number(row.sync_version ?? row.syncVersion) || 0;
 
 export function createReferenceActions({ state, setState, refreshFromDatabase }: Pick<LegacyActionContext, 'state' | 'setState' | 'refreshFromDatabase'>) {
   const write = async (method: 'POST' | 'PATCH' | 'DELETE', collection: ReferenceCollection, body: Record<string, unknown>, reorder = false) => {
@@ -21,10 +21,11 @@ export function createReferenceActions({ state, setState, refreshFromDatabase }:
       setState(prev => {
         if (!prev) return prev;
         const rows = (prev[collection] || []) as Row[];
-        const saved = reorder ? result.data as Row[] : method === 'DELETE' ? [{ id: result.id, deleted: true }] : [result.data as Row];
+        const rawSaved: Row[] = reorder ? result.data as Row[] : method === 'DELETE' ? [{ id: result.id, deleted: true }] : [result.data as Row];
+        const saved = rawSaved.map(row => row.sync_version === undefined ? row : { ...row, syncVersion: Number(row.sync_version) });
         const byId = new Map(saved.map(row => [row.id, row]));
         const next = rows.map(row => byId.has(row.id) ? { ...row, ...byId.get(row.id) } : row);
-        if (method === 'POST' && !reorder) next.push(result.data as Row);
+        if (method === 'POST' && !reorder) next.push(saved[0]);
         return { ...prev, [collection]: next };
       });
       return { success: true };

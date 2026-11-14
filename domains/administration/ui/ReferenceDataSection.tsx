@@ -256,7 +256,9 @@ export default function ReferenceDataSection({
       const newIndex = activeAuxItems.findIndex((item: any) => item.id === over.id);
 
       const newOrderedItems = arrayMove(activeAuxItems, oldIndex, newIndex);
-      const result = await reorderAuxRecords(activeAuxTab, newOrderedItems);
+      const visibleIds = new Set(newOrderedItems.map(item => item.id));
+      const hiddenActiveItems = (getAuxItems() || []).filter((item: any) => !item.deleted && !visibleIds.has(item.id));
+      const result = await reorderAuxRecords(activeAuxTab, [...newOrderedItems, ...hiddenActiveItems]);
       if (!result.success) alert(result.message || 'Não foi possível reordenar as opções.');
     }
   };
