@@ -55,8 +55,6 @@ interface ConfigSectionProps {
   config: AppConfiguration;
   specialDays: SpecialDay[];
   updateConfig: (updates: Partial<AppConfiguration>) => Promise<{ success: boolean; message?: string }>;
-  onResetDemoData?: () => void;
-  onClearDemoData?: () => void;
   addSpecialDay: (date: string, name: string) => Promise<{ success: boolean; message?: string }>;
   updateSpecialDay: (id: string, updates: Partial<SpecialDay>) => Promise<{ success: boolean; message?: string }>;
   deleteSpecialDay: (id: string) => void;
@@ -72,11 +70,11 @@ interface ConfigSectionProps {
   projectPriorities?: any[];
   projectTeams?: any[];
   projectPartners?: any[];
-  addAuxRecord?: (tableName: any, name: string, extra?: { scale?: number }) => void;
-  updateAuxRecord?: (tableName: any, id: string, updates: Partial<{ name: string; scale: number; deleted: boolean }>) => void;
-  deleteAuxRecord?: (tableName: any, id: string) => void;
+  addAuxRecord?: (tableName: any, name: string, extra?: { scale?: number; color?: string }) => Promise<{ success: boolean; message?: string }>;
+  updateAuxRecord?: (tableName: any, id: string, updates: Partial<{ name: string; scale: number; color: string }>) => Promise<{ success: boolean; message?: string }>;
+  deleteAuxRecord?: (tableName: any, id: string) => Promise<{ success: boolean; message?: string }>;
   updateNotificationSetting?: (id: string, updates: Partial<import('@/lib/types').NotificationSetting>) => Promise<{ success: boolean; message?: string }>;
-  reorderAuxRecords?: (tableName: any, newItems: any[]) => void;
+  reorderAuxRecords?: (tableName: any, newItems: any[]) => Promise<{ success: boolean; message?: string }>;
   state: ERPState;
   databaseStatus: 'idle' | 'syncing' | 'synced' | 'error';
   databaseError?: string | null;
@@ -105,8 +103,6 @@ export default function ConfigSection({
   config,
   specialDays = [],
   updateConfig,
-  onResetDemoData,
-  onClearDemoData,
   addSpecialDay,
   updateSpecialDay,
   deleteSpecialDay,
@@ -447,7 +443,7 @@ export default function ConfigSection({
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setTheme(t.id);
                         if (typeof window !== 'undefined') {
                           localStorage.setItem('erp_theme', t.id);
@@ -458,7 +454,8 @@ export default function ConfigSection({
                           const root = document.getElementById('main-root');
                           if (root) root.setAttribute('data-theme', t.id);
                         }
-                        updateConfig({ theme: t.id });
+                        const result = await updateConfig({ theme: t.id });
+                        if (!result.success) alert(result.message || 'Não foi possível guardar o tema.');
                       }}
                       aria-pressed={theme === t.id || (theme === 'default' && t.id === 'domino')}
                       className={`flex items-center gap-3 p-3 rounded-control border text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${

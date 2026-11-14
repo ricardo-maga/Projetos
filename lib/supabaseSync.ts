@@ -506,6 +506,7 @@ export async function getActiveStateFromSupabase(
     // Handle App Config
     const configRow = resConfig.data?.[0];
     let appConfig = configRow ? {
+      syncVersion: Number(configRow.sync_version) || 1,
       appName: configRow.app_name || 'Gestão de projetos e planeamento',
       appDescription: configRow.app_description || '',
       footerText: configRow.footer_text || '',
@@ -707,6 +708,7 @@ export async function getActiveStateFromSupabase(
 
     const riskCategories: RiskCategory[] = (resRiskCategories.data || []).map((rc: any) => ({
       id: rc.id,
+      syncVersion: Number(rc.sync_version) || 1,
       name: rc.name,
       deleted: rc.deleted || false,
       sort_order: rc.sort_order || 0,
@@ -714,6 +716,7 @@ export async function getActiveStateFromSupabase(
 
     const riskStatuses: RiskStatus[] = (resRiskStatuses.data || []).map((rs: any) => ({
       id: rs.id,
+      syncVersion: Number(rs.sync_version) || 1,
       name: rs.name,
       scale: rs.scale ?? 1,
       color: rs.color || '#bfdbfe',
@@ -723,6 +726,7 @@ export async function getActiveStateFromSupabase(
 
     const riskPriorities: RiskPriority[] = (resRiskPriorities.data || []).map((rp: any) => ({
       id: rp.id,
+      syncVersion: Number(rp.sync_version) || 1,
       name: rp.name,
       scale: rp.scale || 1,
       color: rp.color || '#bfdbfe',
@@ -732,6 +736,7 @@ export async function getActiveStateFromSupabase(
 
     const projectRiskItems: ProjectRiskItem[] = (resProjectRiskItems.data || []).map((pri: any) => ({
       id: pri.id,
+      syncVersion: Number(pri.sync_version) || 1,
       projectId: pri.project_id || '',
       title: pri.title || '',
       categoryId: pri.category_id || '',
@@ -762,6 +767,7 @@ export async function getActiveStateFromSupabase(
 
     let automationRules: any[] = (resAutomationRules?.data || []).map((ar: any) => ({
       id: ar.id,
+      syncVersion: Number(ar.sync_version) || 1,
       name: ar.name || '',
       description: ar.description || '',
       triggerType: ar.trigger_type || ar.triggerType || 'manual',
@@ -785,6 +791,7 @@ export async function getActiveStateFromSupabase(
       projectPartners: (resProjectPartners.data || []).map((pt: any) => ({ ...pt, deleted: pt.deleted === true || pt.deleted === 1 || pt.deleted === 'true' })),
       taskStatuses: (resTaskStatuses.data || []).map((s: any) => ({
         id: s.id,
+        syncVersion: Number(s.sync_version) || 1,
         name: s.name,
         scale: s.scale ?? 1,
         color: s.color || '#bfdbfe',
@@ -795,6 +802,7 @@ export async function getActiveStateFromSupabase(
         const rawTypes = (resTaskTypes.data && resTaskTypes.data.length > 0)
           ? resTaskTypes.data.map((tt: any) => ({
               id: tt.id,
+              syncVersion: Number(tt.sync_version) || 1,
               name: tt.name,
               scale: tt.scale ?? 1,
               deleted: tt.deleted || false,

@@ -22,10 +22,10 @@ interface Props {
   projectPriorities: any[];
   projectTeams: any[];
   projectPartners: any[];
-  addAuxRecord?: (tableName: any, name: string, extra?: { scale?: number }) => void;
-  updateAuxRecord?: (tableName: any, id: string, updates: Partial<{ name: string; scale: number; deleted: boolean }>) => void;
-  deleteAuxRecord?: (tableName: any, id: string) => void;
-  reorderAuxRecords?: (tableName: any, newItems: any[]) => void;
+  addAuxRecord?: (tableName: any, name: string, extra?: { scale?: number; color?: string }) => Promise<{ success: boolean; message?: string }>;
+  updateAuxRecord?: (tableName: any, id: string, updates: Partial<{ name: string; scale: number; color: string }>) => Promise<{ success: boolean; message?: string }>;
+  deleteAuxRecord?: (tableName: any, id: string) => Promise<{ success: boolean; message?: string }>;
+  reorderAuxRecords?: (tableName: any, newItems: any[]) => Promise<{ success: boolean; message?: string }>;
   askConfirmation: (title: string, message: string, onConfirm: () => void) => void;
 }
 
@@ -248,7 +248,7 @@ export default function ReferenceDataSection({
     })
   );
 
-  const handleDragEndAux = (event: DragEndEvent) => {
+  const handleDragEndAux = async (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id && reorderAuxRecords) {
@@ -256,7 +256,10 @@ export default function ReferenceDataSection({
       const newIndex = activeAuxItems.findIndex((item: any) => item.id === over.id);
 
       const newOrderedItems = arrayMove(activeAuxItems, oldIndex, newIndex);
-      reorderAuxRecords(activeAuxTab, newOrderedItems);
+      const visibleIds = new Set(newOrderedItems.map(item => item.id));
+      const hiddenActiveItems = (getAuxItems() || []).filter((item: any) => !item.deleted && !visibleIds.has(item.id));
+      const result = await reorderAuxRecords(activeAuxTab, [...newOrderedItems, ...hiddenActiveItems]);
+      if (!result.success) alert(result.message || 'Não foi possível reordenar as opções.');
     }
   };
 
@@ -272,7 +275,7 @@ export default function ReferenceDataSection({
 
   const isColorAuxTab = activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectRisks' || activeAuxTab === 'riskStatuses' || activeAuxTab === 'riskPriorities';
 
-  const handleAddAuxRecord = (e: React.FormEvent) => {
+  const handleAddAuxRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canWriteConfig) {
       alert('Não tem permissão para alterar as configurações.');
@@ -288,13 +291,14 @@ export default function ReferenceDataSection({
       extra.color = newAuxColor;
     }
 
-    addAuxRecord(activeAuxTab, newAuxName.trim(), extra);
+    const result = await addAuxRecord(activeAuxTab, newAuxName.trim(), extra);
+    if (!result.success) { alert(result.message || 'Não foi possível criar a opção.'); return; }
     setNewAuxName('');
     setNewAuxScale(1);
     setNewAuxColor('#bfdbfe');
   };
 
-  const handleSaveEditAuxRecord = (id: string) => {
+  const handleSaveEditAuxRecord = async (id: string) => {
     if (!canWriteConfig) {
       alert('Não tem permissão para alterar as configurações.');
       return;
@@ -309,7 +313,8 @@ export default function ReferenceDataSection({
       updates.color = editAuxColor;
     }
 
-    updateAuxRecord(activeAuxTab, id, updates);
+    const result = await updateAuxRecord(activeAuxTab, id, updates);
+    if (!result.success) { alert(result.message || 'Não foi possível alterar a opção.'); return; }
     setEditingAuxId(null);
   };
 
@@ -322,7 +327,10 @@ export default function ReferenceDataSection({
     askConfirmation(
       'Confirmar Eliminação de Opção',
       'Tem a certeza que deseja eliminar esta opção? Todas as seleções associadas a esta opção ficarão vazias.',
-      () => deleteAuxRecord(activeAuxTab, id)
+      async () => {
+        const result = await deleteAuxRecord(activeAuxTab, id);
+        if (!result.success) alert(result.message || 'Não foi possível eliminar a opção.');
+      }
     );
   };
 

@@ -21,6 +21,7 @@ import { createUserActions } from '@/domains/administration/modules/userActions'
 import { createProjectMaterialActions } from '@/domains/projects/modules/projectMaterialActions';
 import { createProjectRiskActions } from '@/domains/projects/modules/projectRiskActions';
 import { createConfigActions } from '@/domains/administration/modules/configActions';
+import { createReferenceActions } from '@/domains/administration/modules/referenceActions';
 import { createSpecialDayActions } from '@/domains/calendar/modules/specialDayActions';
 import { createDefaultTaskActions } from '@/domains/tasks/modules/defaultTaskActions';
 import { createCommunicationActions } from '@/domains/communication/modules/communicationActions';
@@ -28,8 +29,6 @@ import { createProjectActions } from '@/domains/projects/modules/projectActions'
 import { createTaskActions } from '@/domains/tasks/modules/taskActions';
 import { createCommentActions } from '@/domains/projects/modules/commentActions';
 import { createClientActions } from '@/domains/clients/modules/clientActions';
-import { applyLegacyVersions } from '../lib/supabase/legacyWriteBatch';
-import { buildLegacySyncPayload } from '../lib/supabase/syncPayload';
 import { ERPState, AppConfiguration, Project, Task, Comment, UserAbsence, User, Client, SpecialDay } from '../lib/types';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
@@ -260,90 +259,6 @@ export function useERP() {
     loadState();
   }, [refreshFromDatabase]);
 
-  // Robust, fail-safe database write with automatic state rollback on any failure
-  const saveState = async (updater: ERPState | ((prev: ERPState) => ERPState)): Promise<{ success: boolean; message?: string }> => {
-    if (!state) {
-      return { success: false, message: 'Estado da aplicação não inicializado.' };
-    }
-
-    if (!isDbConfigured) {
-      const msg = 'Gravação bloqueada: A base de dados não está configurada. Não é permitido criar ou alterar dados fora da base de dados.';
-      setSyncStatus('error');
-      setSyncError(msg);
-      return { success: false, message: msg };
-    }
-
-    const prevState = state;
-    const computed = typeof updater === 'function' ? updater(prevState) : updater;
-    const nextState = mapStateToUUIDs(computed);
-
-    // Apply optimistic update for responsive UI
-    setState(nextState);
-    setSyncStatus('syncing');
-    setSyncError(null);
-
-    try {
-      const headers = getAuthHeaders();
-      const res = await fetch('/api/supabase/sync', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(buildLegacySyncPayload(prevState, nextState)),
-      });
-
-      const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
-
-      if (res.ok && result.success) {
-        if (result.versions) setState(prev => prev ? applyLegacyVersions(prev, result.versions) : prev);
-        setSyncStatus('synced');
-        setSyncError(null);
-        return { success: true };
-      } else {
-        // ROLLBACK! The write was not accepted by the database
-        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a gravação (${res.status}). A alteração foi revertida para garantir que apenas dados válidos da base de dados são mantidos.`);
-        console.error('Falha na gravação na base de dados. A reverter estado local:', errMsg);
-        setState(prevState);
-        if (res.status === 409) await refreshFromDatabase();
-        setSyncStatus('error');
-        setSyncError(errMsg);
-
-        if (res.status === 401 || result?.message?.includes('Sessão') || result?.message?.includes('autentic')) {
-          clearClientSession();
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message: errMsg } }));
-          }
-        }
-
-        return { success: false, message: errMsg };
-      }
-    } catch (netErr: any) {
-      // ROLLBACK on network or server error
-      console.error('Exceção de rede durante a gravação na base de dados. A reverter estado local:', netErr);
-      setState(prevState);
-      const errMsg = netErr?.message || 'Falha de comunicação com a base de dados. A alteração foi revertida para proteção de integridade.';
-      setSyncStatus('error');
-      setSyncError(errMsg);
-      return { success: false, message: errMsg };
-    }
-  };
-
-  // Reset to clean default baseline (no mock data)
-  const resetToDefault = () => {
-    if (confirm('Esta ação irá repor as definições disponíveis para sincronização. Deseja continuar?')) {
-      saveState(CLEAN_BASELINE_STATE);
-    }
-  };
-
-  // Clear all data (reset to empty state directly in database)
-  const clearAllData = () => {
-    if (confirm('Tem a certeza que deseja limpar todos os projetos, tarefas, clientes e materiais da base de dados? Esta ação é definitiva na base de dados.')) {
-      saveState(prev => ({
-        ...CLEAN_BASELINE_STATE,
-        appConfig: prev.appConfig,
-        users: prev.users,
-      }));
-    }
-  };
-
   const sortedState: ERPState = useMemo(() => {
     if (!state) return CLEAN_BASELINE_STATE;
     
@@ -479,11 +394,11 @@ export function useERP() {
       return { success: false, message: error.message };
     }
   };
-  const { addComment, deleteComment } = createCommentActions({ saveState, genId, deleteSyncedEntity });
+  const { addComment, deleteComment } = createCommentActions({ setState, deleteSyncedEntity });
 
-  const { addAbsence, deleteAbsence } = createAbsenceActions({ saveState, deleteSyncedEntity });
+  const { addAbsence, deleteAbsence } = createAbsenceActions({ setState, deleteSyncedEntity });
 
-  const { addUser, updateUser, deleteUser } = createUserActions({ state, saveState, refreshFromDatabase, logAudit });
+  const { addUser, updateUser, deleteUser } = createUserActions({ state, refreshFromDatabase });
 
   const { addClient, updateClient, deleteClient } = createClientActions({
     isDbConfigured, state, setState, setSyncStatus, setSyncError, matchId, logAudit, getApiErrorMessage,
@@ -491,15 +406,16 @@ export function useERP() {
 
   const { addProjectMaterial, updateProjectMaterial, deleteProjectMaterial } = createProjectMaterialActions({ state, setState, matchId });
 
-  const { addProjectRiskItem, updateProjectRiskItem, deleteProjectRiskItem } = createProjectRiskActions({ saveState, genId, matchId });
+  const { addProjectRiskItem, updateProjectRiskItem, deleteProjectRiskItem } = createProjectRiskActions({ state, setState, matchId, refreshFromDatabase });
 
-  const { updateConfig, addAuxRecord, updateAuxRecord, deleteAuxRecord, reorderAuxRecords } = createConfigActions({ saveState, genId });
+  const { updateConfig } = createConfigActions({ state, setState, refreshFromDatabase });
+  const { addAuxRecord, updateAuxRecord, deleteAuxRecord, reorderAuxRecords } = createReferenceActions({ state, setState, refreshFromDatabase });
 
   const { addSpecialDay, updateSpecialDay, deleteSpecialDay } = createSpecialDayActions({ state, setState, setSyncStatus, setSyncError, isDbConfigured, deleteSyncedEntity, refreshFromDatabase, getApiErrorMessage });
 
   const { addDefaultTask, updateDefaultTask, deleteDefaultTask } = createDefaultTaskActions({ state, setState, setSyncStatus, setSyncError, isDbConfigured, deleteSyncedEntity, loadDefaultTasks, getApiErrorMessage });
 
-  const { updateNotificationSetting, markNotificationAsRead, markAllNotificationsAsRead, addNotification, addAutomationRule, updateAutomationRule, deleteAutomationRule, toggleAutomationRule } = createCommunicationActions({ state, setState, setSyncError, saveState, genId });
+  const { updateNotificationSetting, markNotificationAsRead, markAllNotificationsAsRead, addAutomationRule, updateAutomationRule, deleteAutomationRule, toggleAutomationRule } = createCommunicationActions({ state, setState, setSyncError, refreshFromDatabase });
 
 
 
@@ -508,8 +424,6 @@ export function useERP() {
     publicAppConfig,
     loading: !isInitialDataLoaded,
     state: sortedState,
-    resetToDefault,
-    clearAllData,
     syncStatus,
     syncError,
     isDbConfigured,
@@ -562,7 +476,6 @@ export function useERP() {
     updateNotificationSetting,
     markNotificationAsRead,
     markAllNotificationsAsRead,
-    addNotification,
     addAutomationRule,
     updateAutomationRule,
     deleteAutomationRule,
@@ -576,7 +489,6 @@ export function useERP() {
     configRuntimeStatus,
     loadDefaultTasks,
     defaultTasksStatus,
-    saveState,
 
   };
 }

@@ -194,6 +194,7 @@ export interface RiskPriority {
 
 export interface ProjectRiskItem {
   id: string;
+  syncVersion?: number;
   projectId: string; // Relation: Projects table
   title: string;
   categoryId: string; // Relation: RiskCategory
@@ -213,6 +214,7 @@ export interface ProjectRiskItem {
 }
 
 export interface AppConfiguration {
+  syncVersion?: number;
   appName: string;
   appDescription: string;
   footerText: string;
@@ -289,6 +291,7 @@ export interface AutomationAction {
 
 export interface AutomationRule {
   id: string;
+  syncVersion?: number;
   name: string;
   description?: string;
   enabled: boolean;

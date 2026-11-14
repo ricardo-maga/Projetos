@@ -9,7 +9,7 @@ const ACTIONS: Record<string, Set<string>> = {
   presales_status_changed: new Set(['send_notification']),
 };
 
-export function validateAutomationRule(rule: AutomationRule, state: ERPState): string | null {
+export function validateAutomationRule(rule: AutomationRule, state: Pick<ERPState, 'projectStatuses' | 'taskStatuses'>): string | null {
   if (rule.deleted === true) return null;
   if (typeof rule.name !== 'string' || !rule.name.trim()) return 'A regra precisa de um nome.';
   if (!EVENTS.has(rule.triggerType)) return 'Evento de automação descontinuado ou inválido.';

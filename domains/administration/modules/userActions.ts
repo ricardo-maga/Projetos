@@ -2,7 +2,7 @@ import type { User } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/clientAuth';
 import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 
-export function createUserActions({ state, saveState, refreshFromDatabase, logAudit }: Pick<LegacyActionContext, 'state' | 'saveState' | 'refreshFromDatabase' | 'logAudit'>) {
+export function createUserActions({ state, refreshFromDatabase }: Pick<LegacyActionContext, 'state' | 'refreshFromDatabase'>) {
   // ==================== USERS CRUD ====================
   const addUser = async (user: Pick<User, 'name' | 'email' | 'type'> & { password: string }) => {
     const response = await fetch('/api/users', {
@@ -29,13 +29,14 @@ export function createUserActions({ state, saveState, refreshFromDatabase, logAu
     return true;
   };
 
-  const deleteUser = (id: string) => {
-    const existingUser = state?.users?.find(u => u.id === id);
-    logAudit('DELETE', 'USER', id, existingUser?.name, `Eliminado utilizador "${existingUser?.name || id}"`);
-    return saveState(prev => ({
-      ...prev,
-      users: prev.users.map(u => u.id === id ? { ...u, deleted: true } : u)
-    }));
+  const deleteUser = async (id: string) => {
+    const response = await fetch(`/api/users/${encodeURIComponent(id)}`, {
+      method: 'DELETE', headers: getAuthHeaders(),
+    });
+    const result = await response.json();
+    if (!response.ok || result.success !== true) throw new Error(result.message || 'Não foi possível eliminar o utilizador.');
+    await refreshFromDatabase();
+    return { success: true };
   };
 
   return { addUser, updateUser, deleteUser };

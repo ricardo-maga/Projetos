@@ -22,7 +22,7 @@ interface UserSectionProps {
   onRefreshFromDatabase?: () => Promise<boolean>;
   addUser: (user: any) => Promise<string | null> | string | null | void;
   updateUser: (id: string, updates: any) => Promise<boolean> | boolean | void;
-  deleteUser: (id: string) => void;
+  deleteUser: (id: string) => Promise<{ success: boolean; message?: string }>;
   hideUsers?: boolean;
   hideRoles?: boolean;
   currentUser?: any;
@@ -454,7 +454,14 @@ export default function UserSection({
                             onClick={() => askConfirmation(
                               'Confirmar Eliminação de Utilizador',
                               `Aviso: Isto irá remover permanentemente o utilizador ${u.name} (${u.email}) do diretório de colaboradores ativos. Pretende continuar?`,
-                              () => deleteUser(u.id)
+                              async () => {
+                                try {
+                                  const result = await deleteUser(u.id);
+                                  if (!result.success) alert(result.message || 'Não foi possível eliminar o utilizador.');
+                                } catch (error) {
+                                  alert(error instanceof Error ? error.message : 'Não foi possível eliminar o utilizador.');
+                                }
+                              }
                             )}
                             className="text-red-500 hover:text-red-700 font-bold"
                           >
