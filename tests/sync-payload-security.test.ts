@@ -1,3 +1,4 @@
+import { domainWriteSource } from './helpers/domainWriteSource';
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { ADMIN_SYNC_FIELDS, stripAdministrativeSyncFields, changedSyncRecords, SYNC_DOMAIN_PERMISSIONS, isOwnNotificationReadChange, buildLegacySyncPayload } from '../lib/supabase/syncPayload';
@@ -28,7 +29,7 @@ test('special days are excluded from legacy writes and rejected by the legacy en
   expect(buildLegacySyncPayload({}, { specialDays: [{ id: 'day-1', date: '2026-12-25', name: 'Natal' }] })).toEqual({});
   const route = readFileSync(new URL('../app/api/supabase/sync/route.ts', import.meta.url), 'utf8');
   expect(route).toContain("Object.hasOwn(state, 'specialDays')");
-  const writer = readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8');
+  const writer = (readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8') + domainWriteSource());
   expect(writer).not.toContain("supabase.from('special_days').upsert");
 });
 
@@ -42,7 +43,7 @@ test('snapshot omission and ordering do not delete or rewrite existing records',
 });
 
 test('writer does not infer deletes from snapshot ids', () => {
-  const writer = readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8');
+  const writer = (readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8') + domainWriteSource());
   expect(writer).not.toContain('commentIdsToDelete');
   expect(writer).not.toContain('absenceIdsToDelete');
   expect(writer).not.toContain('specialDayIdsToDelete');
@@ -63,6 +64,6 @@ test('absence lookup failure stops before persistence and omitted branding is no
   const route = readFileSync(new URL('../app/api/supabase/sync/route.ts', import.meta.url), 'utf8');
   expect(route).toContain('absenceError || !Array.isArray(dbOtherAbsences)');
   expect(route.indexOf("throw new AuthError('Não foi possível validar a proteção das ausências.', 503)")).toBeLessThan(route.indexOf('saveActiveStateToSupabase(state, clientToUse)'));
-  const writer = readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8');
+  const writer = (readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8') + domainWriteSource());
   expect(writer).toContain("state.appConfig ? supabase.from('app_configuration')");
 });

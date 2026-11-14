@@ -6,8 +6,8 @@ import { projectPreviewProps } from './projects-m3.test';
 
 // Execute the real risk persistence block with a transport fake, not a copy
 // of its implementation. The sync API intentionally supplies no projects.
-const source = readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8');
-const block = source.slice(source.indexOf('    // Save Project Risk Items'), source.indexOf('    // 5. Update many-to-many'));
+const source = readFileSync(new URL('../domains/projects/services/writeProjectRisks.ts', import.meta.url), 'utf8');
+const block = source.slice(source.indexOf('    // Save Project Risk Items'), source.lastIndexOf('  return { success: true };'));
 const js = ts.transpileModule(`async function run(state: any, supabase: any) {
   const stringToUUID = (id: string) => id;
   const formatDbDate = (date: string) => date || null;
