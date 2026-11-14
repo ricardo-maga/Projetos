@@ -31,6 +31,7 @@
     "@supabase/supabase-js": "^2.110.3",
     "@tiptap/extension-text-align": "^3.32.2",
     "@tiptap/extension-text-style": "^3.32.2",
+    "@tiptap/markdown": "^3.32.2",
     "@tiptap/react": "3.32.2",
     "@tiptap/starter-kit": "3.32.2",
     "@types/papaparse": "^5.5.2",
