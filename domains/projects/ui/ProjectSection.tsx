@@ -3453,6 +3453,7 @@ export default function ProjectSection({
 
                 const startDateStr = selectedProj.startDate ? new Date(selectedProj.startDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
                 const deliveryAnalysis = projectDeliveryAnalysis(selectedProj);
+                const deliveryDateSource = selectedProj.scheduledDate ? 'Agendado' : selectedProj.estimatedDate ? 'Previsto' : 'Venda';
                 const deliveryDateStr = deliveryAnalysis.deliveryDate ? new Date(deliveryAnalysis.deliveryDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
 
                 const daysDiffAdjudicationToDelivery = deliveryAnalysis.saleDays === null ? '-' : `${deliveryAnalysis.saleDays} dias`;
@@ -3471,7 +3472,7 @@ export default function ProjectSection({
 
                       {/* Card 2: Prazo Venda */}
                       <div className="bg-surface-muted border border-border rounded-card p-4 space-y-1 shadow-2xs">
-                        <span className="text-caption uppercase font-bold text-text-muted tracking-wider">Prazo de Entrega (Venda)</span>
+                        <span className="text-caption uppercase font-bold text-text-muted tracking-wider">Prazo de Entrega ({deliveryDateSource})</span>
                         <div className="text-xl font-black text-text-primary">{daysDiffAdjudicationToDelivery}</div>
                         <div className="text-caption text-text-secondary font-medium">De {startDateStr} a {deliveryDateStr}</div>
                       </div>
