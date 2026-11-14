@@ -5,6 +5,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import ProjectAnalytics from '@/domains/projects/ui/ProjectAnalytics';
 import ProjectActivityTable from './ProjectActivityTable';
 import ProjectCommentBody from './ProjectCommentBody';
+import MarkdownCommentComposer from '@/components/ui/MarkdownCommentComposer';
 import React, { useState, useEffect, useRef } from 'react';
 import { Project, Client, Comment, Task, TaskType, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '@/lib/types';
 import {
@@ -409,29 +410,6 @@ export default function ProjectSection({
 
   // Comment Form
   const [newCommentText, setNewCommentText] = useState('');
-  const commentInputRef = useRef<HTMLTextAreaElement>(null);
-  const formatComment = (before: string, after = '', placeholder = 'texto') => {
-    const input = commentInputRef.current;
-    if (!input) return;
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
-    const selected = newCommentText.slice(start, end) || placeholder;
-    const linePrefix = ['# ', '## ', '### ', '- ', '1. '].includes(before);
-    const prefix = linePrefix && start > 0 && newCommentText[start - 1] !== '\n' ? `\n${before}` : before;
-    const insertion = `${prefix}${selected}${after}`;
-    if (newCommentText.length - (end - start) + insertion.length > 1000) return;
-    setNewCommentText(`${newCommentText.slice(0, start)}${insertion}${newCommentText.slice(end)}`);
-    requestAnimationFrame(() => {
-      input.focus();
-      input.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
-    });
-  };
-  const submitComment = () => {
-    const text = newCommentText.trim();
-    if (!text || text.length > 1000 || !selectedProjectId) return;
-    addComment(selectedProjectId, currentUser?.id || 'u-1', text);
-    setNewCommentText('');
-  };
 
   // Task Import Form State in Project Details
   const [showImportTaskForm, setShowImportTaskForm] = useState(false);
@@ -2420,49 +2398,12 @@ export default function ProjectSection({
                 )}
 
                 {/* Comment input form */}
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex flex-wrap gap-1" role="toolbar" aria-label="Formatar comentário">
-                    {[
-                      ['Negrito', '**', '**', 'texto'], ['Itálico', '*', '*', 'texto'],
-                      ['Sublinhado', '<u>', '</u>', 'texto'], ['Rasurado', '~~', '~~', 'texto'],
-                      ['Título 1', '# ', '', 'Título'], ['Título 2', '## ', '', 'Título'], ['Título 3', '### ', '', 'Título'],
-                      ['Lista simples', '- ', '', 'item'], ['Lista numerada', '1. ', '', 'item'],
-                      ['Link', '[', '](https://exemplo.com)', 'texto do link'],
-                    ].map(([label, before, after, placeholder]) => (
-                      <button key={label} type="button" aria-label={label} title={label}
-                        onClick={() => formatComment(before, after, placeholder)}
-                        className="min-h-8 rounded-control border border-border px-2 text-caption font-semibold text-text-secondary hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary">
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <Textarea aria-label="Nota ou comentário em Markdown"
-                    ref={commentInputRef}
-                    rows={3}
-                    maxLength={1000}
-                    value={newCommentText}
-                    onChange={(e) => setNewCommentText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                        e.preventDefault();
-                        submitComment();
-                      }
-                    }}
-                    placeholder="Escreva uma nota em Markdown..."
-                    className="h-24 resize-none text-body-sm"
-                  />
-                  <p className="mt-1 text-caption text-text-muted">Enter para enviar · Shift+Enter para nova linha · Markdown: **negrito**, *itálico*, links, listas e títulos. {newCommentText.length}/1000</p>
-                  </div>
-                  <Button variant="primary" size="sm"
-                    type="button"
-                    disabled={!newCommentText.trim()}
-                    onClick={submitComment}
-                    className="h-24 shrink-0 px-4 text-body-sm font-bold"
-                  >
-                    Enviar
-                  </Button>
-                </div>
+                <MarkdownCommentComposer value={newCommentText} onChange={setNewCommentText}
+                  onSubmit={text => {
+                    if (!selectedProjectId) return;
+                    addComment(selectedProjectId, currentUser?.id || 'u-1', text);
+                    setNewCommentText('');
+                  }} />
               </div>
 
             </div>
