@@ -19,7 +19,7 @@ import { getAuthHeaders } from '@/lib/clientAuth';
 import { currentForecastMonth, forecastMonth, forecastShortMonth } from '@/domains/projects/modules/projectForecast';
 import { M3Button, M3IconButton, M3SegmentedControl } from '@/components/M3';
 import {
-  CheckSquare, Briefcase, Play, ShieldAlert, Calendar as CalendarIcon, ChevronLeft,
+  CheckSquare, Briefcase, Play, Calendar as CalendarIcon, ChevronLeft,
   ChevronRight, Sparkles, ArrowRight,
   CalendarDays, FolderKanban, Flag, PartyPopper
 } from 'lucide-react';
@@ -56,7 +56,6 @@ export default function MyFocusSection({
   clients = [],
   specialDays = [],
   projectRiskItems = [],
-  riskStatuses = [],
   taskStatuses = [],
   taskTypes = [],
   userAbsences = [],
@@ -304,11 +303,9 @@ export default function MyFocusSection({
 
   const taskPagination = useFocusPagination(currentUser.id, 'tasks', 10, FOCUS_TASK_SIZES);
   const projectPagination = useFocusPagination(currentUser.id, 'projects', 5, FOCUS_PROJECT_SIZES);
-  const riskPagination = useFocusPagination(currentUser.id, 'risks', 10, FOCUS_TASK_SIZES);
   const taskPage = paginateFocus(filteredTasks, taskPagination.preference);
   const projectPage = paginateFocus(myManagedProjects, projectPagination.preference);
   const myRisks = useMemo(() => assignedFocusRisks(projectRiskItems, projects, currentUser.id), [projectRiskItems, projects, currentUser.id]);
-  const riskPage = paginateFocus(myRisks, riskPagination.preference);
 
   // 4. Monthly Calendar Calculations
   const year = currentMonthDate.getFullYear();
@@ -721,30 +718,6 @@ export default function MyFocusSection({
               )}
             </div>
             <FocusPagination label="projetos" total={myManagedProjects.length} {...projectPage} {...projectPagination} allowed={FOCUS_PROJECT_SIZES} />
-          </Card>
-          <Card className="overflow-hidden" id="card-my-risks">
-            <div className="p-4 border-b border-border-subtle bg-surface-muted flex items-center gap-2">
-              <ShieldAlert className="w-5 h-5 text-primary" />
-              <div><h3 className="text-heading-sm">Os meus riscos</h3><p className="text-caption text-text-secondary">Riscos atribuídos a ti, ordenados por data de revisão</p></div>
-            </div>
-            <ul className="divide-y divide-border-subtle">
-              {riskPage.items.map(risk => {
-                const proj = projectMap.get(risk.projectId);
-                const client = proj ? clientsMap.get(proj.clientId) : undefined;
-                return <li key={risk.id} className="p-4 flex flex-col sm:flex-row justify-between gap-3 hover:bg-surface-muted/50">
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2"><ShieldAlert className="w-4 h-4 text-primary" /><span className="text-body-sm font-semibold">{risk.title}</span><Badge>{riskStatuses.find(s => s.id === risk.statusId)?.name || 'Sem estado'}</Badge></div>
-                    <Button variant="ghost" size="sm" className="h-auto min-h-9 px-0 text-body-sm whitespace-normal text-left justify-start" onClick={() => onSelectProject(risk.projectId)}>
-                      {client?.shortName || client?.clientName || 'Cliente N/D'} · {proj?.title}{proj?.installProjectNo && ` (${proj.installProjectNo})`}
-                    </Button>
-                    {risk.description && <p className="text-body-sm text-text-secondary">{risk.description}</p>}
-                  </div>
-                  <div className="text-caption text-text-secondary sm:text-right"><p>Data de revisão</p><Badge>{risk.reviewDate ? new Date(risk.reviewDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Sem data'}</Badge></div>
-                </li>;
-              })}
-            </ul>
-            {!myRisks.length && <p className="p-6 text-body-sm text-text-secondary">Sem riscos atribuídos.</p>}
-            <FocusPagination label="riscos" total={myRisks.length} {...riskPage} {...riskPagination} allowed={FOCUS_TASK_SIZES} />
           </Card>
 
         </div>
