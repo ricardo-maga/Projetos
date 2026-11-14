@@ -39,7 +39,7 @@ import {
   ListFilter
 } from 'lucide-react';
 import { Task, Project, TaskType, TaskStatus, User, Client } from '@/lib/types';
-import { parseTimeToHours, formatHoursToHHMM } from '@/lib/utils';
+import { parseTimeToHours, formatHoursToHHMM, getUserInitials } from '@/lib/utils';
 
 interface TaskAnalyticsProps {
   tasks: Task[];
@@ -887,7 +887,7 @@ export function TaskAnalytics({
                 <tr key={u.userId} className="hover:bg-slate-50 transition-colors">
                   <td className="py-3 px-3 font-semibold text-slate-900 flex items-center gap-2">
                     <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-caption">
-                      {u.userName.slice(0, 2).toUpperCase()}
+                      {getUserInitials(u.userName)}
                     </div>
                     {u.userName}
                   </td>
