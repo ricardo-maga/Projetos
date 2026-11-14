@@ -9,10 +9,11 @@ export interface SwitchProps {
   onChange: (checked: boolean) => void;
   disabled?: boolean;
   label?: string;
+  ariaLabel?: string;
   id?: string;
 }
 
-export default function Switch({ checked, onChange, disabled, label, id }: SwitchProps) {
+export default function Switch({ checked, onChange, disabled, label, ariaLabel, id }: SwitchProps) {
   const generatedId = React.useId();
   const switchId = id || generatedId;
 
@@ -27,6 +28,7 @@ export default function Switch({ checked, onChange, disabled, label, id }: Switc
       <div className="relative">
         <input
           type="checkbox"
+          aria-label={ariaLabel}
           id={switchId}
           checked={checked}
           disabled={disabled}
