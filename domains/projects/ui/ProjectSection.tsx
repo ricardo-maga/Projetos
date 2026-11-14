@@ -4229,7 +4229,7 @@ export default function ProjectSection({
                           </div>
                         </td>
                         <td className="px-5 py-4 text-text-secondary font-medium">
-                          <div>Venda: {proj.startDate || '-'}</div>
+                          <div>Adj.: {proj.startDate || '-'}</div>
                           <div>Entrega: {proj.scheduledDate || proj.estimatedDate || proj.deliveryDate || '-'}</div>
                         </td>
                         <td className="px-5 py-4">
