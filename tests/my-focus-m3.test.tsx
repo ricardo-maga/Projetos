@@ -79,7 +79,7 @@ describe('My Focus M3', () => {
     expect(html).toContain('whitespace-nowrap shrink-0 pr-[10px]');
     expect(html).toContain('2 tarefas');
   });
-  it('uses default limits, whole-hour labels, assigned risks and no notifications or task progress', () => {
+  it('uses default limits, whole-hour labels, a risk count and no risk card or notifications', () => {
     const h = harness(), tree = h.render(focusPreviewProps);
     const tasks = find(tree, e => e.props?.id === 'card-my-tasks');
     const projects = find(tree, e => e.props?.id === 'card-managed-projects');
@@ -87,7 +87,9 @@ describe('My Focus M3', () => {
     expect(renderToStaticMarkup(projects).match(/N.º IP-/g)).toHaveLength(5);
     const html = renderToStaticMarkup(tree);
     expect(html).toContain('2h'); expect(html).not.toContain('02:00:00');
-    expect(html).toContain('Risco da Ana'); expect(html).not.toContain('Risco de outro utilizador');
+    expect(html).toContain('Riscos atribuídos');
+    expect(find(tree, e => e.props?.id === 'card-my-risks')).toBeUndefined();
+    expect(html).not.toContain('Risco da Ana');
     expect(html).not.toContain('Notificações'); expect(html).not.toContain('Progresso das Tarefas');
     // Configured status helpers may legitimately emit palette classes. The
     // section itself must use semantic tokens rather than local palette maps.
@@ -117,10 +119,9 @@ describe('My Focus M3', () => {
     const calendar = find(tree, e => e.props?.id === 'card-monthly-calendar');
     const day = find(calendar, e => e.props?.['aria-pressed'] !== undefined);
     day.props.onClick(); expect(h.state.selectedDateStr).toBeDefined();
-    const risks = find(tree, e => e.props?.id === 'card-my-risks');
-    tree = h.render({ ...focusPreviewProps, onSelectProject: (id: string) => projectId = id });
-    find(find(tree, e => e.props?.id === 'card-my-risks'), e => e.props?.onClick).props.onClick();
-    expect(projectId).toBe('p0'); expect(risks).toBeDefined();
+    const managedProject = find(find(tree, e => e.props?.id === 'card-managed-projects'), e => e.props?.onClick);
+    managedProject.props.onClick();
+    expect(projectId).toBe('p0');
   });
   it('validates saved preferences and safely clamps empty or shortened lists', () => {
     expect(readFocusPagination('{bad', 10, FOCUS_TASK_SIZES)).toEqual({ size: 10, page: 1 });
