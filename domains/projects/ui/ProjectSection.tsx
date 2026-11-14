@@ -54,6 +54,8 @@ function cacheProjectPage(key: string, entry: ProjectPageCacheEntry) {
   }
 }
 
+const PROJECT_BADGE_CLASS = 'h-9 px-3 text-body-sm font-bold uppercase rounded-badge border inline-flex items-center justify-center whitespace-nowrap';
+
 function ForecastBadge({ project, statuses, canEdit, updateProject, compact = false }: {
   project: Project; statuses: any[]; canEdit: boolean; updateProject?: (id: string, updates: any) => Promise<unknown>; compact?: boolean;
 }) {
@@ -61,7 +63,7 @@ function ForecastBadge({ project, statuses, canEdit, updateProject, compact = fa
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const alert = projectForecastAlert(project, statuses);
-  const tone = project.forecastDate ? alert === 'overdue' ? 'bg-error text-white border-error' : 'bg-fuchsia-600 text-white border-fuchsia-700' : 'bg-surface-muted text-text-secondary border-border';
+  const tone = project.forecastDate ? alert === 'overdue' ? 'bg-error hover:bg-error text-white border-error' : 'bg-fuchsia-600 hover:bg-fuchsia-600 text-white border-fuchsia-700' : 'bg-surface-muted hover:bg-surface-muted text-text-secondary border-border';
   const alertTitle = alert === 'overdue' ? 'Forecast em atraso' : alert === 'current' ? 'Instalar este mês' : alert === 'next' ? 'Instalar no mês seguinte' : '';
   const save = async () => {
     if (!updateProject || saving) return;
@@ -80,11 +82,11 @@ function ForecastBadge({ project, statuses, canEdit, updateProject, compact = fa
     <button type="button" aria-label="Cancelar edição do Forecast" disabled={saving} onClick={() => setEditing(false)}
       className={`${compact ? 'h-9 w-9' : 'h-11 w-11'} inline-flex shrink-0 items-center justify-center rounded-control border border-border bg-surface text-body font-bold text-text-secondary hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50`}>×</button>
   </span>;
-  return <button type="button" disabled={!canEdit || saving} title={[alertTitle, canEdit ? 'Clique para alterar o Forecast' : ''].filter(Boolean).join(' · ') || undefined}
+  return <Button type="button" variant="outline" size="sm" disabled={!canEdit || saving} title={[alertTitle, canEdit ? 'Clique para alterar o Forecast' : ''].filter(Boolean).join(' · ') || undefined}
     onClick={event => { event.stopPropagation(); setDraft(forecastMonth(project.forecastDate)); setEditing(true); }}
-    className={`inline-flex items-center rounded-control border font-bold ${compact ? 'px-1.5 py-0.5 text-caption' : 'px-3 py-1.5 text-body-sm'} ${tone} ${canEdit ? 'cursor-pointer hover:brightness-110' : ''}`}>
+    className={`${compact ? 'h-auto px-1.5 py-0.5 text-caption font-bold' : PROJECT_BADGE_CLASS} ${tone} disabled:opacity-100 ${canEdit ? 'cursor-pointer hover:brightness-110' : ''}`}>
     {forecastLabel(project.forecastDate)}
-  </button>;
+  </Button>;
 }
 
 function EditableProjectDate({ label, value, field, projectId, disabled, updateProject }: {
@@ -1653,22 +1655,22 @@ export default function ProjectSection({
 
             <div className="flex items-center gap-2 flex-wrap">
               {hasMaterialWarning && (
-                <span className="text-body-sm font-bold uppercase px-3 py-1.5 rounded-control bg-error/10 text-error border border-error/20 flex items-center gap-1.5">
+                <Badge className={`${PROJECT_BADGE_CLASS} gap-1.5 bg-error/10 text-error border-error/20`}>
                   <AlertTriangle className="w-3.5 h-3.5 text-error shrink-0" />
                   <span>Material em falta ({warningMaterialsCount})</span>
-                </span>
+                </Badge>
               )}
               {(() => {
                 const calcRisk = getProjectCalculatedRisk(selectedProj.id, projectRiskItems, riskStatuses);
                 return (
-                  <span className={`text-caption font-extrabold uppercase px-2 py-0.5 rounded border inline-flex items-center gap-1 ${calcRisk.color}`}>
+                  <Badge className={`${PROJECT_BADGE_CLASS} ${calcRisk.color}`}>
                     Risco: {calcRisk.label} ({calcRisk.count})
-                  </span>
+                  </Badge>
                 );
               })()}
-              <span className="text-body-sm font-bold uppercase px-3 py-1.5 rounded-control bg-surface-muted text-text-secondary border border-border">
+              <Badge className={PROJECT_BADGE_CLASS}>
                 Prioridade: {getPriorityName(selectedProj.priorityId)}
-              </span>
+              </Badge>
               <ForecastBadge project={selectedProj} statuses={projectStatuses} canEdit={canWriteProjects} updateProject={updateProject} />
             </div>
           </div>
@@ -4241,9 +4243,9 @@ export default function ProjectSection({
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex flex-col gap-1 items-start">
-                            <span className={`text-caption font-extrabold uppercase px-2 py-0.5 rounded border inline-flex items-center gap-1 ${calcRisk.color}`}>
+                            <Badge className={calcRisk.color}>
                               Risco: {calcRisk.label} ({calcRisk.count})
-                            </span>
+                            </Badge>
                             <span className="text-caption text-text-secondary font-medium pl-0.5">
                               Prioridade: {getPriorityName(proj.priorityId)}
                             </span>
