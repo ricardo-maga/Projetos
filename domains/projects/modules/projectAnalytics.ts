@@ -33,6 +33,21 @@ export function projectAnalyticsDate(value?: string) {
   return date(value);
 }
 
+export function projectDeliveryAnalysis(project: Pick<Project, 'startDate' | 'deliveryDate' | 'estimatedDate' | 'scheduledDate'>) {
+  const deliveryDate = date(project.scheduledDate) || date(project.estimatedDate) || date(project.deliveryDate);
+  const daysBetween = (from: string, to: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return null;
+    const fromTime = Date.parse(`${from}T00:00:00Z`);
+    const toTime = Date.parse(`${to}T00:00:00Z`);
+    return Number.isFinite(fromTime) && Number.isFinite(toTime) ? Math.round((toTime - fromTime) / 86400000) : null;
+  };
+  return {
+    deliveryDate,
+    saleDays: daysBetween(date(project.startDate), deliveryDate),
+    deviationDays: daysBetween(date(project.deliveryDate), deliveryDate),
+  };
+}
+
 export function buildProjectAnalytics(projects: Project[], statuses: any[], materials: ProjectMaterial[], days: number, now = new Date()) {
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const first = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days + 1);

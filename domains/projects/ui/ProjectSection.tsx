@@ -3,6 +3,7 @@
 import { M3FilterChip, M3SectionHeader, M3SegmentedControl } from '@/components/M3';
 import { Tabs } from '@/components/ui/Tabs';
 import ProjectAnalytics from '@/domains/projects/ui/ProjectAnalytics';
+import { projectDeliveryAnalysis } from '@/domains/projects/modules/projectAnalytics';
 import ProjectActivityTable from './ProjectActivityTable';
 import ProjectCommentBody from './ProjectCommentBody';
 import MarkdownCommentComposer from '@/components/ui/MarkdownCommentComposer';
@@ -3449,23 +3450,12 @@ export default function ProjectSection({
                 };
 
                 const startDateStr = selectedProj.startDate ? new Date(selectedProj.startDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
-                const deliveryDateStr = selectedProj.deliveryDate ? new Date(selectedProj.deliveryDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
-                const estimatedDateStr = selectedProj.estimatedDate ? new Date(selectedProj.estimatedDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
-                const scheduledDateStr = selectedProj.scheduledDate ? new Date(selectedProj.scheduledDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
+                const deliveryAnalysis = projectDeliveryAnalysis(selectedProj);
+                const deliveryDateStr = deliveryAnalysis.deliveryDate ? new Date(deliveryAnalysis.deliveryDate + 'T00:00:00').toLocaleDateString('pt-PT') : 'Não definida';
 
-                let daysDiffAdjudicationToDelivery = '-';
-                if (selectedProj.startDate && selectedProj.deliveryDate) {
-                  const diffTime = new Date(selectedProj.deliveryDate).getTime() - new Date(selectedProj.startDate).getTime();
-                  const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
-                  daysDiffAdjudicationToDelivery = `${diffDays} dias`;
-                }
-
-                let daysDiffEstimatedToDelivery = '-';
-                if (selectedProj.deliveryDate && selectedProj.estimatedDate) {
-                  const diffTime = new Date(selectedProj.estimatedDate).getTime() - new Date(selectedProj.deliveryDate).getTime();
-                  const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
-                  daysDiffEstimatedToDelivery = diffDays > 0 ? `+${diffDays}d (Atraso)` : `${diffDays}d`;
-                }
+                const daysDiffAdjudicationToDelivery = deliveryAnalysis.saleDays === null ? '-' : `${deliveryAnalysis.saleDays} dias`;
+                const daysDiffEstimatedToDelivery = deliveryAnalysis.deviationDays === null ? '-' : deliveryAnalysis.deviationDays > 0
+                  ? `+${deliveryAnalysis.deviationDays}d (Atraso)` : `${deliveryAnalysis.deviationDays}d`;
 
                 return (
                   <div className="space-y-6">
@@ -3474,7 +3464,7 @@ export default function ProjectSection({
                       <div className="bg-surface-muted border border-border rounded-card p-4 space-y-1 shadow-2xs">
                         <span className="text-caption uppercase font-bold text-text-muted tracking-wider">Carga horária</span>
                         <div className="text-xl font-black text-text-primary">{formatMins(totalWorkloadMins)}h</div>
-                        <p className="text-caption text-text-secondary font-medium truncate">Soma de horas efetivas e estimativas pendentes</p>
+                        <p className="text-caption text-text-secondary font-medium truncate">Soma das horas de tarefas</p>
                       </div>
 
                       {/* Card 2: Prazo Venda */}
@@ -3490,7 +3480,7 @@ export default function ProjectSection({
                         <div className={`text-xl font-black ${daysDiffEstimatedToDelivery.includes('Atraso') ? 'text-warning' : 'text-text-primary'}`}>
                           {daysDiffEstimatedToDelivery}
                         </div>
-                        <div className="text-caption text-text-secondary font-medium">Estimada real: {estimatedDateStr}</div>
+                        <div className="text-caption text-text-secondary font-medium">Entrega considerada: {deliveryDateStr}</div>
                       </div>
                     </div>
 
