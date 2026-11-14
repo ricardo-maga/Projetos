@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { buildProjectAnalytics, commercialProjectsInWindow, fiscalYearStart } from '../lib/projectAnalytics';
+import { buildProjectAnalytics, commercialProjectsInWindow, fiscalYearStart, projectDeliveryAnalysis } from '../lib/projectAnalytics';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ProjectAnalytics from '../components/ProjectAnalytics';
@@ -7,6 +7,13 @@ const now = new Date(2026, 9, 5, 12);
 const statuses = [{ id: 'active', scale: 3 }, { id: 'done', scale: 5 }];
 const p = (id: string, createdDate: string, extra = {}) => ({ id, createdDate, statusId: 'active', deliveryDate: '2026-10-04', categoryId: 'cat', projectManagerId: 'manager', salesRepId: 'sales', deleted: false, ...extra }) as any;
 describe('Project analytics', () => {
+  it('uses scheduled, estimated, then sale delivery dates in both project analysis cards', () => {
+    const base = { startDate: '2026-11-01', deliveryDate: '2026-11-10', estimatedDate: '2026-11-12', scheduledDate: '2026-11-15' };
+    expect(projectDeliveryAnalysis(base)).toEqual({ deliveryDate: '2026-11-15', saleDays: 14, deviationDays: 5 });
+    expect(projectDeliveryAnalysis({ ...base, scheduledDate: '' })).toEqual({ deliveryDate: '2026-11-12', saleDays: 11, deviationDays: 2 });
+    expect(projectDeliveryAnalysis({ ...base, scheduledDate: '', estimatedDate: '' })).toEqual({ deliveryDate: '2026-11-10', saleDays: 9, deviationDays: 0 });
+    expect(projectDeliveryAnalysis({ ...base, scheduledDate: '', estimatedDate: '', deliveryDate: '' })).toEqual({ deliveryDate: '', saleDays: null, deviationDays: null });
+  });
   it('filters commercial projects by start date and only includes managers with projects in the selected period', () => {
     const projects = [
       p('before-90', '2026-10-05', { startDate: '2026-07-07', salesRepId: 'old' }),
