@@ -33,6 +33,12 @@ import { configuredRoleIds, userHasAnyRole } from '@/lib/roleAssociations';
 import { currentForecastMonth, forecastLabel, forecastMonth, normalizeForecast, projectForecastAlert } from '@/domains/projects/modules/projectForecast';
 
 type ProjectPageCacheEntry = { data: Project[]; total: number; savedAt: number };
+export function getProjectTaskAnalysisMinutes(task: Pick<Task, 'estimatedHours' | 'actualHours' | 'assigneeIds'>) {
+  const estimated = Math.round(parseTimeToHours(task.estimatedHours) * 60);
+  const actual = Math.round(parseTimeToHours(task.actualHours) * 60);
+  const perTechnician = actual > 0 ? actual : estimated;
+  return { estimated, actual, perTechnician, workload: perTechnician * (task.assigneeIds?.length || 0) };
+}
 const projectPageCache = new Map<string, ProjectPageCacheEntry>();
 const PROJECT_CACHE_MS = 60_000;
 const PROJECT_CACHE_LIMIT = 30;
@@ -3398,19 +3404,8 @@ export default function ProjectSection({
                 const taskCountsByType: Record<string, { count: number; workloadMins: number; estMins: number; actMins: number }> = {};
                 const taskCountsByTech: Record<string, { count: number; workloadMins: number }> = {};
 
-                const parseMins = (timeStr?: string | null) => {
-                  if (!timeStr) return 0;
-                  const parts = timeStr.split(':').map(Number);
-                  if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-                    return parts[0] * 60 + parts[1];
-                  }
-                  return 0;
-                };
-
                 projTasks.forEach(t => {
-                  const estM = parseMins(t.estimatedHours);
-                  const actM = parseMins(t.actualHours);
-                  const taskWorkload = (actM > 0 ? actM : estM) * (t.assigneeIds?.length || 0);
+                  const { estimated: estM, actual: actM, perTechnician, workload: taskWorkload } = getProjectTaskAnalysisMinutes(t);
 
                   totalWorkloadMins += taskWorkload;
                   totalEstMins += estM;
@@ -3424,7 +3419,7 @@ export default function ProjectSection({
                         taskCountsByTech[uName] = { count: 0, workloadMins: 0 };
                       }
                       taskCountsByTech[uName].count += 1;
-                      taskCountsByTech[uName].workloadMins += actM > 0 ? actM : estM;
+                      taskCountsByTech[uName].workloadMins += perTechnician;
                     });
                   } else {
                     const unassigned = 'Sem Técnico Atribuído';
