@@ -1,3 +1,4 @@
+import { domainWriteSource } from './helpers/domainWriteSource';
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { updateTaskSchema } from '../lib/validations/task';
@@ -15,7 +16,7 @@ describe('stabilization contracts', () => {
   });
 
   test('mandatory initial queries fail closed', () => {
-    const source = readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8');
+    const source = (readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8') + domainWriteSource());
     expect(source).toContain('const mandatoryResults = [');
     expect(source).toContain('if (mandatoryError)');
     expect(source).not.toContain("getProjectsServerData(client, { all: true, includeDeleted: true }).catch");

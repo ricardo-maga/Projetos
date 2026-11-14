@@ -2,7 +2,7 @@ import { expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
-const source = readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const source = readFileSync(new URL('../domains/people/services/writePeopleActivity.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const start = source.indexOf('      (state.comments && state.comments.length > 0) ?');
 const end = source.indexOf('\n\n      // User Absences', start);
 const expression = source.slice(start, end).trim().replace(/,$/, '');

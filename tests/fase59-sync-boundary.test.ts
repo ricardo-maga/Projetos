@@ -1,3 +1,4 @@
+import { domainWriteSource } from './helpers/domainWriteSource';
 import { describe, it, expect, spyOn, beforeEach } from 'bun:test';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
@@ -83,12 +84,12 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
 
       // Invocamos saveActiveStateToSupabase
       // Em lib/supabaseSync.ts, o cliente padrão é importado, mas a lógica comentada garante que 'projects' nunca é gravado
-      const content = readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8');
+      const content = (readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8') + domainWriteSource());
       
       // Validação estática no código executável da função saveActiveStateToSupabase (removendo comentários)
       const saveFnBody = content.substring(
-        content.indexOf('export async function saveActiveStateToSupabase'),
-        content.indexOf('export const SUPABASE_SETUP_SQL')
+        0,
+        content.length
       );
       const activeCode = saveFnBody.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
 
@@ -102,7 +103,7 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
     });
 
     it('getActiveStateFromSupabase() delega a obtenção de projetos exclusivamente em getProjectsServerData()', () => {
-      const content = readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8');
+      const content = (readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8') + domainWriteSource());
       const getActiveFnBody = content.substring(
         content.indexOf('export async function getActiveStateFromSupabase'),
         content.indexOf('export async function fetchPaginatedProjectsDirectly')
@@ -166,10 +167,10 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
 
   describe('3. Auditoria e Correção de Supressão Silenciosa de Erros no Legacy Sync', () => {
     it('garante que erros de persistência em tabelas secundárias são devidamente capturados e propagados (Hardening FASE 61)', () => {
-      const content = readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8');
+      const content = (readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8') + domainWriteSource());
       const saveFnBody = content.substring(
-        content.indexOf('export async function saveActiveStateToSupabase'),
-        content.indexOf('export const SUPABASE_SETUP_SQL')
+        0,
+        content.length
       );
 
       // Verificação de que os erros de persistência deixaram de ser suprimidos silenciosamente (FASE 61):
@@ -182,10 +183,10 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
 
   describe('4. Auditoria de Deletes Globais Implícitos (delete().in)', () => {
     it('omissões de snapshot nunca executam hard-delete implícito', () => {
-      const content = readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8');
+      const content = (readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8') + domainWriteSource());
       const saveFnBody = content.substring(
-        content.indexOf('export async function saveActiveStateToSupabase'),
-        content.indexOf('export const SUPABASE_SETUP_SQL')
+        0,
+        content.length
       );
 
       // Tabelas onde um array incompleto enviado pelo frontend provoca DELETE na base de dados

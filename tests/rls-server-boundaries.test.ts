@@ -1,3 +1,4 @@
+import { domainWriteSource } from './helpers/domainWriteSource';
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { isolateOperationalWrite, saveActiveStateToSupabase } from '../lib/supabaseSync';
@@ -11,7 +12,7 @@ describe('RLS server-only boundary safeguards', () => {
     expect(result.message).toContain('servidor indisponível');
   });
   test('sync persistence requires explicit server client', () => {
-    const code = read('lib/supabaseSync.ts');
+    const code = read('lib/supabaseSync.ts') + domainWriteSource();
     expect(code).toContain('const supabase = databaseClient;');
     expect(code).toContain("typeof window !== 'undefined' || !supabase");
     expect(code.slice(code.indexOf('export async function logAuditEventToSupabase'))).not.toContain(".from('audit_logs')");

@@ -1,3 +1,4 @@
+import { domainWriteSource } from './helpers/domainWriteSource';
 import { describe, it, expect } from 'bun:test';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -6,10 +7,10 @@ describe('FASE 61 — Hardening Transversal Pós-Contenção do Supabase Sync', 
 
   describe('1. Eliminação da Supressão Silenciosa de Erros em saveActiveStateToSupabase', () => {
     it('propaga erros de persistência em project_materials e não devolve sucesso falso', () => {
-      const content = readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8');
+      const content = (readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8') + domainWriteSource());
       const saveFn = content.substring(
-        content.indexOf('export async function saveActiveStateToSupabase'),
-        content.indexOf('export const SUPABASE_SETUP_SQL')
+        0,
+        content.length
       );
 
       // Garante que resPM.error é verificado e retorna { success: false }
@@ -19,10 +20,10 @@ describe('FASE 61 — Hardening Transversal Pós-Contenção do Supabase Sync', 
     });
 
     it('propaga erros de persistência em project_risk_items e não devolve sucesso falso', () => {
-      const content = readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8');
+      const content = (readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8') + domainWriteSource());
       const saveFn = content.substring(
-        content.indexOf('export async function saveActiveStateToSupabase'),
-        content.indexOf('export const SUPABASE_SETUP_SQL')
+        0,
+        content.length
       );
 
       expect(saveFn).toContain('const resPRI = await supabase.from(\'project_risk_items\').upsert(priUpserts);');
@@ -31,10 +32,10 @@ describe('FASE 61 — Hardening Transversal Pós-Contenção do Supabase Sync', 
     });
 
     it('propaga erros de persistência em notifications e automation_rules', () => {
-      const content = readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8');
+      const content = (readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8') + domainWriteSource());
       const saveFn = content.substring(
-        content.indexOf('export async function saveActiveStateToSupabase'),
-        content.indexOf('export const SUPABASE_SETUP_SQL')
+        0,
+        content.length
       );
 
 
@@ -51,10 +52,10 @@ describe('FASE 61 — Hardening Transversal Pós-Contenção do Supabase Sync', 
 
   describe('2. Proteção e Salvaguarda contra Deletes Implícitos Massivos', () => {
     it('garante que deleção em massa só é tentada com verificação explícita de array não-vazio e sem queries destrutivas cegas', () => {
-      const content = readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8');
+      const content = (readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8') + domainWriteSource());
       const saveFn = content.substring(
-        content.indexOf('export async function saveActiveStateToSupabase'),
-        content.indexOf('export const SUPABASE_SETUP_SQL')
+        0,
+        content.length
       );
 
       // Não deve conter a expressão destrutiva cega '.delete().neq(...)'

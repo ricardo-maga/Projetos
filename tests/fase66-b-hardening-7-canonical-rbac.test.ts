@@ -133,10 +133,10 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
 
   // 18. Static audit check: lib/supabaseSync.ts normaliza roles antes de upsert em users
   it('18. lib/supabaseSync.ts aplica normalizeRoleId nos objetos de utilizadores enviados para o Supabase', () => {
-    const filePath = join(process.cwd(), 'lib/supabaseSync.ts');
+    const filePath = join(process.cwd(), 'domains/configuration/services/writeConfiguration.ts');
     const content = readFileSync(filePath, 'utf-8');
     expect(content).toContain('role_id: normalizeRoleId(u.roleId)');
-    expect(content).toContain("'ug-1': '10000000-0000-0000-0000-000000000001'");
+    expect(readFileSync(join(process.cwd(), 'lib/supabaseSync.ts'), 'utf-8')).toContain("'ug-1': '10000000-0000-0000-0000-000000000001'");
   });
 
   it('19. migration alinha is_admin com os aliases usados pela API sem conceder permissões funcionais', () => {
