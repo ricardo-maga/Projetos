@@ -5,7 +5,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import ProjectAnalytics from '@/domains/projects/ui/ProjectAnalytics';
 import { projectDeliveryAnalysis } from '@/domains/projects/modules/projectAnalytics';
 import ProjectActivityTable from './ProjectActivityTable';
-import ProjectCommentBody from './ProjectCommentBody';
+import MarkdownCommentBody from '@/components/ui/MarkdownCommentBody';
 import MarkdownCommentComposer from '@/components/ui/MarkdownCommentComposer';
 import React, { useState, useEffect, useRef } from 'react';
 import { Project, Client, Comment, Task, TaskType, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '@/lib/types';
@@ -2380,7 +2380,7 @@ export default function ProjectSection({
                             <span className="font-bold text-text-primary">{getUserName(c.authorId)}</span>
                             <span className="text-caption text-text-muted font-mono">{new Date(c.createdDate).toLocaleDateString()}</span>
                           </div>
-                          <ProjectCommentBody text={c.comment} />
+                          <MarkdownCommentBody text={c.comment} />
                         </div>
                         <Button variant="ghost" size="sm"
                           type="button"
