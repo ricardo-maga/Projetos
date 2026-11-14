@@ -94,6 +94,7 @@ function EditableProjectDate({ label, value, field, projectId, disabled, updateP
   updateProject: (id: string, updates: any) => Promise<unknown>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [draftDate, setDraftDate] = useState(value || '');
   const [saving, setSaving] = useState(false);
   const saveInFlight = React.useRef(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -104,22 +105,22 @@ function EditableProjectDate({ label, value, field, projectId, disabled, updateP
     try { inputRef.current?.showPicker(); } catch { /* The input stays available if the browser blocks the picker. */ }
   }, [editing]);
 
-  const save = async (nextDate: string) => {
+  const save = async () => {
     if (saveInFlight.current) return;
-    if (nextDate === (value || '')) {
+    if (draftDate === (value || '')) {
       setEditing(false);
       return;
     }
     saveInFlight.current = true;
     setSaving(true);
     try {
-      await updateProject(projectId, { [field]: nextDate });
+      await updateProject(projectId, { [field]: draftDate });
+      setEditing(false);
     } catch {
-      // updateProject reports the API error; the original date stays visible.
+      // Keep the selected date available for a retry.
     } finally {
       saveInFlight.current = false;
       setSaving(false);
-      setEditing(false);
     }
   };
 
@@ -127,14 +128,19 @@ function EditableProjectDate({ label, value, field, projectId, disabled, updateP
     <div className="flex justify-between py-1 border-b border-border-subtle">
       <span className="font-medium text-text-secondary">{label}:</span>
       {editing ? (
-        <input ref={inputRef} type="date" aria-label={label} aria-busy={saving}
-          defaultValue={value || ''} disabled={saving}
-          onChange={(event) => { void save(event.target.value); }}
-          onBlur={() => { if (!saveInFlight.current) setEditing(false); }}
-          onKeyDown={(event) => { if (event.key === 'Escape') setEditing(false); }}
-          className="font-bold text-text-secondary bg-surface border border-border-subtle rounded-control" />
+        <span className="flex items-center gap-1">
+          <input ref={inputRef} type="date" aria-label={label} aria-busy={saving}
+            value={draftDate} disabled={saving}
+            onChange={(event) => setDraftDate(event.target.value)}
+            onKeyDown={(event) => { if (event.key === 'Escape') setEditing(false); }}
+            className="font-bold text-text-secondary bg-surface border border-border-subtle rounded-control" />
+          <button type="button" aria-label={`Guardar ${label}`} disabled={saving}
+            onClick={() => void save()} className="text-primary font-bold">Guardar</button>
+          <button type="button" aria-label={`Cancelar ${label}`} disabled={saving}
+            onClick={() => setEditing(false)} className="text-text-secondary">Cancelar</button>
+        </span>
       ) : (
-        <span className="font-bold" onDoubleClick={() => { if (!disabled && !saving) setEditing(true); }}
+        <span className="font-bold" onDoubleClick={() => { if (!disabled && !saving) { setDraftDate(value || ''); setEditing(true); } }}
           title={disabled ? undefined : 'Duplo clique para editar'}>{value || '-'}</span>
       )}
     </div>
@@ -1189,15 +1195,24 @@ export default function ProjectSection({
   const startProjectIndex = (validProjectPage - 1) * projectPageSize;
   const endProjectIndex = startProjectIndex + paginatedProjects.length;
 
-  // Canonical mutations refresh the parent snapshot. Prefer its newer version
-  // over the detail fetch cache so status controls and lifecycle never lag.
+  // Prefer the updated parent record over an older detail fetch.
   const canonicalSelectedProj = projects.find(p => p.id === selectedProjectId);
   const selectedProj = canonicalSelectedProj && (!serverSelectedProj || (canonicalSelectedProj.version ?? 0) >= (serverSelectedProj.version ?? 0))
     ? canonicalSelectedProj : serverSelectedProj || activeProjects.find(p => p.id === selectedProjectId);
   const projTasks = React.useMemo(() => {
     if (!selectedProjectId) return [];
     if (loadedProjectIdForTasks === selectedProjectId) {
-      return serverTasks;
+      const currentById = new Map(tasks.map(t => [t.id, t]));
+      const merged = serverTasks.flatMap(task => {
+        const current = currentById.get(task.id);
+        if (current?.deleted || (current && current.projectId !== selectedProjectId) || task.deleted) return [];
+        return [current && (current.version ?? 0) >= (task.version ?? 0) ? current : task];
+      });
+      const loadedIds = new Set(merged.map(t => t.id));
+      for (const task of currentById.values()) {
+        if (task.projectId === selectedProjectId && !task.deleted && !loadedIds.has(task.id)) merged.push(task);
+      }
+      return merged;
     }
     return tasks.filter(t => t.projectId === selectedProjectId && !t.deleted);
   }, [selectedProjectId, loadedProjectIdForTasks, serverTasks, tasks]);
@@ -4999,19 +5014,16 @@ export default function ProjectSection({
         onClose={() => setTaskModalState(prev => ({ ...prev, isOpen: false, task: null }))}
         createTask={async (newTask: any) => {
           const res = await addTask(newTask);
-          setRefreshTrigger(prev => prev + 1);
           return res;
         }}
         updateTask={async (id: string, updates: any) => {
           const res = await updateTask(id, updates);
-          setRefreshTrigger(prev => prev + 1);
           return res;
         }}
         deleteTask={async (id: string) => {
           if (deleteTask) {
             const res = await deleteTask(id);
             setServerTasks(prev => prev.filter(t => t.id !== id));
-            setRefreshTrigger(prev => prev + 1);
             return res;
           }
         }}

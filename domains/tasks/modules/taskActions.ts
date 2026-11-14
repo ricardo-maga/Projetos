@@ -83,8 +83,6 @@ export function createTaskActions({
             projects: newProjects,
           };
         });
-        await refreshFromDatabase();
-
         setSyncStatus('synced');
         return newTask;
       } else {
@@ -196,7 +194,6 @@ export function createTaskActions({
         };
       });
 
-      await refreshFromDatabase();
       setSyncStatus('synced');
       return true;
     } catch (err: any) {
