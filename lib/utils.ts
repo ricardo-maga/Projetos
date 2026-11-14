@@ -26,6 +26,7 @@ export function matchId(idA?: string | null, idB?: string | null): boolean {
 
 export interface CalculatedRiskDetails {
   score: number;
+  count: number;
   label: string;
   color: string;
   dot: string;
@@ -44,6 +45,7 @@ export function getProjectCalculatedRisk(
   if (projectRisks.length === 0) {
     return {
       score: 0,
+      count: 0,
       label: 'Baixo',
       color: 'text-emerald-700 bg-emerald-100 border-emerald-300',
       dot: '🟢'
@@ -59,13 +61,13 @@ export function getProjectCalculatedRisk(
   }
 
   if (maxScore >= 16) {
-    return { score: maxScore, label: 'Crítico', color: 'text-rose-700 bg-rose-100 border-rose-300', dot: '🔴' };
+    return { score: maxScore, count: projectRisks.length, label: 'Crítico', color: 'text-rose-700 bg-rose-100 border-rose-300', dot: '🔴' };
   } else if (maxScore >= 11) {
-    return { score: maxScore, label: 'Alto', color: 'text-orange-700 bg-orange-100 border-orange-300', dot: '🟠' };
+    return { score: maxScore, count: projectRisks.length, label: 'Alto', color: 'text-orange-700 bg-orange-100 border-orange-300', dot: '🟠' };
   } else if (maxScore >= 6) {
-    return { score: maxScore, label: 'Médio', color: 'text-amber-700 bg-amber-100 border-amber-300', dot: '🟡' };
+    return { score: maxScore, count: projectRisks.length, label: 'Médio', color: 'text-amber-700 bg-amber-100 border-amber-300', dot: '🟡' };
   } else {
-    return { score: maxScore, label: 'Baixo', color: 'text-emerald-700 bg-emerald-100 border-emerald-300', dot: '🟢' };
+    return { score: maxScore, count: projectRisks.length, label: 'Baixo', color: 'text-emerald-700 bg-emerald-100 border-emerald-300', dot: '🟢' };
   }
 }
 
