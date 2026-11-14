@@ -389,13 +389,14 @@ export default function BentoDashboard({
         </div>
         <div className="overflow-x-auto w-full">
           {forecastProjects.length === 0 ? <p className="p-5 text-body-sm text-text-muted">Sem projetos em Forecast neste mês.</p> :
-            <table aria-label="Projetos em Forecast" className="w-full min-w-[620px] text-left border-collapse text-body-sm">
+            <table aria-label="Projetos em Forecast" className="w-full min-w-[760px] text-left border-collapse text-body-sm">
               <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
-                <tr><th className="px-5 py-3.5">IP</th><th className="px-5 py-3.5">Projeto</th><th className="px-5 py-3.5">Estado</th></tr>
+                <tr><th className="px-5 py-3.5">IP</th><th className="px-5 py-3.5">Projeto</th><th className="px-5 py-3.5">Estado</th><th className="px-5 py-3.5">Prazo de entrega</th></tr>
               </thead>
               <tbody className="divide-y divide-border-subtle font-medium">
                 {forecastProjects.map(project => {
                   const status = getProjectStatusStyle(project.statusId, projectStatuses);
+                  const deliveryDate = project.scheduledDate || project.estimatedDate || project.deliveryDate;
                   return <tr key={project.id} tabIndex={0}
                     onClick={() => onSelectProject(project.id)}
                     onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectProject(project.id); } }}
@@ -403,6 +404,7 @@ export default function BentoDashboard({
                     <td className="px-5 py-3.5 font-mono font-bold text-text-primary">{project.installProjectNo || '-'}</td>
                     <td className="px-5 py-3.5"><div className="text-primary font-medium">{getClientName(project.clientId)}</div><div className="font-semibold text-text-primary">{project.title}</div></td>
                     <td className="px-5 py-3.5"><Badge className={status.badgeClass}>{status.name}</Badge></td>
+                    <td className="px-5 py-3.5 whitespace-nowrap text-text-primary">{deliveryDate ? new Date(`${deliveryDate}T00:00:00`).toLocaleDateString('pt-PT') : '—'}</td>
                   </tr>;
                 })}
               </tbody>
