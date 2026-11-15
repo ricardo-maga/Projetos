@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest) {
   if (!parsed.success || !Object.keys(parsed.data.updates).length)
     return NextResponse.json({ success: false, message: 'Configuração inválida.' }, { status: 400 });
   const updates = parsed.data.updates;
-  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const payload: Record<string, unknown> = {};
   if (updates.appName !== undefined) payload.app_name = updates.appName;
   if (updates.appDescription !== undefined) payload.app_description = updates.appDescription;
   if (updates.footerText !== undefined) payload.footer_text = updates.footerText;
@@ -57,5 +57,8 @@ export async function PATCH(req: NextRequest) {
     if (error) throw error;
     if (!data) return NextResponse.json({ success: false, message: 'A configuração foi alterada por outro utilizador. Recarregue os dados.' }, { status: 409 });
     return NextResponse.json({ success: true, data: { ...updates, syncVersion: Number(data.sync_version) } });
-  } catch { return NextResponse.json({ success: false, message: 'Não foi possível guardar a configuração.' }, { status: 503 }); }
+  } catch (error) {
+    console.error('[API CONFIGURATION PATCH EXCEPTION]', error);
+    return NextResponse.json({ success: false, message: 'Não foi possível guardar a configuração.' }, { status: 503 });
+  }
 }
