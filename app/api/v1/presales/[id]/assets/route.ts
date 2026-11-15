@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
 import { createAdminClient } from '@/lib/supabase/server';
 import { hasPermission } from '@/lib/permissions';
+import { hasImageSignature } from '@/lib/security/imageSignature';
 
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ id: string }> };
@@ -28,12 +29,17 @@ export async function POST(req: NextRequest, context: Context) {
   const file = form?.get('file');
   if (!(file instanceof File) || !mediaTypes[file.type] || file.size < 1 || file.size > 10_485_760)
     return NextResponse.json({ success: false, message: 'Envie uma imagem PNG, JPEG ou WebP até 10 MB.' }, { status: 400 });
+  const signature = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  if (!hasImageSignature(signature, file.type))
+    return NextResponse.json({ success: false, message: 'O conteúdo do ficheiro não corresponde ao formato de imagem indicado.' }, { status: 400 });
+  const filename = file.name.replace(/[\\/\u0000-\u001f\u007f]/g, '').slice(0, 255);
+  if (!filename) return NextResponse.json({ success: false, message: 'Nome de ficheiro inválido.' }, { status: 400 });
   const assetId = crypto.randomUUID();
   const path = `${id}/${assetId}.${mediaTypes[file.type]}`;
   const { error: uploadError } = await db.storage.from('presales-assets').upload(path, file, { contentType: file.type, upsert: false });
   if (uploadError) return NextResponse.json({ success: false, message: 'Não foi possível guardar a imagem.' }, { status: 500 });
   const { error: insertError } = await db.from('presales_assets').insert({ id: assetId, request_id: id,
-    storage_path: path, filename: file.name.slice(0, 255), media_type: file.type, uploaded_by: auth.user.id });
+    storage_path: path, filename, media_type: file.type, uploaded_by: auth.user.id });
   if (insertError) {
     await db.storage.from('presales-assets').remove([path]);
     return NextResponse.json({ success: false, message: 'Não foi possível registar a imagem.' }, { status: 500 });

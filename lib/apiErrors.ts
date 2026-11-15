@@ -72,11 +72,13 @@ export function conflict(message: string = 'Conflito de concorrência. O registo
   return createErrorResponse(409, 'CONFLICT', message, requestId, details);
 }
 
-export function tooManyRequests(arg1: string, arg2?: string) {
+export function tooManyRequests(arg1: string, arg2?: string, retryAfterSeconds = 60) {
   // Can be called as tooManyRequests(requestId) or tooManyRequests(message, requestId)
   const requestId = arg2 || arg1;
   const message = arg2 ? arg1 : 'Demasiados pedidos. Por favor, tente novamente mais tarde.';
-  return createErrorResponse(429, 'TOO_MANY_REQUESTS', message, requestId);
+  const response = createErrorResponse(429, 'TOO_MANY_REQUESTS', message, requestId);
+  response.headers.set('Retry-After', String(retryAfterSeconds));
+  return response;
 }
 
 export const rateLimitExceeded = tooManyRequests;

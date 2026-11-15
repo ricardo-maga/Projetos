@@ -9,12 +9,14 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { activeRelationExists, getOperationalRecord, mapProjectMaterial } from '@/lib/supabase/operationalRecords';
 import { withCanonicalErrors } from '@/lib/apiErrors';
 import { updateProjectMaterialSchema } from '@/lib/validations/operational';
+import { isSafeIdentifier } from '@/lib/security/identifiers';
 
 async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(req, 'project_materials:write');
   if (!auth.success) return auth.response;
 
   const { id } = await params;
+  if (!isSafeIdentifier(id)) return NextResponse.json({ success: false, message: 'ID de material inválido.' }, { status: 400 });
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
   }
@@ -77,6 +79,7 @@ async function deleteMaterial(req: NextRequest, { params }: { params: Promise<{ 
   if (!auth.success) return auth.response;
 
   const { id } = await params;
+  if (!isSafeIdentifier(id)) return NextResponse.json({ success: false, message: 'ID de material inválido.' }, { status: 400 });
   if (!isSupabaseConfigured) {
     return NextResponse.json({ success: false, message: 'Supabase não configurado.' }, { status: 400 });
   }

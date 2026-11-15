@@ -167,10 +167,10 @@ export const updatePlanningAllocationSchema = z
   );
 
 export const queryPlanningAllocationSchema = z.object({
-  task_id: z.string().uuid().optional(),
-  taskId: z.string().uuid().optional(),
-  resource_id: z.string().uuid().optional(),
-  resourceId: z.string().uuid().optional(),
+  task_id: z.guid().optional(),
+  taskId: z.guid().optional(),
+  resource_id: z.guid().optional(),
+  resourceId: z.guid().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),

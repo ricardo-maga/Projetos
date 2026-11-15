@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { orLike } from '@/lib/security/postgrestSearch';
 
 export interface TaskDTO {
   id: string;
@@ -477,8 +478,7 @@ export async function listTasksServer(
   if (params.statusId) query = query.eq('status_id', params.statusId);
   if (params.taskTypeId) query = query.eq('task_type_id', params.taskTypeId);
   if (params.search && params.search.trim()) {
-    const q = `%${params.search.trim()}%`;
-    query = query.or(`task_title.ilike.${q},task_description.ilike.${q},notes.ilike.${q}`);
+    query = query.or(orLike(['task_title', 'task_description', 'notes'], params.search));
   }
 
   const { data: rows, count, error } = await query

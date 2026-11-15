@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth(req);
     if (!(await checkRateLimit(`default-tasks:${user.id}`, { limit: 30, windowSeconds: 60 })).success)
-      return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429, headers: noStore });
+      return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429, headers: { ...noStore, 'Retry-After': '60' } });
     const db = requireServerDbClient(user);
     const { data: allowed, error: permissionError } = await db.rpc('has_permission', {
       p_permission_code: 'config:write', p_user_id: user.auth_user_id,

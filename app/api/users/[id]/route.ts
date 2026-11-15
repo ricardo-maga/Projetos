@@ -10,7 +10,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   try {
     const actor = await requireAuth(req);
     const { id } = await params;
-    if (!z.string().uuid().safeParse(id).success)
+    if (!z.guid().safeParse(id).success)
       return NextResponse.json({ success: false, message: 'ID inválido.' }, { status: 400 });
     const db = requireServerDbClient(actor);
     const { data: allowed, error: permissionError } = await db.rpc('has_permission', {

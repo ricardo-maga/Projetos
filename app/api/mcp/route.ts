@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { GET as getProjects } from '@/app/api/integrations/v1/projects/route';
 import { GET as getTasks } from '@/app/api/integrations/v1/tasks/route';
 import { mcpConfig, verifyMcpBearer } from '@/lib/integrations/mcpAuth';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -28,7 +29,7 @@ const handler = createMcpHandler(() => {
   }, async ({ page, pageSize, search }) => readIntegration('projects', { page: String(page), pageSize: String(pageSize), search: search || '' }));
   server.registerTool('list_project_tasks', {
     description: 'Lista tarefas de um projeto autorizado, com paginação.',
-    inputSchema: z.object({ projectId: z.string().uuid(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(50).default(25) }),
+    inputSchema: z.object({ projectId: z.guid(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(50).default(25) }),
   }, async ({ projectId, page, pageSize }) => readIntegration('tasks', { projectId, page: String(page), pageSize: String(pageSize) }));
   return server;
 }, { responseMode: 'json' });
@@ -46,6 +47,14 @@ async function serve(request: NextRequest) {
     status: 401,
     headers: { 'WWW-Authenticate': 'Bearer realm="Projetos MCP"', 'Cache-Control': 'no-store' },
   });
+  try {
+    const quota = await checkRateLimit(`mcp:user:${identity.userId}`, { limit: 60, windowSeconds: 60 });
+    if (!quota.success) return Response.json({ error: 'Limite de pedidos excedido.' }, {
+      status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil((quota.resetTime - Date.now()) / 1000))) },
+    });
+  } catch {
+    return Response.json({ error: 'Serviço de limites indisponível.' }, { status: 503 });
+  }
   return handler.fetch(request, { authInfo: { clientId: identity.userId, token: '', scopes: ['access_as_user'] } });
 }
 

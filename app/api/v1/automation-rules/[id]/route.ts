@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
   const auth = await requirePermission(req, 'config_write');
   if (!auth.success) return auth.response;
   const { id } = await params;
-  if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ success: false, message: 'ID inválido.' }, { status: 400 });
+  if (!z.guid().safeParse(id).success) return NextResponse.json({ success: false, message: 'ID inválido.' }, { status: 400 });
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ success: false, message: 'Pedido JSON inválido.' }, { status: 400 }); }
   const parsed = ruleInput.extend({ syncVersion: version }).safeParse(body);
@@ -35,7 +35,7 @@ export async function DELETE(req: NextRequest, { params }: Context) {
   const auth = await requirePermission(req, 'config_write');
   if (!auth.success) return auth.response;
   const { id } = await params;
-  if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ success: false, message: 'ID inválido.' }, { status: 400 });
+  if (!z.guid().safeParse(id).success) return NextResponse.json({ success: false, message: 'ID inválido.' }, { status: 400 });
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ success: false, message: 'Pedido JSON inválido.' }, { status: 400 }); }
   const parsed = z.object({ syncVersion: version }).safeParse(body);

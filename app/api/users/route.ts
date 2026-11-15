@@ -10,12 +10,12 @@ import { withCanonicalErrors } from '@/lib/apiErrors';
 
 const fields = z.object({
   name: z.string().trim().min(2).max(200),
-  email: z.string().trim().email().transform(value => value.toLowerCase()),
+  email: z.string().trim().max(254).email().transform(value => value.toLowerCase()),
   type: z.enum(['Team', 'Sales', 'Admin', 'External', 'Other']),
-  password: z.string().min(12).optional(),
+  password: z.string().min(12).max(1024).optional(),
 });
-const createFields = fields.extend({ password: z.string().min(12) });
-const updateFields = fields.extend({ id: z.string().uuid() });
+const createFields = fields.extend({ password: z.string().min(12).max(1024) });
+const updateFields = fields.extend({ id: z.guid() });
 
 function failure(error: unknown) {
   const status = error instanceof AuthError ? error.statusCode : 500;
@@ -25,7 +25,7 @@ function failure(error: unknown) {
 async function createUser(req: NextRequest) {
   try {
     const actor = await requirePermission(req, 'users_write');
-    const parsed = createFields.safeParse(await req.json());
+    const parsed = createFields.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ success: false, message: 'Nome, email, tipo ou password inválidos.' }, { status: 400 });
     const admin = createAdminClient();
     if (!admin) throw new AuthError('Serviço de autenticação indisponível.', 503);
@@ -69,7 +69,7 @@ async function createUser(req: NextRequest) {
 async function updateUser(req: NextRequest) {
   try {
     const actor = await requirePermission(req, 'users_write');
-    const parsed = updateFields.safeParse(await req.json());
+    const parsed = updateFields.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ success: false, message: 'Dados do utilizador inválidos.' }, { status: 400 });
     const admin = createAdminClient();
     if (!admin) throw new AuthError('Serviço de autenticação indisponível.', 503);

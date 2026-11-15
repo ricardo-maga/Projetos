@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-const optionalId = z.union([z.string().uuid(), z.literal('')]);
+const optionalId = z.union([z.guid(), z.literal('')]);
 export const riskInput = z.object({
-  projectId: z.string().uuid(), title: z.string().trim().min(1).max(500),
+  projectId: z.guid(), title: z.string().trim().min(1).max(500),
   categoryId: optionalId.default(''), identificationDate: z.iso.date(), ownerId: optionalId.default(''),
-  description: z.string().default(''), consequence: z.string().default(''),
+  description: z.string().max(10000).default(''), consequence: z.string().max(10000).default(''),
   probability: z.number().int().min(1).max(5), impact: z.number().int().min(1).max(5),
-  mitigationPlan: z.string().default(''), contingencyPlan: z.string().default(''),
+  mitigationPlan: z.string().max(10000).default(''), contingencyPlan: z.string().max(10000).default(''),
   reviewDate: z.union([z.iso.date(), z.literal('')]).default(''),
   statusId: optionalId.default(''), priorityId: optionalId.default(''),
 });

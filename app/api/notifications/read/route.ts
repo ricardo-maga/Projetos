@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthError, requireAuth } from '@/lib/auth/requireAuth';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,9 +9,13 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth(req);
     const db = requireServerDbClient(user);
-    const body = await req.json();
-    if (!body || (body.all !== true && (typeof body.id !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.id))))
+    const parsed = z.union([
+      z.object({ all: z.literal(true) }),
+      z.object({ id: z.guid(), all: z.literal(false).optional() }),
+    ]).safeParse(await req.json().catch(() => null));
+    if (!parsed.success)
       return NextResponse.json({ message: 'Pedido inválido.' }, { status: 400 });
+    const body = parsed.data;
 
     let query = db.from('notifications').select('id').or(`user_id.eq.${user.id},user_id.is.null`)
       .order('created_at', { ascending: false }).limit(200);

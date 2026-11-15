@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AuthError, ForbiddenError, requireAuth } from '@/lib/auth/requireAuth';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 import { notificationTypes } from '@/lib/notificationCatalog';
+import { z } from 'zod';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,10 +13,10 @@ export async function POST(req: NextRequest) {
     });
     if (permissionError) throw new AuthError('Serviço de autorização indisponível.', 503);
     if (allowed !== true) throw new ForbiddenError();
-    const body = await req.json();
-    const type = body?.type;
-    if (typeof type !== 'string' || !Object.hasOwn(notificationTypes, type))
+    const parsed = z.object({ type: z.string().max(100) }).safeParse(await req.json().catch(() => null));
+    if (!parsed.success || !Object.hasOwn(notificationTypes, parsed.data.type))
       return NextResponse.json({ message: 'Notificação inválida.' }, { status: 400 });
+    const type = parsed.data.type;
     const sample = notificationTypes[type];
     const { error } = await db.from('notifications').insert({
       user_id: user.id, title: `[Teste] ${sample.name}`, message: sample.sample,

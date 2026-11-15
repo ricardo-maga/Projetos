@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 import { badRequest, internalServerError } from '@/lib/apiErrors';
+import { z } from 'zod';
 
 export async function GET(req: NextRequest) {
   const auth = await requirePermission(req, 'projects_read');
@@ -14,7 +15,8 @@ export async function GET(req: NextRequest) {
   const field = params.get('field');
   const value = params.get('value')?.trim();
   const excludeId = params.get('excludeId');
-  if ((field !== 'ip' && field !== 'sf') || !value || value.length > 200) {
+  if ((field !== 'ip' && field !== 'sf') || !value || value.length > 200 ||
+    (excludeId && !z.guid().safeParse(excludeId).success)) {
     return badRequest('Valor de projeto inválido.', auth.requestId);
   }
 

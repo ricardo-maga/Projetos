@@ -3,6 +3,7 @@ import { AuthError, ForbiddenError, requireAuth } from '@/lib/auth/requireAuth';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { withCanonicalErrors } from '@/lib/apiErrors';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,18 +38,18 @@ async function createAuditEvent(req: NextRequest) {
   try {
     const user = await requireAuth(req);
     if (!(await checkRateLimit(`audit-client:${user.id}`, { limit: 30, windowSeconds: 60 })).success)
-      return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429 });
+      return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429, headers: { 'Retry-After': '60' } });
     if (Number(req.headers.get('content-length') || 0) > 4096)
       return NextResponse.json({ success: false, message: 'Pedido demasiado grande.' }, { status: 413 });
-    const body = await req.json();
-    const allowed = ['CREATE','UPDATE','DELETE','LOGIN','LOGOUT','EXPORT','SETTINGS'];
-    if (!body || !allowed.includes(body.action))
+    const parsed = z.object({ action: z.enum(['CREATE','UPDATE','DELETE','LOGIN','LOGOUT','EXPORT','SETTINGS']) })
+      .safeParse(await req.json().catch(() => null));
+    if (!parsed.success)
       return NextResponse.json({ success: false, message: 'Evento inválido.' }, { status: 400 });
     // Client reports are explicitly non-authoritative. Ignore caller identity,
     // timestamps, arbitrary details and entity identifiers (including secrets).
     const { error } = await requireServerDbClient(user).from('audit_logs').insert({
       user_id: user.id, user_name: user.name, user_email: user.email,
-      action: 'CLIENT_EVENT', entity_type: 'SYSTEM', entity_name: body.action,
+      action: 'CLIENT_EVENT', entity_type: 'SYSTEM', entity_name: parsed.data.action,
       details: 'Evento comunicado pelo cliente; não comprova uma operação na base de dados.',
       created_at: new Date().toISOString(),
     });

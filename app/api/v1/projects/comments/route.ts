@@ -6,13 +6,13 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 
-const input = z.object({ projectId: z.string().uuid(), comment: z.string().trim().min(1).max(20000) });
+const input = z.object({ projectId: z.guid(), comment: z.string().trim().min(1).max(20000) });
 
 export async function POST(req: NextRequest) {
   const auth = await requirePermission(req, 'projects_write');
   if (!auth.success) return auth.response;
   if (!(await checkRateLimit(`comment-create:${auth.user.id}`, { limit: 30, windowSeconds: 60 })).success)
-    return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429 });
+    return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429, headers: { 'Retry-After': '60' } });
   let body: unknown;
   try { body = await req.json(); }
   catch { return NextResponse.json({ success: false, message: 'Pedido JSON inválido.' }, { status: 400 }); }

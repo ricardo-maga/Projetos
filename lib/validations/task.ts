@@ -26,8 +26,8 @@ const optionalNullableProjectId = z
 
 export const createTaskSchema = z.object({
   projectId: optionalNullableProjectId.default(null),
-  title: z.string().trim().min(2, 'O título da tarefa deve ter no mínimo 2 caracteres'),
-  description: z.string().optional().default(''),
+  title: z.string().trim().min(2, 'O título da tarefa deve ter no mínimo 2 caracteres').max(255),
+  description: z.string().max(10000).optional().default(''),
   statusId: z.string().trim().min(1, 'O estado da tarefa é obrigatório'),
   taskTypeId: z.string().trim().min(1, 'O tipo de tarefa é obrigatório'),
   priorityId: z.string().nullable().optional().transform((val) => (val === '' ? null : val)),
@@ -39,9 +39,9 @@ export const createTaskSchema = z.object({
   endTime: optionalDateField,
   estimatedDate: optionalDateField,
   completedDate: optionalDateField,
-  notes: z.string().optional(),
+  notes: z.string().max(10000).optional(),
   assignedUserIds: z
-    .array(z.string())
+    .array(z.string().regex(/^[A-Za-z0-9_-]{1,64}$/)).max(100)
     .optional()
     .default([])
     .transform((ids) => ids.filter((id) => Boolean(id && id.trim()))),
@@ -82,8 +82,8 @@ export const createTaskSchema = z.object({
 
 export const updateTaskSchema = z.object({
   projectId: optionalNullableProjectId,
-  title: z.string().trim().min(2, 'O título da tarefa deve ter no mínimo 2 caracteres').optional(),
-  description: z.string().optional(),
+  title: z.string().trim().min(2, 'O título da tarefa deve ter no mínimo 2 caracteres').max(255).optional(),
+  description: z.string().max(10000).optional(),
   statusId: z.string().optional(),
   taskTypeId: z
     .string()
@@ -99,9 +99,9 @@ export const updateTaskSchema = z.object({
   endTime: optionalDateField,
   estimatedDate: optionalDateField,
   completedDate: optionalDateField,
-  notes: z.string().optional(),
+  notes: z.string().max(10000).optional(),
   assignedUserIds: z
-    .array(z.string())
+    .array(z.string().regex(/^[A-Za-z0-9_-]{1,64}$/)).max(100)
     .optional()
     .transform((ids) => (ids ? ids.filter((id) => Boolean(id && id.trim())) : undefined)),
   version: z.number({ error: 'A versão da tarefa é obrigatória.' })
@@ -134,9 +134,9 @@ export const updateTaskSchema = z.object({
 export const queryTaskSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
-  search: z.string().optional().default(''),
-  projectId: z.string().optional(),
-  statusId: z.string().optional(),
-  taskTypeId: z.string().optional(),
-  userId: z.string().optional(),
+  search: z.string().max(100).regex(/^[^\u0000-\u001f\u007f]*$/).optional().default(''),
+  projectId: z.guid().optional(),
+  statusId: z.guid().optional(),
+  taskTypeId: z.guid().optional(),
+  userId: z.guid().optional(),
 });

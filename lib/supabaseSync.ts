@@ -26,6 +26,7 @@ import { ERPState, Project, Task, Comment, UserAbsence, User, Client, SpecialDay
 import { getProjectsServerData } from './projects/projectService';
 import { normalizeRoleId } from './permissions';
 import { getAuthHeaders } from './clientAuth';
+import { orLike } from './security/postgrestSearch';
 
 const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
@@ -979,8 +980,7 @@ export async function fetchPaginatedTasksDirectly(params: {
     }
 
     if (params.search && params.search.trim()) {
-      const q = `%${params.search.trim()}%`;
-      query = query.or(`task_title.ilike.${q},task_description.ilike.${q},notes.ilike.${q}`);
+      query = query.or(orLike(['task_title', 'task_description', 'notes'], params.search));
     }
 
     // Uses idx_tasks_project_deleted and idx_tasks_deleted_created_at

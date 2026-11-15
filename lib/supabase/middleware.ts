@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { authCookieLifetime, SESSION_PREFERENCE_COOKIE } from '@/lib/auth/sessionPersistence';
+import { consumeEdgeQuota, quotaResponse, quotaUnavailable } from '@/lib/security/edgeRateLimit';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -45,7 +46,18 @@ export async function updateSession(request: NextRequest) {
 
   // IMPORTANT: Do not run any logic between createServerClient and getUser().
   try {
-    await supabase.auth.getUser();
+    const bearer = request.headers.get('authorization')?.match(/^Bearer (.+)$/)?.[1];
+    const { data } = await supabase.auth.getUser(bearer);
+    if (data.user && request.nextUrl.pathname.startsWith('/api/')) {
+      const kind = request.method === 'GET' || request.method === 'HEAD' ? 'read' : 'write';
+      const limit = kind === 'read' ? 240 : 60;
+      try {
+        const quota = quotaResponse(await consumeEdgeQuota(`api:user:${kind}:${data.user.id}`, limit), requestId);
+        if (quota) return quota;
+      } catch {
+        return quotaUnavailable(requestId);
+      }
+    }
   } catch {
     // Ignore missing session errors during unauthenticated requests
   }

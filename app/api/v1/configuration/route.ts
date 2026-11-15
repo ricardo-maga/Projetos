@@ -8,9 +8,9 @@ import { getServerDbClient } from '@/lib/supabase/server';
 const changes = z.object({
   appName: z.string().max(200).optional(), appDescription: z.string().max(2000).optional(),
   footerText: z.string().max(2000).optional(), footerCopyrightText: z.string().max(2000).optional(),
-  logo: z.string().optional(), logoImagePath: z.string().optional(), theme: z.string().max(100).optional(),
-  salesRepGroupIds: z.array(z.string().uuid()).optional(), projManagerGroupIds: z.array(z.string().uuid()).optional(),
-  fieldManagerGroupIds: z.array(z.string().uuid()).optional(), taskAssigneeGroupIds: z.array(z.string().uuid()).optional(),
+  logo: z.string().max(524288).optional(), logoImagePath: z.string().max(524288).optional(), theme: z.string().max(100).optional(),
+  salesRepGroupIds: z.array(z.guid()).optional(), projManagerGroupIds: z.array(z.guid()).optional(),
+  fieldManagerGroupIds: z.array(z.guid()).optional(), taskAssigneeGroupIds: z.array(z.guid()).optional(),
   salesRepGroupId: z.string().optional(), projManagerGroupId: z.string().optional(),
   fieldManagerGroupId: z.string().optional(), taskAssigneeGroupId: z.string().optional(),
 }).strict();

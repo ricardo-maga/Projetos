@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Briefcase } from 'lucide-react';
+import { safeLogoSource } from '@/lib/security/logoSource';
 
 interface AppLogoProps {
   logoUrl?: string;
@@ -38,35 +39,9 @@ export default function AppLogo({
   }
 
   const [imageError, setImageError] = useState(false);
-  const [svgContent, setSvgContent] = useState<string | null>(null);
-
-  const isInlineSvg = cleanLogo.startsWith('<svg') || cleanLogo.startsWith('<?xml') || cleanLogo.toLowerCase().includes('<svg');
-  const isSvgUrl = !isInlineSvg && (cleanLogo.toLowerCase().endsWith('.svg') || cleanLogo.toLowerCase().includes('.svg?'));
-
-  // Reset error and fetch SVG text if it's an SVG URL
-  useEffect(() => {
-    setImageError(false);
-    setSvgContent(null);
-
-    // If it's an SVG URL, try to fetch the raw SVG text so it renders seamlessly without img/cross-origin restrictions
-    if (isSvgUrl && (cleanLogo.startsWith('http://') || cleanLogo.startsWith('https://') || cleanLogo.startsWith('/'))) {
-      let active = true;
-      fetch(cleanLogo, { mode: 'cors' })
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch SVG');
-          return res.text();
-        })
-        .then(text => {
-          if (active && text && (text.includes('<svg') || text.includes('<?xml'))) {
-            setSvgContent(text);
-          }
-        })
-        .catch(() => {
-          // Fallback to img tag if fetch fails
-        });
-      return () => { active = false; };
-    }
-  }, [cleanLogo, isSvgUrl]);
+  // SVG remains an image document, never HTML in the application's DOM.
+  const safeLogoSrc = safeLogoSource(cleanLogo);
+  useEffect(() => setImageError(false), [safeLogoSrc]);
 
   // Helper to extract clean initials or acronym for fallback badge
   const appWords = (appName || '').trim().split(/\s+/).filter(Boolean);
@@ -74,7 +49,7 @@ export default function AppLogo({
     ? (appWords[0].charAt(0) + appWords[1].charAt(0)).toUpperCase()
     : (appName ? appName.slice(0, 3).toUpperCase() : '');
 
-  if (!cleanLogo || (imageError && !svgContent)) {
+  if (!safeLogoSrc || imageError) {
     return (
       <div className={`${logoClassName} relative bg-blue-600 flex items-center justify-center text-white font-extrabold shrink-0 select-none overflow-hidden px-3 gap-2 shadow-2xs`}>
         <Briefcase className={fallbackIconClassName} />
@@ -87,24 +62,12 @@ export default function AppLogo({
     );
   }
 
-  // 1. Inline SVG or fetched SVG text
-  const svgToRender = isInlineSvg ? cleanLogo : svgContent;
-  if (svgToRender) {
-    return (
-      <div 
-        className={`${logoClassName} relative flex items-center justify-center shrink-0 overflow-hidden [&_svg]:w-full [&_svg]:h-full [&_svg]:max-w-full [&_svg]:max-h-full [&_svg]:object-contain`}
-        dangerouslySetInnerHTML={{ __html: svgToRender }}
-      />
-    );
-  }
-
-  // 2. Standard Image URL, relative path (/logo.svg), data URI (data:image/svg+xml...) or SVG/PNG/JPG/WEBP URL
   return (
     <div className={`${logoClassName} flex items-center justify-center shrink-0 overflow-hidden relative`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        key={cleanLogo}
-        src={cleanLogo}
+        key={safeLogoSrc}
+        src={safeLogoSrc}
         alt={appName}
         referrerPolicy="no-referrer"
         crossOrigin="anonymous"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calendarFeedDb, hashFeedToken, loadCalendarFeedData, validFeedScope } from '@/domains/calendar/data/calendarFeedServer';
 import { renderCalendarFeed } from '@/domains/calendar/modules/calendarFeeds';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ scope: string; token: string }> };
@@ -12,6 +13,10 @@ export async function GET(_req: NextRequest, context: Context) {
     return new NextResponse(null, { status: 404, headers });
   const token = filename.slice(0, -4);
   try {
+    const quota = await checkRateLimit(`calendar-feed:${hashFeedToken(token)}`, { limit: 60, windowSeconds: 60 });
+    if (!quota.success) return new NextResponse(null, { status: 429, headers: {
+      ...headers, 'Retry-After': String(Math.max(1, Math.ceil((quota.resetTime - Date.now()) / 1000))),
+    } });
     const db = calendarFeedDb();
     const { data: subscription, error: tokenError } = await db.from('calendar_feed_tokens')
       .select('user_id').eq('scope', scope).eq('token_hash', hashFeedToken(token)).maybeSingle();
