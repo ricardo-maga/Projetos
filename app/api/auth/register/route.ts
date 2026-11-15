@@ -7,10 +7,11 @@ import { registerSchema } from '@/lib/validations/auth';
 import { rateLimitExceeded, validationError, badRequest, internalServerError } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
+import { clientIp } from '@/lib/security/clientIp';
 
 export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
+  const ip = clientIp(req);
 
   // 1. Rate limiting (3 registrations per minute per IP)
   const rateLimit = await checkRateLimit(`register:${ip}`, { limit: 3, windowSeconds: 60 });

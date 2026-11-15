@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Project } from '@/lib/types';
 import { projectScopeFilter } from '@/lib/integrations/scope';
+import { orLike, quotedLikePattern } from '@/lib/security/postgrestSearch';
 
 export interface GetProjectsServerDataOptions {
   allowedClientIds?: string[];
@@ -60,20 +61,21 @@ export async function getProjectsServerData(
   // 1. Search Filter
   if (options.search && options.search.trim()) {
     const q = `%${options.search.trim()}%`;
+    const safePattern = quotedLikePattern(options.search);
     const { data: matchedClients } = await client
       .from('clients')
       .select('id')
-      .or(`client_name.ilike.${q},short_name.ilike.${q}`);
+      .or(orLike(['client_name', 'short_name'], options.search));
     const clientIds = (matchedClients || []).map((c: any) => c.id);
 
     const { data: matchedUsers } = await client.from('users').select('id').ilike('name', q);
     const userIds = (matchedUsers || []).map((u: any) => u.id);
 
     let orClauses = [
-      `project_title.ilike.${q}`,
-      `project_description.ilike.${q}`,
-      `install_project_no.ilike.${q}`,
-      `sf_opportunity_no.ilike.${q}`,
+      `project_title.ilike.${safePattern}`,
+      `project_description.ilike.${safePattern}`,
+      `install_project_no.ilike.${safePattern}`,
+      `sf_opportunity_no.ilike.${safePattern}`,
     ];
     if (clientIds.length > 0) {
       clientIds.forEach(cid => orClauses.push(`client_id.eq.${cid}`));

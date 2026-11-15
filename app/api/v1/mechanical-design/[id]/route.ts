@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, context: Context) {
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode consultar pedidos de desenho.' }, { status: 403 });
   const { id } = await context.params;
-  if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ success: false, message: 'Identificador inválido.' }, { status: 400 });
+  if (!z.guid().safeParse(id).success) return NextResponse.json({ success: false, message: 'Identificador inválido.' }, { status: 400 });
   try {
     const db = createAdminClient();
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, context: Context) {
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode gerir pedidos de desenho.' }, { status: 403 });
   const { id } = await context.params;
-  if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ success: false, message: 'Identificador inválido.' }, { status: 400 });
+  if (!z.guid().safeParse(id).success) return NextResponse.json({ success: false, message: 'Identificador inválido.' }, { status: 400 });
   const parsed = manageDesignSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: 'Operação inválida.', details: parsed.error.flatten() }, { status: 400 });
   const requiredPermission = ['start','block','resume','complete','file','deliver'].includes(parsed.data.action)
@@ -112,7 +112,7 @@ export async function DELETE(req: NextRequest, context: Context) {
   if (!auth.success) return auth.response;
   const { id } = await context.params;
   const version = Number(new URL(req.url).searchParams.get('version'));
-  if (!z.string().uuid().safeParse(id).success || !Number.isInteger(version) || version < 1)
+  if (!z.guid().safeParse(id).success || !Number.isInteger(version) || version < 1)
     return NextResponse.json({ success: false, message: 'Pedido ou versão inválidos.' }, { status: 400 });
   const db = createAdminClient();
   if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });

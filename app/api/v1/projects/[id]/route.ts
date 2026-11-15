@@ -9,6 +9,7 @@ import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 import { getProject, updateProject, deleteProject } from '@/domains/projects/modules/projectService';
+import { isSafeIdentifier } from '@/lib/security/identifiers';
 
 async function getIdFromParams(input: any): Promise<string> {
   if (!input) return '';
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest, ctx: any) {
 
   const id = await getIdFromParams(ctx);
   const { requestId } = auth;
+  if (!isSafeIdentifier(id)) return badRequest('ID de projeto inválido.', requestId);
 
   try {
     const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
@@ -61,6 +63,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
 
   const id = await getIdFromParams(ctx);
   const { user, requestId } = auth;
+  if (!isSafeIdentifier(id)) return badRequest('ID de projeto inválido.', requestId);
 
   try {
     let rawBody: unknown;
@@ -179,6 +182,7 @@ export async function DELETE(req: NextRequest, ctx: any) {
 
   const id = await getIdFromParams(ctx);
   const { user, requestId } = auth;
+  if (!isSafeIdentifier(id)) return badRequest('ID de projeto inválido.', requestId);
 
   try {
     const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;

@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic';
 const createSchema = z.object({
   name: z.string().trim().min(1).max(100),
   permissions: z.array(z.enum(['projects:read', 'tasks:read'])).min(1),
-  clientIds: z.array(z.uuid()).max(100).default([]),
-  projectIds: z.array(z.uuid()).max(100).default([]),
+  clientIds: z.array(z.guid()).max(100).default([]),
+  projectIds: z.array(z.guid()).max(100).default([]),
   expiresAt: z.iso.datetime({ offset: true }),
   rateLimitPerMinute: z.number().int().min(1).max(600).default(60),
 }).refine(value => value.clientIds.length + value.projectIds.length > 0, 'Indique clientes ou projetos autorizados.');

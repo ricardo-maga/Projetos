@@ -8,7 +8,7 @@ import { referenceCollection, referenceTables } from '@/domains/administration/d
 
 const input = z.object({
   collection: referenceCollection,
-  rows: z.array(z.object({ id: z.string().uuid(), syncVersion: z.number().int().positive(), sortOrder: z.number().int().nonnegative() })).min(1).max(100),
+  rows: z.array(z.object({ id: z.guid(), syncVersion: z.number().int().positive(), sortOrder: z.number().int().nonnegative() })).min(1).max(100),
 });
 
 export async function POST(req: NextRequest) {

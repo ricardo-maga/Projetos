@@ -63,7 +63,7 @@ describe('FASE 33-C1 — Verificação Estática de Contrato da API de Clients c
     it('concentra filtros, paginação e colunas SQL no repositório e mapeador', () => {
       expect(repository).toContain(".eq('deleted', false)");
       expect(repository).toContain(".order('client_name', { ascending: true }).range(from, to)");
-      expect(repository).toContain('client_name.ilike');
+      expect(repository).toContain("orLike(['client_name'");
       expect(mapper).toContain('clientName: row.client_name');
       expect(mapper).toContain('taxId: row.tax_id');
       expect(mapper).toContain('createdDate: row.created_at');

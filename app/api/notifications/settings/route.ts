@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest) {
     if (permissionError) throw new AuthError('Serviço de autorização indisponível.', 503);
     if (allowed !== true) throw new ForbiddenError();
 
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
     if (!body || !types.has(body.type) || !body.updates || typeof body.updates !== 'object' || Array.isArray(body.updates))
       return NextResponse.json({ message: 'Definição inválida.' }, { status: 400 });
     const updates = body.updates as Record<string, unknown>;

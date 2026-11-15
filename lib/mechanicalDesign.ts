@@ -27,7 +27,7 @@ export const createDesignSchema = z.object({
   priorityId: uuid.nullable().default(null),
 }).refine(value => value.plannedEndDate >= value.plannedStartDate, { path: ['plannedEndDate'] });
 export const manageDesignSchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('accept'), version: z.number().int().positive(), assigneeIds: z.array(uuid).min(1), estimatedDays }),
+  z.object({ action: z.literal('accept'), version: z.number().int().positive(), assigneeIds: z.array(uuid).min(1).max(30), estimatedDays }),
   z.object({ action: z.literal('reject'), version: z.number().int().positive() }),
   z.object({ action: z.literal('edit'), version: z.number().int().positive(), instructions: z.string().max(10000),
     deliverables: z.string().max(10000), fileIdentifier: z.string().max(300), fileRevision: z.string().max(100),
@@ -41,9 +41,9 @@ export const manageDesignSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('file'), version: z.number().int().positive(),
     fileIdentifier: z.string().trim().min(1).max(300), fileRevision: z.string().trim().min(1).max(100) }),
   z.object({ action: z.literal('add_task'), version: z.number().int().positive(), title: z.string().trim().min(2).max(200),
-    description: z.string().max(10000).default(''), assigneeIds: z.array(uuid).min(1), estimatedDays }),
+    description: z.string().max(10000).default(''), assigneeIds: z.array(uuid).min(1).max(30), estimatedDays }),
   z.object({ action: z.literal('assign_task'), version: z.number().int().positive(), taskId: uuid,
-    assigneeIds: z.array(uuid).min(1) }),
+    assigneeIds: z.array(uuid).min(1).max(30) }),
   z.object({ action: z.enum(['start','block','resume','complete','reopen']), taskId: uuid,
     taskVersion: z.number().int().positive(), reason: z.string().max(1000).optional() }),
 ]);

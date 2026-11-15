@@ -8,6 +8,7 @@ import { updateClientSchema } from '@/domains/clients/contracts/client';
 import { editClient, getClient, removeClient } from '@/domains/clients/modules/clientService';
 import { clientErrorResponse } from '../clientError';
 import { badRequest, internalServerError, validationError } from '@/lib/apiErrors';
+import { isSafeIdentifier } from '@/lib/security/identifiers';
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -16,6 +17,7 @@ export async function GET(req: NextRequest, { params }: Context) {
   if (!auth.success) return auth.response;
   const { id } = await params;
   const { requestId } = auth;
+  if (!isSafeIdentifier(id)) return badRequest('ID de cliente inválido.', requestId);
   try {
     const db = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!db) return internalServerError('Base de dados Supabase não disponível.', requestId);
@@ -38,6 +40,7 @@ async function handleUpdate(req: NextRequest, params: Context['params']) {
   if (!auth.success) return auth.response;
   const { id } = await params;
   const { user, requestId } = auth;
+  if (!isSafeIdentifier(id)) return badRequest('ID de cliente inválido.', requestId);
   try {
     let body: unknown;
     try { body = await req.json(); }
@@ -58,6 +61,7 @@ export async function DELETE(req: NextRequest, { params }: Context) {
   if (!auth.success) return auth.response;
   const { id } = await params;
   const { user, requestId } = auth;
+  if (!isSafeIdentifier(id)) return badRequest('ID de cliente inválido.', requestId);
   try {
     const db = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!db) return internalServerError('Base de dados Supabase não disponível.', requestId);

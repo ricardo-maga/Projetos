@@ -7,13 +7,13 @@ export const ruleInput = z.object({
   enabled: z.boolean(),
   triggerType: z.enum(['project_status_changed', 'task_status_changed', 'task_created', 'presales_created', 'presales_status_changed']),
   triggerCondition: z.object({
-    fromStatusId: z.string().optional(), toStatusId: z.string().optional(),
+    fromStatusId: z.guid().optional(), toStatusId: z.guid().optional(),
     toPresalesStatus: z.enum(['submitted', 'accepted', 'suspended', 'won', 'lost']).optional(),
   }).optional(),
   actions: z.array(z.object({
     type: z.enum(['create_default_tasks', 'change_project_status', 'send_notification']),
-    params: z.object({ targetStatusId: z.string().optional(), notificationTitle: z.string().optional(), notificationMessage: z.string().optional() }).optional(),
-  })).min(1),
+    params: z.object({ targetStatusId: z.guid().optional(), notificationTitle: z.string().max(200).optional(), notificationMessage: z.string().max(2000).optional() }).optional(),
+  })).min(1).max(20),
 });
 
 export function mapRule(row: any): AutomationRule {

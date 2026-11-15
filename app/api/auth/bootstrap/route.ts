@@ -7,6 +7,7 @@ import { checkRateLimit } from '@/lib/rateLimit';
 import { logAuditEvent } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import { badRequest, forbidden, tooManyRequests, validationError, internalServerError } from '@/lib/apiErrors';
+import { clientIp } from '@/lib/security/clientIp';
 
 export async function POST(req: NextRequest) {
   const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
@@ -15,12 +16,12 @@ export async function POST(req: NextRequest) {
   if (process.env.VERCEL_ENV === 'production') {
     return forbidden('O bootstrap administrativo está permanentemente desativado em produção.', requestId);
   }
-  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  const ip = clientIp(req);
 
   // 1. Rate limiting: 5 attempts per IP per hour
   const rateCheck = await checkRateLimit(`bootstrap_${ip}`, { limit: 5, windowSeconds: 3600 });
   if (!rateCheck.success) {
-    return tooManyRequests('Demasiadas tentativas de bootstrap. Tente novamente mais tarde.', requestId);
+    return tooManyRequests('Demasiadas tentativas de bootstrap. Tente novamente mais tarde.', requestId, 3600);
   }
 
   // 2. Check if bootstrap is enabled in environment
@@ -81,40 +82,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Create or configure admin user in Supabase Auth
-    let authUserId: string | null = null;
+    // Bootstrap may create a new identity only. In particular, it must never
+    // turn an existing deleted profile into an approved administrator.
+    if (adminEmail.trim().toLowerCase() === 'ricardo75@gmail.com')
+      return forbidden('A conta indicada não pode ser utilizada para bootstrap.', requestId);
+    const { data: existingProfile, error: profileError } = await sb.from('users')
+      .select('id').ilike('email', adminEmail.trim()).maybeSingle();
+    if (profileError) return internalServerError('Não foi possível validar a conta indicada.', requestId);
+    if (existingProfile) return forbidden('A conta indicada já existe.', requestId);
 
-    {
-      // Use Admin API to create user with email confirmed
-      const { data: createdAuthUser, error: authError } = await adminSb.auth.admin.createUser({
-        email: adminEmail,
-        password: adminPassword,
-        email_confirm: true,
-        user_metadata: { name: adminName || 'Super Administrador' },
-      });
-
-      if (authError) {
-        // If user already exists in auth, update password
-        if (authError.message.includes('already') || authError.message.includes('exists')) {
-          const { data: listData } = await adminSb.auth.admin.listUsers();
-          const target = listData?.users?.find((u) => u.email?.toLowerCase() === adminEmail.toLowerCase());
-          if (target) {
-            authUserId = target.id;
-            const { error: updateError } = await adminSb.auth.admin.updateUserById(target.id, {
-              password: adminPassword,
-              email_confirm: true,
-              user_metadata: { name: adminName || 'Super Administrador' },
-            });
-            if (updateError) return internalServerError('Não foi possível atualizar a conta Auth.', requestId);
-          }
-        } else {
-          return badRequest(`Erro ao criar utilizador no Supabase Auth: ${authError.message}`, requestId);
-        }
-      } else if (createdAuthUser?.user) {
-        authUserId = createdAuthUser.user.id;
-      }
-    }
-    if (!authUserId) return internalServerError('Não foi possível identificar a conta Auth.', requestId);
+    // 5. Create a new administrator in Supabase Auth.
+    const { data: createdAuthUser, error: authError } = await adminSb.auth.admin.createUser({
+      email: adminEmail,
+      password: adminPassword,
+      email_confirm: true,
+      user_metadata: { name: adminName || 'Super Administrador' },
+    });
+    if (authError || !createdAuthUser.user)
+      return badRequest('Não foi possível criar a conta administrativa.', requestId);
+    const authUserId = createdAuthUser.user.id;
 
     // 6. Associate with users table as SUPER_ADMIN
     const targetUserId = authUserId;
@@ -130,11 +116,12 @@ export async function POST(req: NextRequest) {
         type: 'Team',
         role_id: '10000000-0000-0000-0000-000000000001', // Canonical RBAC SUPER_ADMIN
       },
-      { onConflict: 'email' }
+      { onConflict: 'id' }
     );
 
     if (upsertError) {
       console.error('Error inserting user profile during bootstrap:', upsertError);
+      await adminSb.auth.admin.deleteUser(authUserId);
       return internalServerError('Falha ao gravar perfil administrativo.', requestId);
     }
     const { error: roleError } = await sb.from('user_roles').upsert({

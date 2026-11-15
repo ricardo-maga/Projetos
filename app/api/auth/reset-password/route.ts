@@ -8,10 +8,11 @@ import { rateLimitExceeded, validationError, internalServerError } from '@/lib/a
 import { logAuditEvent } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
+import { clientIp } from '@/lib/security/clientIp';
 
 export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
+  const ip = clientIp(req);
 
   // 1. Rate limiting (3 requests per minute per IP)
   const rateLimit = await checkRateLimit(`reset-pwd:${ip}`, { limit: 3, windowSeconds: 60 });

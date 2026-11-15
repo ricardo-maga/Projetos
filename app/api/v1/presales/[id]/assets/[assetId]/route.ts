@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
 import { createAdminClient } from '@/lib/supabase/server';
+import { hasImageSignature } from '@/lib/security/imageSignature';
 
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ id: string; assetId: string }> };
@@ -21,6 +22,8 @@ export async function GET(req: NextRequest, context: Context) {
   if (!asset) return NextResponse.json({ success: false, message: 'Imagem inexistente.' }, { status: 404 });
   const { data: blob, error: downloadError } = await db.storage.from('presales-assets').download(asset.storage_path);
   if (downloadError || !blob) return NextResponse.json({ success: false, message: 'Imagem indisponível.' }, { status: 503 });
+  if (!hasImageSignature(new Uint8Array(await blob.slice(0, 16).arrayBuffer()), asset.media_type))
+    return NextResponse.json({ success: false, message: 'Formato de imagem inválido.' }, { status: 415 });
   return new Response(blob, { headers: { 'Content-Type': asset.media_type,
     'Content-Disposition': 'inline', 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
 }

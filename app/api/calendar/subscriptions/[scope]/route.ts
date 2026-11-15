@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, context: Context) {
   try {
     const user = await requirePermission(req, 'calendar_read');
     if (!(await checkRateLimit(`calendar-feed-rotate:${user.id}`, { limit: 10, windowSeconds: 3600 })).success)
-      return NextResponse.json({ error: 'Limite de renovações atingido.' }, { status: 429, headers: privateHeaders });
+      return NextResponse.json({ error: 'Limite de renovações atingido.' }, { status: 429, headers: { ...privateHeaders, 'Retry-After': '3600' } });
     const token = randomBytes(32).toString('base64url');
     const { error } = await calendarFeedDb().from('calendar_feed_tokens').upsert({
       user_id: user.id, scope, token_hash: hashFeedToken(token), rotated_at: new Date().toISOString(),

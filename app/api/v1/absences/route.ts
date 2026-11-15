@@ -7,7 +7,7 @@ import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 import { checkRateLimit } from '@/lib/rateLimit';
 
 const input = z.object({
-  userId: z.string().uuid(),
+  userId: z.guid(),
   absenceStartDate: z.iso.date(),
   absenceEndDate: z.iso.date(),
   reason: z.string().max(2000).default(''),
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   try {
     const actor = await requireAuth(req);
     if (!(await checkRateLimit(`absences-create:${actor.id}`, { limit: 30, windowSeconds: 60 })).success)
-      return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429 });
+      return NextResponse.json({ success: false, message: 'Demasiados pedidos.' }, { status: 429, headers: { 'Retry-After': '60' } });
     const db = requireServerDbClient(actor);
     const { data: allowed, error: permissionError } = await db.rpc('has_permission', {
       p_permission_code: 'absences:write', p_user_id: actor.auth_user_id,

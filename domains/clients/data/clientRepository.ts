@@ -1,4 +1,5 @@
 import type { ClientRow } from './clientMapper';
+import { orLike } from '@/lib/security/postgrestSearch';
 
 // The repository is the only Clients module that knows table and column names.
 // The existing server client has multiple runtime variants, hence this narrow
@@ -12,8 +13,7 @@ export async function findClients(db: ClientDatabase, page: number, pageSize: nu
   const to = from + pageSize - 1;
   let query = db.from('clients').select('*', { count: 'exact' }).eq('deleted', false);
   if (search && search.trim()) {
-    const q = `%${search.trim()}%`;
-    query = query.or(`client_name.ilike.${q},short_name.ilike.${q},contact_person.ilike.${q},contact_email.ilike.${q},contact_phone.ilike.${q},tax_id.ilike.${q},location.ilike.${q}`);
+    query = query.or(orLike(['client_name', 'short_name', 'contact_person', 'contact_email', 'contact_phone', 'tax_id', 'location'], search));
   }
   return query.order('client_name', { ascending: true }).range(from, to) as Promise<{
     data: ClientRow[] | null; count: number | null; error: { message: string } | null;

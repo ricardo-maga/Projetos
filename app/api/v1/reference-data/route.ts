@@ -7,7 +7,7 @@ import { getServerDbClient } from '@/lib/supabase/server';
 import { referenceCollection, referenceFields, referencePayload, referenceTables } from '@/domains/administration/data/referenceData';
 
 const create = z.object({ collection: referenceCollection, fields: referenceFields.extend({ name: z.string().trim().min(1).max(200) }) });
-const edit = z.object({ collection: referenceCollection, id: z.string().uuid(), syncVersion: z.number().int().positive(), fields: referenceFields });
+const edit = z.object({ collection: referenceCollection, id: z.guid(), syncVersion: z.number().int().positive(), fields: referenceFields });
 
 export async function POST(req: NextRequest) {
   const auth = await requirePermission(req, 'config_write');

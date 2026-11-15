@@ -10,10 +10,11 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { profileEligibility } from '@/lib/auth/profileEligibility';
 import { cookies } from 'next/headers';
 import { preferenceCookieLifetime, sessionPreference, SESSION_PREFERENCE_COOKIE } from '@/lib/auth/sessionPersistence';
+import { clientIp } from '@/lib/security/clientIp';
 
 export async function POST(req: NextRequest) {
   const requestId = crypto.randomUUID();
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'unknown';
+  const ip = clientIp(req);
   if (!(await checkRateLimit(`login:${ip}`, { limit: 10, windowSeconds: 60 })).success) return rateLimitExceeded(requestId);
   let body: unknown;
   try { body = await req.json(); } catch { return validationError('Corpo da mensagem inválido (JSON esperado).', requestId); }
