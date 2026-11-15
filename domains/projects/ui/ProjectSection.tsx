@@ -55,6 +55,8 @@ function cacheProjectPage(key: string, entry: ProjectPageCacheEntry) {
 }
 
 const PROJECT_BADGE_CLASS = 'h-9 px-3 text-body-sm font-bold uppercase rounded-badge border inline-flex items-center justify-center whitespace-nowrap';
+const MATERIAL_FIELD_LABEL = 'block font-bold text-slate-700';
+const MATERIAL_FIELD_INPUT = 'w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold';
 
 function ForecastBadge({ project, statuses, canEdit, updateProject, compact = false }: {
   project: Project; statuses: any[]; canEdit: boolean; updateProject?: (id: string, updates: any) => Promise<unknown>; compact?: boolean;
@@ -3038,20 +3040,20 @@ export default function ProjectSection({
 
                         {/* Descrição (Required) */}
                         <div className="sm:col-span-2 space-y-1">
-                          <label className="block font-bold text-slate-700">Descrição *</label>
+                          <label className={MATERIAL_FIELD_LABEL}>Descrição *</label>
                           <input
                             type="text"
                             required
                             value={matDesc}
                             onChange={e => setMatDesc(e.target.value)}
                             placeholder="Ex: Sensor indutivo IFM 24V M12"
-                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                            className={MATERIAL_FIELD_INPUT}
                           />
                         </div>
 
                         {/* Fornecedor (Required + Autocomplete) */}
                         <div className="sm:col-span-2 space-y-1 relative">
-                          <label className="block font-bold text-slate-700">Fornecedor *</label>
+                          <label className={MATERIAL_FIELD_LABEL}>Fornecedor *</label>
                           <input
                             type="text"
                             required
@@ -3062,7 +3064,7 @@ export default function ProjectSection({
                             }}
                             onFocus={() => setIsSupplierAutocompleteOpen(true)}
                             placeholder="Comece a escrever o fornecedor..."
-                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                            className={MATERIAL_FIELD_INPUT}
                           />
                           {/* Autocomplete Suggestions */}
                           {isSupplierAutocompleteOpen && matSupplier.trim() !== '' && (
@@ -3092,78 +3094,78 @@ export default function ProjectSection({
 
                         {/* Quantidade */}
                         <div className="space-y-1">
-                          <label className="block font-bold text-slate-700">Quantidade</label>
+                          <label className={MATERIAL_FIELD_LABEL}>Quantidade</label>
                           <input
                             type="number"
                             min="1"
                             value={matQty}
                             onChange={e => setMatQty(Number(e.target.value))}
-                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                            className={MATERIAL_FIELD_INPUT}
                           />
                         </div>
 
                         {/* Referência */}
                         <div className="space-y-1">
-                          <label className="block font-bold text-slate-700">Referência</label>
+                          <label className={MATERIAL_FIELD_LABEL}>Referência</label>
                           <input
                             type="text"
                             value={matRef}
                             onChange={e => setMatRef(e.target.value)}
                             placeholder="Ex: REF-88231"
-                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                            className={MATERIAL_FIELD_INPUT}
                           />
                         </div>
 
                         {/* N° de orçamento */}
                         <div className="space-y-1">
-                          <label className="block font-bold text-slate-700">N° de orçamento</label>
+                          <label className={MATERIAL_FIELD_LABEL}>N° de orçamento</label>
                           <input
                             type="text"
                             value={matBudget}
                             onChange={e => setMatBudget(e.target.value)}
                             placeholder="Ex: ORÇ-2026/01"
-                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                            className={MATERIAL_FIELD_INPUT}
                           />
                         </div>
 
                         {/* Preço Custo */}
                         <div className="space-y-1">
-                          <label className="block font-bold text-slate-700">Preço Custo (€)</label>
+                          <label className={MATERIAL_FIELD_LABEL}>Preço Custo (€)</label>
                           <input
                             type="number"
                             step="0.01"
                             value={matCostPrice}
                             onChange={e => setMatCostPrice(Number(e.target.value))}
-                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                            className={MATERIAL_FIELD_INPUT}
                           />
                         </div>
 
                         {/* Preço Venda */}
                         <div className="space-y-1">
-                          <label className="block font-bold text-slate-700">Preço Venda (€)</label>
+                          <label className={MATERIAL_FIELD_LABEL}>Preço Venda (€)</label>
                           <input
                             type="number"
                             step="0.01"
                             value={matSalePrice}
                             onChange={e => setMatSalePrice(Number(e.target.value))}
-                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                            className={MATERIAL_FIELD_INPUT}
                           />
                         </div>
 
                         {/* Data Prevista de Entrega */}
                         <div className="space-y-1">
-                          <label className="block font-bold text-slate-700">Data Prevista de Entrega</label>
+                          <label className={MATERIAL_FIELD_LABEL}>Data Prevista de Entrega</label>
                           <input
                             type="date"
                             value={matDeliveryDate}
                             onChange={e => setMatDeliveryDate(e.target.value)}
-                            className="w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold"
+                            className={MATERIAL_FIELD_INPUT}
                           />
                         </div>
 
                         {/* Estado Inicial */}
                         <div className="space-y-1 sm:col-span-2">
-                          <label className="block font-bold text-slate-700">Estado do Material</label>
+                          <label className={MATERIAL_FIELD_LABEL}>Estado do Material</label>
                           <div className="flex gap-2">
                             <button
                               type="button"

@@ -88,7 +88,8 @@ describe('Workspace visual migration boundaries', () => {
     expect(migratedCSS).not.toContain('.bg-indigo-50');
     expect(migratedCSS).not.toContain('border-collapse: separate');
     expect(migratedCSS).not.toContain('button:not(.m3-nav-item)');
-    expect(migratedCSS).toContain('[data-m3-exclude]');
+    expect(migratedCSS).toContain('.m3-legacy-card:not(:where([data-m3-exclude]');
+    expect(migratedCSS).not.toContain('.bg-white.rounded-2xl.border');
   });
 
   it('provides keyboard focus and reduced motion', () => {

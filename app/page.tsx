@@ -46,6 +46,9 @@ const CalendarSubscriptions = dynamic(() => import('@/domains/calendar/ui/Calend
 const MyFocusSection = dynamic(() => import('@/domains/monitoring/ui/MyFocusSection'), { loading: SectionLoading });
 const ReportsSection = dynamic(() => import('@/domains/reports/ui/ReportsSection'), { loading: SectionLoading });
 
+const AUTH_SCREEN = 'min-h-screen flex items-center justify-center bg-slate-50 p-6';
+const AUTH_INPUT = 'w-full p-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors';
+
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -398,7 +401,7 @@ export default function Page() {
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+      <div className={AUTH_SCREEN}>
         <div className="w-full max-w-md bg-white rounded-2xl -xl border border-slate-100 overflow-hidden">
           <div className="p-8 pb-6 bg-slate-800 text-white text-center flex flex-col items-center">
             <AppLogo 
@@ -434,7 +437,7 @@ export default function Page() {
                 autoComplete="username"
                 placeholder="nome@empresa.com"
                 disabled={isLoggingIn}
-                className="w-full p-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+                className={AUTH_INPUT}
                 required
               />
             </div>
@@ -455,7 +458,7 @@ export default function Page() {
                   autoComplete="current-password"
                   placeholder="Introduza a password"
                   disabled={isLoggingIn}
-                  className="w-full p-3 pr-10 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+                  className={`${AUTH_INPUT} pr-10`}
                   required
                 />
                 <button
@@ -519,7 +522,7 @@ export default function Page() {
   // 3. Authenticated user: DB error on initial authoritative load
   if (syncStatus === 'error' && !isInitialDataLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6" id="db-error-screen">
+      <div className={AUTH_SCREEN} id="db-error-screen">
         <div className="w-full max-w-md bg-white rounded-2xl border border-rose-100 p-8 text-center space-y-6 shadow-sm animate-fade-in">
           <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100">
             <AlertCircle className="w-6 h-6" />
