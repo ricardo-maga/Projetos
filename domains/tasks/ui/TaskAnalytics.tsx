@@ -64,6 +64,10 @@ const COLORS = [
   '#64748b'  // Slate
 ];
 
+// Keep the existing analytics card geometry in one place during the visual migration.
+const ANALYSIS_PANEL = 'm3-legacy-card bg-white rounded-2xl border border-analysis-border shadow-xs';
+const ANALYSIS_SECTION_TITLE = 'text-base font-bold text-analysis-text-primary flex items-center gap-2';
+
 export function TaskAnalytics({
   tasks,
   projects,
@@ -453,17 +457,17 @@ export function TaskAnalytics({
       {/* ------------------------------------------------------------- */}
       {/* HEADER & FILTERS BAR */}
       {/* ------------------------------------------------------------- */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+      <div className={`${ANALYSIS_PANEL} p-6`}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-analysis-muted">
           <div>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
               <Sparkles className="w-4 h-4 text-blue-500" />
               Painel de inteligência
             </div>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+            <h2 className="text-xl font-bold text-analysis-text-primary tracking-tight">
               Análise avançada de tarefas & alocação de equipas
             </h2>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-analysis-text-muted mt-1">
               Métricas consolidadas de tarefas em aberto, evolução temporal, carga de trabalho futura e rentabilidade de horas por projeto.
             </p>
           </div>
@@ -483,9 +487,9 @@ export function TaskAnalytics({
       {/* ------------------------------------------------------------- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Tarefas em Aberto */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-blue-300 transition-all">
+        <div className={`${ANALYSIS_PANEL} p-5 hover:border-blue-300 transition-all`}>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-analysis-text-muted uppercase tracking-wider">
               Tarefas em Aberto
             </span>
             <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
@@ -493,23 +497,23 @@ export function TaskAnalytics({
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-black text-analysis-text-primary tracking-tight">
               {kpis.totalOpen}
             </div>
-            <span className="text-xs font-semibold text-slate-500">
+            <span className="text-xs font-semibold text-analysis-text-muted">
               da escala 1 e 2
             </span>
           </div>
-          <div className="mt-3 text-xs text-slate-600 flex items-center gap-1 font-medium pt-2 border-t border-slate-100">
+          <div className="mt-3 text-xs text-analysis-text-secondary flex items-center gap-1 font-medium pt-2 border-t border-analysis-muted">
             <span>Carga pendente:</span>
             <span className="font-bold text-blue-700">{formatHoursToHHMM(kpis.totalEstHoursOpen)}h</span>
           </div>
         </div>
 
         {/* KPI 2: Tarefas em Atraso */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-amber-300 transition-all">
+        <div className={`${ANALYSIS_PANEL} p-5 hover:border-amber-300 transition-all`}>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-analysis-text-muted uppercase tracking-wider">
               Tarefas em Atraso
             </span>
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
@@ -520,15 +524,15 @@ export function TaskAnalytics({
           </div>
           <div className="flex items-baseline justify-between">
             <div className={`text-2xl font-black tracking-tight ${
-              kpis.overdueCount > 0 ? 'text-amber-700' : 'text-slate-900'
+              kpis.overdueCount > 0 ? 'text-amber-700' : 'text-analysis-text-primary'
             }`}>
               {kpis.overdueCount}
             </div>
-            <span className="text-xs font-semibold text-slate-500">
+            <span className="text-xs font-semibold text-analysis-text-muted">
               prazo ultrapassado
             </span>
           </div>
-          <div className="mt-3 text-xs text-slate-600 flex items-center justify-between font-medium pt-2 border-t border-slate-100">
+          <div className="mt-3 text-xs text-analysis-text-secondary flex items-center justify-between font-medium pt-2 border-t border-analysis-muted">
             <span>Requer atenção rápida</span>
             <span className="text-caption font-bold text-amber-600">
               {kpis.totalOpen > 0 ? Math.round((kpis.overdueCount / kpis.totalOpen) * 100) : 0}% das abertas
@@ -537,9 +541,9 @@ export function TaskAnalytics({
         </div>
 
         {/* KPI 3: Horas dos últimos 30 dias */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-emerald-300 transition-all">
+        <div className={`${ANALYSIS_PANEL} p-5 hover:border-emerald-300 transition-all`}>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-analysis-text-muted uppercase tracking-wider">
               Horas gastas em 30 dias
             </span>
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
@@ -547,19 +551,19 @@ export function TaskAnalytics({
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-black text-analysis-text-primary tracking-tight">
               {formatHoursToHHMM(kpis.hours30d)}h
             </div>
           </div>
-          <div className="mt-3 text-xs text-slate-600 font-medium pt-2 border-t border-slate-100">
+          <div className="mt-3 text-xs text-analysis-text-secondary font-medium pt-2 border-t border-analysis-muted">
             Gastas quando registadas; previstas nas restantes tarefas.
           </div>
         </div>
 
         {/* KPI 4: Taxa de Conclusão */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:border-purple-300 transition-all">
+        <div className={`${ANALYSIS_PANEL} p-5 hover:border-purple-300 transition-all`}>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-analysis-text-muted uppercase tracking-wider">
               Taxa de Conclusão
             </span>
             <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
@@ -567,14 +571,14 @@ export function TaskAnalytics({
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-black text-analysis-text-primary tracking-tight">
               {kpis.completionRate}%
             </div>
-            <span className="text-xs font-semibold text-slate-500">
+            <span className="text-xs font-semibold text-analysis-text-muted">
               {kpis.totalCompleted} de {kpis.totalAll}
             </span>
           </div>
-          <div className="mt-3 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+          <div className="mt-3 w-full bg-analysis-muted h-2 rounded-full overflow-hidden">
             <div
               className="bg-purple-600 h-full transition-all duration-500 rounded-full"
               style={{ width: `${kpis.completionRate}%` }}
@@ -586,18 +590,18 @@ export function TaskAnalytics({
       {/* ------------------------------------------------------------- */}
       {/* SECTION 1 & 2: TAREFAS EM ABERTO POR TIPO DE TAREFA */}
       {/* ------------------------------------------------------------- */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+      <div className={`${ANALYSIS_PANEL} p-6`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
           <div>
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <h3 className={ANALYSIS_SECTION_TITLE}>
               <PieIcon className="w-5 h-5 text-blue-600" />
               Tarefas em aberto por tipo de tarefa
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-analysis-text-muted mt-0.5">
               Distribuição das tarefas abertas e respetivas horas por tipologia.
             </p>
           </div>
-          <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-700 rounded-lg self-start sm:self-auto">
+          <span className="text-xs font-bold px-3 py-1 bg-analysis-muted text-analysis-text-body rounded-lg self-start sm:self-auto">
             Tarefas abertas: {kpis.totalOpen}
           </span>
         </div>
@@ -633,7 +637,7 @@ export function TaskAnalytics({
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-xs text-slate-400 italic">Sem tarefas em aberto para apresentar.</div>
+              <div className="text-xs text-analysis-text-soft italic">Sem tarefas em aberto para apresentar.</div>
             )}
           </div>
 
@@ -641,35 +645,35 @@ export function TaskAnalytics({
           <div className="lg:col-span-7 overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider">
+                <tr className="border-b border-analysis-border text-analysis-text-soft font-bold uppercase tracking-wider">
                   <th className="py-2.5 px-3">Tipo de Tarefa</th>
                   <th className="py-2.5 px-3 text-center">Tarefas Abertas</th>
                   <th className="py-2.5 px-3 text-right">Horas</th>
                   <th className="py-2.5 px-3 text-right w-40">% do Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-analysis-muted">
                 {openTasksByType.map((item, idx) => (
-                  <tr key={item.typeId} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-3 font-semibold text-slate-800 flex items-center gap-2">
+                  <tr key={item.typeId} className="hover:bg-analysis-subtle transition-colors">
+                    <td className="py-3 px-3 font-semibold text-analysis-text-strong flex items-center gap-2">
                       <span
                         className="w-2.5 h-2.5 rounded-full inline-block"
                         style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                       />
                       {item.typeName}
                     </td>
-                    <td className="py-3 px-3 text-center font-bold text-slate-900">
-                      <span className="px-2.5 py-1 bg-slate-100 rounded-lg text-slate-800">
+                    <td className="py-3 px-3 text-center font-bold text-analysis-text-primary">
+                      <span className="px-2.5 py-1 bg-analysis-muted rounded-lg text-analysis-text-strong">
                         {item.count}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-right font-medium text-slate-700">
+                    <td className="py-3 px-3 text-right font-medium text-analysis-text-body">
                       {item.formattedHours}h
                     </td>
                     <td className="py-3 px-3 text-right font-bold text-blue-600">
                       <div className="flex items-center justify-end gap-2">
                         <span>{item.percentage}%</span>
-                        <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                        <div className="w-24 bg-analysis-muted h-1.5 rounded-full overflow-hidden hidden sm:block">
                           <div
                             className="bg-blue-600 h-full rounded-full"
                             style={{ width: `${item.percentage}%` }}
@@ -681,7 +685,7 @@ export function TaskAnalytics({
                 ))}
                 {openTasksByType.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-6 text-center text-slate-400 italic">
+                    <td colSpan={4} className="py-6 text-center text-analysis-text-soft italic">
                       Nenhuma tarefa em aberto encontrada com os filtros selecionados.
                     </td>
                   </tr>
@@ -695,24 +699,24 @@ export function TaskAnalytics({
       {/* ------------------------------------------------------------- */}
       {/* SECTION 3 & 4: HISTÓRICO 30, 60, 90 DIAS POR TIPO */}
       {/* ------------------------------------------------------------- */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+      <div className={`${ANALYSIS_PANEL} p-6`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <h3 className={ANALYSIS_SECTION_TITLE}>
               <BarChart2 className="w-5 h-5 text-indigo-600" />
               Horas gastas por tipo de tarefa
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-analysis-text-muted mt-0.5">
               Tarefas criadas e horas acumuladas em cada período.
             </p>
           </div>
 
           {/* Time Horizon Selector Pills */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200/80 self-start sm:self-auto">
+          <div className="flex items-center bg-analysis-muted p-1 rounded-xl text-xs font-bold border border-analysis-border/80 self-start sm:self-auto">
             <button
               onClick={() => setTimeHorizon('7')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                timeHorizon === '7' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                timeHorizon === '7' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               7 Dias
@@ -720,7 +724,7 @@ export function TaskAnalytics({
             <button
               onClick={() => setTimeHorizon('30')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                timeHorizon === '30' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                timeHorizon === '30' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               30 Dias
@@ -728,7 +732,7 @@ export function TaskAnalytics({
             <button
               onClick={() => setTimeHorizon('60')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                timeHorizon === '60' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                timeHorizon === '60' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               60 Dias
@@ -736,7 +740,7 @@ export function TaskAnalytics({
             <button
               onClick={() => setTimeHorizon('90')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                timeHorizon === '90' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                timeHorizon === '90' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               90 Dias
@@ -766,7 +770,7 @@ export function TaskAnalytics({
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400 italic">
+            <div className="h-full flex items-center justify-center text-xs text-analysis-text-soft italic">
               Sem registos históricos para o período selecionado.
             </div>
           )}
@@ -776,53 +780,53 @@ export function TaskAnalytics({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider bg-slate-50/50">
+              <tr className="border-b border-analysis-border text-analysis-text-soft font-bold uppercase tracking-wider bg-analysis-subtle/50">
                 <th className="py-2.5 px-3">Tipo de Tarefa</th>
-                <th className={`py-2.5 px-3 text-center ${timeHorizon === '7' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-slate-50'}`}>Qtd (7d)</th>
-                <th className={`py-2.5 px-3 text-center ${timeHorizon === '7' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-slate-50'}`}>Horas (7d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '7' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-analysis-subtle'}`}>Qtd (7d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '7' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-analysis-subtle'}`}>Horas (7d)</th>
                 <th className={`py-2.5 px-3 text-center ${timeHorizon === '30' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-indigo-50/40 text-indigo-800'}`}>Qtd (30d)</th>
                 <th className={`py-2.5 px-3 text-center ${timeHorizon === '30' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-indigo-50/40 text-indigo-800'}`}>Horas (30d)</th>
-                <th className={`py-2.5 px-3 text-center ${timeHorizon === '60' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-slate-100/50'}`}>Qtd (60d)</th>
-                <th className={`py-2.5 px-3 text-center ${timeHorizon === '60' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-slate-100/50'}`}>Horas (60d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '60' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-analysis-muted/50'}`}>Qtd (60d)</th>
+                <th className={`py-2.5 px-3 text-center ${timeHorizon === '60' ? 'bg-indigo-100/60 text-indigo-900 font-black' : 'bg-analysis-muted/50'}`}>Horas (60d)</th>
                 <th className={`py-2.5 px-3 text-center ${timeHorizon === '90' ? 'bg-indigo-100/60 text-indigo-900 font-black' : ''}`}>Qtd (90d)</th>
                 <th className={`py-2.5 px-3 text-center ${timeHorizon === '90' ? 'bg-indigo-100/60 text-indigo-900 font-black' : ''}`}>Horas (90d)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-analysis-muted">
               {pastDaysAnalysisByType.map(item => (
-                <tr key={item.typeId} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-3 px-3 font-semibold text-slate-800">
+                <tr key={item.typeId} className="hover:bg-analysis-subtle transition-colors">
+                  <td className="py-3 px-3 font-semibold text-analysis-text-strong">
                     {item.typeName}
                   </td>
                   <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '7' ? 'bg-indigo-100/30 text-indigo-900 font-black' : ''}`}>
                     {item.count7}
                   </td>
-                  <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '7' ? 'bg-indigo-100/30' : ''}`}>
+                  <td className={`py-3 px-3 text-center font-medium text-analysis-text-body ${timeHorizon === '7' ? 'bg-indigo-100/30' : ''}`}>
                     <span className="font-semibold">{formatHoursToHHMM(item.hours7)}h</span>
                   </td>
                   <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '30' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'bg-indigo-50/20 text-indigo-900'}`}>
                     {item.count30}
                   </td>
-                  <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '30' ? 'bg-indigo-100/30' : 'bg-indigo-50/20'}`}>
+                  <td className={`py-3 px-3 text-center font-medium text-analysis-text-body ${timeHorizon === '30' ? 'bg-indigo-100/30' : 'bg-indigo-50/20'}`}>
                     <span className="font-semibold">{formatHoursToHHMM(item.hours30)}h</span>
                   </td>
-                  <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '60' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'bg-slate-50/30 text-slate-800'}`}>
+                  <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '60' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'bg-analysis-subtle/30 text-analysis-text-strong'}`}>
                     {item.count60}
                   </td>
-                  <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '60' ? 'bg-indigo-100/30' : 'bg-slate-50/30'}`}>
+                  <td className={`py-3 px-3 text-center font-medium text-analysis-text-body ${timeHorizon === '60' ? 'bg-indigo-100/30' : 'bg-analysis-subtle/30'}`}>
                     <span className="font-semibold">{formatHoursToHHMM(item.hours60)}h</span>
                   </td>
-                  <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '90' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'text-slate-800'}`}>
+                  <td className={`py-3 px-3 text-center font-bold ${timeHorizon === '90' ? 'bg-indigo-100/30 text-indigo-900 font-black' : 'text-analysis-text-strong'}`}>
                     {item.count90}
                   </td>
-                  <td className={`py-3 px-3 text-center font-medium text-slate-700 ${timeHorizon === '90' ? 'bg-indigo-100/30' : ''}`}>
+                  <td className={`py-3 px-3 text-center font-medium text-analysis-text-body ${timeHorizon === '90' ? 'bg-indigo-100/30' : ''}`}>
                     <span className="font-semibold">{formatHoursToHHMM(item.hours90)}h</span>
                   </td>
                 </tr>
               ))}
               {pastDaysAnalysisByType.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-6 text-center text-slate-400 italic">
+                  <td colSpan={9} className="py-6 text-center text-analysis-text-soft italic">
                     Nenhum histórico encontrado para esta seleção.
                   </td>
                 </tr>
@@ -835,24 +839,24 @@ export function TaskAnalytics({
       {/* ------------------------------------------------------------- */}
       {/* SECTION 5: CARGA DE TRABALHO FUTURA POR UTILIZADOR */}
       {/* ------------------------------------------------------------- */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+      <div className={`${ANALYSIS_PANEL} p-6`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
           <div>
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <h3 className={ANALYSIS_SECTION_TITLE}>
               <Users className="w-5 h-5 text-emerald-600" />
               Carga de trabalho futura por utilizador
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-analysis-text-muted mt-0.5">
               Identificação prévia de pontos de estrangulamento e sobrecarga na equipa técnica para as próximas semanas.
             </p>
           </div>
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200/80">
+          <div className="flex items-center bg-analysis-muted p-1 rounded-xl text-xs font-bold border border-analysis-border/80">
             {(['7', '15', '30'] as const).map(days => (
               <button
                 key={days}
                 type="button"
                 onClick={() => setWorkloadHorizon(days)}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${workloadHorizon === days ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${workloadHorizon === days ? 'bg-white text-emerald-700 shadow-xs' : 'text-analysis-text-secondary hover:text-analysis-text-primary'}`}
               >
                 {days} Dias
               </button>
@@ -876,7 +880,7 @@ export function TaskAnalytics({
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400 italic">
+            <div className="h-full flex items-center justify-center text-xs text-analysis-text-soft italic">
               Sem carga de trabalho agendada para os próximos {workloadHorizon} dias.
             </div>
           )}
@@ -886,7 +890,7 @@ export function TaskAnalytics({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider">
+              <tr className="border-b border-analysis-border text-analysis-text-soft font-bold uppercase tracking-wider">
                 <th className="py-2.5 px-3">Colaborador / Técnico</th>
                 <th className="py-2.5 px-3 text-center bg-emerald-50/50 text-emerald-800">Horas (7 Dias)</th>
                 <th className="py-2.5 px-3 text-center bg-blue-50/50 text-blue-800">Horas (15 Dias)</th>
@@ -894,11 +898,11 @@ export function TaskAnalytics({
                 <th className="py-2.5 px-3 text-center">Nº Tarefas Futuras</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-analysis-muted">
               {userWorkloadUpcoming.map(u => (
-                <tr key={u.userId} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-3 px-3 font-semibold text-slate-900 flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-caption">
+                <tr key={u.userId} className="hover:bg-analysis-subtle transition-colors">
+                  <td className="py-3 px-3 font-semibold text-analysis-text-primary flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-analysis-border text-analysis-text-body flex items-center justify-center font-bold text-caption">
                       {getUserInitials(u.userName)}
                     </div>
                     {u.userName}
@@ -912,14 +916,14 @@ export function TaskAnalytics({
                   <td className="py-3 px-3 text-center font-bold text-purple-900 bg-purple-50/20">
                     {u.formatted30d}h
                   </td>
-                  <td className="py-3 px-3 text-center font-semibold text-slate-800">
+                  <td className="py-3 px-3 text-center font-semibold text-analysis-text-strong">
                     {u.tasksCount30d}
                   </td>
                 </tr>
               ))}
               {userWorkloadUpcoming.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-6 text-center text-slate-400 italic">
+                  <td colSpan={5} className="py-6 text-center text-analysis-text-soft italic">
                     Nenhuma tarefa agendada nos próximos 30 dias.
                   </td>
                 </tr>
@@ -932,14 +936,14 @@ export function TaskAnalytics({
       {/* ------------------------------------------------------------- */}
       {/* SECTION 6: PROJETOS ATIVOS COM MAIS HORAS GASTAS E PREVISTAS */}
       {/* ------------------------------------------------------------- */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs">
+      <div className={`${ANALYSIS_PANEL} p-6`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
           <div>
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <h3 className={ANALYSIS_SECTION_TITLE}>
               <FolderKanban className="w-5 h-5 text-purple-600" />
               Horas gastas em projetos ativos
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-analysis-text-muted mt-0.5">
               Análise de esforço em projetos em execução.
             </p>
           </div>
@@ -972,7 +976,7 @@ export function TaskAnalytics({
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400 italic">
+            <div className="h-full flex items-center justify-center text-xs text-analysis-text-soft italic">
               Sem dados de projetos com tarefas registadas.
             </div>
           )}
@@ -982,31 +986,31 @@ export function TaskAnalytics({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider">
+              <tr className="border-b border-analysis-border text-analysis-text-soft font-bold uppercase tracking-wider">
                 <th className="py-2.5 px-3">Projeto</th>
                 <th className="py-2.5 px-3 text-center">Tarefas (Abertas / Concluídas)</th>
                 <th className="py-2.5 px-3 text-right">Horas</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-analysis-muted">
               {activeProjectsHours.map(p => (
-                <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-3 px-3 font-bold text-slate-900">
+                <tr key={p.id} className="hover:bg-analysis-subtle transition-colors">
+                  <td className="py-3 px-3 font-bold text-analysis-text-primary">
                     {p.clientName} - {p.title}
                   </td>
                   <td className="py-3 px-3 text-center">
-                    <span className="font-semibold text-slate-800">
+                    <span className="font-semibold text-analysis-text-strong">
                       <span className="text-blue-600 font-bold">{p.openTasksCount}</span> / <span className="text-emerald-600 font-bold">{p.completedTasksCount}</span> ({p.totalTasks})
                     </span>
                   </td>
-                  <td className="py-3 px-3 text-right font-semibold text-slate-700">
+                  <td className="py-3 px-3 text-right font-semibold text-analysis-text-body">
                     {p.formattedHours}h
                   </td>
                 </tr>
               ))}
               {activeProjectsHours.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="py-6 text-center text-slate-400 italic">
+                  <td colSpan={3} className="py-6 text-center text-analysis-text-soft italic">
                     Sem projetos ativos registados.
                   </td>
                 </tr>

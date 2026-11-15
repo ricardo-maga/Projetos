@@ -59,6 +59,17 @@
   --color-error: #dc2626;
   --color-info: var(--primary-600);
 
+  /* Task analytics' existing neutral palette, named by its UI role. */
+  --color-analysis-subtle: #f8fafc;
+  --color-analysis-muted: #f1f5f9;
+  --color-analysis-border: #e2e8f0;
+  --color-analysis-text-soft: #94a3b8;
+  --color-analysis-text-muted: #64748b;
+  --color-analysis-text-secondary: #475569;
+  --color-analysis-text-body: #334155;
+  --color-analysis-text-strong: #1e293b;
+  --color-analysis-text-primary: #0f172a;
+
   /* Spacing Scale */
   --spacing-token-xs: 4px;
   --spacing-token-sm: 8px;
@@ -431,9 +442,8 @@ body[data-theme="default"],
 :is(.m3-button, .m3-icon-button, .m3-segment, .m3-filter-chip):focus-visible { outline: 3px solid var(--m3-primary); outline-offset: 3px; position: relative; z-index: 1; }
 :is(.m3-button, .m3-icon-button, .m3-segment, .m3-filter-chip):disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
 
-/* Opt-in migration of legacy cards, without changing status colors or table
-   geometry, and respecting nested modules excluded from this phase. */
-:where(#active-tab-content) .bg-white.rounded-2xl.border:not(:where([data-m3-exclude], [data-m3-exclude] *)) {
+/* Explicit opt-in for legacy cards that should inherit the M3 border treatment. */
+:where(#active-tab-content) .m3-legacy-card:not(:where([data-m3-exclude], [data-m3-exclude] *)) {
   border-color: var(--m3-outline-variant);
   box-shadow: none;
 }
