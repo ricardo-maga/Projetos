@@ -87,9 +87,9 @@ export const queryProjectSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
   search: z.string().max(100).regex(/^[^\u0000-\u001f\u007f]*$/).optional().default(''),
-  statusId: z.guid().optional(),
-  categoryId: z.guid().optional(),
-  managerId: z.guid().optional(),
-  clientId: z.guid().optional(),
+  statusId: z.preprocess(value => value === '' ? undefined : value, z.guid().optional()),
+  categoryId: z.preprocess(value => value === '' ? undefined : value, z.guid().optional()),
+  managerId: z.preprocess(value => value === '' ? undefined : value, z.guid().optional()),
+  clientId: z.preprocess(value => value === '' ? undefined : value, z.guid().optional()),
   statusGroup: z.enum(['active', 'implementation', 'all', 'completed']).optional(),
 });
