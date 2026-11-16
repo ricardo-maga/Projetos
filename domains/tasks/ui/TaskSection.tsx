@@ -504,7 +504,7 @@ export default function TaskSection({
                 "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'today'
                   ? "border-primary bg-primary/10 ring-1 ring-primary"
-                  : "bg-surface border-border hover:border-border-primary"
+                  : "bg-surface border-border hover:border-primary"
               )}
             >
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Para Hoje</div>
@@ -530,7 +530,7 @@ export default function TaskSection({
                 "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'this_week'
                   ? "border-primary bg-primary/10 ring-1 ring-primary"
-                  : "bg-surface border-border hover:border-border-primary"
+                  : "bg-surface border-border hover:border-primary"
               )}
             >
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Esta semana</div>
@@ -556,7 +556,7 @@ export default function TaskSection({
                 "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'overdue'
                   ? "border-error bg-error/10 ring-1 ring-error"
-                  : "bg-surface border-border hover:border-border-primary"
+                  : "bg-surface border-border hover:border-primary"
               )}
             >
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Atrasadas</div>
@@ -584,7 +584,7 @@ export default function TaskSection({
                 "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'completed_this_week'
                   ? "border-success bg-success/10 ring-1 ring-success"
-                  : "bg-surface border-border hover:border-border-primary"
+                  : "bg-surface border-border hover:border-primary"
               )}
             >
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Concluídas esta semana</div>

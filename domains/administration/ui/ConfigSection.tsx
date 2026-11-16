@@ -419,7 +419,7 @@ export default function ConfigSection({
               <p className="text-body-sm text-text-secondary">
                   Suporta URLs de imagens (SVG, PNG, JPG, WebP), ficheiros locais (/logo.svg), Data URIs (base64) e código SVG inline.
               </p>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-surface-muted border border-border rounded-control">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 p-4 bg-surface-muted border border-border rounded-control">
                 <span className="text-label font-semibold text-text-secondary shrink-0">Pré-visualização</span>
                 <AppLogo logoUrl={logo} appName={appName} className="w-72 max-w-full h-10 rounded-control bg-surface border border-border shadow-subtle p-1" />
               </div>

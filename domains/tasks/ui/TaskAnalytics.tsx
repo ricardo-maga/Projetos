@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { Task, Project, ProjectStatus, TaskType, TaskStatus, User, Client } from '@/lib/types';
 import { parseTimeToHours, formatHoursToHHMM, getUserInitials } from '@/lib/utils';
+import { ScrollableChart } from '@/components/ui/ScrollableChart';
 
 interface TaskAnalyticsProps {
   tasks: Task[];
@@ -66,7 +67,7 @@ const COLORS = [
 
 // Keep the existing analytics card geometry in one place during the visual migration.
 const ANALYSIS_PANEL = 'm3-legacy-card bg-surface rounded-card border border-analysis-border shadow-raised';
-const ANALYSIS_SECTION_TITLE = 'text-base font-bold text-analysis-text-primary-ink flex items-center gap-2';
+const ANALYSIS_SECTION_TITLE = 'text-base font-bold text-analysis-text-primary flex items-center gap-2';
 
 export function TaskAnalytics({
   tasks,
@@ -464,7 +465,7 @@ export function TaskAnalytics({
               <Sparkles className="w-4 h-4 text-action-500" />
               Painel de inteligência
             </div>
-            <h2 className="text-xl font-bold text-analysis-text-primary-ink tracking-tight">
+            <h2 className="text-xl font-bold text-analysis-text-primary tracking-tight">
               Análise avançada de tarefas & alocação de equipas
             </h2>
             <p className="text-xs text-analysis-text-muted mt-1">
@@ -497,7 +498,7 @@ export function TaskAnalytics({
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-2xl font-black text-analysis-text-primary-ink tracking-tight">
+            <div className="text-2xl font-black text-analysis-text-primary tracking-tight">
               {kpis.totalOpen}
             </div>
             <span className="text-xs font-semibold text-analysis-text-muted">
@@ -524,7 +525,7 @@ export function TaskAnalytics({
           </div>
           <div className="flex items-baseline justify-between">
             <div className={`text-2xl font-black tracking-tight ${
-              kpis.overdueCount > 0 ? 'text-feedback-warning-700' : 'text-analysis-text-primary-ink'
+              kpis.overdueCount > 0 ? 'text-feedback-warning-700' : 'text-analysis-text-primary'
             }`}>
               {kpis.overdueCount}
             </div>
@@ -551,7 +552,7 @@ export function TaskAnalytics({
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-2xl font-black text-analysis-text-primary-ink tracking-tight">
+            <div className="text-2xl font-black text-analysis-text-primary tracking-tight">
               {formatHoursToHHMM(kpis.hours30d)}h
             </div>
           </div>
@@ -571,7 +572,7 @@ export function TaskAnalytics({
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-2xl font-black text-analysis-text-primary-ink tracking-tight">
+            <div className="text-2xl font-black text-analysis-text-primary tracking-tight">
               {kpis.completionRate}%
             </div>
             <span className="text-xs font-semibold text-analysis-text-muted">
@@ -662,7 +663,7 @@ export function TaskAnalytics({
                       />
                       {item.typeName}
                     </td>
-                    <td className="py-3 px-3 text-center font-bold text-analysis-text-primary-ink">
+                    <td className="py-3 px-3 text-center font-bold text-analysis-text-primary">
                       <span className="px-2.5 py-1 bg-analysis-muted rounded-control text-analysis-text-strong">
                         {item.count}
                       </span>
@@ -716,7 +717,7 @@ export function TaskAnalytics({
             <button
               onClick={() => setTimeHorizon('7')}
               className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
-                timeHorizon === '7' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary-ink'
+                timeHorizon === '7' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               7 Dias
@@ -724,7 +725,7 @@ export function TaskAnalytics({
             <button
               onClick={() => setTimeHorizon('30')}
               className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
-                timeHorizon === '30' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary-ink'
+                timeHorizon === '30' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               30 Dias
@@ -732,7 +733,7 @@ export function TaskAnalytics({
             <button
               onClick={() => setTimeHorizon('60')}
               className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
-                timeHorizon === '60' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary-ink'
+                timeHorizon === '60' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               60 Dias
@@ -740,7 +741,7 @@ export function TaskAnalytics({
             <button
               onClick={() => setTimeHorizon('90')}
               className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
-                timeHorizon === '90' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary-ink'
+                timeHorizon === '90' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               90 Dias
@@ -749,12 +750,13 @@ export function TaskAnalytics({
         </div>
 
         {/* Chart View */}
-        <div className="h-80 w-full mb-6">
+        <ScrollableChart label="Horas por tipo de tarefa" categoryCount={pastDaysChartData.length}>
           {isMounted && pastDaysChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={pastDaysChartData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
-                <XAxis dataKey="typeName" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} interval={0} />
+                <XAxis dataKey="typeName" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} interval={0}
+                  tickFormatter={(value: string) => value.length > 24 ? `${value.slice(0, 23)}…` : value} />
                 <YAxis yAxisId="left" orientation="left" stroke="var(--chart-series-indigo)" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} />
                 <YAxis yAxisId="right" orientation="right" stroke="var(--chart-series-green)" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} />
                 <Tooltip
@@ -774,7 +776,7 @@ export function TaskAnalytics({
               Sem registos históricos para o período selecionado.
             </div>
           )}
-        </div>
+        </ScrollableChart>
 
         {/* Detailed Comparative Table */}
         <div className="overflow-x-auto">
@@ -856,7 +858,7 @@ export function TaskAnalytics({
                 key={days}
                 type="button"
                 onClick={() => setWorkloadHorizon(days)}
-                className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${workloadHorizon === days ? 'bg-surface text-feedback-success-700 shadow-raised' : 'text-analysis-text-secondary hover:text-analysis-text-primary-ink'}`}
+                className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${workloadHorizon === days ? 'bg-surface text-feedback-success-700 shadow-raised' : 'text-analysis-text-secondary hover:text-analysis-text-primary'}`}
               >
                 {days} Dias
               </button>
@@ -901,7 +903,7 @@ export function TaskAnalytics({
             <tbody className="divide-y divide-analysis-muted">
               {userWorkloadUpcoming.map(u => (
                 <tr key={u.userId} className="hover:bg-analysis-subtle transition-colors">
-                  <td className="py-3 px-3 font-semibold text-analysis-text-primary-ink flex items-center gap-2">
+                  <td className="py-3 px-3 font-semibold text-analysis-text-primary flex items-center gap-2">
                     <div className="w-7 h-7 rounded-full bg-analysis-border text-analysis-text-body flex items-center justify-center font-bold text-caption">
                       {getUserInitials(u.userName)}
                     </div>
@@ -995,7 +997,7 @@ export function TaskAnalytics({
             <tbody className="divide-y divide-analysis-muted">
               {activeProjectsHours.map(p => (
                 <tr key={p.id} className="hover:bg-analysis-subtle transition-colors">
-                  <td className="py-3 px-3 font-bold text-analysis-text-primary-ink">
+                  <td className="py-3 px-3 font-bold text-analysis-text-primary">
                     {p.clientName} - {p.title}
                   </td>
                   <td className="py-3 px-3 text-center">

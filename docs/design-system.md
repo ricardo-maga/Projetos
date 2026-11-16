@@ -46,9 +46,9 @@ A contagem continua a sinalizar exceções válidas para revisão; não as omite
 
 ## Auditoria transversal e prevenção de regressões
 
-A auditoria atual inclui **302 ficheiros TS, TSX e CSS** em `app`, `components`, `domains`, `hooks` e `lib`. Abrange também placeholders, accent/caret, decorações, lados de bordas e cores de sombras. Esta extensão revelou seis classes `accent-blue-*`/`placeholder-slate-*` que a expressão anterior não cobria; foram convertidas para funções semânticas.
+A auditoria atual inclui **303 ficheiros TS, TSX e CSS** em `app`, `components`, `domains`, `hooks` e `lib`. Abrange também placeholders, accent/caret, decorações, lados de bordas e cores de sombras. Esta extensão revelou seis classes `accent-blue-*`/`placeholder-slate-*` que a expressão anterior não cobria; foram convertidas para funções semânticas.
 
-`npm run check:visual` é executado no CI e rejeita classes de paleta explícita, raios/sombras locais sem exceção aprovada e sufixos incompletos como `-sm`. Os 94 candidatos de forma restantes são exclusivamente `rounded-full`, `rounded-xs`, `rounded-none` e `shadow-none`. Há 91 valores arbitrários de geometria, 273 hexadecimais (incluindo valores de dados/defaults agora lidos nos ficheiros TS), 21 atributos de geometria/cor `style` e seis propriedades Recharts `*Style`. O JSON mantém os locais e valores para revisão.
+`npm run check:visual` é executado no CI e rejeita classes de paleta explícita, raios/sombras locais sem exceção aprovada e sufixos incompletos como `-sm`. Verifica também se as classes de cor dos espaços semânticos têm uma declaração `@theme`; variáveis privadas de `:root` não geram utilitários Tailwind. Os 94 candidatos de forma restantes são exclusivamente `rounded-full`, `rounded-xs`, `rounded-none` e `shadow-none`. Há 91 valores arbitrários de geometria, 273 hexadecimais (incluindo valores de dados/defaults agora lidos nos ficheiros TS), 22 atributos de geometria/cor `style` e seis propriedades Recharts `*Style`. O JSON mantém os locais e valores para revisão.
 
 Os raios sem sufixo passaram para `rounded-badge`; `shadow-subtle` centraliza o antigo valor Tailwind `shadow-2xs` sem alterar a sua medida. Os sete temas resolvem agora os tokens M3, e o verde/âmbar usam tons de ação com contraste para texto branco. A leitura pública, a sincronização e a edição selecionam deterministicamente a mesma linha de configuração em instalações com duplicados históricos, sem eliminar esses registos.
 
@@ -65,3 +65,7 @@ Os textos de sucesso, aviso e erro e os tons suaves da análise têm valores cen
 Os valores de campos desativados e os placeholders mantêm o contraste de `text-muted`; a indisponibilidade continua indicada pelo estado do controlo. Os rótulos do cronograma usam `text-on-status-dot` sobre as cores de estado existentes. A documentação tem a escala central `docs-accent-*`, independente do tema ERP, para preservar o contraste na sua superfície escura.
 
 O resultado de sincronização assinala o logótipo com um contorno semântico de sucesso/erro. A imagem e o logótipo de substituição mantêm as cores e os elementos reconhecíveis; a animação de carregamento continua independente desse resultado.
+
+O menu principal arranca compacto abaixo do breakpoint `lg` existente (64rem/1024px na configuração atual). Os tablets usam a barra de ícones; os ecrãs móveis mantêm o drawer. A expansão manual continua disponível, e atravessar o breakpoint volta a aplicar o modo adequado.
+
+`ScrollableChart` mantém espaço por categoria nos gráficos estreitos, com scroll por teclado e nomes completos nos dados e tooltips. A altura e as larguras mínimas usam os tokens centrais `--chart-plot-height`, `--chart-min-width`, `--chart-category-width` e `--chart-axis-space`. O único valor inline adicional é a contagem de categorias usada no cálculo da geometria.

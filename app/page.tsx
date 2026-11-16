@@ -186,6 +186,18 @@ export default function Page() {
   } = usePageNavigation(mounted, Boolean(state));
 
   React.useEffect(() => {
+    // Match Tailwind's existing lg boundary between tablet and desktop.
+    const compactViewport = window.matchMedia('(width < 64rem)');
+    const applyViewport = () => {
+      setIsCollapsed(compactViewport.matches);
+      if (compactViewport.matches) setSidebarOpen(false);
+    };
+    applyViewport();
+    compactViewport.addEventListener('change', applyViewport);
+    return () => compactViewport.removeEventListener('change', applyViewport);
+  }, [setSidebarOpen]);
+
+  React.useEffect(() => {
     if (currentUser && isInitialDataLoaded && activeTab === 'configuracoes' && activeConfigTab === 'auditoria' && auditStatus === 'idle') {
       void loadAuditLogs();
     }

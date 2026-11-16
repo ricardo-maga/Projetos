@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
+import { collectColorRoles, findUnresolvedColorClasses } from './visual-color-contract.mjs';
 
 // Read-only audit unless --write is supplied. Counts candidates, not defects.
 const roots = ['app', 'components', 'domains', 'hooks', 'lib'];
@@ -20,17 +21,19 @@ function walk(dir) {
   }
 }
 roots.forEach(walk);
+const colorRoles = collectColorRoles(files.filter(file => file.endsWith('.css')).map(file => fs.readFileSync(file, 'utf8')));
 const helpers = [];
 const findings = [];
 const rows = files.map(file => {
   const source = fs.readFileSync(file, 'utf8');
   const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const row = { file, layer: file.startsWith('components/ui/') || file === 'components/M3.tsx' || file.endsWith('.css') ? 'foundation' : 'screen', palette: 0, shape: 0, orphanedShape: 0, arbitrary: 0, hex: 0, inline: 0, styleProps: 0, sharedImports: 0 };
+  const row = { file, layer: file.startsWith('components/ui/') || file === 'components/M3.tsx' || file.endsWith('.css') ? 'foundation' : 'screen', palette: 0, shape: 0, orphanedShape: 0, orphanedColor: 0, arbitrary: 0, hex: 0, inline: 0, styleProps: 0, sharedImports: 0 };
   const record = (category, value, offset) => {
     row[category]++;
     findings.push({ file, line: source.slice(0, offset).split('\n').length, category, value });
   };
   const scan = (value, offset) => {
+    for (const match of findUnresolvedColorClasses(value, colorRoles)) record('orphanedColor', match.value, offset + match.index);
     for (const [category, regex] of Object.entries(patterns)) {
       for (const match of value.matchAll(regex)) record(category, match[0], offset + match.index);
     }
@@ -50,7 +53,7 @@ const rows = files.map(file => {
   }
   return row;
 });
-const totals = rows.reduce((sum, row) => { for (const key of Object.keys(patterns).concat('inline', 'styleProps')) sum[key] = (sum[key] || 0) + row[key]; return sum; }, {});
+const totals = rows.reduce((sum, row) => { for (const key of Object.keys(patterns).concat('orphanedColor', 'inline', 'styleProps')) sum[key] = (sum[key] || 0) + row[key]; return sum; }, {});
 const result = { scope: roots, helpers, files: files.length, totals, rows, findings };
 if (process.argv.includes('--write')) {
   fs.writeFileSync('docs/visual-style-inventory.json', JSON.stringify(result, null, 2) + '\n');
@@ -59,7 +62,7 @@ console.log(JSON.stringify({ files: files.length, totals, screens: rows.filter(r
 
 const allowedShapes = new Set(['rounded-full', 'rounded-xs', 'rounded-none', 'shadow-none']);
 const localShapes = findings.filter(finding => finding.category === 'shape' && !allowedShapes.has(finding.value));
-if (process.argv.includes('--check') && (totals.palette > 0 || localShapes.length > 0 || totals.orphanedShape > 0)) {
-  console.error('Explicit palette, local shape or incomplete utility classes remain; use semantic visual tokens.');
+if (process.argv.includes('--check') && (totals.palette > 0 || localShapes.length > 0 || totals.orphanedShape > 0 || totals.orphanedColor > 0)) {
+  console.error('Explicit palette, local shape or unresolved utility classes remain; use registered semantic visual tokens.');
   process.exitCode = 1;
 }

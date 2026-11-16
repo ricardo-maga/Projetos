@@ -617,7 +617,17 @@ button[data-filled="true"] :where(span, svg) {
   --chart-tooltip-text: #fff;
   --chart-grid: #e2e8f0;
   --chart-label: #334155;
+  --chart-plot-height: 20rem;
+  --chart-min-width: 20rem;
+  --chart-category-width: 9.5rem;
+  --chart-axis-space: 6rem;
 }
+
+.chart-categorical-plot {
+  height: var(--chart-plot-height);
+  min-width: max(100%, var(--chart-min-width), calc(var(--chart-axis-space) + var(--chart-category-count) * var(--chart-category-width)));
+}
+.chart-categorical-plot[data-empty="true"] { min-width: 0; }
 
 /* Series colours identify the marks; legend text has its own readable role. */
 .recharts-default-legend .recharts-legend-item-text {
