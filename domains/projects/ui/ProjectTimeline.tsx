@@ -212,7 +212,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
             <th scope="col" className="p-3 border-b border-border text-left text-body-sm font-semibold bg-surface-muted lg:sticky lg:left-0 lg:z-30 lg:border-r lg:border-border">Projeto</th>
             {days.map(day => <th scope="col" key={day.dateStr} className={`p-3 border-b border-l border-border text-left text-body-sm font-semibold ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
               <span className="block">{day.weekdayShort.slice(0, 3).toUpperCase()} {day.dayNum}/{day.date.getMonth() + 1}</span>
-              {specialDays.find(s => s.date === day.dateStr) && <span className="block text-caption font-normal text-text-secondary break-words">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
+              {specialDays.find(s => s.date === day.dateStr) && <span title={specialDays.find(s => s.date === day.dateStr)?.name} className="block truncate text-caption font-normal text-text-secondary">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
             </th>)}
           </tr></thead>
           <tbody><tr className="border-t border-border align-top">
@@ -333,7 +333,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
             <th className="p-3 text-left text-body-sm font-semibold bg-surface-muted lg:sticky lg:left-0 lg:z-30 lg:border-r lg:border-border">Projeto</th>
             {days.map(day => <th key={day.dateStr} className={`p-3 border-l border-border text-left text-body-sm font-semibold ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
               <span className="block">{day.weekdayShort.slice(0, 3).toUpperCase()} {day.dayNum}/{day.date.getMonth() + 1}</span>
-              {specialDays.find(s => s.date === day.dateStr) && <span className="block text-caption font-normal text-text-secondary break-words">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
+              {specialDays.find(s => s.date === day.dateStr) && <span title={specialDays.find(s => s.date === day.dateStr)?.name} className="block truncate text-caption font-normal text-text-secondary">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
             </th>)}
           </tr></thead>
         </table>
