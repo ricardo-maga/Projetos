@@ -17,8 +17,8 @@ import Dialog from '../components/ui/Dialog';
 import IconButton from '../components/ui/IconButton';
 import { cn } from '../lib/utils';
 
-import { 
-  LayoutDashboard, Briefcase, CheckSquare, Building, FileText, 
+import {
+  LayoutDashboard, Briefcase, CheckSquare, Building, FileText,
   Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw,
   Bell, ShieldCheck, Database, ListTodo, Loader2, Eye, EyeOff, AlertCircle
 } from 'lucide-react';
@@ -47,12 +47,12 @@ const MyFocusSection = dynamic(() => import('@/domains/monitoring/ui/MyFocusSect
 const ReportsSection = dynamic(() => import('@/domains/reports/ui/ReportsSection'), { loading: SectionLoading });
 
 const AUTH_SCREEN = 'min-h-screen flex items-center justify-center bg-surface-muted p-6';
-const AUTH_INPUT = 'w-full p-3 border border-border rounded-card font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-surface-muted disabled:text-text-muted disabled:cursor-not-allowed transition-colors';
+const AUTH_INPUT = 'w-full p-3 border border-border rounded-card font-medium focus:ring-2 focus:ring-action-500 focus:border-action-500 outline-none disabled:bg-surface-muted disabled:text-text-muted disabled:cursor-not-allowed transition-colors';
 
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  
+
   // Login state
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loginEmail, setLoginEmail] = useState('');
@@ -64,7 +64,7 @@ export default function Page() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const loginInFlight = React.useRef(false);
   const { busy: isSavingProfile, run: runProfileAction } = useAsyncAction();
-  
+
   // Change password state
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [profileName, setProfileName] = useState('');
@@ -242,7 +242,7 @@ export default function Page() {
     loginInFlight.current = true;
     setLoginError('');
     setIsLoggingIn(true);
-    
+
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -271,7 +271,7 @@ export default function Page() {
       }
 
       if (res.ok && data?.success) {
-        
+
         setClientUser(data.user);
 
         // Show loading screen immediately and activate user session
@@ -288,10 +288,10 @@ export default function Page() {
           setIsLoggingIn(false);
         }
       } else {
-        let errorMessage = 
-          data?.error?.message || 
-          data?.message || 
-          data?.error?.details?.fieldErrors?.password?.[0] || 
+        let errorMessage =
+          data?.error?.message ||
+          data?.message ||
+          data?.error?.details?.fieldErrors?.password?.[0] ||
           data?.error?.details?.fieldErrors?.email?.[0];
 
         if (!errorMessage) {
@@ -354,7 +354,7 @@ export default function Page() {
       setCurrentUser({ ...currentUser, name: profileName });
       await refreshFromDatabase();
     }
-    
+
     setChangePasswordSuccess(true);
     setTimeout(() => {
       setIsChangingPassword(false);
@@ -402,13 +402,13 @@ export default function Page() {
   if (!currentUser) {
     return (
       <div className={AUTH_SCREEN}>
-        <div className="w-full max-w-md bg-white rounded-card -xl border border-border-subtle overflow-hidden">
-          <div className="p-8 pb-6 bg-overlay text-white text-center flex flex-col items-center">
-            <AppLogo 
+        <div className="w-full max-w-md bg-surface rounded-card -xl border border-border-subtle overflow-hidden">
+          <div className="p-8 pb-6 bg-overlay text-inverse text-center flex flex-col items-center">
+            <AppLogo
               logoUrl={loginBranding?.logoImagePath || loginBranding?.logo}
               appName={loginBranding?.appName || ''}
-              className="w-72 max-w-full h-16 rounded-card bg-white p-2.5 mb-4 shadow-raised mx-auto"
-              fallbackIconClassName="w-8 h-8 text-blue-600"
+              className="w-72 max-w-full h-16 rounded-card bg-surface p-2.5 mb-4 shadow-raised mx-auto"
+              fallbackIconClassName="w-8 h-8 text-action-600"
             />
             {loginBranding?.appName ? (
               <h1 className="text-2xl font-bold font-sans tracking-tight">{loginBranding.appName}</h1>
@@ -417,18 +417,18 @@ export default function Page() {
               <p className="text-on-inverse text-sm mt-1">{loginBranding.appDescription}</p>
             ) : null}
           </div>
-          
+
           <form onSubmit={handleLogin} className="p-8 space-y-5">
             {loginError && (
-              <div className="p-3 bg-red-50 text-red-600 rounded-control text-sm font-medium text-center border border-red-100">
+              <div className="p-3 bg-feedback-error-50 text-feedback-error-600 rounded-control text-sm font-medium text-center border border-feedback-error-100">
                 {loginError}
               </div>
             )}
-            
+
             <div className="space-y-1">
               <label className="block text-sm font-medium text-text-primary">E-mail</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 value={loginEmail}
                 onChange={e => {
                   setLoginEmail(e.target.value);
@@ -441,15 +441,15 @@ export default function Page() {
                 required
               />
             </div>
-            
+
             <div className="space-y-1">
               <div className="flex justify-between items-center">
                 <label className="block text-sm font-medium text-text-primary">Password</label>
 
               </div>
               <div className="relative">
-                <input 
-                  type={showPassword ? 'text' : 'password'} 
+                <input
+                  type={showPassword ? 'text' : 'password'}
                   value={loginPassword}
                   onChange={e => {
                     setLoginPassword(e.target.value);
@@ -480,27 +480,27 @@ export default function Page() {
                   checked={rememberMe}
                   onChange={e => setRememberMe(e.target.checked)}
                   disabled={isLoggingIn}
-                  className="rounded border-border text-blue-600 focus:ring-blue-500 w-4 h-4"
+                  className="rounded border-border text-action-600 focus:ring-action-500 w-4 h-4"
                 />
                 Lembrar login
               </label>
-              <span className="text-[10px] text-text-muted">
+              <span className="text-micro text-text-muted">
                 {rememberMe ? '30 dias' : 'Até fechar o navegador'}
               </span>
             </div>
 
-            <button 
+            <button
               type="submit"
               disabled={isLoggingIn}
-              className={`w-full py-3 text-white rounded-card font-bold transition-all duration-200 shadow-raised flex items-center justify-center gap-2.5 ${
-                isLoggingIn 
-                  ? 'bg-blue-500/90 cursor-wait' 
-                  : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.99] cursor-pointer'
+              className={`w-full py-3 text-inverse rounded-card font-bold transition-all duration-200 shadow-raised flex items-center justify-center gap-2.5 ${
+                isLoggingIn
+                  ? 'bg-action-500/90 cursor-wait'
+                  : 'bg-action-600 hover:bg-action-700 active:scale-[0.99] cursor-pointer'
               }`}
             >
               {isLoggingIn ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <Loader2 className="w-4 h-4 animate-spin text-inverse" />
                   <span>A autenticar...</span>
                 </>
               ) : (
@@ -509,7 +509,7 @@ export default function Page() {
             </button>
 
 
-            
+
             <div className="pt-4 text-center text-xs text-text-muted">
               <p>Acesso Restrito - Uso Interno</p>
             </div>
@@ -523,8 +523,8 @@ export default function Page() {
   if (syncStatus === 'error' && !isInitialDataLoaded) {
     return (
       <div className={AUTH_SCREEN} id="db-error-screen">
-        <div className="w-full max-w-md bg-white rounded-card border border-rose-100 p-8 text-center space-y-6 shadow-raised animate-fade-in">
-          <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100">
+        <div className="w-full max-w-md bg-surface rounded-card border border-feedback-danger-100 p-8 text-center space-y-6 shadow-raised animate-fade-in">
+          <div className="w-12 h-12 rounded-full bg-feedback-danger-50 text-feedback-danger-600 flex items-center justify-center mx-auto border border-feedback-danger-100">
             <AlertCircle className="w-6 h-6" />
           </div>
           <div className="space-y-2">
@@ -538,7 +538,7 @@ export default function Page() {
           <button
             type="button"
             onClick={() => refreshFromDatabase()}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-card text-xs font-bold transition-all shadow-raised flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3 px-4 bg-action-600 hover:bg-action-700 active:scale-[0.99] text-inverse rounded-card text-xs font-bold transition-all shadow-raised flex items-center justify-center gap-2 cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Tentar novamente</span>
@@ -559,7 +559,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-text-primary" id="main-root" data-active-tab={activeTab} data-theme={appConfig.theme || 'default'} inert={syncStatus === 'syncing'} aria-busy={syncStatus === 'syncing'}>
-      
+
       {/* HEADER BAR (Gmail / Material inspired contract: exactly 3 zones) */}
       <header className="m3-top-app-bar sticky top-0 z-50 h-16 px-4 flex items-center justify-between shrink-0" id="app-header">
         {/* Zone 1: Burger + Brand logo wordmark */}
@@ -573,7 +573,7 @@ export default function Page() {
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </IconButton>
-          
+
           <IconButton
             variant="ghost"
             onClick={() => setIsCollapsed(!isCollapsed)}
@@ -584,14 +584,14 @@ export default function Page() {
           >
             <Menu className="w-5 h-5" />
           </IconButton>
-          
-          <div 
+
+          <div
             className="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0"
             onClick={() => handleTabChange('dashboard')}
             title="Ir para o Dashboard"
           >
-            <AppLogo 
-              logoUrl={appConfig.logoImagePath || appConfig.logo} 
+            <AppLogo
+              logoUrl={appConfig.logoImagePath || appConfig.logo}
               appName={appConfig.appName}
               busy={syncStatus === 'syncing' && isDbConfigured}
               result={syncStatus === 'syncing' ? null : logoResult}
@@ -606,13 +606,13 @@ export default function Page() {
 
         {/* Zone 2 & 3: Actions + Notification + Profile dropdown */}
         <div className="flex items-center gap-3 shrink-0">
-          
-          <NotificationDropdown 
+
+          <NotificationDropdown
             notifications={(state.notifications || []).filter(n => !n.userId || n.userId === currentUser.id || n.userId === 'all')}
             markAsRead={markNotificationAsRead}
             markAllAsRead={() => markAllNotificationsAsRead(currentUser.id)}
           />
-          
+
           <div
             onClick={() => {
               setProfileName(currentUser.name);
@@ -620,11 +620,11 @@ export default function Page() {
               setConfirmNewPassword('');
               setIsChangingPassword(true);
             }}
-            className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-all p-1.5 hover:bg-surface-muted rounded-full" 
+            className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-all p-1.5 hover:bg-surface-muted rounded-full"
             id="user-profile"
             title="Editar perfil"
           >
-            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-caption border border-border shadow-raised uppercase shrink-0">
+            <div className="w-8 h-8 rounded-full bg-primary text-inverse flex items-center justify-center font-bold text-caption border border-border shadow-raised uppercase shrink-0">
               {(() => {
                 const parts = (currentUser.name || '').trim().split(/\s+/);
                 if (parts.length >= 2) {
@@ -633,7 +633,7 @@ export default function Page() {
                 return (parts[0] || '').charAt(0).toUpperCase();
               })()}
             </div>
-            
+
           </div>
         </div>
       </header>
@@ -643,15 +643,15 @@ export default function Page() {
 
         {/* Mobile drawer backdrop overlay */}
         {sidebarOpen && (
-          <div 
-            className="fixed inset-0 top-16 bg-black/40 backdrop-blur-xs z-30 md:hidden animate-fade-in"
+          <div
+            className="fixed inset-0 top-16 bg-scrim/40 backdrop-blur-xs z-30 md:hidden animate-fade-in"
             onClick={() => setSidebarOpen(false)}
             aria-label="Fechar menu"
           />
         )}
-        
+
         {/* SIDEBAR NAVIGATION - Gmail/Material inspired sidebar */}
-        <aside 
+        <aside
           className={`fixed top-16 bottom-0 left-0 z-40 h-[calc(100dvh-4rem)] transform ${
             sidebarOpen ? 'translate-x-0 shadow-overlay' : '-translate-x-full'
           } md:static md:top-auto md:bottom-auto md:h-auto md:translate-x-0 md:shadow-none md:flex flex-col ${
@@ -693,9 +693,9 @@ export default function Page() {
                       className={cn(
                         "m3-nav-item w-full flex items-center gap-3 py-3 font-semibold transition-all duration-150 cursor-pointer select-none",
                         isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-4',
-                        isDisabled 
-                          ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent' 
-                          : isConfigSectionActive 
+                        isDisabled
+                          ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent'
+                          : isConfigSectionActive
                             ? 'is-active'
                             : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
                       )}
@@ -760,9 +760,9 @@ export default function Page() {
                   className={cn(
                     "m3-nav-item w-full flex items-center gap-3 py-3 font-semibold transition-all duration-150 cursor-pointer select-none",
                     isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-4',
-                    isDisabled 
-                      ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent' 
-                      : isActive 
+                    isDisabled
+                      ? 'opacity-40 cursor-not-allowed text-text-disabled border-transparent'
+                      : isActive
                         ? 'is-active'
                         : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
                   )}
@@ -784,7 +784,7 @@ export default function Page() {
         {/* MAIN PANEL CONTENT */}
         <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 overflow-y-auto bg-background" id="main-content">
           <div className="max-w-7xl mx-auto space-y-6">
-            
+
 
             {/* Error or Rollback Notification */}
             {syncStatus === 'error' && (
@@ -799,7 +799,7 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={() => refreshFromDatabase()}
-                  className="px-4 py-2 bg-error hover:opacity-90 text-white font-bold rounded-control text-caption transition-colors shrink-0 flex items-center gap-1.5 shadow-raised cursor-pointer"
+                  className="px-4 py-2 bg-error hover:opacity-90 text-inverse font-bold rounded-control text-caption transition-colors shrink-0 flex items-center gap-1.5 shadow-raised cursor-pointer"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Recarregar da Base de Dados
@@ -832,7 +832,7 @@ export default function Page() {
                 </div>
               )}
               {activeTab === 'dashboard' && materialsStatus === 'loaded' && (
-                <BentoDashboard 
+                <BentoDashboard
                   projects={state.projects}
                   tasks={state.tasks}
                   absences={state.userAbsences}
@@ -853,7 +853,7 @@ export default function Page() {
               )}
 
               {activeTab === 'my-focus' && (
-                <MyFocusSection 
+                <MyFocusSection
                   key={currentUser.id}
                   currentUser={currentUser}
                   users={state.users}
@@ -891,7 +891,7 @@ export default function Page() {
               )}
 
               {activeTab === 'projetos' && materialsStatus === 'loaded' && (!requiresDefaultTasks || defaultTasksStatus === 'loaded') && (
-                <ProjectSection 
+                <ProjectSection
                   projects={state.projects}
                   clients={state.clients}
                   users={state.users}
@@ -937,7 +937,7 @@ export default function Page() {
               )}
 
               {activeTab === 'tarefas' && (
-                <TaskSection 
+                <TaskSection
                   tasks={state.tasks}
                   projects={state.projects}
                   projectStatuses={state.projectStatuses}
@@ -969,7 +969,7 @@ export default function Page() {
               )}
 
               {activeTab === 'calendario' && (
-                <CalendarSection 
+                <CalendarSection
                   projects={state.projects}
                   tasks={state.tasks}
                   absences={state.userAbsences}
@@ -991,7 +991,7 @@ export default function Page() {
               )}
 
               {activeTab === 'clientes' && (
-                <ClientSection 
+                <ClientSection
                   clients={state.clients}
                   projects={state.projects || []}
                   onSelectProject={handleSelectProject}
@@ -1024,7 +1024,7 @@ export default function Page() {
                 </div>
               )}
               {activeTab === 'configuracoes' && (!requiresConfigRuntime || configRuntimeStatus === 'loaded') && (!requiresDefaultTasks || defaultTasksStatus === 'loaded') && (
-                <ConfigSection 
+                <ConfigSection
                   activeConfigTab={activeConfigTab}
                   onChangeConfigTab={handleConfigTabChange}
                   config={appConfig}
@@ -1083,8 +1083,8 @@ export default function Page() {
       </footer>
 
       {/* CHANGE PASSWORD MODAL USING NEW UI DIALOG */}
-      <Dialog 
-        isOpen={isChangingPassword} 
+      <Dialog
+        isOpen={isChangingPassword}
         onClose={() => { if (!isSavingProfile) setIsChangingPassword(false); }}
         title="Editar Perfil"
       >
@@ -1099,10 +1099,10 @@ export default function Page() {
                 {changePasswordError}
               </div>
             )}
-            
+
             <div className="space-y-1.5">
               <label className="block text-label font-bold text-text-secondary select-none">Nome</label>
-              <input 
+              <input
                 type="text"
                 value={profileName}
                 onChange={e => setProfileName(e.target.value)}
@@ -1113,7 +1113,7 @@ export default function Page() {
 
             <div className="space-y-1.5">
               <label className="block text-label font-bold text-text-secondary select-none">Nova password (Opcional)</label>
-              <input 
+              <input
                 type="password"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
@@ -1121,10 +1121,10 @@ export default function Page() {
                 className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
-            
+
             <div className="space-y-1.5">
               <label className="block text-label font-bold text-text-secondary select-none">Confirmar nova password</label>
-              <input 
+              <input
                 type="password"
                 value={confirmNewPassword}
                 onChange={e => setConfirmNewPassword(e.target.value)}
@@ -1132,9 +1132,9 @@ export default function Page() {
                 className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
-            
+
             <div className="pt-4 flex gap-3">
-              <button 
+              <button
                 type="button"
                 disabled={isSavingProfile}
                 onClick={() => setIsChangingPassword(false)}
@@ -1142,10 +1142,10 @@ export default function Page() {
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 type="submit"
                 disabled={isSavingProfile}
-                className="flex-1 h-11 bg-primary text-white hover:bg-primary-hover active:bg-primary-active rounded-control text-body-sm font-semibold transition-all shadow-raised cursor-pointer"
+                className="flex-1 h-11 bg-primary text-inverse hover:bg-primary-hover active:bg-primary-active rounded-control text-body-sm font-semibold transition-all shadow-raised cursor-pointer"
               >
                 {isSavingProfile ? 'A guardar...' : 'Guardar'}
               </button>

@@ -60,7 +60,7 @@ export default function AbsenceCalendar({
     cells.push(
       <div key={`day-${day}`} className={`min-h-[80px] p-1.5 border-b border-r border-border relative transition-colors hover:bg-surface-muted/50 flex flex-col justify-between ${isWeekend || specialDay ? 'bg-surface-muted/60' : 'bg-surface'}`}>
         <div className="flex justify-between items-start mb-1 select-none">
-          <span className={`inline-flex items-center justify-center w-7 h-7 text-center rounded-full font-bold text-caption ${dateStr === todayStr ? 'bg-primary text-white font-black' : 'text-text-secondary'}`}>
+          <span className={`inline-flex items-center justify-center w-7 h-7 text-center rounded-full font-bold text-caption ${dateStr === todayStr ? 'bg-primary text-inverse font-black' : 'text-text-secondary'}`}>
             {day}
           </span>
           {specialDay && <span className="text-caption font-extrabold text-text-primary bg-warning/10 border border-warning/20 px-1 py-0.5 rounded truncate max-w-[50px]" title={specialDay.name}>{specialDay.name}</span>}

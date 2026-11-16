@@ -40,7 +40,7 @@ export default function ExpandedView({ open, onClose, title, children }: Expande
 
   if (!open) return <>{children}</>;
   return createPortal(
-    <div className="fixed inset-0 z-[60] bg-black/50 p-2 sm:p-5" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-[60] bg-scrim/50 p-2 sm:p-5" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
         className="h-full w-full overflow-y-auto rounded-card bg-background shadow-raised outline-none">
         {children}

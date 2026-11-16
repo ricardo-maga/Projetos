@@ -113,16 +113,16 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
   const getActionBadge = (action: string) => {
     switch (action?.toUpperCase()) {
       case 'CREATE':
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-control uppercase tracking-wider">Criar</span>;
+        return <span className="px-2 py-0.5 text-micro font-extrabold bg-feedback-success-50 text-feedback-success-700 border border-feedback-success-200 rounded-control uppercase tracking-wider">Criar</span>;
       case 'UPDATE':
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 rounded-control uppercase tracking-wider">Editar</span>;
+        return <span className="px-2 py-0.5 text-micro font-extrabold bg-action-50 text-action-700 border border-action-200 rounded-control uppercase tracking-wider">Editar</span>;
       case 'DELETE':
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 rounded-control uppercase tracking-wider">Eliminar</span>;
+        return <span className="px-2 py-0.5 text-micro font-extrabold bg-feedback-danger-50 text-feedback-danger-700 border border-feedback-danger-200 rounded-control uppercase tracking-wider">Eliminar</span>;
       case 'LOGIN':
       case 'LOGOUT':
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-purple-50 text-purple-700 border border-purple-200 rounded-control uppercase tracking-wider">{action}</span>;
+        return <span className="px-2 py-0.5 text-micro font-extrabold bg-category-purple-50 text-category-purple-700 border border-category-purple-200 rounded-control uppercase tracking-wider">{action}</span>;
       default:
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-surface-muted text-text-secondary border border-border rounded-control uppercase tracking-wider">{action}</span>;
+        return <span className="px-2 py-0.5 text-micro font-extrabold bg-surface-muted text-text-secondary border border-border rounded-control uppercase tracking-wider">{action}</span>;
     }
   };
 
@@ -131,7 +131,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
       {/* Header */}
       <div className="bg-surface rounded-card border border-border p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-control text-indigo-600">
+          <div className="p-3 bg-category-indigo-50 border border-category-indigo-100 rounded-control text-category-indigo-600">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
@@ -164,41 +164,41 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-surface p-4 rounded-card border border-border flex items-center gap-3">
-          <div className="p-2.5 bg-blue-50 text-primary rounded-control border border-blue-100">
+          <div className="p-2.5 bg-action-50 text-primary rounded-control border border-action-100">
             <Database className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Total Registado</div>
+            <div className="text-micro font-extrabold text-text-muted uppercase tracking-wider">Total Registado</div>
             <div className="text-lg font-black text-text-primary">{stats.total}</div>
           </div>
         </div>
 
         <div className="bg-surface p-4 rounded-card border border-border flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-control border border-emerald-100">
+          <div className="p-2.5 bg-feedback-success-50 text-feedback-success-600 rounded-control border border-feedback-success-100">
             <CheckCircle className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Criações</div>
+            <div className="text-micro font-extrabold text-text-muted uppercase tracking-wider">Criações</div>
             <div className="text-lg font-black text-text-primary">{stats.creates}</div>
           </div>
         </div>
 
         <div className="bg-surface p-4 rounded-card border border-border flex items-center gap-3">
-          <div className="p-2.5 bg-rose-50 text-rose-600 rounded-control border border-rose-100">
+          <div className="p-2.5 bg-feedback-danger-50 text-feedback-danger-600 rounded-control border border-feedback-danger-100">
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Eliminações</div>
+            <div className="text-micro font-extrabold text-text-muted uppercase tracking-wider">Eliminações</div>
             <div className="text-lg font-black text-text-primary">{stats.deletes}</div>
           </div>
         </div>
 
         <div className="bg-surface p-4 rounded-card border border-border flex items-center gap-3">
-          <div className="p-2.5 bg-purple-50 text-purple-600 rounded-control border border-purple-100">
+          <div className="p-2.5 bg-category-purple-50 text-category-purple-600 rounded-control border border-category-purple-100">
             <UserIcon className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Autenticações</div>
+            <div className="text-micro font-extrabold text-text-muted uppercase tracking-wider">Autenticações</div>
             <div className="text-lg font-black text-text-primary">{stats.logins}</div>
           </div>
         </div>
@@ -219,7 +219,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                 setCurrentPage(1);
               }}
               placeholder="Pesquisar utilizador, ação, detalhes ou entidade..."
-              className="w-full pl-9 pr-3.5 py-2 bg-surface border border-border rounded-control text-xs font-medium text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+              className="w-full pl-9 pr-3.5 py-2 bg-surface border border-border rounded-control text-xs font-medium text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-action-100 focus:border-action-500 transition-all"
             />
           </div>
 
@@ -231,7 +231,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                 setFilterAction(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-3 py-2 bg-surface border border-border rounded-control text-xs font-semibold text-text-secondary outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
+              className="px-3 py-2 bg-surface border border-border rounded-control text-xs font-semibold text-text-secondary outline-none focus:ring-2 focus:ring-action-100 focus:border-action-500 transition-all cursor-pointer"
             >
               <option value="ALL">Todas as Ações</option>
               <option value="CREATE">Criar (CREATE)</option>
@@ -248,7 +248,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                 setFilterEntity(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-3 py-2 bg-surface border border-border rounded-control text-xs font-semibold text-text-secondary outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer"
+              className="px-3 py-2 bg-surface border border-border rounded-control text-xs font-semibold text-text-secondary outline-none focus:ring-2 focus:ring-action-100 focus:border-action-500 transition-all cursor-pointer"
             >
               <option value="ALL">Todas as Entidades</option>
               <option value="PROJECT">Projetos</option>
@@ -268,7 +268,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="px-2.5 py-1.5 bg-surface border border-border rounded-control text-xs font-semibold text-text-secondary cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
+                className="px-2.5 py-1.5 bg-surface border border-border rounded-control text-xs font-semibold text-text-secondary cursor-pointer outline-none focus:ring-1 focus:ring-action-500"
               >
                 <option value={15}>15</option>
                 <option value={25}>25</option>
@@ -282,7 +282,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
         {/* Audit Log Table */}
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse min-w-[700px]">
-            <thead className="bg-surface-muted/90 text-[11px] uppercase tracking-wider text-text-muted font-bold border-b border-border/80 whitespace-nowrap select-none">
+            <thead className="bg-surface-muted/90 text-small-label uppercase tracking-wider text-text-muted font-bold border-b border-border/80 whitespace-nowrap select-none">
               <tr>
                 <th className="px-5 py-3.5 text-left">Data e Hora</th>
                 <th className="px-5 py-3.5 text-left">Utilizador</th>
@@ -302,7 +302,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
               ) : (
                 paginatedLogs.map((log, index) => (
                   <tr key={log.id || index} className="hover:bg-surface-muted/60 transition-colors">
-                    <td className="px-5 py-3.5 whitespace-nowrap text-text-muted font-mono text-[11px]">
+                    <td className="px-5 py-3.5 whitespace-nowrap text-text-muted font-mono text-small-label">
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-text-muted" />
                         {log.timestamp ? new Date(log.timestamp).toLocaleString('pt-PT') : 'N/A'}
@@ -311,7 +311,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
 
                     <td className="px-5 py-3.5 whitespace-nowrap">
                       <div className="font-bold text-text-primary">{log.userName || 'Sistema'}</div>
-                      {log.userEmail && <div className="text-[10px] text-text-muted font-mono">{log.userEmail}</div>}
+                      {log.userEmail && <div className="text-micro text-text-muted font-mono">{log.userEmail}</div>}
                     </td>
 
                     <td className="px-5 py-3.5 whitespace-nowrap">
@@ -319,11 +319,11 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                     </td>
 
                     <td className="px-5 py-3.5 whitespace-nowrap">
-                      <div className="font-extrabold text-text-secondary font-mono text-[11px]">
+                      <div className="font-extrabold text-text-secondary font-mono text-small-label">
                         {log.entityType || 'GERAL'}
                       </div>
                       {log.entityName && (
-                        <div className="text-[10px] text-text-muted max-w-[150px] truncate">
+                        <div className="text-micro text-text-muted max-w-[150px] truncate">
                           {log.entityName}
                         </div>
                       )}

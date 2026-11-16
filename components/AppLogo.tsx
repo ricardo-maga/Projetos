@@ -17,7 +17,7 @@ export default function AppLogo({
   logoUrl,
   appName = '',
   className = 'w-72 h-10 bg-transparent',
-  fallbackIconClassName = 'w-4 h-4 text-white',
+  fallbackIconClassName = 'w-4 h-4 text-inverse',
   busy = false,
   result = null,
 }: AppLogoProps) {
@@ -45,13 +45,13 @@ export default function AppLogo({
 
   // Helper to extract clean initials or acronym for fallback badge
   const appWords = (appName || '').trim().split(/\s+/).filter(Boolean);
-  const badgeText = appWords.length > 1 
+  const badgeText = appWords.length > 1
     ? (appWords[0].charAt(0) + appWords[1].charAt(0)).toUpperCase()
     : (appName ? appName.slice(0, 3).toUpperCase() : '');
 
   if (!safeLogoSrc || imageError) {
     return (
-      <div className={`${logoClassName} relative bg-blue-600 flex items-center justify-center text-white font-extrabold shrink-0 select-none overflow-hidden px-3 gap-2 shadow-2xs`}>
+      <div className={`${logoClassName} relative bg-action-600 flex items-center justify-center text-inverse font-extrabold shrink-0 select-none overflow-hidden px-3 gap-2 shadow-2xs`}>
         <Briefcase className={fallbackIconClassName} />
         {badgeText ? (
           <span className="leading-none text-xs font-black tracking-wider uppercase truncate">

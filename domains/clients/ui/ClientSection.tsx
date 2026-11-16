@@ -191,7 +191,7 @@ export default function ClientSection({
               <Button variant="primary" size="sm"
                 type="submit"
                 isLoading={isSavingClient}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-white hover:bg-primary font-bold rounded-control text-body-sm shadow-raised transition-colors"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-inverse hover:bg-primary font-bold rounded-control text-body-sm shadow-raised transition-colors"
               >
                 <Save className="w-3.5 h-3.5" /> Gravar Cliente
               </Button>
@@ -302,7 +302,7 @@ export default function ClientSection({
             <Button variant="primary" size="sm"
               type="submit"
               isLoading={isSavingClient}
-              className="px-6 py-2.5 bg-primary text-white font-bold rounded-control hover:bg-primary -sm"
+              className="px-6 py-2.5 bg-primary text-inverse font-bold rounded-control hover:bg-primary -sm"
             >
               Gravar Cliente
             </Button>

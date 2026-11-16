@@ -305,7 +305,7 @@ export default function UserSection({
                 <div className="space-y-1">
                   <label className="block text-text-secondary">Password {isAddingUser ? '*' : editingUser && !editingUser.authUserId ? '(Necessária para ativar a conta)' : '(Deixe em branco para manter a atual)'}</label>
                   {!isAddingUser && editingUser && !editingUser.authUserId && (
-                    <p className="text-xs text-amber-700">Este perfil não tem conta de autenticação. Defina uma password para criar a conta e permitir o acesso.</p>
+                    <p className="text-xs text-feedback-warning-700">Este perfil não tem conta de autenticação. Defina uma password para criar a conta e permitir o acesso.</p>
                   )}
                   <input
                     type="password"
@@ -338,7 +338,7 @@ export default function UserSection({
                     {rbacRoles.map(role => (
                       <label key={role.id} className={`flex cursor-pointer items-start gap-3 rounded-control border p-3 transition-colors ${uRoleIds.includes(role.id) ? 'border-primary bg-primary/5' : 'border-border bg-surface hover:bg-surface-muted'}`}>
                         <input type="checkbox" checked={uRoleIds.includes(role.id)} onChange={event => setURoleIds(ids => event.target.checked ? [...new Set([...ids, role.id])] : ids.filter(id => id !== role.id))} className="mt-0.5 accent-primary" />
-                        <span className="min-w-0"><span className="block text-sm font-semibold text-text-primary">{role.name}</span><span className="block text-[11px] font-normal text-text-muted">{role.code}</span></span>
+                        <span className="min-w-0"><span className="block text-sm font-semibold text-text-primary">{role.name}</span><span className="block text-small-label font-normal text-text-muted">{role.code}</span></span>
                       </label>
                     ))}
                   </div>
@@ -432,12 +432,12 @@ export default function UserSection({
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-1.5 items-center">
                           {getAssignedRoleNames(u.id).length ? getAssignedRoleNames(u.id).map(name => (
-                            <span key={name} className="px-2 py-1 bg-primary/5 border border-primary/15 rounded-control text-[11px] font-medium text-primary">{name}</span>
+                            <span key={name} className="px-2 py-1 bg-primary/5 border border-primary/15 rounded-control text-small-label font-medium text-primary">{name}</span>
                           )) : <span className="text-xs text-text-muted">Sem função atribuída</span>}
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-1 text-emerald-600 font-bold">
+                        <span className="inline-flex items-center gap-1 text-feedback-success-600 font-bold">
                           <UserCheck className="w-3.5 h-3.5" /> Ativo
                         </span>
                       </td>
@@ -445,7 +445,7 @@ export default function UserSection({
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => startEditUser(u)}
-                            className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
+                            className="text-action-600 hover:text-action-800 font-bold flex items-center gap-1"
                           >
                             <Edit2 className="w-3 h-3" /> Editar
                           </button>
@@ -463,7 +463,7 @@ export default function UserSection({
                                 }
                               }
                             )}
-                            className="text-red-500 hover:text-red-700 font-bold"
+                            className="text-feedback-error-500 hover:text-feedback-error-700 font-bold"
                           >
                             Apagar
                           </button>

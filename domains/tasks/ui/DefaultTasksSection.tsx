@@ -175,7 +175,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <h4 className="text-body font-bold text-text-primary leading-snug">{dt.title}</h4>
                           {typeName && (
-                            <span className="px-2 py-1 bg-blue-50 border border-blue-100 text-blue-700 rounded-control text-label font-semibold">
+                            <span className="px-2 py-1 bg-action-50 border border-action-100 text-action-700 rounded-control text-label font-semibold">
                               {typeName}
                             </span>
                           )}
@@ -203,7 +203,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                         <button
                           onClick={() => handleSaveEditDefaultTask(dt.id)}
                           disabled={savingDefaultTask}
-                          className="px-2 py-1 text-label font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-control transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-inverse bg-feedback-success-600 hover:bg-feedback-success-700 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Check className="w-3.5 h-3.5" />
                           Gravar
@@ -213,7 +213,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                       <>
                         <button
                           onClick={() => startEditingDefaultTask(dt)}
-                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-primary hover:bg-blue-50 rounded-control transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-primary hover:bg-action-50 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           Editar
@@ -229,7 +229,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                               );
                             }
                           }}
-                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-red-600 hover:bg-red-50 rounded-control transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-feedback-error-600 hover:bg-feedback-error-50 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           Eliminar

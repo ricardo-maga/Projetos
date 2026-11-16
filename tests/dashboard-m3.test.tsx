@@ -16,6 +16,17 @@ const props: React.ComponentProps<typeof Dashboard> = {
   projectCategories: [], projectPriorities: [], onNavigate: () => {}, onSelectProject: () => {},
 };
 
+describe('Semantic tone foreground compatibility', () => {
+  it('recognizes solid semantic actions and preserves light/translucent selections', () => {
+    for (const color of ['action-600', 'feedback-error-700', 'feedback-success-600', 'forecast-600', 'category-indigo-700']) {
+      expect(hasFilledButtonBackground(`bg-${color}`, false)).toBe(true);
+      expect(hasFilledButtonBackground(`bg-${color}/10`, false)).toBe(false);
+    }
+    expect(hasFilledButtonBackground('bg-action-50', true)).toBe(false);
+    expect(hasFilledButtonBackground('bg-surface', true)).toBe(false);
+  });
+});
+
 describe('Dashboard M3 presentation', () => {
   it('lists every live project forecast for the selected month, regardless of status', () => {
     const month = currentForecastMonth();

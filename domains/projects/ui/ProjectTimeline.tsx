@@ -223,7 +223,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                   className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${status.dotClass.replace('bg-', 'border-l-')} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
                   <span className="flex items-center gap-1 min-w-0">
-                    {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
+                    {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-inverse flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
                     {!assigneeIds.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                     {assigneeIds.length > 2 && <span className="text-caption">+{assigneeIds.length - 2}</span>}
                     <span className="min-w-0 flex-1 truncate text-caption text-text-primary">{task.title}</span>
@@ -250,7 +250,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               <Button variant="ghost" size="sm" className="px-0 h-auto min-h-9 text-body whitespace-normal text-left justify-start" onClick={() => openOutsideTimeline(() => onSelectProject?.(project.id))}>{project.title}</Button>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 {project.installProjectNo && <span className="text-caption text-text-secondary">{project.installProjectNo}</span>}
-                <Badge className={`${style.badgeClass} px-1 py-0 text-[10px] leading-4`}>{style.name}</Badge>
+                <Badge className={`${style.badgeClass} px-1 py-0 text-micro leading-4`}>{style.name}</Badge>
               </div>
               </div>}
               {pending.length > 0 && <div className="pt-1">
@@ -280,7 +280,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                     className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${status.dotClass.replace('bg-', 'border-l-')} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     onClick={() => openOutsideTimeline(() => onSelectTask(event.task))}>
                     <span className="flex items-center gap-1 min-w-0">
-                      {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
+                      {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-inverse flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
                       {!assigneeIds.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                       {assigneeIds.length > 2 && <span className="text-caption">+{assigneeIds.length - 2}</span>}
                       <span className="min-w-0 flex-1 truncate text-caption text-text-primary">{event.title}</span>
@@ -298,7 +298,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                       <span className="flex flex-col gap-1 min-w-0 break-words">
                       <span title={event.title} className={`${event.kind === 'milestone' ? 'text-caption text-text-secondary' : 'text-body-sm font-semibold'} ${event.kind === 'task' ? 'line-clamp-2' : ''}`}>{event.kind === 'risk' && <ShieldAlert className="inline w-3.5 h-3.5 mr-1" />}{event.title}</span>
                       {event.kind === 'task' ? <><span className="flex items-center gap-1" aria-label="Técnicos alocados">
-                          {(event.task.assigneeIds || []).slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
+                          {(event.task.assigneeIds || []).slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-inverse flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
                           {!event.task.assigneeIds?.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                           {(event.task.assigneeIds || []).length > 2 && <span className="text-caption">+{event.task.assigneeIds.length - 2}</span>}
                           <span className="text-caption text-text-secondary">{parseTaskHoursToFloat(event.task.estimatedHours)}h</span>

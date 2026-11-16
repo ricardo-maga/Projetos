@@ -659,7 +659,7 @@ export default function TaskSection({
                 onClick={() => setFilterDatePreset('overdue')}
                 className="h-8 px-3 text-caption font-bold gap-1"
               >
-                <AlertTriangle className={cn("w-3.5 h-3.5", datePreset === 'overdue' ? 'text-white' : 'text-error')} />
+                <AlertTriangle className={cn("w-3.5 h-3.5", datePreset === 'overdue' ? 'text-inverse' : 'text-error')} />
                 <span>Atrasadas</span>
               </Button>
 

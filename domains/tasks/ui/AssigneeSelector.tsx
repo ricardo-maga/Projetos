@@ -53,7 +53,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
       <div className="flex items-center justify-between">
         <label className="block text-xs font-bold text-text-primary">{label}</label>
         {selectedIds.length > 0 && (
-          <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+          <span className="text-small-label font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
             {selectedIds.length} selecionado(s)
           </span>
         )}
@@ -73,7 +73,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
           <button
             type="button"
             onClick={() => setSearchTerm('')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-text-muted hover:text-text-secondary font-bold bg-surface-muted hover:bg-surface-elevated rounded-full w-4 h-4 flex items-center justify-center transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-micro text-text-muted hover:text-text-secondary font-bold bg-surface-muted hover:bg-surface-elevated rounded-full w-4 h-4 flex items-center justify-center transition-colors"
             title="Limpar pesquisa"
           >
             ×

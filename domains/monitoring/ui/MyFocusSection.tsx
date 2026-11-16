@@ -685,7 +685,7 @@ export default function MyFocusSection({
                               {client?.clientName || 'N/D'}
                             </h4>
                             {forecastMonth(proj.forecastDate) === focusForecastMonth &&
-                              <span title={`Forecast ${focusForecastShortMonth}`} className="inline-flex items-center rounded-control border border-fuchsia-700 bg-fuchsia-600 px-1.5 py-0.5 text-caption font-bold text-white">
+                              <span title={`Forecast ${focusForecastShortMonth}`} className="inline-flex items-center rounded-control border border-forecast-700 bg-forecast-600 px-1.5 py-0.5 text-caption font-bold text-inverse">
                                 {focusForecastShortMonth}
                               </span>}
                           </div>

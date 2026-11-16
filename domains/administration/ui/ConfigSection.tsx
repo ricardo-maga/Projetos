@@ -465,7 +465,7 @@ export default function ConfigSection({
                       }`}
                     >
                       <span
-                        className="w-4 h-4 rounded-full border border-black/10 shrink-0 shadow-2xs"
+                        className="w-4 h-4 rounded-full border border-scrim/10 shrink-0 shadow-2xs"
                         style={{ backgroundColor: t.hex }}
                       />
                       <div>
@@ -521,17 +521,17 @@ export default function ConfigSection({
           <div className="bg-surface rounded-card border border-border p-6 text-xs font-bold text-text-secondary animate-fade-in" id="csv-import-card">
             <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-control bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
+                <div className="w-9 h-9 rounded-control bg-category-indigo-50 text-category-indigo-600 flex items-center justify-center border border-category-indigo-100 shrink-0">
                   <UploadCloud className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-text-primary">Importação de Projetos via CSV</h3>
-                  <p className="text-[11px] text-text-muted font-medium">Cole o conteúdo CSV para criar múltiplos projetos de forma massiva.</p>
+                  <p className="text-small-label text-text-muted font-medium">Cole o conteúdo CSV para criar múltiplos projetos de forma massiva.</p>
                 </div>
               </div>
             </div>
 
-            <p className="text-text-muted text-[11px] font-normal mb-4 leading-relaxed">
+            <p className="text-text-muted text-small-label font-normal mb-4 leading-relaxed">
               Colunas obrigatórias: Nome de projeto, Cliente, Nº IP, Nº SF e Data início. O utilizador autenticado fica como Project Leader.
             </p>
             <div className="space-y-4">
@@ -540,7 +540,7 @@ export default function ConfigSection({
                 onChange={e => setCsvText(e.target.value)}
                 placeholder={`Nome de projeto;Cliente;Nº IP;Nº SF;Data início\nProjeto A;Cliente X;IP-123;SF-456;2026-10-17`}
                 rows={5}
-                className="w-full p-3 border border-border rounded-control font-mono text-xs text-text-secondary focus:ring-2 focus:ring-blue-100 outline-none"
+                className="w-full p-3 border border-border rounded-control font-mono text-xs text-text-secondary focus:ring-2 focus:ring-action-100 outline-none"
               />
 
               <div className="flex gap-2">
@@ -548,21 +548,21 @@ export default function ConfigSection({
                   type="button"
                   onClick={handleCsvImport}
                   disabled={importingCsv || !csvText.trim() || !hasPermission(currentUser, 'projects_write')}
-                  className="px-5 py-2 bg-primary text-white font-bold rounded-control hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs"
+                  className="px-5 py-2 bg-primary text-inverse font-bold rounded-control hover:bg-action-700 disabled:opacity-50 transition-colors text-xs"
                 >
                   {importingCsv ? 'A importar...' : 'Importar Dados'}
                 </button>
               </div>
 
               {csvResult && (
-                <div className={`p-4 rounded-control border ${csvResult.failed > 0 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                <div className={`p-4 rounded-control border ${csvResult.failed > 0 ? 'bg-feedback-warning-50 border-feedback-warning-200' : 'bg-feedback-success-50 border-feedback-success-200'}`}>
                   <h4 className="font-bold text-sm mb-2 text-text-primary">Resultado da Importação:</h4>
                   <ul className="list-disc pl-5 space-y-1 text-text-secondary">
-                    <li>Registos importados com sucesso: <span className="text-emerald-600 font-bold">{csvResult.success}</span></li>
-                    {csvResult.failed > 0 && <li>Falhas: <span className="text-amber-600 font-bold">{csvResult.failed}</span></li>}
+                    <li>Registos importados com sucesso: <span className="text-feedback-success-600 font-bold">{csvResult.success}</span></li>
+                    {csvResult.failed > 0 && <li>Falhas: <span className="text-feedback-warning-600 font-bold">{csvResult.failed}</span></li>}
                   </ul>
                   {csvResult.errors.length > 0 && (
-                    <div className="mt-3 p-3 bg-surface rounded-control border border-amber-200 text-amber-700 h-32 overflow-y-auto">
+                    <div className="mt-3 p-3 bg-surface rounded-control border border-feedback-warning-200 text-feedback-warning-700 h-32 overflow-y-auto">
                       {csvResult.errors.map((e, i) => (
                         <div key={i}>{e}</div>
                       ))}
@@ -586,7 +586,7 @@ export default function ConfigSection({
                 Testar ligação
               </button>
             </div>
-            <div role="status" className={`p-4 rounded-control border ${supabaseStatus === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : supabaseStatus === 'failed' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-surface-muted border-border text-text-secondary'}`}>
+            <div role="status" className={`p-4 rounded-control border ${supabaseStatus === 'success' ? 'bg-feedback-success-50 border-feedback-success-100 text-feedback-success-800' : supabaseStatus === 'failed' ? 'bg-feedback-error-50 border-feedback-error-200 text-feedback-error-800' : 'bg-surface-muted border-border text-text-secondary'}`}>
               <div className="flex items-start gap-2.5">
                 {supabaseStatus === 'success' ? <CheckCircle className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
                 <span>{supabaseStatus === 'testing' ? 'A testar a leitura da base de dados...' : supabaseMessage}</span>
@@ -598,12 +598,12 @@ export default function ConfigSection({
           <div className="bg-surface rounded-card border border-border p-6 text-xs animate-fade-in" id="index-panel">
             <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border-subtle">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-control bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 shrink-0">
+                <div className="w-9 h-9 rounded-control bg-feedback-warning-50 text-feedback-warning-600 flex items-center justify-center border border-feedback-warning-100 shrink-0">
                   <Zap className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-text-primary">Auditoria de Consultas & Índices Supabase</h3>
-                  <p className="text-[11px] text-text-muted font-medium">Índices B-Tree compostos e paginação no servidor para otimização de desempenho.</p>
+                  <p className="text-small-label text-text-muted font-medium">Índices B-Tree compostos e paginação no servidor para otimização de desempenho.</p>
                 </div>
               </div>
 
@@ -618,32 +618,32 @@ export default function ConfigSection({
             </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3 bg-surface-muted rounded-control border border-slate-150">
-              <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-[11px]">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="p-3 bg-surface-muted rounded-control border border-border-subtle">
+              <div className="flex items-center gap-2 text-feedback-success-700 font-extrabold text-small-label">
+                <CheckCircle className="w-3.5 h-3.5 text-feedback-success-600" />
                 Índices de Projetos
               </div>
-              <p className="text-[10px] text-text-muted mt-1 font-mono leading-tight">
+              <p className="text-micro text-text-muted mt-1 font-mono leading-tight">
                 idx_projects_deleted_created_at, idx_projects_active_status
               </p>
             </div>
 
-            <div className="p-3 bg-surface-muted rounded-control border border-slate-150">
-              <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-[11px]">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="p-3 bg-surface-muted rounded-control border border-border-subtle">
+              <div className="flex items-center gap-2 text-feedback-success-700 font-extrabold text-small-label">
+                <CheckCircle className="w-3.5 h-3.5 text-feedback-success-600" />
                 Índices de Tarefas
               </div>
-              <p className="text-[10px] text-text-muted mt-1 font-mono leading-tight">
+              <p className="text-micro text-text-muted mt-1 font-mono leading-tight">
                 idx_tasks_project_deleted, idx_tasks_deleted_created_at
               </p>
             </div>
 
-            <div className="p-3 bg-surface-muted rounded-control border border-slate-150">
-              <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-[11px]">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="p-3 bg-surface-muted rounded-control border border-border-subtle">
+              <div className="flex items-center gap-2 text-feedback-success-700 font-extrabold text-small-label">
+                <CheckCircle className="w-3.5 h-3.5 text-feedback-success-600" />
                 Paginação e APIs
               </div>
-              <p className="text-[10px] text-text-muted mt-1 font-mono leading-tight">
+              <p className="text-micro text-text-muted mt-1 font-mono leading-tight">
                 /api/v1/projects & /api/v1/tasks (LIMIT/OFFSET ativo)
               </p>
             </div>
@@ -652,17 +652,17 @@ export default function ConfigSection({
           {showIndexSql && (
             <div className="space-y-2 animate-fade-in">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-text-muted font-mono font-bold">SCRIPT SQL DE OTIMIZAÇÃO (supabase/optimize_indexes.sql)</span>
+                <span className="text-micro text-text-muted font-mono font-bold">SCRIPT SQL DE OTIMIZAÇÃO (supabase/optimize_indexes.sql)</span>
                 <button
                   type="button"
                   onClick={copyIndexSqlToClipboard}
-                  className="px-2.5 py-1 bg-surface border border-border hover:bg-surface-muted text-text-secondary font-bold rounded-control text-[10px] flex items-center gap-1 transition-colors"
+                  className="px-2.5 py-1 bg-surface border border-border hover:bg-surface-muted text-text-secondary font-bold rounded-control text-micro flex items-center gap-1 transition-colors"
                 >
                   <Copy className="w-3 h-3 text-text-muted" />
                   {indexSqlCopied ? 'Copiado para o clipboard!' : 'Copiar Script SQL'}
                 </button>
               </div>
-              <pre className="p-3 bg-overlay text-emerald-400 rounded-control font-mono text-[9px] overflow-x-auto max-h-[200px] leading-relaxed border border-border">
+              <pre className="p-3 bg-overlay text-feedback-success-400 rounded-control font-mono text-code-dense overflow-x-auto max-h-[200px] leading-relaxed border border-border">
                 {SUPABASE_OPTIMIZE_INDEXES_SQL}
               </pre>
             </div>

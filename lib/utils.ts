@@ -47,7 +47,7 @@ export function getProjectCalculatedRisk(
       score: 0,
       count: 0,
       label: 'Baixo',
-      color: 'text-emerald-700 bg-emerald-100 border-emerald-300',
+      color: 'text-feedback-success-700 bg-feedback-success-100 border-feedback-success-300',
       dot: '🟢'
     };
   }
@@ -61,13 +61,13 @@ export function getProjectCalculatedRisk(
   }
 
   if (maxScore >= 16) {
-    return { score: maxScore, count: projectRisks.length, label: 'Crítico', color: 'text-rose-700 bg-rose-100 border-rose-300', dot: '🔴' };
+    return { score: maxScore, count: projectRisks.length, label: 'Crítico', color: 'text-feedback-danger-700 bg-feedback-danger-100 border-feedback-danger-300', dot: '🔴' };
   } else if (maxScore >= 11) {
-    return { score: maxScore, count: projectRisks.length, label: 'Alto', color: 'text-orange-700 bg-orange-100 border-orange-300', dot: '🟠' };
+    return { score: maxScore, count: projectRisks.length, label: 'Alto', color: 'text-feedback-attention-700 bg-feedback-attention-100 border-feedback-attention-300', dot: '🟠' };
   } else if (maxScore >= 6) {
-    return { score: maxScore, count: projectRisks.length, label: 'Médio', color: 'text-amber-700 bg-amber-100 border-amber-300', dot: '🟡' };
+    return { score: maxScore, count: projectRisks.length, label: 'Médio', color: 'text-feedback-warning-700 bg-feedback-warning-100 border-feedback-warning-300', dot: '🟡' };
   } else {
-    return { score: maxScore, count: projectRisks.length, label: 'Baixo', color: 'text-emerald-700 bg-emerald-100 border-emerald-300', dot: '🟢' };
+    return { score: maxScore, count: projectRisks.length, label: 'Baixo', color: 'text-feedback-success-700 bg-feedback-success-100 border-feedback-success-300', dot: '🟢' };
   }
 }
 
@@ -278,61 +278,61 @@ export const PASTEL_COLOR_MAP: Record<string, StatusColorInfo> = {
     id: 'vermelho',
     name: 'Vermelho',
     hex: '#fca5a5',
-    bgClass: 'bg-red-50',
-    textClass: 'text-red-700',
-    borderClass: 'border-red-200',
-    badgeClass: 'bg-red-50 text-red-700 border-red-200',
-    dotClass: 'bg-red-500',
+    bgClass: 'bg-feedback-error-50',
+    textClass: 'text-feedback-error-700',
+    borderClass: 'border-feedback-error-200',
+    badgeClass: 'bg-feedback-error-50 text-feedback-error-700 border-feedback-error-200',
+    dotClass: 'bg-feedback-error-500',
   },
   amarelo: {
     id: 'amarelo',
     name: 'Amarelo',
     hex: '#fef08a',
-    bgClass: 'bg-amber-50',
-    textClass: 'text-amber-800',
-    borderClass: 'border-amber-200',
-    badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
-    dotClass: 'bg-amber-500',
+    bgClass: 'bg-feedback-warning-50',
+    textClass: 'text-feedback-warning-800',
+    borderClass: 'border-feedback-warning-200',
+    badgeClass: 'bg-feedback-warning-50 text-feedback-warning-800 border-feedback-warning-200',
+    dotClass: 'bg-feedback-warning-500',
   },
   verde: {
     id: 'verde',
     name: 'Verde',
     hex: '#bbf7d0',
-    bgClass: 'bg-emerald-50',
-    textClass: 'text-emerald-700',
-    borderClass: 'border-emerald-200',
-    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    dotClass: 'bg-emerald-500',
+    bgClass: 'bg-feedback-success-50',
+    textClass: 'text-feedback-success-700',
+    borderClass: 'border-feedback-success-200',
+    badgeClass: 'bg-feedback-success-50 text-feedback-success-700 border-feedback-success-200',
+    dotClass: 'bg-feedback-success-500',
   },
   azul: {
     id: 'azul',
     name: 'Azul Céu',
     hex: '#38bdf8',
-    bgClass: 'bg-sky-100',
-    textClass: 'text-sky-800',
-    borderClass: 'border-sky-300',
-    badgeClass: 'bg-sky-100 text-sky-800 border-sky-300',
-    dotClass: 'bg-sky-500',
+    bgClass: 'bg-category-sky-100',
+    textClass: 'text-category-sky-800',
+    borderClass: 'border-category-sky-300',
+    badgeClass: 'bg-category-sky-100 text-category-sky-800 border-category-sky-300',
+    dotClass: 'bg-category-sky-500',
   },
   laranja: {
     id: 'laranja',
     name: 'Laranja',
     hex: '#fed7aa',
-    bgClass: 'bg-orange-50',
-    textClass: 'text-orange-800',
-    borderClass: 'border-orange-200',
-    badgeClass: 'bg-orange-50 text-orange-800 border-orange-200',
-    dotClass: 'bg-orange-500',
+    bgClass: 'bg-feedback-attention-50',
+    textClass: 'text-feedback-attention-800',
+    borderClass: 'border-feedback-attention-200',
+    badgeClass: 'bg-feedback-attention-50 text-feedback-attention-800 border-feedback-attention-200',
+    dotClass: 'bg-feedback-attention-500',
   },
   cinza: {
     id: 'cinza',
     name: 'Cinza',
     hex: '#e2e8f0',
-    bgClass: 'bg-slate-100',
-    textClass: 'text-slate-700',
-    borderClass: 'border-slate-200',
-    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
-    dotClass: 'bg-slate-400',
+    bgClass: 'bg-status-neutral-100',
+    textClass: 'text-status-neutral-700',
+    borderClass: 'border-status-neutral-200',
+    badgeClass: 'bg-status-neutral-100 text-status-neutral-700 border-status-neutral-200',
+    dotClass: 'bg-status-neutral-400',
   },
 };
 

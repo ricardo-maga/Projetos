@@ -44,7 +44,7 @@ export default function Switch({ checked, onChange, disabled, label, ariaLabel, 
           <motion.div
             layout
             transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            className="w-5 h-5 rounded-full bg-white shadow-raised mt-0.5 ml-0.5"
+            className="w-5 h-5 rounded-full bg-surface shadow-raised mt-0.5 ml-0.5"
             animate={{ x: checked ? 20 : 0 }}
           />
         </div>

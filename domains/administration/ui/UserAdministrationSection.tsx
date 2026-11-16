@@ -77,12 +77,12 @@ export default function UserAdministrationSection({ config, state, currentUser, 
             {(state.activeRoles || []).length === 0 ? <span className="text-text-muted font-medium">Nenhuma função ativa criada</span> : state.activeRoles!.map(role => {
               const checked = selected[group.key].includes(role.id);
               return <label key={role.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-control cursor-pointer select-none hover:bg-surface-muted transition-colors">
-                <input type="checkbox" disabled={!canWriteConfig || busy} checked={checked} onChange={() => setSelected(prev => ({ ...prev, [group.key]: checked ? prev[group.key].filter(id => id !== role.id) : [...prev[group.key], role.id] }))} className="rounded border-border text-primary focus:ring-blue-500 w-4 h-4 cursor-pointer" />
+                <input type="checkbox" disabled={!canWriteConfig || busy} checked={checked} onChange={() => setSelected(prev => ({ ...prev, [group.key]: checked ? prev[group.key].filter(id => id !== role.id) : [...prev[group.key], role.id] }))} className="rounded border-border text-primary focus:ring-action-500 w-4 h-4 cursor-pointer" />
                 <span className="text-text-secondary font-semibold text-xs">{role.name}</span>
               </label>;
             })}
           </div>
-          <p className="text-[10px] text-text-muted font-medium font-sans">{group.description}</p>
+          <p className="text-micro text-text-muted font-medium font-sans">{group.description}</p>
         </div>)}</div>
       </div>
       <div className="flex justify-end"><M3Button type="submit" disabled={!canWriteConfig || busy || !state.activeRoles}>{busy ? 'A gravar...' : 'Gravar associações'}</M3Button></div>

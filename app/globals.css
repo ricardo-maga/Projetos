@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./visual-tones.css";
 @source "../app";
 @source "../components";
 @source "../lib";

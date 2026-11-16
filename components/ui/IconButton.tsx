@@ -21,12 +21,12 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
           "inline-flex items-center justify-center transition-all duration-200 outline-none select-none rounded-control active:scale-[0.95]",
           "focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none",
           "disabled:opacity-50 disabled:pointer-events-none disabled:scale-100",
-          
-          variant === 'primary' && "bg-primary text-white hover:bg-primary-hover active:bg-primary-active shadow-raised",
+
+          variant === 'primary' && "bg-primary text-inverse hover:bg-primary-hover active:bg-primary-active shadow-raised",
           variant === 'secondary' && "bg-surface-muted text-text-primary hover:bg-border border border-border shadow-raised",
           variant === 'outline' && "bg-transparent text-text-primary border border-border hover:bg-surface-muted",
           variant === 'ghost' && "bg-transparent text-text-secondary hover:bg-surface-muted hover:text-text-primary",
-          variant === 'danger' && "bg-error text-white hover:opacity-90 shadow-raised",
+          variant === 'danger' && "bg-error text-inverse hover:opacity-90 shadow-raised",
 
           // Sizing with exact aspect ratios ensuring compliant touch targets (sm=36px, md=44px, lg=48px)
           size === 'sm' && "w-9 h-9 text-body-sm",
