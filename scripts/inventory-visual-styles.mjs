@@ -7,6 +7,7 @@ const roots = ['app', 'components', 'domains', 'hooks', 'lib'];
 const patterns = {
   palette: /\b(?:bg|text|border(?:-[trblsexy])?|divide(?:-[xy])?|ring(?:-offset)?|outline|fill|stroke|from|via|to|accent|caret|decoration|placeholder|shadow)-(?:slate|gray|zinc|neutral|stone|blue|indigo|violet|purple|fuchsia|pink|rose|red|orange|amber|yellow|lime|emerald|green|teal|cyan|sky)(?:-\d{2,3})?(?:\/\d+)?\b|\b(?:bg|text|border(?:-[trblsexy])?|divide(?:-[xy])?|ring(?:-offset)?|outline|fill|stroke|from|via|to|accent|caret|decoration|placeholder|shadow)-(?:white|black)(?:\/\d+)?\b/g,
   shape: /\b(?:rounded(?:-[trblse]{1,2})?-(?:none|xs|sm|md|lg|xl|2xl|3xl|full)|shadow-(?:2xs|xs|sm|md|lg|xl|2xl|none|inner))\b|(?<![-\w])(?:rounded(?:-[trblse]{1,2})?|shadow)(?![-\w])/g,
+  orphanedShape: /(?<![\w-])-(?:xs|sm|md|lg|xl|2xl|3xl)(?![\w-])/g,
   arbitrary: /(?:[\w-]+:)*[\w-]+-\[[^\]\r\n]+\]/g,
   hex: /#[0-9a-fA-F]{3,8}\b/g,
 };
@@ -24,7 +25,7 @@ const findings = [];
 const rows = files.map(file => {
   const source = fs.readFileSync(file, 'utf8');
   const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const row = { file, layer: file.startsWith('components/ui/') || file === 'components/M3.tsx' || file.endsWith('.css') ? 'foundation' : 'screen', palette: 0, shape: 0, arbitrary: 0, hex: 0, inline: 0, styleProps: 0, sharedImports: 0 };
+  const row = { file, layer: file.startsWith('components/ui/') || file === 'components/M3.tsx' || file.endsWith('.css') ? 'foundation' : 'screen', palette: 0, shape: 0, orphanedShape: 0, arbitrary: 0, hex: 0, inline: 0, styleProps: 0, sharedImports: 0 };
   const record = (category, value, offset) => {
     row[category]++;
     findings.push({ file, line: source.slice(0, offset).split('\n').length, category, value });
@@ -58,7 +59,7 @@ console.log(JSON.stringify({ files: files.length, totals, screens: rows.filter(r
 
 const allowedShapes = new Set(['rounded-full', 'rounded-xs', 'rounded-none', 'shadow-none']);
 const localShapes = findings.filter(finding => finding.category === 'shape' && !allowedShapes.has(finding.value));
-if (process.argv.includes('--check') && (totals.palette > 0 || localShapes.length > 0)) {
-  console.error('Explicit palette or local shape classes remain; use semantic visual tokens.');
+if (process.argv.includes('--check') && (totals.palette > 0 || localShapes.length > 0 || totals.orphanedShape > 0)) {
+  console.error('Explicit palette, local shape or incomplete utility classes remain; use semantic visual tokens.');
   process.exitCode = 1;
 }

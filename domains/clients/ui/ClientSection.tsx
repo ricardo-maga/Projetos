@@ -302,7 +302,7 @@ export default function ClientSection({
             <Button variant="primary" size="sm"
               type="submit"
               isLoading={isSavingClient}
-              className="px-6 py-2.5 bg-primary text-inverse font-bold rounded-control hover:bg-primary -sm"
+              className="px-6 py-2.5 bg-primary text-inverse font-bold rounded-control hover:bg-primary shadow-raised"
             >
               Gravar Cliente
             </Button>

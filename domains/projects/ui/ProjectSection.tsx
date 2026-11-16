@@ -1586,7 +1586,7 @@ export default function ProjectSection({
 
       {/* 1. If viewing detail & NOT editing */}
       {selectedProj && !isEditing ? (
-        <Card className="bg-surface rounded-card border border-border -sm overflow-hidden animate-fade-in">
+        <Card className="bg-surface rounded-card border border-border shadow-raised overflow-hidden animate-fade-in">
 
           {/* Header Action Row */}
           <div className="p-5 border-b border-border bg-surface-muted flex flex-wrap gap-4 items-center justify-between">
@@ -1838,7 +1838,7 @@ export default function ProjectSection({
                         </span>
                       </div>
                     </div>
-                    <div className="bg-surface border border-border rounded-control overflow-hidden -sm">
+                    <div className="bg-surface border border-border rounded-control overflow-hidden shadow-raised">
                       <div className="grid grid-cols-7 border-b border-border-subtle bg-surface-muted text-caption font-bold text-text-secondary uppercase text-center">
                         {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
                           <div key={d} className="py-2 border-r border-border-subtle last:border-0">{d}</div>
@@ -2341,7 +2341,7 @@ export default function ProjectSection({
                                                   }
                                                   e.dataTransfer.setData('taskId', t.id);
                                                 }}
-                                                className={`py-1.5 px-1 rounded-control text-caption font-bold text-inverse -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
+                                                className={`py-1.5 px-1 rounded-control text-caption font-bold text-inverse shadow-raised cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
                                                   getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                                 }`}
                                                 title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}
@@ -3563,7 +3563,7 @@ export default function ProjectSection({
       ) : isEditing ? (
 
         // 2. PROJECT EDIT OR CREATE FORM
-        <form onSubmit={handleSubmit} className="flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col overflow-hidden rounded-card border border-border bg-surface -sm animate-fade-in">
+        <form onSubmit={handleSubmit} className="flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-raised animate-fade-in">
           <div className="shrink-0 px-6 pt-6">
             <M3SectionHeader
               title={editingId ? 'Editar projeto' : 'Adicionar novo projeto'}
@@ -4090,7 +4090,7 @@ export default function ProjectSection({
             <Button variant="primary" size="sm"
               type="submit"
               isLoading={isSavingProject}
-              className="px-6 py-2.5 bg-primary text-inverse rounded-control font-bold hover:bg-primary transition-colors -sm"
+              className="px-6 py-2.5 bg-primary text-inverse rounded-control font-bold hover:bg-primary transition-colors shadow-raised"
             >
               Gravar Alterações
             </Button>
@@ -4105,7 +4105,7 @@ export default function ProjectSection({
           activeTabId={projectListView} onChange={id => setProjectListView(id as 'lista' | 'analise')} variant="line" />
         {projectListView === 'analise' ? <ProjectAnalytics projects={projects} projectStatuses={projectStatuses}
           categories={projectCategories} users={users} clients={clients} materials={projectMaterials} onSelectProject={setSelectedProjectId} /> : (
-        <Card className="bg-surface rounded-card border border-border -sm overflow-hidden animate-fade-in">
+        <Card className="bg-surface rounded-card border border-border shadow-raised overflow-hidden animate-fade-in">
 
           {/* List Header and Filter controls */}
           <div className="p-4 sm:p-5 border-b border-border/80 bg-surface-muted/60 space-y-3.5">
@@ -4613,7 +4613,7 @@ export default function ProjectSection({
                                             }
                                             e.dataTransfer.setData('taskId', t.id);
                                           }}
-                                          className={`py-1.5 px-1 rounded-control text-caption font-bold text-inverse -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
+                                          className={`py-1.5 px-1 rounded-control text-caption font-bold text-inverse shadow-raised cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
                                             getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                           }`}
                                           title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}

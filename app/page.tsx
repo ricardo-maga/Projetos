@@ -404,7 +404,7 @@ export default function Page() {
   if (!currentUser) {
     return (
       <div className={AUTH_SCREEN}>
-        <div className="w-full max-w-md bg-surface rounded-card -xl border border-border-subtle overflow-hidden">
+        <div className="w-full max-w-md bg-surface rounded-card shadow-modal border border-border-subtle overflow-hidden">
           <div className="p-8 pb-6 bg-overlay text-inverse text-center flex flex-col items-center">
             <AppLogo
               logoUrl={loginBranding?.logoImagePath || loginBranding?.logo}
