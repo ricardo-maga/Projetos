@@ -15,6 +15,8 @@ async function getAuthenticatedUserSession(req?: NextRequest) {
       name: user.name,
       type: user.type,
       email: user.email,
+      approved: true,
+      deleted: false,
       roleId: user.role_id || user.role_ids[0] || '',
       roleIds: user.role_ids,
       roleNames: user.role_names,

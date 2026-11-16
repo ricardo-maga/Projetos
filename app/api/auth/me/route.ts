@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
         name: user.name,
         email: user.email,
         type: user.type,
+        approved: user.approved,
+        deleted: false,
         roleId: user.roleId,
         roleIds: user.roleIds,
         isSuperAdmin: user.isSuperAdmin,

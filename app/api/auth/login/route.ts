@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     }
     const user = {
       id: profile.id, name: profile.name, email: profile.email, type: profile.type || 'Team',
+      approved: true, deleted: false,
       roleId: profile.role_id, roleIds: activeRoleIds, roleNames: (roles || []).map((role: any) => role.name),
       isAdmin: Boolean(profile.is_admin), isSuperAdmin: (roles || []).some((role: any) => role.code === 'SUPER_ADMIN'),
       permissions: [...new Set((permissionRows || []).map((item: any) => item.code))],
