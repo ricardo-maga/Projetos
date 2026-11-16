@@ -35,8 +35,11 @@ describe('Absences configured group visibility', () => {
 
 describe('Absences M3 presentation and existing actions', () => {
   it('renders configured optgroups, filters both calendar and records, and uses Foundation controls', () => {
-    const h = createSectionHarness('../domains/absences/ui/AbsencesSection.tsx', { currentCalendarDate: new Date(2026, 9, 1) });
-    const tree = h.render(props), html = renderToStaticMarkup(tree);
+    const h = createSectionHarness('../domains/absences/ui/AbsencesSection.tsx');
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const tree = h.render({ ...props, absences: [absence('visible', 'a'), absence('excluded', 'x'), absence('deleted', 'd')].map(item => ({ ...item, absenceStartDate: today, absenceEndDate: today })) });
+    const html = renderToStaticMarkup(tree);
     expect(html).toContain('Registo de ausências'); expect(html).toContain('Calendário mensal');
     expect(html).toContain('Ausências registadas'); expect(html).toContain('rounded-card');
     expect(html.indexOf('label="Águia"')).toBeLessThan(html.indexOf('label="Zebra"'));
