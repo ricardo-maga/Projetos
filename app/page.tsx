@@ -716,7 +716,7 @@ export default function Page() {
                     >
                       <Icon className={cn(
                         "w-5 h-5 flex-shrink-0 transition-colors",
-                        isDisabled ? 'text-text-disabled' : isActive ? 'text-primary' : 'text-text-muted'
+                        isDisabled ? 'text-text-disabled' : isActive ? 'text-primary-ink' : 'text-text-muted'
                       )} />
                       <span className={cn("text-body truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
                     </button>
@@ -741,14 +741,14 @@ export default function Page() {
                                 "w-full flex items-center gap-2.5 py-2 rounded-control text-caption font-semibold transition-all duration-150 cursor-pointer select-none border-l-2",
                                 isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-3',
                                 isSubActive
-                                  ? 'bg-primary/5 text-primary font-bold border-primary'
+                                  ? 'bg-primary/5 text-primary-ink font-bold border-primary'
                                   : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
                               )}
                               title={isCollapsed ? sub.label : undefined}
                             >
                               <SubIcon className={cn(
                                 "w-4 h-4 shrink-0 transition-colors",
-                                isSubActive ? 'text-primary' : 'text-text-muted'
+                                isSubActive ? 'text-primary-ink' : 'text-text-muted'
                               )} />
                               <span className={cn("truncate", isCollapsed ? 'md:hidden' : 'block')}>{sub.label}</span>
                             </button>
@@ -783,7 +783,7 @@ export default function Page() {
                 >
                   <Icon className={cn(
                     "w-5 h-5 flex-shrink-0 transition-colors",
-                    isDisabled ? 'text-text-disabled' : isActive ? 'text-primary' : 'text-text-muted'
+                    isDisabled ? 'text-text-disabled' : isActive ? 'text-primary-ink' : 'text-text-muted'
                   )} />
                   <span className={cn("text-body truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
                 </button>
@@ -830,7 +830,7 @@ export default function Page() {
                   {(requiresProjectMaterials && materialsStatus === 'error') || (requiresDefaultTasks && defaultTasksStatus === 'error') ? (
                     <button
                       type="button"
-                      className="flex items-center gap-2 text-primary font-semibold"
+                      className="flex items-center gap-2 text-primary-ink font-semibold"
                       onClick={() => {
                         if (requiresProjectMaterials && materialsStatus === 'error') void loadProjectMaterials();
                         if (requiresDefaultTasks && defaultTasksStatus === 'error') void loadDefaultTasks();
@@ -1031,7 +1031,7 @@ export default function Page() {
               {requiresConfigRuntime && configRuntimeStatus !== 'loaded' && (
                 <div role="status" aria-label={configRuntimeStatus === 'error' ? 'Não foi possível abrir a secção' : 'A carregar secção'} className="flex min-h-48 items-center justify-center text-text-muted">
                   {configRuntimeStatus === 'error' ? (
-                    <button type="button" className="flex items-center gap-2 text-primary font-semibold" onClick={() => void loadConfigRuntime()}><RefreshCw className="h-5 w-5" aria-hidden="true" /> Tentar novamente</button>
+                    <button type="button" className="flex items-center gap-2 text-primary-ink font-semibold" onClick={() => void loadConfigRuntime()}><RefreshCw className="h-5 w-5" aria-hidden="true" /> Tentar novamente</button>
                   ) : <Loader2 className="h-8 w-8 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
                 </div>
               )}

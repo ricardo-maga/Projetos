@@ -84,7 +84,7 @@ function ForecastBadge({ project, statuses, canEdit, updateProject, compact = fa
     <input type="month" aria-label="Mês do Forecast" value={draft} disabled={saving} onChange={event => setDraft(event.target.value)}
       className={`min-w-0 shrink-0 rounded-control border border-border bg-surface text-text-primary shadow-flat outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface-muted ${compact ? 'h-9 w-40 px-2 text-body-sm' : 'h-11 w-56 max-w-full px-3.5 text-body'}`} />
     <button type="button" aria-label="Guardar Forecast" disabled={saving} onClick={() => void save()}
-      className={`${compact ? 'h-9 w-9' : 'h-11 w-11'} inline-flex shrink-0 items-center justify-center rounded-control border border-border bg-surface text-body font-bold text-primary hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50`}>✓</button>
+      className={`${compact ? 'h-9 w-9' : 'h-11 w-11'} inline-flex shrink-0 items-center justify-center rounded-control border border-border bg-surface text-body font-bold text-primary-ink hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50`}>✓</button>
     <button type="button" aria-label="Cancelar edição do Forecast" disabled={saving} onClick={() => setEditing(false)}
       className={`${compact ? 'h-9 w-9' : 'h-11 w-11'} inline-flex shrink-0 items-center justify-center rounded-control border border-border bg-surface text-body font-bold text-text-secondary hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50`}>×</button>
   </span>;
@@ -145,7 +145,7 @@ function EditableProjectDate({ label, value, field, projectId, disabled, updateP
             onKeyDown={(event) => { if (event.key === 'Escape') setEditing(false); }}
             className="font-bold text-text-secondary bg-surface border border-border-subtle rounded-control" />
           <button type="button" aria-label={`Guardar ${label}`} disabled={saving}
-            onClick={() => void save()} className="text-primary font-bold">Guardar</button>
+            onClick={() => void save()} className="text-primary-ink font-bold">Guardar</button>
           <button type="button" aria-label={`Cancelar ${label}`} disabled={saving}
             onClick={() => setEditing(false)} className="text-text-secondary">Cancelar</button>
         </span>
@@ -1612,7 +1612,7 @@ export default function ProjectSection({
               {canWriteProjects && (
                 <Button variant="secondary" size="sm"
                   onClick={() => openForm(selectedProj)}
-                  className="bg-primary/10 border-primary/20 text-primary"
+                  className="bg-primary/10 border-primary/20 text-primary-ink"
                 >
                   <Edit2 className="w-3.5 h-3.5" /> Editar Projeto
                 </Button>
@@ -1655,8 +1655,8 @@ export default function ProjectSection({
           <div className="p-6 bg-surface border-b border-border-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-heading-md font-semibold text-primary">{getClientName(selectedProj.clientId)}</span>
-                {selectedProj.demo && <span className="text-caption font-bold uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary">Demo</span>}
+                <span className="text-heading-md font-semibold text-primary-ink">{getClientName(selectedProj.clientId)}</span>
+                {selectedProj.demo && <span className="text-caption font-bold uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary-ink">Demo</span>}
               </div>
               <h1 className="text-heading-lg text-text-primary tracking-tight">{selectedProj.title}</h1>
               <p className="text-body-sm text-text-secondary font-mono">IP: {selectedProj.installProjectNo || 'S/N'} • Opp SF: {selectedProj.sfOpportunityNo || 'S/N'}</p>
@@ -1966,7 +1966,7 @@ export default function ProjectSection({
                                   {/* Agendamento */}
                                   {isProjScheduled && !isProjStart && (
                                     <div
-                                      className="px-1.5 py-0.5 rounded-control bg-primary/10 border border-primary/20 text-primary text-caption font-extrabold flex items-center gap-1 truncate shadow-subtle"
+                                      className="px-1.5 py-0.5 rounded-control bg-primary/10 border border-primary/20 text-primary-ink text-caption font-extrabold flex items-center gap-1 truncate shadow-subtle"
                                       title={`Agendamento do projeto: ${selectedProj.title}`}
                                     >
                                       <span className="shrink-0 text-caption">📅</span>
@@ -2073,7 +2073,7 @@ export default function ProjectSection({
                     <div className="flex items-center justify-between bg-surface-muted p-3 rounded-control border border-border/60">
                       <div className="flex items-center gap-2">
                         <h4 className="font-extrabold text-text-primary text-body-sm uppercase tracking-wider">Cronograma</h4>
-                        <span className="text-caption font-bold text-primary bg-primary/10 border border-primary/20 rounded-control px-2 py-0.5">
+                        <span className="text-caption font-bold text-primary-ink bg-primary/10 border border-primary/20 rounded-control px-2 py-0.5">
                           {(() => {
                             const end = new Date(cronogramaStartDate);
                             end.setDate(end.getDate() + 29);
@@ -2109,7 +2109,7 @@ export default function ProjectSection({
                         <Button variant="ghost" size="sm" aria-label="Abrir cronograma em ecrã cheio"
                           type="button"
                           onClick={() => setIsFullTimelineModalOpen(true)}
-                          className="flex items-center gap-1 px-2.5 py-1 bg-primary/10 hover:bg-primary/10 border border-primary/20 text-primary hover:text-primary rounded-control text-caption font-bold cursor-pointer transition-colors ml-1"
+                          className="flex items-center gap-1 px-2.5 py-1 bg-primary/10 hover:bg-primary/10 border border-primary/20 text-primary-ink hover:text-primary-ink rounded-control text-caption font-bold cursor-pointer transition-colors ml-1"
                           title="Abrir cronograma em ecrã cheio"
                           id="btn-ecra-cheio"
                         >
@@ -2166,8 +2166,8 @@ export default function ProjectSection({
                             {/* Project Dates Summary Row */}
                             <tr className="bg-surface-muted/60 border-b border-border">
                               <td className="p-2.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary shadow-sticky-column z-10">
-                                <div className="flex items-center gap-1.5 text-primary">
-                                  <Flag className="w-3.5 h-3.5 text-primary" />
+                                <div className="flex items-center gap-1.5 text-primary-ink">
+                                  <Flag className="w-3.5 h-3.5 text-primary-ink" />
                                   <span className="text-caption uppercase font-bold tracking-wide">Lembretes do Projeto</span>
                                 </div>
                               </td>
@@ -2256,7 +2256,7 @@ export default function ProjectSection({
                                       title={`Clique para ver/editar: ${t.title}`}
                                     >
                                       <div className="space-y-1">
-                                        <div className="font-bold text-text-primary text-body-sm truncate max-w-[190px] group-hover:text-primary transition-colors" title={t.title}>
+                                        <div className="font-bold text-text-primary text-body-sm truncate max-w-[190px] group-hover:text-primary-ink transition-colors" title={t.title}>
                                           {t.title}
                                         </div>
                                         <div className="flex items-center gap-2 flex-wrap">
@@ -2265,7 +2265,7 @@ export default function ProjectSection({
                                               ? 'bg-success/10 text-success-strong border-success/50'
                                               : t.statusId === 'ts-2' || t.statusId === '99999999-9999-9999-9999-999999999902'
                                               ? 'bg-warning/10 text-warning border-warning/50'
-                                              : 'bg-primary/10 text-primary border-primary/50'
+                                              : 'bg-primary/10 text-primary-ink border-primary/50'
                                           }`}>{getTaskStatusName(t.statusId, taskStatuses)}</span>
 
                                           <span className="text-caption text-text-secondary font-bold truncate max-w-[150px]">
@@ -2375,7 +2375,7 @@ export default function ProjectSection({
 
               {/* Comments Section */}
               <div className="space-y-4">
-                <h3 className="font-bold text-text-primary flex items-center gap-2"><MessageSquare className="w-4 h-4 text-primary" /> Notas & Comentários</h3>
+                <h3 className="font-bold text-text-primary flex items-center gap-2"><MessageSquare className="w-4 h-4 text-primary-ink" /> Notas & Comentários</h3>
 
                 {/* Comment list */}
                 {projComments.length === 0 ? (
@@ -2527,7 +2527,7 @@ export default function ProjectSection({
                   </div>
                   <div className="flex justify-between py-1 border-b border-border-subtle">
                     <span className="font-medium text-text-secondary">Prazo de entrega:</span>
-                    <span className="font-bold text-primary">{selectedProj.deliveryDate || '-'}</span>
+                    <span className="font-bold text-primary-ink">{selectedProj.deliveryDate || '-'}</span>
                   </div>
                   <EditableProjectDate key={`${selectedProj.id}-estimatedDate`} label="Previsão de entrega real"
                     value={selectedProj.estimatedDate} field="estimatedDate" projectId={selectedProj.id}
@@ -2580,7 +2580,7 @@ export default function ProjectSection({
                       selectedProj.partnersIds.map(pid => {
                         const partner = projectPartners.find(p => matchId(p.id, pid));
                         return (
-                          <span key={pid} className="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary font-bold rounded-control text-caption">
+                          <span key={pid} className="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary-ink font-bold rounded-control text-caption">
                             {partner ? partner.name : pid}
                           </span>
                         );
@@ -2601,7 +2601,7 @@ export default function ProjectSection({
               <div className="flex justify-between items-center flex-wrap gap-3">
                 <div>
                   <h3 className="font-extrabold text-text-primary text-base flex items-center gap-2">
-                    <ListTodo className="w-5 h-5 text-primary" />
+                    <ListTodo className="w-5 h-5 text-primary-ink" />
                     Tarefas do Projeto ({projTasks.length})
                   </h3>
                   <p className="text-body-sm text-text-secondary mt-0.5">Gestão de tarefas técnicas, lembretes e prazos de execução</p>
@@ -2794,12 +2794,12 @@ export default function ProjectSection({
                             <Badge className={getTaskStatusStyle(task.statusId, taskStatuses).badgeClass}>
                               {getTaskStatusStyle(task.statusId, taskStatuses).name}
                             </Badge>
-                            <span className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 text-caption font-bold rounded-badge flex items-center gap-1">
+                            <span className="px-2 py-0.5 bg-primary/10 text-primary-ink border border-primary/20 text-caption font-bold rounded-badge flex items-center gap-1">
                               {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Bell className="w-3 h-3 text-category-purple-600" />}
                               {getTaskTypeName(task.taskTypeId, taskTypes)}
                             </span>
                           </div>
-                          <h4 className="font-extrabold text-text-primary text-body-sm hover:text-primary transition-colors">{task.title}</h4>
+                          <h4 className="font-extrabold text-text-primary text-body-sm hover:text-primary-ink transition-colors">{task.title}</h4>
                         </div>
                       </div>
                       {task.description && (
@@ -3226,7 +3226,7 @@ export default function ProjectSection({
               <div className="flex justify-between items-center flex-wrap gap-3">
                 <div>
                   <h3 className="font-extrabold text-text-primary text-base flex items-center gap-2">
-                    <ShieldAlert className="w-5 h-5 text-primary" />
+                    <ShieldAlert className="w-5 h-5 text-primary-ink" />
                     Gestão e Mitigação de Riscos do Projeto
                   </h3>
                   <p className="text-body-sm text-text-secondary mt-0.5">Identificação, classificação e acompanhamento de riscos com planos de ação integrados</p>
@@ -3300,7 +3300,7 @@ export default function ProjectSection({
                                   </span>
                                 </td>
                                 <td className="px-4 py-3.5 text-center">
-                                  <span className="px-2 py-0.5 rounded-badge bg-primary/10 border border-primary/20 text-primary text-caption font-extrabold">
+                                  <span className="px-2 py-0.5 rounded-badge bg-primary/10 border border-primary/20 text-primary-ink text-caption font-extrabold">
                                     {getRiskStatusName(item.statusId)}
                                   </span>
                                 </td>
@@ -3319,7 +3319,7 @@ export default function ProjectSection({
                                       <IconButton variant="ghost" aria-label="Editar Risco"
                                         type="button"
                                         onClick={() => handleEditRisk(item)}
-                                        className="p-1 text-text-muted hover:text-primary transition-colors cursor-pointer"
+                                        className="p-1 text-text-muted hover:text-primary-ink transition-colors cursor-pointer"
                                         title="Editar Risco"
                                       >
                                         <Edit2 className="w-3.5 h-3.5" />
@@ -3391,7 +3391,7 @@ export default function ProjectSection({
             <div className="p-6 space-y-6 animate-fade-in">
               <div>
                 <h3 className="font-extrabold text-text-primary text-base flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-primary" />
+                  <BarChart3 className="w-5 h-5 text-primary-ink" />
                   Análise Geral do Projeto
                 </h3>
                 <p className="text-body-sm text-text-secondary mt-0.5">Estatísticas acumuladas de carga horária, técnicos, desvios de datas e distribuição de tarefas</p>
@@ -3508,7 +3508,7 @@ export default function ProjectSection({
                                 <tr key={tName} className="hover:bg-surface-muted">
                                   <td className="px-4 py-3 font-extrabold text-text-primary">{tName}</td>
                                   <td className="px-4 py-3 text-center">
-                                    <span className="px-2.5 py-0.5 bg-primary/10 text-primary rounded-full font-extrabold">{data.count}</span>
+                                    <span className="px-2.5 py-0.5 bg-primary/10 text-primary-ink rounded-full font-extrabold">{data.count}</span>
                                   </td>
                                   <td className="px-4 py-3 text-right font-mono font-bold text-text-primary">{formatMins(data.workloadMins)}h</td>
                                 </tr>
@@ -3543,7 +3543,7 @@ export default function ProjectSection({
                                 <tr key={techName} className="hover:bg-surface-muted">
                                   <td className="px-4 py-3 font-extrabold text-text-primary">{techName}</td>
                                   <td className="px-4 py-3 text-center">
-                                    <span className="px-2.5 py-0.5 bg-primary/10 text-primary rounded-full font-extrabold">{data.count}</span>
+                                    <span className="px-2.5 py-0.5 bg-primary/10 text-primary-ink rounded-full font-extrabold">{data.count}</span>
                                   </td>
                                   <td className="px-4 py-3 text-right font-mono font-bold text-text-primary">{formatMins(data.workloadMins)}h</td>
                                 </tr>
@@ -3623,7 +3623,7 @@ export default function ProjectSection({
                           }}
                           className={`w-full items-start text-left p-2 rounded-control text-body-sm transition-colors flex flex-col gap-0.5 cursor-pointer ${
                             isSelected
-                              ? 'bg-primary/10 text-primary font-bold'
+                              ? 'bg-primary/10 text-primary-ink font-bold'
                               : 'hover:bg-surface-muted text-text-secondary font-semibold'
                           }`}
                         >
@@ -3706,7 +3706,7 @@ export default function ProjectSection({
                             }
                           }
                         }}
-                        className="rounded-badge border-border text-primary focus:ring-primary w-4 h-4"
+                        className="rounded-badge border-border text-primary-ink focus:ring-primary w-4 h-4"
                       />
                       {c.name}
                     </label>
@@ -3864,7 +3864,7 @@ export default function ProjectSection({
                   type="checkbox"
                   checked={formDemo}
                   onChange={e => setFormDemo(e.target.checked)}
-                  className="w-4 h-4 text-primary border-border rounded-badge focus:ring-primary"
+                  className="w-4 h-4 text-primary-ink border-border rounded-badge focus:ring-primary"
                 />
                 <span className="text-text-secondary">Marcar como Projeto de Demonstração</span>
               </label>
@@ -4005,7 +4005,7 @@ export default function ProjectSection({
                       type="checkbox"
                       checked={formTeams.some(tid => matchId(tid, team.id))}
                       onChange={() => handleToggleTeam(team.id)}
-                      className="w-4 h-4 text-primary rounded-badge"
+                      className="w-4 h-4 text-primary-ink rounded-badge"
                     />
                     <span className="text-text-secondary">{team.name}</span>
                   </label>
@@ -4023,7 +4023,7 @@ export default function ProjectSection({
                       type="checkbox"
                       checked={formPartners.some(pid => matchId(pid, p.id))}
                       onChange={() => handleTogglePartner(p.id)}
-                      className="w-4 h-4 text-primary rounded-badge"
+                      className="w-4 h-4 text-primary-ink rounded-badge"
                     />
                     <span className="text-text-secondary">{p.name}</span>
                   </label>
@@ -4216,7 +4216,7 @@ export default function ProjectSection({
                               <span className="w-1.5 h-7 bg-error rounded-full shrink-0" title="Risco Crítico do Projeto" />
                             )}
                             <div>
-                              <div className="text-body-sm text-primary font-medium flex items-center gap-1.5 flex-wrap">{getClientName(proj.clientId)} {forecastMonth(proj.forecastDate) === currentForecastMonth() && <ForecastBadge project={proj} statuses={projectStatuses} canEdit={canWriteProjects} updateProject={updateProject} compact />}</div>
+                              <div className="text-body-sm text-primary-ink font-medium flex items-center gap-1.5 flex-wrap">{getClientName(proj.clientId)} {forecastMonth(proj.forecastDate) === currentForecastMonth() && <ForecastBadge project={proj} statuses={projectStatuses} canEdit={canWriteProjects} updateProject={updateProject} compact />}</div>
                               <Button type="button" variant="ghost" size="sm" className="h-auto min-h-9 px-0 text-body text-left justify-start whitespace-normal text-text-primary"
                                 aria-label={`Abrir projeto ${proj.title}`}
                                 onClick={event => { event.stopPropagation(); setSelectedProjectId(proj.id); }}>
@@ -4341,7 +4341,7 @@ export default function ProjectSection({
             {/* Modal Header */}
             <div className="bg-surface-muted border-b border-border px-4 py-3 flex flex-wrap gap-3 items-center justify-between flex-shrink-0">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="p-2 bg-primary/10 text-primary rounded-control">
+                <div className="p-2 bg-primary/10 text-primary-ink rounded-control">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
@@ -4354,7 +4354,7 @@ export default function ProjectSection({
 
               {/* Top Controls & Navigation */}
               <div className="flex flex-wrap items-center gap-3">
-                <span className="text-caption font-bold text-primary bg-primary/10 border border-primary/20 rounded-control px-2.5 py-1 hidden sm:inline-block">
+                <span className="text-caption font-bold text-primary-ink bg-primary/10 border border-primary/20 rounded-control px-2.5 py-1 hidden sm:inline-block">
                   {(() => {
                     const end = new Date(cronogramaStartDate);
                     end.setDate(end.getDate() + 29);
@@ -4443,8 +4443,8 @@ export default function ProjectSection({
                       {/* Project Dates Summary Row */}
                       <tr className="bg-surface-muted/60 border-b border-border">
                         <td className="p-2.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary shadow-sticky-column z-10">
-                          <div className="flex items-center gap-1.5 text-primary">
-                            <Flag className="w-3.5 h-3.5 text-primary" />
+                          <div className="flex items-center gap-1.5 text-primary-ink">
+                            <Flag className="w-3.5 h-3.5 text-primary-ink" />
                             <span className="text-caption uppercase font-bold tracking-wide">Lembretes do Projeto</span>
                           </div>
                         </td>
@@ -4527,7 +4527,7 @@ export default function ProjectSection({
                                 title={`Clique para ver/editar: ${t.title}`}
                               >
                                 <div className="space-y-1">
-                                  <div className="font-bold text-text-primary text-body-sm truncate max-w-[190px] group-hover:text-primary transition-colors" title={t.title}>
+                                  <div className="font-bold text-text-primary text-body-sm truncate max-w-[190px] group-hover:text-primary-ink transition-colors" title={t.title}>
                                     {t.title}
                                   </div>
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -4726,7 +4726,7 @@ export default function ProjectSection({
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
                     <label className="block text-text-secondary font-bold">Data da Próxima Revisão *</label>
-                    <span className="text-caption text-primary font-bold uppercase bg-primary/10 px-1.5 py-0.5 rounded-badge">Sugestão Automática</span>
+                    <span className="text-caption text-primary-ink font-bold uppercase bg-primary/10 px-1.5 py-0.5 rounded-badge">Sugestão Automática</span>
                   </div>
                   <Input aria-label="Data da Próxima Revisão"
                     type="date"
@@ -4756,7 +4756,7 @@ export default function ProjectSection({
                       }}
                       className="flex-1 accent-primary cursor-pointer h-1.5 bg-border rounded-control appearance-none"
                     />
-                    <span className="w-10 h-8 rounded-control bg-primary/10 border border-primary/20 flex items-center justify-center font-black text-primary text-body-sm">{riskProbability}</span>
+                    <span className="w-10 h-8 rounded-control bg-primary/10 border border-primary/20 flex items-center justify-center font-black text-primary-ink text-body-sm">{riskProbability}</span>
                   </div>
                   <div className="flex justify-between text-caption text-text-muted font-bold uppercase tracking-wide">
                     <span>Muito Baixo (1)</span>
@@ -4782,7 +4782,7 @@ export default function ProjectSection({
                       }}
                       className="flex-1 accent-primary cursor-pointer h-1.5 bg-border rounded-control appearance-none"
                     />
-                    <span className="w-10 h-8 rounded-control bg-primary/10 border border-primary/20 flex items-center justify-center font-black text-primary text-body-sm">{riskImpact}</span>
+                    <span className="w-10 h-8 rounded-control bg-primary/10 border border-primary/20 flex items-center justify-center font-black text-primary-ink text-body-sm">{riskImpact}</span>
                   </div>
                   <div className="flex justify-between text-caption text-text-muted font-bold uppercase tracking-wide">
                     <span>Muito Baixo (1)</span>

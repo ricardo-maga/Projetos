@@ -36,13 +36,13 @@ export default function MarkdownCommentBody({ text }: { text: string }) {
             p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
             ul: ({ children }) => <ul className="mb-2 list-disc pl-5">{children}</ul>,
             ol: ({ children }) => <ol className="mb-2 list-decimal pl-5">{children}</ol>,
-            a: ({ children, href }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary-hover">{children}</a>,
+            a: ({ children, href }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary-ink underline hover:text-primary-hover">{children}</a>,
             u: ({ children }) => <u>{children}</u>,
           }}
         >{text}</ReactMarkdown>
       </div>
       {(overflowing || expanded) && (
-        <button type="button" onClick={() => setExpanded(value => !value)} className="mt-1 text-caption font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary">
+        <button type="button" onClick={() => setExpanded(value => !value)} className="mt-1 text-caption font-semibold text-primary-ink hover:underline focus-visible:outline-2 focus-visible:outline-primary">
           {expanded ? 'Mostrar menos' : 'Mostrar mais'}
         </button>
       )}

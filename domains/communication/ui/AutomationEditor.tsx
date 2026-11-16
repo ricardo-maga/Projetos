@@ -216,8 +216,8 @@ export default function AutomationEditor({
       <div className="bg-primary/10 border border-primary/20 rounded-card p-6 text-text-primary relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary-ink text-xs font-semibold">
+              <Sparkles className="w-3.5 h-3.5 text-primary-ink" />
               Editor de Automação de Processos (No-Code)
             </div>
             <h2 className="text-2xl font-bold tracking-tight">Regras de Negócio e Automações</h2>
@@ -249,7 +249,7 @@ export default function AutomationEditor({
           </div>
           <div className="bg-surface rounded-card p-3 border border-border col-span-2 sm:col-span-1">
               <div className="text-xs text-text-secondary font-medium">Execução</div>
-              <div className="text-xl font-bold text-primary mt-0.5">Por evento</div>
+              <div className="text-xl font-bold text-primary-ink mt-0.5">Por evento</div>
           </div>
         </div>
       </div>
@@ -258,7 +258,7 @@ export default function AutomationEditor({
       <div className="space-y-4">
         {visibleRules.length === 0 ? (
           <div className="bg-surface rounded-card border border-border p-12 text-center shadow-raised">
-            <div className="w-12 h-12 rounded-card bg-action-50 text-primary flex items-center justify-center mx-auto mb-3">
+            <div className="w-12 h-12 rounded-card bg-action-50 text-primary-ink flex items-center justify-center mx-auto mb-3">
               <Zap className="w-6 h-6" />
             </div>
             <h3 className="text-base font-bold text-text-primary mb-1">Nenhuma regra configurada</h3>
@@ -324,7 +324,7 @@ export default function AutomationEditor({
                 <div className="flex items-center gap-2 bg-surface-muted p-3 rounded-control border border-border/80 shrink-0 flex-wrap sm:flex-nowrap">
                   {/* Trigger Pill */}
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-action-100 text-action-900 rounded-control text-xs font-bold border border-action-200">
-                    <Zap className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <Zap className="w-3.5 h-3.5 text-primary-ink shrink-0" />
                     <span>{getTriggerLabel(rule)}</span>
                   </div>
 
@@ -372,7 +372,7 @@ export default function AutomationEditor({
                       className="px-3 py-1.5 text-xs font-bold text-text-secondary hover:text-action-700 hover:bg-action-50 border border-border hover:border-action-200 rounded-control transition-all flex items-center gap-1.5 cursor-pointer"
                       title="Pré-visualizar as ações sem alterar dados"
                     >
-                      <Play className="w-3 h-3 text-primary fill-action-600" />
+                      <Play className="w-3 h-3 text-primary-ink fill-action-600" />
                       Pré-visualizar
                     </button>
                   )}
@@ -382,7 +382,7 @@ export default function AutomationEditor({
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(rule)}
-                        className="p-2 text-text-muted hover:text-primary hover:bg-surface-muted rounded-control transition-colors cursor-pointer"
+                        className="p-2 text-text-muted hover:text-primary-ink hover:bg-surface-muted rounded-control transition-colors cursor-pointer"
                         title="Editar Regra"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -532,7 +532,7 @@ export default function AutomationEditor({
                       type="checkbox"
                       checked={actionCreateDefaultTasks}
                       onChange={e => setActionCreateDefaultTasks(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 text-primary rounded-xs cursor-pointer"
+                      className="mt-0.5 w-4 h-4 text-primary-ink rounded-xs cursor-pointer"
                     />
                     <div>
                       <div className="text-xs font-bold text-text-primary">Criar Tarefas Padrão no Projeto</div>
@@ -549,7 +549,7 @@ export default function AutomationEditor({
                         type="checkbox"
                         checked={actionChangeProjectStatus}
                         onChange={e => setActionChangeProjectStatus(e.target.checked)}
-                        className="mt-0.5 w-4 h-4 text-primary rounded-xs cursor-pointer"
+                        className="mt-0.5 w-4 h-4 text-primary-ink rounded-xs cursor-pointer"
                       />
                       <div>
                         <div className="text-xs font-bold text-text-primary">Alterar Estado do Projeto</div>
@@ -584,7 +584,7 @@ export default function AutomationEditor({
                         type="checkbox"
                         checked={actionSendNotification}
                         onChange={e => setActionSendNotification(e.target.checked)}
-                        className="mt-0.5 w-4 h-4 text-primary rounded-xs cursor-pointer"
+                        className="mt-0.5 w-4 h-4 text-primary-ink rounded-xs cursor-pointer"
                       />
                       <div>
                         <div className="text-xs font-bold text-text-primary">Enviar Notificação no Sistema</div>

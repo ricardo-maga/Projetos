@@ -165,7 +165,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-surface p-4 rounded-card border border-border flex items-center gap-3">
-          <div className="p-2.5 bg-action-50 text-primary rounded-control border border-action-100">
+          <div className="p-2.5 bg-action-50 text-primary-ink rounded-control border border-action-100">
             <Database className="w-5 h-5" />
           </div>
           <div>

@@ -114,7 +114,7 @@ export default function RolePermissionSection({ onRolesChanged }: { onRolesChang
         </M3Card>
 
         <M3Card className="space-y-4 p-4 md:p-5">
-          <div className="border-b border-border pb-4"><h3 className="font-semibold text-text-primary">Matriz de permissões</h3><p className="mt-1 text-sm text-text-secondary">Permissões para: <span className="font-semibold text-primary">{activeRoles.find(role => role.id === roleId)?.name || 'Selecione uma função'}</span></p></div>
+          <div className="border-b border-border pb-4"><h3 className="font-semibold text-text-primary">Matriz de permissões</h3><p className="mt-1 text-sm text-text-secondary">Permissões para: <span className="font-semibold text-primary-ink">{activeRoles.find(role => role.id === roleId)?.name || 'Selecione uma função'}</span></p></div>
           {modules.map(module => (
             <fieldset key={module} disabled={busy} className="rounded-card border border-border bg-surface-muted/40 p-4">
               <legend className="px-1 text-sm font-semibold capitalize text-text-primary">{module === 'mechanical_design' ? 'Desenho mecânico' : module}</legend>

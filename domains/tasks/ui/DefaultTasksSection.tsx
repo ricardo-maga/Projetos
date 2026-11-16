@@ -217,7 +217,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                       <>
                         <button
                           onClick={() => startEditingDefaultTask(dt)}
-                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-primary hover:bg-action-50 rounded-control transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-primary-ink hover:bg-action-50 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           Editar

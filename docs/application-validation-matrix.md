@@ -4,7 +4,7 @@ Data: 16/11/2026. Base: main `23516e15fc2f2904ccea88c94852485901a5d310`.
 
 ## Objetivo e estado real
 
-O inventário de estilos e a suite automatizada não demonstram que todos os ecrãs, temas e fluxos funcionam visualmente. Este documento inventaria a cobertura necessária para fechar a validação transversal. **A matriz ainda não está executada.** As verificações anteriores são evidência parcial de determinadas vistas; não são aprovação automática das linhas abaixo.
+O inventário de estilos e a suite automatizada não demonstram que todos os ecrãs, temas e fluxos funcionam visualmente. Este documento inventaria a cobertura necessária para fechar a validação transversal. **Execução em curso; aprovação global pendente.** Os resultados funcionais já recolhidos e a aprovação visual são registos separados.
 
 Fontes: `lib/sectionCatalog.ts`, composição em `app/page.tsx`, secções e subsecções em `domains`/`components`, APIs em `app/api`, temas em `ConfigSection.tsx` e testes existentes. A enumeração deve ser reconciliada com a navegação e os modais durante a execução; uma superfície descoberta acrescenta uma linha, não fica fora do âmbito.
 
@@ -20,7 +20,7 @@ Não basta rever a página inicial de cada módulo. Cada formulário e modal apl
 
 ## Superfícies e fluxos
 
-Todas as linhas começam com estado **por executar** nesta matriz. `CRUD` significa criar, consultar, editar e eliminar/restaurar quando essa ação existe no produto; ações não suportadas devem ser marcadas N/A com motivo, nunca simuladas como sucesso.
+As linhas abaixo definem o âmbito; o registo de execução no final distingue os resultados já obtidos das combinações ainda pendentes. `CRUD` significa criar, consultar, editar e eliminar/restaurar quando essa ação existe no produto; ações não suportadas devem ser marcadas N/A com motivo, nunca simuladas como sucesso.
 
 | ID | Área/superfície | Fluxos e verificações |
 |---|---|---|
@@ -88,3 +88,12 @@ Estados de cobertura: **por executar**, **passou**, **falhou**, **bloqueado** (c
 Só fechar a validação global quando todas as combinações aplicáveis tiverem resultado ou N/A justificado, os defeitos bloqueantes estiverem corrigidos, a limpeza de teste estiver confirmada e houver uma passagem final da produção no tema Domino. A passagem de produção é leitura/navegação; não substitui os CRUD em staging.
 
 Não atribuir “passou” por existir um teste unitário, por o build estar verde ou por a Vercel estar READY. A suite atual `e2e/production-security.spec.ts` usa sobretudo `APIRequestContext`: não percorre todos os ecrãs CRUD nem todos os temas.
+
+## Registo de execução — parcial
+
+- Ambiente funcional: Supabase staging `caaiydcycrnwcqefdldz`, contas e dados fictícios `qa-1794840265684`. A conta eliminada proibida não foi usada.
+- Pela interface: criação/edição de cliente e restauro da reciclagem, projeto com tarefa modelo, tarefa com execução, material e estados, risco com avaliação agregada, comentário formatado, importação CSV com uma linha válida e uma rejeitada, perfil e subscrição de calendário com revogação. Presales permite criar sem datas opcionais; desenho mecânico permite criar, atribuir, iniciar, bloquear, retomar, concluir e reabrir com justificação. As gravações foram confrontadas com a API e os dados persistidos.
+- A suite local passou com **1119 testes aprovados, quatro reservados à integração física e zero falhas**, incluindo regressões de contraste dos sete temas. A integração física de staging foi executada separadamente, com 15 testes aprovados. Estes resultados não constituem aprovação visual.
+- A recolha inicial de imagens foi invalidada: o navegador em segundo plano e a captura com recorte produziram imagens que nem sempre correspondiam ao DOM observado. A repetição usa navegador visível, viewport completo, dimensões verificadas e registo próprio. As imagens antigas não contam como revisão visual concluída.
+- Permanecem pendentes a revisão visual das combinações aplicáveis, a reconciliação final dos resultados e a limpeza dos dados desta execução. O PR #157 mantém-se draft; a publicação na main ainda não foi efetuada.
+- Ações sem UI atual: editor legado Presales e respetivos modelos/anexos são verificados na API, sem voltar a ativar uma funcionalidade retirada. Comentários não têm edição na UI atual. Introduzir uma nova palavra-passe pela interface exige entrada pelo utilizador; os testes de criação de contas usam a API e contas fictícias.

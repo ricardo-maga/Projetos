@@ -634,7 +634,7 @@ export default function TaskDetailsModal({
           <div className="bg-surface-muted p-4 rounded-card border border-border space-y-3.5">
             <div className="flex items-center justify-between border-b border-border pb-2">
               <span className="text-body-sm font-extrabold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
-                <ListTodo className="w-4 h-4 text-primary" />
+                <ListTodo className="w-4 h-4 text-primary-ink" />
                 Dados de planeamento
               </span>
 
@@ -728,7 +728,7 @@ export default function TaskDetailsModal({
                           type="button"
                           onClick={() => handleSelectProject(p)}
                           className={`h-auto min-h-11 w-full text-left px-3.5 py-2.5 hover:bg-primary/10 transition-colors flex items-center justify-between text-body-sm cursor-pointer ${
-                            isSelected ? 'bg-primary/10 text-primary font-bold' : 'text-text-primary font-medium'
+                            isSelected ? 'bg-primary/10 text-primary-ink font-bold' : 'text-text-primary font-medium'
                           }`}
                         >
                           <div className="min-w-0 pr-2">
@@ -746,7 +746,7 @@ export default function TaskDetailsModal({
                             </div>
                           </div>
                           {isSelected && (
-                            <Check className="w-4 h-4 text-primary shrink-0 ml-2" />
+                            <Check className="w-4 h-4 text-primary-ink shrink-0 ml-2" />
                           )}
                         </Button>
                       );

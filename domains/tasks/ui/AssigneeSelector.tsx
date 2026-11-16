@@ -53,7 +53,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
       <div className="flex items-center justify-between">
         <label className="block text-xs font-bold text-text-primary">{label}</label>
         {selectedIds.length > 0 && (
-          <span className="text-small-label font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+          <span className="text-small-label font-semibold text-primary-ink bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
             {selectedIds.length} selecionado(s)
           </span>
         )}
@@ -95,14 +95,14 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
               <label
                 key={u.id}
                 className={`flex items-center gap-2 px-2 py-1.5 rounded-control cursor-pointer select-none text-xs font-semibold transition-colors ${
-                  isSelected ? 'bg-primary/10 text-primary border border-primary/20' : 'hover:bg-surface-muted/90 text-text-primary'
+                  isSelected ? 'bg-primary/10 text-primary-ink border border-primary/20' : 'hover:bg-surface-muted/90 text-text-primary'
                 }`}
               >
                 <input
                   type="checkbox"
                   checked={isSelected}
                   onChange={() => handleToggle(u.id)}
-                  className="w-3.5 h-3.5 text-primary rounded-badge border-border focus:ring-primary"
+                  className="w-3.5 h-3.5 text-primary-ink rounded-badge border-border focus:ring-primary"
                 />
                 <span className="truncate flex-1">{u.name}</span>
               </label>

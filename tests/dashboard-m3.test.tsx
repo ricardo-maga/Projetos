@@ -18,7 +18,7 @@ const props: React.ComponentProps<typeof Dashboard> = {
 
 describe('Semantic tone foreground compatibility', () => {
   it('recognizes solid semantic actions and preserves light/translucent selections', () => {
-    for (const color of ['action-600', 'feedback-error-700', 'feedback-success-600', 'forecast-600', 'category-indigo-700']) {
+    for (const color of ['action-600', 'feedback-error-700', 'feedback-success-600', 'forecast-600', 'category-indigo-700', 'text-primary']) {
       expect(hasFilledButtonBackground(`bg-${color}`, false)).toBe(true);
       expect(hasFilledButtonBackground(`bg-${color}/10`, false)).toBe(false);
     }

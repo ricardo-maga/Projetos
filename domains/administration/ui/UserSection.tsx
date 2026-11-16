@@ -349,7 +349,7 @@ export default function UserSection({
                   {!rbacRoles.length && <p className="text-sm font-medium text-warning">Não foi possível carregar as funções disponíveis.</p>}
                 </fieldset> : <div className="md:col-span-2 rounded-card border border-border bg-surface-muted/50 p-4">
                   <p className="text-sm font-semibold text-text-primary">Funções atribuídas</p>
-                  <div className="mt-2 flex flex-wrap gap-2">{getAssignedRoleNames(editingUser?.id || '').length ? getAssignedRoleNames(editingUser?.id || '').map(name => <span key={name} className="rounded-control border border-primary/15 bg-primary/5 px-2 py-1 text-xs text-primary">{name}</span>) : <span className="text-sm text-text-secondary">Sem função atribuída. Solicite a um Super Administrador que configure o acesso.</span>}</div>
+                  <div className="mt-2 flex flex-wrap gap-2">{getAssignedRoleNames(editingUser?.id || '').length ? getAssignedRoleNames(editingUser?.id || '').map(name => <span key={name} className="rounded-control border border-primary/15 bg-primary/5 px-2 py-1 text-xs text-primary-ink">{name}</span>) : <span className="text-sm text-text-secondary">Sem função atribuída. Solicite a um Super Administrador que configure o acesso.</span>}</div>
                 </div>}
               </div>
 
@@ -437,7 +437,7 @@ export default function UserSection({
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-1.5 items-center">
                           {getAssignedRoleNames(u.id).length ? getAssignedRoleNames(u.id).map(name => (
-                            <span key={name} className="px-2 py-1 bg-primary/5 border border-primary/15 rounded-control text-small-label font-medium text-primary">{name}</span>
+                            <span key={name} className="px-2 py-1 bg-primary/5 border border-primary/15 rounded-control text-small-label font-medium text-primary-ink">{name}</span>
                           )) : <span className="text-xs text-text-muted">Sem função atribuída</span>}
                         </div>
                       </td>

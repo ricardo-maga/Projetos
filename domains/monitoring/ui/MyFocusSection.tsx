@@ -485,7 +485,7 @@ export default function MyFocusSection({
           <Card className="overflow-hidden" id="card-my-tasks">
             <div className="p-4 border-b border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface/50">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-primary/10 text-primary rounded-card">
+                <div className="p-2 bg-primary/10 text-primary-ink rounded-card">
                   <CheckSquare className="w-5 h-5" />
                 </div>
                 <div>
@@ -581,7 +581,7 @@ export default function MyFocusSection({
                             </Button>
                           )}
                           <div className="flex items-baseline gap-2 flex-wrap">
-                            <span className={`text-body-sm font-bold tracking-tight group-hover:text-primary transition-colors ${isDone ? 'line-through text-text-muted' : 'text-text-primary'}`}>
+                            <span className={`text-body-sm font-bold tracking-tight group-hover:text-primary-ink transition-colors ${isDone ? 'line-through text-text-muted' : 'text-text-primary'}`}>
                               {task.title}
                             </span>
                             <span className="text-body-sm text-text-muted shrink-0">{focusHours(task.estimatedHours)}</span>
@@ -624,7 +624,7 @@ export default function MyFocusSection({
           <Card className="overflow-hidden" id="card-managed-projects">
             <div className="p-4 border-b border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface/50">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-primary/10 text-primary rounded-card">
+                <div className="p-2 bg-primary/10 text-primary-ink rounded-card">
                   <FolderKanban className="w-5 h-5" />
                 </div>
                 <div>
@@ -681,7 +681,7 @@ export default function MyFocusSection({
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-extrabold text-text-primary text-body group-hover:text-primary transition-colors">
+                            <h4 className="font-extrabold text-text-primary text-body group-hover:text-primary-ink transition-colors">
                               {client?.clientName || 'N/D'}
                             </h4>
                             {forecastMonth(proj.forecastDate) === focusForecastMonth &&
@@ -863,13 +863,13 @@ export default function MyFocusSection({
               <div className="bg-surface rounded-card p-3.5 border border-border-subtle/80 space-y-3">
                 <div className="flex items-center justify-between border-b border-border-subtle/60 pb-2">
                   <div className="flex items-center gap-1.5 text-caption font-bold text-text-primary">
-                    <CalendarDays className="w-4 h-4 text-primary" />
+                    <CalendarDays className="w-4 h-4 text-primary-ink" />
                     <span>
                       Atividades de {new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })}
                     </span>
                   </div>
                   {selectedDateStr === todayStr && (
-                    <span className="text-caption font-extrabold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    <span className="text-caption font-extrabold bg-primary/10 text-primary-ink px-2 py-0.5 rounded-full">
                       Hoje
                     </span>
                   )}
@@ -937,15 +937,15 @@ export default function MyFocusSection({
                           >
                             <div className="flex justify-between items-start gap-2">
                               <div className="space-y-0.5 flex-1 min-w-0">
-                                <span className="font-bold text-text-primary group-hover:text-primary transition-colors flex items-center gap-1.5 truncate">
-                                  <CheckSquare className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span className="font-bold text-text-primary group-hover:text-primary-ink transition-colors flex items-center gap-1.5 truncate">
+                                  <CheckSquare className="w-3.5 h-3.5 text-primary-ink shrink-0" />
                                   <span className="truncate">{t.title}</span>
                                 </span>
                                 <div className="text-caption font-medium text-text-secondary flex items-center gap-1 flex-wrap pl-5">
                                   <span className="text-text-primary font-bold">{client?.clientName || client?.shortName || 'Cliente N/D'}</span>
                                   <span className="text-text-disabled">•</span>
                                   <Button variant="ghost" size="sm"
-                                    className="h-auto min-h-9 px-0 text-caption whitespace-normal text-left justify-start text-primary font-semibold hover:underline"
+                                    className="h-auto min-h-9 px-0 text-caption whitespace-normal text-left justify-start text-primary-ink font-semibold hover:underline"
                                     onClick={(e) => {
                                       if (proj) {
                                         e.stopPropagation();

@@ -227,7 +227,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
         {requests.length === 0 ? <p className="text-text-secondary">Ainda não há processos Presales.</p> :
           <div className="overflow-x-auto"><table className="w-full text-left text-body-sm"><thead><tr><th>Processo</th><th>Nome</th><th>Responsável</th><th>Prazo de entrega previsto</th><th>Estado</th></tr></thead>
             <tbody>{requests.map(request => <tr key={request.id} className="border-t border-border hover:bg-surface-muted">
-              <td className="p-2 font-mono">{request.processNumber || '—'}</td><td className="p-2"><button type="button" className="font-semibold text-primary underline" onClick={() => { setSelectedId(request.id); setShowCreate(false); }}>{request.title}</button></td>
+              <td className="p-2 font-mono">{request.processNumber || '—'}</td><td className="p-2"><button type="button" className="font-semibold text-primary-ink underline" onClick={() => { setSelectedId(request.id); setShowCreate(false); }}>{request.title}</button></td>
               <td className="p-2">{nameOf(request.ownerId)}</td><td className="p-2">{request.plannedEndDate}</td><td className="p-2"><Badge variant={request.status === 'won' ? 'success' : request.status === 'lost' ? 'error' : 'primary'}>{statusLabel[request.status]}</Badge></td>
             </tr>)}</tbody></table></div>}
         {requests.length < total && <M3Button tone="outlined" onClick={() => void load(page + 1)}>Carregar mais</M3Button>}

@@ -48,7 +48,7 @@ export function Tabs({
             className={cn(
               "relative px-4 py-2.5 text-body-sm font-semibold transition-colors whitespace-nowrap flex items-center gap-2 select-none outline-none cursor-pointer",
               variant === 'line'
-                ? isActive ? "text-primary" : "text-text-secondary hover:text-text-primary"
+                ? isActive ? "text-primary-ink" : "text-text-secondary hover:text-text-primary"
                 : isActive ? "text-text-primary" : "text-text-secondary hover:text-text-primary"
             )}
           >

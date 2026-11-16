@@ -220,7 +220,7 @@ function SortableAuxRow({
                   setEditAuxScale(item.scale || 1);
                   setEditAuxColor(item.color || '#bfdbfe');
                 }}
-                className="p-1 text-text-muted hover:text-primary hover:bg-action-50 rounded-control transition-colors flex items-center justify-center"
+                className="p-1 text-text-muted hover:text-primary-ink hover:bg-action-50 rounded-control transition-colors flex items-center justify-center"
                 title="Editar"
               >
                 <Edit2 className="w-3.5 h-3.5" />
@@ -380,7 +380,7 @@ export default function ReferenceDataSection({
   return <div hidden={!active}>
 <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="aux-tables-card">
         <h2 className="text-base font-bold text-text-primary mb-2 flex items-center gap-2">
-          <Settings className="w-5 h-5 text-primary" />
+          <Settings className="w-5 h-5 text-primary-ink" />
           Opções e tabelas de apoio
         </h2>
         <p className="text-text-muted text-small-label font-medium mb-5 leading-relaxed">

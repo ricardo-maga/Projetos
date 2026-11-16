@@ -591,7 +591,7 @@ export default function ConfigSection({
           <div className="bg-surface rounded-card border border-border p-6 text-xs animate-fade-in" id="supabase-panel">
             <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-subtle">
               <div className="flex items-center gap-2.5">
-                <Database className="w-5 h-5 text-primary" />
+                <Database className="w-5 h-5 text-primary-ink" />
                 <h3 className="text-sm font-extrabold text-text-primary">Ligação à base de dados</h3>
               </div>
               <button type="button" onClick={handleTestConnection} disabled={supabaseStatus === 'testing'}

@@ -894,10 +894,10 @@ export default function TaskSection({
 
                           {/* 3. Tarefa (Linha 1: Cliente · Projeto, Linha 2: Título da Tarefa) */}
                           <td className="px-4 py-3.5">
-                            <div className="text-caption font-bold text-primary truncate max-w-[340px]">
+                            <div className="text-caption font-bold text-primary-ink truncate max-w-[340px]">
                               {getProjectTitle(t.projectId)}
                             </div>
-                            <div className="text-body font-bold text-text-primary group-hover:text-primary transition-colors mt-0.5">
+                            <div className="text-body font-bold text-text-primary group-hover:text-primary-ink transition-colors mt-0.5">
                               {t.title}
                             </div>
                             {t.description && (

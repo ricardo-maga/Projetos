@@ -66,7 +66,7 @@ const COLORS = [
 
 // Keep the existing analytics card geometry in one place during the visual migration.
 const ANALYSIS_PANEL = 'm3-legacy-card bg-surface rounded-card border border-analysis-border shadow-raised';
-const ANALYSIS_SECTION_TITLE = 'text-base font-bold text-analysis-text-primary flex items-center gap-2';
+const ANALYSIS_SECTION_TITLE = 'text-base font-bold text-analysis-text-primary-ink flex items-center gap-2';
 
 export function TaskAnalytics({
   tasks,
@@ -464,7 +464,7 @@ export function TaskAnalytics({
               <Sparkles className="w-4 h-4 text-action-500" />
               Painel de inteligência
             </div>
-            <h2 className="text-xl font-bold text-analysis-text-primary tracking-tight">
+            <h2 className="text-xl font-bold text-analysis-text-primary-ink tracking-tight">
               Análise avançada de tarefas & alocação de equipas
             </h2>
             <p className="text-xs text-analysis-text-muted mt-1">
@@ -497,7 +497,7 @@ export function TaskAnalytics({
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-2xl font-black text-analysis-text-primary tracking-tight">
+            <div className="text-2xl font-black text-analysis-text-primary-ink tracking-tight">
               {kpis.totalOpen}
             </div>
             <span className="text-xs font-semibold text-analysis-text-muted">
@@ -524,7 +524,7 @@ export function TaskAnalytics({
           </div>
           <div className="flex items-baseline justify-between">
             <div className={`text-2xl font-black tracking-tight ${
-              kpis.overdueCount > 0 ? 'text-feedback-warning-700' : 'text-analysis-text-primary'
+              kpis.overdueCount > 0 ? 'text-feedback-warning-700' : 'text-analysis-text-primary-ink'
             }`}>
               {kpis.overdueCount}
             </div>
@@ -551,7 +551,7 @@ export function TaskAnalytics({
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-2xl font-black text-analysis-text-primary tracking-tight">
+            <div className="text-2xl font-black text-analysis-text-primary-ink tracking-tight">
               {formatHoursToHHMM(kpis.hours30d)}h
             </div>
           </div>
@@ -571,7 +571,7 @@ export function TaskAnalytics({
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-2xl font-black text-analysis-text-primary tracking-tight">
+            <div className="text-2xl font-black text-analysis-text-primary-ink tracking-tight">
               {kpis.completionRate}%
             </div>
             <span className="text-xs font-semibold text-analysis-text-muted">
@@ -662,7 +662,7 @@ export function TaskAnalytics({
                       />
                       {item.typeName}
                     </td>
-                    <td className="py-3 px-3 text-center font-bold text-analysis-text-primary">
+                    <td className="py-3 px-3 text-center font-bold text-analysis-text-primary-ink">
                       <span className="px-2.5 py-1 bg-analysis-muted rounded-control text-analysis-text-strong">
                         {item.count}
                       </span>
@@ -716,7 +716,7 @@ export function TaskAnalytics({
             <button
               onClick={() => setTimeHorizon('7')}
               className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
-                timeHorizon === '7' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
+                timeHorizon === '7' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary-ink'
               }`}
             >
               7 Dias
@@ -724,7 +724,7 @@ export function TaskAnalytics({
             <button
               onClick={() => setTimeHorizon('30')}
               className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
-                timeHorizon === '30' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
+                timeHorizon === '30' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary-ink'
               }`}
             >
               30 Dias
@@ -732,7 +732,7 @@ export function TaskAnalytics({
             <button
               onClick={() => setTimeHorizon('60')}
               className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
-                timeHorizon === '60' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
+                timeHorizon === '60' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary-ink'
               }`}
             >
               60 Dias
@@ -740,7 +740,7 @@ export function TaskAnalytics({
             <button
               onClick={() => setTimeHorizon('90')}
               className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
-                timeHorizon === '90' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
+                timeHorizon === '90' ? 'bg-surface text-category-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary-ink'
               }`}
             >
               90 Dias
@@ -856,7 +856,7 @@ export function TaskAnalytics({
                 key={days}
                 type="button"
                 onClick={() => setWorkloadHorizon(days)}
-                className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${workloadHorizon === days ? 'bg-surface text-feedback-success-700 shadow-raised' : 'text-analysis-text-secondary hover:text-analysis-text-primary'}`}
+                className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${workloadHorizon === days ? 'bg-surface text-feedback-success-700 shadow-raised' : 'text-analysis-text-secondary hover:text-analysis-text-primary-ink'}`}
               >
                 {days} Dias
               </button>
@@ -901,7 +901,7 @@ export function TaskAnalytics({
             <tbody className="divide-y divide-analysis-muted">
               {userWorkloadUpcoming.map(u => (
                 <tr key={u.userId} className="hover:bg-analysis-subtle transition-colors">
-                  <td className="py-3 px-3 font-semibold text-analysis-text-primary flex items-center gap-2">
+                  <td className="py-3 px-3 font-semibold text-analysis-text-primary-ink flex items-center gap-2">
                     <div className="w-7 h-7 rounded-full bg-analysis-border text-analysis-text-body flex items-center justify-center font-bold text-caption">
                       {getUserInitials(u.userName)}
                     </div>
@@ -995,7 +995,7 @@ export function TaskAnalytics({
             <tbody className="divide-y divide-analysis-muted">
               {activeProjectsHours.map(p => (
                 <tr key={p.id} className="hover:bg-analysis-subtle transition-colors">
-                  <td className="py-3 px-3 font-bold text-analysis-text-primary">
+                  <td className="py-3 px-3 font-bold text-analysis-text-primary-ink">
                     {p.clientName} - {p.title}
                   </td>
                   <td className="py-3 px-3 text-center">

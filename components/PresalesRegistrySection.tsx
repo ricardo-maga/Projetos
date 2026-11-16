@@ -73,7 +73,7 @@ export default function PresalesRegistrySection({currentUser,users,clients,proje
    {!selected&&!creating&&<M3Card className="border border-border bg-surface p-5"><h3 className="mb-3 font-bold">Processos Presales ({total})</h3>
      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>Processo</th><th>Cliente</th><th>Pedido</th><th>Estado</th><th>Gestor de projeto</th><th>Valor potencial</th></tr></thead>
      <tbody>{rows.map(row=><tr key={row.id} className="border-t border-border"><td className="p-2">{row.processNumber||'—'}</td>
-       <td className="p-2">{clientName(row.clientId)}</td><td className="p-2"><button className="font-semibold text-primary underline" onClick={()=>setSelectedId(row.id)}>{row.title}</button></td>
+       <td className="p-2">{clientName(row.clientId)}</td><td className="p-2"><button className="font-semibold text-primary-ink underline" onClick={()=>setSelectedId(row.id)}>{row.title}</button></td>
        <td className="p-2">{statuses[row.status as keyof typeof statuses]||row.status}</td><td className="p-2">{name(row.projectManagerId||row.ownerId)}</td>
        <td className="p-2">{row.potentialValue?.toFixed(2)||'—'}</td></tr>)}</tbody></table></div>
      {rows.length<total&&<M3Button tone="outlined" onClick={()=>void load(page+1)}>Mais processos</M3Button>}</M3Card>}

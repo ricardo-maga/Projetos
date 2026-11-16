@@ -38,7 +38,7 @@ export default function MarkdownCommentComposer({
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: 'h-24 overflow-y-auto rounded-control border border-border bg-surface p-3.5 text-body-sm text-text-primary shadow-flat outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 [&_h1]:text-heading-sm [&_h1]:font-bold [&_h2]:text-body [&_h2]:font-bold [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_a]:text-primary [&_a]:underline',
+        class: 'h-24 overflow-y-auto rounded-control border border-border bg-surface p-3.5 text-body-sm text-text-primary shadow-flat outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 [&_h1]:text-heading-sm [&_h1]:font-bold [&_h2]:text-body [&_h2]:font-bold [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_a]:text-primary-ink [&_a]:underline',
         'aria-label': 'Comentário ou nota',
       },
       handlePaste: (_view, event) => {
@@ -75,7 +75,7 @@ export default function MarkdownCommentComposer({
   const formatButton = (label: string, Icon: typeof Bold, active: boolean, action: () => void) => (
     <button type="button" aria-label={label} title={label} aria-pressed={active}
       onMouseDown={event => event.preventDefault()} onClick={action}
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-control hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary ${active ? 'bg-primary/10 text-primary' : 'text-text-secondary'}`}>
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-control hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary ${active ? 'bg-primary/10 text-primary-ink' : 'text-text-secondary'}`}>
       <Icon className="h-4 w-4" aria-hidden="true" />
     </button>
   );
@@ -109,7 +109,7 @@ export default function MarkdownCommentComposer({
                       <input autoFocus type="url" required aria-label="Endereço do link" placeholder="https://..." value={linkUrl}
                         onChange={event => setLinkUrl(event.target.value)}
                         className="w-40 rounded-control border border-border bg-surface px-2 py-1 text-body-sm text-text-primary focus:outline-2 focus:outline-primary" />
-                      <button type="submit" aria-label="Aplicar link" className="rounded-control px-2 py-1 text-primary hover:bg-surface-muted">✓</button>
+                      <button type="submit" aria-label="Aplicar link" className="rounded-control px-2 py-1 text-primary-ink hover:bg-surface-muted">✓</button>
                       <button type="button" aria-label="Cancelar link" onClick={() => setEditingLink(false)} className="rounded-control px-2 py-1 text-text-secondary hover:bg-surface-muted">×</button>
                     </form>
                   ) : (

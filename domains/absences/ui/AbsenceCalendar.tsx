@@ -38,7 +38,7 @@ export default function AbsenceCalendar({
 
   const getUserColorClass = (uid: string) => {
     const colors = [
-      'bg-primary/10 text-primary border-primary/20',
+      'bg-primary/10 text-primary-ink border-primary/20',
       'bg-brand-green/10 text-success-strong border-brand-green/20',
       'bg-surface-muted text-text-primary border-border',
     ];

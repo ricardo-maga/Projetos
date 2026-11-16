@@ -532,7 +532,7 @@ export default function OperationalUserCalendar({
                       <Button variant="secondary" size="sm"
                         type="button"
                         onClick={handleSelectAllUsers}
-                        className="mt-1 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/10 rounded-control text-body-sm font-bold transition-colors cursor-pointer"
+                        className="mt-1 px-3 py-1.5 bg-primary/10 text-primary-ink hover:bg-primary/10 rounded-control text-body-sm font-bold transition-colors cursor-pointer"
                       >
                         Selecionar Todos os Utilizadores
                       </Button>
@@ -642,7 +642,7 @@ export default function OperationalUserCalendar({
                                       setIsFullscreen(false);
                                       onQuickCreateTask(user.id, day.dateStr);
                                     }}
-                                    className="p-1 hover:bg-primary/10 text-primary rounded-control transition-colors cursor-pointer"
+                                    className="p-1 hover:bg-primary/10 text-primary-ink rounded-control transition-colors cursor-pointer"
                                     title={`Adicionar nova tarefa para ${user.name} em ${day.dateStr}`}
                                     aria-label={`Adicionar nova tarefa para ${user.name} em ${day.dateStr}`}
                                   >
@@ -727,7 +727,7 @@ export default function OperationalUserCalendar({
                                     </Button>
                                     {isExpanded && <div className="space-y-1">
                                     {/* Linha 2: Nome do projeto */}
-                                    <div className="text-body-sm font-bold text-primary truncate leading-tight">
+                                    <div className="text-body-sm font-bold text-primary-ink truncate leading-tight">
                                       {projectLabel}
                                     </div>
 

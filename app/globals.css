@@ -50,14 +50,15 @@
   --color-border: var(--color-border-token);
   --color-border-subtle: var(--color-border-subtle-token);
   --color-primary: var(--primary-600);
+  --color-primary-ink: var(--primary-800);
   --color-primary-hover: var(--primary-700);
   --color-primary-active: var(--primary-800);
-  --color-success: #16a34a;
+  --color-success: #006b29;
   --color-success-strong: #007a2e;
   --color-brand-green: #009639;
   --color-brand-accent: #4298b5;
-  --color-warning: #d97706;
-  --color-error: #dc2626;
+  --color-warning: #92400e;
+  --color-error: #b91c1c;
   --color-info: var(--primary-600);
   --color-overlay: #0f172a;
   --color-on-inverse: #cbd5e1;
@@ -66,8 +67,8 @@
   --color-analysis-subtle: #f8fafc;
   --color-analysis-muted: #f1f5f9;
   --color-analysis-border: #e2e8f0;
-  --color-analysis-text-soft: #94a3b8;
-  --color-analysis-text-muted: #64748b;
+  --color-analysis-text-soft: var(--color-text-muted-token);
+  --color-analysis-text-muted: var(--color-text-muted-token);
   --color-analysis-text-secondary: #475569;
   --color-analysis-text-body: #334155;
   --color-analysis-text-strong: #1e293b;
@@ -132,7 +133,7 @@ body,
   --color-surface-elevated-token: #ffffff;
   --color-text-primary-token: #111827;
   --color-text-secondary-token: #4b5563;
-  --color-text-muted-token: #626b78;
+  --color-text-muted-token: #515b69;
   --color-text-disabled-token: #d1d5db;
   --color-border-token: #e5e7eb;
   --color-border-subtle-token: #f3f4f6;
@@ -305,6 +306,7 @@ body[data-theme="rose"],
 /* Resolve the shared M3 presentation at each theme boundary, including all
    configurable palettes. Domino below can still override its brand specifics. */
 :root, html, body, #main-root, [data-theme] {
+  --color-primary-ink: var(--primary-800);
   --m3-primary: var(--primary-600);
   --m3-on-primary: var(--color-inverse);
   --m3-primary-container: var(--primary-100);
@@ -614,4 +616,13 @@ button[data-filled="true"] :where(span, svg) {
   --chart-tooltip-text: #fff;
   --chart-grid: #e2e8f0;
   --chart-label: #334155;
+}
+
+/* Series colours identify the marks; legend text has its own readable role. */
+.recharts-default-legend .recharts-legend-item-text {
+  color: var(--chart-label) !important;
+}
+
+.recharts-default-tooltip .recharts-tooltip-item {
+  color: var(--chart-tooltip-text) !important;
 }
