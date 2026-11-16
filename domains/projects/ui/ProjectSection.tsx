@@ -1778,10 +1778,10 @@ export default function ProjectSection({
 
           {/* TAB 1: VISÃO GERAL */}
           {activeDetailTab === 'geral' && (
-            <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+            <div className="p-6 grid grid-cols-1 xl:grid-cols-12 gap-6">
 
               {/* Left Content Column (Main info) */}
-              <div className="md:col-span-8 space-y-6">
+              <div className="min-w-0 xl:col-span-8 space-y-6">
 
                 {/* Description Block */}
                 <div className="bg-surface-muted p-4 rounded-control border border-border-subtle">
@@ -2070,8 +2070,8 @@ export default function ProjectSection({
                 ) : (
                   // 30-Day Timeline (Cronograma)
                   <div className="space-y-4 animate-fade-in" id="project-timeline-container">
-                    <div className="flex items-center justify-between bg-surface-muted p-3 rounded-control border border-border/60">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-muted p-3 rounded-control border border-border/60">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <h4 className="font-extrabold text-text-primary text-body-sm uppercase tracking-wider">Cronograma</h4>
                         <span className="text-caption font-bold text-primary-ink bg-primary/10 border border-primary/20 rounded-control px-2 py-0.5">
                           {(() => {
@@ -2081,7 +2081,7 @@ export default function ProjectSection({
                           })()}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <IconButton variant="ghost" aria-label="Voltar 5 dias"
                           type="button"
                           onClick={shiftCronogramaPrev}
@@ -2422,7 +2422,7 @@ export default function ProjectSection({
             </div>
 
             {/* Right Meta Column (Fields) */}
-            <div className="md:col-span-4 bg-surface-muted/70 rounded-card p-5 border border-border-subtle space-y-6 text-body-sm">
+            <div className="min-w-0 xl:col-span-4 bg-surface-muted/70 rounded-card p-5 border border-border-subtle space-y-6 text-body-sm">
 
               {/*  Status Overview */}
 
