@@ -10,16 +10,18 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import React, { useState, useMemo } from 'react';
-import { Project, Task, Comment, UserAbsence, Client, ProjectMaterial, ProjectRiskItem, RiskStatus } from '@/lib/types';
+import { Project, Task, Comment, UserAbsence, Client, ProjectMaterial, ProjectRiskItem, RiskStatus, SpecialDay } from '@/lib/types';
 import { ChevronLeft, ChevronRight, Package, Search } from 'lucide-react';
 import { stringToUUID } from '@/lib/supabaseSync';
 import { getProjectCalculatedRisk, matchTaskStatusId, parseTimeToHours, getProjectStatusStyle } from '@/lib/utils';
 import { currentForecastMonth, forecastMonth, offsetForecastMonth } from '@/domains/projects/modules/projectForecast';
+import AbsenceCalendar from '@/domains/absences/ui/AbsenceCalendar';
 
 interface BentoDashboardProps {
   projects: Project[];
   tasks: Task[];
   absences: UserAbsence[];
+  specialDays?: SpecialDay[];
   projectMaterials?: ProjectMaterial[];
   projectRiskItems?: ProjectRiskItem[];
   riskStatuses?: RiskStatus[];
@@ -38,6 +40,7 @@ export default function BentoDashboard({
   projects,
   tasks,
   absences,
+  specialDays = [],
   projectMaterials = [],
   projectRiskItems = [],
   riskStatuses = [],
@@ -107,11 +110,6 @@ export default function BentoDashboard({
     const user = users.find(u => matchId(u.id, userId));
     return user ? user.name : '';
   }, [users]);
-
-  const getUserInitials = (userId: string) => {
-    const name = getUserName(userId) || 'U';
-    return name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
-  };
 
   const safeParseDate = (dateStr: string) => {
     if (!dateStr) return new Date();
@@ -299,23 +297,6 @@ export default function BentoDashboard({
   const maxWorkloadHours = useMemo(() => {
     return projectsByWorkload.length > 0 ? Math.max(...projectsByWorkload.map(p => p.totalHours), 1) : 1;
   }, [projectsByWorkload]);
-
-  // Absences
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayTime = today.getTime();
-
-  let upcomingAbsences = absences.filter(abs => {
-    const end = safeParseDate(abs.absenceEndDate).getTime();
-    return end >= todayTime;
-  });
-
-  if (upcomingAbsences.length === 0) {
-    upcomingAbsences = [...absences];
-  }
-
-  upcomingAbsences.sort((a, b) => safeParseDate(a.absenceStartDate).getTime() - safeParseDate(b.absenceStartDate).getTime());
-  const displayedAbsences = upcomingAbsences.slice(0, 10);
 
   // Recent comments from the last 15 days on non-deleted projects.
   const commentCutoff = forecastToday.getTime() - 15 * 24 * 60 * 60 * 1000;
@@ -797,47 +778,13 @@ export default function BentoDashboard({
         </Card>
 
         {/* Right: Team Absences */}
-        <Card className="p-5 flex flex-col justify-between min-h-[320px]">
-          <div>
-            <h3 className="text-heading-sm text-text-primary mb-4">Ausências da equipa</h3>
-            {displayedAbsences.length === 0 ? (
-              <p className="text-body-sm text-text-muted py-8 text-center font-medium">Nenhuma ausência registada.</p>
-            ) : (
-              <div className="grid grid-cols-1 min-[620px]:grid-cols-2 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
-                {displayedAbsences.map((abs) => {
-                  const startDate = safeParseDate(abs.absenceStartDate);
-                  const endDate = safeParseDate(abs.absenceEndDate);
-                  const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24)) + 1;
-                  return (
-                    <div key={abs.id} className="flex items-center justify-between bg-surface-muted/70 p-2.5 rounded-control border border-border-subtle text-body-sm hover:bg-surface-muted transition-all">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-body-sm font-bold shrink-0">
-                          {getUserInitials(abs.userId)}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-text-primary text-body-sm">{getUserName(abs.userId)}</div>
-                          <div className="text-caption text-text-muted font-bold uppercase tracking-tight">
-                            Registo de ausência
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-caption text-text-primary font-bold">{startDate.toLocaleDateString('pt-PT')}</div>
-                        <div className="text-caption text-text-secondary font-mono mt-0.5">{days} dia{days !== 1 ? 's' : ''}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          <Button variant="secondary"
-            onClick={() => onNavigate('ausencias')}
-            className="mt-6 w-full"
-          >
+        <div className="min-w-0 space-y-3">
+          <h3 className="text-heading-sm text-text-primary">Ausências da equipa</h3>
+          <AbsenceCalendar absences={absences} users={users} specialDays={specialDays} />
+          <Button variant="secondary" onClick={() => onNavigate('ausencias')} className="w-full">
             Ver todas as ausências
           </Button>
-        </Card>
+        </div>
       </div>
 
     </div>

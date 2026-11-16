@@ -8,6 +8,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { M3Button } from '../components/M3';
 import { hasFilledButtonBackground } from '../components/ui/buttonAppearance';
 import { currentForecastMonth, offsetForecastMonth } from '../lib/projectForecast';
+import AbsenceCalendar from '../domains/absences/ui/AbsenceCalendar';
 
 const props: React.ComponentProps<typeof Dashboard> = {
   projects: [], tasks: [], absences: [], projectMaterials: [], comments: [],
@@ -47,7 +48,7 @@ describe('Dashboard M3 presentation', () => {
     for (const title of ['Projetos ativos esta semana', 'Projetos com maior carga horária', 'Comentários recentes', 'Ausências da equipa']) expect(html).toContain(title);
     expect(html).not.toContain('<h2 class="text-heading-sm text-text-primary">Projetos Ativos</h2>');
     expect(html).toContain('Nenhum projeto ativo registado.');
-    expect(html).toContain('Nenhuma ausência registada.');
+    expect(html).toContain('Calendário mensal');
     expect(html).not.toContain('bg-slate-900');
     expect(html.match(/rounded-card/g)?.length).toBeGreaterThanOrEqual(8);
     expect(html).toContain('Projetos em Forecast');
@@ -62,6 +63,25 @@ describe('Dashboard M3 presentation', () => {
     expect(html).toMatch(/<h2 class="text-heading-sm text-text-primary">Projetos em Forecast<\/h2>/);
     expect(html).toContain('Tarefas abertas');
     expect(html).toContain('m3-dashboard-summary');
+  });
+
+  it('shows the monthly calendar with every absence and no user filter in the dashboard', () => {
+    const now = new Date();
+    const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-15`;
+    const absences = Array.from({ length: 11 }, (_, index) => ({
+      id: `absence-${index}`, userId: index === 10 ? 'b' : 'a',
+      absenceStartDate: day, absenceEndDate: day, reason: 'Vacation', createdDate: day,
+    })) as typeof props.absences;
+    const html = renderToStaticMarkup(<Dashboard {...props} absences={absences} users={[{ id: 'a', name: 'Ana' }, { id: 'b', name: 'Bia' }]} />);
+    const panel = html.split('Ausências da equipa')[1].split('Ver todas as ausências')[0];
+    expect(panel).toContain('Calendário mensal');
+    expect(panel).toContain('Bia (Ausente:');
+    expect(panel.match(/Ana \(Ausente:/g)).toHaveLength(10);
+    expect(panel).not.toContain('Filtrar ausências por utilizador');
+
+    const filtered = renderToStaticMarkup(<AbsenceCalendar absences={absences} users={[{ id: 'a', name: 'Ana' }, { id: 'b', name: 'Bia' }]} userIdFilter="b" />);
+    expect(filtered).toContain('Bia (Ausente:');
+    expect(filtered).not.toContain('Ana (Ausente:');
   });
 
   it('shows comments only from the last 15 days', () => {

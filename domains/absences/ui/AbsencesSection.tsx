@@ -2,20 +2,20 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserAbsence, SpecialDay, AppConfiguration } from '@/lib/types';
-import { Plus, Trash2, Calendar, Users, UserCheck, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, Filter, ShieldCheck } from 'lucide-react';
+import { ArrowUpDown } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import { hasPermission } from '@/lib/permissions';
 import { userHasRole } from '@/lib/roleAssociations';
 
 // UI Foundation Components
 import Button from '@/components/ui/Button';
-import IconButton from '@/components/ui/IconButton';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import { M3SectionHeader, M3SegmentedControl } from '@/components/M3';
 import { getAbsenceVisibility } from '@/domains/absences/modules/absenceVisibility';
+import AbsenceCalendar from '@/domains/absences/ui/AbsenceCalendar';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 
 interface AbsencesSectionProps {
@@ -66,9 +66,6 @@ export default function AbsencesSection({
         .map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
     </optgroup>
   ));
-
-  // Calendar State
-  const [currentCalendarDate, setCurrentCalendarDate] = useState<Date>(() => new Date());
 
   const handleAddAbsenceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,10 +131,6 @@ export default function AbsencesSection({
   };
 
   const getUserName = (id: string) => users.find(u => matchUserId(u.id, id))?.name || 'Utilizador';
-  const getUserInitials = (name: string) => {
-    return name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
-  };
-
   const getTranslatedReason = (r: string) => {
     switch (r) {
       case 'Vacation': return 'Férias';
@@ -160,20 +153,6 @@ export default function AbsencesSection({
     const diffTime = eUtc - sUtc;
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
     return diffDays > 0 ? diffDays : 0;
-  };
-
-  const getUserColorClass = (uid: string) => {
-    const colors = [
-      'bg-primary/10 text-primary border-primary/20',
-      'bg-brand-green/10 text-success-strong border-brand-green/20',
-      'bg-surface-muted text-text-primary border-border',
-    ];
-    let hash = 0;
-    for (let i = 0; i < uid.length; i++) {
-      hash = uid.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
   };
 
   const years = useMemo(() => {
@@ -302,134 +281,7 @@ export default function AbsencesSection({
               {!absenceVisibility.groups.length && <p role="status" className="mt-3 text-body-sm text-text-secondary">Defina os Grupos Associados Tarefas nas Configurações para registar ausências.</p>}
             </Card>
 
-            {/* Monthly Calendar View */}
-            <Card className="xl:col-span-8 p-4 sm:p-5 space-y-4 min-w-0">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">
-              <M3SectionHeader title="Calendário mensal" description="Ausências registadas." />
-
-              {/* Calendar Navigator */}
-              <div className="flex flex-wrap items-center gap-2 select-none">
-                <IconButton size="sm" aria-label="Mês anterior"
-                  onClick={() => setCurrentCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                  title="Mês anterior"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </IconButton>
-                <span className="text-body-sm font-bold text-text-secondary min-w-[130px] text-center uppercase tracking-wider">
-                  {new Intl.DateTimeFormat('pt', { month: 'long', year: 'numeric' }).format(currentCalendarDate)}
-                </span>
-                <IconButton size="sm" aria-label="Mês seguinte"
-                  onClick={() => setCurrentCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                  title="Mês seguinte"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </IconButton>
-                <Button variant="secondary" size="sm"
-                  onClick={() => setCurrentCalendarDate(new Date())}
-                >
-                  Hoje
-                </Button>
-              </div>
-            </div>
-
-            {/* Continuous, table-like Calendar Grid */}
-            <div className="bg-surface border border-border rounded-control overflow-hidden">
-              <div className="grid grid-cols-7 border-b border-border bg-surface-muted text-caption font-bold text-text-secondary uppercase text-center select-none">
-                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-                  <div key={d} className="py-2 border-r border-border last:border-0">{d}</div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 text-body-sm">
-                {(() => {
-                  const year = currentCalendarDate.getFullYear();
-                  const month = currentCalendarDate.getMonth();
-
-                  const firstDayInstance = new Date(year, month, 1);
-                  const startingDayOfWeek = firstDayInstance.getDay(); // 0 = Sun, 1 = Mon, etc.
-                  const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
-
-                  const cells = [];
-
-                  // Empty cells for the start of the month (preceding month empty slots)
-                  for (let i = 0; i < startingDayOfWeek; i++) {
-                    cells.push(
-                      <div key={`empty-${i}`} className="min-h-[80px] p-2 border-b border-r border-border bg-surface-muted/50"></div>
-                    );
-                  }
-
-                  const todayStr = new Date().toISOString().split('T')[0];
-
-                  // Active month days
-                  for (let d = 1; d <= totalDaysInMonth; d++) {
-                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                    const currentDate = new Date(year, month, d);
-                    const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
-                    const specialDay = specialDays.find(sd => sd.date === dateStr);
-                    const isSpecial = !!specialDay;
-
-                    const dayAbsences = visibleAbsences.filter(abs => {
-                      return abs.absenceStartDate <= dateStr && abs.absenceEndDate >= dateStr;
-                    });
-                    const isToday = dateStr === todayStr;
-
-                    cells.push(
-                      <div
-                        key={`day-${d}`}
-                        className={`min-h-[80px] p-1.5 border-b border-r border-border relative transition-colors hover:bg-surface-muted/50 flex flex-col justify-between ${
-                          isWeekend || isSpecial ? 'bg-surface-muted/60' : 'bg-surface'
-                        }`}
-                      >
-                        {/* Cell Header */}
-                        <div className="flex justify-between items-start mb-1 select-none">
-                          <span className={`inline-flex items-center justify-center w-7 h-7 text-center rounded-full font-bold text-caption ${
-                            isToday ? 'bg-primary text-white font-black' : 'text-text-secondary'
-                          }`}>
-                            {d}
-                          </span>
-                          {specialDay && (
-                            <span
-                              className="text-caption font-extrabold text-text-primary bg-warning/10 border border-warning/20 px-1 py-0.5 rounded truncate max-w-[50px]"
-                              title={specialDay.name}
-                            >
-                              {specialDay.name}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Absent Users List */}
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {dayAbsences.map(abs => {
-                            const initials = getUserInitials(getUserName(abs.userId));
-                            const colorClass = getUserColorClass(abs.userId);
-                            return (
-                              <span
-                                key={abs.id}
-                                className={`inline-flex items-center justify-center w-5 h-5 text-caption font-bold rounded-full border transition-all cursor-help ${colorClass}`}
-                                title={`${getUserName(abs.userId)} (Ausente: ${abs.absenceStartDate} a ${abs.absenceEndDate})`}
-                              >
-                                {initials}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  // Empty cells for the end of the month to complete the last row
-                  const totalGridCells = startingDayOfWeek + totalDaysInMonth;
-                  const remainingPadding = totalGridCells % 7 === 0 ? 0 : 7 - (totalGridCells % 7);
-                  for (let i = 0; i < remainingPadding; i++) {
-                    cells.push(
-                      <div key={`empty-end-${i}`} className="min-h-[80px] p-2 border-b border-r border-border bg-surface-muted/50"></div>
-                    );
-                  }
-
-                  return cells;
-                })()}
-              </div>
-            </div>
-          </Card>
+            <AbsenceCalendar className="xl:col-span-8" absences={visibleAbsences} users={absenceUsers} specialDays={specialDays} />
           </div>
 
           {/* Absences List Table with Filters & Sorting */}
