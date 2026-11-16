@@ -103,8 +103,7 @@ export default function ApiDocsPage() {
                     <meta name="viewport" content="width=device-width, initial-scale=1">
                     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
                     <style>
-                      body { margin: 0; background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
-                      .swagger-ui { filter: invert(88%) hue-rotate(180deg); }
+                      body { margin: 0; background-color: Canvas; color: CanvasText; color-scheme: light; font-family: sans-serif; }
                       .swagger-ui .topbar { display: none; }
                     </style>
                   </head>

@@ -10,7 +10,7 @@ function fakeDatabase() {
   const rows = (table: string, columns: string) => {
     if (table === 'users') return columns === '*' ? directory : directory.map(({ email, ...user }) => user);
     if (table === 'app_configuration') return [{ app_name: 'Test' }];
-    if (table === 'clients') return [{ id: 'client', client_name: 'Visible client' }];
+    if (table === 'clients') return [{ id: 'client', client_name: 'Visible client', version: 3, deleted: true }];
     return [];
   };
   const db = { from(table: string) {
@@ -55,6 +55,7 @@ test('sync read fetches an authorized domain without reading unrelated domains',
   });
   expect(result.success).toBe(true);
   expect(result.data?.clients.map(client => client.id)).toEqual(['client']);
+  expect(result.data?.clients[0]).toMatchObject({ version: 3, deleted: true });
   const tables = new Set(calls.map(call => call.table));
   expect(tables.has('clients')).toBe(true);
   expect(tables.has('tasks')).toBe(false);

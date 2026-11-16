@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useERP } from '../hooks/useERP';
 import { usePageNavigation } from '../hooks/usePageNavigation';
 import { useAsyncAction } from '../hooks/useAsyncAction';
@@ -225,7 +226,7 @@ export default function Page() {
   // Synchronize active theme attribute on document.documentElement for global styling
   React.useEffect(() => {
     const cachedTheme = typeof window !== 'undefined' ? localStorage.getItem('erp_theme') : null;
-    const currentTheme = state?.appConfig?.theme || cachedTheme || 'default';
+    const currentTheme = state?.appConfig?.theme || publicAppConfig?.theme || cachedTheme || 'default';
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('data-theme', currentTheme);
       document.body?.setAttribute('data-theme', currentTheme);
@@ -234,7 +235,7 @@ export default function Page() {
         root.setAttribute('data-theme', currentTheme);
       }
     }
-  }, [state?.appConfig?.theme]);
+  }, [state?.appConfig?.theme, publicAppConfig?.theme]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -586,7 +587,7 @@ export default function Page() {
             <Menu className="w-5 h-5" />
           </IconButton>
 
-          <a
+          <Link
             href="/?tab=dashboard"
             aria-label="Ir para o Dashboard"
             className="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-control"
@@ -607,7 +608,7 @@ export default function Page() {
               <h1 className="text-body font-bold text-text-primary tracking-tight leading-tight truncate">{appConfig.appName}</h1>
               <p className="text-caption text-text-muted font-medium truncate">{appConfig.appDescription}</p>
             </div>
-          </a>
+          </Link>
         </div>
 
         {/* Zone 2 & 3: Actions + Notification + Profile dropdown */}

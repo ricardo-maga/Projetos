@@ -93,7 +93,7 @@ export default function RolePermissionSection({ onRolesChanged }: { onRolesChang
   </div>;
 
   return (
-    <section className="space-y-5" aria-labelledby="rbac-title">
+    <section className="space-y-5" aria-label="Funções e permissões">
       <M3SectionHeader title="Funções e permissões" description="Selecione uma função para configurar a matriz. As alterações são aplicadas no servidor e registadas na auditoria." />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.65fr)]">
