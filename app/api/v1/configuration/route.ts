@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
 import { getServerDbClient } from '@/lib/supabase/server';
+import { configurationReadQuery } from '@/domains/configuration/data/configurationRepository';
 
 const changes = z.object({
   appName: z.string().max(200).optional(), appDescription: z.string().max(2000).optional(),
@@ -49,7 +50,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const db = await getServerDbClient(req, auth.user);
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
-    const { data: current, error: readError } = await db.from('app_configuration').select('id').limit(1).maybeSingle();
+    const { data: current, error: readError } = await configurationReadQuery(db, 'id').maybeSingle();
     if (readError) throw readError;
     if (!current) return NextResponse.json({ success: false, message: 'Configuração não encontrada.' }, { status: 404 });
     const { data, error } = await db.from('app_configuration').update(payload)

@@ -443,7 +443,12 @@ export default function ConfigSection({
                     <button
                       key={t.id}
                       type="button"
+                      disabled={!canWriteConfig || isSavingConfig}
+                      aria-busy={isSavingConfig}
                       onClick={async () => {
+                        if (!canWriteConfig) return;
+                        await runConfigAction(async () => {
+                        const previousTheme = theme;
                         setTheme(t.id);
                         if (typeof window !== 'undefined') {
                           localStorage.setItem('erp_theme', t.id);
@@ -455,7 +460,15 @@ export default function ConfigSection({
                           if (root) root.setAttribute('data-theme', t.id);
                         }
                         const result = await updateConfig({ theme: t.id });
-                        if (!result.success) alert(result.message || 'Não foi possível guardar o tema.');
+                        if (!result.success) {
+                          setTheme(previousTheme);
+                          localStorage.setItem('erp_theme', previousTheme);
+                          document.documentElement.setAttribute('data-theme', previousTheme);
+                          document.body?.setAttribute('data-theme', previousTheme);
+                          document.getElementById('main-root')?.setAttribute('data-theme', previousTheme);
+                          alert(result.message || 'Não foi possível guardar o tema.');
+                        }
+                        });
                       }}
                       aria-pressed={theme === t.id || (theme === 'default' && t.id === 'domino')}
                       className={`flex items-center gap-3 p-3 rounded-control border text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${

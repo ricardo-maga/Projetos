@@ -11,7 +11,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const ref = 'caaiydcycrnwcqefdldz';
 const url = `https://${ref}.supabase.co`;
 const mode = process.argv[2];
-if (!['seed', 'dev', 'check-access', 'test-integrity'].includes(mode)) throw new Error('Use node scripts/staging.mjs seed|dev|check-access|test-integrity');
+if (!['seed', 'dev', 'build', 'start', 'check-access', 'test-integrity'].includes(mode)) throw new Error('Use node scripts/staging.mjs seed|dev|build|start|check-access|test-integrity');
 // Refuse ambient Next dotenv files: never mix staging keys with production secrets.
 for (const name of ['.env','.env.local','.env.development','.env.development.local']) {
   if (existsSync(join(root, name))) throw new Error(`Remover conflito de ambiente antes de staging: ${name}`);
@@ -123,7 +123,8 @@ if (mode === 'check-access') {
     APP_URL:'http://127.0.0.1:3110',
     NEXT_TELEMETRY_DISABLED:'1', NEXT_IGNORE_INCORRECT_LOCKFILE:'1' };
   console.log(`STAGING ${ref} — http://127.0.0.1:3110 (sem alterar produção)`);
-  const child = spawn(process.execPath,[join(root,'node_modules/next/dist/bin/next'),'dev','--hostname','127.0.0.1','--port','3110'],
+  const args = mode === 'build' ? ['build'] : [mode, '--hostname', '127.0.0.1', '--port', '3110'];
+  const child = spawn(process.execPath,[join(root,'node_modules/next/dist/bin/next'), ...args],
     { cwd:root,env,stdio:'inherit' });
   process.on('SIGINT',()=>child.kill('SIGINT'));
   process.on('SIGTERM',()=>child.kill('SIGTERM'));

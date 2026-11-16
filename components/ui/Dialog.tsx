@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -15,16 +15,44 @@ export interface DialogProps {
   bodyClassName?: string;
 }
 
+let openDialogs: HTMLElement[] = [];
+let previousBodyOverflow = '';
+const focusableSelector = 'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])';
+
 export function Dialog({ isOpen, onClose, title, children, className, bodyClassName }: DialogProps) {
-  // Prevent body scroll when open
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  const titleId = useId();
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+    if (!isOpen || !dialogRef.current) return;
+    const dialog = dialogRef.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (!openDialogs.length) previousBodyOverflow = document.body.style.overflow;
+    openDialogs.push(dialog);
+    document.body.style.overflow = 'hidden';
+    const controls = () => Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector)).filter(element => element.getClientRects().length);
+    (controls()[0] || dialog).focus({ preventScroll: true });
+    const handleKey = (event: KeyboardEvent) => {
+      if (openDialogs.at(-1) !== dialog) return;
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCloseRef.current(); }
+      if (event.key !== 'Tab') return;
+      const items = controls();
+      const first = items[0];
+      const last = items.at(-1);
+      if (!first) { event.preventDefault(); dialog.focus(); }
+      else if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKey);
     return () => {
-      document.body.style.overflow = 'unset';
+      document.removeEventListener('keydown', handleKey);
+      openDialogs = openDialogs.filter(element => element !== dialog);
+      if (!openDialogs.length) document.body.style.overflow = previousBodyOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };
   }, [isOpen]);
 
@@ -43,19 +71,25 @@ export function Dialog({ isOpen, onClose, title, children, className, bodyClassN
 
           {/* Modal Container */}
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={title ? titleId : undefined}
+            aria-label={title ? undefined : 'Diálogo'}
+            tabIndex={-1}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', duration: 0.3 }}
             className={cn(
-              "relative w-full max-w-lg bg-surface border border-border rounded-dialog shadow-modal z-10 flex flex-col overflow-hidden text-left",
+              "relative min-w-0 w-full max-w-lg max-h-[calc(100dvh-2rem)] bg-surface border border-border rounded-dialog shadow-modal z-10 flex flex-col overflow-hidden text-left",
               className
             )}
           >
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between p-5 border-b border-border bg-surface-muted/30">
               {title ? (
-                <h2 className="text-heading-sm font-bold text-text-primary tracking-tight">
+                <h2 id={titleId} className="text-heading-sm font-bold text-text-primary tracking-tight">
                   {title}
                 </h2>
               ) : (
@@ -65,7 +99,7 @@ export function Dialog({ isOpen, onClose, title, children, className, bodyClassN
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
-                aria-label="Close dialog"
+                aria-label="Fechar diálogo"
                 className="hover:bg-surface-muted hover:text-text-primary rounded-full"
               >
                 <X className="w-4 h-4" />
@@ -73,7 +107,7 @@ export function Dialog({ isOpen, onClose, title, children, className, bodyClassN
             </div>
 
             {/* Content Body */}
-            <div className={cn("p-6 overflow-y-auto max-h-[70vh] text-body-sm text-text-secondary leading-relaxed", bodyClassName)}>
+            <div className={cn("min-h-0 p-6 overflow-y-auto text-body-sm text-text-secondary leading-relaxed", bodyClassName)}>
               {children}
             </div>
           </motion.div>

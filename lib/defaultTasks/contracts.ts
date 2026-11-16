@@ -7,14 +7,14 @@ export const createDefaultTaskSchema = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().max(5000).default(''),
   estimatedHours: hours,
-  taskTypeId: z.string().uuid().nullable().optional(),
+  taskTypeId: z.guid().nullable().optional(),
 }).strict();
 
 export const updateDefaultTaskSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   description: z.string().trim().max(5000).optional(),
   estimatedHours: hours.optional(),
-  taskTypeId: z.string().uuid().nullable().optional(),
+  taskTypeId: z.guid().nullable().optional(),
   syncVersion: z.number().int().positive(),
 }).strict();
 

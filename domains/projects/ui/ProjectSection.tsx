@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import { Card } from '@/components/ui/Card';
+import { Dialog } from '@/components/ui/Dialog';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import Textarea from '@/components/ui/Textarea';
@@ -3020,31 +3021,16 @@ export default function ProjectSection({
 
               {/* MODAL FORM: Registar material */}
               {isMaterialModalOpen && canWriteMaterials && (
-                <div className="fixed inset-0 bg-overlay/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-                  <div className="bg-surface rounded-dialog max-w-2xl w-full p-6 shadow-modal space-y-5 border border-border-subtle my-8">
-                    {/* Modal Header */}
-                    <div className="flex justify-between items-center border-b border-border-subtle pb-4">
-                      <h3 className="font-extrabold text-text-primary flex items-center gap-2.5 text-base">
-                        <Package className="w-5 h-5 text-action-600" />
-                        {editingMaterialId ? 'Editar Material' : 'Registar material'}
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={handleCloseMaterialModal}
-                        className="p-1.5 text-text-muted hover:text-text-secondary hover:bg-surface-muted rounded-full transition-colors cursor-pointer"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
+                <Dialog isOpen={isMaterialModalOpen} onClose={handleCloseMaterialModal}
+                  title={editingMaterialId ? 'Editar Material' : 'Registar material'} className="max-w-2xl">
                     {/* Modal Form */}
                     <form onSubmit={handleSaveMaterial} className="space-y-4 text-xs font-medium">
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
 
                         {/* Descrição (Required) */}
                         <div className="sm:col-span-2 space-y-1">
-                          <label className={MATERIAL_FIELD_LABEL}>Descrição *</label>
-                          <input
+                          <label htmlFor="material-description" className={MATERIAL_FIELD_LABEL}>Descrição *</label>
+                          <input id="material-description"
                             type="text"
                             required
                             value={matDesc}
@@ -3056,8 +3042,8 @@ export default function ProjectSection({
 
                         {/* Fornecedor (Required + Autocomplete) */}
                         <div className="sm:col-span-2 space-y-1 relative">
-                          <label className={MATERIAL_FIELD_LABEL}>Fornecedor *</label>
-                          <input
+                          <label htmlFor="material-supplier" className={MATERIAL_FIELD_LABEL}>Fornecedor *</label>
+                          <input id="material-supplier"
                             type="text"
                             required
                             value={matSupplier}
@@ -3097,8 +3083,8 @@ export default function ProjectSection({
 
                         {/* Quantidade */}
                         <div className="space-y-1">
-                          <label className={MATERIAL_FIELD_LABEL}>Quantidade</label>
-                          <input
+                          <label htmlFor="material-quantity" className={MATERIAL_FIELD_LABEL}>Quantidade</label>
+                          <input id="material-quantity"
                             type="number"
                             min="1"
                             value={matQty}
@@ -3109,8 +3095,8 @@ export default function ProjectSection({
 
                         {/* Referência */}
                         <div className="space-y-1">
-                          <label className={MATERIAL_FIELD_LABEL}>Referência</label>
-                          <input
+                          <label htmlFor="material-reference" className={MATERIAL_FIELD_LABEL}>Referência</label>
+                          <input id="material-reference"
                             type="text"
                             value={matRef}
                             onChange={e => setMatRef(e.target.value)}
@@ -3121,8 +3107,8 @@ export default function ProjectSection({
 
                         {/* N° de orçamento */}
                         <div className="space-y-1">
-                          <label className={MATERIAL_FIELD_LABEL}>N° de orçamento</label>
-                          <input
+                          <label htmlFor="material-budget" className={MATERIAL_FIELD_LABEL}>N° de orçamento</label>
+                          <input id="material-budget"
                             type="text"
                             value={matBudget}
                             onChange={e => setMatBudget(e.target.value)}
@@ -3133,8 +3119,8 @@ export default function ProjectSection({
 
                         {/* Preço Custo */}
                         <div className="space-y-1">
-                          <label className={MATERIAL_FIELD_LABEL}>Preço Custo (€)</label>
-                          <input
+                          <label htmlFor="material-cost" className={MATERIAL_FIELD_LABEL}>Preço Custo (€)</label>
+                          <input id="material-cost"
                             type="number"
                             step="0.01"
                             value={matCostPrice}
@@ -3145,8 +3131,8 @@ export default function ProjectSection({
 
                         {/* Preço Venda */}
                         <div className="space-y-1">
-                          <label className={MATERIAL_FIELD_LABEL}>Preço Venda (€)</label>
-                          <input
+                          <label htmlFor="material-sale" className={MATERIAL_FIELD_LABEL}>Preço Venda (€)</label>
+                          <input id="material-sale"
                             type="number"
                             step="0.01"
                             value={matSalePrice}
@@ -3157,8 +3143,8 @@ export default function ProjectSection({
 
                         {/* Data Prevista de Entrega */}
                         <div className="space-y-1">
-                          <label className={MATERIAL_FIELD_LABEL}>Data Prevista de Entrega</label>
-                          <input
+                          <label htmlFor="material-delivery" className={MATERIAL_FIELD_LABEL}>Data Prevista de Entrega</label>
+                          <input id="material-delivery"
                             type="date"
                             value={matDeliveryDate}
                             onChange={e => setMatDeliveryDate(e.target.value)}
@@ -3169,11 +3155,12 @@ export default function ProjectSection({
                         {/* Estado Inicial */}
                         <div className="space-y-1 sm:col-span-2">
                           <label className={MATERIAL_FIELD_LABEL}>Estado do Material</label>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2" role="group" aria-label="Estado do material">
                             <button
                               type="button"
                               onClick={() => setMatStatus('por_encomendar')}
-                              className={`flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                              aria-pressed={matStatus === 'por_encomendar'}
+                              className={`min-w-0 basis-32 flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                                 matStatus === 'por_encomendar'
                                   ? 'bg-action-100 text-action-900 border-action-300'
                                   : 'bg-surface-muted text-text-secondary border-border'
@@ -3184,7 +3171,8 @@ export default function ProjectSection({
                             <button
                               type="button"
                               onClick={() => setMatStatus('encomendado')}
-                              className={`flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                              aria-pressed={matStatus === 'encomendado'}
+                              className={`min-w-0 basis-32 flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                                 matStatus === 'encomendado'
                                   ? 'bg-feedback-warning-100 text-feedback-warning-900 border-feedback-warning-300'
                                   : 'bg-surface-muted text-text-secondary border-border'
@@ -3195,7 +3183,8 @@ export default function ProjectSection({
                             <button
                               type="button"
                               onClick={() => setMatStatus('em_armazem')}
-                              className={`flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                              aria-pressed={matStatus === 'em_armazem'}
+                              className={`min-w-0 basis-32 flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                                 matStatus === 'em_armazem' || matStatus === 'em_stock'
                                   ? 'bg-feedback-success-100 text-feedback-success-900 border-feedback-success-300'
                                   : 'bg-surface-muted text-text-secondary border-border'
@@ -3226,8 +3215,7 @@ export default function ProjectSection({
                         </button>
                       </div>
                     </form>
-                  </div>
-                </div>
+                </Dialog>
               )}
             </div>
           )}

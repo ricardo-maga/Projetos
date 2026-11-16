@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Briefcase } from 'lucide-react';
 import { safeLogoSource } from '@/lib/security/logoSource';
+import { cn } from '@/lib/utils';
 
 interface AppLogoProps {
   logoUrl?: string;
@@ -17,7 +18,7 @@ export default function AppLogo({
   logoUrl,
   appName = '',
   className = 'w-72 h-10 bg-transparent',
-  fallbackIconClassName = 'w-4 h-4 text-inverse',
+  fallbackIconClassName = 'w-4 h-4 text-current',
   busy = false,
   result = null,
 }: AppLogoProps) {
@@ -51,7 +52,7 @@ export default function AppLogo({
 
   if (!safeLogoSrc || imageError) {
     return (
-      <div className={`${logoClassName} relative bg-action-600 flex items-center justify-center text-inverse font-extrabold shrink-0 select-none overflow-hidden px-3 gap-2 shadow-2xs`}>
+      <div className={cn(logoClassName, 'relative bg-primary flex items-center justify-center text-inverse font-extrabold shrink-0 select-none overflow-hidden px-3 gap-2 shadow-raised')}>
         <Briefcase className={fallbackIconClassName} />
         {badgeText ? (
           <span className="leading-none text-xs font-black tracking-wider uppercase truncate">

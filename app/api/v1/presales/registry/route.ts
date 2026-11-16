@@ -3,7 +3,7 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getIdempotentEntityId,runIdempotent } from '@/lib/apiIdempotency';
 import { presalesRegistrySchema } from '@/lib/presalesRegistry';
-import { presalesError } from '../route';
+import { presalesError } from '@/lib/presalesErrors';
 
 export async function POST(req:NextRequest) {
   const auth=await requirePermission(req,'presales.create');

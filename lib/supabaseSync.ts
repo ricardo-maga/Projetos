@@ -400,7 +400,7 @@ export async function getActiveStateFromSupabase(
       readable('tasks') ? client.from('tasks').select('*').order('created_at', { ascending: false }) : skipped(),
       readable('comments') ? client.from('comments').select('*').order('created_at', { ascending: true }) : skipped(),
       readable('userAbsences') ? client.from('user_absences').select('*') : skipped(),
-      readable('appConfig') ? client.from('app_configuration').select('*').limit(1) : skipped(),
+      readable('appConfig') ? configurationReadQuery(client) : skipped(),
       readable('specialDays') ? client.from('special_days').select('*') : skipped(),
       readable('defaultTasks') && !readOptions?.skipDefaultTasks ? client.from('default_tasks').select('*') : skipped(),
       readable('riskCategories') ? client.from('risk_categories').select('*').order('sort_order', { ascending: true }) : skipped(),
@@ -1472,3 +1472,4 @@ export async function fetchAuditLogsFromSupabase(limit = 100): Promise<{ success
     return await response.json();
   } catch (err: any) { return { success: false, message: formatSupabaseError(err) }; }
 }
+import { configurationReadQuery } from '@/domains/configuration/data/configurationRepository';
