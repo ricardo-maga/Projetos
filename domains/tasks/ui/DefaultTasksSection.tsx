@@ -70,7 +70,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
   };
 
   const handleSaveEditDefaultTask = async (id: string) => {
-    if (!editDtTitle.trim() || !updateDefaultTask || savingDefaultTask) return;
+    if (!canWriteConfig || !editDtTitle.trim() || !updateDefaultTask || savingDefaultTask) return;
     setSavingDefaultTask(true);
     setDefaultTaskError(null);
     const result = await updateDefaultTask(id, {
@@ -118,7 +118,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
         ) : (
           <div className="divide-y divide-border-subtle">
             {visibleDefaultTasks.map(dt => {
-              const isEditingThis = editingDtId === dt.id;
+              const isEditingThis = canWriteConfig && editingDtId === dt.id;
               const typeName = dt.taskTypeId ? taskTypes.find((tt: any) => tt.id === dt.taskTypeId)?.name : null;
               return (
                 <article key={dt.id} className="p-4 sm:p-5 hover:bg-surface-muted/50 transition-colors">
@@ -194,7 +194,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                     </div>
                   )}
 
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle mt-2">
+                  {canWriteConfig && <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle mt-2">
                     {isEditingThis ? (
                       <>
                         <button
@@ -240,7 +240,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                         </button>
                       </>
                     )}
-                  </div>
+                  </div>}
                 </article>
               );
             })}

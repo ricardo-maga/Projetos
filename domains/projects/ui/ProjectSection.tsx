@@ -2391,7 +2391,7 @@ export default function ProjectSection({
                           </div>
                           <MarkdownCommentBody text={c.comment} />
                         </div>
-                        <Button variant="ghost" size="sm"
+                        {canDeleteProjects && <Button variant="ghost" size="sm"
                           type="button"
                           onClick={() => {
                             askConfirmation(
@@ -2403,20 +2403,20 @@ export default function ProjectSection({
                           className="text-error hover:text-error font-semibold text-caption cursor-pointer"
                         >
                           Apagar
-                        </Button>
+                        </Button>}
                       </div>
                     ))}
                   </div>
                 )}
 
                 {/* Comment input form */}
-                <MarkdownCommentComposer value={newCommentText} onChange={setNewCommentText}
+                {canWriteProjects && <MarkdownCommentComposer value={newCommentText} onChange={setNewCommentText}
                   onSubmit={async text => {
                     if (!selectedProjectId) return;
                     const result = await addComment(selectedProjectId, currentUser?.id || '', text);
                     if (!result?.success) { alert(result?.message || 'Não foi possível gravar o comentário.'); return; }
                     setNewCommentText('');
-                  }} />
+                  }} />}
               </div>
 
             </div>

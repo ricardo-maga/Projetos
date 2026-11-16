@@ -3,6 +3,7 @@ import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import ReferenceDataSection from '../domains/administration/ui/ReferenceDataSection';
 import UserSection from '../domains/administration/ui/UserSection';
+import DefaultTasksSection from '../domains/tasks/ui/DefaultTasksSection';
 const props:any={active:true,state:{riskCategories:[],riskStatuses:[],riskPriorities:[]},projectCategories:[{id:'category',name:'Categoria de teste',deleted:false}],projectStatuses:[],taskStatuses:[],taskTypes:[],projectRisks:[],projectPriorities:[],projectTeams:[],projectPartners:[],askConfirmation:()=>{}};
 it('shows auxiliary data without mutation or ordering controls to a reader',()=>{const html=renderToStaticMarkup(<ReferenceDataSection {...props} canWriteConfig={false}/>);expect(html).toContain('Categoria de teste');expect(html).not.toContain('Adicionar opção');expect(html).not.toContain('title="Editar"');expect(html).not.toContain('title="Eliminar"');expect(html).not.toContain('Reordenar Categoria');expect(html).not.toContain('<form');});
 it('keeps labelled creation, editing and ordering controls for a writer',()=>{const html=renderToStaticMarkup(<ReferenceDataSection {...props} canWriteConfig/>);expect(html).toContain('Adicionar opção');expect(html).toContain('aria-label="Nome da opção"');expect(html).toContain('title="Editar"');expect(html).toContain('title="Eliminar"');expect(html).toContain('Reordenar Categoria de teste');});
@@ -20,4 +21,14 @@ it('keeps the user directory readable without showing mutation controls to a rea
   expect(html).not.toContain('Novo utilizador');
   expect(html).not.toContain('> Editar');
   expect(html).not.toContain('Apagar');
+});
+
+it('shows task templates without editing or deletion controls to a configuration reader', () => {
+  const html = renderToStaticMarkup(<DefaultTasksSection active canWriteConfig={false}
+    defaultTasks={[{ id: 'qa-template', title: 'Modelo fictício', description: '', estimatedHours: '02:00', taskTypeId: '' }]}
+    taskTypes={[]} askConfirmation={() => {}} />);
+  expect(html).toContain('Modelo fictício');
+  expect(html).not.toContain('Nova tarefa');
+  expect(html).not.toContain('Editar');
+  expect(html).not.toContain('Eliminar');
 });
