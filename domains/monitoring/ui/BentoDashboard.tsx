@@ -778,13 +778,17 @@ export default function BentoDashboard({
         </Card>
 
         {/* Right: Team Absences */}
-        <div className="min-w-0 space-y-3">
-          <h3 className="text-heading-sm text-text-primary">Ausências da equipa</h3>
-          <AbsenceCalendar absences={absences} users={users} specialDays={specialDays} />
-          <Button variant="secondary" onClick={() => onNavigate('ausencias')} className="w-full">
-            Ver todas as ausências
-          </Button>
-        </div>
+        <AbsenceCalendar
+          variant="dashboard"
+          absences={absences}
+          users={users}
+          specialDays={specialDays}
+          footer={
+            <Button variant="secondary" onClick={() => onNavigate('ausencias')} className="w-full">
+              Ver todas as ausências
+            </Button>
+          }
+        />
       </div>
 
     </div>

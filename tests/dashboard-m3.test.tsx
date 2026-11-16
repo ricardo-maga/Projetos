@@ -45,7 +45,10 @@ describe('Dashboard M3 presentation', () => {
     expect(html).toContain('m3-dashboard');
     // The page shell owns the Dashboard title; cards retain semantic headings.
     expect(html).toMatch(/<h2\b[^>]*>/);
-    for (const title of ['Projetos ativos esta semana', 'Projetos com maior carga horária', 'Comentários recentes', 'Ausências da equipa']) expect(html).toContain(title);
+    for (const title of ['Projetos ativos esta semana', 'Projetos com maior carga horária', 'Comentários recentes', 'Calendário mensal de ausências']) expect(html).toContain(title);
+    expect(html).not.toContain('Ausências da equipa');
+    expect(html).not.toContain('Ausências registadas.');
+    expect(html).toContain('<h3 class="text-heading-sm text-text-primary">Calendário mensal de ausências</h3>');
     expect(html).not.toContain('<h2 class="text-heading-sm text-text-primary">Projetos Ativos</h2>');
     expect(html).toContain('Nenhum projeto ativo registado.');
     expect(html).toContain('Calendário mensal');
@@ -73,8 +76,10 @@ describe('Dashboard M3 presentation', () => {
       absenceStartDate: day, absenceEndDate: day, reason: 'Vacation', createdDate: day,
     })) as typeof props.absences;
     const html = renderToStaticMarkup(<Dashboard {...props} absences={absences} users={[{ id: 'a', name: 'Ana' }, { id: 'b', name: 'Bia' }]} />);
-    const panel = html.split('Ausências da equipa')[1].split('Ver todas as ausências')[0];
-    expect(panel).toContain('Calendário mensal');
+    const panel = html.split('Calendário mensal de ausências')[1].split('Ver todas as ausências')[0];
+    expect(panel).toContain('Mês anterior');
+    expect(panel).toContain('Mês seguinte');
+    expect(panel).toContain('Hoje');
     expect(panel).toContain('Bia (Ausente:');
     expect(panel.match(/Ana \(Ausente:/g)).toHaveLength(10);
     expect(panel).not.toContain('Filtrar ausências por utilizador');
