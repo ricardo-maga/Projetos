@@ -56,7 +56,7 @@ function cacheProjectPage(key: string, entry: ProjectPageCacheEntry) {
 
 const PROJECT_BADGE_CLASS = 'h-9 px-3 text-body-sm font-bold uppercase rounded-badge border inline-flex items-center justify-center whitespace-nowrap';
 const MATERIAL_FIELD_LABEL = 'block font-bold text-text-primary';
-const MATERIAL_FIELD_INPUT = 'w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-blue-100 outline-none text-text-primary font-semibold';
+const MATERIAL_FIELD_INPUT = 'w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-action-100 outline-none text-text-primary font-semibold';
 
 function ForecastBadge({ project, statuses, canEdit, updateProject, compact = false }: {
   project: Project; statuses: any[]; canEdit: boolean; updateProject?: (id: string, updates: any) => Promise<unknown>; compact?: boolean;
@@ -65,7 +65,7 @@ function ForecastBadge({ project, statuses, canEdit, updateProject, compact = fa
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const alert = projectForecastAlert(project, statuses);
-  const tone = project.forecastDate ? alert === 'overdue' ? 'bg-error hover:bg-error text-white border-error' : 'bg-fuchsia-600 hover:bg-fuchsia-600 text-white border-fuchsia-700' : 'bg-surface-muted hover:bg-surface-muted text-text-secondary border-border';
+  const tone = project.forecastDate ? alert === 'overdue' ? 'bg-error hover:bg-error text-inverse border-error' : 'bg-forecast-600 hover:bg-forecast-600 text-inverse border-forecast-700' : 'bg-surface-muted hover:bg-surface-muted text-text-secondary border-border';
   const alertTitle = alert === 'overdue' ? 'Forecast em atraso' : alert === 'current' ? 'Instalar este mês' : alert === 'next' ? 'Instalar no mês seguinte' : '';
   if (compact) return <span title={alertTitle || undefined} className={`inline-flex h-auto items-center rounded-badge border px-1.5 py-0.5 text-caption font-bold whitespace-nowrap ${tone}`}>
     {forecastLabel(project.forecastDate)}
@@ -1264,13 +1264,13 @@ export default function ProjectSection({
   const getRiskLevelDetails = (probability: number, impact: number) => {
     const score = (probability || 1) * (impact || 1);
     if (score >= 16) {
-      return { score, label: 'Crítico', color: 'text-rose-700 bg-rose-100 border-rose-300', dot: '🔴' };
+      return { score, label: 'Crítico', color: 'text-feedback-danger-700 bg-feedback-danger-100 border-feedback-danger-300', dot: '🔴' };
     } else if (score >= 11) {
-      return { score, label: 'Alto', color: 'text-orange-700 bg-orange-100 border-orange-300', dot: '🟠' };
+      return { score, label: 'Alto', color: 'text-feedback-attention-700 bg-feedback-attention-100 border-feedback-attention-300', dot: '🟠' };
     } else if (score >= 6) {
-      return { score, label: 'Médio', color: 'text-amber-700 bg-amber-100 border-amber-300', dot: '🟡' };
+      return { score, label: 'Médio', color: 'text-feedback-warning-700 bg-feedback-warning-100 border-feedback-warning-300', dot: '🟡' };
     } else {
-      return { score, label: 'Baixo', color: 'text-emerald-700 bg-emerald-100 border-emerald-300', dot: '🟢' };
+      return { score, label: 'Baixo', color: 'text-feedback-success-700 bg-feedback-success-100 border-feedback-success-300', dot: '🟢' };
     }
   };
 
@@ -1923,7 +1923,7 @@ export default function ProjectSection({
                               >
                                 <div className="flex justify-between items-start mb-1 flex-shrink-0">
                                   <span className={`inline-block w-5 h-5 text-center leading-5 rounded-full font-bold text-caption ${
-                                    dateStr === new Date().toISOString().split('T')[0] ? 'bg-warning text-white shadow-2xs' : 'text-text-secondary'
+                                    dateStr === new Date().toISOString().split('T')[0] ? 'bg-warning text-inverse shadow-2xs' : 'text-text-secondary'
                                   }`}>{d}</span>
                                   {sd && <span className="text-caption font-bold text-text-muted truncate max-w-[50px]" title={sd.name}>{sd.name.substring(0, 8)}...</span>}
                                 </div>
@@ -1932,7 +1932,7 @@ export default function ProjectSection({
                                   {/* Início de Projeto */}
                                   {isProjStart && (
                                     <div
-                                      className="px-1.5 py-0.5 rounded-control bg-primary text-white text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-primary text-inverse text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Início / Adjudicação do projeto: ${selectedProj.title}`}
                                     >
                                       <span className="shrink-0 text-caption">🚀</span>
@@ -1943,7 +1943,7 @@ export default function ProjectSection({
                                   {/* Prazo de Entrega */}
                                   {isProjDelivery && (
                                     <div
-                                      className="px-1.5 py-0.5 rounded-control bg-success-strong text-white text-caption font-semibold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-success-strong text-inverse text-caption font-semibold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Prazo de entrega do projeto: ${selectedProj.title}`}
                                     >
                                       <span className="shrink-0 text-caption">🏁</span>
@@ -1954,7 +1954,7 @@ export default function ProjectSection({
                                   {/* Previsão Real */}
                                   {isProjEstimated && !isProjDelivery && (
                                     <div
-                                      className="px-1.5 py-0.5 rounded-control bg-purple-100 border border-purple-200 text-purple-900 text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-category-purple-100 border border-category-purple-200 text-category-purple-900 text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Previsão real de entrega: ${selectedProj.title}`}
                                     >
                                       <span className="shrink-0 text-caption">🔮</span>
@@ -1987,7 +1987,7 @@ export default function ProjectSection({
                                         e.stopPropagation();
                                         openTaskDetailsModal(m);
                                       }}
-                                      className="px-1.5 py-0.5 rounded-control bg-warning text-white text-caption font-black flex items-center gap-1 truncate cursor-pointer hover:bg-warning transition-colors shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-warning text-inverse text-caption font-black flex items-center gap-1 truncate cursor-pointer hover:bg-warning transition-colors shadow-2xs"
                                       title={`Lembrete: ${m.title}\nClique para ver/editar`}
                                     >
                                       <span className="shrink-0 text-caption">🔔</span>
@@ -2029,7 +2029,7 @@ export default function ProjectSection({
                                   {materialsOnDay.map(pm => (
                                     <div
                                       key={pm.id}
-                                      className="px-1.5 py-0.5 rounded-control bg-sky-100 border border-sky-200 text-sky-900 text-caption font-bold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-category-sky-100 border border-category-sky-200 text-category-sky-900 text-caption font-bold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Receção Prevista de Material: ${pm.description}\nFornecedor: ${pm.supplier || '-'}\nQtd: ${pm.quantity}`}
                                     >
                                       <span className="shrink-0 text-caption">📦</span>
@@ -2122,7 +2122,7 @@ export default function ProjectSection({
                         <table className="w-full min-w-[1850px] text-body-sm text-left border-collapse table-fixed">
                           <thead className="bg-surface-muted text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border whitespace-nowrap select-none">
                             <tr className="bg-surface-muted border-b border-border">
-                              <th className="p-3.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary w-56 min-w-[210px] shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-20 text-caption uppercase tracking-wider">
+                              <th className="p-3.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary w-56 min-w-[210px] shadow-sticky-column z-20 text-caption uppercase tracking-wider">
                                 Tarefa
                               </th>
                               {(() => {
@@ -2164,7 +2164,7 @@ export default function ProjectSection({
                           <tbody>
                             {/* Project Dates Summary Row */}
                             <tr className="bg-surface-muted/60 border-b border-border">
-                              <td className="p-2.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10">
+                              <td className="p-2.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary shadow-sticky-column z-10">
                                 <div className="flex items-center gap-1.5 text-primary">
                                   <Flag className="w-3.5 h-3.5 text-primary" />
                                   <span className="text-caption uppercase font-bold tracking-wide">Lembretes do Projeto</span>
@@ -2189,12 +2189,12 @@ export default function ProjectSection({
                                     <td key={dayStr} className={`p-1 border-r border-border/80 text-center align-middle ${isToday ? 'bg-warning/40' : isWeekend ? 'bg-surface-muted/40' : ''}`}>
                                       <div className="flex flex-col gap-0.5 items-center justify-center">
                                         {isProjStart && (
-                                          <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-raised scale-90" title="Data de Início do Projeto">
+                                          <span className="px-1.5 py-0.5 bg-primary text-inverse text-caption font-extrabold rounded shadow-raised scale-90" title="Data de Início do Projeto">
                                             INÍCIO
                                           </span>
                                         )}
                                         {isProjDelivery && (
-                                          <span className="px-1.5 py-0.5 bg-success-strong text-white text-caption font-semibold rounded shadow-raised" title="Data de Entrega do Projeto">
+                                          <span className="px-1.5 py-0.5 bg-success-strong text-inverse text-caption font-semibold rounded shadow-raised" title="Data de Entrega do Projeto">
                                             ENTREGA
                                           </span>
                                         )}
@@ -2204,12 +2204,12 @@ export default function ProjectSection({
                                           </span>
                                         )}
                                         {isProjScheduled && !isProjStart && (
-                                          <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-raised scale-90" title="Instalação/Agendamento">
+                                          <span className="px-1.5 py-0.5 bg-primary text-inverse text-caption font-extrabold rounded shadow-raised scale-90" title="Instalação/Agendamento">
                                             AGENDADO
                                           </span>
                                         )}
                                         {risksOnDay.map(ri => (
-                                          <span key={ri.id} className="px-1 py-0.5 bg-error text-white text-caption font-extrabold rounded shadow-raised flex items-center gap-0.5 scale-90 truncate max-w-[50px]" title={`Revisão de Risco: ${ri.title}`}>
+                                          <span key={ri.id} className="px-1 py-0.5 bg-error text-inverse text-caption font-extrabold rounded shadow-raised flex items-center gap-0.5 scale-90 truncate max-w-[50px]" title={`Revisão de Risco: ${ri.title}`}>
                                             ⚠️ Rev. Risco
                                           </span>
                                         ))}
@@ -2251,7 +2251,7 @@ export default function ProjectSection({
                                   <tr key={t.id} className="border-b border-border-subtle hover:bg-surface-muted/20 group">
                                     <td
                                       onClick={() => openTaskDetailsModal(t)}
-                                      className="p-3 sticky left-0 bg-surface group-hover:bg-surface-muted hover:bg-surface-muted border-r border-border shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10 font-medium cursor-pointer transition-colors"
+                                      className="p-3 sticky left-0 bg-surface group-hover:bg-surface-muted hover:bg-surface-muted border-r border-border shadow-sticky-column z-10 font-medium cursor-pointer transition-colors"
                                       title={`Clique para ver/editar: ${t.title}`}
                                     >
                                       <div className="space-y-1">
@@ -2340,7 +2340,7 @@ export default function ProjectSection({
                                                   }
                                                   e.dataTransfer.setData('taskId', t.id);
                                                 }}
-                                                className={`py-1.5 px-1 rounded-control text-caption font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
+                                                className={`py-1.5 px-1 rounded-control text-caption font-bold text-inverse -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
                                                   getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                                 }`}
                                                 title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}
@@ -2360,7 +2360,7 @@ export default function ProjectSection({
                           </tbody>
                         </table>
                       </div>
-                      <div className="bg-surface-muted p-2.5 border-t border-slate-150 flex flex-wrap gap-4 justify-center text-caption font-bold text-text-secondary">
+                      <div className="bg-surface-muted p-2.5 border-t border-border-subtle flex flex-wrap gap-4 justify-center text-caption font-bold text-text-secondary">
                         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-primary"></span> Pendente</span>
                         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-warning"></span> Em Progresso</span>
                         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-success"></span> Concluído</span>
@@ -2624,9 +2624,9 @@ export default function ProjectSection({
                           openCreateTaskModal();
                           setShowImportTaskForm(false);
                         }}
-                        className="flex items-center gap-1.5 text-body-sm font-extrabold text-white bg-primary hover:bg-primary px-3.5 py-2 rounded-control transition-colors cursor-pointer shadow-raised"
+                        className="flex items-center gap-1.5 text-body-sm font-extrabold text-inverse bg-primary hover:bg-primary px-3.5 py-2 rounded-control transition-colors cursor-pointer shadow-raised"
                       >
-                        <Plus className="w-4 h-4 text-white" /> Criar Tarefa / Lembrete
+                        <Plus className="w-4 h-4 text-inverse" /> Criar Tarefa / Lembrete
                       </Button>
                     </>
                   )}
@@ -2743,7 +2743,7 @@ export default function ProjectSection({
                         setSelectedImportModelTaskIds([]);
                         setShowImportTaskForm(false);
                       }}
-                      className="bg-success-strong hover:bg-success-strong text-white"
+                      className="bg-success-strong hover:bg-success-strong text-inverse"
                     >
                       <Plus className="w-4 h-4" /> Importar ({selectedImportModelTaskIds.length})
                     </Button>
@@ -2794,7 +2794,7 @@ export default function ProjectSection({
                               {getTaskStatusStyle(task.statusId, taskStatuses).name}
                             </Badge>
                             <span className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 text-caption font-bold rounded flex items-center gap-1">
-                              {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Bell className="w-3 h-3 text-purple-600" />}
+                              {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Bell className="w-3 h-3 text-category-purple-600" />}
                               {getTaskTypeName(task.taskTypeId, taskTypes)}
                             </span>
                           </div>
@@ -2833,27 +2833,27 @@ export default function ProjectSection({
             <div data-m3-exclude data-theme={appConfig?.theme || 'default'} className="p-6 space-y-6">
               {/* Red Warning Banner if material has warning */}
               {hasMaterialWarning ? (
-                <div className="bg-rose-50 border-2 border-rose-300 rounded-card p-4 flex items-center justify-between text-rose-900 shadow-raised animate-fade-in">
+                <div className="bg-feedback-danger-50 border-2 border-feedback-danger-300 rounded-card p-4 flex items-center justify-between text-feedback-danger-900 shadow-raised animate-fade-in">
                   <div className="flex items-center gap-3">
-                    <AlertTriangle className="w-6 h-6 text-rose-600 shrink-0" />
+                    <AlertTriangle className="w-6 h-6 text-feedback-danger-600 shrink-0" />
                     <div>
-                      <h4 className="font-extrabold text-sm uppercase tracking-wide text-rose-800">Aviso: Material em falta</h4>
-                      <p className="text-xs font-semibold text-rose-700 mt-0.5">
+                      <h4 className="font-extrabold text-sm uppercase tracking-wide text-feedback-danger-800">Aviso: Material em falta</h4>
+                      <p className="text-xs font-semibold text-feedback-danger-700 mt-0.5">
                         Este projeto possui {warningMaterialsCount} {warningMaterialsCount === 1 ? 'linha de material com aviso' : 'linhas de material com aviso'} (por encomendar ou com data de entrega ultrapassada).
                       </p>
                     </div>
                   </div>
-                  <span className="px-3 py-1 bg-rose-200 text-rose-900 rounded-full text-xs font-black uppercase tracking-wider shrink-0">
+                  <span className="px-3 py-1 bg-feedback-danger-200 text-feedback-danger-900 rounded-full text-xs font-black uppercase tracking-wider shrink-0">
                     Material em Falta
                   </span>
                 </div>
               ) : (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-card p-4 flex items-center justify-between text-emerald-900 shadow-raised">
+                <div className="bg-feedback-success-50 border border-feedback-success-200 rounded-card p-4 flex items-center justify-between text-feedback-success-900 shadow-raised">
                   <div className="flex items-center gap-3">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="w-6 h-6 text-feedback-success-600 shrink-0" />
                     <div>
-                      <h4 className="font-extrabold text-sm uppercase tracking-wide text-emerald-800">Sem Avisos de Material em Falta</h4>
-                      <p className="text-xs font-semibold text-emerald-700 mt-0.5">
+                      <h4 className="font-extrabold text-sm uppercase tracking-wide text-feedback-success-800">Sem Avisos de Material em Falta</h4>
+                      <p className="text-xs font-semibold text-feedback-success-700 mt-0.5">
                         Não existem materiais por encomendar nem encomendas com data prevista de entrega ultrapassada.
                       </p>
                     </div>
@@ -2862,10 +2862,10 @@ export default function ProjectSection({
               )}
 
               {/* Header with Registar material button */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-card border border-border shadow-raised">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-surface p-4 rounded-card border border-border shadow-raised">
                 <div>
                   <h3 className="font-extrabold text-text-primary text-sm flex items-center gap-2">
-                    <Boxes className="w-4 h-4 text-blue-600" />
+                    <Boxes className="w-4 h-4 text-action-600" />
                     Lista de Material Necessário ({projMaterials.length} {projMaterials.length === 1 ? 'linha' : 'linhas'})
                   </h3>
                   <p className="text-xs text-text-secondary mt-0.5">
@@ -2876,7 +2876,7 @@ export default function ProjectSection({
                   <button
                     type="button"
                     onClick={handleOpenAddMaterialModal}
-                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-control shadow-raised transition-colors cursor-pointer flex items-center gap-2 shrink-0"
+                    className="px-4 py-2.5 bg-action-600 hover:bg-action-700 text-inverse text-xs font-extrabold rounded-control shadow-raised transition-colors cursor-pointer flex items-center gap-2 shrink-0"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Registar material</span>
@@ -2898,25 +2898,25 @@ export default function ProjectSection({
                     }).length;
 
                       return (
-                        <div key={supplierName} className="bg-white border border-border rounded-card overflow-hidden shadow-raised">
+                        <div key={supplierName} className="bg-surface border border-border rounded-card overflow-hidden shadow-raised">
                           {/* Supplier Group Header */}
                           <div className="bg-surface-muted border-b border-border px-5 py-3.5 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                             <div className="flex items-center gap-2.5">
-                              <Truck className="w-4 h-4 text-blue-600 shrink-0" />
+                              <Truck className="w-4 h-4 text-action-600 shrink-0" />
                               <h4 className="font-extrabold text-text-primary text-sm">{supplierName}</h4>
-                              <span className="px-2 py-0.5 rounded-full bg-surface-elevated text-text-primary text-[10px] font-extrabold">
+                              <span className="px-2 py-0.5 rounded-full bg-surface-elevated text-text-primary text-micro font-extrabold">
                                 {items.length} {items.length === 1 ? 'item' : 'itens'}
                               </span>
                             </div>
                             <div className="flex items-center gap-3 text-xs font-bold">
                               {groupMissing > 0 ? (
-                                <span className="px-2.5 py-1 bg-rose-100 text-rose-800 border border-rose-200 rounded-full text-[10px] uppercase tracking-wide flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                <span className="px-2.5 py-1 bg-feedback-danger-100 text-feedback-danger-800 border border-feedback-danger-200 rounded-full text-micro uppercase tracking-wide flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 text-feedback-danger-600" />
                                   {groupMissing} em falta
                                 </span>
                               ) : (
-                                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full text-[10px] uppercase tracking-wide flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span className="px-2.5 py-1 bg-feedback-success-100 text-feedback-success-800 border border-feedback-success-200 rounded-full text-micro uppercase tracking-wide flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-feedback-success-600" />
                                   Tudo em armazém
                                 </span>
                               )}
@@ -2926,7 +2926,7 @@ export default function ProjectSection({
                           {/* Table of items */}
                           <div className="overflow-x-auto w-full">
                             <table className="w-full min-w-[850px] text-left text-xs divide-y divide-border-subtle">
-                              <thead className="bg-surface-muted/90 text-[11px] uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
+                              <thead className="bg-surface-muted/90 text-small-label uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
                                 <tr>
                                   <th className="px-4 py-3">Descrição</th>
                                   <th className="px-3 py-3">Ref.</th>
@@ -2948,34 +2948,34 @@ export default function ProjectSection({
                                   return (
                                     <tr key={item.id} className="hover:bg-surface-muted/80 transition-colors">
                                       <td className="px-4 py-3 font-bold text-text-primary">{item.description}</td>
-                                      <td className="px-3 py-3 text-text-secondary font-mono text-[11px]">{item.reference || '-'}</td>
+                                      <td className="px-3 py-3 text-text-secondary font-mono text-small-label">{item.reference || '-'}</td>
                                       <td className="px-3 py-3 text-center font-bold text-text-primary">{item.quantity}</td>
                                       <td className="px-3 py-3 text-text-secondary">{item.expectedDeliveryDate || '-'}</td>
                                       <td className="px-3 py-3 text-left font-semibold text-text-primary">{item.budget ? String(item.budget) : '-'}</td>
                                       <td className="px-3 py-3 text-right text-text-secondary">{item.costPrice ? `${item.costPrice} €` : '-'}</td>
-                                      <td className="px-3 py-3 text-right font-bold text-emerald-700">{item.salePrice ? `${item.salePrice} €` : '-'}</td>
+                                      <td className="px-3 py-3 text-right font-bold text-feedback-success-700">{item.salePrice ? `${item.salePrice} €` : '-'}</td>
                                       <td className="px-4 py-3 text-center">
                                         <button
                                           type="button"
                                           disabled={!canWriteMaterials}
                                           onClick={() => handleToggleMaterialStatus(item)}
-                                          className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 mx-auto cursor-pointer ${
+                                          className={`px-3 py-1.5 rounded-full text-small-label font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 mx-auto cursor-pointer ${
                                             isEmArmazem
-                                              ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300'
+                                              ? 'bg-feedback-success-100 hover:bg-feedback-success-200 text-feedback-success-800 border border-feedback-success-300'
                                               : isEncomendado
-                                              ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                              ? 'bg-feedback-warning-100 hover:bg-feedback-warning-200 text-feedback-warning-900 border border-feedback-warning-300'
                                               : 'bg-surface-muted hover:bg-surface-elevated text-text-primary border border-border'
                                           }`}
                                           title={canWriteMaterials ? 'Clique para alterar estado (Por encomendar / Encomendado / Em armazém)' : ''}
                                         >
                                           {isEmArmazem ? (
                                             <>
-                                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                              <CheckCircle2 className="w-3.5 h-3.5 text-feedback-success-600" />
                                               <span>Em armazém</span>
                                             </>
                                           ) : isEncomendado ? (
                                             <>
-                                              <Truck className="w-3.5 h-3.5 text-amber-600" />
+                                              <Truck className="w-3.5 h-3.5 text-feedback-warning-600" />
                                               <span>Encomendado</span>
                                             </>
                                           ) : (
@@ -2991,7 +2991,7 @@ export default function ProjectSection({
                                           {canWriteMaterials && <button
                                             type="button"
                                             onClick={() => handleEditMaterial(item)}
-                                            className="p-1 text-text-muted hover:text-blue-600 transition-colors"
+                                            className="p-1 text-text-muted hover:text-action-600 transition-colors"
                                             title="Editar"
                                           >
                                             <Edit2 className="w-3.5 h-3.5" />
@@ -2999,7 +2999,7 @@ export default function ProjectSection({
                                           {canDeleteMaterials && <button
                                             type="button"
                                             onClick={() => handleDeleteMaterial(item.id)}
-                                            className="p-1 text-text-muted hover:text-rose-600 transition-colors"
+                                            className="p-1 text-text-muted hover:text-feedback-danger-600 transition-colors"
                                             title="Eliminar"
                                           >
                                             <Trash2 className="w-3.5 h-3.5" />
@@ -3021,11 +3021,11 @@ export default function ProjectSection({
               {/* MODAL FORM: Registar material */}
               {isMaterialModalOpen && canWriteMaterials && (
                 <div className="fixed inset-0 bg-overlay/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-                  <div className="bg-white rounded-dialog max-w-2xl w-full p-6 shadow-modal space-y-5 border border-border-subtle my-8">
+                  <div className="bg-surface rounded-dialog max-w-2xl w-full p-6 shadow-modal space-y-5 border border-border-subtle my-8">
                     {/* Modal Header */}
                     <div className="flex justify-between items-center border-b border-border-subtle pb-4">
                       <h3 className="font-extrabold text-text-primary flex items-center gap-2.5 text-base">
-                        <Package className="w-5 h-5 text-blue-600" />
+                        <Package className="w-5 h-5 text-action-600" />
                         {editingMaterialId ? 'Editar Material' : 'Registar material'}
                       </h3>
                       <button
@@ -3075,7 +3075,7 @@ export default function ProjectSection({
                               const matches = allSuppliers.filter(s => s.toLowerCase().includes(matSupplier.toLowerCase().trim()));
                               if (matches.length === 0) return null;
                               return (
-                                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-border rounded-control shadow-overlay z-30 max-h-48 overflow-y-auto divide-y divide-border-subtle">
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-surface border border-border rounded-control shadow-overlay z-30 max-h-48 overflow-y-auto divide-y divide-border-subtle">
                                   {matches.map((s, idx) => (
                                     <div
                                       key={idx}
@@ -3083,10 +3083,10 @@ export default function ProjectSection({
                                         setMatSupplier(s);
                                         setIsSupplierAutocompleteOpen(false);
                                       }}
-                                      className="p-2.5 hover:bg-blue-50 text-text-primary font-semibold cursor-pointer text-xs flex justify-between items-center"
+                                      className="p-2.5 hover:bg-action-50 text-text-primary font-semibold cursor-pointer text-xs flex justify-between items-center"
                                     >
                                       <span>{s}</span>
-                                      <span className="text-[10px] text-text-muted">Sugestão</span>
+                                      <span className="text-micro text-text-muted">Sugestão</span>
                                     </div>
                                   ))}
                                 </div>
@@ -3175,33 +3175,33 @@ export default function ProjectSection({
                               onClick={() => setMatStatus('por_encomendar')}
                               className={`flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                                 matStatus === 'por_encomendar'
-                                  ? 'bg-blue-100 text-blue-900 border-blue-300'
+                                  ? 'bg-action-100 text-action-900 border-action-300'
                                   : 'bg-surface-muted text-text-secondary border-border'
                               }`}
                             >
-                              <ShoppingBag className="w-3.5 h-3.5 text-blue-600" /> Por encomendar
+                              <ShoppingBag className="w-3.5 h-3.5 text-action-600" /> Por encomendar
                             </button>
                             <button
                               type="button"
                               onClick={() => setMatStatus('encomendado')}
                               className={`flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                                 matStatus === 'encomendado'
-                                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                  ? 'bg-feedback-warning-100 text-feedback-warning-900 border-feedback-warning-300'
                                   : 'bg-surface-muted text-text-secondary border-border'
                               }`}
                             >
-                              <Truck className="w-3.5 h-3.5 text-amber-600" /> Encomendado
+                              <Truck className="w-3.5 h-3.5 text-feedback-warning-600" /> Encomendado
                             </button>
                             <button
                               type="button"
                               onClick={() => setMatStatus('em_armazem')}
                               className={`flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                                 matStatus === 'em_armazem' || matStatus === 'em_stock'
-                                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                  ? 'bg-feedback-success-100 text-feedback-success-900 border-feedback-success-300'
                                   : 'bg-surface-muted text-text-secondary border-border'
                               }`}
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Em armazém
+                              <CheckCircle2 className="w-3.5 h-3.5 text-feedback-success-600" /> Em armazém
                             </button>
                           </div>
                         </div>
@@ -3219,7 +3219,7 @@ export default function ProjectSection({
                         </button>
                         <button
                           type="submit"
-                          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-control shadow-raised transition-colors cursor-pointer flex items-center gap-2 text-xs"
+                          className="px-5 py-2.5 bg-action-600 hover:bg-action-700 text-inverse font-extrabold rounded-control shadow-raised transition-colors cursor-pointer flex items-center gap-2 text-xs"
                         >
                           <Plus className="w-4 h-4" />
                           {editingMaterialId ? 'Atualizar Linha' : 'Registar material'}
@@ -4102,7 +4102,7 @@ export default function ProjectSection({
             <Button variant="primary" size="sm"
               type="submit"
               isLoading={isSavingProject}
-              className="px-6 py-2.5 bg-primary text-white rounded-control font-bold hover:bg-primary transition-colors -sm"
+              className="px-6 py-2.5 bg-primary text-inverse rounded-control font-bold hover:bg-primary transition-colors -sm"
             >
               Gravar Alterações
             </Button>
@@ -4317,7 +4317,7 @@ export default function ProjectSection({
                           onClick={() => setProjectCurrentPage(Number(p))}
                           className={`min-w-9 h-9 px-2 flex items-center justify-center rounded-control font-semibold text-body-sm transition-colors ${
                             validProjectPage === p
-                              ? 'bg-primary text-white'
+                              ? 'bg-primary text-inverse'
                               : 'bg-surface border border-border text-text-secondary hover:bg-surface-muted'
                           }`}
                         >
@@ -4420,7 +4420,7 @@ export default function ProjectSection({
                   <table className="w-full min-w-[1850px] text-body-sm text-left border-collapse table-fixed">
                     <thead className="bg-surface-muted text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border whitespace-nowrap select-none">
                       <tr className="bg-surface-muted border-b border-border sticky top-0 z-20">
-                        <th className="p-3.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary w-56 min-w-[210px] shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-30 text-caption uppercase tracking-wider">
+                        <th className="p-3.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary w-56 min-w-[210px] shadow-sticky-column z-30 text-caption uppercase tracking-wider">
                           Tarefa
                         </th>
                         {(() => {
@@ -4463,7 +4463,7 @@ export default function ProjectSection({
                     <tbody>
                       {/* Project Dates Summary Row */}
                       <tr className="bg-surface-muted/60 border-b border-border">
-                        <td className="p-2.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10">
+                        <td className="p-2.5 sticky left-0 bg-surface-muted border-r border-border font-bold text-text-secondary shadow-sticky-column z-10">
                           <div className="flex items-center gap-1.5 text-primary">
                             <Flag className="w-3.5 h-3.5 text-primary" />
                             <span className="text-caption uppercase font-bold tracking-wide">Lembretes do Projeto</span>
@@ -4487,12 +4487,12 @@ export default function ProjectSection({
                               <td key={`modal-cell-proj-${dayStr}`} className={`p-1 border-r border-border/80 text-center align-middle ${isToday ? 'bg-warning/40' : isWeekend ? 'bg-surface-muted/40' : ''}`}>
                                 <div className="flex flex-col gap-0.5 items-center justify-center">
                                   {isProjStart && (
-                                    <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-raised scale-90" title="Data de Início do Projeto">
+                                    <span className="px-1.5 py-0.5 bg-primary text-inverse text-caption font-extrabold rounded shadow-raised scale-90" title="Data de Início do Projeto">
                                       INÍCIO
                                     </span>
                                   )}
                                   {isProjDelivery && (
-                                    <span className="px-1.5 py-0.5 bg-success-strong text-white text-caption font-extrabold rounded shadow-raised scale-90" title="Data de Entrega do Projeto">
+                                    <span className="px-1.5 py-0.5 bg-success-strong text-inverse text-caption font-extrabold rounded shadow-raised scale-90" title="Data de Entrega do Projeto">
                                       ENTREGA
                                     </span>
                                   )}
@@ -4502,7 +4502,7 @@ export default function ProjectSection({
                                     </span>
                                   )}
                                   {isProjScheduled && !isProjStart && (
-                                    <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-raised scale-90" title="Instalação/Agendamento">
+                                    <span className="px-1.5 py-0.5 bg-primary text-inverse text-caption font-extrabold rounded shadow-raised scale-90" title="Instalação/Agendamento">
                                       AGENDADO
                                     </span>
                                   )}
@@ -4544,7 +4544,7 @@ export default function ProjectSection({
                             <tr key={`modal-row-task-${t.id}`} className="border-b border-border-subtle hover:bg-surface-muted/20 group">
                               <td
                                 onClick={() => openTaskDetailsModal(t)}
-                                className="p-3 sticky left-0 bg-surface group-hover:bg-surface-muted hover:bg-surface-muted border-r border-border shadow-[2px_0_5px_rgba(0,0,0,0.04)] z-10 font-medium cursor-pointer transition-colors"
+                                className="p-3 sticky left-0 bg-surface group-hover:bg-surface-muted hover:bg-surface-muted border-r border-border shadow-sticky-column z-10 font-medium cursor-pointer transition-colors"
                                 title={`Clique para ver/editar: ${t.title}`}
                               >
                                 <div className="space-y-1">
@@ -4634,7 +4634,7 @@ export default function ProjectSection({
                                             }
                                             e.dataTransfer.setData('taskId', t.id);
                                           }}
-                                          className={`py-1.5 px-1 rounded-control text-caption font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
+                                          className={`py-1.5 px-1 rounded-control text-caption font-bold text-inverse -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
                                             getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                           }`}
                                           title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}
@@ -4669,7 +4669,7 @@ export default function ProjectSection({
               <Button variant="primary" size="sm"
                 type="button"
                 onClick={() => setIsFullTimelineModalOpen(false)}
-                className="px-5 py-2 bg-primary hover:bg-primary text-white rounded-control font-bold transition-colors cursor-pointer text-body-sm -md -slate-100"
+                className="px-5 py-2 bg-primary hover:bg-primary text-inverse rounded-control font-bold transition-colors cursor-pointer text-body-sm -md -slate-100"
               >
                 Fechar
               </Button>
@@ -4829,10 +4829,10 @@ export default function ProjectSection({
                 </div>
 
                 {/* Auto Calculated Risk Score Badge */}
-                <div className="md:col-span-2 flex items-center justify-between p-4 bg-primary text-white rounded-card border border-border shadow-raised">
+                <div className="md:col-span-2 flex items-center justify-between p-4 bg-primary text-inverse rounded-card border border-border shadow-raised">
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-caption text-white font-bold uppercase tracking-wider">Nível de Risco Calculado</span>
-                    <span className="text-body-sm font-semibold text-white">Fórmula: Probabilidade ({riskProbability}) × Impacto ({riskImpact})</span>
+                    <span className="text-caption text-inverse font-bold uppercase tracking-wider">Nível de Risco Calculado</span>
+                    <span className="text-body-sm font-semibold text-inverse">Fórmula: Probabilidade ({riskProbability}) × Impacto ({riskImpact})</span>
                   </div>
                   {(() => {
                     const level = getRiskLevelDetails(riskProbability, riskImpact);
@@ -4934,7 +4934,7 @@ export default function ProjectSection({
                 <Button variant="primary" size="sm"
                   type="submit"
                   disabled={isSavingRisk}
-                  className="px-6 py-2.5 text-body-sm font-extrabold text-white bg-primary hover:bg-primary rounded-control shadow-raised transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-6 py-2.5 text-body-sm font-extrabold text-inverse bg-primary hover:bg-primary rounded-control shadow-raised transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />
                   {editingRiskId ? 'Gravar Alterações' : 'Adicionar Item de Risco'}

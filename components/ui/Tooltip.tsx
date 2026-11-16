@@ -15,7 +15,7 @@ export default function Tooltip({ children, content, position = 'top', className
   const [show, setShow] = useState(false);
 
   return (
-    <div 
+    <div
       className="relative inline-block"
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
@@ -31,8 +31,8 @@ export default function Tooltip({ children, content, position = 'top', className
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.1 }}
             className={cn(
-              "absolute z-50 px-2.5 py-1.5 text-caption font-medium text-white bg-text-primary rounded-badge shadow-raised whitespace-nowrap pointer-events-none",
-              
+              "absolute z-50 px-2.5 py-1.5 text-caption font-medium text-inverse bg-text-primary rounded-badge shadow-raised whitespace-nowrap pointer-events-none",
+
               position === 'top' && "bottom-full left-1/2 -translate-x-1/2 mb-1.5",
               position === 'bottom' && "top-full left-1/2 -translate-x-1/2 mt-1.5",
               position === 'left' && "right-full top-1/2 -translate-y-1/2 mr-1.5",

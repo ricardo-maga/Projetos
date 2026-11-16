@@ -460,7 +460,7 @@ export default function OperationalUserCalendar({
             <thead className="text-body-sm font-semibold text-text-secondary bg-surface-muted border-b border-border sticky top-0 z-20">
               <tr>
                 {/* User Column Header */}
-                <th className="p-3 text-left text-body-sm font-semibold sticky left-0 z-30 bg-surface-muted border-r border-border shadow-[2px_0_4px_rgba(0,0,0,0.02)]">
+                <th className="p-3 text-left text-body-sm font-semibold sticky left-0 z-30 bg-surface-muted border-r border-border shadow-sticky-calendar">
                   <div className="flex items-center justify-between">
                     <span>Utilizador</span>
                     <span className="text-caption text-text-muted font-semibold">
@@ -493,7 +493,7 @@ export default function OperationalUserCalendar({
                       <div className="flex flex-col items-center justify-center gap-0.5 my-0.5">
                         <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-body-sm font-black ${
                           day.isToday
-                            ? 'bg-warning text-white shadow-2xs'
+                            ? 'bg-warning text-inverse shadow-2xs'
                             : 'text-text-primary'
                         }`}>
                           {day.dayNum}
@@ -503,7 +503,7 @@ export default function OperationalUserCalendar({
                         </span>
                       </div>
                       {specialDay && (
-                        <div className="text-caption font-bold text-purple-700 truncate max-w-[80px] mx-auto mt-0.5">
+                        <div className="text-caption font-bold text-category-purple-700 truncate max-w-[80px] mx-auto mt-0.5">
                           {specialDay.name}
                         </div>
                       )}
@@ -546,7 +546,7 @@ export default function OperationalUserCalendar({
                   return (
                     <tr key={user.id} className="hover:bg-surface/40 transition-colors">
                       {/* Left: User Identity Column (Line 1: [iniciais] Nome, Line 2: Cargo / Role) */}
-                      <td className="p-3 sticky left-0 bg-surface z-10 border-r border-border-subtle shadow-[2px_0_4px_rgba(0,0,0,0.02)] align-top">
+                      <td className="p-3 sticky left-0 bg-surface z-10 border-r border-border-subtle shadow-sticky-calendar align-top">
                         <div className="flex items-start justify-between gap-1">
                           <div className="min-w-0 flex-1">
                             {/* Line 1: Badge + Name */}

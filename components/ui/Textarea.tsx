@@ -16,8 +16,8 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="w-full space-y-1.5 text-left">
         {label ? (
-          <label 
-            htmlFor={textareaId} 
+          <label
+            htmlFor={textareaId}
             className="block text-label font-semibold text-text-secondary select-none"
           >
             {label}
@@ -35,13 +35,13 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
               "hover:border-text-disabled",
               "focus:border-primary focus:ring-2 focus:ring-primary/20",
               "disabled:bg-surface-muted disabled:text-text-disabled disabled:border-border disabled:pointer-events-none",
-              
+
               // Error state
               error && "border-error hover:border-error focus:border-error focus:ring-error/20",
-              
+
               // Success state
               success && !error && "border-success hover:border-success focus:border-success focus:ring-success/20",
-              
+
               className
             )}
             {...props}

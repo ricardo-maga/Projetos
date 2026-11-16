@@ -34,7 +34,7 @@ export default function ProjectAnalytics({ projects, projectStatuses, categories
   const monthName = (offset: number) => { const now = new Date(); return new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(new Date(now.getFullYear(), now.getMonth() + offset, 1)).replace(/^./, first => first.toLocaleUpperCase('pt-PT')); };
   const windowFilter = (label: string, value: number, onChange: (days: number) => void) => <div role="group" aria-label={label} className="flex shrink-0 flex-wrap gap-1">
     {[30, 60, 90].map(days => <button key={days} type="button" aria-pressed={value === days} onClick={() => onChange(days)}
-      className={`rounded-full px-2.5 py-1 text-caption font-medium transition-colors ${value === days ? 'bg-primary text-white' : 'bg-surface-muted text-text-secondary hover:text-text-primary'}`}>{days} dias</button>)}
+      className={`rounded-full px-2.5 py-1 text-caption font-medium transition-colors ${value === days ? 'bg-primary text-inverse' : 'bg-surface-muted text-text-secondary hover:text-text-primary'}`}>{days} dias</button>)}
   </div>;
   const panel = (title: string, count: number, note?: string) => <MetricCard title={title} value={count} note={note} />;
   const bars = (rows: { id: string; count: number }[], name: (id: string) => string, emptyMessage = 'Sem projetos nesta janela.') => rows.length ? <ul className="space-y-3">{rows.map(row => <li key={row.id} className="space-y-1">
@@ -79,7 +79,7 @@ export default function ProjectAnalytics({ projects, projectStatuses, categories
         <div role="group" aria-label="Período dos projetos por gestor comercial" className="flex flex-wrap gap-1">
           {commercialWindows.map(option => <button key={option.value} type="button" aria-pressed={commercialWindow === option.value}
             onClick={() => setCommercialWindow(option.value)}
-            className={`rounded-full px-2.5 py-1 text-caption font-medium transition-colors ${commercialWindow === option.value ? 'bg-primary text-white' : 'bg-surface-muted text-text-secondary hover:text-text-primary'}`}>
+            className={`rounded-full px-2.5 py-1 text-caption font-medium transition-colors ${commercialWindow === option.value ? 'bg-primary text-inverse' : 'bg-surface-muted text-text-secondary hover:text-text-primary'}`}>
             {option.label}
           </button>)}
         </div>
@@ -89,7 +89,7 @@ export default function ProjectAnalytics({ projects, projectStatuses, categories
           <div role="group" aria-label="Gestor comercial" className="flex flex-wrap gap-2">
             {commercialManagers.map(id => <button key={id} type="button" aria-pressed={activeSalesRepId === id}
               onClick={() => setSelectedSalesRepId(id)}
-              className={`rounded-control border px-3 py-2 text-body-sm font-medium transition-colors ${activeSalesRepId === id ? 'border-primary bg-primary text-white' : 'border-border bg-surface text-text-primary hover:border-primary'}`}>
+              className={`rounded-control border px-3 py-2 text-body-sm font-medium transition-colors ${activeSalesRepId === id ? 'border-primary bg-primary text-inverse' : 'border-border bg-surface text-text-primary hover:border-primary'}`}>
               {userName(id)}
             </button>)}
           </div>

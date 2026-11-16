@@ -38,7 +38,7 @@ export function Dialog({ isOpen, onClose, title, children, className, bodyClassN
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-xs"
+            className="fixed inset-0 bg-scrim/40 backdrop-blur-xs"
           />
 
           {/* Modal Container */}
@@ -61,10 +61,10 @@ export function Dialog({ isOpen, onClose, title, children, className, bodyClassN
               ) : (
                 <div />
               )}
-              <IconButton 
-                variant="ghost" 
-                size="sm" 
-                onClick={onClose} 
+              <IconButton
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
                 aria-label="Close dialog"
                 className="hover:bg-surface-muted hover:text-text-primary rounded-full"
               >

@@ -30,11 +30,11 @@ interface Props {
 }
 
 export const PASTEL_COLORS = [
-  { id: 'vermelho', name: 'Vermelho', hex: '#fca5a5', bgClass: 'bg-red-200', textClass: 'text-red-900', borderClass: 'border-red-300' },
-  { id: 'amarelo', name: 'Amarelo', hex: '#fef08a', bgClass: 'bg-yellow-200', textClass: 'text-yellow-900', borderClass: 'border-yellow-300' },
-  { id: 'verde', name: 'Verde', hex: '#bbf7d0', bgClass: 'bg-green-200', textClass: 'text-green-900', borderClass: 'border-green-300' },
-  { id: 'azul', name: 'Azul', hex: '#38bdf8', bgClass: 'bg-sky-200', textClass: 'text-sky-900', borderClass: 'border-sky-300' },
-  { id: 'laranja', name: 'Laranja', hex: '#fed7aa', bgClass: 'bg-orange-200', textClass: 'text-orange-900', borderClass: 'border-orange-300' },
+  { id: 'vermelho', name: 'Vermelho', hex: '#fca5a5', bgClass: 'bg-feedback-error-200', textClass: 'text-feedback-error-900', borderClass: 'border-feedback-error-300' },
+  { id: 'amarelo', name: 'Amarelo', hex: '#fef08a', bgClass: 'bg-feedback-caution-200', textClass: 'text-feedback-caution-900', borderClass: 'border-feedback-caution-300' },
+  { id: 'verde', name: 'Verde', hex: '#bbf7d0', bgClass: 'bg-feedback-positive-200', textClass: 'text-feedback-positive-900', borderClass: 'border-feedback-positive-300' },
+  { id: 'azul', name: 'Azul', hex: '#38bdf8', bgClass: 'bg-category-sky-200', textClass: 'text-category-sky-900', borderClass: 'border-category-sky-300' },
+  { id: 'laranja', name: 'Laranja', hex: '#fed7aa', bgClass: 'bg-feedback-attention-200', textClass: 'text-feedback-attention-900', borderClass: 'border-feedback-attention-300' },
   { id: 'cinza', name: 'Cinza', hex: '#e2e8f0', bgClass: 'bg-surface-elevated', textClass: 'text-text-primary', borderClass: 'border-border' },
 ];
 
@@ -120,7 +120,7 @@ function SortableAuxRow({
             type="text"
             value={editAuxName}
             onChange={e => setEditAuxName(e.target.value)}
-            className="w-full p-1 px-2 border border-border rounded-control font-semibold text-xs text-text-primary focus:ring-2 focus:ring-blue-100 outline-none"
+            className="w-full p-1 px-2 border border-border rounded-control font-semibold text-xs text-text-primary focus:ring-2 focus:ring-action-100 outline-none"
           />
         ) : (
           <span className="text-text-primary font-bold">{item.name}</span>
@@ -136,10 +136,10 @@ function SortableAuxRow({
               max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskStatuses') ? 10 : 3}
               value={editAuxScale}
               onChange={e => setEditAuxScale(Number(e.target.value))}
-              className="w-16 p-1 px-2 border border-border rounded-control font-semibold text-xs text-text-primary focus:ring-2 focus:ring-blue-100 outline-none"
+              className="w-16 p-1 px-2 border border-border rounded-control font-semibold text-xs text-text-primary focus:ring-2 focus:ring-action-100 outline-none"
             />
           ) : (
-            <span className="px-2 py-0.5 bg-surface-muted border border-border rounded text-[10px] font-bold text-text-secondary font-mono">
+            <span className="px-2 py-0.5 bg-surface-muted border border-border rounded text-micro font-bold text-text-secondary font-mono">
               Nível {item.scale ?? (activeAuxTab === 'projectStatuses' ? 0 : 1)}
             </span>
           )}
@@ -157,7 +157,7 @@ function SortableAuxRow({
                     key={c.id}
                     type="button"
                     onClick={() => setEditAuxColor(c.hex)}
-                    className={`px-2 py-0.5 rounded-control text-[10px] font-bold border flex items-center gap-1 transition-all cursor-pointer ${
+                    className={`px-2 py-0.5 rounded-control text-micro font-bold border flex items-center gap-1 transition-all cursor-pointer ${
                       isSelected
                         ? `${c.bgClass} ${c.textClass} ${c.borderClass} ring-2 ring-border shadow-2xs`
                         : 'bg-surface text-text-secondary border-border hover:bg-surface-muted'
@@ -174,7 +174,7 @@ function SortableAuxRow({
             (() => {
               const c = getPastelColor(item.color);
               return (
-                <span className={`px-2.5 py-1 rounded-control text-[11px] font-bold border inline-flex items-center gap-1.5 ${c.bgClass} ${c.textClass} ${c.borderClass}`}>
+                <span className={`px-2.5 py-1 rounded-control text-small-label font-bold border inline-flex items-center gap-1.5 ${c.bgClass} ${c.textClass} ${c.borderClass}`}>
                   <span className={`w-2.5 h-2.5 rounded-full ${c.bgClass} border ${c.borderClass} inline-block`} />
                   <span>{c.name}</span>
                 </span>
@@ -191,7 +191,7 @@ function SortableAuxRow({
               <button
                 type="button"
                 onClick={() => setEditingAuxId(null)}
-                className="p-1 px-2 text-[10px] font-bold text-text-muted hover:bg-surface-muted rounded-control transition-colors flex items-center gap-1"
+                className="p-1 px-2 text-micro font-bold text-text-muted hover:bg-surface-muted rounded-control transition-colors flex items-center gap-1"
               >
                 <X className="w-3.5 h-3.5" />
                 Cancelar
@@ -199,7 +199,7 @@ function SortableAuxRow({
               <button
                 type="button"
                 onClick={() => handleSaveEditAuxRecord(item.id)}
-                className="p-1 px-2 text-[10px] font-bold text-white bg-primary hover:bg-blue-700 rounded-control transition-colors flex items-center gap-1"
+                className="p-1 px-2 text-micro font-bold text-inverse bg-primary hover:bg-action-700 rounded-control transition-colors flex items-center gap-1"
               >
                 <Check className="w-3.5 h-3.5" />
                 Gravar
@@ -215,7 +215,7 @@ function SortableAuxRow({
                   setEditAuxScale(item.scale || 1);
                   setEditAuxColor(item.color || '#bfdbfe');
                 }}
-                className="p-1 text-text-muted hover:text-primary hover:bg-blue-50 rounded-control transition-colors flex items-center justify-center"
+                className="p-1 text-text-muted hover:text-primary hover:bg-action-50 rounded-control transition-colors flex items-center justify-center"
                 title="Editar"
               >
                 <Edit2 className="w-3.5 h-3.5" />
@@ -223,7 +223,7 @@ function SortableAuxRow({
               <button
                 type="button"
                 onClick={() => handleDeleteAuxRecord(item.id)}
-                className="p-1 text-text-muted hover:text-red-600 hover:bg-red-50 rounded-control transition-colors flex items-center justify-center"
+                className="p-1 text-text-muted hover:text-feedback-error-600 hover:bg-feedback-error-50 rounded-control transition-colors flex items-center justify-center"
                 title="Eliminar"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -378,7 +378,7 @@ export default function ReferenceDataSection({
           <Settings className="w-5 h-5 text-primary" />
           Opções e tabelas de apoio
         </h2>
-        <p className="text-text-muted text-[11px] font-medium mb-5 leading-relaxed">
+        <p className="text-text-muted text-small-label font-medium mb-5 leading-relaxed">
           Personalize as opções disponíveis nos formulários e quadros (Categorias, Estados do Projeto, Tipos de Tarefa, Estados de Tarefa, Graus de Risco, Prioridades, Equipas e Parceiros).
         </p>
 
@@ -410,7 +410,7 @@ export default function ReferenceDataSection({
                 }}
                 className={`px-3 py-1.5 rounded-control text-xs font-bold cursor-pointer transition-all whitespace-nowrap shrink-0 ${
                   activeAuxTab === tab.id
-                    ? 'bg-primary text-white'
+                    ? 'bg-primary text-inverse'
                     : 'bg-surface-muted text-text-secondary hover:bg-surface-elevated hover:text-text-primary'
                 }`}
               >
@@ -424,20 +424,20 @@ export default function ReferenceDataSection({
         <form onSubmit={handleAddAuxRecord} className="flex flex-col gap-3 bg-surface-muted/50 p-4 rounded-card border border-border-subtle mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities' || activeAuxTab === 'riskStatuses') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
-              <label className="block text-[11px] text-text-muted font-bold">Nome da opção *</label>
+              <label className="block text-small-label text-text-muted font-bold">Nome da opção *</label>
               <input
                 type="text"
                 required
                 placeholder={`Introduza o nome...`}
                 value={newAuxName}
                 onChange={e => setNewAuxName(e.target.value)}
-                className="w-full p-2 border border-border rounded-control text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
+                className="w-full p-2 border border-border rounded-control text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-action-100 outline-none"
               />
             </div>
 
             {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities' || activeAuxTab === 'riskStatuses') && (
               <div className="space-y-1">
-                <label className="block text-[11px] text-text-muted font-bold">Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskStatuses') ? '1 a 10' : '1 a 3'})</label>
+                <label className="block text-small-label text-text-muted font-bold">Nível ({activeAuxTab === 'projectStatuses' ? '0 a 5' : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskStatuses') ? '1 a 10' : '1 a 3'})</label>
                 <input
                   type="number"
                   min={activeAuxTab === 'projectStatuses' ? 0 : 1}
@@ -445,14 +445,14 @@ export default function ReferenceDataSection({
                   required
                   value={newAuxScale}
                   onChange={e => setNewAuxScale(Number(e.target.value))}
-                  className="w-full p-2 border border-border rounded-control text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
+                  className="w-full p-2 border border-border rounded-control text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-action-100 outline-none"
                 />
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full py-2 bg-primary hover:bg-blue-700 text-white font-bold rounded-control transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2 bg-primary hover:bg-action-700 text-inverse font-bold rounded-control transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Adicionar opção
@@ -461,7 +461,7 @@ export default function ReferenceDataSection({
 
           {isColorAuxTab && (
             <div className="pt-2 border-t border-border/60 flex flex-col sm:flex-row sm:items-center gap-2">
-              <span className="text-[11px] font-bold text-text-muted whitespace-nowrap">Cor:</span>
+              <span className="text-small-label font-bold text-text-muted whitespace-nowrap">Cor:</span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {PASTEL_COLORS.map(c => {
                   const isSelected = newAuxColor === c.hex;
@@ -501,7 +501,7 @@ export default function ReferenceDataSection({
               >
                 <table className="w-full min-w-[520px] text-left border-collapse">
                   <thead>
-                    <tr className="bg-surface-muted/90 border-b border-border/80 text-[11px] uppercase text-text-muted font-bold tracking-wider whitespace-nowrap">
+                    <tr className="bg-surface-muted/90 border-b border-border/80 text-small-label uppercase text-text-muted font-bold tracking-wider whitespace-nowrap">
                     <th className="p-3.5 w-10"></th>
                     <th className="p-3.5">Nome da Opção</th>
                     {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities' || activeAuxTab === 'riskStatuses') && (

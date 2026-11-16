@@ -14,7 +14,7 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     const generatedId = React.useId();
     const checkboxId = id || generatedId;
     return (
-      <label 
+      <label
         htmlFor={checkboxId}
         className={cn(
           "inline-flex items-center gap-3 cursor-pointer select-none group text-left",
@@ -36,12 +36,12 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             "w-5 h-5 rounded-control border border-border bg-surface transition-all flex items-center justify-center shadow-flat",
             "group-hover:border-text-disabled",
             "peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40",
-            
+
             checked && "bg-primary border-primary group-hover:bg-primary-hover group-hover:border-primary-hover",
             error && "border-error group-hover:border-error"
           )}>
             {checked ? (
-              <Check className="w-3.5 h-3.5 text-white stroke-[3px]" />
+              <Check className="w-3.5 h-3.5 text-inverse stroke-[3px]" />
             ) : null}
           </div>
         </div>

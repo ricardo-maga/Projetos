@@ -5,5 +5,5 @@ import { cn } from '../../lib/utils';
 export function hasFilledButtonBackground(className: string | undefined, filledByDefault: boolean): boolean {
   const background = cn(className).split(/\s+/).filter(token => /^!?bg-/.test(token)).pop();
   if (!background) return filledByDefault;
-  return /^!?bg-(primary(?:-hover|-active)?|success(?:-strong)?|error|text-primary|(?:blue|red|green|emerald|indigo|violet|purple|rose|slate|gray|zinc|neutral|stone|teal|cyan|sky|orange|amber)-(?:[6-9]00|950))$/.test(background);
+  return /^!?bg-(primary(?:-hover|-active)?|success(?:-strong)?|error|text-primary|(?:action|feedback-(?:error|danger|warning|success|positive|attention|caution)|category-(?:indigo|violet|purple|pink|sky|cyan|teal)|forecast|docs-neutral|blue|red|green|emerald|indigo|violet|purple|rose|slate|gray|zinc|neutral|stone|teal|cyan|sky|orange|amber)-(?:[6-9]00|950))$/.test(background);
 }

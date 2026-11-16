@@ -16,8 +16,8 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="w-full space-y-1.5 text-left">
         {label ? (
-          <label 
-            htmlFor={selectId} 
+          <label
+            htmlFor={selectId}
             className="block text-label font-semibold text-text-secondary select-none"
           >
             {label}
@@ -33,9 +33,9 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
               "hover:border-text-disabled",
               "focus:border-primary focus:ring-2 focus:ring-primary/20",
               "disabled:bg-surface-muted disabled:text-text-disabled disabled:border-border disabled:pointer-events-none disabled:cursor-not-allowed",
-              
+
               error && "border-error hover:border-error focus:border-error focus:ring-error/20",
-              
+
               className
             )}
             {...props}

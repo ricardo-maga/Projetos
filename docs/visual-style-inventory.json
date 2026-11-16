@@ -4,12 +4,12 @@
     "components",
     "domains"
   ],
-  "files": 87,
+  "files": 88,
   "totals": {
-    "palette": 499,
-    "shape": 112,
-    "arbitrary": 163,
-    "hex": 232,
+    "palette": 0,
+    "shape": 95,
+    "arbitrary": 94,
+    "hex": 234,
     "inline": 21,
     "styleProps": 6
   },
@@ -17,9 +17,9 @@
     {
       "file": "app/docs/page.tsx",
       "layer": "screen",
-      "palette": 75,
-      "shape": 17,
-      "arbitrary": 6,
+      "palette": 0,
+      "shape": 0,
+      "arbitrary": 2,
       "hex": 2,
       "inline": 0,
       "styleProps": 0,
@@ -28,7 +28,7 @@
     {
       "file": "app/error.tsx",
       "layer": "screen",
-      "palette": 4,
+      "palette": 0,
       "shape": 0,
       "arbitrary": 0,
       "hex": 0,
@@ -61,7 +61,7 @@
     {
       "file": "app/not-found.tsx",
       "layer": "screen",
-      "palette": 4,
+      "palette": 0,
       "shape": 0,
       "arbitrary": 0,
       "hex": 0,
@@ -72,13 +72,24 @@
     {
       "file": "app/page.tsx",
       "layer": "screen",
-      "palette": 28,
+      "palette": 0,
       "shape": 8,
-      "arbitrary": 6,
+      "arbitrary": 5,
       "hex": 0,
       "inline": 0,
       "styleProps": 0,
       "sharedImports": 4
+    },
+    {
+      "file": "app/visual-tones.css",
+      "layer": "foundation",
+      "palette": 0,
+      "shape": 0,
+      "arbitrary": 0,
+      "hex": 2,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
     },
     {
       "file": "components/AppLoadingScreen.tsx",
@@ -94,7 +105,7 @@
     {
       "file": "components/AppLogo.tsx",
       "layer": "screen",
-      "palette": 3,
+      "palette": 0,
       "shape": 0,
       "arbitrary": 0,
       "hex": 0,
@@ -446,7 +457,7 @@
     {
       "file": "components/ui/Button.tsx",
       "layer": "foundation",
-      "palette": 3,
+      "palette": 0,
       "shape": 0,
       "arbitrary": 1,
       "hex": 0,
@@ -468,7 +479,7 @@
     {
       "file": "components/ui/Checkbox.tsx",
       "layer": "foundation",
-      "palette": 1,
+      "palette": 0,
       "shape": 0,
       "arbitrary": 1,
       "hex": 0,
@@ -490,7 +501,7 @@
     {
       "file": "components/ui/Dialog.tsx",
       "layer": "foundation",
-      "palette": 1,
+      "palette": 0,
       "shape": 1,
       "arbitrary": 1,
       "hex": 0,
@@ -512,7 +523,7 @@
     {
       "file": "components/ui/ExpandedView.tsx",
       "layer": "foundation",
-      "palette": 1,
+      "palette": 0,
       "shape": 0,
       "arbitrary": 1,
       "hex": 0,
@@ -523,7 +534,7 @@
     {
       "file": "components/ui/IconButton.tsx",
       "layer": "foundation",
-      "palette": 2,
+      "palette": 0,
       "shape": 0,
       "arbitrary": 1,
       "hex": 0,
@@ -600,7 +611,7 @@
     {
       "file": "components/ui/Switch.tsx",
       "layer": "foundation",
-      "palette": 1,
+      "palette": 0,
       "shape": 2,
       "arbitrary": 0,
       "hex": 0,
@@ -633,7 +644,7 @@
     {
       "file": "components/ui/Tooltip.tsx",
       "layer": "foundation",
-      "palette": 1,
+      "palette": 0,
       "shape": 0,
       "arbitrary": 0,
       "hex": 0,
@@ -655,7 +666,7 @@
     {
       "file": "domains/absences/ui/AbsenceCalendar.tsx",
       "layer": "screen",
-      "palette": 1,
+      "palette": 0,
       "shape": 2,
       "arbitrary": 5,
       "hex": 0,
@@ -677,9 +688,9 @@
     {
       "file": "domains/administration/ui/AuditLogSection.tsx",
       "layer": "screen",
-      "palette": 33,
+      "palette": 0,
       "shape": 0,
-      "arbitrary": 16,
+      "arbitrary": 2,
       "hex": 0,
       "inline": 0,
       "styleProps": 0,
@@ -688,9 +699,9 @@
     {
       "file": "domains/administration/ui/ConfigSection.tsx",
       "layer": "screen",
-      "palette": 34,
+      "palette": 0,
       "shape": 1,
-      "arbitrary": 13,
+      "arbitrary": 1,
       "hex": 7,
       "inline": 1,
       "styleProps": 0,
@@ -699,9 +710,9 @@
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
       "layer": "screen",
-      "palette": 27,
+      "palette": 0,
       "shape": 3,
-      "arbitrary": 11,
+      "arbitrary": 1,
       "hex": 18,
       "inline": 1,
       "styleProps": 0,
@@ -721,9 +732,9 @@
     {
       "file": "domains/administration/ui/UserAdministrationSection.tsx",
       "layer": "screen",
-      "palette": 1,
+      "palette": 0,
       "shape": 0,
-      "arbitrary": 1,
+      "arbitrary": 0,
       "hex": 0,
       "inline": 0,
       "styleProps": 0,
@@ -732,9 +743,9 @@
     {
       "file": "domains/administration/ui/UserSection.tsx",
       "layer": "screen",
-      "palette": 6,
+      "palette": 0,
       "shape": 1,
-      "arbitrary": 3,
+      "arbitrary": 1,
       "hex": 0,
       "inline": 0,
       "styleProps": 0,
@@ -765,9 +776,9 @@
     {
       "file": "domains/calendar/ui/OperationalUserCalendar.tsx",
       "layer": "screen",
-      "palette": 2,
+      "palette": 0,
       "shape": 1,
-      "arbitrary": 5,
+      "arbitrary": 3,
       "hex": 0,
       "inline": 3,
       "styleProps": 0,
@@ -787,7 +798,7 @@
     {
       "file": "domains/clients/ui/ClientSection.tsx",
       "layer": "screen",
-      "palette": 2,
+      "palette": 0,
       "shape": 1,
       "arbitrary": 3,
       "hex": 0,
@@ -798,9 +809,9 @@
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
       "layer": "screen",
-      "palette": 48,
+      "palette": 0,
       "shape": 9,
-      "arbitrary": 8,
+      "arbitrary": 1,
       "hex": 0,
       "inline": 0,
       "styleProps": 0,
@@ -853,7 +864,7 @@
     {
       "file": "domains/monitoring/ui/MyFocusSection.tsx",
       "layer": "screen",
-      "palette": 3,
+      "palette": 0,
       "shape": 10,
       "arbitrary": 0,
       "hex": 0,
@@ -875,7 +886,7 @@
     {
       "file": "domains/projects/ui/ProjectAnalytics.tsx",
       "layer": "screen",
-      "palette": 3,
+      "palette": 0,
       "shape": 2,
       "arbitrary": 0,
       "hex": 0,
@@ -886,9 +897,9 @@
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
       "layer": "screen",
-      "palette": 110,
+      "palette": 0,
       "shape": 25,
-      "arbitrary": 52,
+      "arbitrary": 39,
       "hex": 0,
       "inline": 0,
       "styleProps": 0,
@@ -897,9 +908,9 @@
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
       "layer": "screen",
-      "palette": 3,
+      "palette": 0,
       "shape": 7,
-      "arbitrary": 1,
+      "arbitrary": 0,
       "hex": 0,
       "inline": 10,
       "styleProps": 0,
@@ -921,7 +932,7 @@
       "layer": "screen",
       "palette": 0,
       "shape": 2,
-      "arbitrary": 2,
+      "arbitrary": 0,
       "hex": 0,
       "inline": 0,
       "styleProps": 0,
@@ -930,7 +941,7 @@
     {
       "file": "domains/tasks/ui/DefaultTasksSection.tsx",
       "layer": "screen",
-      "palette": 9,
+      "palette": 0,
       "shape": 0,
       "arbitrary": 0,
       "hex": 0,
@@ -941,7 +952,7 @@
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
       "layer": "screen",
-      "palette": 92,
+      "palette": 0,
       "shape": 6,
       "arbitrary": 0,
       "hex": 0,
@@ -963,7 +974,7 @@
     {
       "file": "domains/tasks/ui/TaskSection.tsx",
       "layer": "screen",
-      "palette": 1,
+      "palette": 0,
       "shape": 1,
       "arbitrary": 5,
       "hex": 0,
@@ -975,303 +986,9 @@
   "findings": [
     {
       "file": "app/docs/page.tsx",
-      "line": 19,
-      "category": "palette",
-      "value": "bg-slate-900"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 19,
-      "category": "palette",
-      "value": "text-slate-100"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 21,
-      "category": "palette",
-      "value": "border-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 21,
-      "category": "palette",
-      "value": "bg-slate-950"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 25,
-      "category": "palette",
-      "value": "bg-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 25,
-      "category": "palette",
-      "value": "bg-slate-700"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 25,
-      "category": "palette",
-      "value": "text-slate-300"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 25,
-      "category": "shape",
-      "value": "rounded-xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 29,
-      "category": "palette",
-      "value": "bg-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 31,
-      "category": "palette",
-      "value": "bg-blue-600/20"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 31,
-      "category": "palette",
-      "value": "border-blue-500/30"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 31,
-      "category": "palette",
-      "value": "text-blue-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 31,
-      "category": "shape",
-      "value": "rounded-xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 35,
-      "category": "palette",
-      "value": "text-slate-100"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 36,
-      "category": "palette",
-      "value": "text-slate-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 44,
-      "category": "shape",
-      "value": "rounded-xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 46,
-      "category": "palette",
-      "value": "bg-blue-600"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 46,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 46,
-      "category": "shape",
-      "value": "shadow-lg"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 47,
-      "category": "palette",
-      "value": "bg-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 47,
-      "category": "palette",
-      "value": "text-slate-300"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 47,
-      "category": "palette",
-      "value": "bg-slate-700"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 54,
-      "category": "shape",
-      "value": "rounded-xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 56,
-      "category": "palette",
-      "value": "bg-blue-600"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 56,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 56,
-      "category": "shape",
-      "value": "shadow-lg"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 57,
-      "category": "palette",
-      "value": "bg-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 57,
-      "category": "palette",
-      "value": "text-slate-300"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 57,
-      "category": "palette",
-      "value": "bg-slate-700"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 64,
-      "category": "shape",
-      "value": "rounded-xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 66,
-      "category": "palette",
-      "value": "bg-blue-600"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 66,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 66,
-      "category": "shape",
-      "value": "shadow-lg"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 67,
-      "category": "palette",
-      "value": "bg-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 67,
-      "category": "palette",
-      "value": "text-slate-300"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 67,
-      "category": "palette",
-      "value": "bg-slate-700"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 80,
-      "category": "palette",
-      "value": "bg-slate-950"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 80,
-      "category": "palette",
-      "value": "border-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 80,
-      "category": "shape",
-      "value": "rounded-2xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 80,
-      "category": "shape",
-      "value": "shadow-2xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
       "line": 80,
       "category": "arbitrary",
       "value": "h-[780px]"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 81,
-      "category": "palette",
-      "value": "bg-slate-900"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 81,
-      "category": "palette",
-      "value": "border-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 82,
-      "category": "palette",
-      "value": "text-slate-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 83,
-      "category": "palette",
-      "value": "text-emerald-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 84,
-      "category": "palette",
-      "value": "text-emerald-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 84,
-      "category": "palette",
-      "value": "bg-emerald-950/60"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 84,
-      "category": "palette",
-      "value": "border-emerald-800/50"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 89,
-      "category": "palette",
-      "value": "text-blue-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 89,
-      "category": "palette",
-      "value": "text-blue-300"
     },
     {
       "file": "app/docs/page.tsx",
@@ -1284,96 +1001,6 @@
       "line": 106,
       "category": "hex",
       "value": "#f8fafc"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 138,
-      "category": "palette",
-      "value": "bg-slate-950"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 138,
-      "category": "palette",
-      "value": "border-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 138,
-      "category": "shape",
-      "value": "rounded-2xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 138,
-      "category": "shape",
-      "value": "shadow-2xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 139,
-      "category": "palette",
-      "value": "border-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 140,
-      "category": "palette",
-      "value": "text-slate-200"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 141,
-      "category": "palette",
-      "value": "text-blue-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 148,
-      "category": "palette",
-      "value": "bg-blue-600"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 148,
-      "category": "palette",
-      "value": "bg-blue-500"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 148,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 148,
-      "category": "shape",
-      "value": "rounded-xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 153,
-      "category": "palette",
-      "value": "bg-slate-900"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 153,
-      "category": "palette",
-      "value": "border-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 153,
-      "category": "palette",
-      "value": "text-emerald-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 153,
-      "category": "shape",
-      "value": "rounded-xl"
     },
     {
       "file": "app/docs/page.tsx",
@@ -1382,1348 +1009,1126 @@
       "value": "max-h-[650px]"
     },
     {
-      "file": "app/docs/page.tsx",
-      "line": 162,
-      "category": "palette",
-      "value": "bg-slate-950"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 162,
-      "category": "palette",
-      "value": "border-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 162,
-      "category": "shape",
-      "value": "rounded-2xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 163,
-      "category": "palette",
-      "value": "text-slate-100"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 164,
-      "category": "palette",
-      "value": "text-blue-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 166,
-      "category": "palette",
-      "value": "text-slate-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 167,
-      "category": "palette",
-      "value": "text-emerald-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 169,
-      "category": "palette",
-      "value": "bg-slate-900"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 169,
-      "category": "palette",
-      "value": "border-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 169,
-      "category": "palette",
-      "value": "text-slate-300"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 169,
-      "category": "shape",
-      "value": "rounded-xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 170,
-      "category": "palette",
-      "value": "text-slate-500"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 171,
-      "category": "palette",
-      "value": "text-blue-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 172,
-      "category": "palette",
-      "value": "text-blue-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 176,
-      "category": "palette",
-      "value": "bg-slate-950"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 176,
-      "category": "palette",
-      "value": "border-slate-800"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 176,
-      "category": "shape",
-      "value": "rounded-2xl"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 177,
-      "category": "palette",
-      "value": "text-slate-100"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 178,
-      "category": "palette",
-      "value": "text-emerald-400"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 180,
-      "category": "palette",
-      "value": "text-slate-300"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 182,
-      "category": "palette",
-      "value": "bg-blue-900/60"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 182,
-      "category": "palette",
-      "value": "text-blue-300"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 182,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 186,
-      "category": "palette",
-      "value": "bg-amber-900/60"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 186,
-      "category": "palette",
-      "value": "text-amber-300"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 186,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 190,
-      "category": "palette",
-      "value": "bg-emerald-900/60"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 190,
-      "category": "palette",
-      "value": "text-emerald-300"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 190,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 194,
-      "category": "palette",
-      "value": "bg-purple-900/60"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 194,
-      "category": "palette",
-      "value": "text-purple-300"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 194,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "app/error.tsx",
-      "line": 14,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "app/error.tsx",
-      "line": 21,
-      "category": "palette",
-      "value": "bg-blue-600"
-    },
-    {
-      "file": "app/error.tsx",
-      "line": 21,
-      "category": "palette",
-      "value": "bg-blue-700"
-    },
-    {
-      "file": "app/error.tsx",
-      "line": 21,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
       "file": "app/globals.css",
-      "line": 54,
+      "line": 55,
       "category": "hex",
       "value": "#16a34a"
     },
     {
       "file": "app/globals.css",
-      "line": 55,
-      "category": "hex",
-      "value": "#007a2e"
-    },
-    {
-      "file": "app/globals.css",
       "line": 56,
       "category": "hex",
-      "value": "#009639"
+      "value": "#007a2e"
     },
     {
       "file": "app/globals.css",
       "line": 57,
       "category": "hex",
-      "value": "#4298b5"
+      "value": "#009639"
     },
     {
       "file": "app/globals.css",
       "line": 58,
       "category": "hex",
-      "value": "#d97706"
+      "value": "#4298b5"
     },
     {
       "file": "app/globals.css",
       "line": 59,
       "category": "hex",
-      "value": "#dc2626"
+      "value": "#d97706"
     },
     {
       "file": "app/globals.css",
-      "line": 61,
+      "line": 60,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#dc2626"
     },
     {
       "file": "app/globals.css",
       "line": 62,
       "category": "hex",
-      "value": "#cbd5e1"
+      "value": "#0f172a"
     },
     {
       "file": "app/globals.css",
-      "line": 65,
+      "line": 63,
       "category": "hex",
-      "value": "#f8fafc"
+      "value": "#cbd5e1"
     },
     {
       "file": "app/globals.css",
       "line": 66,
       "category": "hex",
-      "value": "#f1f5f9"
+      "value": "#f8fafc"
     },
     {
       "file": "app/globals.css",
       "line": 67,
       "category": "hex",
-      "value": "#e2e8f0"
+      "value": "#f1f5f9"
     },
     {
       "file": "app/globals.css",
       "line": 68,
       "category": "hex",
-      "value": "#94a3b8"
+      "value": "#e2e8f0"
     },
     {
       "file": "app/globals.css",
       "line": 69,
       "category": "hex",
-      "value": "#64748b"
+      "value": "#94a3b8"
     },
     {
       "file": "app/globals.css",
       "line": 70,
       "category": "hex",
-      "value": "#475569"
+      "value": "#64748b"
     },
     {
       "file": "app/globals.css",
       "line": 71,
       "category": "hex",
-      "value": "#334155"
+      "value": "#475569"
     },
     {
       "file": "app/globals.css",
       "line": 72,
       "category": "hex",
-      "value": "#1e293b"
+      "value": "#334155"
     },
     {
       "file": "app/globals.css",
       "line": 73,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#1e293b"
     },
     {
       "file": "app/globals.css",
-      "line": 126,
+      "line": 74,
       "category": "hex",
-      "value": "#f9fafb"
+      "value": "#0f172a"
     },
     {
       "file": "app/globals.css",
       "line": 127,
       "category": "hex",
-      "value": "#ffffff"
+      "value": "#f9fafb"
     },
     {
       "file": "app/globals.css",
       "line": 128,
       "category": "hex",
-      "value": "#f3f4f6"
+      "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
       "line": 129,
       "category": "hex",
-      "value": "#ffffff"
+      "value": "#f3f4f6"
     },
     {
       "file": "app/globals.css",
       "line": 130,
       "category": "hex",
-      "value": "#111827"
+      "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
       "line": 131,
       "category": "hex",
-      "value": "#4b5563"
+      "value": "#111827"
     },
     {
       "file": "app/globals.css",
       "line": 132,
       "category": "hex",
-      "value": "#9ca3af"
+      "value": "#4b5563"
     },
     {
       "file": "app/globals.css",
       "line": 133,
       "category": "hex",
-      "value": "#d1d5db"
+      "value": "#9ca3af"
     },
     {
       "file": "app/globals.css",
       "line": 134,
       "category": "hex",
-      "value": "#e5e7eb"
+      "value": "#d1d5db"
     },
     {
       "file": "app/globals.css",
       "line": 135,
       "category": "hex",
-      "value": "#f3f4f6"
+      "value": "#e5e7eb"
     },
     {
       "file": "app/globals.css",
-      "line": 137,
+      "line": 136,
       "category": "hex",
-      "value": "#eff6ff"
+      "value": "#f3f4f6"
     },
     {
       "file": "app/globals.css",
       "line": 138,
       "category": "hex",
-      "value": "#dbeafe"
+      "value": "#eff6ff"
     },
     {
       "file": "app/globals.css",
       "line": 139,
       "category": "hex",
-      "value": "#bfdbfe"
+      "value": "#dbeafe"
     },
     {
       "file": "app/globals.css",
       "line": 140,
       "category": "hex",
-      "value": "#93c5fd"
+      "value": "#bfdbfe"
     },
     {
       "file": "app/globals.css",
       "line": 141,
       "category": "hex",
-      "value": "#60a5fa"
+      "value": "#93c5fd"
     },
     {
       "file": "app/globals.css",
       "line": 142,
       "category": "hex",
-      "value": "#3b82f6"
+      "value": "#60a5fa"
     },
     {
       "file": "app/globals.css",
       "line": 143,
       "category": "hex",
-      "value": "#2563eb"
+      "value": "#3b82f6"
     },
     {
       "file": "app/globals.css",
       "line": 144,
       "category": "hex",
-      "value": "#1d4ed8"
+      "value": "#2563eb"
     },
     {
       "file": "app/globals.css",
       "line": 145,
       "category": "hex",
-      "value": "#1e40af"
+      "value": "#1d4ed8"
     },
     {
       "file": "app/globals.css",
       "line": 146,
       "category": "hex",
-      "value": "#1e3a8a"
+      "value": "#1e40af"
     },
     {
       "file": "app/globals.css",
       "line": 147,
       "category": "hex",
-      "value": "#172554"
+      "value": "#1e3a8a"
     },
     {
       "file": "app/globals.css",
       "line": 148,
       "category": "hex",
-      "value": "#eff6ff"
+      "value": "#172554"
     },
     {
       "file": "app/globals.css",
       "line": 149,
       "category": "hex",
-      "value": "#dbeafe"
+      "value": "#eff6ff"
     },
     {
       "file": "app/globals.css",
       "line": 150,
       "category": "hex",
-      "value": "#bfdbfe"
+      "value": "#dbeafe"
     },
     {
       "file": "app/globals.css",
       "line": 151,
       "category": "hex",
-      "value": "#93c5fd"
+      "value": "#bfdbfe"
     },
     {
       "file": "app/globals.css",
       "line": 152,
       "category": "hex",
-      "value": "#60a5fa"
+      "value": "#93c5fd"
     },
     {
       "file": "app/globals.css",
       "line": 153,
       "category": "hex",
-      "value": "#3b82f6"
+      "value": "#60a5fa"
     },
     {
       "file": "app/globals.css",
       "line": 154,
       "category": "hex",
-      "value": "#2563eb"
+      "value": "#3b82f6"
     },
     {
       "file": "app/globals.css",
       "line": 155,
       "category": "hex",
-      "value": "#1d4ed8"
+      "value": "#2563eb"
     },
     {
       "file": "app/globals.css",
       "line": 156,
       "category": "hex",
-      "value": "#1e40af"
+      "value": "#1d4ed8"
     },
     {
       "file": "app/globals.css",
       "line": 157,
       "category": "hex",
-      "value": "#1e3a8a"
+      "value": "#1e40af"
     },
     {
       "file": "app/globals.css",
       "line": 158,
       "category": "hex",
-      "value": "#172554"
+      "value": "#1e3a8a"
     },
     {
       "file": "app/globals.css",
-      "line": 165,
+      "line": 159,
       "category": "hex",
-      "value": "#ecfdf5"
+      "value": "#172554"
     },
     {
       "file": "app/globals.css",
       "line": 166,
       "category": "hex",
-      "value": "#d1fae5"
+      "value": "#ecfdf5"
     },
     {
       "file": "app/globals.css",
       "line": 167,
       "category": "hex",
-      "value": "#a7f3d0"
+      "value": "#d1fae5"
     },
     {
       "file": "app/globals.css",
       "line": 168,
       "category": "hex",
-      "value": "#6ee7b7"
+      "value": "#a7f3d0"
     },
     {
       "file": "app/globals.css",
       "line": 169,
       "category": "hex",
-      "value": "#34d399"
+      "value": "#6ee7b7"
     },
     {
       "file": "app/globals.css",
       "line": 170,
       "category": "hex",
-      "value": "#10b981"
+      "value": "#34d399"
     },
     {
       "file": "app/globals.css",
       "line": 171,
       "category": "hex",
-      "value": "#059669"
+      "value": "#10b981"
     },
     {
       "file": "app/globals.css",
       "line": 172,
       "category": "hex",
-      "value": "#047857"
+      "value": "#059669"
     },
     {
       "file": "app/globals.css",
       "line": 173,
       "category": "hex",
-      "value": "#065f46"
+      "value": "#047857"
     },
     {
       "file": "app/globals.css",
       "line": 174,
       "category": "hex",
-      "value": "#064e3b"
+      "value": "#065f46"
     },
     {
       "file": "app/globals.css",
       "line": 175,
       "category": "hex",
-      "value": "#022c22"
+      "value": "#064e3b"
     },
     {
       "file": "app/globals.css",
       "line": 176,
       "category": "hex",
-      "value": "#ecfdf5"
+      "value": "#022c22"
     },
     {
       "file": "app/globals.css",
       "line": 177,
       "category": "hex",
-      "value": "#d1fae5"
+      "value": "#ecfdf5"
     },
     {
       "file": "app/globals.css",
       "line": 178,
       "category": "hex",
-      "value": "#a7f3d0"
+      "value": "#d1fae5"
     },
     {
       "file": "app/globals.css",
       "line": 179,
       "category": "hex",
-      "value": "#6ee7b7"
+      "value": "#a7f3d0"
     },
     {
       "file": "app/globals.css",
       "line": 180,
       "category": "hex",
-      "value": "#34d399"
+      "value": "#6ee7b7"
     },
     {
       "file": "app/globals.css",
       "line": 181,
       "category": "hex",
-      "value": "#10b981"
+      "value": "#34d399"
     },
     {
       "file": "app/globals.css",
       "line": 182,
       "category": "hex",
-      "value": "#059669"
+      "value": "#10b981"
     },
     {
       "file": "app/globals.css",
       "line": 183,
       "category": "hex",
-      "value": "#047857"
+      "value": "#059669"
     },
     {
       "file": "app/globals.css",
       "line": 184,
       "category": "hex",
-      "value": "#065f46"
+      "value": "#047857"
     },
     {
       "file": "app/globals.css",
       "line": 185,
       "category": "hex",
-      "value": "#064e3b"
+      "value": "#065f46"
     },
     {
       "file": "app/globals.css",
       "line": 186,
       "category": "hex",
-      "value": "#022c22"
+      "value": "#064e3b"
     },
     {
       "file": "app/globals.css",
-      "line": 193,
+      "line": 187,
       "category": "hex",
-      "value": "#f5f3ff"
+      "value": "#022c22"
     },
     {
       "file": "app/globals.css",
       "line": 194,
       "category": "hex",
-      "value": "#ede9fe"
+      "value": "#f5f3ff"
     },
     {
       "file": "app/globals.css",
       "line": 195,
       "category": "hex",
-      "value": "#ddd6fe"
+      "value": "#ede9fe"
     },
     {
       "file": "app/globals.css",
       "line": 196,
       "category": "hex",
-      "value": "#c4b5fd"
+      "value": "#ddd6fe"
     },
     {
       "file": "app/globals.css",
       "line": 197,
       "category": "hex",
-      "value": "#a78bfa"
+      "value": "#c4b5fd"
     },
     {
       "file": "app/globals.css",
       "line": 198,
       "category": "hex",
-      "value": "#8b5cf6"
+      "value": "#a78bfa"
     },
     {
       "file": "app/globals.css",
       "line": 199,
       "category": "hex",
-      "value": "#7c3aed"
+      "value": "#8b5cf6"
     },
     {
       "file": "app/globals.css",
       "line": 200,
       "category": "hex",
-      "value": "#6d28d9"
+      "value": "#7c3aed"
     },
     {
       "file": "app/globals.css",
       "line": 201,
       "category": "hex",
-      "value": "#5b21b6"
+      "value": "#6d28d9"
     },
     {
       "file": "app/globals.css",
       "line": 202,
       "category": "hex",
-      "value": "#4c1d95"
+      "value": "#5b21b6"
     },
     {
       "file": "app/globals.css",
       "line": 203,
       "category": "hex",
-      "value": "#2e1065"
+      "value": "#4c1d95"
     },
     {
       "file": "app/globals.css",
       "line": 204,
       "category": "hex",
-      "value": "#f5f3ff"
+      "value": "#2e1065"
     },
     {
       "file": "app/globals.css",
       "line": 205,
       "category": "hex",
-      "value": "#ede9fe"
+      "value": "#f5f3ff"
     },
     {
       "file": "app/globals.css",
       "line": 206,
       "category": "hex",
-      "value": "#ddd6fe"
+      "value": "#ede9fe"
     },
     {
       "file": "app/globals.css",
       "line": 207,
       "category": "hex",
-      "value": "#c4b5fd"
+      "value": "#ddd6fe"
     },
     {
       "file": "app/globals.css",
       "line": 208,
       "category": "hex",
-      "value": "#a78bfa"
+      "value": "#c4b5fd"
     },
     {
       "file": "app/globals.css",
       "line": 209,
       "category": "hex",
-      "value": "#8b5cf6"
+      "value": "#a78bfa"
     },
     {
       "file": "app/globals.css",
       "line": 210,
       "category": "hex",
-      "value": "#7c3aed"
+      "value": "#8b5cf6"
     },
     {
       "file": "app/globals.css",
       "line": 211,
       "category": "hex",
-      "value": "#6d28d9"
+      "value": "#7c3aed"
     },
     {
       "file": "app/globals.css",
       "line": 212,
       "category": "hex",
-      "value": "#5b21b6"
+      "value": "#6d28d9"
     },
     {
       "file": "app/globals.css",
       "line": 213,
       "category": "hex",
-      "value": "#4c1d95"
+      "value": "#5b21b6"
     },
     {
       "file": "app/globals.css",
       "line": 214,
       "category": "hex",
-      "value": "#2e1065"
+      "value": "#4c1d95"
     },
     {
       "file": "app/globals.css",
-      "line": 221,
+      "line": 215,
       "category": "hex",
-      "value": "#fffbeb"
+      "value": "#2e1065"
     },
     {
       "file": "app/globals.css",
       "line": 222,
       "category": "hex",
-      "value": "#fef3c7"
+      "value": "#fffbeb"
     },
     {
       "file": "app/globals.css",
       "line": 223,
       "category": "hex",
-      "value": "#fde68a"
+      "value": "#fef3c7"
     },
     {
       "file": "app/globals.css",
       "line": 224,
       "category": "hex",
-      "value": "#fcd34d"
+      "value": "#fde68a"
     },
     {
       "file": "app/globals.css",
       "line": 225,
       "category": "hex",
-      "value": "#fbbf24"
+      "value": "#fcd34d"
     },
     {
       "file": "app/globals.css",
       "line": 226,
       "category": "hex",
-      "value": "#f59e0b"
+      "value": "#fbbf24"
     },
     {
       "file": "app/globals.css",
       "line": 227,
       "category": "hex",
-      "value": "#d97706"
+      "value": "#f59e0b"
     },
     {
       "file": "app/globals.css",
       "line": 228,
       "category": "hex",
-      "value": "#b45309"
+      "value": "#d97706"
     },
     {
       "file": "app/globals.css",
       "line": 229,
       "category": "hex",
-      "value": "#92400e"
+      "value": "#b45309"
     },
     {
       "file": "app/globals.css",
       "line": 230,
       "category": "hex",
-      "value": "#78350f"
+      "value": "#92400e"
     },
     {
       "file": "app/globals.css",
       "line": 231,
       "category": "hex",
-      "value": "#451a03"
+      "value": "#78350f"
     },
     {
       "file": "app/globals.css",
       "line": 232,
       "category": "hex",
-      "value": "#fffbeb"
+      "value": "#451a03"
     },
     {
       "file": "app/globals.css",
       "line": 233,
       "category": "hex",
-      "value": "#fef3c7"
+      "value": "#fffbeb"
     },
     {
       "file": "app/globals.css",
       "line": 234,
       "category": "hex",
-      "value": "#fde68a"
+      "value": "#fef3c7"
     },
     {
       "file": "app/globals.css",
       "line": 235,
       "category": "hex",
-      "value": "#fcd34d"
+      "value": "#fde68a"
     },
     {
       "file": "app/globals.css",
       "line": 236,
       "category": "hex",
-      "value": "#fbbf24"
+      "value": "#fcd34d"
     },
     {
       "file": "app/globals.css",
       "line": 237,
       "category": "hex",
-      "value": "#f59e0b"
+      "value": "#fbbf24"
     },
     {
       "file": "app/globals.css",
       "line": 238,
       "category": "hex",
-      "value": "#d97706"
+      "value": "#f59e0b"
     },
     {
       "file": "app/globals.css",
       "line": 239,
       "category": "hex",
-      "value": "#b45309"
+      "value": "#d97706"
     },
     {
       "file": "app/globals.css",
       "line": 240,
       "category": "hex",
-      "value": "#92400e"
+      "value": "#b45309"
     },
     {
       "file": "app/globals.css",
       "line": 241,
       "category": "hex",
-      "value": "#78350f"
+      "value": "#92400e"
     },
     {
       "file": "app/globals.css",
       "line": 242,
       "category": "hex",
-      "value": "#451a03"
+      "value": "#78350f"
     },
     {
       "file": "app/globals.css",
-      "line": 249,
+      "line": 243,
       "category": "hex",
-      "value": "#f8fafc"
+      "value": "#451a03"
     },
     {
       "file": "app/globals.css",
       "line": 250,
       "category": "hex",
-      "value": "#f1f5f9"
+      "value": "#f8fafc"
     },
     {
       "file": "app/globals.css",
       "line": 251,
       "category": "hex",
-      "value": "#e2e8f0"
+      "value": "#f1f5f9"
     },
     {
       "file": "app/globals.css",
       "line": 252,
       "category": "hex",
-      "value": "#cbd5e1"
+      "value": "#e2e8f0"
     },
     {
       "file": "app/globals.css",
       "line": 253,
       "category": "hex",
-      "value": "#94a3b8"
+      "value": "#cbd5e1"
     },
     {
       "file": "app/globals.css",
       "line": 254,
       "category": "hex",
-      "value": "#64748b"
+      "value": "#94a3b8"
     },
     {
       "file": "app/globals.css",
       "line": 255,
       "category": "hex",
-      "value": "#475569"
+      "value": "#64748b"
     },
     {
       "file": "app/globals.css",
       "line": 256,
       "category": "hex",
-      "value": "#334155"
+      "value": "#475569"
     },
     {
       "file": "app/globals.css",
       "line": 257,
       "category": "hex",
-      "value": "#1e293b"
+      "value": "#334155"
     },
     {
       "file": "app/globals.css",
       "line": 258,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#1e293b"
     },
     {
       "file": "app/globals.css",
       "line": 259,
       "category": "hex",
-      "value": "#020617"
+      "value": "#0f172a"
     },
     {
       "file": "app/globals.css",
       "line": 260,
       "category": "hex",
-      "value": "#f8fafc"
+      "value": "#020617"
     },
     {
       "file": "app/globals.css",
       "line": 261,
       "category": "hex",
-      "value": "#f1f5f9"
+      "value": "#f8fafc"
     },
     {
       "file": "app/globals.css",
       "line": 262,
       "category": "hex",
-      "value": "#e2e8f0"
+      "value": "#f1f5f9"
     },
     {
       "file": "app/globals.css",
       "line": 263,
       "category": "hex",
-      "value": "#cbd5e1"
+      "value": "#e2e8f0"
     },
     {
       "file": "app/globals.css",
       "line": 264,
       "category": "hex",
-      "value": "#94a3b8"
+      "value": "#cbd5e1"
     },
     {
       "file": "app/globals.css",
       "line": 265,
       "category": "hex",
-      "value": "#64748b"
+      "value": "#94a3b8"
     },
     {
       "file": "app/globals.css",
       "line": 266,
       "category": "hex",
-      "value": "#475569"
+      "value": "#64748b"
     },
     {
       "file": "app/globals.css",
       "line": 267,
       "category": "hex",
-      "value": "#334155"
+      "value": "#475569"
     },
     {
       "file": "app/globals.css",
       "line": 268,
       "category": "hex",
-      "value": "#1e293b"
+      "value": "#334155"
     },
     {
       "file": "app/globals.css",
       "line": 269,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#1e293b"
     },
     {
       "file": "app/globals.css",
       "line": 270,
       "category": "hex",
-      "value": "#020617"
+      "value": "#0f172a"
     },
     {
       "file": "app/globals.css",
-      "line": 277,
+      "line": 271,
       "category": "hex",
-      "value": "#fff1f2"
+      "value": "#020617"
     },
     {
       "file": "app/globals.css",
       "line": 278,
       "category": "hex",
-      "value": "#ffe4e6"
+      "value": "#fff1f2"
     },
     {
       "file": "app/globals.css",
       "line": 279,
       "category": "hex",
-      "value": "#fecdd3"
+      "value": "#ffe4e6"
     },
     {
       "file": "app/globals.css",
       "line": 280,
       "category": "hex",
-      "value": "#fda4af"
+      "value": "#fecdd3"
     },
     {
       "file": "app/globals.css",
       "line": 281,
       "category": "hex",
-      "value": "#fb7185"
+      "value": "#fda4af"
     },
     {
       "file": "app/globals.css",
       "line": 282,
       "category": "hex",
-      "value": "#f43f5e"
+      "value": "#fb7185"
     },
     {
       "file": "app/globals.css",
       "line": 283,
       "category": "hex",
-      "value": "#e11d48"
+      "value": "#f43f5e"
     },
     {
       "file": "app/globals.css",
       "line": 284,
       "category": "hex",
-      "value": "#be123c"
+      "value": "#e11d48"
     },
     {
       "file": "app/globals.css",
       "line": 285,
       "category": "hex",
-      "value": "#9f1239"
+      "value": "#be123c"
     },
     {
       "file": "app/globals.css",
       "line": 286,
       "category": "hex",
-      "value": "#881337"
+      "value": "#9f1239"
     },
     {
       "file": "app/globals.css",
       "line": 287,
       "category": "hex",
-      "value": "#4c0519"
+      "value": "#881337"
     },
     {
       "file": "app/globals.css",
       "line": 288,
       "category": "hex",
-      "value": "#fff1f2"
+      "value": "#4c0519"
     },
     {
       "file": "app/globals.css",
       "line": 289,
       "category": "hex",
-      "value": "#ffe4e6"
+      "value": "#fff1f2"
     },
     {
       "file": "app/globals.css",
       "line": 290,
       "category": "hex",
-      "value": "#fecdd3"
+      "value": "#ffe4e6"
     },
     {
       "file": "app/globals.css",
       "line": 291,
       "category": "hex",
-      "value": "#fda4af"
+      "value": "#fecdd3"
     },
     {
       "file": "app/globals.css",
       "line": 292,
       "category": "hex",
-      "value": "#fb7185"
+      "value": "#fda4af"
     },
     {
       "file": "app/globals.css",
       "line": 293,
       "category": "hex",
-      "value": "#f43f5e"
+      "value": "#fb7185"
     },
     {
       "file": "app/globals.css",
       "line": 294,
       "category": "hex",
-      "value": "#e11d48"
+      "value": "#f43f5e"
     },
     {
       "file": "app/globals.css",
       "line": 295,
       "category": "hex",
-      "value": "#be123c"
+      "value": "#e11d48"
     },
     {
       "file": "app/globals.css",
       "line": 296,
       "category": "hex",
-      "value": "#9f1239"
+      "value": "#be123c"
     },
     {
       "file": "app/globals.css",
       "line": 297,
       "category": "hex",
-      "value": "#881337"
+      "value": "#9f1239"
     },
     {
       "file": "app/globals.css",
       "line": 298,
       "category": "hex",
-      "value": "#4c0519"
+      "value": "#881337"
     },
     {
       "file": "app/globals.css",
-      "line": 349,
+      "line": 299,
       "category": "hex",
-      "value": "#003b5c"
+      "value": "#4c0519"
     },
     {
       "file": "app/globals.css",
       "line": 350,
       "category": "hex",
-      "value": "#66899d"
+      "value": "#003b5c"
     },
     {
       "file": "app/globals.css",
       "line": 351,
       "category": "hex",
-      "value": "#b2c4ce"
+      "value": "#66899d"
     },
     {
       "file": "app/globals.css",
       "line": 352,
       "category": "hex",
-      "value": "#e5ebef"
+      "value": "#b2c4ce"
     },
     {
       "file": "app/globals.css",
       "line": 353,
       "category": "hex",
-      "value": "#009639"
+      "value": "#e5ebef"
     },
     {
       "file": "app/globals.css",
       "line": 354,
       "category": "hex",
-      "value": "#66c088"
+      "value": "#009639"
     },
     {
       "file": "app/globals.css",
       "line": 355,
       "category": "hex",
-      "value": "#b2dfc3"
+      "value": "#66c088"
     },
     {
       "file": "app/globals.css",
       "line": 356,
       "category": "hex",
-      "value": "#e5f4eb"
+      "value": "#b2dfc3"
     },
     {
       "file": "app/globals.css",
       "line": 357,
       "category": "hex",
-      "value": "#4298b5"
+      "value": "#e5f4eb"
     },
     {
       "file": "app/globals.css",
       "line": 358,
       "category": "hex",
-      "value": "#8ec1d3"
+      "value": "#4298b5"
     },
     {
       "file": "app/globals.css",
       "line": 359,
       "category": "hex",
-      "value": "#c6e0e9"
+      "value": "#8ec1d3"
     },
     {
       "file": "app/globals.css",
       "line": 360,
       "category": "hex",
-      "value": "#ecf5f8"
+      "value": "#c6e0e9"
     },
     {
       "file": "app/globals.css",
       "line": 361,
       "category": "hex",
+      "value": "#ecf5f8"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 362,
+      "category": "hex",
       "value": "#1a1a1a"
     },
     {
       "file": "app/globals.css",
-      "line": 363,
+      "line": 364,
       "category": "hex",
       "value": "#007a2e"
     },
     {
       "file": "app/globals.css",
-      "line": 367,
+      "line": 368,
       "category": "hex",
       "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
-      "line": 370,
+      "line": 371,
       "category": "hex",
       "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
-      "line": 374,
+      "line": 375,
       "category": "hex",
       "value": "#444746"
     },
     {
       "file": "app/globals.css",
-      "line": 377,
+      "line": 378,
       "category": "hex",
       "value": "#b3261e"
     },
     {
       "file": "app/globals.css",
-      "line": 385,
+      "line": 386,
       "category": "hex",
       "value": "#33718c"
     },
     {
       "file": "app/globals.css",
-      "line": 386,
+      "line": 387,
       "category": "hex",
       "value": "#1a5674"
     },
     {
       "file": "app/globals.css",
-      "line": 388,
+      "line": 389,
       "category": "hex",
       "value": "#00324e"
     },
     {
       "file": "app/globals.css",
-      "line": 389,
+      "line": 390,
       "category": "hex",
       "value": "#002a42"
     },
     {
       "file": "app/globals.css",
-      "line": 390,
+      "line": 391,
       "category": "hex",
       "value": "#002136"
     },
     {
       "file": "app/globals.css",
-      "line": 391,
+      "line": 392,
       "category": "hex",
       "value": "#001827"
     },
     {
       "file": "app/globals.css",
-      "line": 404,
+      "line": 405,
       "category": "hex",
       "value": "#ffffff"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 408,
-      "category": "hex",
-      "value": "#444746"
     },
     {
       "file": "app/globals.css",
       "line": 409,
       "category": "hex",
-      "value": "#5e5e5e"
+      "value": "#444746"
     },
     {
       "file": "app/globals.css",
       "line": 410,
       "category": "hex",
-      "value": "#66899d"
+      "value": "#5e5e5e"
     },
     {
       "file": "app/globals.css",
-      "line": 434,
+      "line": 411,
       "category": "hex",
-      "value": "#ffffff"
+      "value": "#66899d"
     },
     {
       "file": "app/globals.css",
@@ -2733,219 +2138,105 @@
     },
     {
       "file": "app/globals.css",
-      "line": 468,
-      "category": "hex",
-      "value": "#f9dedc"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 468,
-      "category": "hex",
-      "value": "#410e0b"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 528,
+      "line": 436,
       "category": "hex",
       "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
-      "line": 577,
+      "line": 469,
       "category": "hex",
-      "value": "#3b82f6"
+      "value": "#f9dedc"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 469,
+      "category": "hex",
+      "value": "#410e0b"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 529,
+      "category": "hex",
+      "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
       "line": 578,
       "category": "hex",
-      "value": "#10b981"
+      "value": "#3b82f6"
     },
     {
       "file": "app/globals.css",
       "line": 579,
       "category": "hex",
-      "value": "#f59e0b"
+      "value": "#10b981"
     },
     {
       "file": "app/globals.css",
       "line": 580,
       "category": "hex",
-      "value": "#8b5cf6"
+      "value": "#f59e0b"
     },
     {
       "file": "app/globals.css",
       "line": 581,
       "category": "hex",
-      "value": "#ec4899"
+      "value": "#8b5cf6"
     },
     {
       "file": "app/globals.css",
       "line": 582,
       "category": "hex",
-      "value": "#06b6d4"
+      "value": "#ec4899"
     },
     {
       "file": "app/globals.css",
       "line": 583,
       "category": "hex",
-      "value": "#f97316"
+      "value": "#06b6d4"
     },
     {
       "file": "app/globals.css",
       "line": 584,
       "category": "hex",
-      "value": "#6366f1"
+      "value": "#f97316"
     },
     {
       "file": "app/globals.css",
       "line": 585,
       "category": "hex",
-      "value": "#64748b"
+      "value": "#6366f1"
     },
     {
       "file": "app/globals.css",
       "line": 586,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#64748b"
     },
     {
       "file": "app/globals.css",
       "line": 587,
       "category": "hex",
-      "value": "#fff"
+      "value": "#0f172a"
     },
     {
       "file": "app/globals.css",
       "line": 588,
       "category": "hex",
-      "value": "#e2e8f0"
+      "value": "#fff"
     },
     {
       "file": "app/globals.css",
       "line": 589,
       "category": "hex",
+      "value": "#e2e8f0"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 590,
+      "category": "hex",
       "value": "#334155"
-    },
-    {
-      "file": "app/not-found.tsx",
-      "line": 6,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "app/not-found.tsx",
-      "line": 13,
-      "category": "palette",
-      "value": "bg-blue-600"
-    },
-    {
-      "file": "app/not-found.tsx",
-      "line": 13,
-      "category": "palette",
-      "value": "bg-blue-700"
-    },
-    {
-      "file": "app/not-found.tsx",
-      "line": 13,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 50,
-      "category": "palette",
-      "value": "ring-blue-500"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 50,
-      "category": "palette",
-      "value": "border-blue-500"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 405,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 406,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 410,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 411,
-      "category": "palette",
-      "value": "text-blue-600"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 423,
-      "category": "palette",
-      "value": "bg-red-50"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 423,
-      "category": "palette",
-      "value": "text-red-600"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 423,
-      "category": "palette",
-      "value": "border-red-100"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 483,
-      "category": "palette",
-      "value": "text-blue-600"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 483,
-      "category": "palette",
-      "value": "ring-blue-500"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 487,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 495,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 497,
-      "category": "palette",
-      "value": "bg-blue-500/90"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 498,
-      "category": "palette",
-      "value": "bg-blue-600"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 498,
-      "category": "palette",
-      "value": "bg-blue-700"
     },
     {
       "file": "app/page.tsx",
@@ -2955,63 +2246,9 @@
     },
     {
       "file": "app/page.tsx",
-      "line": 503,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 526,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 526,
-      "category": "palette",
-      "value": "border-rose-100"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 527,
-      "category": "palette",
-      "value": "bg-rose-50"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 527,
-      "category": "palette",
-      "value": "text-rose-600"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 527,
-      "category": "palette",
-      "value": "border-rose-100"
-    },
-    {
-      "file": "app/page.tsx",
       "line": 527,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 541,
-      "category": "palette",
-      "value": "bg-blue-600"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 541,
-      "category": "palette",
-      "value": "bg-blue-700"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 541,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "app/page.tsx",
@@ -3052,20 +2289,8 @@
     {
       "file": "app/page.tsx",
       "line": 627,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 627,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "app/page.tsx",
-      "line": 647,
-      "category": "palette",
-      "value": "bg-black/40"
     },
     {
       "file": "app/page.tsx",
@@ -3092,40 +2317,22 @@
       "value": "rounded-full"
     },
     {
-      "file": "app/page.tsx",
-      "line": 802,
-      "category": "palette",
-      "value": "text-white"
+      "file": "app/visual-tones.css",
+      "line": 3,
+      "category": "hex",
+      "value": "#ffffff"
     },
     {
-      "file": "app/page.tsx",
-      "line": 1148,
-      "category": "palette",
-      "value": "text-white"
+      "file": "app/visual-tones.css",
+      "line": 4,
+      "category": "hex",
+      "value": "#000000"
     },
     {
       "file": "components/AppLoadingScreen.tsx",
       "line": 9,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "components/AppLogo.tsx",
-      "line": 20,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "components/AppLogo.tsx",
-      "line": 54,
-      "category": "palette",
-      "value": "bg-blue-600"
-    },
-    {
-      "file": "components/AppLogo.tsx",
-      "line": 54,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "components/DatabaseStatusIndicator.tsx",
@@ -3152,40 +2359,10 @@
       "value": "active:scale-[0.98]"
     },
     {
-      "file": "components/ui/Button.tsx",
-      "line": 28,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "components/ui/Button.tsx",
-      "line": 30,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "components/ui/Button.tsx",
-      "line": 31,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "components/ui/Checkbox.tsx",
-      "line": 44,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
       "file": "components/ui/Checkbox.tsx",
       "line": 44,
       "category": "arbitrary",
       "value": "stroke-[3px]"
-    },
-    {
-      "file": "components/ui/Dialog.tsx",
-      "line": 41,
-      "category": "palette",
-      "value": "bg-black/40"
     },
     {
       "file": "components/ui/Dialog.tsx",
@@ -3202,12 +2379,6 @@
     {
       "file": "components/ui/ExpandedView.tsx",
       "line": 43,
-      "category": "palette",
-      "value": "bg-black/50"
-    },
-    {
-      "file": "components/ui/ExpandedView.tsx",
-      "line": 43,
       "category": "arbitrary",
       "value": "z-[60]"
     },
@@ -3216,18 +2387,6 @@
       "line": 21,
       "category": "arbitrary",
       "value": "active:scale-[0.95]"
-    },
-    {
-      "file": "components/ui/IconButton.tsx",
-      "line": 25,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "components/ui/IconButton.tsx",
-      "line": 29,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "components/ui/MarkdownCommentComposer.tsx",
@@ -3244,12 +2403,6 @@
     {
       "file": "components/ui/Switch.tsx",
       "line": 47,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "components/ui/Switch.tsx",
-      "line": 47,
       "category": "shape",
       "value": "rounded-full"
     },
@@ -3258,12 +2411,6 @@
       "line": 61,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "components/ui/Tooltip.tsx",
-      "line": 34,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "domains/absences/ui/AbsenceCalendar.tsx",
@@ -3282,12 +2429,6 @@
       "line": 63,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/absences/ui/AbsenceCalendar.tsx",
-      "line": 63,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "domains/absences/ui/AbsenceCalendar.tsx",
@@ -3321,291 +2462,9 @@
     },
     {
       "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 116,
-      "category": "palette",
-      "value": "bg-emerald-50"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 116,
-      "category": "palette",
-      "value": "text-emerald-700"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 116,
-      "category": "palette",
-      "value": "border-emerald-200"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 116,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 118,
-      "category": "palette",
-      "value": "bg-blue-50"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 118,
-      "category": "palette",
-      "value": "text-blue-700"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 118,
-      "category": "palette",
-      "value": "border-blue-200"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 118,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 120,
-      "category": "palette",
-      "value": "bg-rose-50"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 120,
-      "category": "palette",
-      "value": "text-rose-700"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 120,
-      "category": "palette",
-      "value": "border-rose-200"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 120,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 123,
-      "category": "palette",
-      "value": "bg-purple-50"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 123,
-      "category": "palette",
-      "value": "text-purple-700"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 123,
-      "category": "palette",
-      "value": "border-purple-200"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 123,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 125,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 134,
-      "category": "palette",
-      "value": "bg-indigo-50"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 134,
-      "category": "palette",
-      "value": "border-indigo-100"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 134,
-      "category": "palette",
-      "value": "text-indigo-600"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 167,
-      "category": "palette",
-      "value": "bg-blue-50"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 167,
-      "category": "palette",
-      "value": "border-blue-100"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 171,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 177,
-      "category": "palette",
-      "value": "bg-emerald-50"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 177,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 177,
-      "category": "palette",
-      "value": "border-emerald-100"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 181,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 187,
-      "category": "palette",
-      "value": "bg-rose-50"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 187,
-      "category": "palette",
-      "value": "text-rose-600"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 187,
-      "category": "palette",
-      "value": "border-rose-100"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 191,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 197,
-      "category": "palette",
-      "value": "bg-purple-50"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 197,
-      "category": "palette",
-      "value": "text-purple-600"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 197,
-      "category": "palette",
-      "value": "border-purple-100"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 201,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 222,
-      "category": "palette",
-      "value": "ring-blue-100"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 222,
-      "category": "palette",
-      "value": "border-blue-500"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 234,
-      "category": "palette",
-      "value": "ring-blue-100"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 234,
-      "category": "palette",
-      "value": "border-blue-500"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 251,
-      "category": "palette",
-      "value": "ring-blue-100"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 251,
-      "category": "palette",
-      "value": "border-blue-500"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 271,
-      "category": "palette",
-      "value": "ring-blue-500"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
       "line": 284,
       "category": "arbitrary",
       "value": "min-w-[700px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 285,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 305,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 314,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 322,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 326,
-      "category": "arbitrary",
-      "value": "text-[10px]"
     },
     {
       "file": "domains/administration/ui/AuditLogSection.tsx",
@@ -3658,12 +2517,6 @@
     {
       "file": "domains/administration/ui/ConfigSection.tsx",
       "line": 468,
-      "category": "palette",
-      "value": "border-black/10"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 468,
       "category": "shape",
       "value": "rounded-full"
     },
@@ -3672,276 +2525,6 @@
       "line": 469,
       "category": "inline",
       "value": "style={{ backgroundColor: t.hex }}"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 524,
-      "category": "palette",
-      "value": "bg-indigo-50"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 524,
-      "category": "palette",
-      "value": "text-indigo-600"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 524,
-      "category": "palette",
-      "value": "border-indigo-100"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 529,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 534,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 543,
-      "category": "palette",
-      "value": "ring-blue-100"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 551,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 551,
-      "category": "palette",
-      "value": "bg-blue-700"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 558,
-      "category": "palette",
-      "value": "bg-amber-50"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 558,
-      "category": "palette",
-      "value": "border-amber-200"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 558,
-      "category": "palette",
-      "value": "bg-emerald-50"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 558,
-      "category": "palette",
-      "value": "border-emerald-200"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 561,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 562,
-      "category": "palette",
-      "value": "text-amber-600"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 565,
-      "category": "palette",
-      "value": "border-amber-200"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 565,
-      "category": "palette",
-      "value": "text-amber-700"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 589,
-      "category": "palette",
-      "value": "bg-emerald-50"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 589,
-      "category": "palette",
-      "value": "border-emerald-100"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 589,
-      "category": "palette",
-      "value": "text-emerald-800"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 589,
-      "category": "palette",
-      "value": "bg-red-50"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 589,
-      "category": "palette",
-      "value": "border-red-200"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 589,
-      "category": "palette",
-      "value": "text-red-800"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 601,
-      "category": "palette",
-      "value": "bg-amber-50"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 601,
-      "category": "palette",
-      "value": "text-amber-600"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 601,
-      "category": "palette",
-      "value": "border-amber-100"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 606,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 621,
-      "category": "palette",
-      "value": "border-slate-150"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 622,
-      "category": "palette",
-      "value": "text-emerald-700"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 622,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 623,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 626,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 631,
-      "category": "palette",
-      "value": "border-slate-150"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 632,
-      "category": "palette",
-      "value": "text-emerald-700"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 632,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 633,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 636,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 641,
-      "category": "palette",
-      "value": "border-slate-150"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 642,
-      "category": "palette",
-      "value": "text-emerald-700"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 642,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 643,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 646,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 655,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 659,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 665,
-      "category": "palette",
-      "value": "text-emerald-400"
-    },
-    {
-      "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 665,
-      "category": "arbitrary",
-      "value": "text-[9px]"
     },
     {
       "file": "domains/administration/ui/ConfigSection.tsx",
@@ -3957,45 +2540,9 @@
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 33,
-      "category": "palette",
-      "value": "bg-red-200"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 33,
-      "category": "palette",
-      "value": "text-red-900"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 33,
-      "category": "palette",
-      "value": "border-red-300"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
       "line": 34,
       "category": "hex",
       "value": "#fef08a"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 34,
-      "category": "palette",
-      "value": "bg-yellow-200"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 34,
-      "category": "palette",
-      "value": "text-yellow-900"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 34,
-      "category": "palette",
-      "value": "border-yellow-300"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
@@ -4005,69 +2552,15 @@
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 35,
-      "category": "palette",
-      "value": "bg-green-200"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 35,
-      "category": "palette",
-      "value": "text-green-900"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 35,
-      "category": "palette",
-      "value": "border-green-300"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
       "line": 36,
       "category": "hex",
       "value": "#38bdf8"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 36,
-      "category": "palette",
-      "value": "bg-sky-200"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 36,
-      "category": "palette",
-      "value": "text-sky-900"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 36,
-      "category": "palette",
-      "value": "border-sky-300"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
       "line": 37,
       "category": "hex",
       "value": "#fed7aa"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 37,
-      "category": "palette",
-      "value": "bg-orange-200"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 37,
-      "category": "palette",
-      "value": "text-orange-900"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 37,
-      "category": "palette",
-      "value": "border-orange-300"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
@@ -4119,39 +2612,9 @@
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 123,
-      "category": "palette",
-      "value": "ring-blue-100"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 139,
-      "category": "palette",
-      "value": "ring-blue-100"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 142,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 160,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
       "line": 167,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 177,
-      "category": "arbitrary",
-      "value": "text-[11px]"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
@@ -4161,51 +2624,9 @@
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 194,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 202,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 202,
-      "category": "palette",
-      "value": "bg-blue-700"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 202,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
       "line": 216,
       "category": "hex",
       "value": "#bfdbfe"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 218,
-      "category": "palette",
-      "value": "bg-blue-50"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 226,
-      "category": "palette",
-      "value": "text-red-600"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 226,
-      "category": "palette",
-      "value": "bg-red-50"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
@@ -4227,12 +2648,6 @@
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 381,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
       "line": 408,
       "category": "hex",
       "value": "#bfdbfe"
@@ -4242,54 +2657,6 @@
       "line": 409,
       "category": "hex",
       "value": "#bfdbfe"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 413,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 427,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 434,
-      "category": "palette",
-      "value": "ring-blue-100"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 440,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 448,
-      "category": "palette",
-      "value": "ring-blue-100"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 455,
-      "category": "palette",
-      "value": "bg-blue-700"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 455,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 464,
-      "category": "arbitrary",
-      "value": "text-[11px]"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
@@ -4304,40 +2671,10 @@
       "value": "min-w-[520px]"
     },
     {
-      "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 504,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
       "file": "domains/administration/ui/RolePermissionSection.tsx",
       "line": 99,
       "category": "arbitrary",
       "value": "xl:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.65fr)]"
-    },
-    {
-      "file": "domains/administration/ui/UserAdministrationSection.tsx",
-      "line": 80,
-      "category": "palette",
-      "value": "ring-blue-500"
-    },
-    {
-      "file": "domains/administration/ui/UserAdministrationSection.tsx",
-      "line": 85,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/administration/ui/UserSection.tsx",
-      "line": 308,
-      "category": "palette",
-      "value": "text-amber-700"
-    },
-    {
-      "file": "domains/administration/ui/UserSection.tsx",
-      "line": 341,
-      "category": "arbitrary",
-      "value": "text-[11px]"
     },
     {
       "file": "domains/administration/ui/UserSection.tsx",
@@ -4350,42 +2687,6 @@
       "line": 423,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/administration/ui/UserSection.tsx",
-      "line": 435,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/administration/ui/UserSection.tsx",
-      "line": 440,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/administration/ui/UserSection.tsx",
-      "line": 448,
-      "category": "palette",
-      "value": "text-blue-600"
-    },
-    {
-      "file": "domains/administration/ui/UserSection.tsx",
-      "line": 448,
-      "category": "palette",
-      "value": "text-blue-800"
-    },
-    {
-      "file": "domains/administration/ui/UserSection.tsx",
-      "line": 466,
-      "category": "palette",
-      "value": "text-red-500"
-    },
-    {
-      "file": "domains/administration/ui/UserSection.tsx",
-      "line": 466,
-      "category": "palette",
-      "value": "text-red-700"
     },
     {
       "file": "domains/calendar/ui/OperationalUserCalendar.tsx",
@@ -4407,39 +2708,15 @@
     },
     {
       "file": "domains/calendar/ui/OperationalUserCalendar.tsx",
-      "line": 463,
-      "category": "arbitrary",
-      "value": "shadow-[2px_0_4px_rgba(0,0,0,0.02)]"
-    },
-    {
-      "file": "domains/calendar/ui/OperationalUserCalendar.tsx",
       "line": 494,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/calendar/ui/OperationalUserCalendar.tsx",
-      "line": 496,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/calendar/ui/OperationalUserCalendar.tsx",
-      "line": 506,
-      "category": "palette",
-      "value": "text-purple-700"
-    },
-    {
-      "file": "domains/calendar/ui/OperationalUserCalendar.tsx",
       "line": 506,
       "category": "arbitrary",
       "value": "max-w-[80px]"
-    },
-    {
-      "file": "domains/calendar/ui/OperationalUserCalendar.tsx",
-      "line": 549,
-      "category": "arbitrary",
-      "value": "shadow-[2px_0_4px_rgba(0,0,0,0.02)]"
     },
     {
       "file": "domains/calendar/ui/OperationalUserCalendar.tsx",
@@ -4458,18 +2735,6 @@
       "line": 85,
       "category": "arbitrary",
       "value": "sm:grid-cols-[12rem_minmax(0,1fr)]"
-    },
-    {
-      "file": "domains/clients/ui/ClientSection.tsx",
-      "line": 194,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/clients/ui/ClientSection.tsx",
-      "line": 305,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "domains/clients/ui/ClientSection.tsx",
@@ -4503,27 +2768,9 @@
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 260,
-      "category": "palette",
-      "value": "bg-blue-50"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 282,
-      "category": "palette",
-      "value": "border-blue-300"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
       "line": 295,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 296,
-      "category": "palette",
-      "value": "bg-emerald-600"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
@@ -4533,231 +2780,15 @@
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 310,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 311,
-      "category": "palette",
-      "value": "bg-emerald-100"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 311,
-      "category": "palette",
-      "value": "text-emerald-800"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 325,
-      "category": "palette",
-      "value": "bg-blue-100"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 325,
-      "category": "palette",
-      "value": "text-blue-900"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 325,
-      "category": "palette",
-      "value": "border-blue-200"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 337,
-      "category": "palette",
-      "value": "bg-amber-100"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 337,
-      "category": "palette",
-      "value": "text-amber-900"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 337,
-      "category": "palette",
-      "value": "border-amber-200"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 338,
-      "category": "palette",
-      "value": "text-amber-700"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 346,
-      "category": "palette",
-      "value": "bg-purple-100"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 346,
-      "category": "palette",
-      "value": "text-purple-900"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 346,
-      "category": "palette",
-      "value": "border-purple-200"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 347,
-      "category": "palette",
-      "value": "text-purple-700"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 354,
-      "category": "palette",
-      "value": "bg-sky-100"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 354,
-      "category": "palette",
-      "value": "text-sky-900"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 354,
-      "category": "palette",
-      "value": "border-sky-200"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 355,
-      "category": "palette",
-      "value": "text-sky-700"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 371,
-      "category": "palette",
-      "value": "text-blue-700"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 371,
-      "category": "palette",
-      "value": "bg-blue-50"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 371,
-      "category": "palette",
-      "value": "border-blue-200"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 374,
-      "category": "palette",
-      "value": "fill-blue-600"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 392,
-      "category": "palette",
-      "value": "text-red-600"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 392,
-      "category": "palette",
-      "value": "bg-red-50"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
       "line": 409,
       "category": "arbitrary",
       "value": "max-h-[90vh]"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 411,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 413,
-      "category": "palette",
-      "value": "border-blue-500/40"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 413,
-      "category": "palette",
-      "value": "text-blue-400"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 427,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 438,
-      "category": "palette",
-      "value": "bg-blue-100"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 438,
-      "category": "palette",
-      "value": "text-blue-700"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
       "line": 438,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 438,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 445,
-      "category": "palette",
-      "value": "text-red-500"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 452,
-      "category": "palette",
-      "value": "ring-blue-100"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 466,
-      "category": "palette",
-      "value": "ring-blue-100"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 475,
-      "category": "palette",
-      "value": "bg-blue-100"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 475,
-      "category": "palette",
-      "value": "text-blue-700"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
@@ -4767,33 +2798,9 @@
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 475,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 545,
-      "category": "palette",
-      "value": "bg-blue-100"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 545,
-      "category": "palette",
-      "value": "text-blue-700"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
       "line": 545,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 545,
-      "category": "arbitrary",
-      "value": "text-[10px]"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
@@ -4803,87 +2810,15 @@
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 560,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
       "line": 573,
       "category": "shape",
       "value": "rounded-xs"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 577,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
       "line": 607,
       "category": "shape",
       "value": "rounded-xs"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 611,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 652,
-      "category": "palette",
-      "value": "bg-blue-700"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 652,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 668,
-      "category": "palette",
-      "value": "fill-blue-600"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 694,
-      "category": "palette",
-      "value": "bg-emerald-50"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 694,
-      "category": "palette",
-      "value": "border-emerald-200"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 694,
-      "category": "palette",
-      "value": "text-emerald-800"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 695,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 711,
-      "category": "palette",
-      "value": "bg-blue-700"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 711,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "domains/communication/ui/NotificationDropdown.tsx",
@@ -5037,24 +2972,6 @@
     },
     {
       "file": "domains/monitoring/ui/MyFocusSection.tsx",
-      "line": 688,
-      "category": "palette",
-      "value": "border-fuchsia-700"
-    },
-    {
-      "file": "domains/monitoring/ui/MyFocusSection.tsx",
-      "line": 688,
-      "category": "palette",
-      "value": "bg-fuchsia-600"
-    },
-    {
-      "file": "domains/monitoring/ui/MyFocusSection.tsx",
-      "line": 688,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/monitoring/ui/MyFocusSection.tsx",
       "line": 812,
       "category": "shape",
       "value": "rounded-none"
@@ -5127,12 +3044,6 @@
     },
     {
       "file": "domains/projects/ui/ProjectAnalytics.tsx",
-      "line": 37,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectAnalytics.tsx",
       "line": 42,
       "category": "inline",
       "value": "style={{ width: `${row.count / Math.max(...rows.map(r => r.count), 1) * 100}%` }}"
@@ -5142,126 +3053,6 @@
       "line": 82,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/projects/ui/ProjectAnalytics.tsx",
-      "line": 82,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectAnalytics.tsx",
-      "line": 92,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 59,
-      "category": "palette",
-      "value": "ring-blue-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 68,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 68,
-      "category": "palette",
-      "value": "bg-fuchsia-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 68,
-      "category": "palette",
-      "value": "bg-fuchsia-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 68,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 68,
-      "category": "palette",
-      "value": "border-fuchsia-700"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1267,
-      "category": "palette",
-      "value": "text-rose-700"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1267,
-      "category": "palette",
-      "value": "bg-rose-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1267,
-      "category": "palette",
-      "value": "border-rose-300"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1269,
-      "category": "palette",
-      "value": "text-orange-700"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1269,
-      "category": "palette",
-      "value": "bg-orange-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1269,
-      "category": "palette",
-      "value": "border-orange-300"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1271,
-      "category": "palette",
-      "value": "text-amber-700"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1271,
-      "category": "palette",
-      "value": "bg-amber-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1271,
-      "category": "palette",
-      "value": "border-amber-300"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1273,
-      "category": "palette",
-      "value": "text-emerald-700"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1273,
-      "category": "palette",
-      "value": "bg-emerald-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1273,
-      "category": "palette",
-      "value": "border-emerald-300"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
@@ -5319,12 +3110,6 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1926,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 1928,
       "category": "arbitrary",
       "value": "max-w-[50px]"
@@ -5337,63 +3122,9 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1935,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1946,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1957,
-      "category": "palette",
-      "value": "bg-purple-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1957,
-      "category": "palette",
-      "value": "border-purple-200"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1957,
-      "category": "palette",
-      "value": "text-purple-900"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1990,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 2022,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2032,
-      "category": "palette",
-      "value": "bg-sky-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2032,
-      "category": "palette",
-      "value": "border-sky-200"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2032,
-      "category": "palette",
-      "value": "text-sky-900"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
@@ -5415,57 +3146,15 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2125,
-      "category": "arbitrary",
-      "value": "shadow-[2px_0_5px_rgba(0,0,0,0.04)]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 2144,
       "category": "arbitrary",
       "value": "min-w-[55px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2167,
-      "category": "arbitrary",
-      "value": "shadow-[2px_0_5px_rgba(0,0,0,0.04)]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2192,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2197,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2207,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2212,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 2212,
       "category": "arbitrary",
       "value": "max-w-[50px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2254,
-      "category": "arbitrary",
-      "value": "shadow-[2px_0_5px_rgba(0,0,0,0.04)]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
@@ -5494,20 +3183,8 @@
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 2343,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2343,
       "category": "arbitrary",
       "value": "max-w-[50px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2363,
-      "category": "palette",
-      "value": "border-slate-150"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
@@ -5529,18 +3206,6 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2627,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2629,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 2682,
       "category": "arbitrary",
       "value": "max-w-[160px]"
@@ -5553,153 +3218,15 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2746,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 2759,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2797,
-      "category": "palette",
-      "value": "text-purple-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2836,
-      "category": "palette",
-      "value": "bg-rose-50"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2836,
-      "category": "palette",
-      "value": "border-rose-300"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2836,
-      "category": "palette",
-      "value": "text-rose-900"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2838,
-      "category": "palette",
-      "value": "text-rose-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2840,
-      "category": "palette",
-      "value": "text-rose-800"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2841,
-      "category": "palette",
-      "value": "text-rose-700"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2846,
-      "category": "palette",
-      "value": "bg-rose-200"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2846,
-      "category": "palette",
-      "value": "text-rose-900"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 2846,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2851,
-      "category": "palette",
-      "value": "bg-emerald-50"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2851,
-      "category": "palette",
-      "value": "border-emerald-200"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2851,
-      "category": "palette",
-      "value": "text-emerald-900"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2853,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2855,
-      "category": "palette",
-      "value": "text-emerald-800"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2856,
-      "category": "palette",
-      "value": "text-emerald-700"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2865,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2868,
-      "category": "palette",
-      "value": "text-blue-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2879,
-      "category": "palette",
-      "value": "bg-blue-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2879,
-      "category": "palette",
-      "value": "bg-blue-700"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2879,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2901,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2905,
-      "category": "palette",
-      "value": "text-blue-600"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
@@ -5709,81 +3236,15 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2907,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2913,
-      "category": "palette",
-      "value": "bg-rose-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2913,
-      "category": "palette",
-      "value": "text-rose-800"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2913,
-      "category": "palette",
-      "value": "border-rose-200"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 2913,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2913,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2914,
-      "category": "palette",
-      "value": "text-rose-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2918,
-      "category": "palette",
-      "value": "bg-emerald-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2918,
-      "category": "palette",
-      "value": "text-emerald-800"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2918,
-      "category": "palette",
-      "value": "border-emerald-200"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 2918,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2918,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2919,
-      "category": "palette",
-      "value": "text-emerald-600"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
@@ -5793,231 +3254,15 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2929,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2951,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2956,
-      "category": "palette",
-      "value": "text-emerald-700"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 2962,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2962,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2964,
-      "category": "palette",
-      "value": "bg-emerald-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2964,
-      "category": "palette",
-      "value": "bg-emerald-200"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2964,
-      "category": "palette",
-      "value": "text-emerald-800"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2964,
-      "category": "palette",
-      "value": "border-emerald-300"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2966,
-      "category": "palette",
-      "value": "bg-amber-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2966,
-      "category": "palette",
-      "value": "bg-amber-200"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2966,
-      "category": "palette",
-      "value": "text-amber-900"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2966,
-      "category": "palette",
-      "value": "border-amber-300"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2973,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2978,
-      "category": "palette",
-      "value": "text-amber-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2994,
-      "category": "palette",
-      "value": "text-blue-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3002,
-      "category": "palette",
-      "value": "text-rose-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3024,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3028,
-      "category": "palette",
-      "value": "text-blue-600"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 3034,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3078,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3086,
-      "category": "palette",
-      "value": "bg-blue-50"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3089,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3178,
-      "category": "palette",
-      "value": "bg-blue-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3178,
-      "category": "palette",
-      "value": "text-blue-900"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3178,
-      "category": "palette",
-      "value": "border-blue-300"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3182,
-      "category": "palette",
-      "value": "text-blue-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3189,
-      "category": "palette",
-      "value": "bg-amber-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3189,
-      "category": "palette",
-      "value": "text-amber-900"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3189,
-      "category": "palette",
-      "value": "border-amber-300"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3193,
-      "category": "palette",
-      "value": "text-amber-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3200,
-      "category": "palette",
-      "value": "bg-emerald-100"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3200,
-      "category": "palette",
-      "value": "text-emerald-900"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3200,
-      "category": "palette",
-      "value": "border-emerald-300"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3204,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3222,
-      "category": "palette",
-      "value": "bg-blue-600"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3222,
-      "category": "palette",
-      "value": "bg-blue-700"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3222,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
@@ -6087,12 +3332,6 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4105,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 4130,
       "category": "arbitrary",
       "value": "min-w-[240px]"
@@ -6108,12 +3347,6 @@
       "line": 4228,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4320,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
@@ -6147,45 +3380,9 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4423,
-      "category": "arbitrary",
-      "value": "shadow-[2px_0_5px_rgba(0,0,0,0.04)]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 4443,
       "category": "arbitrary",
       "value": "min-w-[55px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4466,
-      "category": "arbitrary",
-      "value": "shadow-[2px_0_5px_rgba(0,0,0,0.04)]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4490,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4495,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4505,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4547,
-      "category": "arbitrary",
-      "value": "shadow-[2px_0_5px_rgba(0,0,0,0.04)]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
@@ -6214,12 +3411,6 @@
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 4637,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4637,
       "category": "arbitrary",
       "value": "max-w-[50px]"
     },
@@ -6243,39 +3434,9 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4672,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
       "line": 4683,
       "category": "arbitrary",
       "value": "max-h-[90vh]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4832,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4834,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4835,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4937,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
@@ -6298,12 +3459,6 @@
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
       "line": 226,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 226,
       "category": "shape",
       "value": "rounded-full"
     },
@@ -6315,21 +3470,9 @@
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 253,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectTimeline.tsx",
       "line": 266,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 283,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
@@ -6342,12 +3485,6 @@
       "line": 284,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 301,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
@@ -6411,231 +3548,15 @@
     },
     {
       "file": "domains/tasks/ui/AssigneeSelector.tsx",
-      "line": 56,
-      "category": "arbitrary",
-      "value": "text-[11px]"
-    },
-    {
-      "file": "domains/tasks/ui/AssigneeSelector.tsx",
       "line": 76,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/tasks/ui/AssigneeSelector.tsx",
-      "line": 76,
-      "category": "arbitrary",
-      "value": "text-[10px]"
-    },
-    {
-      "file": "domains/tasks/ui/DefaultTasksSection.tsx",
-      "line": 178,
-      "category": "palette",
-      "value": "bg-blue-50"
-    },
-    {
-      "file": "domains/tasks/ui/DefaultTasksSection.tsx",
-      "line": 178,
-      "category": "palette",
-      "value": "border-blue-100"
-    },
-    {
-      "file": "domains/tasks/ui/DefaultTasksSection.tsx",
-      "line": 178,
-      "category": "palette",
-      "value": "text-blue-700"
-    },
-    {
-      "file": "domains/tasks/ui/DefaultTasksSection.tsx",
-      "line": 206,
-      "category": "palette",
-      "value": "text-white"
-    },
-    {
-      "file": "domains/tasks/ui/DefaultTasksSection.tsx",
-      "line": 206,
-      "category": "palette",
-      "value": "bg-emerald-600"
-    },
-    {
-      "file": "domains/tasks/ui/DefaultTasksSection.tsx",
-      "line": 206,
-      "category": "palette",
-      "value": "bg-emerald-700"
-    },
-    {
-      "file": "domains/tasks/ui/DefaultTasksSection.tsx",
-      "line": 216,
-      "category": "palette",
-      "value": "bg-blue-50"
-    },
-    {
-      "file": "domains/tasks/ui/DefaultTasksSection.tsx",
-      "line": 232,
-      "category": "palette",
-      "value": "text-red-600"
-    },
-    {
-      "file": "domains/tasks/ui/DefaultTasksSection.tsx",
-      "line": 232,
-      "category": "palette",
-      "value": "bg-red-50"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 68,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 463,
-      "category": "palette",
-      "value": "text-blue-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 464,
-      "category": "palette",
-      "value": "text-blue-500"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 476,
-      "category": "palette",
-      "value": "bg-blue-50"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 476,
-      "category": "palette",
-      "value": "text-blue-700"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 476,
-      "category": "palette",
-      "value": "border-blue-100"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 477,
-      "category": "palette",
-      "value": "text-blue-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 490,
-      "category": "palette",
-      "value": "border-blue-300"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 495,
-      "category": "palette",
-      "value": "bg-blue-50"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 495,
-      "category": "palette",
-      "value": "text-blue-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 509,
-      "category": "palette",
-      "value": "text-blue-700"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 514,
-      "category": "palette",
-      "value": "border-amber-300"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 520,
-      "category": "palette",
-      "value": "bg-amber-50"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 520,
-      "category": "palette",
-      "value": "text-amber-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 520,
-      "category": "palette",
-      "value": "bg-emerald-50"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 520,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 527,
-      "category": "palette",
-      "value": "text-amber-700"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 537,
-      "category": "palette",
-      "value": "text-amber-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 544,
-      "category": "palette",
-      "value": "border-emerald-300"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 549,
-      "category": "palette",
-      "value": "bg-emerald-50"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 549,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 564,
-      "category": "palette",
-      "value": "border-purple-300"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 569,
-      "category": "palette",
-      "value": "bg-purple-50"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 569,
-      "category": "palette",
-      "value": "text-purple-600"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
       "line": 581,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 583,
-      "category": "palette",
-      "value": "bg-purple-600"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
@@ -6648,12 +3569,6 @@
       "line": 584,
       "category": "inline",
       "value": "style={{ width: `${kpis.completionRate}%` }}"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 597,
-      "category": "palette",
-      "value": "text-blue-600"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
@@ -6681,21 +3596,9 @@
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 673,
-      "category": "palette",
-      "value": "text-blue-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
       "line": 676,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 678,
-      "category": "palette",
-      "value": "bg-blue-600"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
@@ -6711,60 +3614,6 @@
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 706,
-      "category": "palette",
-      "value": "text-indigo-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 719,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 719,
-      "category": "palette",
-      "value": "text-indigo-700"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 727,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 727,
-      "category": "palette",
-      "value": "text-indigo-700"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 735,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 735,
-      "category": "palette",
-      "value": "text-indigo-700"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 743,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 743,
-      "category": "palette",
-      "value": "text-indigo-700"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
       "line": 761,
       "category": "styleProps",
       "value": "contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}"
@@ -6777,273 +3626,9 @@
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 785,
-      "category": "palette",
-      "value": "bg-indigo-100/60"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 785,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 786,
-      "category": "palette",
-      "value": "bg-indigo-100/60"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 786,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 787,
-      "category": "palette",
-      "value": "bg-indigo-100/60"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 787,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 787,
-      "category": "palette",
-      "value": "bg-indigo-50/40"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 787,
-      "category": "palette",
-      "value": "text-indigo-800"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 788,
-      "category": "palette",
-      "value": "bg-indigo-100/60"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 788,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 788,
-      "category": "palette",
-      "value": "bg-indigo-50/40"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 788,
-      "category": "palette",
-      "value": "text-indigo-800"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 789,
-      "category": "palette",
-      "value": "bg-indigo-100/60"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 789,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 790,
-      "category": "palette",
-      "value": "bg-indigo-100/60"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 790,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 791,
-      "category": "palette",
-      "value": "bg-indigo-100/60"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 791,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 792,
-      "category": "palette",
-      "value": "bg-indigo-100/60"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 792,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 801,
-      "category": "palette",
-      "value": "bg-indigo-100/30"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 801,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 804,
-      "category": "palette",
-      "value": "bg-indigo-100/30"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 807,
-      "category": "palette",
-      "value": "bg-indigo-100/30"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 807,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 807,
-      "category": "palette",
-      "value": "bg-indigo-50/20"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 807,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 810,
-      "category": "palette",
-      "value": "bg-indigo-100/30"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 810,
-      "category": "palette",
-      "value": "bg-indigo-50/20"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 813,
-      "category": "palette",
-      "value": "bg-indigo-100/30"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 813,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 816,
-      "category": "palette",
-      "value": "bg-indigo-100/30"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 819,
-      "category": "palette",
-      "value": "bg-indigo-100/30"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 819,
-      "category": "palette",
-      "value": "text-indigo-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 822,
-      "category": "palette",
-      "value": "bg-indigo-100/30"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 846,
-      "category": "palette",
-      "value": "text-emerald-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 859,
-      "category": "palette",
-      "value": "bg-white"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 859,
-      "category": "palette",
-      "value": "text-emerald-700"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
       "line": 876,
       "category": "styleProps",
       "value": "contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 895,
-      "category": "palette",
-      "value": "bg-emerald-50/50"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 895,
-      "category": "palette",
-      "value": "text-emerald-800"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 896,
-      "category": "palette",
-      "value": "bg-blue-50/50"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 896,
-      "category": "palette",
-      "value": "text-blue-800"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 897,
-      "category": "palette",
-      "value": "bg-purple-50/50"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 897,
-      "category": "palette",
-      "value": "text-purple-800"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
@@ -7053,75 +3638,9 @@
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 910,
-      "category": "palette",
-      "value": "text-emerald-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 910,
-      "category": "palette",
-      "value": "bg-emerald-50/20"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 913,
-      "category": "palette",
-      "value": "text-blue-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 913,
-      "category": "palette",
-      "value": "bg-blue-50/20"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 916,
-      "category": "palette",
-      "value": "text-purple-900"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 916,
-      "category": "palette",
-      "value": "bg-purple-50/20"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 943,
-      "category": "palette",
-      "value": "text-purple-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 950,
-      "category": "palette",
-      "value": "bg-purple-50"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 950,
-      "category": "palette",
-      "value": "text-purple-700"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
       "line": 968,
       "category": "styleProps",
       "value": "contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 1003,
-      "category": "palette",
-      "value": "text-blue-600"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 1003,
-      "category": "palette",
-      "value": "text-emerald-600"
     },
     {
       "file": "domains/tasks/ui/TaskDetailsModal.tsx",
@@ -7134,12 +3653,6 @@
       "line": 451,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/tasks/ui/TaskSection.tsx",
-      "line": 662,
-      "category": "palette",
-      "value": "text-white"
     },
     {
       "file": "domains/tasks/ui/TaskSection.tsx",
