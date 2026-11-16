@@ -2606,7 +2606,7 @@ export default function ProjectSection({
                   </h3>
                   <p className="text-body-sm text-text-secondary mt-0.5">Gestão de tarefas técnicas, lembretes e prazos de execução</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {canWriteTasks && (
                     <>
                       <Button variant="ghost" size="sm"
@@ -2834,8 +2834,8 @@ export default function ProjectSection({
             <div data-m3-exclude data-theme={appConfig?.theme || 'default'} className="p-6 space-y-6">
               {/* Red Warning Banner if material has warning */}
               {hasMaterialWarning ? (
-                <div className="bg-feedback-danger-50 border-2 border-feedback-danger-300 rounded-card p-4 flex items-center justify-between text-feedback-danger-900 shadow-raised animate-fade-in">
-                  <div className="flex items-center gap-3">
+                <div className="bg-feedback-danger-50 border-2 border-feedback-danger-300 rounded-card p-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between text-feedback-danger-900 shadow-raised animate-fade-in">
+                  <div className="flex min-w-0 items-center gap-3">
                     <AlertTriangle className="w-6 h-6 text-feedback-danger-600 shrink-0" />
                     <div>
                       <h4 className="font-extrabold text-sm uppercase tracking-wide text-feedback-danger-800">Aviso: Material em falta</h4>
@@ -4884,7 +4884,7 @@ export default function ProjectSection({
               </div>
 
               {/* Form Actions */}
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-border-subtle">
+              <div className="flex flex-wrap justify-end gap-2.5 pt-4 border-t border-border-subtle">
                 <Button variant="ghost" size="sm"
                   type="button"
                   disabled={isSavingRisk}
