@@ -27,12 +27,12 @@ interface ProjectTimelineProps {
 }
 const PAGE_SIZE = 50;
 const taskBorderColor: Record<string, string> = {
-  vermelho: 'border-l-red-500',
-  amarelo: 'border-l-amber-500',
-  verde: 'border-l-emerald-500',
-  azul: 'border-l-sky-500',
-  laranja: 'border-l-orange-500',
-  cinza: 'border-l-slate-400',
+  vermelho: 'border-l-feedback-error-500',
+  amarelo: 'border-l-feedback-warning-500',
+  verde: 'border-l-feedback-success-500',
+  azul: 'border-l-category-sky-500',
+  laranja: 'border-l-feedback-attention-500',
+  cinza: 'border-l-status-neutral-400',
 };
 const taskBorderClass = (status: ReturnType<typeof getTaskStatusStyle>) => taskBorderColor[status.id] || taskBorderColor.cinza;
 export default function ProjectTimeline({ projects, clients, tasks, users = [], absences = [], projectStatuses, taskStatuses, projectRiskItems = [], specialDays = [],

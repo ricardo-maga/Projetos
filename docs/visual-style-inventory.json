@@ -5812,103 +5812,103 @@
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 199,
+      "line": 208,
       "category": "inline",
       "value": "style={{ minWidth: timelineMinWidth }}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 201,
+      "line": 210,
       "category": "inline",
       "value": "style={{ width: 260 }}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 201,
+      "line": 210,
       "category": "inline",
       "value": "style={compactDays.has(day.dateStr) ? { width: 64 } : undefined}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 226,
+      "line": 235,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 227,
+      "line": 236,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 266,
+      "line": 275,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 283,
+      "line": 292,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 284,
+      "line": 293,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 301,
+      "line": 310,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 302,
+      "line": 311,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 320,
+      "line": 329,
       "category": "inline",
       "value": "style={{ left: floatingHeader.left, width: floatingHeader.width, height: floatingHeader.height }}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 321,
+      "line": 330,
       "category": "inline",
       "value": "style={{ minWidth: timelineMinWidth }}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 322,
+      "line": 331,
       "category": "inline",
       "value": "style={{ width: 260 }}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 322,
+      "line": 331,
       "category": "inline",
       "value": "style={compactDays.has(day.dateStr) ? { width: 64 } : undefined}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 334,
+      "line": 343,
       "category": "inline",
       "value": "style={floatingDock ? { height: floatingDock.height } : undefined}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 336,
+      "line": 345,
       "category": "inline",
       "value": "style={floatingDock ? { left: floatingDock.left, width: floatingDock.width } : undefined}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 339,
+      "line": 348,
       "category": "inline",
       "value": "style={{ width: timelineMinWidth, height: 1 }}"
     },
