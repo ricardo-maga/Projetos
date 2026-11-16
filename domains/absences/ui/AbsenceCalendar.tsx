@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { SpecialDay, UserAbsence } from '@/lib/types';
 import Button from '@/components/ui/Button';
@@ -16,10 +17,12 @@ interface AbsenceCalendarProps {
   specialDays?: SpecialDay[];
   userIdFilter?: string | 'all';
   className?: string;
+  variant?: 'default' | 'dashboard';
+  footer?: ReactNode;
 }
 
 export default function AbsenceCalendar({
-  absences, users, specialDays = [], userIdFilter = 'all', className = '',
+  absences, users, specialDays = [], userIdFilter = 'all', className = '', variant = 'default', footer,
 }: AbsenceCalendarProps) {
   const [currentCalendarDate, setCurrentCalendarDate] = useState(() => new Date());
   const calendarAbsences = useMemo(() => userIdFilter === 'all'
@@ -78,9 +81,13 @@ export default function AbsenceCalendar({
   }
 
   return (
-    <Card className={`p-4 sm:p-5 space-y-4 min-w-0 ${className}`}>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">
-        <M3SectionHeader title="Calendário mensal" description="Ausências registadas." />
+    <Card className={`${variant === 'dashboard' ? 'p-5' : 'p-4 sm:p-5'} space-y-4 min-w-0 ${className}`}>
+      <div className={variant === 'dashboard'
+        ? 'flex flex-wrap justify-between items-start gap-x-4 gap-y-3'
+        : 'flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4'}>
+        {variant === 'dashboard'
+          ? <h3 className="text-heading-sm text-text-primary">Calendário mensal de ausências</h3>
+          : <M3SectionHeader title="Calendário mensal" description="Ausências registadas." />}
         <div className="flex flex-wrap items-center gap-2 select-none">
           <IconButton size="sm" aria-label="Mês anterior" onClick={() => setCurrentCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))} title="Mês anterior"><ChevronLeft className="w-4 h-4" /></IconButton>
           <span className="text-body-sm font-bold text-text-secondary min-w-[130px] text-center uppercase tracking-wider">
@@ -96,6 +103,7 @@ export default function AbsenceCalendar({
         </div>
         <div className="grid grid-cols-7 text-body-sm">{cells}</div>
       </div>
+      {footer}
     </Card>
   );
 }
