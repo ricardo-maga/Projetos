@@ -106,7 +106,7 @@
   --design-radius-dialog: 16px;
   --design-radius-badge: 4px;
   --design-radius-container: 16px;
-  --design-shadow-flat: none;
+  --design-shadow-flat: 0 0 0 0 transparent;
   --design-shadow-subtle: 0 1px rgb(0 0 0 / 5%);
   --design-shadow-raised: 0 1px 3px 0 rgb(0 0 0 / 5%), 0 1px 2px -1px rgb(0 0 0 / 5%);
   --design-shadow-overlay: 0 4px 6px -1px rgb(0 0 0 / 8%), 0 2px 4px -1px rgb(0 0 0 / 4%);
