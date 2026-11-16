@@ -79,17 +79,40 @@
   --spacing-token-2xl: 32px;
 
   /* Border Radius */
-  --radius-control: 8px;
-  --radius-card: 12px;
-  --radius-dialog: 16px;
-  --radius-badge: 4px;
-  --radius-container: 16px;
+  --radius-control: var(--design-radius-control);
+  --radius-card: var(--design-radius-card);
+  --radius-dialog: var(--design-radius-dialog);
+  --radius-badge: var(--design-radius-badge);
+  --radius-container: var(--design-radius-container);
 
   /* Shadows (Gmail/Material Style) */
-  --shadow-flat: none;
-  --shadow-raised: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
-  --shadow-overlay: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
-  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
+  --shadow-flat: var(--design-shadow-flat);
+  --shadow-raised: var(--design-shadow-raised);
+  --shadow-overlay: var(--design-shadow-overlay);
+  --shadow-modal: var(--design-shadow-modal);
+  --shadow-card: var(--design-shadow-card);
+}
+
+/* Presentation layer. Theme selectors can replace these without editing components. */
+:root {
+  --design-radius-control: 8px;
+  --design-radius-card: 12px;
+  --design-radius-dialog: 16px;
+  --design-radius-badge: 4px;
+  --design-radius-container: 16px;
+  --design-shadow-flat: none;
+  --design-shadow-raised: 0 1px 3px 0 rgb(0 0 0 / 5%), 0 1px 2px -1px rgb(0 0 0 / 5%);
+  --design-shadow-overlay: 0 4px 6px -1px rgb(0 0 0 / 8%), 0 2px 4px -1px rgb(0 0 0 / 4%);
+  --design-shadow-modal: 0 20px 25px -5px rgb(0 0 0 / 8%), 0 10px 10px -5px rgb(0 0 0 / 3%);
+  --design-shadow-card: none;
+  --design-shell-header: var(--m3-surface-container, var(--color-background-token));
+  --design-shell-navigation: var(--m3-surface-container, var(--color-background-token));
+  --design-shell-border: transparent;
+  --design-card-shadow: none;
+  --design-nav-radius: 999px;
+  --design-nav-active: var(--m3-primary-container, var(--primary-100));
+  --design-action-radius: 999px;
+  --design-heading-weight: 500;
 }
 
 :root,
@@ -350,9 +373,9 @@ body[data-theme="default"],
   --m3-outline: var(--brand-domino-blue-60);
   --m3-outline-variant: var(--brand-domino-blue-30);
   --m3-error: #b3261e;
-  --m3-radius-sm: 12px;
-  --m3-radius-md: 16px;
-  --m3-radius-lg: 28px;
+  --m3-radius-sm: var(--design-radius-control);
+  --m3-radius-md: var(--design-radius-card);
+  --m3-radius-lg: var(--design-radius-container);
   --primary-50: var(--brand-do-more-blue-10);
   --primary-100: var(--brand-domino-blue-10);
   --primary-200: var(--brand-domino-blue-30);
@@ -400,6 +423,27 @@ body[data-theme="default"],
   --color-text-disabled: var(--color-text-disabled-token);
   --color-border: var(--color-border-token);
   --color-border-subtle: var(--color-border-subtle-token);
+  --design-radius-control: 10px;
+  --design-radius-card: 18px;
+  --design-radius-dialog: 20px;
+  --design-radius-badge: 6px;
+  --design-radius-container: 20px;
+  --design-shadow-card: 0 2px 12px rgb(0 59 92 / 6%);
+  --design-shell-header: #ffffff;
+  --design-shell-navigation: #ffffff;
+  --design-shell-border: var(--brand-domino-blue-10);
+  --design-card-shadow: var(--design-shadow-card);
+  --design-nav-radius: 12px;
+  --design-nav-active: var(--brand-do-more-blue-30);
+  --design-action-radius: var(--design-radius-control);
+  --design-heading-weight: 650;
+  /* Rebind Tailwind aliases at the same scope as the theme values. */
+  --radius-control: var(--design-radius-control);
+  --radius-card: var(--design-radius-card);
+  --radius-dialog: var(--design-radius-dialog);
+  --radius-badge: var(--design-radius-badge);
+  --radius-container: var(--design-radius-container);
+  --shadow-card: var(--design-shadow-card);
 }
 
 #main-root {
@@ -408,13 +452,13 @@ body[data-theme="default"],
 }
 
 /* Shell and shared primitives; all interactive states are explicit. */
-.m3-top-app-bar { background: var(--m3-surface-container); border-color: transparent; box-shadow: none; }
-.m3-nav-rail { background: var(--m3-surface-container); border-color: transparent; }
-.m3-nav-item { border-radius: 999px; min-height: 48px; transition: background-color .18s ease, color .18s ease; }
-.m3-nav-item[aria-current="page"], .m3-nav-item.is-active { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+.m3-top-app-bar { background: var(--design-shell-header); border-bottom: 1px solid var(--design-shell-border); box-shadow: none; }
+.m3-nav-rail { background: var(--design-shell-navigation); border-right: 1px solid var(--design-shell-border); }
+.m3-nav-item { border-radius: var(--design-nav-radius); min-height: 48px; transition: background-color .18s ease, color .18s ease; }
+.m3-nav-item[aria-current="page"], .m3-nav-item.is-active { background: var(--design-nav-active); color: var(--m3-on-primary-container); }
 .m3-search { background: var(--m3-surface-container-high); border: 0; border-radius: 999px; height: 44px; }
-.m3-card { background: var(--m3-surface); border: 1px solid var(--m3-outline-variant); border-radius: var(--m3-radius-md); box-shadow: none; }
-.m3-button { min-height: 40px; padding: 0 20px; border: 1px solid transparent; border-radius: 999px; font-weight: 600; font-size: .875rem; cursor: pointer; transition: box-shadow .18s ease, background-color .18s ease; }
+.m3-card { background: var(--m3-surface); border: 1px solid var(--m3-outline-variant); border-radius: var(--radius-card); box-shadow: var(--design-card-shadow); }
+.m3-button { min-height: 40px; padding: 0 20px; border: 1px solid transparent; border-radius: var(--design-action-radius); font-weight: 600; font-size: .875rem; cursor: pointer; transition: box-shadow .18s ease, background-color .18s ease; }
 .m3-button--filled { background: var(--m3-primary); color: var(--m3-on-primary); }
 .m3-button--tonal { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
 .m3-button--text { background: transparent; color: var(--m3-primary); }
@@ -425,7 +469,7 @@ body[data-theme="default"],
 .m3-icon-button:hover:not(:disabled) { background: var(--m3-surface-container-high); }
 .m3-section-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 4px 0 12px; }
 .m3-section-header > div { min-width: 0; }
-.m3-section-header h2 { margin: 0; font-size: 1.375rem; line-height: 1.75rem; font-weight: 500; letter-spacing: -.02em; color: var(--m3-on-surface); }
+.m3-section-header h2 { margin: 0; font-size: 1.375rem; line-height: 1.75rem; font-weight: var(--design-heading-weight); letter-spacing: -.02em; color: var(--m3-on-surface); }
 .m3-section-header p { margin: 4px 0 0; font-size: .875rem; color: var(--m3-on-surface-variant); }
 .m3-section-header__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; max-width: 100%; }
 
@@ -445,7 +489,7 @@ body[data-theme="default"],
 /* Explicit opt-in for legacy cards that should inherit the M3 border treatment. */
 :where(#active-tab-content) .m3-legacy-card:not(:where([data-m3-exclude], [data-m3-exclude] *)) {
   border-color: var(--m3-outline-variant);
-  box-shadow: none;
+  box-shadow: var(--design-card-shadow);
 }
 .m3-focus-banner {
   background-color: var(--m3-primary);
