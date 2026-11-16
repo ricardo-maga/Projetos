@@ -468,7 +468,7 @@ export default function UserSection({
                                 }
                               }
                             )}
-                            className="text-feedback-error-500 hover:text-feedback-error-700 font-bold"
+                            className="text-error hover:text-feedback-error-700 font-bold"
                           >
                             Apagar
                           </button>}

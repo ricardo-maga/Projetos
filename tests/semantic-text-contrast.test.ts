@@ -2,13 +2,19 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 const css = readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8');
-function block(needle: string) {
-  const start = css.indexOf('{', css.indexOf(needle));
+const tones = readFileSync(new URL('../app/visual-tones.css', import.meta.url), 'utf8');
+function block(needle: string, source = css) {
+  const scope = source.indexOf(needle);
+  if (scope < 0) throw new Error(`Missing CSS scope: ${needle}`);
+  const start = source.indexOf('{', scope);
   if (start < 0) throw new Error(`Missing CSS scope: ${needle}`);
-  return Object.fromEntries([...css.slice(start + 1, css.indexOf('}', start)).matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)]
+  return Object.fromEntries([...source.slice(start + 1, source.indexOf('}', start)).matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)]
     .map(([, key, value]) => [key, value.replace(/\s*!important$/, '').trim()]));
 }
-const foundation = block('@theme {');
+const foundation = {
+  ...Object.fromEntries([...tones.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map(([, key, value]) => [key, value.trim()])),
+  ...block('@theme {'),
+};
 const baseline = block('[data-theme="blue"] {');
 const themes = ['blue', 'emerald', 'violet', 'amber', 'slate', 'rose', 'domino'];
 function color(name: string, theme = 'blue'): number[] {
@@ -31,6 +37,24 @@ function tint(foreground: number[], background: number[], alpha: number) {
 
 describe('Shared text roles retain normal-label contrast', () => {
   for (const theme of themes) {
+    it(`keeps documentation links and filled actions readable independently of ${theme}`, () => {
+      for (const name of ['--color-docs-accent-300', '--color-docs-accent-400']) {
+        expect(contrast(color(name, theme), [15, 23, 42].map(value => value / 255))).toBeGreaterThanOrEqual(4.5);
+      }
+      for (const name of ['--color-docs-accent-600', '--color-docs-accent-700']) {
+        expect(contrast(color(name, theme), [1, 1, 1])).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+  it('keeps the red and sky task labels readable on the solid fills, including their hover brightness', () => {
+    // Fills observed in the browser; their status/category identities stay intact.
+    const foreground = color('--color-on-status-dot');
+    for (const background of [[251, 44, 54], [0, 166, 244]]) {
+      expect(contrast(foreground, background.map(value => value / 255))).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(foreground, background.map(value => value * 0.95 / 255))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+  for (const theme of themes) {
     it(`keeps status text readable on white and tinted muted surfaces in ${theme}`, () => {
       for (const name of ['--color-success', '--color-warning', '--color-error']) {
         const foreground = color(name, theme);
@@ -43,6 +67,7 @@ describe('Shared text roles retain normal-label contrast', () => {
       const selected = tint(color('--primary-600', theme), color('--color-surface-muted-token', theme), 0.28);
       expect(contrast(foreground, selected)).toBeGreaterThanOrEqual(4.5);
       expect(contrast(color('--color-text-muted-token', theme), color('--color-surface-muted-token', theme))).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(color('--color-text-disabled-token', theme), color('--color-surface-muted-token', theme))).toBeGreaterThanOrEqual(4.5);
     });
   }
 });

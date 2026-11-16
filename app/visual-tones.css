@@ -102,6 +102,13 @@
   --color-docs-neutral-800: var(--color-neutral-800);
   --color-docs-neutral-900: var(--color-neutral-900);
   --color-docs-neutral-950: var(--color-neutral-950);
+  /* The documentation has a fixed dark surface, independent of the ERP theme. */
+  --color-docs-accent-300: #93c5fd;
+  --color-docs-accent-400: #60a5fa;
+  --color-docs-accent-500: #3b82f6;
+  --color-docs-accent-600: #2563eb;
+  --color-docs-accent-700: #1d4ed8;
+  --color-docs-accent-900: #1e3a8a;
   --color-forecast-600: var(--color-fuchsia-600);
   --color-forecast-700: var(--color-fuchsia-700);
 }

@@ -28,7 +28,7 @@ export default function ApiDocsPage() {
           </Link>
           <div className="h-5 w-px bg-docs-neutral-800 hidden sm:block" />
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-card bg-action-600/20 border border-action-500/30 text-action-400">
+            <div className="p-2 rounded-card bg-docs-accent-600/20 border border-docs-accent-500/30 text-docs-accent-400">
               <Code2 className="w-5 h-5" />
             </div>
             <div>
@@ -43,7 +43,7 @@ export default function ApiDocsPage() {
             onClick={() => setActiveTab('ui')}
             className={`px-3.5 py-2 text-xs font-bold rounded-card transition-all cursor-pointer ${
               activeTab === 'ui'
-                ? 'bg-action-600 text-inverse shadow-overlay shadow-action-600/20'
+                ? 'bg-docs-accent-600 text-inverse shadow-overlay shadow-docs-accent-600/20'
                 : 'bg-docs-neutral-800 text-docs-neutral-300 hover:bg-docs-neutral-700'
             }`}
           >
@@ -53,7 +53,7 @@ export default function ApiDocsPage() {
             onClick={() => setActiveTab('json')}
             className={`px-3.5 py-2 text-xs font-bold rounded-card transition-all cursor-pointer ${
               activeTab === 'json'
-                ? 'bg-action-600 text-inverse shadow-overlay shadow-action-600/20'
+                ? 'bg-docs-accent-600 text-inverse shadow-overlay shadow-docs-accent-600/20'
                 : 'bg-docs-neutral-800 text-docs-neutral-300 hover:bg-docs-neutral-700'
             }`}
           >
@@ -63,7 +63,7 @@ export default function ApiDocsPage() {
             onClick={() => setActiveTab('guide')}
             className={`px-3.5 py-2 text-xs font-bold rounded-card transition-all cursor-pointer ${
               activeTab === 'guide'
-                ? 'bg-action-600 text-inverse shadow-overlay shadow-action-600/20'
+                ? 'bg-docs-accent-600 text-inverse shadow-overlay shadow-docs-accent-600/20'
                 : 'bg-docs-neutral-800 text-docs-neutral-300 hover:bg-docs-neutral-700'
             }`}
           >
@@ -86,7 +86,7 @@ export default function ApiDocsPage() {
               <a
                 href="/api/v1/openapi.json"
                 download="openapi.json"
-                className="text-action-400 hover:text-action-300 font-semibold flex items-center gap-1 transition-colors"
+                className="text-docs-accent-400 hover:text-docs-accent-300 font-semibold flex items-center gap-1 transition-colors"
               >
                 <Download className="w-3.5 h-3.5" /> Download openapi.json
               </a>
@@ -137,14 +137,14 @@ export default function ApiDocsPage() {
           <div className="bg-docs-neutral-950 border border-docs-neutral-800 rounded-card p-5 shadow-modal space-y-4">
             <div className="flex justify-between items-center border-b border-docs-neutral-800 pb-3">
               <h3 className="font-extrabold text-sm text-docs-neutral-200 flex items-center gap-2">
-                <Code2 className="w-4 h-4 text-action-400" /> Esquema OpenAPI 3.0.3 (JSON)
+                <Code2 className="w-4 h-4 text-docs-accent-400" /> Esquema OpenAPI 3.0.3 (JSON)
               </h3>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(specJson);
                   alert('Especificação OpenAPI copiada para a área de transferência!');
                 }}
-                className="px-3 py-1.5 bg-action-600 hover:bg-action-500 text-inverse font-bold text-xs rounded-card transition-colors cursor-pointer flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-docs-accent-600 hover:bg-docs-accent-700 text-inverse font-bold text-xs rounded-card transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 Copiar JSON
               </button>
@@ -160,15 +160,15 @@ export default function ApiDocsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-docs-neutral-950 border border-docs-neutral-800 rounded-card p-6 space-y-4">
               <h3 className="font-extrabold text-docs-neutral-100 text-base flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-action-400" /> Autenticação & Cabeçalhos
+                <ShieldCheck className="w-5 h-5 text-docs-accent-400" /> Autenticação & Cabeçalhos
               </h3>
               <p className="text-xs text-docs-neutral-400 leading-relaxed">
                 Os pedidos feitos pela aplicação usam a sessão por cookie. Integrações externas autenticam-se com um token Bearer no cabeçalho <code className="text-feedback-success-400">Authorization</code>.
               </p>
               <div className="p-4 bg-docs-neutral-900 border border-docs-neutral-800 rounded-card font-mono text-xs text-docs-neutral-300 space-y-2">
-                <p className="text-docs-neutral-500">{`// Exemplo para uma integração externa:`}</p>
-                <p><span className="text-action-400">Content-Type:</span> application/json</p>
-                <p><span className="text-action-400">Authorization:</span> Bearer &lt;chave_de_integracao&gt;</p>
+                <p className="text-docs-neutral-400">{`// Exemplo para uma integração externa:`}</p>
+                <p><span className="text-docs-accent-400">Content-Type:</span> application/json</p>
+                <p><span className="text-docs-accent-400">Authorization:</span> Bearer &lt;chave_de_integracao&gt;</p>
               </div>
             </div>
 
@@ -178,7 +178,7 @@ export default function ApiDocsPage() {
               </h3>
               <ul className="space-y-2 text-xs text-docs-neutral-300">
                 <li className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-action-900/60 text-action-300 font-bold font-mono rounded-badge text-micro">GET / POST</span>
+                  <span className="px-2 py-0.5 bg-docs-accent-900/60 text-docs-accent-300 font-bold font-mono rounded-badge text-micro">GET / POST</span>
                   <code>/api/v1/projects</code> - Listar e criar projetos
                 </li>
                 <li className="flex items-center gap-2">

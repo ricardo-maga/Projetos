@@ -2143,7 +2143,7 @@ export default function ProjectSection({
                                         setShowImportTaskForm(false);
                                       }}
                                       className={`p-2 border-r border-border/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-border/50 transition-colors ${
-                                        isToday ? 'bg-warning/60 text-warning border-x border-warning/20' :
+                                        isToday ? 'bg-feedback-warning-100 text-warning border-x border-warning/20' :
                                         isWeekend ? 'bg-surface-muted/70 text-text-secondary hover:bg-border/40' : 'text-text-secondary'
                                       }`}
                                       title="Clique para adicionar tarefa neste dia"
@@ -2341,7 +2341,7 @@ export default function ProjectSection({
                                                   }
                                                   e.dataTransfer.setData('taskId', t.id);
                                                 }}
-                                                className={`py-1.5 px-1 rounded-control text-caption font-bold text-inverse shadow-raised cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
+                                                className={`py-1.5 px-1 rounded-control text-caption font-bold text-on-status-dot shadow-raised cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
                                                   getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                                 }`}
                                                 title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}
@@ -4420,7 +4420,7 @@ export default function ProjectSection({
                                   setShowImportTaskForm(false);
                                 }}
                                 className={`p-2 border-r border-border/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-border/50 transition-colors ${
-                                  isToday ? 'bg-warning/60 text-warning border-x border-warning/20' :
+                                  isToday ? 'bg-feedback-warning-100 text-warning border-x border-warning/20' :
                                   isWeekend ? 'bg-surface-muted/70 text-text-secondary hover:bg-border/40' : 'text-text-secondary'
                                 }`}
                                 title="Clique para adicionar tarefa neste dia"
@@ -4613,7 +4613,7 @@ export default function ProjectSection({
                                             }
                                             e.dataTransfer.setData('taskId', t.id);
                                           }}
-                                          className={`py-1.5 px-1 rounded-control text-caption font-bold text-inverse shadow-raised cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
+                                          className={`py-1.5 px-1 rounded-control text-caption font-bold text-on-status-dot shadow-raised cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
                                             getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                           }`}
                                           title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}

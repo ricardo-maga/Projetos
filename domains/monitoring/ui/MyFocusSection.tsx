@@ -795,7 +795,7 @@ export default function MyFocusSection({
 
                     const cellStyleClass = isSelected
                       ? 'bg-primary/10 text-text-primary ring-2 ring-inset ring-primary z-10'
-                      : !cell.isCurrentMonth ? 'bg-surface-muted/50 text-text-disabled'
+                      : !cell.isCurrentMonth ? 'bg-surface-muted/50 text-text-muted'
                       : isSpecial ? 'bg-error/5 text-error'
                       : isWeekend ? 'bg-surface-muted/50 text-text-secondary' : 'bg-surface text-text-primary';
 
@@ -943,7 +943,7 @@ export default function MyFocusSection({
                                 </span>
                                 <div className="text-caption font-medium text-text-secondary flex items-center gap-1 flex-wrap pl-5">
                                   <span className="text-text-primary font-bold">{client?.clientName || client?.shortName || 'Cliente N/D'}</span>
-                                  <span className="text-text-disabled">•</span>
+                                  <span aria-hidden="true" className="text-text-muted">•</span>
                                   <Button variant="ghost" size="sm"
                                     className="h-auto min-h-9 px-0 text-caption whitespace-normal text-left justify-start text-primary-ink font-semibold hover:underline"
                                     onClick={(e) => {
@@ -958,7 +958,7 @@ export default function MyFocusSection({
                                   </Button>
                                   {proj?.installProjectNo && (
                                     <>
-                                      <span className="text-text-disabled">•</span>
+                                      <span aria-hidden="true" className="text-text-muted">•</span>
                                       <span className="text-text-muted">N.º {proj.installProjectNo}</span>
                                     </>
                                   )}
@@ -995,11 +995,11 @@ export default function MyFocusSection({
                                 </span>
                                 <div className="text-caption font-medium text-text-secondary flex items-center gap-1 flex-wrap pl-5">
                                   <span className="text-text-primary font-bold">{client?.clientName || client?.shortName || 'Cliente N/D'}</span>
-                                  <span className="text-text-disabled">•</span>
+                                  <span aria-hidden="true" className="text-text-muted">•</span>
                                   <span className="text-warning font-semibold group-hover:underline">{p.title}</span>
                                   {p.installProjectNo && (
                                     <>
-                                      <span className="text-text-disabled">•</span>
+                                      <span aria-hidden="true" className="text-text-muted">•</span>
                                       <span className="text-text-muted">N.º {p.installProjectNo}</span>
                                     </>
                                   )}

@@ -421,7 +421,7 @@ export default function ClientSection({
                             {c.notes}
                           </div>
                         ) : (
-                          <span className="text-text-disabled italic text-caption">Sem notas</span>
+                          <span className="text-text-muted italic text-caption">Sem notas</span>
                         )}
                       </td>
                       <td className="px-5 py-4 text-right">
@@ -609,7 +609,7 @@ export default function ClientSection({
                             <span className="text-caption bg-surface-muted text-text-secondary px-2 py-0.5 rounded-badge font-bold uppercase font-mono tracking-tight">
                               {proj.startDate ? new Date(proj.startDate).toLocaleDateString('pt-PT') : 'S/Data'}
                             </span>
-                            <span className="text-caption text-text-disabled group-hover:text-primary-ink transition-colors font-bold">→</span>
+                            <span aria-hidden="true" className="text-caption text-text-muted group-hover:text-primary-ink transition-colors font-bold">→</span>
                           </div>
                         </Button>
                       ))}

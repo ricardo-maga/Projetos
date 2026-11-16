@@ -421,7 +421,7 @@ export default function AutomationEditor({
                 <div className="space-y-3 pl-7">
                   <div>
                     <label htmlFor="automation-field-1" className="block text-xs font-semibold text-text-secondary mb-1">
-                      Nome da Regra <span className="text-feedback-error-500">*</span>
+                      Nome da Regra <span className="text-error">*</span>
                     </label>
                     <input id="automation-field-1"
                       type="text"

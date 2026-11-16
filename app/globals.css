@@ -62,6 +62,7 @@
   --color-info: var(--primary-600);
   --color-overlay: #0f172a;
   --color-on-inverse: #cbd5e1;
+  --color-on-status-dot: #000000;
 
   /* Task analytics' existing neutral palette, named by its UI role. */
   --color-analysis-subtle: #f8fafc;
@@ -134,7 +135,7 @@ body,
   --color-text-primary-token: #111827;
   --color-text-secondary-token: #4b5563;
   --color-text-muted-token: #515b69;
-  --color-text-disabled-token: #d1d5db;
+  --color-text-disabled-token: var(--color-text-muted-token);
   --color-border-token: #e5e7eb;
   --color-border-subtle-token: #f3f4f6;
 
@@ -436,7 +437,7 @@ body[data-theme="default"],
   --color-text-primary-token: var(--brand-charcoal);
   --color-text-secondary-token: #444746;
   --color-text-muted-token: #5e5e5e;
-  --color-text-disabled-token: #66899d;
+  --color-text-disabled-token: var(--color-text-muted-token);
   --color-border-token: var(--brand-domino-blue-30);
   --color-border-subtle-token: var(--brand-domino-blue-10);
   /* Rebind aliases at the theme boundary, not just their inherited inputs. */
@@ -625,4 +626,10 @@ button[data-filled="true"] :where(span, svg) {
 
 .recharts-default-tooltip .recharts-tooltip-item {
   color: var(--chart-tooltip-text) !important;
+}
+
+/* Raw fields and Foundation controls share the same readable hint text. */
+:is(input, textarea)::placeholder {
+  color: var(--color-text-muted-token);
+  opacity: 1;
 }

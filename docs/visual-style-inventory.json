@@ -13,7 +13,7 @@
     "shape": 94,
     "orphanedShape": 0,
     "arbitrary": 91,
-    "hex": 268,
+    "hex": 267,
     "inline": 21,
     "styleProps": 6
   },
@@ -949,7 +949,7 @@
       "shape": 0,
       "orphanedShape": 0,
       "arbitrary": 0,
-      "hex": 203,
+      "hex": 202,
       "inline": 0,
       "styleProps": 0,
       "sharedImports": 0
@@ -3706,291 +3706,285 @@
     },
     {
       "file": "app/globals.css",
-      "line": 67,
+      "line": 65,
       "category": "hex",
-      "value": "#f8fafc"
+      "value": "#000000"
     },
     {
       "file": "app/globals.css",
       "line": 68,
       "category": "hex",
-      "value": "#f1f5f9"
+      "value": "#f8fafc"
     },
     {
       "file": "app/globals.css",
       "line": 69,
       "category": "hex",
-      "value": "#e2e8f0"
+      "value": "#f1f5f9"
     },
     {
       "file": "app/globals.css",
-      "line": 72,
+      "line": 70,
       "category": "hex",
-      "value": "#475569"
+      "value": "#e2e8f0"
     },
     {
       "file": "app/globals.css",
       "line": 73,
       "category": "hex",
-      "value": "#334155"
+      "value": "#475569"
     },
     {
       "file": "app/globals.css",
       "line": 74,
       "category": "hex",
-      "value": "#1e293b"
+      "value": "#334155"
     },
     {
       "file": "app/globals.css",
       "line": 75,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#1e293b"
     },
     {
       "file": "app/globals.css",
-      "line": 130,
+      "line": 76,
       "category": "hex",
-      "value": "#f9fafb"
+      "value": "#0f172a"
     },
     {
       "file": "app/globals.css",
       "line": 131,
       "category": "hex",
-      "value": "#ffffff"
+      "value": "#f9fafb"
     },
     {
       "file": "app/globals.css",
       "line": 132,
       "category": "hex",
-      "value": "#f3f4f6"
+      "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
       "line": 133,
       "category": "hex",
-      "value": "#ffffff"
+      "value": "#f3f4f6"
     },
     {
       "file": "app/globals.css",
       "line": 134,
       "category": "hex",
-      "value": "#111827"
+      "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
       "line": 135,
       "category": "hex",
-      "value": "#4b5563"
+      "value": "#111827"
     },
     {
       "file": "app/globals.css",
       "line": 136,
       "category": "hex",
-      "value": "#515b69"
+      "value": "#4b5563"
     },
     {
       "file": "app/globals.css",
       "line": 137,
       "category": "hex",
-      "value": "#d1d5db"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 138,
-      "category": "hex",
-      "value": "#e5e7eb"
+      "value": "#515b69"
     },
     {
       "file": "app/globals.css",
       "line": 139,
       "category": "hex",
-      "value": "#f3f4f6"
+      "value": "#e5e7eb"
     },
     {
       "file": "app/globals.css",
-      "line": 141,
+      "line": 140,
       "category": "hex",
-      "value": "#eff6ff"
+      "value": "#f3f4f6"
     },
     {
       "file": "app/globals.css",
       "line": 142,
       "category": "hex",
-      "value": "#dbeafe"
+      "value": "#eff6ff"
     },
     {
       "file": "app/globals.css",
       "line": 143,
       "category": "hex",
-      "value": "#bfdbfe"
+      "value": "#dbeafe"
     },
     {
       "file": "app/globals.css",
       "line": 144,
       "category": "hex",
-      "value": "#93c5fd"
+      "value": "#bfdbfe"
     },
     {
       "file": "app/globals.css",
       "line": 145,
       "category": "hex",
-      "value": "#60a5fa"
+      "value": "#93c5fd"
     },
     {
       "file": "app/globals.css",
       "line": 146,
       "category": "hex",
-      "value": "#3b82f6"
+      "value": "#60a5fa"
     },
     {
       "file": "app/globals.css",
       "line": 147,
       "category": "hex",
-      "value": "#2563eb"
+      "value": "#3b82f6"
     },
     {
       "file": "app/globals.css",
       "line": 148,
       "category": "hex",
-      "value": "#1d4ed8"
+      "value": "#2563eb"
     },
     {
       "file": "app/globals.css",
       "line": 149,
       "category": "hex",
-      "value": "#1e40af"
+      "value": "#1d4ed8"
     },
     {
       "file": "app/globals.css",
       "line": 150,
       "category": "hex",
-      "value": "#1e3a8a"
+      "value": "#1e40af"
     },
     {
       "file": "app/globals.css",
       "line": 151,
       "category": "hex",
-      "value": "#172554"
+      "value": "#1e3a8a"
     },
     {
       "file": "app/globals.css",
       "line": 152,
       "category": "hex",
-      "value": "#eff6ff"
+      "value": "#172554"
     },
     {
       "file": "app/globals.css",
       "line": 153,
       "category": "hex",
-      "value": "#dbeafe"
+      "value": "#eff6ff"
     },
     {
       "file": "app/globals.css",
       "line": 154,
       "category": "hex",
-      "value": "#bfdbfe"
+      "value": "#dbeafe"
     },
     {
       "file": "app/globals.css",
       "line": 155,
       "category": "hex",
-      "value": "#93c5fd"
+      "value": "#bfdbfe"
     },
     {
       "file": "app/globals.css",
       "line": 156,
       "category": "hex",
-      "value": "#60a5fa"
+      "value": "#93c5fd"
     },
     {
       "file": "app/globals.css",
       "line": 157,
       "category": "hex",
-      "value": "#3b82f6"
+      "value": "#60a5fa"
     },
     {
       "file": "app/globals.css",
       "line": 158,
       "category": "hex",
-      "value": "#2563eb"
+      "value": "#3b82f6"
     },
     {
       "file": "app/globals.css",
       "line": 159,
       "category": "hex",
-      "value": "#1d4ed8"
+      "value": "#2563eb"
     },
     {
       "file": "app/globals.css",
       "line": 160,
       "category": "hex",
-      "value": "#1e40af"
+      "value": "#1d4ed8"
     },
     {
       "file": "app/globals.css",
       "line": 161,
       "category": "hex",
-      "value": "#1e3a8a"
+      "value": "#1e40af"
     },
     {
       "file": "app/globals.css",
       "line": 162,
       "category": "hex",
-      "value": "#172554"
+      "value": "#1e3a8a"
     },
     {
       "file": "app/globals.css",
-      "line": 169,
+      "line": 163,
       "category": "hex",
-      "value": "#ecfdf5"
+      "value": "#172554"
     },
     {
       "file": "app/globals.css",
       "line": 170,
       "category": "hex",
-      "value": "#d1fae5"
+      "value": "#ecfdf5"
     },
     {
       "file": "app/globals.css",
       "line": 171,
       "category": "hex",
-      "value": "#a7f3d0"
+      "value": "#d1fae5"
     },
     {
       "file": "app/globals.css",
       "line": 172,
       "category": "hex",
-      "value": "#6ee7b7"
+      "value": "#a7f3d0"
     },
     {
       "file": "app/globals.css",
       "line": 173,
       "category": "hex",
-      "value": "#34d399"
+      "value": "#6ee7b7"
     },
     {
       "file": "app/globals.css",
       "line": 174,
       "category": "hex",
-      "value": "#10b981"
+      "value": "#34d399"
     },
     {
       "file": "app/globals.css",
-      "line": 176,
+      "line": 175,
       "category": "hex",
-      "value": "#047857"
+      "value": "#10b981"
     },
     {
       "file": "app/globals.css",
       "line": 177,
       "category": "hex",
-      "value": "#065f46"
+      "value": "#047857"
     },
     {
       "file": "app/globals.css",
       "line": 178,
       "category": "hex",
-      "value": "#064e3b"
+      "value": "#065f46"
     },
     {
       "file": "app/globals.css",
@@ -4002,61 +3996,61 @@
       "file": "app/globals.css",
       "line": 180,
       "category": "hex",
-      "value": "#022c22"
+      "value": "#064e3b"
     },
     {
       "file": "app/globals.css",
       "line": 181,
       "category": "hex",
-      "value": "#ecfdf5"
+      "value": "#022c22"
     },
     {
       "file": "app/globals.css",
       "line": 182,
       "category": "hex",
-      "value": "#d1fae5"
+      "value": "#ecfdf5"
     },
     {
       "file": "app/globals.css",
       "line": 183,
       "category": "hex",
-      "value": "#a7f3d0"
+      "value": "#d1fae5"
     },
     {
       "file": "app/globals.css",
       "line": 184,
       "category": "hex",
-      "value": "#6ee7b7"
+      "value": "#a7f3d0"
     },
     {
       "file": "app/globals.css",
       "line": 185,
       "category": "hex",
-      "value": "#34d399"
+      "value": "#6ee7b7"
     },
     {
       "file": "app/globals.css",
       "line": 186,
       "category": "hex",
-      "value": "#10b981"
+      "value": "#34d399"
     },
     {
       "file": "app/globals.css",
       "line": 187,
       "category": "hex",
-      "value": "#047857"
+      "value": "#10b981"
     },
     {
       "file": "app/globals.css",
       "line": 188,
       "category": "hex",
-      "value": "#065f46"
+      "value": "#047857"
     },
     {
       "file": "app/globals.css",
       "line": 189,
       "category": "hex",
-      "value": "#064e3b"
+      "value": "#065f46"
     },
     {
       "file": "app/globals.css",
@@ -4068,193 +4062,193 @@
       "file": "app/globals.css",
       "line": 191,
       "category": "hex",
-      "value": "#022c22"
+      "value": "#064e3b"
     },
     {
       "file": "app/globals.css",
-      "line": 198,
+      "line": 192,
       "category": "hex",
-      "value": "#f5f3ff"
+      "value": "#022c22"
     },
     {
       "file": "app/globals.css",
       "line": 199,
       "category": "hex",
-      "value": "#ede9fe"
+      "value": "#f5f3ff"
     },
     {
       "file": "app/globals.css",
       "line": 200,
       "category": "hex",
-      "value": "#ddd6fe"
+      "value": "#ede9fe"
     },
     {
       "file": "app/globals.css",
       "line": 201,
       "category": "hex",
-      "value": "#c4b5fd"
+      "value": "#ddd6fe"
     },
     {
       "file": "app/globals.css",
       "line": 202,
       "category": "hex",
-      "value": "#a78bfa"
+      "value": "#c4b5fd"
     },
     {
       "file": "app/globals.css",
       "line": 203,
       "category": "hex",
-      "value": "#8b5cf6"
+      "value": "#a78bfa"
     },
     {
       "file": "app/globals.css",
       "line": 204,
       "category": "hex",
-      "value": "#7c3aed"
+      "value": "#8b5cf6"
     },
     {
       "file": "app/globals.css",
       "line": 205,
       "category": "hex",
-      "value": "#6d28d9"
+      "value": "#7c3aed"
     },
     {
       "file": "app/globals.css",
       "line": 206,
       "category": "hex",
-      "value": "#5b21b6"
+      "value": "#6d28d9"
     },
     {
       "file": "app/globals.css",
       "line": 207,
       "category": "hex",
-      "value": "#4c1d95"
+      "value": "#5b21b6"
     },
     {
       "file": "app/globals.css",
       "line": 208,
       "category": "hex",
-      "value": "#2e1065"
+      "value": "#4c1d95"
     },
     {
       "file": "app/globals.css",
       "line": 209,
       "category": "hex",
-      "value": "#f5f3ff"
+      "value": "#2e1065"
     },
     {
       "file": "app/globals.css",
       "line": 210,
       "category": "hex",
-      "value": "#ede9fe"
+      "value": "#f5f3ff"
     },
     {
       "file": "app/globals.css",
       "line": 211,
       "category": "hex",
-      "value": "#ddd6fe"
+      "value": "#ede9fe"
     },
     {
       "file": "app/globals.css",
       "line": 212,
       "category": "hex",
-      "value": "#c4b5fd"
+      "value": "#ddd6fe"
     },
     {
       "file": "app/globals.css",
       "line": 213,
       "category": "hex",
-      "value": "#a78bfa"
+      "value": "#c4b5fd"
     },
     {
       "file": "app/globals.css",
       "line": 214,
       "category": "hex",
-      "value": "#8b5cf6"
+      "value": "#a78bfa"
     },
     {
       "file": "app/globals.css",
       "line": 215,
       "category": "hex",
-      "value": "#7c3aed"
+      "value": "#8b5cf6"
     },
     {
       "file": "app/globals.css",
       "line": 216,
       "category": "hex",
-      "value": "#6d28d9"
+      "value": "#7c3aed"
     },
     {
       "file": "app/globals.css",
       "line": 217,
       "category": "hex",
-      "value": "#5b21b6"
+      "value": "#6d28d9"
     },
     {
       "file": "app/globals.css",
       "line": 218,
       "category": "hex",
-      "value": "#4c1d95"
+      "value": "#5b21b6"
     },
     {
       "file": "app/globals.css",
       "line": 219,
       "category": "hex",
-      "value": "#2e1065"
+      "value": "#4c1d95"
     },
     {
       "file": "app/globals.css",
-      "line": 226,
+      "line": 220,
       "category": "hex",
-      "value": "#fffbeb"
+      "value": "#2e1065"
     },
     {
       "file": "app/globals.css",
       "line": 227,
       "category": "hex",
-      "value": "#fef3c7"
+      "value": "#fffbeb"
     },
     {
       "file": "app/globals.css",
       "line": 228,
       "category": "hex",
-      "value": "#fde68a"
+      "value": "#fef3c7"
     },
     {
       "file": "app/globals.css",
       "line": 229,
       "category": "hex",
-      "value": "#fcd34d"
+      "value": "#fde68a"
     },
     {
       "file": "app/globals.css",
       "line": 230,
       "category": "hex",
-      "value": "#fbbf24"
+      "value": "#fcd34d"
     },
     {
       "file": "app/globals.css",
       "line": 231,
       "category": "hex",
-      "value": "#f59e0b"
+      "value": "#fbbf24"
     },
     {
       "file": "app/globals.css",
       "line": 232,
       "category": "hex",
-      "value": "#b45309"
+      "value": "#f59e0b"
     },
     {
       "file": "app/globals.css",
       "line": 233,
       "category": "hex",
-      "value": "#92400e"
+      "value": "#b45309"
     },
     {
       "file": "app/globals.css",
       "line": 234,
       "category": "hex",
-      "value": "#78350f"
+      "value": "#92400e"
     },
     {
       "file": "app/globals.css",
@@ -4266,61 +4260,61 @@
       "file": "app/globals.css",
       "line": 236,
       "category": "hex",
-      "value": "#451a03"
+      "value": "#78350f"
     },
     {
       "file": "app/globals.css",
       "line": 237,
       "category": "hex",
-      "value": "#fffbeb"
+      "value": "#451a03"
     },
     {
       "file": "app/globals.css",
       "line": 238,
       "category": "hex",
-      "value": "#fef3c7"
+      "value": "#fffbeb"
     },
     {
       "file": "app/globals.css",
       "line": 239,
       "category": "hex",
-      "value": "#fde68a"
+      "value": "#fef3c7"
     },
     {
       "file": "app/globals.css",
       "line": 240,
       "category": "hex",
-      "value": "#fcd34d"
+      "value": "#fde68a"
     },
     {
       "file": "app/globals.css",
       "line": 241,
       "category": "hex",
-      "value": "#fbbf24"
+      "value": "#fcd34d"
     },
     {
       "file": "app/globals.css",
       "line": 242,
       "category": "hex",
-      "value": "#f59e0b"
+      "value": "#fbbf24"
     },
     {
       "file": "app/globals.css",
       "line": 243,
       "category": "hex",
-      "value": "#b45309"
+      "value": "#f59e0b"
     },
     {
       "file": "app/globals.css",
       "line": 244,
       "category": "hex",
-      "value": "#92400e"
+      "value": "#b45309"
     },
     {
       "file": "app/globals.css",
       "line": 245,
       "category": "hex",
-      "value": "#78350f"
+      "value": "#92400e"
     },
     {
       "file": "app/globals.css",
@@ -4332,445 +4326,439 @@
       "file": "app/globals.css",
       "line": 247,
       "category": "hex",
-      "value": "#451a03"
+      "value": "#78350f"
     },
     {
       "file": "app/globals.css",
-      "line": 254,
+      "line": 248,
       "category": "hex",
-      "value": "#f8fafc"
+      "value": "#451a03"
     },
     {
       "file": "app/globals.css",
       "line": 255,
       "category": "hex",
-      "value": "#f1f5f9"
+      "value": "#f8fafc"
     },
     {
       "file": "app/globals.css",
       "line": 256,
       "category": "hex",
-      "value": "#e2e8f0"
+      "value": "#f1f5f9"
     },
     {
       "file": "app/globals.css",
       "line": 257,
       "category": "hex",
-      "value": "#cbd5e1"
+      "value": "#e2e8f0"
     },
     {
       "file": "app/globals.css",
       "line": 258,
       "category": "hex",
-      "value": "#94a3b8"
+      "value": "#cbd5e1"
     },
     {
       "file": "app/globals.css",
       "line": 259,
       "category": "hex",
-      "value": "#64748b"
+      "value": "#94a3b8"
     },
     {
       "file": "app/globals.css",
       "line": 260,
       "category": "hex",
-      "value": "#475569"
+      "value": "#64748b"
     },
     {
       "file": "app/globals.css",
       "line": 261,
       "category": "hex",
-      "value": "#334155"
+      "value": "#475569"
     },
     {
       "file": "app/globals.css",
       "line": 262,
       "category": "hex",
-      "value": "#1e293b"
+      "value": "#334155"
     },
     {
       "file": "app/globals.css",
       "line": 263,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#1e293b"
     },
     {
       "file": "app/globals.css",
       "line": 264,
       "category": "hex",
-      "value": "#020617"
+      "value": "#0f172a"
     },
     {
       "file": "app/globals.css",
       "line": 265,
       "category": "hex",
-      "value": "#f8fafc"
+      "value": "#020617"
     },
     {
       "file": "app/globals.css",
       "line": 266,
       "category": "hex",
-      "value": "#f1f5f9"
+      "value": "#f8fafc"
     },
     {
       "file": "app/globals.css",
       "line": 267,
       "category": "hex",
-      "value": "#e2e8f0"
+      "value": "#f1f5f9"
     },
     {
       "file": "app/globals.css",
       "line": 268,
       "category": "hex",
-      "value": "#cbd5e1"
+      "value": "#e2e8f0"
     },
     {
       "file": "app/globals.css",
       "line": 269,
       "category": "hex",
-      "value": "#94a3b8"
+      "value": "#cbd5e1"
     },
     {
       "file": "app/globals.css",
       "line": 270,
       "category": "hex",
-      "value": "#64748b"
+      "value": "#94a3b8"
     },
     {
       "file": "app/globals.css",
       "line": 271,
       "category": "hex",
-      "value": "#475569"
+      "value": "#64748b"
     },
     {
       "file": "app/globals.css",
       "line": 272,
       "category": "hex",
-      "value": "#334155"
+      "value": "#475569"
     },
     {
       "file": "app/globals.css",
       "line": 273,
       "category": "hex",
-      "value": "#1e293b"
+      "value": "#334155"
     },
     {
       "file": "app/globals.css",
       "line": 274,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#1e293b"
     },
     {
       "file": "app/globals.css",
       "line": 275,
       "category": "hex",
-      "value": "#020617"
+      "value": "#0f172a"
     },
     {
       "file": "app/globals.css",
-      "line": 282,
+      "line": 276,
       "category": "hex",
-      "value": "#fff1f2"
+      "value": "#020617"
     },
     {
       "file": "app/globals.css",
       "line": 283,
       "category": "hex",
-      "value": "#ffe4e6"
+      "value": "#fff1f2"
     },
     {
       "file": "app/globals.css",
       "line": 284,
       "category": "hex",
-      "value": "#fecdd3"
+      "value": "#ffe4e6"
     },
     {
       "file": "app/globals.css",
       "line": 285,
       "category": "hex",
-      "value": "#fda4af"
+      "value": "#fecdd3"
     },
     {
       "file": "app/globals.css",
       "line": 286,
       "category": "hex",
-      "value": "#fb7185"
+      "value": "#fda4af"
     },
     {
       "file": "app/globals.css",
       "line": 287,
       "category": "hex",
-      "value": "#f43f5e"
+      "value": "#fb7185"
     },
     {
       "file": "app/globals.css",
       "line": 288,
       "category": "hex",
-      "value": "#e11d48"
+      "value": "#f43f5e"
     },
     {
       "file": "app/globals.css",
       "line": 289,
       "category": "hex",
-      "value": "#be123c"
+      "value": "#e11d48"
     },
     {
       "file": "app/globals.css",
       "line": 290,
       "category": "hex",
-      "value": "#9f1239"
+      "value": "#be123c"
     },
     {
       "file": "app/globals.css",
       "line": 291,
       "category": "hex",
-      "value": "#881337"
+      "value": "#9f1239"
     },
     {
       "file": "app/globals.css",
       "line": 292,
       "category": "hex",
-      "value": "#4c0519"
+      "value": "#881337"
     },
     {
       "file": "app/globals.css",
       "line": 293,
       "category": "hex",
-      "value": "#fff1f2"
+      "value": "#4c0519"
     },
     {
       "file": "app/globals.css",
       "line": 294,
       "category": "hex",
-      "value": "#ffe4e6"
+      "value": "#fff1f2"
     },
     {
       "file": "app/globals.css",
       "line": 295,
       "category": "hex",
-      "value": "#fecdd3"
+      "value": "#ffe4e6"
     },
     {
       "file": "app/globals.css",
       "line": 296,
       "category": "hex",
-      "value": "#fda4af"
+      "value": "#fecdd3"
     },
     {
       "file": "app/globals.css",
       "line": 297,
       "category": "hex",
-      "value": "#fb7185"
+      "value": "#fda4af"
     },
     {
       "file": "app/globals.css",
       "line": 298,
       "category": "hex",
-      "value": "#f43f5e"
+      "value": "#fb7185"
     },
     {
       "file": "app/globals.css",
       "line": 299,
       "category": "hex",
-      "value": "#e11d48"
+      "value": "#f43f5e"
     },
     {
       "file": "app/globals.css",
       "line": 300,
       "category": "hex",
-      "value": "#be123c"
+      "value": "#e11d48"
     },
     {
       "file": "app/globals.css",
       "line": 301,
       "category": "hex",
-      "value": "#9f1239"
+      "value": "#be123c"
     },
     {
       "file": "app/globals.css",
       "line": 302,
       "category": "hex",
-      "value": "#881337"
+      "value": "#9f1239"
     },
     {
       "file": "app/globals.css",
       "line": 303,
       "category": "hex",
-      "value": "#4c0519"
+      "value": "#881337"
     },
     {
       "file": "app/globals.css",
-      "line": 378,
+      "line": 304,
       "category": "hex",
-      "value": "#003b5c"
+      "value": "#4c0519"
     },
     {
       "file": "app/globals.css",
       "line": 379,
       "category": "hex",
-      "value": "#66899d"
+      "value": "#003b5c"
     },
     {
       "file": "app/globals.css",
       "line": 380,
       "category": "hex",
-      "value": "#b2c4ce"
+      "value": "#66899d"
     },
     {
       "file": "app/globals.css",
       "line": 381,
       "category": "hex",
-      "value": "#e5ebef"
+      "value": "#b2c4ce"
     },
     {
       "file": "app/globals.css",
       "line": 382,
       "category": "hex",
-      "value": "#009639"
+      "value": "#e5ebef"
     },
     {
       "file": "app/globals.css",
       "line": 383,
       "category": "hex",
-      "value": "#66c088"
+      "value": "#009639"
     },
     {
       "file": "app/globals.css",
       "line": 384,
       "category": "hex",
-      "value": "#b2dfc3"
+      "value": "#66c088"
     },
     {
       "file": "app/globals.css",
       "line": 385,
       "category": "hex",
-      "value": "#e5f4eb"
+      "value": "#b2dfc3"
     },
     {
       "file": "app/globals.css",
       "line": 386,
       "category": "hex",
-      "value": "#4298b5"
+      "value": "#e5f4eb"
     },
     {
       "file": "app/globals.css",
       "line": 387,
       "category": "hex",
-      "value": "#8ec1d3"
+      "value": "#4298b5"
     },
     {
       "file": "app/globals.css",
       "line": 388,
       "category": "hex",
-      "value": "#c6e0e9"
+      "value": "#8ec1d3"
     },
     {
       "file": "app/globals.css",
       "line": 389,
       "category": "hex",
-      "value": "#ecf5f8"
+      "value": "#c6e0e9"
     },
     {
       "file": "app/globals.css",
       "line": 390,
       "category": "hex",
+      "value": "#ecf5f8"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 391,
+      "category": "hex",
       "value": "#1a1a1a"
     },
     {
       "file": "app/globals.css",
-      "line": 392,
+      "line": 393,
       "category": "hex",
       "value": "#007a2e"
     },
     {
       "file": "app/globals.css",
-      "line": 396,
+      "line": 397,
       "category": "hex",
       "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
-      "line": 399,
+      "line": 400,
       "category": "hex",
       "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
-      "line": 403,
+      "line": 404,
       "category": "hex",
       "value": "#444746"
     },
     {
       "file": "app/globals.css",
-      "line": 406,
+      "line": 407,
       "category": "hex",
       "value": "#b3261e"
     },
     {
       "file": "app/globals.css",
-      "line": 414,
+      "line": 415,
       "category": "hex",
       "value": "#33718c"
     },
     {
       "file": "app/globals.css",
-      "line": 415,
+      "line": 416,
       "category": "hex",
       "value": "#1a5674"
     },
     {
       "file": "app/globals.css",
-      "line": 417,
+      "line": 418,
       "category": "hex",
       "value": "#00324e"
     },
     {
       "file": "app/globals.css",
-      "line": 418,
+      "line": 419,
       "category": "hex",
       "value": "#002a42"
     },
     {
       "file": "app/globals.css",
-      "line": 419,
+      "line": 420,
       "category": "hex",
       "value": "#002136"
     },
     {
       "file": "app/globals.css",
-      "line": 420,
+      "line": 421,
       "category": "hex",
       "value": "#001827"
     },
     {
       "file": "app/globals.css",
-      "line": 433,
+      "line": 434,
       "category": "hex",
       "value": "#ffffff"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 437,
-      "category": "hex",
-      "value": "#444746"
     },
     {
       "file": "app/globals.css",
       "line": 438,
       "category": "hex",
-      "value": "#5e5e5e"
+      "value": "#444746"
     },
     {
       "file": "app/globals.css",
       "line": 439,
       "category": "hex",
-      "value": "#66899d"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 463,
-      "category": "hex",
-      "value": "#ffffff"
+      "value": "#5e5e5e"
     },
     {
       "file": "app/globals.css",
@@ -4780,97 +4768,103 @@
     },
     {
       "file": "app/globals.css",
-      "line": 497,
-      "category": "hex",
-      "value": "#f9dedc"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 497,
-      "category": "hex",
-      "value": "#410e0b"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 557,
+      "line": 465,
       "category": "hex",
       "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
-      "line": 606,
+      "line": 498,
       "category": "hex",
-      "value": "#3b82f6"
+      "value": "#f9dedc"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 498,
+      "category": "hex",
+      "value": "#410e0b"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 558,
+      "category": "hex",
+      "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
       "line": 607,
       "category": "hex",
-      "value": "#10b981"
+      "value": "#3b82f6"
     },
     {
       "file": "app/globals.css",
       "line": 608,
       "category": "hex",
-      "value": "#f59e0b"
+      "value": "#10b981"
     },
     {
       "file": "app/globals.css",
       "line": 609,
       "category": "hex",
-      "value": "#8b5cf6"
+      "value": "#f59e0b"
     },
     {
       "file": "app/globals.css",
       "line": 610,
       "category": "hex",
-      "value": "#ec4899"
+      "value": "#8b5cf6"
     },
     {
       "file": "app/globals.css",
       "line": 611,
       "category": "hex",
-      "value": "#06b6d4"
+      "value": "#ec4899"
     },
     {
       "file": "app/globals.css",
       "line": 612,
       "category": "hex",
-      "value": "#f97316"
+      "value": "#06b6d4"
     },
     {
       "file": "app/globals.css",
       "line": 613,
       "category": "hex",
-      "value": "#6366f1"
+      "value": "#f97316"
     },
     {
       "file": "app/globals.css",
       "line": 614,
       "category": "hex",
-      "value": "#64748b"
+      "value": "#6366f1"
     },
     {
       "file": "app/globals.css",
       "line": 615,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#64748b"
     },
     {
       "file": "app/globals.css",
       "line": 616,
       "category": "hex",
-      "value": "#fff"
+      "value": "#0f172a"
     },
     {
       "file": "app/globals.css",
       "line": 617,
       "category": "hex",
-      "value": "#e2e8f0"
+      "value": "#fff"
     },
     {
       "file": "app/globals.css",
       "line": 618,
+      "category": "hex",
+      "value": "#e2e8f0"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 619,
       "category": "hex",
       "value": "#334155"
     },
