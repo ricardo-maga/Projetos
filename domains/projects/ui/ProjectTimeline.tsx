@@ -26,6 +26,15 @@ interface ProjectTimelineProps {
   updateTask?: (id: string, updates: Partial<Task>) => any;
 }
 const PAGE_SIZE = 50;
+const taskBorderColor: Record<string, string> = {
+  vermelho: 'border-l-red-500',
+  amarelo: 'border-l-amber-500',
+  verde: 'border-l-emerald-500',
+  azul: 'border-l-sky-500',
+  laranja: 'border-l-orange-500',
+  cinza: 'border-l-slate-400',
+};
+const taskBorderClass = (status: ReturnType<typeof getTaskStatusStyle>) => taskBorderColor[status.id] || taskBorderColor.cinza;
 export default function ProjectTimeline({ projects, clients, tasks, users = [], absences = [], projectStatuses, taskStatuses, projectRiskItems = [], specialDays = [],
   canCreate, onSelectProject, onSelectTask, onCreateTask, updateTask }: ProjectTimelineProps) {
   const [anchor, setAnchor] = useState(() => new Date());
@@ -220,7 +229,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                 const status = getTaskStatusStyle(task.statusId, taskStatuses);
                 const assigneeIds = task.assigneeIds || [];
                 return <Button key={task.id} {...dragProps(task)} variant="ghost" size="sm" title={task.title} aria-label={`Abrir tarefa ${task.title}`}
-                  className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${status.dotClass.replace('bg-', 'border-l-')} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${taskBorderClass(status)} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
                   <span className="flex items-center gap-1 min-w-0">
                     {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-inverse flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
@@ -260,7 +269,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                   <span>Tarefas sem data</span><ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 ${undatedOpen ? 'rotate-180' : ''}`} />
                 </Button>
                 {undatedOpen && <div className="max-h-32 overflow-y-auto space-y-2 pt-1" aria-label={`Tarefas sem data de ${project.title}`}>
-                  {pending.map(task => { const taskStyle = getTaskStatusStyle(task.statusId, taskStatuses); const incomplete = Boolean(task.startDate?.trim() || task.endDate?.trim()); return <div key={task.id} className="rounded-control border border-border bg-surface-muted p-1 space-y-1">
+                  {pending.map(task => { const taskStyle = getTaskStatusStyle(task.statusId, taskStatuses); const incomplete = Boolean(task.startDate?.trim() || task.endDate?.trim()); return <div key={task.id} className={`rounded-control border border-border border-l-4 ${taskBorderClass(taskStyle)} bg-surface-muted p-1 space-y-1`}>
                     <Button {...dragProps(task)} variant="ghost" size="sm" className={`w-full h-auto min-h-8 px-1 justify-start text-left ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                       title={task.title} aria-label={`Abrir tarefa sem data ${task.title}`} onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
                       <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${task.assigneeIds?.length ? taskStyle.dotClass : 'bg-error'}`} aria-hidden="true" />
@@ -277,7 +286,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                   const status = getTaskStatusStyle(event.task.statusId, taskStatuses);
                   const assigneeIds = event.task.assigneeIds || [];
                   return <Button key={`compact-task-${index}`} {...dragProps(event.task)} variant="ghost" size="sm" title={event.title} aria-label={`Abrir tarefa ${event.title}`}
-                    className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${status.dotClass.replace('bg-', 'border-l-')} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${taskBorderClass(status)} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     onClick={() => openOutsideTimeline(() => onSelectTask(event.task))}>
                     <span className="flex items-center gap-1 min-w-0">
                       {assigneeIds.slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-inverse flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
@@ -293,7 +302,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               {expanded && <div className="space-y-2">
                 {(events.get(project.id)?.get(day.dateStr) || []).map((event, index) => {
                   const status = event.kind === 'task' ? getTaskStatusStyle(event.task.statusId, taskStatuses) : undefined;
-                  return <Button key={`${event.kind}-${index}`} {...(event.kind === 'task' ? dragProps(event.task) : {})} variant="ghost" size="sm" className={`w-full h-auto min-h-9 px-2 py-2 whitespace-normal text-left justify-start bg-surface border border-border ${status ? `border-l-4 ${status.dotClass.replace('bg-', 'border-l-')}` : ''} ${status && canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  return <Button key={`${event.kind}-${index}`} {...(event.kind === 'task' ? dragProps(event.task) : {})} variant="ghost" size="sm" className={`w-full h-auto min-h-9 px-2 py-2 whitespace-normal text-left justify-start bg-surface border border-border ${status ? `border-l-4 ${taskBorderClass(status)}` : ''} ${status && canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     onClick={() => openOutsideTimeline(() => event.kind === 'task' ? onSelectTask(event.task) : onSelectProject?.(project.id))}>
                       <span className="flex flex-col gap-1 min-w-0 break-words">
                       <span title={event.title} className={`${event.kind === 'milestone' ? 'text-caption text-text-secondary' : 'text-body-sm font-semibold'} ${event.kind === 'task' ? 'line-clamp-2' : ''}`}>{event.kind === 'risk' && <ShieldAlert className="inline w-3.5 h-3.5 mr-1" />}{event.title}</span>
