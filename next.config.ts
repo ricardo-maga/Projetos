@@ -1,7 +1,9 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  distDir: process.env.ERP_STAGING === 'true' ? '.next-staging' : '.next',
+  // Local staging can run beside a production build. Vercel's Next adapter
+  // expects the standard output directory for both preview and production.
+  distDir: process.env.ERP_STAGING === 'true' && process.env.VERCEL !== '1' ? '.next-staging' : '.next',
   reactStrictMode: true,
   typescript: {
     tsconfigPath: './tsconfig.application.json',

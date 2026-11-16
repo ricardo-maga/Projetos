@@ -14,3 +14,4 @@ database/staging/supabase/.temp/
 .baseline-*/
 *.tsbuildinfo
 .vercel/
+.qa-runtime/
