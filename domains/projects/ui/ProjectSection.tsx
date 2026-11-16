@@ -3608,7 +3608,7 @@ export default function ProjectSection({
               </div>
 
               {showClientSuggestions && (
-                <div className="absolute z-50 left-0 right-0 max-h-60 overflow-y-auto bg-surface border border-border rounded-control -lg mt-1 p-1">
+                <div className="absolute z-50 left-0 right-0 max-h-60 overflow-y-auto bg-surface border border-border rounded-control shadow-overlay mt-1 p-1">
                   {autocompleteClients.length > 0 ? (
                     autocompleteClients.map(c => {
                       const isSelected = formClient === c.id;

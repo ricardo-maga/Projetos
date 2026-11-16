@@ -758,6 +758,7 @@ export default function TaskSection({
                     <span className="text-text-secondary font-medium text-body-sm">Mostrar:</span>
                     <div className="w-20">
                       <Select
+                        aria-label="Tarefas por página"
                         value={String(pageSize)}
                         onChange={e => {
                           setPageSize(Number(e.target.value));
@@ -778,6 +779,7 @@ export default function TaskSection({
                     <span className="text-text-secondary font-medium text-body-sm">Ordenar por:</span>
                     <div className="w-auto min-w-[180px]">
                       <Select
+                        aria-label="Ordenar tarefas por"
                         value={sortBy}
                         onChange={e => setSortBy(e.target.value as 'estimatedDate' | 'status')}
                         className="h-9 py-1 px-2.5 text-body-sm font-semibold"
