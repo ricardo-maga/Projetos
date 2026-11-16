@@ -62,7 +62,10 @@ describe('Projects M3 presentation', () => {
     const h = createProjectHarness({ serverProjects: projects,
       settledProjectsKey: projectQueryKey() });
     const html = renderToStaticMarkup(h.render({ ...projectPreviewProps, projects, selectedProjectId: null }));
-    expect(html.match(/Clique para alterar o Forecast/g)).toHaveLength(1);
+    expect(html).toContain(forecastLabel(`${month}-01`));
+    expect(html).toMatch(/<span[^>]*>Forecast [^<]+<\/span>/);
+    expect(html).not.toContain('Clique para alterar o Forecast');
+    expect(html).not.toContain('aria-label="Mês do Forecast"');
     expect(html).not.toContain('Forecast N/D');
     expect(html).not.toContain(forecastLabel(`${offsetForecastMonth(month, 1)}-01`));
   });

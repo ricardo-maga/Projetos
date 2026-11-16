@@ -67,6 +67,9 @@ function ForecastBadge({ project, statuses, canEdit, updateProject, compact = fa
   const alert = projectForecastAlert(project, statuses);
   const tone = project.forecastDate ? alert === 'overdue' ? 'bg-error hover:bg-error text-white border-error' : 'bg-fuchsia-600 hover:bg-fuchsia-600 text-white border-fuchsia-700' : 'bg-surface-muted hover:bg-surface-muted text-text-secondary border-border';
   const alertTitle = alert === 'overdue' ? 'Forecast em atraso' : alert === 'current' ? 'Instalar este mês' : alert === 'next' ? 'Instalar no mês seguinte' : '';
+  if (compact) return <span title={alertTitle || undefined} className={`inline-flex h-auto items-center rounded-badge border px-1.5 py-0.5 text-caption font-bold whitespace-nowrap ${tone}`}>
+    {forecastLabel(project.forecastDate)}
+  </span>;
   const save = async () => {
     if (!updateProject || saving) return;
     const next = draft ? normalizeForecast(draft) : '';
