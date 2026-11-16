@@ -17,6 +17,7 @@ import AppLoadingScreen from '../components/AppLoadingScreen';
 import Dialog from '../components/ui/Dialog';
 import IconButton from '../components/ui/IconButton';
 import { cn } from '../lib/utils';
+import { getPresentationTheme } from '../lib/presentationTheme';
 
 import {
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText,
@@ -226,7 +227,7 @@ export default function Page() {
   // Synchronize active theme attribute on document.documentElement for global styling
   React.useEffect(() => {
     const cachedTheme = typeof window !== 'undefined' ? localStorage.getItem('erp_theme') : null;
-    const currentTheme = state?.appConfig?.theme || publicAppConfig?.theme || cachedTheme || 'default';
+    const currentTheme = getPresentationTheme(isInitialDataLoaded, state?.appConfig?.theme, publicAppConfig?.theme, cachedTheme);
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('data-theme', currentTheme);
       document.body?.setAttribute('data-theme', currentTheme);
@@ -235,7 +236,7 @@ export default function Page() {
         root.setAttribute('data-theme', currentTheme);
       }
     }
-  }, [state?.appConfig?.theme, publicAppConfig?.theme]);
+  }, [isInitialDataLoaded, state?.appConfig?.theme, publicAppConfig?.theme]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
