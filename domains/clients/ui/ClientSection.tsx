@@ -191,7 +191,7 @@ export default function ClientSection({
               <Button variant="primary" size="sm"
                 type="submit"
                 isLoading={isSavingClient}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-white hover:bg-primary font-bold rounded-control text-body-sm shadow-sm transition-colors"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-white hover:bg-primary font-bold rounded-control text-body-sm shadow-raised transition-colors"
               >
                 <Save className="w-3.5 h-3.5" /> Gravar Cliente
               </Button>
@@ -417,7 +417,7 @@ export default function ClientSection({
                       </td>
                       <td className="px-5 py-4 text-text-muted max-w-[200px]">
                         {c.notes ? (
-                          <div className="text-caption bg-surface border border-border-subtle p-2 rounded-lg line-clamp-2 italic text-text-secondary" title={c.notes}>
+                          <div className="text-caption bg-surface border border-border-subtle p-2 rounded-control line-clamp-2 italic text-text-secondary" title={c.notes}>
                             {c.notes}
                           </div>
                         ) : (
@@ -429,7 +429,7 @@ export default function ClientSection({
                           {canWriteClients && (
                             <IconButton variant="ghost" size="sm" aria-label="Editar cliente"
                               onClick={() => openForm(c)}
-                              className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-md text-text-muted"
+                              className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-control text-text-muted"
                               title="Editar"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -440,7 +440,7 @@ export default function ClientSection({
                               <Button variant="outline" size="sm"
                                 isLoading={isSavingClient}
                                 onClick={() => { void runClientAction(() => updateClient(c.id, { deleted: false })); }}
-                                className="px-2 py-1 bg-success/10 text-success hover:bg-success/10 rounded-md text-caption font-bold cursor-pointer"
+                                className="px-2 py-1 bg-success/10 text-success hover:bg-success/10 rounded-control text-caption font-bold cursor-pointer"
                                 title="Restaurar Cliente"
                               >
                                 Restaurar
@@ -466,7 +466,7 @@ export default function ClientSection({
                                     }
                                   );
                                 }}
-                                className="p-1.5 hover:bg-error/10 hover:text-error rounded-md text-text-muted cursor-pointer"
+                                className="p-1.5 hover:bg-error/10 hover:text-error rounded-control text-text-muted cursor-pointer"
                                 title="Eliminar (Soft Delete)"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -499,7 +499,7 @@ export default function ClientSection({
                       setPageSize(Number(e.target.value));
                       setCurrentPage(1);
                     }}
-                    className="px-2 py-1 bg-surface border border-border-subtle rounded-lg text-body-sm font-semibold text-text-secondary outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                    className="px-2 py-1 bg-surface border border-border-subtle rounded-control text-body-sm font-semibold text-text-secondary outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                   >
                     <option value={15}>15</option>
                     <option value={25}>25</option>
@@ -515,19 +515,19 @@ export default function ClientSection({
                     type="button"
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="px-2.5 py-1.5 bg-surface border border-border-subtle rounded-lg font-bold text-text-secondary hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1.5 bg-surface border border-border-subtle rounded-control font-bold text-text-secondary hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                     <span>Anterior</span>
                   </Button>
-                  <div className="px-3 py-1.5 bg-surface border border-border-subtle rounded-lg font-bold text-text-secondary text-body-sm">
+                  <div className="px-3 py-1.5 bg-surface border border-border-subtle rounded-control font-bold text-text-secondary text-body-sm">
                     {currentPage} / {totalPages || 1}
                   </div>
                   <Button variant="outline" size="sm"
                     type="button"
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages || totalPages === 0}
-                    className="px-2.5 py-1.5 bg-surface border border-border-subtle rounded-lg font-bold text-text-secondary hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1.5 bg-surface border border-border-subtle rounded-control font-bold text-text-secondary hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <span>Seguinte</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -630,7 +630,7 @@ export default function ClientSection({
                             type="button"
                             disabled={projectsCurrentPage === 1}
                             onClick={() => setProjectsCurrentPage(prev => Math.max(1, prev - 1))}
-                            className="px-2.5 py-1 bg-surface border border-border-subtle rounded-lg hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold"
+                            className="px-2.5 py-1 bg-surface border border-border-subtle rounded-control hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold"
                           >
                             Anterior
                           </Button>
@@ -641,7 +641,7 @@ export default function ClientSection({
                             type="button"
                             disabled={projectsCurrentPage === totalPages}
                             onClick={() => setProjectsCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            className="px-2.5 py-1 bg-surface border border-border-subtle rounded-lg hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold"
+                            className="px-2.5 py-1 bg-surface border border-border-subtle rounded-control hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold"
                           >
                             Seguinte
                           </Button>

@@ -587,7 +587,7 @@ export default function MyFocusSection({
                             <span className="text-body-sm text-text-muted shrink-0">{focusHours(task.estimatedHours)}</span>
                           </div>
                         {task.notes && (
-                          <p className="text-caption text-text-muted bg-warning/10 p-2 rounded-lg border border-warning/20 italic pl-7 mt-1">
+                          <p className="text-caption text-text-muted bg-warning/10 p-2 rounded-control border border-warning/20 italic pl-7 mt-1">
                             &quot;{task.notes}&quot;
                           </p>
                         )}
@@ -599,9 +599,9 @@ export default function MyFocusSection({
                         <span className="text-caption text-text-muted font-bold uppercase tracking-wider">Data Prevista</span>
                         <div className={`text-caption font-black flex items-center gap-1 mt-0.5 ${
                           dateVal === todayStr
-                            ? 'text-warning bg-warning/10 px-2 py-0.5 rounded-md border border-warning/20'
+                            ? 'text-warning bg-warning/10 px-2 py-0.5 rounded-control border border-warning/20'
                             : dateVal && dateVal < todayStr && !isDone
-                              ? 'text-error bg-error/10 px-2 py-0.5 rounded-md border border-error/20'
+                              ? 'text-error bg-error/10 px-2 py-0.5 rounded-control border border-error/20'
                               : 'text-text-secondary'
                         }`}>
                           <CalendarIcon className="w-3.5 h-3.5" />
@@ -773,8 +773,8 @@ export default function MyFocusSection({
                   <span className="text-text-muted py-0.5">Qua</span>
                   <span className="text-text-muted py-0.5">Qui</span>
                   <span className="text-text-muted py-0.5">Sex</span>
-                  <span className="text-text-muted bg-surface-muted/70 py-0.5 rounded-md font-bold">Sáb</span>
-                  <span className="text-text-muted bg-surface-muted/70 py-0.5 rounded-md font-bold">Dom</span>
+                  <span className="text-text-muted bg-surface-muted/70 py-0.5 rounded-control font-bold">Sáb</span>
+                  <span className="text-text-muted bg-surface-muted/70 py-0.5 rounded-control font-bold">Dom</span>
                 </div>
 
                 {/* DAYS MATRIX */}

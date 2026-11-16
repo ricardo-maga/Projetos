@@ -58,6 +58,8 @@
   --color-warning: #d97706;
   --color-error: #dc2626;
   --color-info: var(--primary-600);
+  --color-overlay: #0f172a;
+  --color-on-inverse: #cbd5e1;
 
   /* Task analytics' existing neutral palette, named by its UI role. */
   --color-analysis-subtle: #f8fafc;
@@ -569,3 +571,20 @@ button[data-filled="true"] :where(span, svg) {
 .presales-rich-text p { margin: .35rem 0; }
 .presales-rich-text strong { font-weight: 700; }
 .presales-rich-text em { font-style: italic; }
+
+/* Shared chart palette: categorical values retain their existing identity. */
+:root {
+  --chart-series-blue: #3b82f6;
+  --chart-series-green: #10b981;
+  --chart-series-amber: #f59e0b;
+  --chart-series-purple: #8b5cf6;
+  --chart-series-pink: #ec4899;
+  --chart-series-cyan: #06b6d4;
+  --chart-series-orange: #f97316;
+  --chart-series-indigo: #6366f1;
+  --chart-axis: #64748b;
+  --chart-tooltip-background: #0f172a;
+  --chart-tooltip-text: #fff;
+  --chart-grid: #e2e8f0;
+  --chart-label: #334155;
+}

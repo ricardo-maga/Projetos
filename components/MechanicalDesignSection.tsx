@@ -231,7 +231,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
       </div>} />
     {error && <p role="alert" className="rounded-control border border-error/30 bg-error/10 p-3 text-error">{error}</p>}
     {notice && <p role="status" className="rounded-control border border-success/30 bg-success/10 p-3 text-text-primary">{notice}</p>}
-    {canCreate && showCreate && <M3Card className="overflow-visible border border-border bg-surface p-6 shadow-sm">
+    {canCreate && showCreate && <M3Card className="overflow-visible border border-border bg-surface p-6 shadow-raised">
       <h3 className="mb-5 text-heading-sm font-bold text-text-primary">Adicionar novo pedido de desenho</h3>
       <form onSubmit={event => void create(event)} className="space-y-5">
         <div className="grid gap-5 text-body-sm font-semibold text-text-secondary md:grid-cols-2">
@@ -251,7 +251,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
                 placeholder="Pesquisar projeto por nome..." className="w-full pr-9" />
               <Search aria-hidden="true" className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-text-muted" />
             </div>
-            {showProjectSuggestions && <div id="design-project-suggestions" role="listbox" className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-control border border-border bg-surface p-1 shadow-lg">
+            {showProjectSuggestions && <div id="design-project-suggestions" role="listbox" className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-control border border-border bg-surface p-1 shadow-overlay">
               <button type="button" role="option" aria-selected={!projectId} className="w-full rounded-control p-2 text-left text-body-sm hover:bg-surface-muted"
                 onMouseDown={event => event.preventDefault()} onClick={() => { setProjectId(''); setProjectSearchQuery(''); setShowProjectSuggestions(false); }}>Pedido independente</button>
               {projectSuggestions.map(project => <button key={project.id} type="button" role="option" aria-selected={projectId === project.id}
@@ -292,7 +292,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
       </form>
     </M3Card>}
     <div className="grid gap-5 lg:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]">
-      <M3Card className="space-y-3 border border-border bg-surface p-4 shadow-sm">
+      <M3Card className="space-y-3 border border-border bg-surface p-4 shadow-raised">
         <div className="border-b border-border pb-3"><h3 className="font-bold text-text-primary">Pedidos de desenho</h3>
           <p className="text-caption text-text-secondary">{total} pedido(s) · selecione para consultar o desenvolvimento</p></div>
         {loading ? <p role="status">A carregar pedidos…</p> : requests.length === 0 ? <p className="text-text-secondary">Ainda não há pedidos de desenho.</p> :
@@ -320,7 +320,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
           </form>
         </M3Card>}
         {canManage && <M3Button tone="outlined" disabled={busy} onClick={() => void deleteRequest()}>Eliminar pedido</M3Button>}
-        <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-sm">
+        <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-raised">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-heading-sm font-bold">{selected.title}</h3>
             <p className="mt-1 text-text-secondary">Gestor de projeto: {nameOf(selected.ownerId)}</p>
             {selected.otherManagerIds.length > 0 && <p className="text-caption text-text-secondary">Outros responsáveis: {selected.otherManagerIds.map(nameOf).sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' })).join(', ')}</p>}</div>

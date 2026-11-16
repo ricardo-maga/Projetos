@@ -185,7 +185,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                         </span>
                       </div>
                       <p className="text-body-sm text-text-muted font-medium leading-relaxed">
-                        {dt.description || <span className="italic text-slate-400">Sem instruções de modelo fornecidas.</span>}
+                        {dt.description || <span className="italic text-text-muted">Sem instruções de modelo fornecidas.</span>}
                       </p>
                     </div>
                   )}

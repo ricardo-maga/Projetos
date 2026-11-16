@@ -38,7 +38,7 @@ export default function Switch({ checked, onChange, disabled, label, ariaLabel, 
         {/* Track */}
         <div className={cn(
           "w-11 h-6 rounded-full transition-colors duration-200 shadow-flat border border-transparent",
-          checked ? "bg-primary" : "bg-border-token bg-neutral-200"
+          checked ? "bg-primary" : "bg-border-token bg-surface-elevated"
         )}>
           {/* Thumb */}
           <motion.div

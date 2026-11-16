@@ -196,7 +196,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
         <M3Button tone="outlined" onClick={() => void load()}><RefreshCw className="h-4 w-4" />Atualizar</M3Button></div>} />
     {error && <p role="alert" className="rounded-control border border-error/30 bg-error/10 p-3 text-error">{error}</p>}
     {notice && <p role="status" className="rounded-control border border-success/30 bg-success/10 p-3">{notice}</p>}
-    {showCreate && <M3Card className="border border-border bg-surface p-6 shadow-sm">
+    {showCreate && <M3Card className="border border-border bg-surface p-6 shadow-raised">
       <h3 className="mb-4 text-heading-sm font-bold">Novo pedido Presales</h3>
       <form onSubmit={event => void create(event)} className="grid gap-4 md:grid-cols-2">
         <Input label="Nome do pedido" value={title} onChange={event => setTitle(event.target.value)} minLength={2} maxLength={200} required />
@@ -221,7 +221,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
       </form>
     </M3Card>}
     <div className="space-y-5">
-      {!selected && <M3Card className="space-y-3 border border-border bg-surface p-4 shadow-sm">
+      {!selected && <M3Card className="space-y-3 border border-border bg-surface p-4 shadow-raised">
         <div className="border-b border-border pb-3"><h3 className="font-bold">Projetos Presales</h3>
           <p className="text-caption text-text-secondary">{total} processo(s)</p></div>
         {requests.length === 0 ? <p className="text-text-secondary">Ainda não há processos Presales.</p> :
@@ -235,7 +235,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
       {selected && <div className="space-y-4">
         <div className="flex gap-2"><M3Button tone="outlined" onClick={() => setSelectedId(null)}>Voltar à lista Presales</M3Button>
           {canManage && <M3Button tone="outlined" disabled={busy} onClick={() => void deleteRequest()}>Eliminar pedido</M3Button>}</div>
-        <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-sm">
+        <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-raised">
           <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-heading-sm font-bold">{selected.title}</h3>
             <Badge variant={selected.status === 'won' ? 'success' : selected.status === 'lost' ? 'error' : 'primary'}>{statusLabel[selected.status]}</Badge></div>
           <p className="text-body-sm text-text-secondary">Responsável: {nameOf(selected.ownerId)} · Prazo: {selected.plannedStartDate} — {selected.plannedEndDate}</p>
@@ -266,7 +266,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
               <M3Button tone="outlined" disabled={busy} onClick={() => void act('lost')}>Perdido</M3Button></>}
           </div>}
         </M3Card>
-        <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-sm">
+        <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-raised">
           <h3 className="text-heading-sm font-bold">Trabalho técnico</h3>
           {selected.tasks.map(task => <div key={task.id} className="rounded-control border border-border p-4">
             <div className="flex flex-wrap items-center justify-between gap-2"><strong>{task.title}</strong><Badge variant="primary">{taskStatus[task.statusId] || 'Estado'}</Badge></div>
@@ -290,7 +290,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
                 })}><Plus className="h-4 w-4" />Acrescentar tarefa</M3Button>
           </div>}
         </M3Card>
-        <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-sm">
+        <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-raised">
           <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-heading-sm font-bold">Conteúdo da proposta</h3>
             <p className="text-caption text-text-secondary">Secções ordenáveis e revisões preservadas.</p></div>
             {canManage && (selected.documentLocked ? <M3Button disabled={busy} onClick={() => void act('new_revision')}>Criar nova revisão</M3Button>
@@ -331,7 +331,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
             {selected.revisions.map(revision => <M3Button key={revision.id} tone="outlined" onClick={() => setSelectedRevision(revision.revisionNumber)}>
               Revisão {revision.revisionNumber}</M3Button>)}</div>}
         </M3Card>
-        <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-sm">
+        <M3Card className="space-y-4 border border-border bg-surface p-6 shadow-raised">
           <h3 className="text-heading-sm font-bold">Material e serviços</h3>
           <p className="font-semibold">Total: {selected.items.reduce((sum,item) => sum + item.total, 0).toFixed(2)}</p>
           <div className="overflow-x-auto"><table className="w-full text-left text-body-sm"><thead><tr><th>Grupo</th><th>Descrição</th><th>Qtd.</th><th>Un.</th><th>Preço líq.</th><th>Total</th><th /></tr></thead>
@@ -355,7 +355,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
               })}>{itemDraft.id ? 'Guardar linha' : 'Adicionar linha'}</M3Button>
           </div>}
         </M3Card>
-        {selected.status === 'won' && <M3Card className="space-y-3 border border-border bg-surface p-6 shadow-sm">
+        {selected.status === 'won' && <M3Card className="space-y-3 border border-border bg-surface p-6 shadow-raised">
           <h3 className="text-heading-sm font-bold">Projeto de execução</h3>
           <p className="text-body-sm text-text-secondary">O projeto é criado separadamente. A associação mantém o histórico Presales sem copiar tarefas.</p>
           {selected.executionProjectId ? <p>Projeto associado: {projects.find(project => project.id === selected.executionProjectId)?.title || selected.executionProjectId}</p>

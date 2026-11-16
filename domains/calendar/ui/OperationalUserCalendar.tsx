@@ -532,7 +532,7 @@ export default function OperationalUserCalendar({
                       <Button variant="secondary" size="sm"
                         type="button"
                         onClick={handleSelectAllUsers}
-                        className="mt-1 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/10 rounded-lg text-body-sm font-bold transition-colors cursor-pointer"
+                        className="mt-1 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/10 rounded-control text-body-sm font-bold transition-colors cursor-pointer"
                       >
                         Selecionar Todos os Utilizadores
                       </Button>
@@ -628,7 +628,7 @@ export default function OperationalUserCalendar({
                               {((!conflictInfo.isAbsent && conflictInfo.hasMultipleTasks) || (canCreateTask && onQuickCreateTask)) && (
                                 <div className="flex items-center justify-end gap-1">
                                   {!conflictInfo.isAbsent && conflictInfo.hasMultipleTasks && (
-                                    <div className="px-2 py-0.5 bg-warning/10 text-warning border border-warning/20 rounded-md text-body-sm font-extrabold flex items-center gap-1 shadow-2xs"
+                                    <div className="px-2 py-0.5 bg-warning/10 text-warning border border-warning/20 rounded-control text-body-sm font-extrabold flex items-center gap-1 shadow-2xs"
                                       title={conflictInfo.tooltipText}>
                                       <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                                       <span>{conflictInfo.badgeText?.replace(/^⚠\uFE0F?\s*/, '')}</span>
@@ -642,7 +642,7 @@ export default function OperationalUserCalendar({
                                       setIsFullscreen(false);
                                       onQuickCreateTask(user.id, day.dateStr);
                                     }}
-                                    className="p-1 hover:bg-primary/10 text-primary rounded-md transition-colors cursor-pointer"
+                                    className="p-1 hover:bg-primary/10 text-primary rounded-control transition-colors cursor-pointer"
                                     title={`Adicionar nova tarefa para ${user.name} em ${day.dateStr}`}
                                     aria-label={`Adicionar nova tarefa para ${user.name} em ${day.dateStr}`}
                                   >
@@ -655,7 +655,7 @@ export default function OperationalUserCalendar({
                               {/* Absence Banner */}
                               {conflictInfo.isAbsent && (
                                 <div
-                                  className={`p-1.5 rounded-lg text-center font-extrabold text-body-sm border shadow-2xs ${
+                                  className={`p-1.5 rounded-control text-center font-extrabold text-body-sm border shadow-2xs ${
                                     dayTasks.length > 0
                                       ? 'bg-error/10 text-error border-error/20 animate-pulse'
                                       : 'bg-surface-muted/80 text-text-secondary border-border-subtle'
@@ -709,7 +709,7 @@ export default function OperationalUserCalendar({
                                       e.dataTransfer.setData('sourceDateStr', day.dateStr);
                                       e.dataTransfer.effectAllowed = 'move';
                                     }}
-                                    className={`p-2 bg-surface rounded-xl shadow-2xs hover:shadow-xs transition-all space-y-1 text-left ${cardStyle} ${
+                                    className={`p-2 bg-surface rounded-card shadow-2xs hover:shadow-raised transition-all space-y-1 text-left ${cardStyle} ${
                                       canMoveTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                                     }`}
                                   >
@@ -743,7 +743,7 @@ export default function OperationalUserCalendar({
 
                                     {/* Linha 5: Badge de estado da tarefa + Pessoa atribuída */}
                                     <div className="flex items-center justify-between gap-1 pt-0.5">
-                                      <span className={`inline-block text-caption font-bold px-1.5 py-0.5 rounded-md truncate max-w-[110px] ${badgeStyle}`}>
+                                      <span className={`inline-block text-caption font-bold px-1.5 py-0.5 rounded-control truncate max-w-[110px] ${badgeStyle}`}>
                                         {statusName}
                                       </span>
                                     </div>

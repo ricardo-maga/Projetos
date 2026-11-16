@@ -46,8 +46,8 @@ const CalendarSubscriptions = dynamic(() => import('@/domains/calendar/ui/Calend
 const MyFocusSection = dynamic(() => import('@/domains/monitoring/ui/MyFocusSection'), { loading: SectionLoading });
 const ReportsSection = dynamic(() => import('@/domains/reports/ui/ReportsSection'), { loading: SectionLoading });
 
-const AUTH_SCREEN = 'min-h-screen flex items-center justify-center bg-slate-50 p-6';
-const AUTH_INPUT = 'w-full p-3 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-colors';
+const AUTH_SCREEN = 'min-h-screen flex items-center justify-center bg-surface-muted p-6';
+const AUTH_INPUT = 'w-full p-3 border border-border rounded-card font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-surface-muted disabled:text-text-muted disabled:cursor-not-allowed transition-colors';
 
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
@@ -402,31 +402,31 @@ export default function Page() {
   if (!currentUser) {
     return (
       <div className={AUTH_SCREEN}>
-        <div className="w-full max-w-md bg-white rounded-2xl -xl border border-slate-100 overflow-hidden">
-          <div className="p-8 pb-6 bg-slate-800 text-white text-center flex flex-col items-center">
+        <div className="w-full max-w-md bg-white rounded-card -xl border border-border-subtle overflow-hidden">
+          <div className="p-8 pb-6 bg-overlay text-white text-center flex flex-col items-center">
             <AppLogo 
               logoUrl={loginBranding?.logoImagePath || loginBranding?.logo}
               appName={loginBranding?.appName || ''}
-              className="w-72 max-w-full h-16 rounded-2xl bg-white p-2.5 mb-4 shadow-md mx-auto"
+              className="w-72 max-w-full h-16 rounded-card bg-white p-2.5 mb-4 shadow-raised mx-auto"
               fallbackIconClassName="w-8 h-8 text-blue-600"
             />
             {loginBranding?.appName ? (
               <h1 className="text-2xl font-bold font-sans tracking-tight">{loginBranding.appName}</h1>
             ) : null}
             {loginBranding?.appDescription ? (
-              <p className="text-slate-400 text-sm mt-1">{loginBranding.appDescription}</p>
+              <p className="text-on-inverse text-sm mt-1">{loginBranding.appDescription}</p>
             ) : null}
           </div>
           
           <form onSubmit={handleLogin} className="p-8 space-y-5">
             {loginError && (
-              <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm font-medium text-center border border-red-100">
+              <div className="p-3 bg-red-50 text-red-600 rounded-control text-sm font-medium text-center border border-red-100">
                 {loginError}
               </div>
             )}
             
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-slate-700">E-mail</label>
+              <label className="block text-sm font-medium text-text-primary">E-mail</label>
               <input 
                 type="email" 
                 value={loginEmail}
@@ -444,7 +444,7 @@ export default function Page() {
             
             <div className="space-y-1">
               <div className="flex justify-between items-center">
-                <label className="block text-sm font-medium text-slate-700">Password</label>
+                <label className="block text-sm font-medium text-text-primary">Password</label>
 
               </div>
               <div className="relative">
@@ -464,7 +464,7 @@ export default function Page() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary cursor-pointer p-1"
                   tabIndex={-1}
                   title={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
                 >
@@ -474,17 +474,17 @@ export default function Page() {
             </div>
 
             <div className="flex items-center justify-between py-1">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none">
+              <label className="flex items-center gap-2 text-xs font-semibold text-text-secondary cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={e => setRememberMe(e.target.checked)}
                   disabled={isLoggingIn}
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                  className="rounded border-border text-blue-600 focus:ring-blue-500 w-4 h-4"
                 />
                 Lembrar login
               </label>
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[10px] text-text-muted">
                 {rememberMe ? '30 dias' : 'Até fechar o navegador'}
               </span>
             </div>
@@ -492,7 +492,7 @@ export default function Page() {
             <button 
               type="submit"
               disabled={isLoggingIn}
-              className={`w-full py-3 text-white rounded-xl font-bold transition-all duration-200 shadow-sm flex items-center justify-center gap-2.5 ${
+              className={`w-full py-3 text-white rounded-card font-bold transition-all duration-200 shadow-raised flex items-center justify-center gap-2.5 ${
                 isLoggingIn 
                   ? 'bg-blue-500/90 cursor-wait' 
                   : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.99] cursor-pointer'
@@ -510,7 +510,7 @@ export default function Page() {
 
 
             
-            <div className="pt-4 text-center text-xs text-slate-400">
+            <div className="pt-4 text-center text-xs text-text-muted">
               <p>Acesso Restrito - Uso Interno</p>
             </div>
           </form>
@@ -523,22 +523,22 @@ export default function Page() {
   if (syncStatus === 'error' && !isInitialDataLoaded) {
     return (
       <div className={AUTH_SCREEN} id="db-error-screen">
-        <div className="w-full max-w-md bg-white rounded-2xl border border-rose-100 p-8 text-center space-y-6 shadow-sm animate-fade-in">
+        <div className="w-full max-w-md bg-white rounded-card border border-rose-100 p-8 text-center space-y-6 shadow-raised animate-fade-in">
           <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100">
             <AlertCircle className="w-6 h-6" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl font-bold text-slate-800 font-sans tracking-tight">
+            <h1 className="text-xl font-bold text-text-primary font-sans tracking-tight">
               Erro ao carregar os dados
             </h1>
-            <p className="text-slate-500 text-xs font-medium leading-relaxed">
+            <p className="text-text-secondary text-xs font-medium leading-relaxed">
               {syncError || 'Não foi possível obter os dados autoritativos da base de dados.'}
             </p>
           </div>
           <button
             type="button"
             onClick={() => refreshFromDatabase()}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-card text-xs font-bold transition-all shadow-raised flex items-center justify-center gap-2 cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Tentar novamente</span>

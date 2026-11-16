@@ -113,16 +113,16 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
   const getActionBadge = (action: string) => {
     switch (action?.toUpperCase()) {
       case 'CREATE':
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md uppercase tracking-wider">Criar</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-control uppercase tracking-wider">Criar</span>;
       case 'UPDATE':
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 rounded-md uppercase tracking-wider">Editar</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 rounded-control uppercase tracking-wider">Editar</span>;
       case 'DELETE':
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 rounded-md uppercase tracking-wider">Eliminar</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 rounded-control uppercase tracking-wider">Eliminar</span>;
       case 'LOGIN':
       case 'LOGOUT':
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-purple-50 text-purple-700 border border-purple-200 rounded-md uppercase tracking-wider">{action}</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-purple-50 text-purple-700 border border-purple-200 rounded-control uppercase tracking-wider">{action}</span>;
       default:
-        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-surface-muted text-text-secondary border border-border rounded-md uppercase tracking-wider">{action}</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-surface-muted text-text-secondary border border-border rounded-control uppercase tracking-wider">{action}</span>;
     }
   };
 
@@ -144,7 +144,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
             type="button"
             onClick={handleRefresh}
             disabled={loading}
-            className="px-3 py-2 bg-surface-muted hover:bg-slate-200 text-text-secondary font-bold text-xs rounded-control transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-2 bg-surface-muted hover:bg-surface-elevated text-text-secondary font-bold text-xs rounded-control transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Atualizar
@@ -168,7 +168,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
             <Database className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Registado</div>
+            <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Total Registado</div>
             <div className="text-lg font-black text-text-primary">{stats.total}</div>
           </div>
         </div>
@@ -178,7 +178,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
             <CheckCircle className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Criações</div>
+            <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Criações</div>
             <div className="text-lg font-black text-text-primary">{stats.creates}</div>
           </div>
         </div>
@@ -188,7 +188,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Eliminações</div>
+            <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Eliminações</div>
             <div className="text-lg font-black text-text-primary">{stats.deletes}</div>
           </div>
         </div>
@@ -198,7 +198,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
             <UserIcon className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Autenticações</div>
+            <div className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Autenticações</div>
             <div className="text-lg font-black text-text-primary">{stats.logins}</div>
           </div>
         </div>
@@ -210,7 +210,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
         <div className="p-4 sm:p-5 border-b border-border/80 bg-surface-muted/60 flex flex-col md:flex-row items-center justify-between gap-3">
           {/* Search */}
           <div className="relative w-full md:flex-1 md:max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={search}
@@ -219,7 +219,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                 setCurrentPage(1);
               }}
               placeholder="Pesquisar utilizador, ação, detalhes ou entidade..."
-              className="w-full pl-9 pr-3.5 py-2 bg-surface border border-border rounded-control text-xs font-medium text-text-primary placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
+              className="w-full pl-9 pr-3.5 py-2 bg-surface border border-border rounded-control text-xs font-medium text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
             />
           </div>
 
@@ -268,7 +268,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-xs font-semibold text-text-secondary cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
+                className="px-2.5 py-1.5 bg-surface border border-border rounded-control text-xs font-semibold text-text-secondary cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value={15}>15</option>
                 <option value={25}>25</option>
@@ -291,11 +291,11 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                 <th className="px-5 py-3.5 text-left">Detalhes do Registo</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs font-medium">
+            <tbody className="divide-y divide-border-subtle text-xs font-medium">
               {paginatedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-slate-400 font-medium">
-                    <Info className="w-6 h-6 mx-auto mb-2 text-slate-300" />
+                  <td colSpan={5} className="p-10 text-center text-text-muted font-medium">
+                    <Info className="w-6 h-6 mx-auto mb-2 text-text-muted" />
                     Nenhum registo de auditoria encontrado.
                   </td>
                 </tr>
@@ -304,14 +304,14 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                   <tr key={log.id || index} className="hover:bg-surface-muted/60 transition-colors">
                     <td className="px-5 py-3.5 whitespace-nowrap text-text-muted font-mono text-[11px]">
                       <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <Clock className="w-3.5 h-3.5 text-text-muted" />
                         {log.timestamp ? new Date(log.timestamp).toLocaleString('pt-PT') : 'N/A'}
                       </div>
                     </td>
 
                     <td className="px-5 py-3.5 whitespace-nowrap">
                       <div className="font-bold text-text-primary">{log.userName || 'Sistema'}</div>
-                      {log.userEmail && <div className="text-[10px] text-slate-400 font-mono">{log.userEmail}</div>}
+                      {log.userEmail && <div className="text-[10px] text-text-muted font-mono">{log.userEmail}</div>}
                     </td>
 
                     <td className="px-5 py-3.5 whitespace-nowrap">
@@ -352,7 +352,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                   type="button"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-2.5 py-1.5 bg-surface border border-border rounded-lg font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 bg-surface border border-border rounded-control font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   <span>Anterior</span>
@@ -364,7 +364,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
                   type="button"
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-2.5 py-1.5 bg-surface border border-border rounded-lg font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 bg-surface border border-border rounded-control font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <span>Seguinte</span>
                   <ChevronRight className="w-3.5 h-3.5" />

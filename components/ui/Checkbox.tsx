@@ -33,7 +33,7 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             {...props}
           />
           <div className={cn(
-            "w-5 h-5 rounded-md border border-border bg-surface transition-all flex items-center justify-center shadow-flat",
+            "w-5 h-5 rounded-control border border-border bg-surface transition-all flex items-center justify-center shadow-flat",
             "group-hover:border-text-disabled",
             "peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40",
             

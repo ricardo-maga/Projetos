@@ -87,7 +87,7 @@ export default function RolePermissionSection({ onRolesChanged }: { onRolesChang
     finally { mutationInFlight.current = false; setBusy(false); setBusyAction(null); }
   };
 
-  if (!catalog) return <div className="flex items-center gap-2 p-6 text-sm text-slate-600" role="status" aria-live="polite">
+  if (!catalog) return <div className="flex items-center gap-2 p-6 text-sm text-text-secondary" role="status" aria-live="polite">
     <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin text-warning" />
     {message || 'A carregar o catálogo de permissões…'}
   </div>;
@@ -116,11 +116,11 @@ export default function RolePermissionSection({ onRolesChanged }: { onRolesChang
         <M3Card className="space-y-4 p-4 md:p-5">
           <div className="border-b border-border pb-4"><h3 className="font-semibold text-text-primary">Matriz de permissões</h3><p className="mt-1 text-sm text-text-secondary">Permissões para: <span className="font-semibold text-primary">{activeRoles.find(role => role.id === roleId)?.name || 'Selecione uma função'}</span></p></div>
           {modules.map(module => (
-            <fieldset key={module} disabled={busy} className="rounded-xl border border-border bg-surface-muted/40 p-4">
+            <fieldset key={module} disabled={busy} className="rounded-card border border-border bg-surface-muted/40 p-4">
               <legend className="px-1 text-sm font-semibold capitalize text-text-primary">{module === 'mechanical_design' ? 'Desenho mecânico' : module}</legend>
               <div className="grid gap-2 sm:grid-cols-2">
                 {editablePermissions.filter(permission => permission.module === module).map(permission => (
-                  <label key={permission.id} className="flex cursor-pointer items-start gap-3 rounded-lg p-2 text-sm text-text-primary transition-colors hover:bg-surface">
+                  <label key={permission.id} className="flex cursor-pointer items-start gap-3 rounded-control p-2 text-sm text-text-primary transition-colors hover:bg-surface">
                     <input type="checkbox" className="mt-0.5 accent-primary" checked={permissionCodes.includes(permission.code)} onChange={event => setPermissionCodes(codes => event.target.checked ? [...new Set([...codes, permission.code])] : codes.filter(code => code !== permission.code))} />
                     <span><span className="font-medium">{module === 'mechanical_design' ? ({ read: 'Consultar', create: 'Criar', manage: 'Gerir', execute: 'Executar', coordinate: 'Coordenar' } as Record<string,string>)[permission.action] || permission.action : permission.action}</span><span className="block text-xs font-normal text-text-secondary">{permission.description || permission.code}</span></span>
                   </label>
@@ -131,7 +131,7 @@ export default function RolePermissionSection({ onRolesChanged }: { onRolesChang
           <div className="flex justify-end border-t border-border pt-4"><Button type="button" disabled={!roleId || busy || catalog.roles.find(role => role.id === roleId)?.code === 'SUPER_ADMIN'} isLoading={busyAction === 'permissions'} onClick={savePermissions}>Guardar matriz</Button></div>
         </M3Card>
       </div>
-      {message && <p role="status" className="rounded-xl border border-border bg-surface-muted p-3 text-sm text-text-primary">{message}</p>}
+      {message && <p role="status" className="rounded-card border border-border bg-surface-muted p-3 text-sm text-text-primary">{message}</p>}
     </section>
   );
 }

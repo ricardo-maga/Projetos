@@ -279,7 +279,7 @@ export default function UserSection({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-1">
-                  <label className="block text-slate-500">Nome *</label>
+                  <label className="block text-text-secondary">Nome *</label>
                   <input
                     type="text"
                     required
@@ -291,7 +291,7 @@ export default function UserSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-500">E-mail *</label>
+                  <label className="block text-text-secondary">E-mail *</label>
                   <input
                     type="email"
                     required
@@ -303,7 +303,7 @@ export default function UserSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-500">Password {isAddingUser ? '*' : editingUser && !editingUser.authUserId ? '(Necessária para ativar a conta)' : '(Deixe em branco para manter a atual)'}</label>
+                  <label className="block text-text-secondary">Password {isAddingUser ? '*' : editingUser && !editingUser.authUserId ? '(Necessária para ativar a conta)' : '(Deixe em branco para manter a atual)'}</label>
                   {!isAddingUser && editingUser && !editingUser.authUserId && (
                     <p className="text-xs text-amber-700">Este perfil não tem conta de autenticação. Defina uma password para criar a conta e permitir o acesso.</p>
                   )}
@@ -319,7 +319,7 @@ export default function UserSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-slate-500">Confirmar Password {isAddingUser ? '*' : ''}</label>
+                  <label className="block text-text-secondary">Confirmar Password {isAddingUser ? '*' : ''}</label>
                   <input
                     type="password"
                     required={isAddingUser && !!uPassword}
@@ -331,21 +331,21 @@ export default function UserSection({
                   />
                 </div>
 
-                {canManageRoleAssignments ? <fieldset className="md:col-span-2 rounded-xl border border-border bg-surface-muted/50 p-4 space-y-3">
+                {canManageRoleAssignments ? <fieldset className="md:col-span-2 rounded-card border border-border bg-surface-muted/50 p-4 space-y-3">
                   <legend className="px-1 text-sm font-semibold text-text-primary">Funções na aplicação</legend>
                   <p className="text-xs font-normal text-text-secondary">As permissões efetivas são a união das funções selecionadas. A atribuição é auditada.</p>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {rbacRoles.map(role => (
-                      <label key={role.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${uRoleIds.includes(role.id) ? 'border-primary bg-primary/5' : 'border-border bg-surface hover:bg-surface-muted'}`}>
+                      <label key={role.id} className={`flex cursor-pointer items-start gap-3 rounded-control border p-3 transition-colors ${uRoleIds.includes(role.id) ? 'border-primary bg-primary/5' : 'border-border bg-surface hover:bg-surface-muted'}`}>
                         <input type="checkbox" checked={uRoleIds.includes(role.id)} onChange={event => setURoleIds(ids => event.target.checked ? [...new Set([...ids, role.id])] : ids.filter(id => id !== role.id))} className="mt-0.5 accent-primary" />
                         <span className="min-w-0"><span className="block text-sm font-semibold text-text-primary">{role.name}</span><span className="block text-[11px] font-normal text-text-muted">{role.code}</span></span>
                       </label>
                     ))}
                   </div>
                   {!rbacRoles.length && <p className="text-sm font-medium text-warning">Não foi possível carregar as funções disponíveis.</p>}
-                </fieldset> : <div className="md:col-span-2 rounded-xl border border-border bg-surface-muted/50 p-4">
+                </fieldset> : <div className="md:col-span-2 rounded-card border border-border bg-surface-muted/50 p-4">
                   <p className="text-sm font-semibold text-text-primary">Funções atribuídas</p>
-                  <div className="mt-2 flex flex-wrap gap-2">{getAssignedRoleNames(editingUser?.id || '').length ? getAssignedRoleNames(editingUser?.id || '').map(name => <span key={name} className="rounded-md border border-primary/15 bg-primary/5 px-2 py-1 text-xs text-primary">{name}</span>) : <span className="text-sm text-text-secondary">Sem função atribuída. Solicite a um Super Administrador que configure o acesso.</span>}</div>
+                  <div className="mt-2 flex flex-wrap gap-2">{getAssignedRoleNames(editingUser?.id || '').length ? getAssignedRoleNames(editingUser?.id || '').map(name => <span key={name} className="rounded-control border border-primary/15 bg-primary/5 px-2 py-1 text-xs text-primary">{name}</span>) : <span className="text-sm text-text-secondary">Sem função atribuída. Solicite a um Super Administrador que configure o acesso.</span>}</div>
                 </div>}
               </div>
 
@@ -411,28 +411,28 @@ export default function UserSection({
                     <th className="px-5 py-3.5 text-right">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                <tbody className="divide-y divide-border-subtle font-medium text-text-primary">
                   {users
                     .filter(u => !u.deleted)
                     .filter(u => filterRoleId === 'all' || rbacUserRoles.some(assignment => assignment.user_id === u.id && assignment.role_id === filterRoleId))
                     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }))
                     .map(u => (
-                    <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr key={u.id} className="hover:bg-surface-muted/50 transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-800 flex items-center justify-center font-extrabold text-xs">
+                          <div className="w-9 h-9 rounded-full bg-surface-muted text-text-primary flex items-center justify-center font-extrabold text-xs">
                             {getUserInitials(u.name)}
                           </div>
                           <div>
-                            <div className="font-extrabold text-slate-800 text-sm">{u.name}</div>
+                            <div className="font-extrabold text-text-primary text-sm">{u.name}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4 font-mono text-slate-500">{u.email}</td>
+                      <td className="px-5 py-4 font-mono text-text-secondary">{u.email}</td>
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-1.5 items-center">
                           {getAssignedRoleNames(u.id).length ? getAssignedRoleNames(u.id).map(name => (
-                            <span key={name} className="px-2 py-1 bg-primary/5 border border-primary/15 rounded-md text-[11px] font-medium text-primary">{name}</span>
+                            <span key={name} className="px-2 py-1 bg-primary/5 border border-primary/15 rounded-control text-[11px] font-medium text-primary">{name}</span>
                           )) : <span className="text-xs text-text-muted">Sem função atribuída</span>}
                         </div>
                       </td>
@@ -449,7 +449,7 @@ export default function UserSection({
                           >
                             <Edit2 className="w-3 h-3" /> Editar
                           </button>
-                          <span className="text-slate-300">|</span>
+                          <span className="text-text-muted">|</span>
                           <button
                             onClick={() => askConfirmation(
                               'Confirmar Eliminação de Utilizador',

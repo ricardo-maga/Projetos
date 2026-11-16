@@ -55,8 +55,8 @@ function cacheProjectPage(key: string, entry: ProjectPageCacheEntry) {
 }
 
 const PROJECT_BADGE_CLASS = 'h-9 px-3 text-body-sm font-bold uppercase rounded-badge border inline-flex items-center justify-center whitespace-nowrap';
-const MATERIAL_FIELD_LABEL = 'block font-bold text-slate-700';
-const MATERIAL_FIELD_INPUT = 'w-full p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-slate-800 font-semibold';
+const MATERIAL_FIELD_LABEL = 'block font-bold text-text-primary';
+const MATERIAL_FIELD_INPUT = 'w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-blue-100 outline-none text-text-primary font-semibold';
 
 function ForecastBadge({ project, statuses, canEdit, updateProject, compact = false }: {
   project: Project; statuses: any[]; canEdit: boolean; updateProject?: (id: string, updates: any) => Promise<unknown>; compact?: boolean;
@@ -1807,7 +1807,7 @@ export default function ProjectSection({
                         <IconButton variant="ghost" size="sm" aria-label="Mês anterior"
                           type="button"
                           onClick={() => setCalMonthOffset(o => o - 1)}
-                          className="flex items-center justify-center p-1.5 bg-surface hover:bg-surface-muted border border-border rounded-lg text-text-secondary cursor-pointer transition-colors"
+                          className="flex items-center justify-center p-1.5 bg-surface hover:bg-surface-muted border border-border rounded-control text-text-secondary cursor-pointer transition-colors"
                           title="Mês anterior"
                         >
                           <ChevronLeft className="w-3.5 h-3.5" />
@@ -1815,7 +1815,7 @@ export default function ProjectSection({
                         <Button variant="ghost" size="sm" aria-label="Voltar para o mês atual"
                           type="button"
                           onClick={resetCalMonthToToday}
-                          className="px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
+                          className="px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-control text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                           title="Voltar para o mês atual"
                         >
                           Hoje
@@ -1823,7 +1823,7 @@ export default function ProjectSection({
                         <IconButton variant="ghost" size="sm" aria-label="Mês seguinte"
                           type="button"
                           onClick={() => setCalMonthOffset(o => o + 1)}
-                          className="flex items-center justify-center p-1.5 bg-surface hover:bg-surface-muted border border-border rounded-lg text-text-secondary cursor-pointer transition-colors"
+                          className="flex items-center justify-center p-1.5 bg-surface hover:bg-surface-muted border border-border rounded-control text-text-secondary cursor-pointer transition-colors"
                           title="Mês seguinte"
                         >
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -1932,7 +1932,7 @@ export default function ProjectSection({
                                   {/* Início de Projeto */}
                                   {isProjStart && (
                                     <div
-                                      className="px-1.5 py-0.5 rounded-md bg-primary text-white text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-primary text-white text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Início / Adjudicação do projeto: ${selectedProj.title}`}
                                     >
                                       <span className="shrink-0 text-caption">🚀</span>
@@ -1943,7 +1943,7 @@ export default function ProjectSection({
                                   {/* Prazo de Entrega */}
                                   {isProjDelivery && (
                                     <div
-                                      className="px-1.5 py-0.5 rounded-md bg-success-strong text-white text-caption font-semibold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-success-strong text-white text-caption font-semibold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Prazo de entrega do projeto: ${selectedProj.title}`}
                                     >
                                       <span className="shrink-0 text-caption">🏁</span>
@@ -1954,7 +1954,7 @@ export default function ProjectSection({
                                   {/* Previsão Real */}
                                   {isProjEstimated && !isProjDelivery && (
                                     <div
-                                      className="px-1.5 py-0.5 rounded-md bg-purple-100 border border-purple-200 text-purple-900 text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-purple-100 border border-purple-200 text-purple-900 text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Previsão real de entrega: ${selectedProj.title}`}
                                     >
                                       <span className="shrink-0 text-caption">🔮</span>
@@ -1965,7 +1965,7 @@ export default function ProjectSection({
                                   {/* Agendamento */}
                                   {isProjScheduled && !isProjStart && (
                                     <div
-                                      className="px-1.5 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-primary/10 border border-primary/20 text-primary text-caption font-extrabold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Agendamento do projeto: ${selectedProj.title}`}
                                     >
                                       <span className="shrink-0 text-caption">📅</span>
@@ -1987,7 +1987,7 @@ export default function ProjectSection({
                                         e.stopPropagation();
                                         openTaskDetailsModal(m);
                                       }}
-                                      className="px-1.5 py-0.5 rounded-md bg-warning text-white text-caption font-black flex items-center gap-1 truncate cursor-pointer hover:bg-warning transition-colors shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-warning text-white text-caption font-black flex items-center gap-1 truncate cursor-pointer hover:bg-warning transition-colors shadow-2xs"
                                       title={`Lembrete: ${m.title}\nClique para ver/editar`}
                                     >
                                       <span className="shrink-0 text-caption">🔔</span>
@@ -2016,7 +2016,7 @@ export default function ProjectSection({
                                           e.stopPropagation();
                                           openTaskDetailsModal(t);
                                         }}
-                                        className="px-1.5 py-0.5 rounded-md bg-surface-muted border border-border text-text-primary text-caption font-bold flex items-center gap-1.5 truncate cursor-grab active:cursor-grabbing hover:bg-border transition-colors shadow-2xs"
+                                        className="px-1.5 py-0.5 rounded-control bg-surface-muted border border-border text-text-primary text-caption font-bold flex items-center gap-1.5 truncate cursor-grab active:cursor-grabbing hover:bg-border transition-colors shadow-2xs"
                                         title={`Tarefa: ${t.title}\nTécnicos: ${assigneesText}\nClique para ver/editar`}
                                       >
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0"></span>
@@ -2029,7 +2029,7 @@ export default function ProjectSection({
                                   {materialsOnDay.map(pm => (
                                     <div
                                       key={pm.id}
-                                      className="px-1.5 py-0.5 rounded-md bg-sky-100 border border-sky-200 text-sky-900 text-caption font-bold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-sky-100 border border-sky-200 text-sky-900 text-caption font-bold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Receção Prevista de Material: ${pm.description}\nFornecedor: ${pm.supplier || '-'}\nQtd: ${pm.quantity}`}
                                     >
                                       <span className="shrink-0 text-caption">📦</span>
@@ -2041,7 +2041,7 @@ export default function ProjectSection({
                                   {risksOnDay.map(ri => (
                                     <div
                                       key={ri.id}
-                                      className="px-1.5 py-0.5 rounded-md bg-error/10 border border-error/20 text-error text-caption font-bold flex items-center gap-1 truncate shadow-2xs"
+                                      className="px-1.5 py-0.5 rounded-control bg-error/10 border border-error/20 text-error text-caption font-bold flex items-center gap-1 truncate shadow-2xs"
                                       title={`Revisão de Risco do Projeto: ${ri.title}`}
                                     >
                                       <span className="shrink-0 text-caption">⚠️</span>
@@ -2072,7 +2072,7 @@ export default function ProjectSection({
                     <div className="flex items-center justify-between bg-surface-muted p-3 rounded-control border border-border/60">
                       <div className="flex items-center gap-2">
                         <h4 className="font-extrabold text-text-primary text-body-sm uppercase tracking-wider">Cronograma</h4>
-                        <span className="text-caption font-bold text-primary bg-primary/10 border border-primary/20 rounded-md px-2 py-0.5">
+                        <span className="text-caption font-bold text-primary bg-primary/10 border border-primary/20 rounded-control px-2 py-0.5">
                           {(() => {
                             const end = new Date(cronogramaStartDate);
                             end.setDate(end.getDate() + 29);
@@ -2084,7 +2084,7 @@ export default function ProjectSection({
                         <IconButton variant="ghost" aria-label="Voltar 5 dias"
                           type="button"
                           onClick={shiftCronogramaPrev}
-                          className="flex items-center gap-1 px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
+                          className="flex items-center gap-1 px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-control text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                           title="Voltar 5 dias"
                         >
                           <ChevronLeft className="w-3.5 h-3.5" />
@@ -2092,7 +2092,7 @@ export default function ProjectSection({
                         <Button variant="ghost" size="sm" aria-label="Voltar para a janela de 5 dias antes de hoje"
                           type="button"
                           onClick={resetCronogramaToDefault}
-                          className="px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
+                          className="px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-control text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                           title="Voltar para a janela de 5 dias antes de hoje"
                         >
                           Hoje
@@ -2100,7 +2100,7 @@ export default function ProjectSection({
                         <IconButton variant="ghost" aria-label="Avançar 5 dias"
                           type="button"
                           onClick={shiftCronogramaNext}
-                          className="flex items-center gap-1 px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
+                          className="flex items-center gap-1 px-2.5 py-1 bg-surface hover:bg-surface-muted border border-border rounded-control text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                           title="Avançar 5 dias"
                         >
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -2108,7 +2108,7 @@ export default function ProjectSection({
                         <Button variant="ghost" size="sm" aria-label="Abrir cronograma em ecrã cheio"
                           type="button"
                           onClick={() => setIsFullTimelineModalOpen(true)}
-                          className="flex items-center gap-1 px-2.5 py-1 bg-primary/10 hover:bg-primary/10 border border-primary/20 text-primary hover:text-primary rounded-lg text-caption font-bold cursor-pointer transition-colors ml-1"
+                          className="flex items-center gap-1 px-2.5 py-1 bg-primary/10 hover:bg-primary/10 border border-primary/20 text-primary hover:text-primary rounded-control text-caption font-bold cursor-pointer transition-colors ml-1"
                           title="Abrir cronograma em ecrã cheio"
                           id="btn-ecra-cheio"
                         >
@@ -2189,27 +2189,27 @@ export default function ProjectSection({
                                     <td key={dayStr} className={`p-1 border-r border-border/80 text-center align-middle ${isToday ? 'bg-warning/40' : isWeekend ? 'bg-surface-muted/40' : ''}`}>
                                       <div className="flex flex-col gap-0.5 items-center justify-center">
                                         {isProjStart && (
-                                          <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Data de Início do Projeto">
+                                          <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-raised scale-90" title="Data de Início do Projeto">
                                             INÍCIO
                                           </span>
                                         )}
                                         {isProjDelivery && (
-                                          <span className="px-1.5 py-0.5 bg-success-strong text-white text-caption font-semibold rounded shadow-xs" title="Data de Entrega do Projeto">
+                                          <span className="px-1.5 py-0.5 bg-success-strong text-white text-caption font-semibold rounded shadow-raised" title="Data de Entrega do Projeto">
                                             ENTREGA
                                           </span>
                                         )}
                                         {isProjEstimated && !isProjDelivery && (
-                                          <span className="px-1.5 py-0.5 bg-surface-elevated text-text-primary text-caption font-semibold rounded shadow-xs" title="Previsão de Conclusão">
+                                          <span className="px-1.5 py-0.5 bg-surface-elevated text-text-primary text-caption font-semibold rounded shadow-raised" title="Previsão de Conclusão">
                                             PREVISTO
                                           </span>
                                         )}
                                         {isProjScheduled && !isProjStart && (
-                                          <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Instalação/Agendamento">
+                                          <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-raised scale-90" title="Instalação/Agendamento">
                                             AGENDADO
                                           </span>
                                         )}
                                         {risksOnDay.map(ri => (
-                                          <span key={ri.id} className="px-1 py-0.5 bg-error text-white text-caption font-extrabold rounded shadow-xs flex items-center gap-0.5 scale-90 truncate max-w-[50px]" title={`Revisão de Risco: ${ri.title}`}>
+                                          <span key={ri.id} className="px-1 py-0.5 bg-error text-white text-caption font-extrabold rounded shadow-raised flex items-center gap-0.5 scale-90 truncate max-w-[50px]" title={`Revisão de Risco: ${ri.title}`}>
                                             ⚠️ Rev. Risco
                                           </span>
                                         ))}
@@ -2278,7 +2278,7 @@ export default function ProjectSection({
                                             {conflicts.map((c, i) => (
                                               <div
                                                 key={i}
-                                                className="flex items-start gap-1 p-1 bg-error/10 text-error border border-error/60 rounded-md text-caption font-semibold leading-tight hover:bg-error/10 transition-colors"
+                                                className="flex items-start gap-1 p-1 bg-error/10 text-error border border-error/60 rounded-control text-caption font-semibold leading-tight hover:bg-error/10 transition-colors"
                                                 title={c.details}
                                               >
                                                 <ShieldAlert className="w-3.5 h-3.5 text-error flex-shrink-0 mt-0.5" />
@@ -2340,7 +2340,7 @@ export default function ProjectSection({
                                                   }
                                                   e.dataTransfer.setData('taskId', t.id);
                                                 }}
-                                                className={`py-1.5 px-1 rounded-lg text-caption font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
+                                                className={`py-1.5 px-1 rounded-control text-caption font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
                                                   getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                                 }`}
                                                 title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}
@@ -2564,7 +2564,7 @@ export default function ProjectSection({
                       selectedProj.teamsInvolvedIds.map(tid => {
                         const team = projectTeams.find(t => matchId(t.id, tid));
                         return (
-                          <span key={tid} className="px-2 py-0.5 bg-border text-text-secondary font-bold rounded-md text-caption">
+                          <span key={tid} className="px-2 py-0.5 bg-border text-text-secondary font-bold rounded-control text-caption">
                             {team ? team.name : tid}
                           </span>
                         );
@@ -2579,7 +2579,7 @@ export default function ProjectSection({
                       selectedProj.partnersIds.map(pid => {
                         const partner = projectPartners.find(p => matchId(p.id, pid));
                         return (
-                          <span key={pid} className="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary font-bold rounded-md text-caption">
+                          <span key={pid} className="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary font-bold rounded-control text-caption">
                             {partner ? partner.name : pid}
                           </span>
                         );
@@ -2624,7 +2624,7 @@ export default function ProjectSection({
                           openCreateTaskModal();
                           setShowImportTaskForm(false);
                         }}
-                        className="flex items-center gap-1.5 text-body-sm font-extrabold text-white bg-primary hover:bg-primary px-3.5 py-2 rounded-control transition-colors cursor-pointer shadow-xs"
+                        className="flex items-center gap-1.5 text-body-sm font-extrabold text-white bg-primary hover:bg-primary px-3.5 py-2 rounded-control transition-colors cursor-pointer shadow-raised"
                       >
                         <Plus className="w-4 h-4 text-white" /> Criar Tarefa / Lembrete
                       </Button>
@@ -2635,7 +2635,7 @@ export default function ProjectSection({
 
               {/* Inline Import Task Form */}
               {showImportTaskForm && (
-                <div className="bg-surface-muted border border-border rounded-card p-5 space-y-4 text-body-sm font-bold text-text-secondary animate-fade-in shadow-xs" id="import-task-form-panel">
+                <div className="bg-surface-muted border border-border rounded-card p-5 space-y-4 text-body-sm font-bold text-text-secondary animate-fade-in shadow-raised" id="import-task-form-panel">
                   <div className="flex justify-between items-center pb-2 border-b border-border">
                     <span className="text-text-primary font-extrabold text-body-sm">Importar Tarefa(s) Modelo</span>
                     <Button variant="ghost" size="sm"
@@ -2809,7 +2809,7 @@ export default function ProjectSection({
                         <Users className="w-3.5 h-3.5 text-text-muted shrink-0" />
                         {task.assigneeIds && task.assigneeIds.length > 0 ? (
                           task.assigneeIds.map(uid => (
-                            <span key={uid} className="px-1.5 py-0.5 bg-surface-muted text-text-secondary font-bold rounded-md text-caption">
+                            <span key={uid} className="px-1.5 py-0.5 bg-surface-muted text-text-secondary font-bold rounded-control text-caption">
                               {getUserName(uid)}
                             </span>
                           ))
@@ -2833,7 +2833,7 @@ export default function ProjectSection({
             <div data-m3-exclude data-theme={appConfig?.theme || 'default'} className="p-6 space-y-6">
               {/* Red Warning Banner if material has warning */}
               {hasMaterialWarning ? (
-                <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 flex items-center justify-between text-rose-900 shadow-xs animate-fade-in">
+                <div className="bg-rose-50 border-2 border-rose-300 rounded-card p-4 flex items-center justify-between text-rose-900 shadow-raised animate-fade-in">
                   <div className="flex items-center gap-3">
                     <AlertTriangle className="w-6 h-6 text-rose-600 shrink-0" />
                     <div>
@@ -2848,7 +2848,7 @@ export default function ProjectSection({
                   </span>
                 </div>
               ) : (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between text-emerald-900 shadow-xs">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-card p-4 flex items-center justify-between text-emerald-900 shadow-raised">
                   <div className="flex items-center gap-3">
                     <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
                     <div>
@@ -2862,13 +2862,13 @@ export default function ProjectSection({
               )}
 
               {/* Header with Registar material button */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-card border border-border shadow-raised">
                 <div>
-                  <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                  <h3 className="font-extrabold text-text-primary text-sm flex items-center gap-2">
                     <Boxes className="w-4 h-4 text-blue-600" />
                     Lista de Material Necessário ({projMaterials.length} {projMaterials.length === 1 ? 'linha' : 'linhas'})
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-text-secondary mt-0.5">
                     Acompanhamento de encomendas e stock de materiais do projeto
                   </p>
                 </div>
@@ -2876,7 +2876,7 @@ export default function ProjectSection({
                   <button
                     type="button"
                     onClick={handleOpenAddMaterialModal}
-                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2 shrink-0"
+                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-control shadow-raised transition-colors cursor-pointer flex items-center gap-2 shrink-0"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Registar material</span>
@@ -2887,7 +2887,7 @@ export default function ProjectSection({
               {/* Material lines grouped by Supplier */}
               <div className="space-y-6">
                 {projMaterials.length === 0 ? (
-                  <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs font-medium">
+                  <div className="bg-surface-muted border border-dashed border-border rounded-card p-8 text-center text-text-muted text-xs font-medium">
                     Nenhum material ou encomenda registada para este projeto.
                   </div>
                 ) : (
@@ -2898,13 +2898,13 @@ export default function ProjectSection({
                     }).length;
 
                       return (
-                        <div key={supplierName} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                        <div key={supplierName} className="bg-white border border-border rounded-card overflow-hidden shadow-raised">
                           {/* Supplier Group Header */}
-                          <div className="bg-slate-50 border-b border-slate-200 px-5 py-3.5 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                          <div className="bg-surface-muted border-b border-border px-5 py-3.5 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                             <div className="flex items-center gap-2.5">
                               <Truck className="w-4 h-4 text-blue-600 shrink-0" />
-                              <h4 className="font-extrabold text-slate-900 text-sm">{supplierName}</h4>
-                              <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-extrabold">
+                              <h4 className="font-extrabold text-text-primary text-sm">{supplierName}</h4>
+                              <span className="px-2 py-0.5 rounded-full bg-surface-elevated text-text-primary text-[10px] font-extrabold">
                                 {items.length} {items.length === 1 ? 'item' : 'itens'}
                               </span>
                             </div>
@@ -2925,8 +2925,8 @@ export default function ProjectSection({
 
                           {/* Table of items */}
                           <div className="overflow-x-auto w-full">
-                            <table className="w-full min-w-[850px] text-left text-xs divide-y divide-slate-100">
-                              <thead className="bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200/80 whitespace-nowrap select-none">
+                            <table className="w-full min-w-[850px] text-left text-xs divide-y divide-border-subtle">
+                              <thead className="bg-surface-muted/90 text-[11px] uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
                                 <tr>
                                   <th className="px-4 py-3">Descrição</th>
                                   <th className="px-3 py-3">Ref.</th>
@@ -2939,20 +2939,20 @@ export default function ProjectSection({
                                   {(canWriteMaterials || canDeleteMaterials) && <th className="px-3 py-3 text-center">Ações</th>}
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-slate-100 font-medium">
+                              <tbody className="divide-y divide-border-subtle font-medium">
                                 {items.map(item => {
                                   const effectiveStatus = pendingMaterialStatuses[item.id] || item.status;
                                   const isEmArmazem = effectiveStatus === 'em_armazem' || effectiveStatus === 'em_stock';
                                   const isEncomendado = effectiveStatus === 'encomendado';
 
                                   return (
-                                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                                      <td className="px-4 py-3 font-bold text-slate-900">{item.description}</td>
-                                      <td className="px-3 py-3 text-slate-500 font-mono text-[11px]">{item.reference || '-'}</td>
-                                      <td className="px-3 py-3 text-center font-bold text-slate-800">{item.quantity}</td>
-                                      <td className="px-3 py-3 text-slate-600">{item.expectedDeliveryDate || '-'}</td>
-                                      <td className="px-3 py-3 text-left font-semibold text-slate-700">{item.budget ? String(item.budget) : '-'}</td>
-                                      <td className="px-3 py-3 text-right text-slate-600">{item.costPrice ? `${item.costPrice} €` : '-'}</td>
+                                    <tr key={item.id} className="hover:bg-surface-muted/80 transition-colors">
+                                      <td className="px-4 py-3 font-bold text-text-primary">{item.description}</td>
+                                      <td className="px-3 py-3 text-text-secondary font-mono text-[11px]">{item.reference || '-'}</td>
+                                      <td className="px-3 py-3 text-center font-bold text-text-primary">{item.quantity}</td>
+                                      <td className="px-3 py-3 text-text-secondary">{item.expectedDeliveryDate || '-'}</td>
+                                      <td className="px-3 py-3 text-left font-semibold text-text-primary">{item.budget ? String(item.budget) : '-'}</td>
+                                      <td className="px-3 py-3 text-right text-text-secondary">{item.costPrice ? `${item.costPrice} €` : '-'}</td>
                                       <td className="px-3 py-3 text-right font-bold text-emerald-700">{item.salePrice ? `${item.salePrice} €` : '-'}</td>
                                       <td className="px-4 py-3 text-center">
                                         <button
@@ -2964,7 +2964,7 @@ export default function ProjectSection({
                                               ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300'
                                               : isEncomendado
                                               ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
-                                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+                                              : 'bg-surface-muted hover:bg-surface-elevated text-text-primary border border-border'
                                           }`}
                                           title={canWriteMaterials ? 'Clique para alterar estado (Por encomendar / Encomendado / Em armazém)' : ''}
                                         >
@@ -2980,7 +2980,7 @@ export default function ProjectSection({
                                             </>
                                           ) : (
                                             <>
-                                              <ShoppingBag className="w-3.5 h-3.5 text-slate-500" />
+                                              <ShoppingBag className="w-3.5 h-3.5 text-text-secondary" />
                                               <span>Por encomendar</span>
                                             </>
                                           )}
@@ -2991,7 +2991,7 @@ export default function ProjectSection({
                                           {canWriteMaterials && <button
                                             type="button"
                                             onClick={() => handleEditMaterial(item)}
-                                            className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                                            className="p-1 text-text-muted hover:text-blue-600 transition-colors"
                                             title="Editar"
                                           >
                                             <Edit2 className="w-3.5 h-3.5" />
@@ -2999,7 +2999,7 @@ export default function ProjectSection({
                                           {canDeleteMaterials && <button
                                             type="button"
                                             onClick={() => handleDeleteMaterial(item.id)}
-                                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                                            className="p-1 text-text-muted hover:text-rose-600 transition-colors"
                                             title="Eliminar"
                                           >
                                             <Trash2 className="w-3.5 h-3.5" />
@@ -3020,18 +3020,18 @@ export default function ProjectSection({
 
               {/* MODAL FORM: Registar material */}
               {isMaterialModalOpen && canWriteMaterials && (
-                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-                  <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 border border-slate-100 my-8">
+                <div className="fixed inset-0 bg-overlay/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+                  <div className="bg-white rounded-dialog max-w-2xl w-full p-6 shadow-modal space-y-5 border border-border-subtle my-8">
                     {/* Modal Header */}
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-                      <h3 className="font-extrabold text-slate-900 flex items-center gap-2.5 text-base">
+                    <div className="flex justify-between items-center border-b border-border-subtle pb-4">
+                      <h3 className="font-extrabold text-text-primary flex items-center gap-2.5 text-base">
                         <Package className="w-5 h-5 text-blue-600" />
                         {editingMaterialId ? 'Editar Material' : 'Registar material'}
                       </h3>
                       <button
                         type="button"
                         onClick={handleCloseMaterialModal}
-                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                        className="p-1.5 text-text-muted hover:text-text-secondary hover:bg-surface-muted rounded-full transition-colors cursor-pointer"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -3075,7 +3075,7 @@ export default function ProjectSection({
                               const matches = allSuppliers.filter(s => s.toLowerCase().includes(matSupplier.toLowerCase().trim()));
                               if (matches.length === 0) return null;
                               return (
-                                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-border rounded-control shadow-overlay z-30 max-h-48 overflow-y-auto divide-y divide-border-subtle">
                                   {matches.map((s, idx) => (
                                     <div
                                       key={idx}
@@ -3083,10 +3083,10 @@ export default function ProjectSection({
                                         setMatSupplier(s);
                                         setIsSupplierAutocompleteOpen(false);
                                       }}
-                                      className="p-2.5 hover:bg-blue-50 text-slate-800 font-semibold cursor-pointer text-xs flex justify-between items-center"
+                                      className="p-2.5 hover:bg-blue-50 text-text-primary font-semibold cursor-pointer text-xs flex justify-between items-center"
                                     >
                                       <span>{s}</span>
-                                      <span className="text-[10px] text-slate-400">Sugestão</span>
+                                      <span className="text-[10px] text-text-muted">Sugestão</span>
                                     </div>
                                   ))}
                                 </div>
@@ -3173,10 +3173,10 @@ export default function ProjectSection({
                             <button
                               type="button"
                               onClick={() => setMatStatus('por_encomendar')}
-                              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                              className={`flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                                 matStatus === 'por_encomendar'
                                   ? 'bg-blue-100 text-blue-900 border-blue-300'
-                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                                  : 'bg-surface-muted text-text-secondary border-border'
                               }`}
                             >
                               <ShoppingBag className="w-3.5 h-3.5 text-blue-600" /> Por encomendar
@@ -3184,10 +3184,10 @@ export default function ProjectSection({
                             <button
                               type="button"
                               onClick={() => setMatStatus('encomendado')}
-                              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                              className={`flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                                 matStatus === 'encomendado'
                                   ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                                  : 'bg-surface-muted text-text-secondary border-border'
                               }`}
                             >
                               <Truck className="w-3.5 h-3.5 text-amber-600" /> Encomendado
@@ -3195,10 +3195,10 @@ export default function ProjectSection({
                             <button
                               type="button"
                               onClick={() => setMatStatus('em_armazem')}
-                              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                              className={`flex-1 py-2 px-3 rounded-control border text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
                                 matStatus === 'em_armazem' || matStatus === 'em_stock'
                                   ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                                  : 'bg-surface-muted text-text-secondary border-border'
                               }`}
                             >
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Em armazém
@@ -3209,17 +3209,17 @@ export default function ProjectSection({
                       </div>
 
                       {/* Modal Footer */}
-                      <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                      <div className="flex justify-end gap-3 pt-4 border-t border-border-subtle">
                         <button
                           type="button"
                           onClick={handleCloseMaterialModal}
-                          className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-xl transition-colors cursor-pointer text-xs"
+                          className="px-4 py-2.5 bg-surface-muted hover:bg-surface-elevated text-text-primary font-extrabold rounded-control transition-colors cursor-pointer text-xs"
                         >
                           Cancelar
                         </button>
                         <button
                           type="submit"
-                          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-2 text-xs"
+                          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-control shadow-raised transition-colors cursor-pointer flex items-center gap-2 text-xs"
                         >
                           <Plus className="w-4 h-4" />
                           {editingMaterialId ? 'Atualizar Linha' : 'Registar material'}
@@ -3261,7 +3261,7 @@ export default function ProjectSection({
                   <span>Não existem riscos identificados neste projeto.</span>
                 </div>
               ) : (
-                <Card className="bg-surface border border-border rounded-card overflow-hidden shadow-xs">
+                <Card className="bg-surface border border-border rounded-card overflow-hidden shadow-raised">
                   <div className="overflow-x-auto w-full">
                     <table className="w-full min-w-[900px] text-left text-body-sm divide-y divide-border-subtle">
                       <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
@@ -3633,7 +3633,7 @@ export default function ProjectSection({
                             setClientSearchQuery(`${c.clientName} (${c.shortName})`);
                             setShowClientSuggestions(false);
                           }}
-                          className={`w-full items-start text-left p-2 rounded-lg text-body-sm transition-colors flex flex-col gap-0.5 cursor-pointer ${
+                          className={`w-full items-start text-left p-2 rounded-control text-body-sm transition-colors flex flex-col gap-0.5 cursor-pointer ${
                             isSelected
                               ? 'bg-primary/10 text-primary font-bold'
                               : 'hover:bg-surface-muted text-text-secondary font-semibold'
@@ -4286,7 +4286,7 @@ export default function ProjectSection({
                       setProjectPageSize(Number(e.target.value));
                       setProjectCurrentPage(1);
                     }}
-                    className="w-20 min-w-20 px-2 py-1 bg-surface border border-border rounded-lg text-body-sm font-semibold text-text-secondary outline-none focus:ring-1 focus:ring-primary"
+                    className="w-20 min-w-20 px-2 py-1 bg-surface border border-border rounded-control text-body-sm font-semibold text-text-secondary outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option value={15}>15</option>
                     <option value={25}>25</option>
@@ -4301,7 +4301,7 @@ export default function ProjectSection({
                   <Button variant="ghost" size="sm"
                     onClick={() => setProjectCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={validProjectPage === 1}
-                    className="px-2.5 py-1.5 bg-surface border border-border rounded-lg font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-surface border border-border rounded-control font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                     <span>Anterior</span>
@@ -4330,7 +4330,7 @@ export default function ProjectSection({
                   <Button variant="ghost" size="sm"
                     onClick={() => setProjectCurrentPage(prev => Math.min(prev + 1, totalProjectPages))}
                     disabled={validProjectPage === totalProjectPages}
-                    className="px-2.5 py-1.5 bg-surface border border-border rounded-lg font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-surface border border-border rounded-control font-bold text-text-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                   >
                     <span>Seguinte</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -4352,7 +4352,7 @@ export default function ProjectSection({
             {/* Modal Header */}
             <div className="bg-surface-muted border-b border-border px-6 py-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 text-primary rounded-lg">
+                <div className="p-2 bg-primary/10 text-primary rounded-control">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
@@ -4367,7 +4367,7 @@ export default function ProjectSection({
 
               {/* Top Controls & Navigation */}
               <div className="flex items-center gap-3">
-                <span className="text-caption font-bold text-primary bg-primary/10 border border-primary/20 rounded-md px-2.5 py-1 hidden sm:inline-block">
+                <span className="text-caption font-bold text-primary bg-primary/10 border border-primary/20 rounded-control px-2.5 py-1 hidden sm:inline-block">
                   {(() => {
                     const end = new Date(cronogramaStartDate);
                     end.setDate(end.getDate() + 29);
@@ -4379,7 +4379,7 @@ export default function ProjectSection({
                   <Button variant="ghost" size="sm" aria-label="Voltar 5 dias"
                     type="button"
                     onClick={shiftCronogramaPrev}
-                    className="flex items-center gap-1 px-2 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 bg-surface hover:bg-surface-muted border border-border rounded-control text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                     title="Voltar 5 dias"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" /> -5d
@@ -4387,14 +4387,14 @@ export default function ProjectSection({
                   <Button variant="ghost" size="sm"
                     type="button"
                     onClick={resetCronogramaToDefault}
-                    className="px-2 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
+                    className="px-2 py-1 bg-surface hover:bg-surface-muted border border-border rounded-control text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                   >
                     Hoje
                   </Button>
                   <Button variant="ghost" size="sm" aria-label="Avançar 5 dias"
                     type="button"
                     onClick={shiftCronogramaNext}
-                    className="flex items-center gap-1 px-2 py-1 bg-surface hover:bg-surface-muted border border-border rounded-lg text-caption font-bold text-text-secondary cursor-pointer transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 bg-surface hover:bg-surface-muted border border-border rounded-control text-caption font-bold text-text-secondary cursor-pointer transition-colors"
                     title="Avançar 5 dias"
                   >
                     +5d <ChevronRight className="w-3.5 h-3.5" />
@@ -4487,22 +4487,22 @@ export default function ProjectSection({
                               <td key={`modal-cell-proj-${dayStr}`} className={`p-1 border-r border-border/80 text-center align-middle ${isToday ? 'bg-warning/40' : isWeekend ? 'bg-surface-muted/40' : ''}`}>
                                 <div className="flex flex-col gap-0.5 items-center justify-center">
                                   {isProjStart && (
-                                    <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Data de Início do Projeto">
+                                    <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-raised scale-90" title="Data de Início do Projeto">
                                       INÍCIO
                                     </span>
                                   )}
                                   {isProjDelivery && (
-                                    <span className="px-1.5 py-0.5 bg-success-strong text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Data de Entrega do Projeto">
+                                    <span className="px-1.5 py-0.5 bg-success-strong text-white text-caption font-extrabold rounded shadow-raised scale-90" title="Data de Entrega do Projeto">
                                       ENTREGA
                                     </span>
                                   )}
                                   {isProjEstimated && !isProjDelivery && (
-                                    <span className="px-1.5 py-0.5 bg-surface-elevated text-text-primary text-caption font-extrabold rounded shadow-xs scale-90" title="Previsão de Conclusão">
+                                    <span className="px-1.5 py-0.5 bg-surface-elevated text-text-primary text-caption font-extrabold rounded shadow-raised scale-90" title="Previsão de Conclusão">
                                       PREVISTO
                                     </span>
                                   )}
                                   {isProjScheduled && !isProjStart && (
-                                    <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-xs scale-90" title="Instalação/Agendamento">
+                                    <span className="px-1.5 py-0.5 bg-primary text-white text-caption font-extrabold rounded shadow-raised scale-90" title="Instalação/Agendamento">
                                       AGENDADO
                                     </span>
                                   )}
@@ -4572,7 +4572,7 @@ export default function ProjectSection({
                                       {conflicts.map((c, idx) => (
                                         <div
                                           key={`modal-conflict-${idx}`}
-                                          className="flex items-start gap-1 p-1 bg-error/10 text-error border border-error/60 rounded-md text-caption font-semibold leading-tight hover:bg-error/10 transition-colors"
+                                          className="flex items-start gap-1 p-1 bg-error/10 text-error border border-error/60 rounded-control text-caption font-semibold leading-tight hover:bg-error/10 transition-colors"
                                           title={c.details}
                                         >
                                           <ShieldAlert className="w-3.5 h-3.5 text-error flex-shrink-0 mt-0.5" />
@@ -4634,7 +4634,7 @@ export default function ProjectSection({
                                             }
                                             e.dataTransfer.setData('taskId', t.id);
                                           }}
-                                          className={`py-1.5 px-1 rounded-lg text-caption font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
+                                          className={`py-1.5 px-1 rounded-control text-caption font-bold text-white -sm cursor-grab active:cursor-grabbing hover:scale-105 hover:brightness-95 active:scale-95 transition-all select-none overflow-hidden truncate max-w-[50px] mx-auto ${
                                             getTaskStatusStyle(t.statusId, taskStatuses).dotClass
                                           }`}
                                           title={`Tarefa: ${t.title}\nEstado: ${stat?.name || 'Pendente'}\nTécnico: ${assigneesText}\n(Arraste para outro dia para reagendar)`}
@@ -4680,7 +4680,7 @@ export default function ProjectSection({
 
       {showRiskModal && (
         <div className="fixed inset-0 bg-primary/60 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <Card className="bg-surface rounded-card border border-border shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden text-body-sm font-bold text-text-secondary">
+          <Card className="bg-surface rounded-card border border-border shadow-modal max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden text-body-sm font-bold text-text-secondary">
             {/* Modal Header */}
             <div className="bg-surface-muted border-b border-border-subtle px-6 py-4 flex items-center justify-between">
               <h3 className="text-body-sm font-extrabold text-text-primary flex items-center gap-2">
@@ -4792,9 +4792,9 @@ export default function ProjectSection({
                           setRiskReviewDate(calculateSuggestedReviewDate(val, riskImpact, riskIdentificationDate));
                         }
                       }}
-                      className="flex-1 accent-blue-600 cursor-pointer h-1.5 bg-border rounded-lg appearance-none"
+                      className="flex-1 accent-blue-600 cursor-pointer h-1.5 bg-border rounded-control appearance-none"
                     />
-                    <span className="w-10 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center font-black text-primary text-body-sm">{riskProbability}</span>
+                    <span className="w-10 h-8 rounded-control bg-primary/10 border border-primary/20 flex items-center justify-center font-black text-primary text-body-sm">{riskProbability}</span>
                   </div>
                   <div className="flex justify-between text-caption text-text-muted font-bold uppercase tracking-wide">
                     <span>Muito Baixo (1)</span>
@@ -4818,9 +4818,9 @@ export default function ProjectSection({
                           setRiskReviewDate(calculateSuggestedReviewDate(riskProbability, val, riskIdentificationDate));
                         }
                       }}
-                      className="flex-1 accent-blue-600 cursor-pointer h-1.5 bg-border rounded-lg appearance-none"
+                      className="flex-1 accent-blue-600 cursor-pointer h-1.5 bg-border rounded-control appearance-none"
                     />
-                    <span className="w-10 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center font-black text-primary text-body-sm">{riskImpact}</span>
+                    <span className="w-10 h-8 rounded-control bg-primary/10 border border-primary/20 flex items-center justify-center font-black text-primary text-body-sm">{riskImpact}</span>
                   </div>
                   <div className="flex justify-between text-caption text-text-muted font-bold uppercase tracking-wide">
                     <span>Muito Baixo (1)</span>
@@ -4829,7 +4829,7 @@ export default function ProjectSection({
                 </div>
 
                 {/* Auto Calculated Risk Score Badge */}
-                <div className="md:col-span-2 flex items-center justify-between p-4 bg-primary text-white rounded-card border border-border shadow-xs">
+                <div className="md:col-span-2 flex items-center justify-between p-4 bg-primary text-white rounded-card border border-border shadow-raised">
                   <div className="flex flex-col gap-0.5">
                     <span className="text-caption text-white font-bold uppercase tracking-wider">Nível de Risco Calculado</span>
                     <span className="text-body-sm font-semibold text-white">Fórmula: Probabilidade ({riskProbability}) × Impacto ({riskImpact})</span>
@@ -4837,7 +4837,7 @@ export default function ProjectSection({
                   {(() => {
                     const level = getRiskLevelDetails(riskProbability, riskImpact);
                     return (
-                      <span className={`px-4 py-2 rounded-control text-body-sm font-black uppercase tracking-widest border shadow-sm ${level.color}`}>
+                      <span className={`px-4 py-2 rounded-control text-body-sm font-black uppercase tracking-widest border shadow-raised ${level.color}`}>
                         {level.dot} {level.label} ({level.score})
                       </span>
                     );
@@ -4934,7 +4934,7 @@ export default function ProjectSection({
                 <Button variant="primary" size="sm"
                   type="submit"
                   disabled={isSavingRisk}
-                  className="px-6 py-2.5 text-body-sm font-extrabold text-white bg-primary hover:bg-primary rounded-control shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-6 py-2.5 text-body-sm font-extrabold text-white bg-primary hover:bg-primary rounded-control shadow-raised transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />
                   {editingRiskId ? 'Gravar Alterações' : 'Adicionar Item de Risco'}
