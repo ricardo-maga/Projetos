@@ -7,7 +7,7 @@
     "lib"
   ],
   "helpers": [],
-  "files": 299,
+  "files": 301,
   "totals": {
     "palette": 0,
     "shape": 94,
@@ -1580,6 +1580,17 @@
       "sharedImports": 0
     },
     {
+      "file": "domains/administration/modules/auditPresentation.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
       "file": "domains/administration/modules/configActions.ts",
       "layer": "screen",
       "palette": 0,
@@ -2978,6 +2989,17 @@
     },
     {
       "file": "lib/security/postgrestSearch.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/security/requestOrigin.ts",
       "layer": "screen",
       "palette": 0,
       "shape": 0,
@@ -4798,13 +4820,13 @@
     },
     {
       "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 284,
+      "line": 289,
       "category": "arbitrary",
       "value": "min-w-[700px]"
     },
     {
       "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 326,
+      "line": 331,
       "category": "arbitrary",
       "value": "max-w-[150px]"
     },
@@ -4864,7 +4886,7 @@
     },
     {
       "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 678,
+      "line": 679,
       "category": "arbitrary",
       "value": "max-h-[200px]"
     },
@@ -4942,67 +4964,67 @@
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 104,
+      "line": 106,
       "category": "inline",
       "value": "style={style}"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 167,
+      "line": 172,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 178,
+      "line": 183,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 216,
+      "line": 221,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 270,
+      "line": 275,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 274,
+      "line": 279,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 298,
+      "line": 303,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 408,
+      "line": 413,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 409,
+      "line": 414,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 479,
+      "line": 486,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 502,
+      "line": 509,
       "category": "arbitrary",
       "value": "min-w-[520px]"
     },
@@ -5014,13 +5036,13 @@
     },
     {
       "file": "domains/administration/ui/UserSection.tsx",
-      "line": 404,
+      "line": 409,
       "category": "arbitrary",
       "value": "min-w-[700px]"
     },
     {
       "file": "domains/administration/ui/UserSection.tsx",
-      "line": 423,
+      "line": 428,
       "category": "shape",
       "value": "rounded-full"
     },
@@ -5170,7 +5192,7 @@
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 586,
+      "line": 587,
       "category": "shape",
       "value": "rounded-xs"
     },

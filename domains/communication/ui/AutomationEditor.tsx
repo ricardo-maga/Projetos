@@ -562,6 +562,7 @@ export default function AutomationEditor({
                     {actionChangeProjectStatus && (
                       <div className="pl-7 pt-1">
                         <select
+                          aria-label="Estado de destino do projeto"
                           value={targetProjectStatusId}
                           onChange={e => setTargetProjectStatusId(e.target.value)}
                           className="w-full px-3 py-2 bg-surface border border-border rounded-control text-xs font-semibold outline-none"
@@ -596,6 +597,7 @@ export default function AutomationEditor({
                     {actionSendNotification && (
                       <div className="pl-7 pt-1 space-y-2">
                         <input
+                          aria-label="Título da notificação"
                           type="text"
                           value={notificationTitle}
                           onChange={e => setNotificationTitle(e.target.value)}
@@ -604,6 +606,7 @@ export default function AutomationEditor({
                           required={actionSendNotification}
                         />
                         <input
+                          aria-label="Mensagem da notificação"
                           type="text"
                           value={notificationMessage}
                           onChange={e => setNotificationMessage(e.target.value)}

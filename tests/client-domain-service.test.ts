@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { ClientFailure, createClient, editClient } from '../domains/clients/modules/clientService';
+import { updateClientSchema } from '../domains/clients/contracts/client';
 
 function clientDb() {
   const rows: Record<string, any> = {};
@@ -55,5 +56,27 @@ describe('Clientes — serviço de escrita', () => {
       status: 409, details: { currentVersion: 3, submittedVersion: 2 },
     } satisfies Partial<ClientFailure>);
     expect(rows['c1'].client_name).toBe('Cliente');
+  });
+
+  it('restaura explicitamente um cliente eliminado, preservando campos e incrementando a versão', async () => {
+    const { db, rows } = clientDb();
+    rows.c1 = { id: 'c1', client_name: 'Cliente eliminado', notes: 'Preservar', version: 3, deleted: true };
+    const input = updateClientSchema.parse({ deleted: false, version: 3 });
+    const restored = await editClient(db, 'c1', input, 'user-1');
+    expect(restored).toMatchObject({ deleted: false, version: 4, clientName: 'Cliente eliminado', notes: 'Preservar' });
+    expect(rows.c1.updated_by).toBe('user-1');
+  });
+
+  it('mantém a proteção de concorrência e exige restauro explícito para clientes eliminados', async () => {
+    const { db, rows } = clientDb();
+    rows.c1 = { id: 'c1', client_name: 'Cliente eliminado', version: 3, deleted: true };
+    await expect(editClient(db, 'c1', { deleted: false, version: 2 }, 'user-1')).rejects.toMatchObject({ status: 409 });
+    await expect(editClient(db, 'c1', { clientName: 'Outro', version: 3 }, 'user-1')).rejects.toMatchObject({ status: 404 });
+    expect(rows.c1).toMatchObject({ deleted: true, version: 3, client_name: 'Cliente eliminado' });
+  });
+
+  it('não permite eliminar clientes pela permissão de edição', () => {
+    expect(updateClientSchema.safeParse({ deleted: true, version: 1 }).success).toBe(false);
+    expect(updateClientSchema.safeParse({ deleted: false }).success).toBe(false);
   });
 });

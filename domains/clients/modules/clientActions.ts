@@ -158,6 +158,7 @@ export function createClientActions({
       if (updates.color !== undefined) {
         payload.color = updates.color;
       }
+      if (updates.deleted === false) payload.deleted = false;
 
       const headers = {
         ...getAuthHeaders(),
@@ -246,7 +247,7 @@ export function createClientActions({
           if (!prev) return prev;
           return {
             ...prev,
-            clients: (prev.clients || []).map(c => matchId(c.id, id) ? { ...c, deleted: true } : c)
+            clients: (prev.clients || []).map(c => matchId(c.id, id) ? { ...c, deleted: true, version: result.data?.version ?? c.version } : c)
           };
         });
 

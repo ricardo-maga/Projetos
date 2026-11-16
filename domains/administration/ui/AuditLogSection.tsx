@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { fetchAuditLogsFromSupabase } from '@/lib/supabaseSync';
 import { M3SectionHeader } from '@/components/M3';
+import { auditActionCategory, auditEntityCategory } from '../modules/auditPresentation';
 
 interface AuditLogSectionProps {
   auditLogs?: AuditLog[];
@@ -58,10 +59,10 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
         (log.action && log.action.toLowerCase().includes(searchLower));
 
       // Filter Action
-      const matchesAction = filterAction === 'ALL' || log.action === filterAction;
+      const matchesAction = filterAction === 'ALL' || auditActionCategory(log.action) === filterAction;
 
       // Filter Entity
-      const matchesEntity = filterEntity === 'ALL' || log.entityType === filterEntity;
+      const matchesEntity = filterEntity === 'ALL' || auditEntityCategory(log.entityType || '') === filterEntity;
 
       return matchesSearch && matchesAction && matchesEntity;
     });
@@ -77,8 +78,8 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
   // Stats calculation
   const stats = useMemo(() => {
     const total = logsToDisplay.length;
-    const creates = logsToDisplay.filter(l => l.action === 'CREATE').length;
-    const deletes = logsToDisplay.filter(l => l.action === 'DELETE').length;
+    const creates = logsToDisplay.filter(l => auditActionCategory(l.action) === 'CREATE').length;
+    const deletes = logsToDisplay.filter(l => auditActionCategory(l.action) === 'DELETE').length;
     const logins = logsToDisplay.filter(l => l.action === 'LOGIN' || l.action === 'LOGOUT').length;
     return { total, creates, deletes, logins };
   }, [logsToDisplay]);
@@ -212,6 +213,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
           <div className="relative w-full md:flex-1 md:max-w-md">
             <Search className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
+              aria-label="Pesquisar auditoria"
               type="text"
               value={search}
               onChange={e => {
@@ -226,6 +228,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
           <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
             {/* Filter Action */}
             <select
+              aria-label="Filtrar auditoria por ação"
               value={filterAction}
               onChange={e => {
                 setFilterAction(e.target.value);
@@ -243,6 +246,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
 
             {/* Filter Entity */}
             <select
+              aria-label="Filtrar auditoria por entidade"
               value={filterEntity}
               onChange={e => {
                 setFilterEntity(e.target.value);
@@ -263,6 +267,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
             <div className="flex items-center gap-1.5 pl-1">
               <span className="text-xs text-text-muted font-medium whitespace-nowrap">Mostrar:</span>
               <select
+                aria-label="Registos de auditoria por página"
                 value={pageSize}
                 onChange={e => {
                   setPageSize(Number(e.target.value));

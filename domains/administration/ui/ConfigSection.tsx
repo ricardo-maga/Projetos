@@ -549,6 +549,7 @@ export default function ConfigSection({
             </p>
             <div className="space-y-4">
               <textarea
+                aria-label="Conteúdo CSV para importação de projetos"
                 value={csvText}
                 onChange={e => setCsvText(e.target.value)}
                 placeholder={`Nome de projeto;Cliente;Nº IP;Nº SF;Data início\nProjeto A;Cliente X;IP-123;SF-456;2026-10-17`}

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AuthError, requirePermission } from '@/lib/auth/requireAuth';
 import { calendarFeedDb, hashFeedToken, validFeedScope } from '@/domains/calendar/data/calendarFeedServer';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { hasSameRequestOrigin } from '@/lib/security/requestOrigin';
 
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ scope: string }> };
@@ -29,8 +30,7 @@ export async function GET(req: NextRequest, context: Context) {
 export async function POST(req: NextRequest, context: Context) {
   const { scope } = await context.params;
   if (!validFeedScope(scope)) return NextResponse.json({ error: 'Calendário desconhecido.' }, { status: 404 });
-  const origin = req.headers.get('origin');
-  if (origin && origin !== req.nextUrl.origin)
+  if (!hasSameRequestOrigin(req))
     return NextResponse.json({ error: 'Origem inválida.' }, { status: 403, headers: privateHeaders });
   try {
     const user = await requirePermission(req, 'calendar_read');
@@ -48,8 +48,7 @@ export async function POST(req: NextRequest, context: Context) {
 export async function DELETE(req: NextRequest, context: Context) {
   const { scope } = await context.params;
   if (!validFeedScope(scope)) return NextResponse.json({ error: 'Calendário desconhecido.' }, { status: 404 });
-  const origin = req.headers.get('origin');
-  if (origin && origin !== req.nextUrl.origin)
+  if (!hasSameRequestOrigin(req))
     return NextResponse.json({ error: 'Origem inválida.' }, { status: 403, headers: privateHeaders });
   try {
     const user = await requirePermission(req, 'calendar_read');
