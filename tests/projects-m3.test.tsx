@@ -170,8 +170,8 @@ describe('Projects M3 presentation', () => {
   it('uses white text for the calculated risk heading and formula on the dark primary background', () => {
     const h = createProjectHarness({ showRiskModal: true, riskProbability: 3, riskImpact: 3 });
     const html = renderToStaticMarkup(h.render({ ...projectPreviewProps, selectedProjectId: project.id }));
-    expect(html).toContain('text-caption text-white font-bold uppercase tracking-wider">Nível de Risco Calculado');
-    expect(html).toContain('text-body-sm font-semibold text-white">Fórmula: Probabilidade (3)');
+    expect(html).toContain('text-caption text-inverse font-bold uppercase tracking-wider">Nível de Risco Calculado');
+    expect(html).toContain('text-body-sm font-semibold text-inverse">Fórmula: Probabilidade (3)');
     expect(html).toContain('Médio (9)');
   });
   it('removes risk summary and filters while preserving risk creation and compact project actions', () => {

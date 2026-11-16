@@ -58,7 +58,7 @@ describe('My Focus M3', () => {
     const html = renderToStaticMarkup(find(tree, e => e.props?.id === 'card-managed-projects'));
     expect(html.match(/title="Forecast /g)).toHaveLength(1);
     expect(html).toContain(`title="Forecast ${forecastShortMonth(month)}"`);
-    expect(html).toContain('bg-fuchsia-600');
+    expect(html).toContain('bg-forecast-600');
   });
   it('puts client/project above task and hours, with a canonical circular execute action instead of a status badge', () => {
     const h = harness(), tree = h.render(focusPreviewProps);
