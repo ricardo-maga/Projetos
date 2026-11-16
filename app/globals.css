@@ -10,8 +10,8 @@
   animation: app-logo-breathe 1.8s ease-in-out infinite;
 }
 
-.app-logo--synced { filter: brightness(0) saturate(100%) invert(42%) sepia(93%) saturate(1055%) hue-rotate(91deg) brightness(91%) contrast(101%); }
-.app-logo--error { filter: brightness(0) saturate(100%) invert(26%) sepia(91%) saturate(3695%) hue-rotate(345deg) brightness(95%) contrast(91%); }
+.app-logo--synced { outline: 2px solid var(--color-success-strong); outline-offset: 2px; }
+.app-logo--error { outline: 2px solid var(--color-error); outline-offset: 2px; }
 
 @keyframes app-logo-breathe {
   50% { opacity: .25; }

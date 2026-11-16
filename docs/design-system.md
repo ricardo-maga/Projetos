@@ -63,3 +63,5 @@ A conformidade estática não fecha a matriz visual/CRUD: os resultados dessa ex
 Os textos de sucesso, aviso e erro e os tons suaves da análise têm valores centrais com contraste de rótulo normal. As legendas Recharts usam `--chart-label`; os marcadores continuam a representar a cor da série. O texto do tooltip usa `--chart-tooltip-text`. Os testes verificam os contrastes dos sete temas e das superfícies selecionadas; a inspeção no navegador confronta-os com os fundos efetivamente compostos.
 
 Os valores de campos desativados e os placeholders mantêm o contraste de `text-muted`; a indisponibilidade continua indicada pelo estado do controlo. Os rótulos do cronograma usam `text-on-status-dot` sobre as cores de estado existentes. A documentação tem a escala central `docs-accent-*`, independente do tema ERP, para preservar o contraste na sua superfície escura.
+
+O resultado de sincronização assinala o logótipo com um contorno semântico de sucesso/erro. A imagem e o logótipo de substituição mantêm as cores e os elementos reconhecíveis; a animação de carregamento continua independente desse resultado.
