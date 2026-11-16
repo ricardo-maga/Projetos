@@ -460,8 +460,8 @@ export default function ConfigSection({
                       aria-pressed={theme === t.id || (theme === 'default' && t.id === 'domino')}
                       className={`flex items-center gap-3 p-3 rounded-control border text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                         (theme === t.id || (theme === 'default' && t.id === 'domino'))
-                          ? 'border-slate-800 bg-surface-muted/70 ring-2 ring-slate-100'
-                          : 'border-border hover:border-slate-300 hover:bg-surface-muted/40'
+                          ? 'border-border bg-surface-muted/70 ring-2 ring-border-subtle'
+                          : 'border-border hover:border-border hover:bg-surface-muted/40'
                       }`}
                     >
                       <span
@@ -526,7 +526,7 @@ export default function ConfigSection({
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-text-primary">Importação de Projetos via CSV</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Cole o conteúdo CSV para criar múltiplos projetos de forma massiva.</p>
+                  <p className="text-[11px] text-text-muted font-medium">Cole o conteúdo CSV para criar múltiplos projetos de forma massiva.</p>
                 </div>
               </div>
             </div>
@@ -548,7 +548,7 @@ export default function ConfigSection({
                   type="button"
                   onClick={handleCsvImport}
                   disabled={importingCsv || !csvText.trim() || !hasPermission(currentUser, 'projects_write')}
-                  className="px-5 py-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs"
+                  className="px-5 py-2 bg-primary text-white font-bold rounded-control hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs"
                 >
                   {importingCsv ? 'A importar...' : 'Importar Dados'}
                 </button>
@@ -562,7 +562,7 @@ export default function ConfigSection({
                     {csvResult.failed > 0 && <li>Falhas: <span className="text-amber-600 font-bold">{csvResult.failed}</span></li>}
                   </ul>
                   {csvResult.errors.length > 0 && (
-                    <div className="mt-3 p-3 bg-surface rounded-lg border border-amber-200 text-amber-700 h-32 overflow-y-auto">
+                    <div className="mt-3 p-3 bg-surface rounded-control border border-amber-200 text-amber-700 h-32 overflow-y-auto">
                       {csvResult.errors.map((e, i) => (
                         <div key={i}>{e}</div>
                       ))}
@@ -581,7 +581,7 @@ export default function ConfigSection({
                 <h3 className="text-sm font-extrabold text-text-primary">Ligação à base de dados</h3>
               </div>
               <button type="button" onClick={handleTestConnection} disabled={supabaseStatus === 'testing'}
-                className="px-3 py-1.5 bg-surface-muted hover:bg-slate-200 border border-border text-text-secondary font-bold rounded-lg flex items-center gap-1.5 disabled:opacity-50">
+                className="px-3 py-1.5 bg-surface-muted hover:bg-surface-elevated border border-border text-text-secondary font-bold rounded-control flex items-center gap-1.5 disabled:opacity-50">
                 <RefreshCw className={`w-3.5 h-3.5 ${supabaseStatus === 'testing' ? 'animate-spin' : ''}`} />
                 Testar ligação
               </button>
@@ -603,14 +603,14 @@ export default function ConfigSection({
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-text-primary">Auditoria de Consultas & Índices Supabase</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Índices B-Tree compostos e paginação no servidor para otimização de desempenho.</p>
+                  <p className="text-[11px] text-text-muted font-medium">Índices B-Tree compostos e paginação no servidor para otimização de desempenho.</p>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={() => setShowIndexSql(!showIndexSql)}
-                className="px-3 py-1.5 bg-surface-muted hover:bg-slate-200 border border-border text-text-secondary font-bold rounded-lg transition-all flex items-center gap-1.5 text-xs cursor-pointer"
+                className="px-3 py-1.5 bg-surface-muted hover:bg-surface-elevated border border-border text-text-secondary font-bold rounded-control transition-all flex items-center gap-1.5 text-xs cursor-pointer"
               >
                 <Terminal className="w-3.5 h-3.5 text-text-muted" />
                 {showIndexSql ? 'Ocultar Script' : 'Ver Script de Índices'}
@@ -656,13 +656,13 @@ export default function ConfigSection({
                 <button
                   type="button"
                   onClick={copyIndexSqlToClipboard}
-                  className="px-2.5 py-1 bg-surface border border-border hover:bg-surface-muted text-text-secondary font-bold rounded-lg text-[10px] flex items-center gap-1 transition-colors"
+                  className="px-2.5 py-1 bg-surface border border-border hover:bg-surface-muted text-text-secondary font-bold rounded-control text-[10px] flex items-center gap-1 transition-colors"
                 >
                   <Copy className="w-3 h-3 text-text-muted" />
                   {indexSqlCopied ? 'Copiado para o clipboard!' : 'Copiar Script SQL'}
                 </button>
               </div>
-              <pre className="p-3 bg-slate-950 text-emerald-400 rounded-control font-mono text-[9px] overflow-x-auto max-h-[200px] leading-relaxed border border-slate-800">
+              <pre className="p-3 bg-overlay text-emerald-400 rounded-control font-mono text-[9px] overflow-x-auto max-h-[200px] leading-relaxed border border-border">
                 {SUPABASE_OPTIMIZE_INDEXES_SQL}
               </pre>
             </div>

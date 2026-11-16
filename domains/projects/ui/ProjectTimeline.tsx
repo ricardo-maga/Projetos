@@ -212,7 +212,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               <div className="space-y-1">
                 {otherDays.get(day.dateStr)?.absentUsers.map(({ user, absence, conflict }) =>
                   <div key={user.id} title={conflict.tooltipText}
-                    className={`rounded-md border px-2 py-1 text-caption font-semibold ${conflict.hasConflict ? 'bg-error/10 text-error border-error/20' : 'bg-surface-muted text-text-secondary border-border'}`}>
+                    className={`rounded-control border px-2 py-1 text-caption font-semibold ${conflict.hasConflict ? 'bg-error/10 text-error border-error/20' : 'bg-surface-muted text-text-secondary border-border'}`}>
                     <span className="flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />{user.name}: {conflict.badgeText}</span>
                     {absence.reason && <span className="block truncate font-normal">{absence.reason}</span>}
                   </div>)}
@@ -316,7 +316,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
         </table>
       </div>
       {floatingHeader && <div ref={floatingHeaderScrollRef} data-project-timeline-fixed-header aria-hidden="true"
-        className="fixed top-0 z-40 overflow-hidden pointer-events-none border-b border-border shadow-sm"
+        className="fixed top-0 z-40 overflow-hidden pointer-events-none border-b border-border shadow-raised"
         style={{ left: floatingHeader.left, width: floatingHeader.width, height: floatingHeader.height }}>
         <table className="w-full table-fixed border-separate border-spacing-0 text-body-sm" style={{ minWidth: timelineMinWidth }}>
           <colgroup><col style={{ width: 260 }} />{days.map(day => <col key={day.dateStr} style={compactDays.has(day.dateStr) ? { width: 64 } : undefined} />)}</colgroup>

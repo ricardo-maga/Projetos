@@ -97,7 +97,7 @@ export default function MarkdownCommentComposer({
               <EditorContent editor={editor} />
               {editor.isEmpty && <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-3.5 text-body-sm text-text-disabled">{placeholder}</span>}
               <BubbleMenu editor={editor} shouldShow={({ state }) => editingLink || !state.selection.empty}>
-                <div role="toolbar" aria-label="Formatar texto selecionado" className="flex max-w-[min(100vw-2rem,28rem)] items-center gap-0.5 overflow-x-auto rounded-control border border-border bg-surface p-1 shadow-lg">
+                <div role="toolbar" aria-label="Formatar texto selecionado" className="flex max-w-[min(100vw-2rem,28rem)] items-center gap-0.5 overflow-x-auto rounded-control border border-border bg-surface p-1 shadow-overlay">
                   {editingLink ? (
                     <form onSubmit={event => {
                       event.preventDefault();

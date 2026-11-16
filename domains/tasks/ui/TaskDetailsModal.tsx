@@ -704,7 +704,7 @@ export default function TaskDetailsModal({
 
               {/* Suggestions Dropdown */}
               {!isPlanningReadOnly && isProjectDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 bg-surface border border-border rounded-control shadow-xl z-50 max-h-60 overflow-y-auto divide-y divide-border animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-surface border border-border rounded-control shadow-modal z-50 max-h-60 overflow-y-auto divide-y divide-border animate-in fade-in zoom-in-95 duration-100">
                   <div className="p-2 bg-surface-muted text-caption uppercase font-bold text-text-muted tracking-wider flex items-center justify-between">
                     <span>Projetos sugeridos ({projectSuggestions.length})</span>
                     <span className="font-normal lowercase">opcional</span>

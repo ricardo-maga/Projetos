@@ -53,19 +53,19 @@ interface TaskAnalyticsProps {
 
 // Color palette for charts
 const COLORS = [
-  '#3b82f6', // Blue
-  '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#8b5cf6', // Purple
-  '#ec4899', // Pink
-  '#06b6d4', // Cyan
-  '#f97316', // Orange
-  '#6366f1', // Indigo
-  '#64748b'  // Slate
+  'var(--chart-series-blue)', // Blue
+  'var(--chart-series-green)', // Emerald
+  'var(--chart-series-amber)', // Amber
+  'var(--chart-series-purple)', // Purple
+  'var(--chart-series-pink)', // Pink
+  'var(--chart-series-cyan)', // Cyan
+  'var(--chart-series-orange)', // Orange
+  'var(--chart-series-indigo)', // Indigo
+  'var(--chart-axis)'  // Slate
 ];
 
 // Keep the existing analytics card geometry in one place during the visual migration.
-const ANALYSIS_PANEL = 'm3-legacy-card bg-white rounded-2xl border border-analysis-border shadow-xs';
+const ANALYSIS_PANEL = 'm3-legacy-card bg-white rounded-card border border-analysis-border shadow-raised';
 const ANALYSIS_SECTION_TITLE = 'text-base font-bold text-analysis-text-primary flex items-center gap-2';
 
 export function TaskAnalytics({
@@ -473,7 +473,7 @@ export function TaskAnalytics({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-xl border border-blue-100">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-card border border-blue-100">
               <Activity className="w-3.5 h-3.5 text-blue-600" />
               {kpis.totalAll} Tarefas analisadas
             </span>
@@ -492,7 +492,7 @@ export function TaskAnalytics({
             <span className="text-xs font-bold text-analysis-text-muted uppercase tracking-wider">
               Tarefas em Aberto
             </span>
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <div className="w-9 h-9 rounded-card bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
               <Clock className="w-4 h-4" />
             </div>
           </div>
@@ -516,7 +516,7 @@ export function TaskAnalytics({
             <span className="text-xs font-bold text-analysis-text-muted uppercase tracking-wider">
               Tarefas em Atraso
             </span>
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
+            <div className={`w-9 h-9 rounded-card flex items-center justify-center font-bold ${
               kpis.overdueCount > 0 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
             }`}>
               <AlertTriangle className="w-4 h-4" />
@@ -546,7 +546,7 @@ export function TaskAnalytics({
             <span className="text-xs font-bold text-analysis-text-muted uppercase tracking-wider">
               Horas gastas em 30 dias
             </span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+            <div className="w-9 h-9 rounded-card bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
@@ -566,7 +566,7 @@ export function TaskAnalytics({
             <span className="text-xs font-bold text-analysis-text-muted uppercase tracking-wider">
               Taxa de Conclusão
             </span>
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+            <div className="w-9 h-9 rounded-card bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
@@ -601,7 +601,7 @@ export function TaskAnalytics({
               Distribuição das tarefas abertas e respetivas horas por tipologia.
             </p>
           </div>
-          <span className="text-xs font-bold px-3 py-1 bg-analysis-muted text-analysis-text-body rounded-lg self-start sm:self-auto">
+          <span className="text-xs font-bold px-3 py-1 bg-analysis-muted text-analysis-text-body rounded-control self-start sm:self-auto">
             Tarefas abertas: {kpis.totalOpen}
           </span>
         </div>
@@ -631,7 +631,7 @@ export function TaskAnalytics({
                       `${val} tarefas (${item.payload.formattedHours}h)`,
                       item.payload.typeName
                     ]}
-                    contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
+                    contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}
                   />
                   <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
                 </PieChart>
@@ -663,7 +663,7 @@ export function TaskAnalytics({
                       {item.typeName}
                     </td>
                     <td className="py-3 px-3 text-center font-bold text-analysis-text-primary">
-                      <span className="px-2.5 py-1 bg-analysis-muted rounded-lg text-analysis-text-strong">
+                      <span className="px-2.5 py-1 bg-analysis-muted rounded-control text-analysis-text-strong">
                         {item.count}
                       </span>
                     </td>
@@ -712,35 +712,35 @@ export function TaskAnalytics({
           </div>
 
           {/* Time Horizon Selector Pills */}
-          <div className="flex items-center bg-analysis-muted p-1 rounded-xl text-xs font-bold border border-analysis-border/80 self-start sm:self-auto">
+          <div className="flex items-center bg-analysis-muted p-1 rounded-card text-xs font-bold border border-analysis-border/80 self-start sm:self-auto">
             <button
               onClick={() => setTimeHorizon('7')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                timeHorizon === '7' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
+              className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
+                timeHorizon === '7' ? 'bg-white text-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               7 Dias
             </button>
             <button
               onClick={() => setTimeHorizon('30')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                timeHorizon === '30' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
+              className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
+                timeHorizon === '30' ? 'bg-white text-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               30 Dias
             </button>
             <button
               onClick={() => setTimeHorizon('60')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                timeHorizon === '60' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
+              className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
+                timeHorizon === '60' ? 'bg-white text-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               60 Dias
             </button>
             <button
               onClick={() => setTimeHorizon('90')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                timeHorizon === '90' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
+              className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${
+                timeHorizon === '90' ? 'bg-white text-indigo-700 shadow-raised font-bold' : 'text-analysis-text-secondary hover:text-analysis-text-primary'
               }`}
             >
               90 Dias
@@ -753,20 +753,20 @@ export function TaskAnalytics({
           {isMounted && pastDaysChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={pastDaysChartData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="typeName" tick={{ fontSize: 11, fill: '#64748b' }} interval={0} />
-                <YAxis yAxisId="left" orientation="left" stroke="#6366f1" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis yAxisId="right" orientation="right" stroke="#10b981" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                <XAxis dataKey="typeName" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} interval={0} />
+                <YAxis yAxisId="left" orientation="left" stroke="var(--chart-series-indigo)" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} />
+                <YAxis yAxisId="right" orientation="right" stroke="var(--chart-series-green)" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}
                   formatter={(val: any, name: any) => [
                     name === 'Qtd. Tarefas' ? `${val} tarefas` : `${val}h`,
                     name
                   ]}
                 />
                 <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px' }} />
-                <Bar yAxisId="left" dataKey="QtdTarefas" name="Qtd. Tarefas" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={32} />
-                <Bar yAxisId="right" dataKey="Horas" name="Horas" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                <Bar yAxisId="left" dataKey="QtdTarefas" name="Qtd. Tarefas" fill="var(--chart-series-indigo)" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                <Bar yAxisId="right" dataKey="Horas" name="Horas" fill="var(--chart-series-green)" radius={[6, 6, 0, 0]} maxBarSize={32} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -850,13 +850,13 @@ export function TaskAnalytics({
               Identificação prévia de pontos de estrangulamento e sobrecarga na equipa técnica para as próximas semanas.
             </p>
           </div>
-          <div className="flex items-center bg-analysis-muted p-1 rounded-xl text-xs font-bold border border-analysis-border/80">
+          <div className="flex items-center bg-analysis-muted p-1 rounded-card text-xs font-bold border border-analysis-border/80">
             {(['7', '15', '30'] as const).map(days => (
               <button
                 key={days}
                 type="button"
                 onClick={() => setWorkloadHorizon(days)}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${workloadHorizon === days ? 'bg-white text-emerald-700 shadow-xs' : 'text-analysis-text-secondary hover:text-analysis-text-primary'}`}
+                className={`px-3 py-1.5 rounded-control transition-all cursor-pointer ${workloadHorizon === days ? 'bg-white text-emerald-700 shadow-raised' : 'text-analysis-text-secondary hover:text-analysis-text-primary'}`}
               >
                 {days} Dias
               </button>
@@ -869,14 +869,14 @@ export function TaskAnalytics({
           {isMounted && userWorkloadUpcoming.some(u => u[`hours${workloadHorizon}d`] > 0) ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={userWorkloadUpcoming.filter(u => u[`hours${workloadHorizon}d`] > 0)} layout="vertical" margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} unit="h" />
-                <YAxis dataKey="userName" type="category" width={140} tick={{ fontSize: 11, fill: '#64748b' }} />
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--chart-grid)" />
+                <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} unit="h" />
+                <YAxis dataKey="userName" type="category" width={140} tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}
                   formatter={(val: any) => [`${formatHoursToHHMM(Number(val))}h`, `Próximos ${workloadHorizon} dias`]}
                 />
-                <Bar dataKey={`hours${workloadHorizon}d`} name={`Próximos ${workloadHorizon} dias`} fill="#10b981" radius={[0, 6, 6, 0]} maxBarSize={28} />
+                <Bar dataKey={`hours${workloadHorizon}d`} name={`Próximos ${workloadHorizon} dias`} fill="var(--chart-series-green)" radius={[0, 6, 6, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -947,7 +947,7 @@ export function TaskAnalytics({
               Análise de esforço em projetos em execução.
             </p>
           </div>
-          <span className="text-xs font-bold px-3 py-1 bg-purple-50 text-purple-700 rounded-lg self-start sm:self-auto">
+          <span className="text-xs font-bold px-3 py-1 bg-purple-50 text-purple-700 rounded-control self-start sm:self-auto">
             {activeProjectsHours.length} Projetos Ativos
           </span>
         </div>
@@ -961,18 +961,18 @@ export function TaskAnalytics({
                 layout="vertical"
                 margin={{ top: 10, right: 30, left: 40, bottom: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                <XAxis type="number" unit="h" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis dataKey="chartLabel" type="category" width={280} tick={{ fontSize: 11, fill: '#334155' }} />
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--chart-grid)" />
+                <XAxis type="number" unit="h" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} />
+                <YAxis dataKey="chartLabel" type="category" width={280} tick={{ fontSize: 11, fill: 'var(--chart-label)' }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}
                   formatter={(val: any) => [`${val}h`]}
                   labelFormatter={(label: any) => {
                     const project = activeProjectsHours.find(p => p.chartLabel === label);
                     return project ? `${project.clientName} - ${project.title}` : label;
                   }}
                 />
-                <Bar dataKey="hours" name="Horas" fill="#3b82f6" radius={[0, 6, 6, 0]} maxBarSize={20} />
+                <Bar dataKey="hours" name="Horas" fill="var(--chart-series-blue)" radius={[0, 6, 6, 0]} maxBarSize={20} />
               </BarChart>
             </ResponsiveContainer>
           ) : (

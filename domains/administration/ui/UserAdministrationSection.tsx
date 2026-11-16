@@ -74,15 +74,15 @@ export default function UserAdministrationSection({ config, state, currentUser, 
         <div className="space-y-6">{groups.map(group => <div key={group.key} className={group.key === 'taskAssigneeGroupIds' ? 'space-y-2 pt-2 border-t border-border-subtle' : 'space-y-2'} id={group.key === 'taskAssigneeGroupIds' ? 'task-assignee-groups-config' : undefined}>
           <label className="block text-text-muted">{group.label}</label>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 border border-border rounded-control bg-surface-muted/50">
-            {(state.activeRoles || []).length === 0 ? <span className="text-slate-400 font-medium">Nenhuma função ativa criada</span> : state.activeRoles!.map(role => {
+            {(state.activeRoles || []).length === 0 ? <span className="text-text-muted font-medium">Nenhuma função ativa criada</span> : state.activeRoles!.map(role => {
               const checked = selected[group.key].includes(role.id);
-              return <label key={role.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-lg cursor-pointer select-none hover:bg-surface-muted transition-colors">
-                <input type="checkbox" disabled={!canWriteConfig || busy} checked={checked} onChange={() => setSelected(prev => ({ ...prev, [group.key]: checked ? prev[group.key].filter(id => id !== role.id) : [...prev[group.key], role.id] }))} className="rounded border-slate-300 text-primary focus:ring-blue-500 w-4 h-4 cursor-pointer" />
+              return <label key={role.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-control cursor-pointer select-none hover:bg-surface-muted transition-colors">
+                <input type="checkbox" disabled={!canWriteConfig || busy} checked={checked} onChange={() => setSelected(prev => ({ ...prev, [group.key]: checked ? prev[group.key].filter(id => id !== role.id) : [...prev[group.key], role.id] }))} className="rounded border-border text-primary focus:ring-blue-500 w-4 h-4 cursor-pointer" />
                 <span className="text-text-secondary font-semibold text-xs">{role.name}</span>
               </label>;
             })}
           </div>
-          <p className="text-[10px] text-slate-400 font-medium font-sans">{group.description}</p>
+          <p className="text-[10px] text-text-muted font-medium font-sans">{group.description}</p>
         </div>)}</div>
       </div>
       <div className="flex justify-end"><M3Button type="submit" disabled={!canWriteConfig || busy || !state.activeRoles}>{busy ? 'A gravar...' : 'Gravar associações'}</M3Button></div>
