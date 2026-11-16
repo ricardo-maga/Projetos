@@ -105,3 +105,23 @@
   --color-forecast-600: var(--color-fuchsia-600);
   --color-forecast-700: var(--color-fuchsia-700);
 }
+
+@theme inline {
+  --color-feedback-attention-50: var(--color-orange-50);
+  --color-feedback-attention-500: var(--color-orange-500);
+  --color-feedback-attention-800: var(--color-orange-800);
+  --color-feedback-success-500: var(--color-emerald-500);
+  --color-feedback-warning-500: var(--color-amber-500);
+  --color-feedback-warning-800: var(--color-amber-800);
+  --color-status-neutral-100: var(--color-slate-100);
+  --color-status-neutral-200: var(--color-slate-200);
+  --color-status-neutral-400: var(--color-slate-400);
+  --color-status-neutral-50: var(--color-slate-50);
+  --color-status-neutral-500: var(--color-slate-500);
+  --color-status-neutral-700: var(--color-slate-700);
+}
+
+@theme inline {
+  --color-category-sky-500: var(--color-sky-500);
+  --color-category-sky-800: var(--color-sky-800);
+}

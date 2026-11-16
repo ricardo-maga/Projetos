@@ -268,7 +268,7 @@ export function getTaskDailyOperationalStatus(
     return {
       status: 'EXCESSO_TAREFA',
       label: `Excesso da Tarefa (+${formatHoursDisplay(taskSummary.excessHours)})`,
-      badgeClass: 'bg-rose-50 text-rose-800 border-rose-200',
+      badgeClass: 'bg-feedback-danger-50 text-feedback-danger-800 border-feedback-danger-200',
       excessHours: taskSummary.excessHours,
     };
   }
@@ -277,7 +277,7 @@ export function getTaskDailyOperationalStatus(
     return {
       status: 'DRAFT',
       label: 'Draft Pendente',
-      badgeClass: 'bg-amber-50 text-amber-900 border-amber-300 border-dashed',
+      badgeClass: 'bg-feedback-warning-50 text-feedback-warning-900 border-feedback-warning-300 border-dashed',
       excessHours: 0,
     };
   }
@@ -285,7 +285,7 @@ export function getTaskDailyOperationalStatus(
   return {
     status: 'NORMAL',
     label: 'Normal',
-    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+    badgeClass: 'bg-status-neutral-100 text-status-neutral-700 border-status-neutral-200',
     excessHours: 0,
   };
 }
@@ -1446,37 +1446,37 @@ export function getTaskPlanningEstimateStatusMeta(status: TaskPlanningEstimateSt
       return {
         label: 'Planeada',
         symbol: '✓',
-        badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200'
+        badgeClass: 'bg-feedback-success-50 text-feedback-success-800 border-feedback-success-200'
       };
     case 'DRAFT':
       return {
         label: 'DRAFT',
         symbol: '◷',
-        badgeClass: 'bg-amber-50 text-amber-800 border-amber-200'
+        badgeClass: 'bg-feedback-warning-50 text-feedback-warning-800 border-feedback-warning-200'
       };
     case 'PARCIAL':
       return {
         label: 'Parcial',
         symbol: '◔',
-        badgeClass: 'bg-blue-50 text-blue-800 border-blue-200'
+        badgeClass: 'bg-action-50 text-action-800 border-action-200'
       };
     case 'EXCESSO':
       return {
         label: 'Excesso',
         symbol: '!',
-        badgeClass: 'bg-rose-50 text-rose-800 border-rose-200'
+        badgeClass: 'bg-feedback-danger-50 text-feedback-danger-800 border-feedback-danger-200'
       };
     case 'SEM_PLANEAMENTO':
       return {
         label: 'Sem planeamento',
         symbol: '—',
-        badgeClass: 'bg-slate-100 text-slate-700 border-slate-200'
+        badgeClass: 'bg-status-neutral-100 text-status-neutral-700 border-status-neutral-200'
       };
     case 'SEM_ESTIMATIVA':
       return {
         label: 'Sem estimativa',
         symbol: '?',
-        badgeClass: 'bg-slate-50 text-slate-500 border-slate-200'
+        badgeClass: 'bg-status-neutral-50 text-status-neutral-500 border-status-neutral-200'
       };
   }
 }

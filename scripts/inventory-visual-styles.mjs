@@ -19,6 +19,8 @@ function walk(dir) {
   }
 }
 roots.forEach(walk);
+const helpers = ['lib/utils.ts', 'lib/planning/summary.ts'];
+files.push(...helpers);
 const findings = [];
 const rows = files.map(file => {
   const source = fs.readFileSync(file, 'utf8');
@@ -49,7 +51,7 @@ const rows = files.map(file => {
   return row;
 });
 const totals = rows.reduce((sum, row) => { for (const key of Object.keys(patterns).concat('inline', 'styleProps')) sum[key] = (sum[key] || 0) + row[key]; return sum; }, {});
-const result = { scope: roots, files: files.length, totals, rows, findings };
+const result = { scope: roots, helpers, files: files.length, totals, rows, findings };
 if (process.argv.includes('--write')) {
   fs.writeFileSync('docs/visual-style-inventory.json', JSON.stringify(result, null, 2) + '\n');
 }

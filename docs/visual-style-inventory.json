@@ -4,12 +4,16 @@
     "components",
     "domains"
   ],
-  "files": 88,
+  "helpers": [
+    "lib/utils.ts",
+    "lib/planning/summary.ts"
+  ],
+  "files": 90,
   "totals": {
     "palette": 0,
     "shape": 95,
     "arbitrary": 94,
-    "hex": 234,
+    "hex": 254,
     "inline": 21,
     "styleProps": 6
   },
@@ -981,6 +985,28 @@
       "inline": 0,
       "styleProps": 0,
       "sharedImports": 3
+    },
+    {
+      "file": "lib/utils.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "arbitrary": 0,
+      "hex": 20,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/planning/summary.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
     }
   ],
   "findings": [
@@ -3683,6 +3709,126 @@
       "line": 895,
       "category": "arbitrary",
       "value": "max-w-[340px]"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 280,
+      "category": "hex",
+      "value": "#fca5a5"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 290,
+      "category": "hex",
+      "value": "#fef08a"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 300,
+      "category": "hex",
+      "value": "#bbf7d0"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 310,
+      "category": "hex",
+      "value": "#38bdf8"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 320,
+      "category": "hex",
+      "value": "#fed7aa"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 330,
+      "category": "hex",
+      "value": "#e2e8f0"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 342,
+      "category": "hex",
+      "value": "#fca5a5"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 342,
+      "category": "hex",
+      "value": "#ef4444"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 343,
+      "category": "hex",
+      "value": "#fef08a"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 343,
+      "category": "hex",
+      "value": "#eab308"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 344,
+      "category": "hex",
+      "value": "#bbf7d0"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 344,
+      "category": "hex",
+      "value": "#22c55e"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 345,
+      "category": "hex",
+      "value": "#bfdbfe"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 345,
+      "category": "hex",
+      "value": "#38bdf8"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 345,
+      "category": "hex",
+      "value": "#7dd3fc"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 345,
+      "category": "hex",
+      "value": "#3b82f6"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 346,
+      "category": "hex",
+      "value": "#fed7aa"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 346,
+      "category": "hex",
+      "value": "#f97316"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 347,
+      "category": "hex",
+      "value": "#e2e8f0"
+    },
+    {
+      "file": "lib/utils.ts",
+      "line": 347,
+      "category": "hex",
+      "value": "#64748b"
     }
   ]
 }

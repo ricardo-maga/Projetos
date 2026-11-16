@@ -95,7 +95,7 @@ describe('FASE — TaskSection: Nova Tabela Operacional', () => {
     it('7. estado usa a cor e badgeClass configurada existente', () => {
       const style = getTaskStatusStyle('ts-3', taskStatuses);
       expect(style.badgeClass).toBeDefined();
-      expect(style.badgeClass).toContain('emerald');
+      expect(style.badgeClass).toContain('feedback-success');
     });
   });
 
