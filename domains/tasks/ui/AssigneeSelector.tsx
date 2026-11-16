@@ -62,7 +62,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
       {/* Search Bar */}
       <div className="relative">
         <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-        <input
+        <input aria-label="Pesquisar utilizadores"
           type="text"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
@@ -102,7 +102,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({
                   type="checkbox"
                   checked={isSelected}
                   onChange={() => handleToggle(u.id)}
-                  className="w-3.5 h-3.5 text-primary rounded border-border focus:ring-primary"
+                  className="w-3.5 h-3.5 text-primary rounded-badge border-border focus:ring-primary"
                 />
                 <span className="truncate flex-1">{u.name}</span>
               </label>

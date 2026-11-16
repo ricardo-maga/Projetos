@@ -702,7 +702,7 @@ export default function TaskSection({
               {/* Search Input - expands to fill space */}
               <div className="flex-1 min-w-[200px] relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-disabled w-4 h-4 pointer-events-none z-10" />
-                <Input
+                <Input aria-label="Pesquisar tarefas"
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
@@ -713,7 +713,7 @@ export default function TaskSection({
 
               {/* Assignee Filter */}
               <div className="w-full sm:w-auto min-w-[220px]">
-                <Select
+                <Select aria-label="Filtrar por responsável"
                   value={filterAssignee}
                   onChange={e => setFilterAssignee(e.target.value)}
                   className="h-10 text-body-sm font-semibold"

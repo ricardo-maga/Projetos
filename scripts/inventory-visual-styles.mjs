@@ -3,10 +3,10 @@ import path from 'node:path';
 import ts from 'typescript';
 
 // Read-only audit unless --write is supplied. Counts candidates, not defects.
-const roots = ['app', 'components', 'domains'];
+const roots = ['app', 'components', 'domains', 'hooks', 'lib'];
 const patterns = {
-  palette: /\b(?:bg|text|border|divide|ring|outline|fill|stroke|from|via|to)-(?:slate|gray|zinc|neutral|stone|blue|indigo|violet|purple|fuchsia|pink|rose|red|orange|amber|yellow|lime|emerald|green|teal|cyan|sky)(?:-\d{2,3})?(?:\/\d+)?\b|\b(?:bg|text|border|fill|stroke)-(?:white|black)(?:\/\d+)?\b/g,
-  shape: /\b(?:rounded(?:-[trblse]{1,2})?-(?:none|xs|sm|md|lg|xl|2xl|3xl|full)|shadow-(?:xs|sm|md|lg|xl|2xl|none|inner))\b/g,
+  palette: /\b(?:bg|text|border(?:-[trblsexy])?|divide(?:-[xy])?|ring(?:-offset)?|outline|fill|stroke|from|via|to|accent|caret|decoration|placeholder|shadow)-(?:slate|gray|zinc|neutral|stone|blue|indigo|violet|purple|fuchsia|pink|rose|red|orange|amber|yellow|lime|emerald|green|teal|cyan|sky)(?:-\d{2,3})?(?:\/\d+)?\b|\b(?:bg|text|border(?:-[trblsexy])?|divide(?:-[xy])?|ring(?:-offset)?|outline|fill|stroke|from|via|to|accent|caret|decoration|placeholder|shadow)-(?:white|black)(?:\/\d+)?\b/g,
+  shape: /\b(?:rounded(?:-[trblse]{1,2})?-(?:none|xs|sm|md|lg|xl|2xl|3xl|full)|shadow-(?:2xs|xs|sm|md|lg|xl|2xl|none|inner))\b|(?<![-\w])(?:rounded(?:-[trblse]{1,2})?|shadow)(?![-\w])/g,
   arbitrary: /(?:[\w-]+:)*[\w-]+-\[[^\]\r\n]+\]/g,
   hex: /#[0-9a-fA-F]{3,8}\b/g,
 };
@@ -15,12 +15,11 @@ function walk(dir) {
   for (const item of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     const name = path.posix.join(dir, item.name);
     if (item.isDirectory()) walk(name);
-    else if (/\.(tsx|css)$/.test(name)) files.push(name);
+    else if (/\.(tsx?|css)$/.test(name)) files.push(name);
   }
 }
 roots.forEach(walk);
-const helpers = ['lib/utils.ts', 'lib/planning/summary.ts'];
-files.push(...helpers);
+const helpers = [];
 const findings = [];
 const rows = files.map(file => {
   const source = fs.readFileSync(file, 'utf8');
@@ -56,3 +55,10 @@ if (process.argv.includes('--write')) {
   fs.writeFileSync('docs/visual-style-inventory.json', JSON.stringify(result, null, 2) + '\n');
 }
 console.log(JSON.stringify({ files: files.length, totals, screens: rows.filter(r => r.layer === 'screen').sort((a, b) => (b.palette + b.shape + b.inline) - (a.palette + a.shape + a.inline)).slice(0, 20) }, null, 2));
+
+const allowedShapes = new Set(['rounded-full', 'rounded-xs', 'rounded-none', 'shadow-none']);
+const localShapes = findings.filter(finding => finding.category === 'shape' && !allowedShapes.has(finding.value));
+if (process.argv.includes('--check') && (totals.palette > 0 || localShapes.length > 0)) {
+  console.error('Explicit palette or local shape classes remain; use semantic visual tokens.');
+  process.exitCode = 1;
+}

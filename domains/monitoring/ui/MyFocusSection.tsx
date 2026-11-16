@@ -845,15 +845,15 @@ export default function MyFocusSection({
                 {/* CALENDAR LEGEND */}
                 <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-border-subtle text-caption text-text-muted font-medium flex-wrap px-0.5">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-surface-muted border border-border-subtle"></span>
+                    <span className="w-2.5 h-2.5 rounded-badge bg-surface-muted border border-border-subtle"></span>
                     <span>Fim de semana</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-error/10 border border-error/20 flex items-center justify-center text-caption text-error">●</span>
+                    <span className="w-2.5 h-2.5 rounded-badge bg-error/10 border border-error/20 flex items-center justify-center text-caption text-error">●</span>
                     <span className="text-error font-semibold">Dia Especial / Feriado</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded bg-warning/10 border border-warning/20"></span>
+                    <span className="w-2.5 h-2.5 rounded-badge bg-warning/10 border border-warning/20"></span>
                     <span className="text-warning font-semibold">Hoje</span>
                   </div>
                 </div>
@@ -932,7 +932,7 @@ export default function MyFocusSection({
                             tabIndex={0}
                             onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openTaskDetailsModal(t); } }}
                             onClick={() => openTaskDetailsModal(t)}
-                            className="p-2.5 bg-surface rounded-card border border-border-subtle hover:border-primary/20 hover:bg-primary/10 transition-all cursor-pointer text-caption space-y-1 group shadow-2xs"
+                            className="p-2.5 bg-surface rounded-card border border-border-subtle hover:border-primary/20 hover:bg-primary/10 transition-all cursor-pointer text-caption space-y-1 group shadow-subtle"
                             title="Clique para preencher ou editar a tarefa"
                           >
                             <div className="flex justify-between items-start gap-2">
@@ -984,7 +984,7 @@ export default function MyFocusSection({
                             tabIndex={0}
                             onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onSelectProject(p.id); } }}
                             onClick={() => onSelectProject(p.id)}
-                            className="p-2.5 bg-surface rounded-card border border-border-subtle hover:border-warning hover:bg-warning/10 transition-all cursor-pointer text-caption space-y-1 group shadow-2xs"
+                            className="p-2.5 bg-surface rounded-card border border-border-subtle hover:border-warning hover:bg-warning/10 transition-all cursor-pointer text-caption space-y-1 group shadow-subtle"
                             title={`Clique para aceder ao projeto: ${p.title}`}
                           >
                             <div className="flex justify-between items-start gap-2">

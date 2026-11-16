@@ -505,7 +505,7 @@ export default function BentoDashboard({
                             <div className="text-body-sm text-primary font-medium flex items-center gap-1.5 flex-wrap">
                               <span>{getClientName(project.clientId)}</span>
                               {hasMissingMat && (
-                                <span title="Material em falta no projeto" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-error/10 text-error text-caption font-semibold border border-error/20">
+                                <span title="Material em falta no projeto" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-badge bg-error/10 text-error text-caption font-semibold border border-error/20">
                                   <Package className="w-3 h-3 text-error" />
                                   Material em falta
                                 </span>
@@ -527,7 +527,7 @@ export default function BentoDashboard({
                         {deliveryDate ? (
                           <span className={
                             overdueOrToday
-                              ? 'text-error font-semibold bg-error/5 border border-error/20 px-2 py-0.5 rounded inline-block shadow-2xs'
+                              ? 'text-error font-semibold bg-error/5 border border-error/20 px-2 py-0.5 rounded-badge inline-block shadow-subtle'
                               : 'text-text-secondary'
                           }>
                             {deliveryDate}

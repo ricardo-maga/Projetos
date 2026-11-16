@@ -31,7 +31,7 @@ Na primeira extensão, o inventário desceu de 669 para 499 classes de paleta e 
 
 Os rótulos sobre ações preenchidas usam `text-inverse`. O helper `hasFilledButtonBackground` reconhece os novos nomes, mas continua a distinguir preenchimentos sólidos de seleções claras/translúcidas. Os tamanhos pequenos de etiquetas e código usam `text-micro`, `text-small-label` e `text-code-dense`. Sombras de colunas fixas têm tokens próprios.
 
-O inventário atualizado contém **zero classes de paleta explícita** nos literais TSX/CSS analisados. As restantes ocorrências têm estas justificações:
+O inventário após o PR #155 continha **zero classes de paleta explícita** nos literais TSX/CSS analisados. As restantes ocorrências têm estas justificações:
 
 | Categoria | Ocorrências | Contrato/exceção |
 |---|---:|---|
@@ -42,3 +42,16 @@ O inventário atualizado contém **zero classes de paleta explícita** nos liter
 | Propriedades `*Style` | 6 | Integração com Recharts; cores usam os tokens `--chart-*`. |
 
 A contagem continua a sinalizar exceções válidas para revisão; não as omite para fabricar um resultado zero. `docs/visual-style-inventory.json` mantém ficheiros e linhas. O scope inclui TSX/CSS das três pastas inventariadas e os helpers `lib/utils.ts` e `lib/planning/summary.ts`; não é uma afirmação sobre CSS de terceiros ou valores vindos da base de dados. Para novos componentes, preferir os componentes partilhados e as funções semânticas existentes; acrescentar uma função central se necessário.
+
+
+## Auditoria transversal e prevenção de regressões
+
+A auditoria atual inclui **299 ficheiros TS, TSX e CSS** em `app`, `components`, `domains`, `hooks` e `lib`. Abrange também placeholders, accent/caret, decorações, lados de bordas e cores de sombras. Esta extensão revelou seis classes `accent-blue-*`/`placeholder-slate-*` que a expressão anterior não cobria; foram convertidas para funções semânticas.
+
+`npm run check:visual` é executado no CI e rejeita classes de paleta explícita e raios/sombras locais sem exceção aprovada. Os 94 candidatos de forma restantes são exclusivamente `rounded-full`, `rounded-xs`, `rounded-none` e `shadow-none`. Há 91 valores arbitrários de geometria, 272 hexadecimais (incluindo valores de dados/defaults agora lidos nos ficheiros TS), 21 atributos de geometria/cor `style` e seis propriedades Recharts `*Style`. O JSON mantém os locais e valores para revisão.
+
+Os raios sem sufixo passaram para `rounded-badge`; `shadow-subtle` centraliza o antigo valor Tailwind `shadow-2xs` sem alterar a sua medida. Os sete temas resolvem agora os tokens M3, e o verde/âmbar usam tons de ação com contraste para texto branco. A leitura pública, a sincronização e a edição selecionam deterministicamente a mesma linha de configuração em instalações com duplicados históricos, sem eliminar esses registos.
+
+Materiais, riscos, automações e cronograma usam `Dialog`. `Dialog` e `ExpandedView` partilham `useModalInteraction`: foco inicial, ciclo de Tab, Escape apenas no modal superior, retorno de foco e bloqueio de scroll. Os formulários mantêm os handlers e os contratos de dados. As opções `SingleChoice` quebram rótulos longos dentro da largura disponível.
+
+A conformidade estática não fecha a matriz visual/CRUD: os resultados dessa execução são registados separadamente em `application-validation-matrix.md`.

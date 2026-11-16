@@ -600,7 +600,7 @@ export default function TaskDetailsModal({
 
           {/* Informative Conflict Warnings Banner */}
           {conflictWarnings.length > 0 && (
-            <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-control space-y-1 text-body-sm text-warning font-medium whitespace-pre-line shadow-2xs">
+            <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-control space-y-1 text-body-sm text-warning font-medium whitespace-pre-line shadow-subtle">
               <div className="font-bold flex items-center gap-1.5 text-warning text-body-sm">
                 <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
                 Aviso Informativo de Conflitos / Indisponibilidade
@@ -612,7 +612,7 @@ export default function TaskDetailsModal({
           )}
 
           {unscheduledProjectTasks.length > 0 && (
-            <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-control space-y-2 text-body-sm text-warning shadow-2xs">
+            <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-control space-y-2 text-body-sm text-warning shadow-subtle">
               <p className="font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 Este projeto tem as seguintes tarefas por agendar:

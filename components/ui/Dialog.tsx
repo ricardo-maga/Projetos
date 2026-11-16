@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useId, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import IconButton from './IconButton';
+import { useModalInteraction } from '@/hooks/useModalInteraction';
 
 export interface DialogProps {
   isOpen: boolean;
@@ -15,46 +16,10 @@ export interface DialogProps {
   bodyClassName?: string;
 }
 
-let openDialogs: HTMLElement[] = [];
-let previousBodyOverflow = '';
-const focusableSelector = 'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])';
-
 export function Dialog({ isOpen, onClose, title, children, className, bodyClassName }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const onCloseRef = useRef(onClose);
   const titleId = useId();
-  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
-  useEffect(() => {
-    if (!isOpen || !dialogRef.current) return;
-    const dialog = dialogRef.current;
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    if (!openDialogs.length) previousBodyOverflow = document.body.style.overflow;
-    openDialogs.push(dialog);
-    document.body.style.overflow = 'hidden';
-    const controls = () => Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector)).filter(element => element.getClientRects().length);
-    (controls()[0] || dialog).focus({ preventScroll: true });
-    const handleKey = (event: KeyboardEvent) => {
-      if (openDialogs.at(-1) !== dialog) return;
-      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCloseRef.current(); }
-      if (event.key !== 'Tab') return;
-      const items = controls();
-      const first = items[0];
-      const last = items.at(-1);
-      if (!first) { event.preventDefault(); dialog.focus(); }
-      else if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
-        event.preventDefault(); last?.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
-        event.preventDefault(); first.focus();
-      }
-    };
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('keydown', handleKey);
-      openDialogs = openDialogs.filter(element => element !== dialog);
-      if (!openDialogs.length) document.body.style.overflow = previousBodyOverflow;
-      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
-    };
-  }, [isOpen]);
+  useModalInteraction(isOpen, onClose, dialogRef);
 
   return (
     <AnimatePresence>

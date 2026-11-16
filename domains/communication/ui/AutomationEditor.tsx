@@ -7,6 +7,7 @@ import {
   ListTodo, Layers, ShieldCheck, Sparkles, Check, X, AlertCircle, Info, RefreshCw
 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
+import { Dialog } from '@/components/ui/Dialog';
 
 interface AutomationEditorProps {
   automationRules: AutomationRule[];
@@ -405,33 +406,11 @@ export default function AutomationEditor({
 
       {/* Add / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-overlay/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-surface rounded-card max-w-2xl w-full shadow-modal border border-border-subtle overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="px-6 py-5 bg-primary text-inverse flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-card bg-primary/30 border border-action-500/40 flex items-center justify-center text-action-400">
-                  <Zap className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold">
-                    {editingRuleId ? 'Editar Regra de Automação' : 'Nova Regra de Automação'}
-                  </h3>
-                  <p className="text-xs text-text-muted">
-                    Configure os acionadores e as ações automáticas
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-text-muted hover:text-inverse p-1 rounded-control transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
+        <Dialog isOpen={showModal} onClose={() => { if (!saving) setShowModal(false); }}
+          title={editingRuleId ? 'Editar Regra de Automação' : 'Nova Regra de Automação'} className="max-w-2xl">
+          <p className="mb-5 text-body-sm text-text-secondary">Configure os acionadores e as ações automáticas</p>
             {/* Modal Body */}
-            <form onSubmit={handleSaveRule} className="p-6 overflow-y-auto space-y-6 flex-1">
+            <form onSubmit={handleSaveRule} className="space-y-6">
               {/* Section 1: Name and Description */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-xs font-bold text-text-primary uppercase tracking-wider">
@@ -441,10 +420,10 @@ export default function AutomationEditor({
 
                 <div className="space-y-3 pl-7">
                   <div>
-                    <label className="block text-xs font-semibold text-text-secondary mb-1">
+                    <label htmlFor="automation-field-1" className="block text-xs font-semibold text-text-secondary mb-1">
                       Nome da Regra <span className="text-feedback-error-500">*</span>
                     </label>
-                    <input
+                    <input id="automation-field-1"
                       type="text"
                       value={ruleName}
                       onChange={e => setRuleName(e.target.value)}
@@ -455,10 +434,10 @@ export default function AutomationEditor({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-text-secondary mb-1">
+                    <label htmlFor="automation-field-2" className="block text-xs font-semibold text-text-secondary mb-1">
                       Descrição da Regra (Opcional)
                     </label>
-                    <textarea
+                    <textarea id="automation-field-2"
                       value={ruleDescription}
                       onChange={e => setRuleDescription(e.target.value)}
                       placeholder="Explique o propósito desta automação..."
@@ -478,8 +457,8 @@ export default function AutomationEditor({
 
                 <div className="space-y-3 pl-7">
                   <div>
-                    <label className="block text-xs font-semibold text-text-secondary mb-1">Evento de Origem</label>
-                    <select
+                    <label htmlFor="automation-field-3" className="block text-xs font-semibold text-text-secondary mb-1">Evento de Origem</label>
+                    <select id="automation-field-3"
                       value={triggerType}
                       onChange={e => { setTriggerType(e.target.value as AutomationRule['triggerType']); setTriggerToStatusId(''); setActionCreateDefaultTasks(false); setActionChangeProjectStatus(false); }}
                       className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold cursor-pointer outline-none"
@@ -494,10 +473,10 @@ export default function AutomationEditor({
 
                   {triggerType === 'project_status_changed' && (
                     <div>
-                      <label className="block text-xs font-semibold text-text-secondary mb-1">
+                      <label htmlFor="automation-field-4" className="block text-xs font-semibold text-text-secondary mb-1">
                         Quando o estado do projeto passar a ser:
                       </label>
-                      <select
+                      <select id="automation-field-4"
                         value={triggerToStatusId}
                         onChange={e => setTriggerToStatusId(e.target.value)}
                         className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold cursor-pointer outline-none"
@@ -512,10 +491,10 @@ export default function AutomationEditor({
 
                   {triggerType === 'task_status_changed' && (
                     <div>
-                      <label className="block text-xs font-semibold text-text-secondary mb-1">
+                      <label htmlFor="automation-field-5" className="block text-xs font-semibold text-text-secondary mb-1">
                         Quando o estado da tarefa passar a ser:
                       </label>
-                      <select
+                      <select id="automation-field-5"
                         value={triggerToStatusId}
                         onChange={e => setTriggerToStatusId(e.target.value)}
                         className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold cursor-pointer outline-none"
@@ -528,8 +507,8 @@ export default function AutomationEditor({
                     </div>
                   )}
                   {triggerType === 'presales_status_changed' && <div>
-                    <label className="block text-xs font-semibold text-text-secondary mb-1">Estado Presales de destino</label>
-                    <select value={triggerToStatusId} onChange={e => setTriggerToStatusId(e.target.value)}
+                    <label htmlFor="automation-field-6" className="block text-xs font-semibold text-text-secondary mb-1">Estado Presales de destino</label>
+                    <select id="automation-field-6" value={triggerToStatusId} onChange={e => setTriggerToStatusId(e.target.value)}
                       className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold">
                       <option value="">Qualquer estado</option>
                       <option value="submitted">Por aceitar</option><option value="accepted">Em preparação</option>
@@ -655,31 +634,20 @@ export default function AutomationEditor({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </Dialog>
       )}
 
       {/* Manual Test Execution Modal */}
       {testRuleId && (
-        <div className="fixed inset-0 bg-overlay/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-surface rounded-card max-w-md w-full p-6 shadow-modal border border-border-subtle space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-text-primary font-bold text-sm">
-                <Play className="w-4 h-4 text-primary fill-action-600" />
-                Testar Regra de Automação
-              </div>
-              <button onClick={() => setTestRuleId(null)} className="text-text-muted hover:text-text-secondary cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+        <Dialog isOpen={Boolean(testRuleId)} onClose={() => setTestRuleId(null)} title="Testar Regra de Automação"
+          className="max-w-md" bodyClassName="space-y-4">
             <p className="text-xs text-text-secondary">{automationRules.find(rule => rule.id === testRuleId)?.triggerType.startsWith('presales_')
               ? 'Pré-visualização da regra Presales. Nenhum dado será alterado.'
               : 'Selecione um projeto para consultar as ações previstas. Nenhum dado será alterado:'}</p>
 
             {!automationRules.find(rule => rule.id === testRuleId)?.triggerType.startsWith('presales_') && <div>
-              <label className="block text-xs font-semibold text-text-secondary mb-1">Projeto para Teste</label>
-              <select
+              <label htmlFor="automation-field-7" className="block text-xs font-semibold text-text-secondary mb-1">Projeto para Teste</label>
+              <select id="automation-field-7"
                 value={selectedTestProjectId}
                 onChange={e => setSelectedTestProjectId(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-surface-muted border border-border rounded-control text-xs font-semibold outline-none cursor-pointer"
@@ -714,8 +682,7 @@ export default function AutomationEditor({
                   Pré-visualizar
               </button>
             </div>
-          </div>
-        </div>
+        </Dialog>
       )}
 
       {/* Delete Confirmation Modal */}

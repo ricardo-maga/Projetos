@@ -205,7 +205,7 @@ export default function AuditLogSection({ auditLogs = [], currentUser, onRefresh
       </div>
 
       {/* Audit Log Table Container with Filters Toolbar */}
-      <div className="bg-surface rounded-card border border-border shadow-2xs overflow-hidden">
+      <div className="bg-surface rounded-card border border-border shadow-subtle overflow-hidden">
         {/* Filters Toolbar */}
         <div className="p-4 sm:p-5 border-b border-border/80 bg-surface-muted/60 flex flex-col md:flex-row items-center justify-between gap-3">
           {/* Search */}

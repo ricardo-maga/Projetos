@@ -81,7 +81,7 @@ export default function ApiDocsPage() {
             <div className="bg-docs-neutral-900 border-b border-docs-neutral-800 px-5 py-3 flex justify-between items-center text-xs">
               <span className="font-bold text-docs-neutral-400 flex items-center gap-2">
                 <Server className="w-4 h-4 text-feedback-success-400" />
-                Base URL: <code className="text-feedback-success-400 font-mono bg-feedback-success-950/60 px-2 py-0.5 rounded border border-feedback-success-800/50">/api/v1</code>
+                Base URL: <code className="text-feedback-success-400 font-mono bg-feedback-success-950/60 px-2 py-0.5 rounded-badge border border-feedback-success-800/50">/api/v1</code>
               </span>
               <a
                 href="/api/v1/openapi.json"
@@ -179,19 +179,19 @@ export default function ApiDocsPage() {
               </h3>
               <ul className="space-y-2 text-xs text-docs-neutral-300">
                 <li className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-action-900/60 text-action-300 font-bold font-mono rounded text-micro">GET / POST</span>
+                  <span className="px-2 py-0.5 bg-action-900/60 text-action-300 font-bold font-mono rounded-badge text-micro">GET / POST</span>
                   <code>/api/v1/projects</code> - Listar e criar projetos
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-feedback-warning-900/60 text-feedback-warning-300 font-bold font-mono rounded text-micro">PUT / DEL</span>
+                  <span className="px-2 py-0.5 bg-feedback-warning-900/60 text-feedback-warning-300 font-bold font-mono rounded-badge text-micro">PUT / DEL</span>
                   <code>/api/v1/projects/:id</code> - Gerir um projeto
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-feedback-success-900/60 text-feedback-success-300 font-bold font-mono rounded text-micro">GET / POST</span>
+                  <span className="px-2 py-0.5 bg-feedback-success-900/60 text-feedback-success-300 font-bold font-mono rounded-badge text-micro">GET / POST</span>
                   <code>/api/v1/project-materials</code> - Materiais e encomendas por projeto
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-category-purple-900/60 text-category-purple-300 font-bold font-mono rounded text-micro">GET / POST</span>
+                  <span className="px-2 py-0.5 bg-category-purple-900/60 text-category-purple-300 font-bold font-mono rounded-badge text-micro">GET / POST</span>
                   <code>/api/v1/tasks</code> - Tarefas técnicas e lembretes de projeto
                 </li>
               </ul>

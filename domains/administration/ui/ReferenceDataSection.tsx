@@ -139,7 +139,7 @@ function SortableAuxRow({
               className="w-16 p-1 px-2 border border-border rounded-control font-semibold text-xs text-text-primary focus:ring-2 focus:ring-action-100 outline-none"
             />
           ) : (
-            <span className="px-2 py-0.5 bg-surface-muted border border-border rounded text-micro font-bold text-text-secondary font-mono">
+            <span className="px-2 py-0.5 bg-surface-muted border border-border rounded-badge text-micro font-bold text-text-secondary font-mono">
               Nível {item.scale ?? (activeAuxTab === 'projectStatuses' ? 0 : 1)}
             </span>
           )}
@@ -159,7 +159,7 @@ function SortableAuxRow({
                     onClick={() => setEditAuxColor(c.hex)}
                     className={`px-2 py-0.5 rounded-control text-micro font-bold border flex items-center gap-1 transition-all cursor-pointer ${
                       isSelected
-                        ? `${c.bgClass} ${c.textClass} ${c.borderClass} ring-2 ring-border shadow-2xs`
+                        ? `${c.bgClass} ${c.textClass} ${c.borderClass} ring-2 ring-border shadow-subtle`
                         : 'bg-surface text-text-secondary border-border hover:bg-surface-muted'
                     }`}
                     title={c.name}
@@ -492,7 +492,7 @@ export default function ReferenceDataSection({
             Nenhuma opção configurada nesta tabela auxiliar.
           </div>
         ) : (
-          <div className="bg-surface rounded-card border border-border shadow-2xs overflow-hidden mb-6">
+          <div className="bg-surface rounded-card border border-border shadow-subtle overflow-hidden mb-6">
             <div className="overflow-x-auto w-full">
               <DndContext
                 sensors={sensors}

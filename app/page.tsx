@@ -420,14 +420,14 @@ export default function Page() {
 
           <form onSubmit={handleLogin} className="p-8 space-y-5">
             {loginError && (
-              <div className="p-3 bg-feedback-error-50 text-feedback-error-600 rounded-control text-sm font-medium text-center border border-feedback-error-100">
+              <div role="alert" className="p-3 bg-feedback-error-50 text-feedback-error-600 rounded-control text-sm font-medium text-center border border-feedback-error-100">
                 {loginError}
               </div>
             )}
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-text-primary">E-mail</label>
-              <input
+              <label htmlFor="login-email" className="block text-sm font-medium text-text-primary">E-mail</label>
+              <input id="login-email"
                 type="email"
                 value={loginEmail}
                 onChange={e => {
@@ -444,11 +444,11 @@ export default function Page() {
 
             <div className="space-y-1">
               <div className="flex justify-between items-center">
-                <label className="block text-sm font-medium text-text-primary">Password</label>
+                <label htmlFor="login-password" className="block text-sm font-medium text-text-primary">Password</label>
 
               </div>
               <div className="relative">
-                <input
+                <input id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   value={loginPassword}
                   onChange={e => {
@@ -465,7 +465,8 @@ export default function Page() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary cursor-pointer p-1"
-                  tabIndex={-1}
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
                   title={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -480,7 +481,7 @@ export default function Page() {
                   checked={rememberMe}
                   onChange={e => setRememberMe(e.target.checked)}
                   disabled={isLoggingIn}
-                  className="rounded border-border text-action-600 focus:ring-action-500 w-4 h-4"
+                  className="rounded-badge border-border text-action-600 focus:ring-action-500 w-4 h-4"
                 />
                 Lembrar login
               </label>
@@ -585,9 +586,14 @@ export default function Page() {
             <Menu className="w-5 h-5" />
           </IconButton>
 
-          <div
-            className="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0"
-            onClick={() => handleTabChange('dashboard')}
+          <a
+            href="/?tab=dashboard"
+            aria-label="Ir para o Dashboard"
+            className="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-control"
+            onClick={event => {
+              if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+              event.preventDefault(); handleTabChange('dashboard');
+            }}
             title="Ir para o Dashboard"
           >
             <AppLogo
@@ -601,7 +607,7 @@ export default function Page() {
               <h1 className="text-body font-bold text-text-primary tracking-tight leading-tight truncate">{appConfig.appName}</h1>
               <p className="text-caption text-text-muted font-medium truncate">{appConfig.appDescription}</p>
             </div>
-          </div>
+          </a>
         </div>
 
         {/* Zone 2 & 3: Actions + Notification + Profile dropdown */}
@@ -613,14 +619,18 @@ export default function Page() {
             markAllAsRead={() => markAllNotificationsAsRead(currentUser.id)}
           />
 
-          <div
+          <button
+            type="button"
+            aria-label="Editar perfil"
+            aria-haspopup="dialog"
+            aria-expanded={isChangingPassword}
             onClick={() => {
               setProfileName(currentUser.name);
               setNewPassword('');
               setConfirmNewPassword('');
               setIsChangingPassword(true);
             }}
-            className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-all p-1.5 hover:bg-surface-muted rounded-full"
+            className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-all p-1.5 hover:bg-surface-muted rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             id="user-profile"
             title="Editar perfil"
           >
@@ -634,7 +644,7 @@ export default function Page() {
               })()}
             </div>
 
-          </div>
+          </button>
         </div>
       </header>
 
@@ -1095,14 +1105,14 @@ export default function Page() {
         ) : (
           <form onSubmit={handleChangePassword} className="space-y-4">
             {changePasswordError && (
-              <div className="p-3 bg-error/10 text-error rounded-control text-caption font-semibold border border-error/20">
+              <div role="alert" className="p-3 bg-error/10 text-error rounded-control text-caption font-semibold border border-error/20">
                 {changePasswordError}
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label className="block text-label font-bold text-text-secondary select-none">Nome</label>
-              <input
+              <label htmlFor="profile-name" className="block text-label font-bold text-text-secondary select-none">Nome</label>
+              <input id="profile-name"
                 type="text"
                 value={profileName}
                 onChange={e => setProfileName(e.target.value)}
@@ -1112,8 +1122,8 @@ export default function Page() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-label font-bold text-text-secondary select-none">Nova password (Opcional)</label>
-              <input
+              <label htmlFor="profile-password" className="block text-label font-bold text-text-secondary select-none">Nova password (Opcional)</label>
+              <input id="profile-password"
                 type="password"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
@@ -1123,8 +1133,8 @@ export default function Page() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-label font-bold text-text-secondary select-none">Confirmar nova password</label>
-              <input
+              <label htmlFor="profile-password-confirm" className="block text-label font-bold text-text-secondary select-none">Confirmar nova password</label>
+              <input id="profile-password-confirm"
                 type="password"
                 value={confirmNewPassword}
                 onChange={e => setConfirmNewPassword(e.target.value)}

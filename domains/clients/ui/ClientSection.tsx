@@ -606,7 +606,7 @@ export default function ClientSection({
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="text-caption bg-surface-muted text-text-secondary px-2 py-0.5 rounded font-bold uppercase font-mono tracking-tight">
+                            <span className="text-caption bg-surface-muted text-text-secondary px-2 py-0.5 rounded-badge font-bold uppercase font-mono tracking-tight">
                               {proj.startDate ? new Date(proj.startDate).toLocaleDateString('pt-PT') : 'S/Data'}
                             </span>
                             <span className="text-caption text-text-disabled group-hover:text-primary transition-colors font-bold">→</span>
