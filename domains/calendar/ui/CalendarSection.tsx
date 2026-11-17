@@ -1,4 +1,5 @@
 'use client';
+import { buildPlannedTaskCopy } from '@/domains/tasks/modules/taskCopy';
 import React, { useState } from 'react';
 import { CalendarDays, GanttChart } from 'lucide-react';
 import type { Project, Task, UserAbsence, User, Client, SpecialDay, ProjectRiskItem, TaskType, ProjectPriority } from '@/lib/types';
@@ -47,6 +48,10 @@ export default function CalendarSection({ projects = [], tasks = [], absences = 
       canCreateTask={canCreate} canDuplicateTask={canWriteTasks} canMoveTask={canCreate} updateTask={updateTask} appConfig={appConfig} currentUser={currentUser} />
     : <ProjectTimeline projects={projects} tasks={tasks} clients={clients} users={users} absences={absences} projectStatuses={projectStatuses} taskStatuses={taskStatuses}
       projectRiskItems={projectRiskItems} specialDays={specialDays} canCreate={canCreate} updateTask={updateTask}
+      canCopy={canWriteTasks && !!addTask} onCopyTask={async (task, date, projectId) => {
+        if (!canWriteTasks || !addTask) throw new Error('Sem permissão para copiar tarefas.');
+        return await addTask(buildPlannedTaskCopy(task, date, projectId, taskStatuses, taskTypes));
+      }}
       onSelectProject={onSelectProject} onSelectTask={openTask} onCreateTask={(date, projectId) => createTask(date, undefined, projectId)} />}
     {modal && <TaskDetailsModal isOpen task={modal.task} mode={modal.mode} initialDate={modal.date} initialAssigneeId={modal.userId} initialProjectId={modal.projectId}
       onClose={() => setModal(null)} createTask={addTask} updateTask={updateTask} deleteTask={deleteTask} taskStatuses={taskStatuses} taskTypes={taskTypes}

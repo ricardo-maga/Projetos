@@ -24,6 +24,8 @@ interface ProjectTimelineProps {
   projectRiskItems?: ProjectRiskItem[]; specialDays?: SpecialDay[]; canCreate: boolean;
   onSelectProject?: (id: string) => void; onSelectTask: (task: Task) => void;
   onCreateTask: (date: string, projectId?: string) => void;
+  canCopy?: boolean;
+  onCopyTask?: (task: Task, date: string, projectId: string | null) => Promise<Task>;
   updateTask?: (id: string, updates: Partial<Task>) => any;
 }
 const PAGE_SIZE = 50;
@@ -42,7 +44,7 @@ const taskBorderColor: Record<string, string> = {
 };
 const taskBorderClass = (status: ReturnType<typeof getTaskStatusStyle>) => taskBorderColor[status.id] || taskBorderColor.cinza;
 export default function ProjectTimeline({ projects, clients, tasks, users = [], absences = [], projectStatuses, taskStatuses, projectRiskItems = [], specialDays = [],
-  canCreate, onSelectProject, onSelectTask, onCreateTask, updateTask }: ProjectTimelineProps) {
+  canCreate, canCopy = false, onCopyTask, onSelectProject, onSelectTask, onCreateTask, updateTask }: ProjectTimelineProps) {
   const [anchor, setAnchor] = useState(() => new Date());
   const [view, setView] = useState<TimelineView>(7);
   const highDensity = typeof view === 'string';
@@ -57,6 +59,10 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const [expandedUndatedProjects, setExpandedUndatedProjects] = useState<Set<string>>(new Set());
   const [dragOverCell, setDragOverCell] = useState<string | null>(null);
   const [moveError, setMoveError] = useState('');
+  const dragContext = useRef<{ operation: 'copy' | 'move'; date: string | null } | null>(null);
+  const copying = useRef(false);
+  const [copyMessage, setCopyMessage] = useState('');
+  const [copyBusy, setCopyBusy] = useState(false);
   const draggingTaskId = useRef<string | null>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const dockScrollRef = useRef<HTMLDivElement>(null);
@@ -104,15 +110,17 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
     return [day.dateStr, ids] as const;
   })), [days, tasks, users, absences]);
   const shift = (offset: number) => setAnchor(previous => { const next = new Date(previous); next.setDate(next.getDate() + offset); return next; });
-  const dragProps = (task: Task) => ({
-    draggable: canMove,
+  const dragProps = (task: Task, sourceDate: string | null = null) => ({
+    draggable: !copyBusy && (canMove || canCopy && !!onCopyTask),
     onDragStart: (event: React.DragEvent<HTMLButtonElement>) => {
-      if (!canMove) { event.preventDefault(); return; }
+      const operation = event.ctrlKey ? 'copy' : 'move';
+      if (copying.current || (operation === 'copy' ? !canCopy || !onCopyTask : !canMove)) { event.preventDefault(); return; }
+      dragContext.current = { operation, date: sourceDate };
       draggingTaskId.current = task.id;
       event.dataTransfer.setData('application/x-project-timeline-task', task.id);
-      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.effectAllowed = operation;
     },
-    onDragEnd: () => { draggingTaskId.current = null; setDragOverCell(null); },
+    onDragEnd: () => { draggingTaskId.current = null; dragContext.current = null; setDragOverCell(null); },
   });
   const scheduleTask = (task: Task, date: string, projectId: string | null) => {
     if (!canMove || !date) return;
@@ -142,9 +150,9 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       'aria-label': highDensity && canCreate ? `Criar tarefa ${projectId ? `em ${projectMap.get(projectId)?.title}` : 'sem projeto'} no dia ${date}: duplo clique ou Enter` : undefined,
       onDragOver: (event: React.DragEvent<HTMLTableCellElement>) => {
         const task = tasks.find(item => item.id === draggingTaskId.current);
-        if (!canMove || !task || !canDropTimelineTask(task, projectId)) return;
+        if (copying.current || !dragContext.current || (dragContext.current.operation === 'copy' ? !canCopy || !onCopyTask : !canMove) || !task || !canDropTimelineTask(task, projectId)) return;
         event.preventDefault();
-        event.dataTransfer.dropEffect = 'move';
+        event.dataTransfer.dropEffect = dragContext.current.operation;
         setDragOverCell(key);
       },
       onDragLeave: (event: React.DragEvent<HTMLTableCellElement>) => {
@@ -153,12 +161,24 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       onDrop: (event: React.DragEvent<HTMLTableCellElement>) => {
         setDragOverCell(null);
         const id = event.dataTransfer.getData('application/x-project-timeline-task');
-        if (!canMove || !id || id !== draggingTaskId.current) return;
+        const context = dragContext.current;
+        if (copying.current || !context || !id || id !== draggingTaskId.current) return;
+        if (context.operation === 'copy' ? !canCopy || !onCopyTask : !canMove) return;
         const task = tasks.find(item => item.id === id);
         if (!task) return;
         if (!canDropTimelineTask(task, projectId)) return;
         event.preventDefault();
-        scheduleTask(task, date, projectId);
+        draggingTaskId.current = null;
+        dragContext.current = null;
+        if (context.operation === 'copy') {
+          if (context.date === date) return;
+          copying.current = true; setCopyBusy(true); setMoveError(''); setCopyMessage('A copiar tarefa…');
+          void Promise.resolve().then(() => onCopyTask!(task, date, projectId)).then(created => {
+            if (!created?.id) throw new Error('O servidor não confirmou a criação da tarefa.');
+            setCopyMessage('Tarefa copiada.');
+          }).catch(error => { setCopyMessage(''); setMoveError(error instanceof Error ? error.message : 'Não foi possível copiar a tarefa.'); })
+            .finally(() => { copying.current = false; setCopyBusy(false); });
+        } else scheduleTask(task, date, projectId);
       },
       'data-timeline-drop-cell': key,
     };
@@ -172,9 +192,9 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const dayWidth = (date: string) => compactDays.has(date) ? (highDensity ? 28 : 64) : (highDensity ? 36 : 150);
   const columnStyle = (date: string) => highDensity || compactDays.has(date) ? { width: dayWidth(date) } : undefined;
   const timelineMinWidth = projectColumnWidth + days.reduce((width, day) => width + dayWidth(day.dateStr), 0);
-  const renderHdTask = (task: Task, key: React.Key) => {
+  const renderHdTask = (task: Task, key: React.Key, date: string) => {
     const names = (task.assigneeIds || []).map(id => users.find(user => user.id === id)?.name || 'Utilizador indisponível');
-    return <Button key={key} {...dragProps(task)} variant="ghost" size="sm"
+    return <Button key={key} {...dragProps(task, date)} variant="ghost" size="sm"
       data-timeline-hd-task={task.id} title={[task.title, ...names].join(' · ')}
       aria-label={`Abrir tarefa ${task.title}${names.length ? ` · ${names.join(', ')}` : ' · Sem utilizador alocado'}`}
       className={`w-full min-h-6 h-auto px-0.5 py-0.5 justify-start text-left bg-surface border border-border border-l-2 ${taskBorderClass(getTaskStatusStyle(task.statusId, taskStatuses))} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
@@ -269,10 +289,10 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                     {absence.reason && <span className="block truncate font-normal">{absence.reason}</span>}
                   </div>)}
                 {otherDays.get(day.dateStr)?.otherTasks.map(task => {
-                if (highDensity) return renderHdTask(task, task.id);
+                if (highDensity) return renderHdTask(task, task.id, day.dateStr);
                 const status = getTaskStatusStyle(task.statusId, taskStatuses);
                 const assigneeIds = task.assigneeIds || [];
-                return <Button key={task.id} {...dragProps(task)} variant="ghost" size="sm" title={task.title} aria-label={`Abrir tarefa ${task.title}`}
+                return <Button key={task.id} {...dragProps(task, day.dateStr)} variant="ghost" size="sm" title={task.title} aria-label={`Abrir tarefa ${task.title}`}
                   className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${taskBorderClass(status)} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
                   <span className="flex items-center gap-1 min-w-0">
@@ -327,10 +347,10 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
             {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, project.id)} className={`${highDensity ? 'p-0.5' : 'p-2'} border-b border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${(events.get(project.id)?.get(day.dateStr) || []).some(event => event.kind === 'task' && conflictTaskIds.get(day.dateStr)?.has(event.task.id)) ? 'project-timeline-conflict-cell' : ''} ${dragOverCell === `${project.id}:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
               {!expanded && <div className="space-y-1">
                 {(events.get(project.id)?.get(day.dateStr) || []).filter(event => event.kind === 'task').map((event, index) => {
-                  if (highDensity) return renderHdTask(event.task, `compact-task-${index}`);
+                  if (highDensity) return renderHdTask(event.task, `compact-task-${index}`, day.dateStr);
                   const status = getTaskStatusStyle(event.task.statusId, taskStatuses);
                   const assigneeIds = event.task.assigneeIds || [];
-                  return <Button key={`compact-task-${index}`} {...dragProps(event.task)} variant="ghost" size="sm" title={event.title} aria-label={`Abrir tarefa ${event.title}`}
+                  return <Button key={`compact-task-${index}`} {...dragProps(event.task, day.dateStr)} variant="ghost" size="sm" title={event.title} aria-label={`Abrir tarefa ${event.title}`}
                     className={`w-full min-h-9 h-auto px-1 py-1 justify-start bg-surface border border-border border-l-4 ${taskBorderClass(status)} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     onClick={() => openOutsideTimeline(() => onSelectTask(event.task))}>
                     <span className="flex items-center gap-1 min-w-0">
@@ -346,9 +366,9 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               </div>}
               {expanded && <div className="space-y-2">
                 {(events.get(project.id)?.get(day.dateStr) || []).map((event, index) => {
-                  if (highDensity && event.kind === 'task') return renderHdTask(event.task, `task-${index}`);
+                  if (highDensity && event.kind === 'task') return renderHdTask(event.task, `task-${index}`, day.dateStr);
                   const status = event.kind === 'task' ? getTaskStatusStyle(event.task.statusId, taskStatuses) : undefined;
-                  return <Button key={`${event.kind}-${index}`} {...(event.kind === 'task' ? dragProps(event.task) : {})} variant="ghost" size="sm" className={`w-full h-auto min-h-9 ${highDensity ? 'px-1 py-1' : 'px-2 py-2'} whitespace-normal text-left justify-start bg-surface border border-border ${status ? `border-l-4 ${taskBorderClass(status)}` : ''} ${status && canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  return <Button key={`${event.kind}-${index}`} {...(event.kind === 'task' ? dragProps(event.task, day.dateStr) : {})} variant="ghost" size="sm" className={`w-full h-auto min-h-9 ${highDensity ? 'px-1 py-1' : 'px-2 py-2'} whitespace-normal text-left justify-start bg-surface border border-border ${status ? `border-l-4 ${taskBorderClass(status)}` : ''} ${status && canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     title={event.title}
                     onClick={() => openOutsideTimeline(() => event.kind === 'task' ? onSelectTask(event.task) : onSelectProject?.(project.id))}>
                       <span className="flex flex-col gap-1 min-w-0 break-words">
@@ -385,6 +405,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           </tr></thead>
         </table>
       </div>}
+      {copyMessage && <p role="status" className="p-3 text-caption text-text-secondary">{copyMessage}</p>}
       {moveError && <p role="alert" className="p-3 text-body-sm text-error">{moveError}</p>}
       {!filtered.length && <p className="p-6 text-body-sm text-text-secondary">Nenhum projeto encontrado para os filtros selecionados.</p>}
       <div ref={dockSlotRef} style={floatingDock ? { height: floatingDock.height } : undefined}>
