@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useERP } from '../hooks/useERP';
 import { usePageNavigation } from '../hooks/usePageNavigation';
 import { useAsyncAction } from '../hooks/useAsyncAction';
@@ -16,6 +17,7 @@ import AppLoadingScreen from '../components/AppLoadingScreen';
 import Dialog from '../components/ui/Dialog';
 import IconButton from '../components/ui/IconButton';
 import { cn } from '../lib/utils';
+import { getPresentationTheme } from '../lib/presentationTheme';
 
 import {
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText,
@@ -184,6 +186,18 @@ export default function Page() {
   } = usePageNavigation(mounted, Boolean(state));
 
   React.useEffect(() => {
+    // Match Tailwind's existing lg boundary between tablet and desktop.
+    const compactViewport = window.matchMedia('(width < 64rem)');
+    const applyViewport = () => {
+      setIsCollapsed(compactViewport.matches);
+      if (compactViewport.matches) setSidebarOpen(false);
+    };
+    applyViewport();
+    compactViewport.addEventListener('change', applyViewport);
+    return () => compactViewport.removeEventListener('change', applyViewport);
+  }, [setSidebarOpen]);
+
+  React.useEffect(() => {
     if (currentUser && isInitialDataLoaded && activeTab === 'configuracoes' && activeConfigTab === 'auditoria' && auditStatus === 'idle') {
       void loadAuditLogs();
     }
@@ -225,7 +239,7 @@ export default function Page() {
   // Synchronize active theme attribute on document.documentElement for global styling
   React.useEffect(() => {
     const cachedTheme = typeof window !== 'undefined' ? localStorage.getItem('erp_theme') : null;
-    const currentTheme = state?.appConfig?.theme || cachedTheme || 'default';
+    const currentTheme = getPresentationTheme(isInitialDataLoaded, state?.appConfig?.theme, publicAppConfig?.theme, cachedTheme);
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('data-theme', currentTheme);
       document.body?.setAttribute('data-theme', currentTheme);
@@ -234,7 +248,7 @@ export default function Page() {
         root.setAttribute('data-theme', currentTheme);
       }
     }
-  }, [state?.appConfig?.theme]);
+  }, [isInitialDataLoaded, state?.appConfig?.theme, publicAppConfig?.theme]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -402,7 +416,7 @@ export default function Page() {
   if (!currentUser) {
     return (
       <div className={AUTH_SCREEN}>
-        <div className="w-full max-w-md bg-surface rounded-card -xl border border-border-subtle overflow-hidden">
+        <div className="w-full max-w-md bg-surface rounded-card shadow-modal border border-border-subtle overflow-hidden">
           <div className="p-8 pb-6 bg-overlay text-inverse text-center flex flex-col items-center">
             <AppLogo
               logoUrl={loginBranding?.logoImagePath || loginBranding?.logo}
@@ -420,14 +434,14 @@ export default function Page() {
 
           <form onSubmit={handleLogin} className="p-8 space-y-5">
             {loginError && (
-              <div className="p-3 bg-feedback-error-50 text-feedback-error-600 rounded-control text-sm font-medium text-center border border-feedback-error-100">
+              <div role="alert" className="p-3 bg-feedback-error-50 text-feedback-error-600 rounded-control text-sm font-medium text-center border border-feedback-error-100">
                 {loginError}
               </div>
             )}
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-text-primary">E-mail</label>
-              <input
+              <label htmlFor="login-email" className="block text-sm font-medium text-text-primary">E-mail</label>
+              <input id="login-email"
                 type="email"
                 value={loginEmail}
                 onChange={e => {
@@ -444,11 +458,11 @@ export default function Page() {
 
             <div className="space-y-1">
               <div className="flex justify-between items-center">
-                <label className="block text-sm font-medium text-text-primary">Password</label>
+                <label htmlFor="login-password" className="block text-sm font-medium text-text-primary">Password</label>
 
               </div>
               <div className="relative">
-                <input
+                <input id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   value={loginPassword}
                   onChange={e => {
@@ -465,7 +479,8 @@ export default function Page() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary cursor-pointer p-1"
-                  tabIndex={-1}
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
                   title={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -480,7 +495,7 @@ export default function Page() {
                   checked={rememberMe}
                   onChange={e => setRememberMe(e.target.checked)}
                   disabled={isLoggingIn}
-                  className="rounded border-border text-action-600 focus:ring-action-500 w-4 h-4"
+                  className="rounded-badge border-border text-action-600 focus:ring-action-500 w-4 h-4"
                 />
                 Lembrar login
               </label>
@@ -585,9 +600,14 @@ export default function Page() {
             <Menu className="w-5 h-5" />
           </IconButton>
 
-          <div
-            className="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0"
-            onClick={() => handleTabChange('dashboard')}
+          <Link
+            href="/?tab=dashboard"
+            aria-label="Ir para o Dashboard"
+            className="flex items-center gap-3 cursor-pointer select-none hover:opacity-90 transition-opacity min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-control"
+            onClick={event => {
+              if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+              event.preventDefault(); handleTabChange('dashboard');
+            }}
             title="Ir para o Dashboard"
           >
             <AppLogo
@@ -601,7 +621,7 @@ export default function Page() {
               <h1 className="text-body font-bold text-text-primary tracking-tight leading-tight truncate">{appConfig.appName}</h1>
               <p className="text-caption text-text-muted font-medium truncate">{appConfig.appDescription}</p>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Zone 2 & 3: Actions + Notification + Profile dropdown */}
@@ -613,14 +633,18 @@ export default function Page() {
             markAllAsRead={() => markAllNotificationsAsRead(currentUser.id)}
           />
 
-          <div
+          <button
+            type="button"
+            aria-label="Editar perfil"
+            aria-haspopup="dialog"
+            aria-expanded={isChangingPassword}
             onClick={() => {
               setProfileName(currentUser.name);
               setNewPassword('');
               setConfirmNewPassword('');
               setIsChangingPassword(true);
             }}
-            className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-all p-1.5 hover:bg-surface-muted rounded-full"
+            className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-all p-1.5 hover:bg-surface-muted rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             id="user-profile"
             title="Editar perfil"
           >
@@ -634,7 +658,7 @@ export default function Page() {
               })()}
             </div>
 
-          </div>
+          </button>
         </div>
       </header>
 
@@ -704,7 +728,7 @@ export default function Page() {
                     >
                       <Icon className={cn(
                         "w-5 h-5 flex-shrink-0 transition-colors",
-                        isDisabled ? 'text-text-disabled' : isActive ? 'text-primary' : 'text-text-muted'
+                        isDisabled ? 'text-text-disabled' : isActive ? 'text-primary-ink' : 'text-text-muted'
                       )} />
                       <span className={cn("text-body truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
                     </button>
@@ -729,14 +753,14 @@ export default function Page() {
                                 "w-full flex items-center gap-2.5 py-2 rounded-control text-caption font-semibold transition-all duration-150 cursor-pointer select-none border-l-2",
                                 isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-3',
                                 isSubActive
-                                  ? 'bg-primary/5 text-primary font-bold border-primary'
+                                  ? 'bg-primary/5 text-primary-ink font-bold border-primary'
                                   : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border-transparent'
                               )}
                               title={isCollapsed ? sub.label : undefined}
                             >
                               <SubIcon className={cn(
                                 "w-4 h-4 shrink-0 transition-colors",
-                                isSubActive ? 'text-primary' : 'text-text-muted'
+                                isSubActive ? 'text-primary-ink' : 'text-text-muted'
                               )} />
                               <span className={cn("truncate", isCollapsed ? 'md:hidden' : 'block')}>{sub.label}</span>
                             </button>
@@ -771,7 +795,7 @@ export default function Page() {
                 >
                   <Icon className={cn(
                     "w-5 h-5 flex-shrink-0 transition-colors",
-                    isDisabled ? 'text-text-disabled' : isActive ? 'text-primary' : 'text-text-muted'
+                    isDisabled ? 'text-text-disabled' : isActive ? 'text-primary-ink' : 'text-text-muted'
                   )} />
                   <span className={cn("text-body truncate", isCollapsed ? 'md:hidden' : 'block')}>{tab.label}</span>
                 </button>
@@ -818,7 +842,7 @@ export default function Page() {
                   {(requiresProjectMaterials && materialsStatus === 'error') || (requiresDefaultTasks && defaultTasksStatus === 'error') ? (
                     <button
                       type="button"
-                      className="flex items-center gap-2 text-primary font-semibold"
+                      className="flex items-center gap-2 text-primary-ink font-semibold"
                       onClick={() => {
                         if (requiresProjectMaterials && materialsStatus === 'error') void loadProjectMaterials();
                         if (requiresDefaultTasks && defaultTasksStatus === 'error') void loadDefaultTasks();
@@ -1019,7 +1043,7 @@ export default function Page() {
               {requiresConfigRuntime && configRuntimeStatus !== 'loaded' && (
                 <div role="status" aria-label={configRuntimeStatus === 'error' ? 'Não foi possível abrir a secção' : 'A carregar secção'} className="flex min-h-48 items-center justify-center text-text-muted">
                   {configRuntimeStatus === 'error' ? (
-                    <button type="button" className="flex items-center gap-2 text-primary font-semibold" onClick={() => void loadConfigRuntime()}><RefreshCw className="h-5 w-5" aria-hidden="true" /> Tentar novamente</button>
+                    <button type="button" className="flex items-center gap-2 text-primary-ink font-semibold" onClick={() => void loadConfigRuntime()}><RefreshCw className="h-5 w-5" aria-hidden="true" /> Tentar novamente</button>
                   ) : <Loader2 className="h-8 w-8 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
                 </div>
               )}
@@ -1095,14 +1119,14 @@ export default function Page() {
         ) : (
           <form onSubmit={handleChangePassword} className="space-y-4">
             {changePasswordError && (
-              <div className="p-3 bg-error/10 text-error rounded-control text-caption font-semibold border border-error/20">
+              <div role="alert" className="p-3 bg-error/10 text-error rounded-control text-caption font-semibold border border-error/20">
                 {changePasswordError}
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label className="block text-label font-bold text-text-secondary select-none">Nome</label>
-              <input
+              <label htmlFor="profile-name" className="block text-label font-bold text-text-secondary select-none">Nome</label>
+              <input id="profile-name"
                 type="text"
                 value={profileName}
                 onChange={e => setProfileName(e.target.value)}
@@ -1112,8 +1136,8 @@ export default function Page() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-label font-bold text-text-secondary select-none">Nova password (Opcional)</label>
-              <input
+              <label htmlFor="profile-password" className="block text-label font-bold text-text-secondary select-none">Nova password (Opcional)</label>
+              <input id="profile-password"
                 type="password"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
@@ -1123,8 +1147,8 @@ export default function Page() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-label font-bold text-text-secondary select-none">Confirmar nova password</label>
-              <input
+              <label htmlFor="profile-password-confirm" className="block text-label font-bold text-text-secondary select-none">Confirmar nova password</label>
+              <input id="profile-password-confirm"
                 type="password"
                 value={confirmNewPassword}
                 onChange={e => setConfirmNewPassword(e.target.value)}

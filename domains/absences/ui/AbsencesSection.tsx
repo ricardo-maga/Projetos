@@ -326,7 +326,7 @@ export default function AbsencesSection({
                     <Button variant="ghost" size="sm"
                       type="button"
                       onClick={() => { setFilterUserId('all'); setFilterYear('all'); }}
-                      className="text-primary hover:underline font-bold text-body-sm cursor-pointer"
+                      className="text-primary-ink hover:underline font-bold text-body-sm cursor-pointer"
                     >
                       Limpar filtros
                     </Button>
@@ -344,7 +344,7 @@ export default function AbsencesSection({
                         >
                           <div className="flex items-center gap-1.5">
                             Data início
-                            <ArrowUpDown className={`w-3.5 h-3.5 ${sortOrder === 'asc' ? 'text-primary' : 'text-text-secondary'}`} />
+                            <ArrowUpDown className={`w-3.5 h-3.5 ${sortOrder === 'asc' ? 'text-primary-ink' : 'text-text-secondary'}`} />
                           </div>
                         </th>
                         <th className="px-5 py-3.5 text-left">Data fim</th>
@@ -362,7 +362,7 @@ export default function AbsencesSection({
                               <span className="font-bold text-text-primary">{getUserName(abs.userId)}</span>
                             </td>
                             <td className="px-5 py-3.5 font-mono text-text-secondary whitespace-nowrap">{abs.absenceStartDate}</td>
-                            <td className="px-5 py-3.5 font-mono text-primary font-bold whitespace-nowrap">{abs.absenceEndDate}</td>
+                            <td className="px-5 py-3.5 font-mono text-primary-ink font-bold whitespace-nowrap">{abs.absenceEndDate}</td>
                             <td className="px-5 py-3.5">
                               <Badge>
                                 {getTranslatedReason(abs.reason || 'Other')}

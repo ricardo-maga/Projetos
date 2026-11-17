@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useId, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import IconButton from './IconButton';
+import { useModalInteraction } from '@/hooks/useModalInteraction';
 
 export interface DialogProps {
   isOpen: boolean;
@@ -16,17 +17,9 @@ export interface DialogProps {
 }
 
 export function Dialog({ isOpen, onClose, title, children, className, bodyClassName }: DialogProps) {
-  // Prevent body scroll when open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalInteraction(isOpen, onClose, dialogRef);
 
   return (
     <AnimatePresence>
@@ -43,19 +36,25 @@ export function Dialog({ isOpen, onClose, title, children, className, bodyClassN
 
           {/* Modal Container */}
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={title ? titleId : undefined}
+            aria-label={title ? undefined : 'Diálogo'}
+            tabIndex={-1}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', duration: 0.3 }}
             className={cn(
-              "relative w-full max-w-lg bg-surface border border-border rounded-dialog shadow-modal z-10 flex flex-col overflow-hidden text-left",
+              "relative min-w-0 w-full max-w-lg max-h-[calc(100dvh-2rem)] bg-surface border border-border rounded-dialog shadow-modal z-10 flex flex-col overflow-hidden text-left",
               className
             )}
           >
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between p-5 border-b border-border bg-surface-muted/30">
               {title ? (
-                <h2 className="text-heading-sm font-bold text-text-primary tracking-tight">
+                <h2 id={titleId} className="text-heading-sm font-bold text-text-primary tracking-tight">
                   {title}
                 </h2>
               ) : (
@@ -65,7 +64,7 @@ export function Dialog({ isOpen, onClose, title, children, className, bodyClassN
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
-                aria-label="Close dialog"
+                aria-label="Fechar diálogo"
                 className="hover:bg-surface-muted hover:text-text-primary rounded-full"
               >
                 <X className="w-4 h-4" />
@@ -73,7 +72,7 @@ export function Dialog({ isOpen, onClose, title, children, className, bodyClassN
             </div>
 
             {/* Content Body */}
-            <div className={cn("p-6 overflow-y-auto max-h-[70vh] text-body-sm text-text-secondary leading-relaxed", bodyClassName)}>
+            <div className={cn("min-h-0 p-6 overflow-y-auto text-body-sm text-text-secondary leading-relaxed", bodyClassName)}>
               {children}
             </div>
           </motion.div>

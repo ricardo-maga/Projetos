@@ -504,7 +504,7 @@ export default function TaskSection({
                 "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'today'
                   ? "border-primary bg-primary/10 ring-1 ring-primary"
-                  : "bg-surface border-border hover:border-border-primary"
+                  : "bg-surface border-border hover:border-primary"
               )}
             >
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Para Hoje</div>
@@ -530,7 +530,7 @@ export default function TaskSection({
                 "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'this_week'
                   ? "border-primary bg-primary/10 ring-1 ring-primary"
-                  : "bg-surface border-border hover:border-border-primary"
+                  : "bg-surface border-border hover:border-primary"
               )}
             >
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Esta semana</div>
@@ -556,7 +556,7 @@ export default function TaskSection({
                 "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'overdue'
                   ? "border-error bg-error/10 ring-1 ring-error"
-                  : "bg-surface border-border hover:border-border-primary"
+                  : "bg-surface border-border hover:border-primary"
               )}
             >
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Atrasadas</div>
@@ -584,7 +584,7 @@ export default function TaskSection({
                 "p-3.5 text-left transition-all cursor-pointer select-none",
                 datePreset === 'completed_this_week'
                   ? "border-success bg-success/10 ring-1 ring-success"
-                  : "bg-surface border-border hover:border-border-primary"
+                  : "bg-surface border-border hover:border-primary"
               )}
             >
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Concluídas esta semana</div>
@@ -702,7 +702,7 @@ export default function TaskSection({
               {/* Search Input - expands to fill space */}
               <div className="flex-1 min-w-[200px] relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-disabled w-4 h-4 pointer-events-none z-10" />
-                <Input
+                <Input aria-label="Pesquisar tarefas"
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
@@ -713,7 +713,7 @@ export default function TaskSection({
 
               {/* Assignee Filter */}
               <div className="w-full sm:w-auto min-w-[220px]">
-                <Select
+                <Select aria-label="Filtrar por responsável"
                   value={filterAssignee}
                   onChange={e => setFilterAssignee(e.target.value)}
                   className="h-10 text-body-sm font-semibold"
@@ -758,6 +758,7 @@ export default function TaskSection({
                     <span className="text-text-secondary font-medium text-body-sm">Mostrar:</span>
                     <div className="w-20">
                       <Select
+                        aria-label="Tarefas por página"
                         value={String(pageSize)}
                         onChange={e => {
                           setPageSize(Number(e.target.value));
@@ -778,6 +779,7 @@ export default function TaskSection({
                     <span className="text-text-secondary font-medium text-body-sm">Ordenar por:</span>
                     <div className="w-auto min-w-[180px]">
                       <Select
+                        aria-label="Ordenar tarefas por"
                         value={sortBy}
                         onChange={e => setSortBy(e.target.value as 'estimatedDate' | 'status')}
                         className="h-9 py-1 px-2.5 text-body-sm font-semibold"
@@ -892,10 +894,10 @@ export default function TaskSection({
 
                           {/* 3. Tarefa (Linha 1: Cliente · Projeto, Linha 2: Título da Tarefa) */}
                           <td className="px-4 py-3.5">
-                            <div className="text-caption font-bold text-primary truncate max-w-[340px]">
+                            <div className="text-caption font-bold text-primary-ink truncate max-w-[340px]">
                               {getProjectTitle(t.projectId)}
                             </div>
-                            <div className="text-body font-bold text-text-primary group-hover:text-primary transition-colors mt-0.5">
+                            <div className="text-body font-bold text-text-primary group-hover:text-primary-ink transition-colors mt-0.5">
                               {t.title}
                             </div>
                             {t.description && (

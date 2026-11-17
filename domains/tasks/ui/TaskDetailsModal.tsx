@@ -600,7 +600,7 @@ export default function TaskDetailsModal({
 
           {/* Informative Conflict Warnings Banner */}
           {conflictWarnings.length > 0 && (
-            <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-control space-y-1 text-body-sm text-warning font-medium whitespace-pre-line shadow-2xs">
+            <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-control space-y-1 text-body-sm text-warning font-medium whitespace-pre-line shadow-subtle">
               <div className="font-bold flex items-center gap-1.5 text-warning text-body-sm">
                 <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
                 Aviso Informativo de Conflitos / Indisponibilidade
@@ -612,7 +612,7 @@ export default function TaskDetailsModal({
           )}
 
           {unscheduledProjectTasks.length > 0 && (
-            <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-control space-y-2 text-body-sm text-warning shadow-2xs">
+            <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-control space-y-2 text-body-sm text-warning shadow-subtle">
               <p className="font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 Este projeto tem as seguintes tarefas por agendar:
@@ -634,7 +634,7 @@ export default function TaskDetailsModal({
           <div className="bg-surface-muted p-4 rounded-card border border-border space-y-3.5">
             <div className="flex items-center justify-between border-b border-border pb-2">
               <span className="text-body-sm font-extrabold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
-                <ListTodo className="w-4 h-4 text-primary" />
+                <ListTodo className="w-4 h-4 text-primary-ink" />
                 Dados de planeamento
               </span>
 
@@ -728,7 +728,7 @@ export default function TaskDetailsModal({
                           type="button"
                           onClick={() => handleSelectProject(p)}
                           className={`h-auto min-h-11 w-full text-left px-3.5 py-2.5 hover:bg-primary/10 transition-colors flex items-center justify-between text-body-sm cursor-pointer ${
-                            isSelected ? 'bg-primary/10 text-primary font-bold' : 'text-text-primary font-medium'
+                            isSelected ? 'bg-primary/10 text-primary-ink font-bold' : 'text-text-primary font-medium'
                           }`}
                         >
                           <div className="min-w-0 pr-2">
@@ -746,7 +746,7 @@ export default function TaskDetailsModal({
                             </div>
                           </div>
                           {isSelected && (
-                            <Check className="w-4 h-4 text-primary shrink-0 ml-2" />
+                            <Check className="w-4 h-4 text-primary-ink shrink-0 ml-2" />
                           )}
                         </Button>
                       );

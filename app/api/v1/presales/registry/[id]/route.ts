@@ -4,7 +4,7 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { createAdminClient } from '@/lib/supabase/server';
 import { presalesRegistrySchema } from '@/lib/presalesRegistry';
 import { listPresales } from '@/lib/presalesServer';
-import { presalesError } from '../../route';
+import { presalesError } from '@/lib/presalesErrors';
 
 type Context={params:Promise<{id:string}>};
 export async function PATCH(req:NextRequest,context:Context) {

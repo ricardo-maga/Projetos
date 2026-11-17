@@ -302,7 +302,7 @@ export default function ClientSection({
             <Button variant="primary" size="sm"
               type="submit"
               isLoading={isSavingClient}
-              className="px-6 py-2.5 bg-primary text-inverse font-bold rounded-control hover:bg-primary -sm"
+              className="px-6 py-2.5 bg-primary text-inverse font-bold rounded-control hover:bg-primary shadow-raised"
             >
               Gravar Cliente
             </Button>
@@ -376,7 +376,7 @@ export default function ClientSection({
                     <tr key={c.id} className={`hover:bg-surface/50 transition-colors ${c.deleted ? 'bg-warning/10' : ''}`}>
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${c.deleted ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'}`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${c.deleted ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary-ink'}`}>
                             <Building className="w-4 h-4" />
                           </div>
                           <div>
@@ -386,7 +386,7 @@ export default function ClientSection({
                                 setSelectedClientForModal(c);
                                 setProjectsCurrentPage(1);
                               }}
-                              className="font-extrabold text-text-primary text-body hover:text-primary hover:underline px-0 h-auto min-h-9 whitespace-normal text-left justify-start"
+                              className="font-extrabold text-text-primary text-body hover:text-primary-ink hover:underline px-0 h-auto min-h-9 whitespace-normal text-left justify-start"
                             >
                               {c.clientName}
                             </Button>
@@ -421,7 +421,7 @@ export default function ClientSection({
                             {c.notes}
                           </div>
                         ) : (
-                          <span className="text-text-disabled italic text-caption">Sem notas</span>
+                          <span className="text-text-muted italic text-caption">Sem notas</span>
                         )}
                       </td>
                       <td className="px-5 py-4 text-right">
@@ -429,7 +429,7 @@ export default function ClientSection({
                           {canWriteClients && (
                             <IconButton variant="ghost" size="sm" aria-label="Editar cliente"
                               onClick={() => openForm(c)}
-                              className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-control text-text-muted"
+                              className="p-1.5 hover:bg-primary/10 hover:text-primary-ink rounded-control text-text-muted"
                               title="Editar"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -598,7 +598,7 @@ export default function ClientSection({
                           className="w-full p-3.5 text-left hover:bg-surface flex items-center justify-between transition-colors group"
                         >
                           <div className="space-y-0.5">
-                            <div className="font-extrabold text-text-primary text-body-sm group-hover:text-primary transition-colors">
+                            <div className="font-extrabold text-text-primary text-body-sm group-hover:text-primary-ink transition-colors">
                               {proj.title}
                             </div>
                             <div className="text-caption text-text-muted truncate max-w-md font-medium">
@@ -606,10 +606,10 @@ export default function ClientSection({
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="text-caption bg-surface-muted text-text-secondary px-2 py-0.5 rounded font-bold uppercase font-mono tracking-tight">
+                            <span className="text-caption bg-surface-muted text-text-secondary px-2 py-0.5 rounded-badge font-bold uppercase font-mono tracking-tight">
                               {proj.startDate ? new Date(proj.startDate).toLocaleDateString('pt-PT') : 'S/Data'}
                             </span>
-                            <span className="text-caption text-text-disabled group-hover:text-primary transition-colors font-bold">→</span>
+                            <span aria-hidden="true" className="text-caption text-text-muted group-hover:text-primary-ink transition-colors font-bold">→</span>
                           </div>
                         </Button>
                       ))}

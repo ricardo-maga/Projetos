@@ -70,7 +70,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
   };
 
   const handleSaveEditDefaultTask = async (id: string) => {
-    if (!editDtTitle.trim() || !updateDefaultTask || savingDefaultTask) return;
+    if (!canWriteConfig || !editDtTitle.trim() || !updateDefaultTask || savingDefaultTask) return;
     setSavingDefaultTask(true);
     setDefaultTaskError(null);
     const result = await updateDefaultTask(id, {
@@ -118,7 +118,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
         ) : (
           <div className="divide-y divide-border-subtle">
             {visibleDefaultTasks.map(dt => {
-              const isEditingThis = editingDtId === dt.id;
+              const isEditingThis = canWriteConfig && editingDtId === dt.id;
               const typeName = dt.taskTypeId ? taskTypes.find((tt: any) => tt.id === dt.taskTypeId)?.name : null;
               return (
                 <article key={dt.id} className="p-4 sm:p-5 hover:bg-surface-muted/50 transition-colors">
@@ -126,8 +126,9 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                     // Inline Edit Mode
                     <div className="space-y-3 flex-1">
                       <div className="space-y-1">
-                        <label className="text-label text-text-secondary block font-semibold">Título da tarefa</label>
+                        <label htmlFor={`default-task-title-${dt.id}`} className="text-label text-text-secondary block font-semibold">Título da tarefa</label>
                         <input
+                          id={`default-task-title-${dt.id}`}
                           type="text"
                           value={editDtTitle}
                           onChange={e => setEditDtTitle(e.target.value)}
@@ -136,8 +137,9 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <label className="text-label text-text-secondary block font-semibold">Tipo de tarefa</label>
+                          <label htmlFor={`default-task-type-${dt.id}`} className="text-label text-text-secondary block font-semibold">Tipo de tarefa</label>
                           <select
+                            id={`default-task-type-${dt.id}`}
                             value={editDtTypeId}
                             onChange={e => setEditDtTypeId(e.target.value)}
                             className="w-full h-11 px-3.5 border border-border rounded-control font-semibold text-body text-text-primary bg-surface"
@@ -149,8 +151,9 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-label text-text-secondary block font-semibold">Horas estimadas</label>
+                          <label htmlFor={`default-task-hours-${dt.id}`} className="text-label text-text-secondary block font-semibold">Horas estimadas</label>
                           <input
+                            id={`default-task-hours-${dt.id}`}
                             type="text"
                             value={editDtHours}
                             onChange={e => setEditDtHours(e.target.value)}
@@ -159,8 +162,9 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-label text-text-secondary block font-semibold">Instruções técnicas</label>
+                        <label htmlFor={`default-task-description-${dt.id}`} className="text-label text-text-secondary block font-semibold">Instruções técnicas</label>
                         <textarea
+                          id={`default-task-description-${dt.id}`}
                           value={editDtDesc}
                           onChange={e => setEditDtDesc(e.target.value)}
                           rows={2}
@@ -190,7 +194,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                     </div>
                   )}
 
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle mt-2">
+                  {canWriteConfig && <div className="flex items-center justify-end gap-2 pt-3 border-t border-border-subtle mt-2">
                     {isEditingThis ? (
                       <>
                         <button
@@ -213,7 +217,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                       <>
                         <button
                           onClick={() => startEditingDefaultTask(dt)}
-                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-primary hover:bg-action-50 rounded-control transition-colors flex items-center gap-1"
+                          className="px-2 py-1 text-label font-semibold text-text-muted hover:text-primary-ink hover:bg-action-50 rounded-control transition-colors flex items-center gap-1"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           Editar
@@ -236,7 +240,7 @@ export default function DefaultTasksSection({ active, defaultTasks, taskTypes, a
                         </button>
                       </>
                     )}
-                  </div>
+                  </div>}
                 </article>
               );
             })}

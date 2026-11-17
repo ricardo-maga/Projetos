@@ -79,7 +79,7 @@ export async function editClient(db: ClientDatabase, id: string, updates: z.infe
     console.error('[API CLIENT UPDATE READ]', fetchError);
     throw new ClientFailure(500, 'Erro ao ler versão atual do cliente.');
   }
-  if (!current || current.deleted) throw new ClientFailure(404, 'Cliente não encontrado.');
+  if (!current || (current.deleted && updates.deleted !== false)) throw new ClientFailure(404, 'Cliente não encontrado.');
 
   const hasVersion = typeof current.version === 'number';
   const currentVersion = hasVersion ? current.version! : (updates.version || 1);
@@ -100,6 +100,7 @@ export async function editClient(db: ClientDatabase, id: string, updates: z.infe
   if (updates.contactPhone !== undefined) payload.contact_phone = updates.contactPhone.trim();
   if (updates.notes !== undefined) payload.notes = updates.notes.trim();
   if (updates.color !== undefined) payload.color = updates.color;
+  if (updates.deleted === false) payload.deleted = false;
 
   const { error: updateError } = await updateClientRow(db, id, payload, hasVersion ? currentVersion : undefined);
   if (updateError) throw new ClientFailure(400, `Erro ao atualizar cliente: ${updateError.message}`);
@@ -110,7 +111,7 @@ export async function editClient(db: ClientDatabase, id: string, updates: z.infe
   }
   const updated = mapClientRow(reRead, currentVersion + 1);
   await logAuditEvent({ action: 'CLIENT_UPDATED', userId, entity: 'clients', entityId: id,
-    details: { version: updated.version } });
+    details: { version: updated.version, ...(current.deleted && !updated.deleted ? { restored: true } : {}) } });
   return updated;
 }
 
@@ -147,4 +148,7 @@ export async function removeClient(db: ClientDatabase, id: string, userId: strin
   if (deleteError) throw new ClientFailure(400, `Erro ao eliminar cliente: ${deleteError.message}`);
   await logAuditEvent({ action: 'CLIENT_DELETED', userId, entity: 'clients', entityId: id,
     details: { deleted: true } });
+  const { data: removed, error: readError } = await findClient(db, id);
+  if (readError || !removed) throw new ClientFailure(500, 'Erro ao ler cliente eliminado.');
+  return mapClientRow(removed);
 }

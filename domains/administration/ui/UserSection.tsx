@@ -279,8 +279,9 @@ export default function UserSection({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-1">
-                  <label className="block text-text-secondary">Nome *</label>
+                  <label htmlFor="admin-user-name" className="block text-text-secondary">Nome *</label>
                   <input
+                    id="admin-user-name"
                     type="text"
                     required
                     value={uName}
@@ -291,8 +292,9 @@ export default function UserSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-text-secondary">E-mail *</label>
+                  <label htmlFor="admin-user-email" className="block text-text-secondary">E-mail *</label>
                   <input
+                    id="admin-user-email"
                     type="email"
                     required
                     value={uEmail}
@@ -303,11 +305,12 @@ export default function UserSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-text-secondary">Password {isAddingUser ? '*' : editingUser && !editingUser.authUserId ? '(Necessária para ativar a conta)' : '(Deixe em branco para manter a atual)'}</label>
+                  <label htmlFor="admin-user-password" className="block text-text-secondary">Password {isAddingUser ? '*' : editingUser && !editingUser.authUserId ? '(Necessária para ativar a conta)' : '(Deixe em branco para manter a atual)'}</label>
                   {!isAddingUser && editingUser && !editingUser.authUserId && (
                     <p className="text-xs text-feedback-warning-700">Este perfil não tem conta de autenticação. Defina uma password para criar a conta e permitir o acesso.</p>
                   )}
                   <input
+                    id="admin-user-password"
                     type="password"
                     required={isAddingUser || Boolean(editingUser && !editingUser.authUserId)}
                     minLength={12}
@@ -319,8 +322,9 @@ export default function UserSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-text-secondary">Confirmar Password {isAddingUser ? '*' : ''}</label>
+                  <label htmlFor="admin-user-password-confirm" className="block text-text-secondary">Confirmar Password {isAddingUser ? '*' : ''}</label>
                   <input
+                    id="admin-user-password-confirm"
                     type="password"
                     required={isAddingUser && !!uPassword}
                     minLength={12}
@@ -345,7 +349,7 @@ export default function UserSection({
                   {!rbacRoles.length && <p className="text-sm font-medium text-warning">Não foi possível carregar as funções disponíveis.</p>}
                 </fieldset> : <div className="md:col-span-2 rounded-card border border-border bg-surface-muted/50 p-4">
                   <p className="text-sm font-semibold text-text-primary">Funções atribuídas</p>
-                  <div className="mt-2 flex flex-wrap gap-2">{getAssignedRoleNames(editingUser?.id || '').length ? getAssignedRoleNames(editingUser?.id || '').map(name => <span key={name} className="rounded-control border border-primary/15 bg-primary/5 px-2 py-1 text-xs text-primary">{name}</span>) : <span className="text-sm text-text-secondary">Sem função atribuída. Solicite a um Super Administrador que configure o acesso.</span>}</div>
+                  <div className="mt-2 flex flex-wrap gap-2">{getAssignedRoleNames(editingUser?.id || '').length ? getAssignedRoleNames(editingUser?.id || '').map(name => <span key={name} className="rounded-control border border-primary/15 bg-primary/5 px-2 py-1 text-xs text-primary-ink">{name}</span>) : <span className="text-sm text-text-secondary">Sem função atribuída. Solicite a um Super Administrador que configure o acesso.</span>}</div>
                 </div>}
               </div>
 
@@ -381,6 +385,7 @@ export default function UserSection({
                   <div className="flex items-center gap-1.5">
                     <span className="whitespace-nowrap text-sm font-medium text-text-secondary">Função:</span>
                     <select
+                      aria-label="Filtrar utilizadores por função"
                       value={filterRoleId}
                       onChange={e => setFilterRoleId(e.target.value)}
                       className="cursor-pointer rounded-control border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/15"
@@ -391,12 +396,12 @@ export default function UserSection({
                       ))}
                     </select>
                   </div>
-                  <Button
+                  {canWriteUsers && <Button
                     type="button"
                     onClick={startAddUser}
                   >
                     <Plus className="w-4 h-4" /> Novo utilizador
-                  </Button>
+                  </Button>}
                 </div>
               </div>
 
@@ -432,7 +437,7 @@ export default function UserSection({
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-1.5 items-center">
                           {getAssignedRoleNames(u.id).length ? getAssignedRoleNames(u.id).map(name => (
-                            <span key={name} className="px-2 py-1 bg-primary/5 border border-primary/15 rounded-control text-small-label font-medium text-primary">{name}</span>
+                            <span key={name} className="px-2 py-1 bg-primary/5 border border-primary/15 rounded-control text-small-label font-medium text-primary-ink">{name}</span>
                           )) : <span className="text-xs text-text-muted">Sem função atribuída</span>}
                         </div>
                       </td>
@@ -443,14 +448,14 @@ export default function UserSection({
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex justify-end gap-2">
-                          <button
+                          {canWriteUsers && <button
                             onClick={() => startEditUser(u)}
                             className="text-action-600 hover:text-action-800 font-bold flex items-center gap-1"
                           >
                             <Edit2 className="w-3 h-3" /> Editar
-                          </button>
-                          <span className="text-text-muted">|</span>
-                          <button
+                          </button>}
+                          {canWriteUsers && canDeleteUsers && <span className="text-text-muted">|</span>}
+                          {canDeleteUsers && <button
                             onClick={() => askConfirmation(
                               'Confirmar Eliminação de Utilizador',
                               `Aviso: Isto irá remover permanentemente o utilizador ${u.name} (${u.email}) do diretório de colaboradores ativos. Pretende continuar?`,
@@ -463,10 +468,10 @@ export default function UserSection({
                                 }
                               }
                             )}
-                            className="text-feedback-error-500 hover:text-feedback-error-700 font-bold"
+                            className="text-error hover:text-feedback-error-700 font-bold"
                           >
                             Apagar
-                          </button>
+                          </button>}
                         </div>
                       </td>
                     </tr>

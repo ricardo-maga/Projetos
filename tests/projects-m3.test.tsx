@@ -51,6 +51,19 @@ export const projectPreviewProps: React.ComponentProps<typeof ProjectSection> = 
   currentUser: { id: 'qa-user', roleId: 'ug-1', permissions: ['projects.read', 'projects.write', 'projects.delete', 'tasks.write'] },
 };
 
+it('keeps project comments readable while gating composition and deletion by their actual permissions', () => {
+  const props = { ...projectPreviewProps, selectedProjectId: project.id,
+    comments: [{ id: 'qa-comment', projectId: project.id, authorId: 'qa-user', comment: 'Comentário preservado', createdDate: '2026-11-16' }] };
+  const reader = createProjectHarness().render({ ...props,
+    currentUser: { id: 'qa-reader', roleId: 'ug-4', permissions: ['projects.read'] } });
+  expect(renderToStaticMarkup(reader)).toContain('Comentário preservado');
+  expect(findProjectElement(reader, e => e.type?.name === 'MarkdownCommentComposer')).toBeUndefined();
+  expect(findProjectElement(reader, e => e.props?.children === 'Apagar')).toBeUndefined();
+  const writer = createProjectHarness().render(props);
+  expect(findProjectElement(writer, e => e.type?.name === 'MarkdownCommentComposer')).toBeDefined();
+  expect(findProjectElement(writer, e => e.props?.children === 'Apagar')).toBeDefined();
+});
+
 describe('Projects M3 presentation', () => {
   it('shows compact Forecast badges in the list only for the current month', () => {
     const month = currentForecastMonth();

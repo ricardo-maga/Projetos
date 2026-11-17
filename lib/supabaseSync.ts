@@ -26,6 +26,7 @@ import { ERPState, Project, Task, Comment, UserAbsence, User, Client, SpecialDay
 import { getProjectsServerData } from './projects/projectService';
 import { normalizeRoleId } from './permissions';
 import { getAuthHeaders } from './clientAuth';
+import { mapClientRow } from '@/domains/clients/data/clientMapper';
 import { orLike } from './security/postgrestSearch';
 
 const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
@@ -400,7 +401,7 @@ export async function getActiveStateFromSupabase(
       readable('tasks') ? client.from('tasks').select('*').order('created_at', { ascending: false }) : skipped(),
       readable('comments') ? client.from('comments').select('*').order('created_at', { ascending: true }) : skipped(),
       readable('userAbsences') ? client.from('user_absences').select('*') : skipped(),
-      readable('appConfig') ? client.from('app_configuration').select('*').limit(1) : skipped(),
+      readable('appConfig') ? configurationReadQuery(client) : skipped(),
       readable('specialDays') ? client.from('special_days').select('*') : skipped(),
       readable('defaultTasks') && !readOptions?.skipDefaultTasks ? client.from('default_tasks').select('*') : skipped(),
       readable('riskCategories') ? client.from('risk_categories').select('*').order('sort_order', { ascending: true }) : skipped(),
@@ -622,19 +623,7 @@ export async function getActiveStateFromSupabase(
       };
     });
 
-    const clients: Client[] = (resClients.data || []).map((c: any) => ({
-      id: c.id,
-      clientName: c.client_name,
-      shortName: c.short_name || '',
-      location: c.location || '',
-      taxId: c.tax_id || '',
-      contactPerson: c.contact_person || '',
-      contactEmail: c.contact_email || '',
-      contactPhone: c.contact_phone || '',
-      notes: c.notes || '',
-      deleted: c.deleted || false,
-      createdDate: c.created_at || '',
-    }));
+    const clients: Client[] = (resClients.data || []).map((row: any) => mapClientRow(row));
 
     const users: User[] = (resUsers.data || []).map((row: any) => {
       const u = row.id === resOwnUser.data?.id ? resOwnUser.data : row;
@@ -1472,3 +1461,4 @@ export async function fetchAuditLogsFromSupabase(limit = 100): Promise<{ success
     return await response.json();
   } catch (err: any) { return { success: false, message: formatSupabaseError(err) }; }
 }
+import { configurationReadQuery } from '@/domains/configuration/data/configurationRepository';

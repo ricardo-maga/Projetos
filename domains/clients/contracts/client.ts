@@ -14,6 +14,8 @@ export const createClientSchema = z.object({
 });
 
 export const updateClientSchema = z.object({
+  // Deletion remains on the permission-gated DELETE endpoint. PATCH can only restore.
+  deleted: z.literal(false).optional(),
   clientName: z.string().trim().min(2, 'O nome do cliente deve ter no mínimo 2 caracteres').max(200).optional(),
   shortName: z.string().max(100).optional(),
   location: z.string().max(300).optional(),

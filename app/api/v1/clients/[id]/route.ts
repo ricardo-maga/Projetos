@@ -65,8 +65,8 @@ export async function DELETE(req: NextRequest, { params }: Context) {
   try {
     const db = (await getServerDbClient(req, auth.user)) || defaultSupabase;
     if (!db) return internalServerError('Base de dados Supabase não disponível.', requestId);
-    await removeClient(db, id, user.id);
-    return NextResponse.json({ success: true, message: 'Cliente eliminado com sucesso.' });
+    const data = await removeClient(db, id, user.id);
+    return NextResponse.json({ success: true, message: 'Cliente eliminado com sucesso.', data });
   } catch (error) {
     return clientErrorResponse(error, requestId, 'Falha inesperada ao eliminar cliente.');
   }

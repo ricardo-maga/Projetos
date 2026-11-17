@@ -38,7 +38,7 @@ export default function AbsenceCalendar({
 
   const getUserColorClass = (uid: string) => {
     const colors = [
-      'bg-primary/10 text-primary border-primary/20',
+      'bg-primary/10 text-primary-ink border-primary/20',
       'bg-brand-green/10 text-success-strong border-brand-green/20',
       'bg-surface-muted text-text-primary border-border',
     ];
@@ -63,7 +63,7 @@ export default function AbsenceCalendar({
           <span className={`inline-flex items-center justify-center w-7 h-7 text-center rounded-full font-bold text-caption ${dateStr === todayStr ? 'bg-primary text-inverse font-black' : 'text-text-secondary'}`}>
             {day}
           </span>
-          {specialDay && <span className="text-caption font-extrabold text-text-primary bg-warning/10 border border-warning/20 px-1 py-0.5 rounded truncate max-w-[50px]" title={specialDay.name}>{specialDay.name}</span>}
+          {specialDay && <span className="text-caption font-extrabold text-text-primary bg-warning/10 border border-warning/20 px-1 py-0.5 rounded-badge truncate max-w-[50px]" title={specialDay.name}>{specialDay.name}</span>}
         </div>
         <div className="flex flex-wrap gap-1 mt-2">
           {dayAbsences.map(absence => {

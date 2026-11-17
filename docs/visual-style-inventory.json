@@ -2,29 +2,1007 @@
   "scope": [
     "app",
     "components",
-    "domains"
+    "domains",
+    "hooks",
+    "lib"
   ],
-  "helpers": [
-    "lib/utils.ts",
-    "lib/planning/summary.ts"
-  ],
-  "files": 90,
+  "helpers": [],
+  "files": 303,
   "totals": {
     "palette": 0,
-    "shape": 95,
-    "arbitrary": 94,
-    "hex": 254,
-    "inline": 21,
+    "shape": 94,
+    "orphanedShape": 0,
+    "arbitrary": 91,
+    "hex": 273,
+    "orphanedColor": 0,
+    "inline": 22,
     "styleProps": 6
   },
   "rows": [
+    {
+      "file": "app/api/audit/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/auth/bootstrap/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/auth/login/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/auth/logout/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/auth/me/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/auth/password/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/auth/profile/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/auth/register/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/auth/reset-password/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/auth/session/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/calendar/feeds/[scope]/[token]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/calendar/subscriptions/[scope]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/integrations/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/integrations/openapi.json/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/integrations/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/integrations/v1/projects/changes/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/integrations/v1/projects/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/integrations/v1/tasks/changes/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/integrations/v1/tasks/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/mcp/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/notifications/read/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/notifications/settings/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/notifications/test/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/openapi.json/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/rbac/catalog/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/rbac/roles/[id]/permissions/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/rbac/roles/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/rbac/roles/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/rbac/users/[id]/roles/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/supabase/config/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/supabase/config-runtime/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/supabase/default-tasks/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/supabase/default-tasks/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/supabase/special-days/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/supabase/special-days/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/supabase/sync/entity/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/supabase/sync/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/users/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/users/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/absences/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/automation-rules/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/automation-rules/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/clients/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/clients/clientError.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/clients/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/configuration/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/mechanical-design/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/mechanical-design/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/openapi.json/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/planning/availability/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/planning/capacity/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/planning/resource-load/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/planning-allocations/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/planning-allocations/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/presales/[id]/assets/[assetId]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/presales/[id]/assets/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/presales/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/presales/origins/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/presales/registry/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/presales/registry/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/presales/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/presales/templates/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/project-materials/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/project-materials/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/projects/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/projects/comments/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/projects/ip-duplicate/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/projects/risks/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/projects/risks/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/projects/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/reference-data/reorder/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/reference-data/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/tasks/[id]/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/api/v1/tasks/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/auth/callback/route.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
     {
       "file": "app/docs/page.tsx",
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 2,
-      "hex": 2,
+      "hex": 0,
       "inline": 0,
       "styleProps": 0,
       "sharedImports": 0
@@ -34,6 +1012,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -45,8 +1025,10 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
-      "hex": 205,
+      "hex": 202,
       "inline": 0,
       "styleProps": 0,
       "sharedImports": 0
@@ -56,8 +1038,23 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "app/manifest.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 2,
       "inline": 0,
       "styleProps": 0,
       "sharedImports": 0
@@ -67,6 +1064,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -78,6 +1077,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 8,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 5,
       "hex": 0,
       "inline": 0,
@@ -89,8 +1090,10 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
-      "hex": 2,
+      "hex": 8,
       "inline": 0,
       "styleProps": 0,
       "sharedImports": 0
@@ -100,6 +1103,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 1,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -111,6 +1116,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -122,6 +1129,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -133,6 +1142,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -144,6 +1155,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -155,6 +1168,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -166,6 +1181,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -177,6 +1194,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -188,6 +1207,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -199,6 +1220,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -210,6 +1233,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -221,6 +1246,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 1,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -232,6 +1259,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -243,6 +1272,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -254,6 +1285,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -265,6 +1298,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -276,6 +1311,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -287,6 +1324,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -298,6 +1337,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -309,6 +1350,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -320,6 +1363,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -331,6 +1376,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -342,6 +1389,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -353,6 +1402,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -364,6 +1415,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -375,6 +1428,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -386,6 +1441,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -397,6 +1454,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -408,6 +1467,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -419,6 +1480,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -430,6 +1493,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -441,6 +1506,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -452,6 +1519,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -463,7 +1532,22 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "components/ui/buttonAppearance.ts",
+      "layer": "foundation",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
       "hex": 0,
       "inline": 0,
       "styleProps": 0,
@@ -474,6 +1558,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -485,6 +1571,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -496,6 +1584,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -507,6 +1597,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 1,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -518,6 +1610,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -529,6 +1623,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -540,7 +1636,22 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "components/ui/index.ts",
+      "layer": "foundation",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
       "hex": 0,
       "inline": 0,
       "styleProps": 0,
@@ -551,6 +1662,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -562,6 +1675,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -573,6 +1688,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -584,9 +1701,24 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "components/ui/ScrollableChart.tsx",
+      "layer": "foundation",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 1,
       "styleProps": 0,
       "sharedImports": 0
     },
@@ -595,6 +1727,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -606,6 +1740,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -617,6 +1753,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 2,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -628,6 +1766,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 1,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -639,6 +1779,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -650,6 +1792,8 @@
       "layer": "foundation",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -661,6 +1805,34 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/absences/modules/absenceActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/absences/modules/absenceVisibility.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -672,6 +1844,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 2,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 5,
       "hex": 0,
       "inline": 0,
@@ -683,6 +1857,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -690,10 +1866,90 @@
       "sharedImports": 7
     },
     {
+      "file": "domains/administration/data/referenceData.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/administration/modules/auditPresentation.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/administration/modules/configActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/administration/modules/rbacAdmin.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/administration/modules/referenceActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/administration/modules/userActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
       "file": "domains/administration/ui/AuditLogSection.tsx",
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 2,
       "hex": 0,
       "inline": 0,
@@ -705,6 +1961,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 1,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 7,
       "inline": 1,
@@ -716,6 +1974,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 3,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 18,
       "inline": 1,
@@ -727,6 +1987,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -738,6 +2000,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -749,6 +2013,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 1,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -756,10 +2022,64 @@
       "sharedImports": 7
     },
     {
+      "file": "domains/calendar/data/calendarFeedServer.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/calendar/modules/calendarFeeds.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/calendar/modules/operationalCalendar.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/calendar/modules/specialDayActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
       "file": "domains/calendar/ui/CalendarSection.tsx",
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -771,6 +2091,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -782,6 +2104,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 1,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 3,
       "hex": 0,
       "inline": 3,
@@ -793,6 +2117,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -800,10 +2126,77 @@
       "sharedImports": 6
     },
     {
+      "file": "domains/clients/contracts/client.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 1,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/clients/data/clientMapper.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 1,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/clients/data/clientRepository.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/clients/modules/clientActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 1,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/clients/modules/clientService.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 1,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
       "file": "domains/clients/ui/ClientSection.tsx",
       "layer": "screen",
       "palette": 0,
       "shape": 1,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 3,
       "hex": 0,
       "inline": 0,
@@ -811,21 +2204,90 @@
       "sharedImports": 9
     },
     {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
+      "file": "domains/communication/data/automationRuleRepository.ts",
       "layer": "screen",
       "palette": 0,
-      "shape": 9,
-      "arbitrary": 1,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
       "hex": 0,
       "inline": 0,
       "styleProps": 0,
       "sharedImports": 0
     },
     {
+      "file": "domains/communication/modules/communicationActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/communication/modules/validateRule.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/communication/services/writeAutomationRules.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/communication/services/writeNotifications.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/communication/ui/AutomationEditor.tsx",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 9,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 1
+    },
+    {
       "file": "domains/communication/ui/CommunicationSettingsSection.tsx",
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -837,6 +2299,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 3,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 2,
       "hex": 0,
       "inline": 0,
@@ -844,10 +2308,64 @@
       "sharedImports": 1
     },
     {
+      "file": "domains/configuration/data/configurationRepository.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/configuration/services/writeConfiguration.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 6,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/monitoring/modules/dashboardSummary.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/monitoring/modules/myFocus.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
       "file": "domains/monitoring/ui/BentoDashboard.tsx",
       "layer": "screen",
       "palette": 0,
       "shape": 7,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 8,
       "hex": 0,
       "inline": 2,
@@ -859,6 +2377,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -870,6 +2390,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 10,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -877,10 +2399,194 @@
       "sharedImports": 6
     },
     {
+      "file": "domains/people/services/writePeopleActivity.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/contracts/project.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/contracts/projectRelations.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/data/riskRepository.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/modules/commentActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/modules/projectActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/modules/projectAnalytics.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/modules/projectForecast.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/modules/projectMaterialActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/modules/projectRiskActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/modules/projectService.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/modules/projectTimeline.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/services/writeProjectMaterials.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/projects/services/writeProjectRisks.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
       "file": "domains/projects/ui/ProjectActivityTable.tsx",
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 3,
       "hex": 0,
       "inline": 0,
@@ -892,6 +2598,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 2,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 1,
@@ -902,18 +2610,22 @@
       "file": "domains/projects/ui/ProjectSection.tsx",
       "layer": "screen",
       "palette": 0,
-      "shape": 25,
-      "arbitrary": 39,
+      "shape": 24,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 37,
       "hex": 0,
       "inline": 0,
       "styleProps": 0,
-      "sharedImports": 14
+      "sharedImports": 15
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
       "layer": "screen",
       "palette": 0,
       "shape": 7,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 10,
@@ -921,10 +2633,25 @@
       "sharedImports": 9
     },
     {
+      "file": "domains/reports/modules/reportBuilder.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
       "file": "domains/reports/ui/ReportsSection.tsx",
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -932,10 +2659,90 @@
       "sharedImports": 2
     },
     {
+      "file": "domains/tasks/modules/defaultTaskActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/tasks/modules/displayHours.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/tasks/modules/taskActions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/tasks/modules/taskConflicts.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/tasks/modules/taskOperations.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "domains/tasks/modules/taskService.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
       "file": "domains/tasks/ui/AssigneeSelector.tsx",
       "layer": "screen",
       "palette": 0,
       "shape": 2,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -947,6 +2754,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -958,17 +2767,21 @@
       "layer": "screen",
       "palette": 0,
       "shape": 6,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 3,
       "styleProps": 6,
-      "sharedImports": 0
+      "sharedImports": 1
     },
     {
       "file": "domains/tasks/ui/TaskDetailsModal.tsx",
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 1,
       "hex": 0,
       "inline": 0,
@@ -980,6 +2793,8 @@
       "layer": "screen",
       "palette": 0,
       "shape": 1,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 5,
       "hex": 0,
       "inline": 0,
@@ -987,12 +2802,456 @@
       "sharedImports": 3
     },
     {
-      "file": "lib/utils.ts",
+      "file": "hooks/use-mobile.ts",
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
-      "hex": 20,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "hooks/useAsyncAction.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "hooks/useERP.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "hooks/useModalInteraction.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "hooks/usePageNavigation.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/absenceVisibility.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/apiErrors.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/apiIdempotency.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/audit.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/auth/authorization.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/auth/profileEligibility.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/auth/requireAuth.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/auth/sessionPersistence.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/automation/validateRule.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/calendarFeeds.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/calendarFeedServer.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/cleanDefaults.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/clientAuth.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/cutoverMaintenance.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/dashboardSummary.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/defaultTasks/contracts.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/integrations/auth.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/integrations/changes.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/integrations/mcpAuth.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/integrations/scope.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/mechanicalDesign.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/mechanicalDesignServer.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/mockData.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/myFocus.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/notificationCatalog.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/operationalCalendar.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/permissions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/planning/allocationService.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/planning/capacityService.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/planning/retired.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
       "inline": 0,
       "styleProps": 0,
       "sharedImports": 0
@@ -1002,6 +3261,697 @@
       "layer": "screen",
       "palette": 0,
       "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/planning/types.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/planning/validationEngine.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/presales.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/presalesErrors.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/presalesRegistry.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/presalesServer.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/presentationTheme.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/projectAnalytics.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/projectForecast.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/projectMaterials/client.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/projects/projectService.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/projectTimeline.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/rateLimit.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/rbac/admin.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/reports.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/roleAssociations.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/sectionCatalog.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/security/clientIp.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/security/edgeRateLimit.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/security/identifiers.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/security/imageSignature.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/security/logoSource.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/security/postgrestSearch.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/security/requestOrigin.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/securityConfig.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/specialDays/contracts.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabase/client.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabase/commentIdentity.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabase/legacyWriteBatch.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabase/middleware.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabase/operationalRecords.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabase/requireServerDbClient.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabase/server.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabase/syncPartitions.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabase/syncPayload.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabase/syncReadProjection.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabase/writeDomainChanges.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabaseClient.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/supabaseSync.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 6,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/taskConflicts.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/taskOperations.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/tasks/displayHours.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/tasks/taskService.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/types.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/utils.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 20,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/validations/auth.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/validations/client.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/validations/operational.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/validations/planningAllocation.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/validations/planningCapacity.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/validations/project.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/validations/projectRelations.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
+      "arbitrary": 0,
+      "hex": 0,
+      "inline": 0,
+      "styleProps": 0,
+      "sharedImports": 0
+    },
+    {
+      "file": "lib/validations/task.ts",
+      "layer": "screen",
+      "palette": 0,
+      "shape": 0,
+      "orphanedShape": 0,
+      "orphanedColor": 0,
       "arbitrary": 0,
       "hex": 0,
       "inline": 0,
@@ -1018,1327 +3968,1309 @@
     },
     {
       "file": "app/docs/page.tsx",
-      "line": 106,
-      "category": "hex",
-      "value": "#0f172a"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 106,
-      "category": "hex",
-      "value": "#f8fafc"
-    },
-    {
-      "file": "app/docs/page.tsx",
-      "line": 153,
+      "line": 152,
       "category": "arbitrary",
       "value": "max-h-[650px]"
     },
     {
       "file": "app/globals.css",
-      "line": 55,
-      "category": "hex",
-      "value": "#16a34a"
-    },
-    {
-      "file": "app/globals.css",
       "line": 56,
       "category": "hex",
-      "value": "#007a2e"
+      "value": "#006b29"
     },
     {
       "file": "app/globals.css",
       "line": 57,
       "category": "hex",
-      "value": "#009639"
+      "value": "#007a2e"
     },
     {
       "file": "app/globals.css",
       "line": 58,
       "category": "hex",
-      "value": "#4298b5"
+      "value": "#009639"
     },
     {
       "file": "app/globals.css",
       "line": 59,
       "category": "hex",
-      "value": "#d97706"
+      "value": "#4298b5"
     },
     {
       "file": "app/globals.css",
       "line": 60,
       "category": "hex",
-      "value": "#dc2626"
+      "value": "#92400e"
     },
     {
       "file": "app/globals.css",
-      "line": 62,
+      "line": 61,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#b91c1c"
     },
     {
       "file": "app/globals.css",
       "line": 63,
       "category": "hex",
+      "value": "#0f172a"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 64,
+      "category": "hex",
       "value": "#cbd5e1"
     },
     {
       "file": "app/globals.css",
-      "line": 66,
+      "line": 65,
       "category": "hex",
-      "value": "#f8fafc"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 67,
-      "category": "hex",
-      "value": "#f1f5f9"
+      "value": "#000000"
     },
     {
       "file": "app/globals.css",
       "line": 68,
       "category": "hex",
-      "value": "#e2e8f0"
+      "value": "#f8fafc"
     },
     {
       "file": "app/globals.css",
       "line": 69,
       "category": "hex",
-      "value": "#94a3b8"
+      "value": "#f1f5f9"
     },
     {
       "file": "app/globals.css",
       "line": 70,
       "category": "hex",
-      "value": "#64748b"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 71,
-      "category": "hex",
-      "value": "#475569"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 72,
-      "category": "hex",
-      "value": "#334155"
+      "value": "#e2e8f0"
     },
     {
       "file": "app/globals.css",
       "line": 73,
       "category": "hex",
-      "value": "#1e293b"
+      "value": "#475569"
     },
     {
       "file": "app/globals.css",
       "line": 74,
       "category": "hex",
+      "value": "#334155"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 75,
+      "category": "hex",
+      "value": "#1e293b"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 76,
+      "category": "hex",
       "value": "#0f172a"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 127,
-      "category": "hex",
-      "value": "#f9fafb"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 128,
-      "category": "hex",
-      "value": "#ffffff"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 129,
-      "category": "hex",
-      "value": "#f3f4f6"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 130,
-      "category": "hex",
-      "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
       "line": 131,
       "category": "hex",
-      "value": "#111827"
+      "value": "#f9fafb"
     },
     {
       "file": "app/globals.css",
       "line": 132,
       "category": "hex",
-      "value": "#4b5563"
+      "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
       "line": 133,
       "category": "hex",
-      "value": "#9ca3af"
+      "value": "#f3f4f6"
     },
     {
       "file": "app/globals.css",
       "line": 134,
       "category": "hex",
-      "value": "#d1d5db"
+      "value": "#ffffff"
     },
     {
       "file": "app/globals.css",
       "line": 135,
       "category": "hex",
-      "value": "#e5e7eb"
+      "value": "#111827"
     },
     {
       "file": "app/globals.css",
       "line": 136,
       "category": "hex",
-      "value": "#f3f4f6"
+      "value": "#4b5563"
     },
     {
       "file": "app/globals.css",
-      "line": 138,
+      "line": 137,
       "category": "hex",
-      "value": "#eff6ff"
+      "value": "#515b69"
     },
     {
       "file": "app/globals.css",
       "line": 139,
       "category": "hex",
-      "value": "#dbeafe"
+      "value": "#e5e7eb"
     },
     {
       "file": "app/globals.css",
       "line": 140,
       "category": "hex",
-      "value": "#bfdbfe"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 141,
-      "category": "hex",
-      "value": "#93c5fd"
+      "value": "#f3f4f6"
     },
     {
       "file": "app/globals.css",
       "line": 142,
       "category": "hex",
-      "value": "#60a5fa"
+      "value": "#eff6ff"
     },
     {
       "file": "app/globals.css",
       "line": 143,
       "category": "hex",
-      "value": "#3b82f6"
+      "value": "#dbeafe"
     },
     {
       "file": "app/globals.css",
       "line": 144,
       "category": "hex",
-      "value": "#2563eb"
+      "value": "#bfdbfe"
     },
     {
       "file": "app/globals.css",
       "line": 145,
       "category": "hex",
-      "value": "#1d4ed8"
+      "value": "#93c5fd"
     },
     {
       "file": "app/globals.css",
       "line": 146,
       "category": "hex",
-      "value": "#1e40af"
+      "value": "#60a5fa"
     },
     {
       "file": "app/globals.css",
       "line": 147,
       "category": "hex",
-      "value": "#1e3a8a"
+      "value": "#3b82f6"
     },
     {
       "file": "app/globals.css",
       "line": 148,
       "category": "hex",
-      "value": "#172554"
+      "value": "#2563eb"
     },
     {
       "file": "app/globals.css",
       "line": 149,
       "category": "hex",
-      "value": "#eff6ff"
+      "value": "#1d4ed8"
     },
     {
       "file": "app/globals.css",
       "line": 150,
       "category": "hex",
-      "value": "#dbeafe"
+      "value": "#1e40af"
     },
     {
       "file": "app/globals.css",
       "line": 151,
       "category": "hex",
-      "value": "#bfdbfe"
+      "value": "#1e3a8a"
     },
     {
       "file": "app/globals.css",
       "line": 152,
       "category": "hex",
-      "value": "#93c5fd"
+      "value": "#172554"
     },
     {
       "file": "app/globals.css",
       "line": 153,
       "category": "hex",
-      "value": "#60a5fa"
+      "value": "#eff6ff"
     },
     {
       "file": "app/globals.css",
       "line": 154,
       "category": "hex",
-      "value": "#3b82f6"
+      "value": "#dbeafe"
     },
     {
       "file": "app/globals.css",
       "line": 155,
       "category": "hex",
-      "value": "#2563eb"
+      "value": "#bfdbfe"
     },
     {
       "file": "app/globals.css",
       "line": 156,
       "category": "hex",
-      "value": "#1d4ed8"
+      "value": "#93c5fd"
     },
     {
       "file": "app/globals.css",
       "line": 157,
       "category": "hex",
-      "value": "#1e40af"
+      "value": "#60a5fa"
     },
     {
       "file": "app/globals.css",
       "line": 158,
       "category": "hex",
-      "value": "#1e3a8a"
+      "value": "#3b82f6"
     },
     {
       "file": "app/globals.css",
       "line": 159,
       "category": "hex",
+      "value": "#2563eb"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 160,
+      "category": "hex",
+      "value": "#1d4ed8"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 161,
+      "category": "hex",
+      "value": "#1e40af"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 162,
+      "category": "hex",
+      "value": "#1e3a8a"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 163,
+      "category": "hex",
       "value": "#172554"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 166,
-      "category": "hex",
-      "value": "#ecfdf5"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 167,
-      "category": "hex",
-      "value": "#d1fae5"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 168,
-      "category": "hex",
-      "value": "#a7f3d0"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 169,
-      "category": "hex",
-      "value": "#6ee7b7"
     },
     {
       "file": "app/globals.css",
       "line": 170,
       "category": "hex",
-      "value": "#34d399"
+      "value": "#ecfdf5"
     },
     {
       "file": "app/globals.css",
       "line": 171,
       "category": "hex",
-      "value": "#10b981"
+      "value": "#d1fae5"
     },
     {
       "file": "app/globals.css",
       "line": 172,
       "category": "hex",
-      "value": "#059669"
+      "value": "#a7f3d0"
     },
     {
       "file": "app/globals.css",
       "line": 173,
       "category": "hex",
-      "value": "#047857"
+      "value": "#6ee7b7"
     },
     {
       "file": "app/globals.css",
       "line": 174,
       "category": "hex",
-      "value": "#065f46"
+      "value": "#34d399"
     },
     {
       "file": "app/globals.css",
       "line": 175,
       "category": "hex",
-      "value": "#064e3b"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 176,
-      "category": "hex",
-      "value": "#022c22"
+      "value": "#10b981"
     },
     {
       "file": "app/globals.css",
       "line": 177,
       "category": "hex",
-      "value": "#ecfdf5"
+      "value": "#047857"
     },
     {
       "file": "app/globals.css",
       "line": 178,
       "category": "hex",
-      "value": "#d1fae5"
+      "value": "#065f46"
     },
     {
       "file": "app/globals.css",
       "line": 179,
       "category": "hex",
-      "value": "#a7f3d0"
+      "value": "#064e3b"
     },
     {
       "file": "app/globals.css",
       "line": 180,
       "category": "hex",
-      "value": "#6ee7b7"
+      "value": "#064e3b"
     },
     {
       "file": "app/globals.css",
       "line": 181,
       "category": "hex",
-      "value": "#34d399"
+      "value": "#022c22"
     },
     {
       "file": "app/globals.css",
       "line": 182,
       "category": "hex",
-      "value": "#10b981"
+      "value": "#ecfdf5"
     },
     {
       "file": "app/globals.css",
       "line": 183,
       "category": "hex",
-      "value": "#059669"
+      "value": "#d1fae5"
     },
     {
       "file": "app/globals.css",
       "line": 184,
       "category": "hex",
-      "value": "#047857"
+      "value": "#a7f3d0"
     },
     {
       "file": "app/globals.css",
       "line": 185,
       "category": "hex",
-      "value": "#065f46"
+      "value": "#6ee7b7"
     },
     {
       "file": "app/globals.css",
       "line": 186,
       "category": "hex",
-      "value": "#064e3b"
+      "value": "#34d399"
     },
     {
       "file": "app/globals.css",
       "line": 187,
       "category": "hex",
+      "value": "#10b981"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 188,
+      "category": "hex",
+      "value": "#047857"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 189,
+      "category": "hex",
+      "value": "#065f46"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 190,
+      "category": "hex",
+      "value": "#064e3b"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 191,
+      "category": "hex",
+      "value": "#064e3b"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 192,
+      "category": "hex",
       "value": "#022c22"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 194,
-      "category": "hex",
-      "value": "#f5f3ff"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 195,
-      "category": "hex",
-      "value": "#ede9fe"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 196,
-      "category": "hex",
-      "value": "#ddd6fe"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 197,
-      "category": "hex",
-      "value": "#c4b5fd"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 198,
-      "category": "hex",
-      "value": "#a78bfa"
     },
     {
       "file": "app/globals.css",
       "line": 199,
       "category": "hex",
-      "value": "#8b5cf6"
+      "value": "#f5f3ff"
     },
     {
       "file": "app/globals.css",
       "line": 200,
       "category": "hex",
-      "value": "#7c3aed"
+      "value": "#ede9fe"
     },
     {
       "file": "app/globals.css",
       "line": 201,
       "category": "hex",
-      "value": "#6d28d9"
+      "value": "#ddd6fe"
     },
     {
       "file": "app/globals.css",
       "line": 202,
       "category": "hex",
-      "value": "#5b21b6"
+      "value": "#c4b5fd"
     },
     {
       "file": "app/globals.css",
       "line": 203,
       "category": "hex",
-      "value": "#4c1d95"
+      "value": "#a78bfa"
     },
     {
       "file": "app/globals.css",
       "line": 204,
       "category": "hex",
-      "value": "#2e1065"
+      "value": "#8b5cf6"
     },
     {
       "file": "app/globals.css",
       "line": 205,
       "category": "hex",
-      "value": "#f5f3ff"
+      "value": "#7c3aed"
     },
     {
       "file": "app/globals.css",
       "line": 206,
       "category": "hex",
-      "value": "#ede9fe"
+      "value": "#6d28d9"
     },
     {
       "file": "app/globals.css",
       "line": 207,
       "category": "hex",
-      "value": "#ddd6fe"
+      "value": "#5b21b6"
     },
     {
       "file": "app/globals.css",
       "line": 208,
       "category": "hex",
-      "value": "#c4b5fd"
+      "value": "#4c1d95"
     },
     {
       "file": "app/globals.css",
       "line": 209,
       "category": "hex",
-      "value": "#a78bfa"
+      "value": "#2e1065"
     },
     {
       "file": "app/globals.css",
       "line": 210,
       "category": "hex",
-      "value": "#8b5cf6"
+      "value": "#f5f3ff"
     },
     {
       "file": "app/globals.css",
       "line": 211,
       "category": "hex",
-      "value": "#7c3aed"
+      "value": "#ede9fe"
     },
     {
       "file": "app/globals.css",
       "line": 212,
       "category": "hex",
-      "value": "#6d28d9"
+      "value": "#ddd6fe"
     },
     {
       "file": "app/globals.css",
       "line": 213,
       "category": "hex",
-      "value": "#5b21b6"
+      "value": "#c4b5fd"
     },
     {
       "file": "app/globals.css",
       "line": 214,
       "category": "hex",
-      "value": "#4c1d95"
+      "value": "#a78bfa"
     },
     {
       "file": "app/globals.css",
       "line": 215,
       "category": "hex",
+      "value": "#8b5cf6"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 216,
+      "category": "hex",
+      "value": "#7c3aed"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 217,
+      "category": "hex",
+      "value": "#6d28d9"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 218,
+      "category": "hex",
+      "value": "#5b21b6"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 219,
+      "category": "hex",
+      "value": "#4c1d95"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 220,
+      "category": "hex",
       "value": "#2e1065"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 222,
-      "category": "hex",
-      "value": "#fffbeb"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 223,
-      "category": "hex",
-      "value": "#fef3c7"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 224,
-      "category": "hex",
-      "value": "#fde68a"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 225,
-      "category": "hex",
-      "value": "#fcd34d"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 226,
-      "category": "hex",
-      "value": "#fbbf24"
     },
     {
       "file": "app/globals.css",
       "line": 227,
       "category": "hex",
-      "value": "#f59e0b"
+      "value": "#fffbeb"
     },
     {
       "file": "app/globals.css",
       "line": 228,
       "category": "hex",
-      "value": "#d97706"
+      "value": "#fef3c7"
     },
     {
       "file": "app/globals.css",
       "line": 229,
       "category": "hex",
-      "value": "#b45309"
+      "value": "#fde68a"
     },
     {
       "file": "app/globals.css",
       "line": 230,
       "category": "hex",
-      "value": "#92400e"
+      "value": "#fcd34d"
     },
     {
       "file": "app/globals.css",
       "line": 231,
       "category": "hex",
-      "value": "#78350f"
+      "value": "#fbbf24"
     },
     {
       "file": "app/globals.css",
       "line": 232,
       "category": "hex",
-      "value": "#451a03"
+      "value": "#f59e0b"
     },
     {
       "file": "app/globals.css",
       "line": 233,
       "category": "hex",
-      "value": "#fffbeb"
+      "value": "#b45309"
     },
     {
       "file": "app/globals.css",
       "line": 234,
       "category": "hex",
-      "value": "#fef3c7"
+      "value": "#92400e"
     },
     {
       "file": "app/globals.css",
       "line": 235,
       "category": "hex",
-      "value": "#fde68a"
+      "value": "#78350f"
     },
     {
       "file": "app/globals.css",
       "line": 236,
       "category": "hex",
-      "value": "#fcd34d"
+      "value": "#78350f"
     },
     {
       "file": "app/globals.css",
       "line": 237,
       "category": "hex",
-      "value": "#fbbf24"
+      "value": "#451a03"
     },
     {
       "file": "app/globals.css",
       "line": 238,
       "category": "hex",
-      "value": "#f59e0b"
+      "value": "#fffbeb"
     },
     {
       "file": "app/globals.css",
       "line": 239,
       "category": "hex",
-      "value": "#d97706"
+      "value": "#fef3c7"
     },
     {
       "file": "app/globals.css",
       "line": 240,
       "category": "hex",
-      "value": "#b45309"
+      "value": "#fde68a"
     },
     {
       "file": "app/globals.css",
       "line": 241,
       "category": "hex",
-      "value": "#92400e"
+      "value": "#fcd34d"
     },
     {
       "file": "app/globals.css",
       "line": 242,
       "category": "hex",
-      "value": "#78350f"
+      "value": "#fbbf24"
     },
     {
       "file": "app/globals.css",
       "line": 243,
       "category": "hex",
+      "value": "#f59e0b"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 244,
+      "category": "hex",
+      "value": "#b45309"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 245,
+      "category": "hex",
+      "value": "#92400e"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 246,
+      "category": "hex",
+      "value": "#78350f"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 247,
+      "category": "hex",
+      "value": "#78350f"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 248,
+      "category": "hex",
       "value": "#451a03"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 250,
-      "category": "hex",
-      "value": "#f8fafc"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 251,
-      "category": "hex",
-      "value": "#f1f5f9"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 252,
-      "category": "hex",
-      "value": "#e2e8f0"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 253,
-      "category": "hex",
-      "value": "#cbd5e1"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 254,
-      "category": "hex",
-      "value": "#94a3b8"
     },
     {
       "file": "app/globals.css",
       "line": 255,
       "category": "hex",
-      "value": "#64748b"
+      "value": "#f8fafc"
     },
     {
       "file": "app/globals.css",
       "line": 256,
       "category": "hex",
-      "value": "#475569"
+      "value": "#f1f5f9"
     },
     {
       "file": "app/globals.css",
       "line": 257,
       "category": "hex",
-      "value": "#334155"
+      "value": "#e2e8f0"
     },
     {
       "file": "app/globals.css",
       "line": 258,
       "category": "hex",
-      "value": "#1e293b"
+      "value": "#cbd5e1"
     },
     {
       "file": "app/globals.css",
       "line": 259,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#94a3b8"
     },
     {
       "file": "app/globals.css",
       "line": 260,
       "category": "hex",
-      "value": "#020617"
+      "value": "#64748b"
     },
     {
       "file": "app/globals.css",
       "line": 261,
       "category": "hex",
-      "value": "#f8fafc"
+      "value": "#475569"
     },
     {
       "file": "app/globals.css",
       "line": 262,
       "category": "hex",
-      "value": "#f1f5f9"
+      "value": "#334155"
     },
     {
       "file": "app/globals.css",
       "line": 263,
       "category": "hex",
-      "value": "#e2e8f0"
+      "value": "#1e293b"
     },
     {
       "file": "app/globals.css",
       "line": 264,
       "category": "hex",
-      "value": "#cbd5e1"
+      "value": "#0f172a"
     },
     {
       "file": "app/globals.css",
       "line": 265,
       "category": "hex",
-      "value": "#94a3b8"
+      "value": "#020617"
     },
     {
       "file": "app/globals.css",
       "line": 266,
       "category": "hex",
-      "value": "#64748b"
+      "value": "#f8fafc"
     },
     {
       "file": "app/globals.css",
       "line": 267,
       "category": "hex",
-      "value": "#475569"
+      "value": "#f1f5f9"
     },
     {
       "file": "app/globals.css",
       "line": 268,
       "category": "hex",
-      "value": "#334155"
+      "value": "#e2e8f0"
     },
     {
       "file": "app/globals.css",
       "line": 269,
       "category": "hex",
-      "value": "#1e293b"
+      "value": "#cbd5e1"
     },
     {
       "file": "app/globals.css",
       "line": 270,
       "category": "hex",
-      "value": "#0f172a"
+      "value": "#94a3b8"
     },
     {
       "file": "app/globals.css",
       "line": 271,
       "category": "hex",
-      "value": "#020617"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 278,
-      "category": "hex",
-      "value": "#fff1f2"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 279,
-      "category": "hex",
-      "value": "#ffe4e6"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 280,
-      "category": "hex",
-      "value": "#fecdd3"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 281,
-      "category": "hex",
-      "value": "#fda4af"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 282,
-      "category": "hex",
-      "value": "#fb7185"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 283,
-      "category": "hex",
-      "value": "#f43f5e"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 284,
-      "category": "hex",
-      "value": "#e11d48"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 285,
-      "category": "hex",
-      "value": "#be123c"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 286,
-      "category": "hex",
-      "value": "#9f1239"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 287,
-      "category": "hex",
-      "value": "#881337"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 288,
-      "category": "hex",
-      "value": "#4c0519"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 289,
-      "category": "hex",
-      "value": "#fff1f2"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 290,
-      "category": "hex",
-      "value": "#ffe4e6"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 291,
-      "category": "hex",
-      "value": "#fecdd3"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 292,
-      "category": "hex",
-      "value": "#fda4af"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 293,
-      "category": "hex",
-      "value": "#fb7185"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 294,
-      "category": "hex",
-      "value": "#f43f5e"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 295,
-      "category": "hex",
-      "value": "#e11d48"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 296,
-      "category": "hex",
-      "value": "#be123c"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 297,
-      "category": "hex",
-      "value": "#9f1239"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 298,
-      "category": "hex",
-      "value": "#881337"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 299,
-      "category": "hex",
-      "value": "#4c0519"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 350,
-      "category": "hex",
-      "value": "#003b5c"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 351,
-      "category": "hex",
-      "value": "#66899d"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 352,
-      "category": "hex",
-      "value": "#b2c4ce"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 353,
-      "category": "hex",
-      "value": "#e5ebef"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 354,
-      "category": "hex",
-      "value": "#009639"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 355,
-      "category": "hex",
-      "value": "#66c088"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 356,
-      "category": "hex",
-      "value": "#b2dfc3"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 357,
-      "category": "hex",
-      "value": "#e5f4eb"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 358,
-      "category": "hex",
-      "value": "#4298b5"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 359,
-      "category": "hex",
-      "value": "#8ec1d3"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 360,
-      "category": "hex",
-      "value": "#c6e0e9"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 361,
-      "category": "hex",
-      "value": "#ecf5f8"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 362,
-      "category": "hex",
-      "value": "#1a1a1a"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 364,
-      "category": "hex",
-      "value": "#007a2e"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 368,
-      "category": "hex",
-      "value": "#ffffff"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 371,
-      "category": "hex",
-      "value": "#ffffff"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 375,
-      "category": "hex",
-      "value": "#444746"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 378,
-      "category": "hex",
-      "value": "#b3261e"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 386,
-      "category": "hex",
-      "value": "#33718c"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 387,
-      "category": "hex",
-      "value": "#1a5674"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 389,
-      "category": "hex",
-      "value": "#00324e"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 390,
-      "category": "hex",
-      "value": "#002a42"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 391,
-      "category": "hex",
-      "value": "#002136"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 392,
-      "category": "hex",
-      "value": "#001827"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 405,
-      "category": "hex",
-      "value": "#ffffff"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 409,
-      "category": "hex",
-      "value": "#444746"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 410,
-      "category": "hex",
-      "value": "#5e5e5e"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 411,
-      "category": "hex",
-      "value": "#66899d"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 435,
-      "category": "hex",
-      "value": "#ffffff"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 436,
-      "category": "hex",
-      "value": "#ffffff"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 469,
-      "category": "hex",
-      "value": "#f9dedc"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 469,
-      "category": "hex",
-      "value": "#410e0b"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 529,
-      "category": "hex",
-      "value": "#ffffff"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 578,
-      "category": "hex",
-      "value": "#3b82f6"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 579,
-      "category": "hex",
-      "value": "#10b981"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 580,
-      "category": "hex",
-      "value": "#f59e0b"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 581,
-      "category": "hex",
-      "value": "#8b5cf6"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 582,
-      "category": "hex",
-      "value": "#ec4899"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 583,
-      "category": "hex",
-      "value": "#06b6d4"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 584,
-      "category": "hex",
-      "value": "#f97316"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 585,
-      "category": "hex",
-      "value": "#6366f1"
-    },
-    {
-      "file": "app/globals.css",
-      "line": 586,
-      "category": "hex",
       "value": "#64748b"
     },
     {
       "file": "app/globals.css",
-      "line": 587,
+      "line": 272,
+      "category": "hex",
+      "value": "#475569"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 273,
+      "category": "hex",
+      "value": "#334155"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 274,
+      "category": "hex",
+      "value": "#1e293b"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 275,
       "category": "hex",
       "value": "#0f172a"
     },
     {
       "file": "app/globals.css",
-      "line": 588,
+      "line": 276,
+      "category": "hex",
+      "value": "#020617"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 283,
+      "category": "hex",
+      "value": "#fff1f2"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 284,
+      "category": "hex",
+      "value": "#ffe4e6"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 285,
+      "category": "hex",
+      "value": "#fecdd3"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 286,
+      "category": "hex",
+      "value": "#fda4af"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 287,
+      "category": "hex",
+      "value": "#fb7185"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 288,
+      "category": "hex",
+      "value": "#f43f5e"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 289,
+      "category": "hex",
+      "value": "#e11d48"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 290,
+      "category": "hex",
+      "value": "#be123c"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 291,
+      "category": "hex",
+      "value": "#9f1239"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 292,
+      "category": "hex",
+      "value": "#881337"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 293,
+      "category": "hex",
+      "value": "#4c0519"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 294,
+      "category": "hex",
+      "value": "#fff1f2"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 295,
+      "category": "hex",
+      "value": "#ffe4e6"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 296,
+      "category": "hex",
+      "value": "#fecdd3"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 297,
+      "category": "hex",
+      "value": "#fda4af"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 298,
+      "category": "hex",
+      "value": "#fb7185"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 299,
+      "category": "hex",
+      "value": "#f43f5e"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 300,
+      "category": "hex",
+      "value": "#e11d48"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 301,
+      "category": "hex",
+      "value": "#be123c"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 302,
+      "category": "hex",
+      "value": "#9f1239"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 303,
+      "category": "hex",
+      "value": "#881337"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 304,
+      "category": "hex",
+      "value": "#4c0519"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 379,
+      "category": "hex",
+      "value": "#003b5c"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 380,
+      "category": "hex",
+      "value": "#66899d"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 381,
+      "category": "hex",
+      "value": "#b2c4ce"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 382,
+      "category": "hex",
+      "value": "#e5ebef"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 383,
+      "category": "hex",
+      "value": "#009639"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 384,
+      "category": "hex",
+      "value": "#66c088"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 385,
+      "category": "hex",
+      "value": "#b2dfc3"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 386,
+      "category": "hex",
+      "value": "#e5f4eb"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 387,
+      "category": "hex",
+      "value": "#4298b5"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 388,
+      "category": "hex",
+      "value": "#8ec1d3"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 389,
+      "category": "hex",
+      "value": "#c6e0e9"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 390,
+      "category": "hex",
+      "value": "#ecf5f8"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 391,
+      "category": "hex",
+      "value": "#1a1a1a"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 393,
+      "category": "hex",
+      "value": "#007a2e"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 397,
+      "category": "hex",
+      "value": "#ffffff"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 400,
+      "category": "hex",
+      "value": "#ffffff"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 404,
+      "category": "hex",
+      "value": "#444746"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 407,
+      "category": "hex",
+      "value": "#b3261e"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 415,
+      "category": "hex",
+      "value": "#33718c"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 416,
+      "category": "hex",
+      "value": "#1a5674"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 418,
+      "category": "hex",
+      "value": "#00324e"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 419,
+      "category": "hex",
+      "value": "#002a42"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 420,
+      "category": "hex",
+      "value": "#002136"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 421,
+      "category": "hex",
+      "value": "#001827"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 434,
+      "category": "hex",
+      "value": "#ffffff"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 438,
+      "category": "hex",
+      "value": "#444746"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 439,
+      "category": "hex",
+      "value": "#5e5e5e"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 464,
+      "category": "hex",
+      "value": "#ffffff"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 465,
+      "category": "hex",
+      "value": "#ffffff"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 498,
+      "category": "hex",
+      "value": "#f9dedc"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 498,
+      "category": "hex",
+      "value": "#410e0b"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 558,
+      "category": "hex",
+      "value": "#ffffff"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 607,
+      "category": "hex",
+      "value": "#3b82f6"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 608,
+      "category": "hex",
+      "value": "#10b981"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 609,
+      "category": "hex",
+      "value": "#f59e0b"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 610,
+      "category": "hex",
+      "value": "#8b5cf6"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 611,
+      "category": "hex",
+      "value": "#ec4899"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 612,
+      "category": "hex",
+      "value": "#06b6d4"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 613,
+      "category": "hex",
+      "value": "#f97316"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 614,
+      "category": "hex",
+      "value": "#6366f1"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 615,
+      "category": "hex",
+      "value": "#64748b"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 616,
+      "category": "hex",
+      "value": "#0f172a"
+    },
+    {
+      "file": "app/globals.css",
+      "line": 617,
       "category": "hex",
       "value": "#fff"
     },
     {
       "file": "app/globals.css",
-      "line": 589,
+      "line": 618,
       "category": "hex",
       "value": "#e2e8f0"
     },
     {
       "file": "app/globals.css",
-      "line": 590,
+      "line": 619,
       "category": "hex",
       "value": "#334155"
     },
     {
+      "file": "app/manifest.ts",
+      "line": 12,
+      "category": "hex",
+      "value": "#f8fafc"
+    },
+    {
+      "file": "app/manifest.ts",
+      "line": 13,
+      "category": "hex",
+      "value": "#2563eb"
+    },
+    {
       "file": "app/page.tsx",
-      "line": 498,
+      "line": 513,
       "category": "arbitrary",
       "value": "active:scale-[0.99]"
     },
     {
       "file": "app/page.tsx",
-      "line": 527,
+      "line": 542,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "app/page.tsx",
-      "line": 541,
+      "line": 556,
       "category": "arbitrary",
       "value": "active:scale-[0.99]"
     },
     {
       "file": "app/page.tsx",
-      "line": 570,
+      "line": 585,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "app/page.tsx",
-      "line": 580,
+      "line": 595,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "app/page.tsx",
-      "line": 598,
+      "line": 618,
       "category": "shape",
       "value": "shadow-none"
     },
     {
       "file": "app/page.tsx",
-      "line": 598,
+      "line": 618,
       "category": "arbitrary",
       "value": "max-w-[200px]"
     },
     {
       "file": "app/page.tsx",
-      "line": 623,
+      "line": 647,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "app/page.tsx",
-      "line": 627,
+      "line": 651,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "app/page.tsx",
-      "line": 655,
+      "line": 679,
       "category": "arbitrary",
       "value": "h-[calc(100dvh-4rem)]"
     },
     {
       "file": "app/page.tsx",
-      "line": 657,
+      "line": 681,
       "category": "shape",
       "value": "shadow-none"
     },
     {
       "file": "app/page.tsx",
-      "line": 659,
+      "line": 683,
       "category": "arbitrary",
       "value": "max-w-[85vw]"
     },
     {
       "file": "app/page.tsx",
-      "line": 793,
+      "line": 817,
       "category": "shape",
       "value": "rounded-full"
     },
@@ -2353,6 +5285,42 @@
       "line": 4,
       "category": "hex",
       "value": "#000000"
+    },
+    {
+      "file": "app/visual-tones.css",
+      "line": 106,
+      "category": "hex",
+      "value": "#93c5fd"
+    },
+    {
+      "file": "app/visual-tones.css",
+      "line": 107,
+      "category": "hex",
+      "value": "#60a5fa"
+    },
+    {
+      "file": "app/visual-tones.css",
+      "line": 108,
+      "category": "hex",
+      "value": "#3b82f6"
+    },
+    {
+      "file": "app/visual-tones.css",
+      "line": 109,
+      "category": "hex",
+      "value": "#2563eb"
+    },
+    {
+      "file": "app/visual-tones.css",
+      "line": 110,
+      "category": "hex",
+      "value": "#1d4ed8"
+    },
+    {
+      "file": "app/visual-tones.css",
+      "line": 111,
+      "category": "hex",
+      "value": "#1e3a8a"
     },
     {
       "file": "components/AppLoadingScreen.tsx",
@@ -2392,19 +5360,19 @@
     },
     {
       "file": "components/ui/Dialog.tsx",
-      "line": 69,
+      "line": 50,
+      "category": "arbitrary",
+      "value": "max-h-[calc(100dvh-2rem)]"
+    },
+    {
+      "file": "components/ui/Dialog.tsx",
+      "line": 68,
       "category": "shape",
       "value": "rounded-full"
     },
     {
-      "file": "components/ui/Dialog.tsx",
-      "line": 76,
-      "category": "arbitrary",
-      "value": "max-h-[70vh]"
-    },
-    {
       "file": "components/ui/ExpandedView.tsx",
-      "line": 43,
+      "line": 20,
       "category": "arbitrary",
       "value": "z-[60]"
     },
@@ -2419,6 +5387,12 @@
       "line": 100,
       "category": "arbitrary",
       "value": "max-w-[min(100vw-2rem,28rem)]"
+    },
+    {
+      "file": "components/ui/ScrollableChart.tsx",
+      "line": 12,
+      "category": "inline",
+      "value": "style={{ '--chart-category-count': Math.max(1, categoryCount) } as CSSProperties}"
     },
     {
       "file": "components/ui/Switch.tsx",
@@ -2488,13 +5462,13 @@
     },
     {
       "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 284,
+      "line": 289,
       "category": "arbitrary",
       "value": "min-w-[700px]"
     },
     {
       "file": "domains/administration/ui/AuditLogSection.tsx",
-      "line": 326,
+      "line": 331,
       "category": "arbitrary",
       "value": "max-w-[150px]"
     },
@@ -2542,19 +5516,19 @@
     },
     {
       "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 468,
+      "line": 481,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 469,
+      "line": 482,
       "category": "inline",
       "value": "style={{ backgroundColor: t.hex }}"
     },
     {
       "file": "domains/administration/ui/ConfigSection.tsx",
-      "line": 665,
+      "line": 679,
       "category": "arbitrary",
       "value": "max-h-[200px]"
     },
@@ -2632,67 +5606,67 @@
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 104,
+      "line": 106,
       "category": "inline",
       "value": "style={style}"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 167,
+      "line": 172,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 178,
+      "line": 183,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 216,
+      "line": 221,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 270,
+      "line": 275,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 274,
+      "line": 279,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 298,
+      "line": 303,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 408,
+      "line": 413,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 409,
+      "line": 414,
       "category": "hex",
       "value": "#bfdbfe"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 479,
+      "line": 486,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/administration/ui/ReferenceDataSection.tsx",
-      "line": 502,
+      "line": 509,
       "category": "arbitrary",
       "value": "min-w-[520px]"
     },
@@ -2704,13 +5678,13 @@
     },
     {
       "file": "domains/administration/ui/UserSection.tsx",
-      "line": 404,
+      "line": 409,
       "category": "arbitrary",
       "value": "min-w-[700px]"
     },
     {
       "file": "domains/administration/ui/UserSection.tsx",
-      "line": 423,
+      "line": 428,
       "category": "shape",
       "value": "rounded-full"
     },
@@ -2763,6 +5737,30 @@
       "value": "sm:grid-cols-[12rem_minmax(0,1fr)]"
     },
     {
+      "file": "domains/clients/contracts/client.ts",
+      "line": 13,
+      "category": "hex",
+      "value": "#3b82f6"
+    },
+    {
+      "file": "domains/clients/data/clientMapper.ts",
+      "line": 29,
+      "category": "hex",
+      "value": "#3b82f6"
+    },
+    {
+      "file": "domains/clients/modules/clientActions.ts",
+      "line": 42,
+      "category": "hex",
+      "value": "#3b82f6"
+    },
+    {
+      "file": "domains/clients/modules/clientService.ts",
+      "line": 54,
+      "category": "hex",
+      "value": "#3b82f6"
+    },
+    {
       "file": "domains/clients/ui/ClientSection.tsx",
       "line": 363,
       "category": "arbitrary",
@@ -2788,61 +5786,55 @@
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 218,
+      "line": 219,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 295,
+      "line": 296,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 301,
+      "line": 302,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 409,
-      "category": "arbitrary",
-      "value": "max-h-[90vh]"
-    },
-    {
-      "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 438,
+      "line": 417,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 475,
+      "line": 454,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 545,
+      "line": 524,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 556,
+      "line": 535,
       "category": "shape",
       "value": "rounded-xs"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 573,
+      "line": 552,
       "category": "shape",
       "value": "rounded-xs"
     },
     {
       "file": "domains/communication/ui/AutomationEditor.tsx",
-      "line": 607,
+      "line": 587,
       "category": "shape",
       "value": "rounded-xs"
     },
@@ -2875,6 +5867,42 @@
       "line": 111,
       "category": "arbitrary",
       "value": "stroke-[2.5px]"
+    },
+    {
+      "file": "domains/configuration/services/writeConfiguration.ts",
+      "line": 53,
+      "category": "hex",
+      "value": "#bfdbfe"
+    },
+    {
+      "file": "domains/configuration/services/writeConfiguration.ts",
+      "line": 67,
+      "category": "hex",
+      "value": "#bfdbfe"
+    },
+    {
+      "file": "domains/configuration/services/writeConfiguration.ts",
+      "line": 75,
+      "category": "hex",
+      "value": "#bfdbfe"
+    },
+    {
+      "file": "domains/configuration/services/writeConfiguration.ts",
+      "line": 95,
+      "category": "hex",
+      "value": "#bfdbfe"
+    },
+    {
+      "file": "domains/configuration/services/writeConfiguration.ts",
+      "line": 116,
+      "category": "hex",
+      "value": "#bfdbfe"
+    },
+    {
+      "file": "domains/configuration/services/writeConfiguration.ts",
+      "line": 124,
+      "category": "hex",
+      "value": "#bfdbfe"
     },
     {
       "file": "domains/monitoring/ui/BentoDashboard.tsx",
@@ -3082,141 +6110,135 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1658,
+      "line": 1659,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1710,
+      "line": 1711,
       "category": "arbitrary",
       "value": "bottom-[-28px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1712,
+      "line": 1713,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1752,
+      "line": 1753,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1765,
+      "line": 1766,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1831,
+      "line": 1832,
       "category": "arbitrary",
       "value": "min-w-[120px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1861,
+      "line": 1862,
       "category": "arbitrary",
       "value": "min-h-[80px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1919,
+      "line": 1920,
       "category": "arbitrary",
       "value": "min-h-[110px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1925,
+      "line": 1926,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1928,
+      "line": 1929,
       "category": "arbitrary",
       "value": "max-w-[50px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 1931,
+      "line": 1932,
       "category": "arbitrary",
       "value": "max-h-[100px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2022,
+      "line": 2023,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2060,
+      "line": 2061,
       "category": "arbitrary",
       "value": "min-h-[110px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2122,
+      "line": 2123,
       "category": "arbitrary",
       "value": "min-w-[1850px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2125,
+      "line": 2126,
       "category": "arbitrary",
       "value": "min-w-[210px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2144,
+      "line": 2145,
       "category": "arbitrary",
       "value": "min-w-[55px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2212,
+      "line": 2213,
       "category": "arbitrary",
       "value": "max-w-[50px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2258,
+      "line": 2259,
       "category": "arbitrary",
       "value": "max-w-[190px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2262,
+      "line": 2263,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2270,
+      "line": 2271,
       "category": "arbitrary",
       "value": "max-w-[150px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2325,
+      "line": 2326,
       "category": "arbitrary",
       "value": "min-w-[55px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2343,
+      "line": 2344,
       "category": "arbitrary",
       "value": "max-w-[50px]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2364,
-      "category": "shape",
-      "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
@@ -3232,337 +6254,325 @@
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2682,
+      "line": 2367,
+      "category": "shape",
+      "value": "rounded-full"
+    },
+    {
+      "file": "domains/projects/ui/ProjectSection.tsx",
+      "line": 2683,
       "category": "arbitrary",
       "value": "max-w-[160px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2687,
+      "line": 2688,
       "category": "arbitrary",
       "value": "max-w-[200px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2759,
+      "line": 2760,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2846,
+      "line": 2847,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2907,
+      "line": 2908,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2913,
+      "line": 2914,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2918,
+      "line": 2919,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2928,
+      "line": 2929,
       "category": "arbitrary",
       "value": "min-w-[850px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 2962,
+      "line": 2963,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3034,
-      "category": "shape",
-      "value": "rounded-full"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3266,
+      "line": 3254,
       "category": "arbitrary",
       "value": "min-w-[900px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3304,
+      "line": 3292,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3304,
+      "line": 3292,
       "category": "arbitrary",
       "value": "max-w-[130px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3505,
+      "line": 3493,
       "category": "arbitrary",
       "value": "min-w-[420px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3523,
+      "line": 3511,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3540,
+      "line": 3528,
       "category": "arbitrary",
       "value": "min-w-[420px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3558,
+      "line": 3546,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3578,
+      "line": 3566,
       "category": "arbitrary",
       "value": "max-h-[calc(100dvh-10rem)]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 3698,
+      "line": 3686,
       "category": "arbitrary",
       "value": "max-h-[120px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4075,
+      "line": 4063,
       "category": "arbitrary",
       "value": "max-w-[150px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4080,
+      "line": 4068,
       "category": "arbitrary",
       "value": "max-w-[200px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4130,
+      "line": 4118,
       "category": "arbitrary",
       "value": "min-w-[240px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4199,
+      "line": 4187,
       "category": "arbitrary",
       "value": "min-w-[700px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4228,
+      "line": 4216,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4350,
+      "line": 4339,
       "category": "arbitrary",
-      "value": "z-[100]"
+      "value": "h-[90dvh]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4351,
+      "line": 4339,
       "category": "arbitrary",
       "value": "max-w-[95vw]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4351,
-      "category": "arbitrary",
-      "value": "h-[90vh]"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4420,
+      "line": 4399,
       "category": "arbitrary",
       "value": "min-w-[1850px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4423,
+      "line": 4402,
       "category": "arbitrary",
       "value": "min-w-[210px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4443,
+      "line": 4422,
       "category": "arbitrary",
       "value": "min-w-[55px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4551,
+      "line": 4530,
       "category": "arbitrary",
       "value": "max-w-[190px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4558,
+      "line": 4537,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4564,
+      "line": 4543,
       "category": "arbitrary",
       "value": "max-w-[150px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4619,
+      "line": 4598,
       "category": "arbitrary",
       "value": "min-w-[55px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4637,
+      "line": 4616,
       "category": "arbitrary",
       "value": "max-w-[50px]"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4663,
+      "line": 4642,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4664,
+      "line": 4643,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4665,
+      "line": 4644,
       "category": "shape",
       "value": "rounded-full"
-    },
-    {
-      "file": "domains/projects/ui/ProjectSection.tsx",
-      "line": 4683,
-      "category": "arbitrary",
-      "value": "max-h-[90vh]"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 199,
+      "line": 208,
       "category": "inline",
       "value": "style={{ minWidth: timelineMinWidth }}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 201,
+      "line": 210,
       "category": "inline",
       "value": "style={{ width: 260 }}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 201,
+      "line": 210,
       "category": "inline",
       "value": "style={compactDays.has(day.dateStr) ? { width: 64 } : undefined}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 226,
+      "line": 235,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 227,
+      "line": 236,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 266,
+      "line": 275,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 283,
+      "line": 292,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 284,
+      "line": 293,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 301,
+      "line": 310,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 302,
+      "line": 311,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 320,
+      "line": 329,
       "category": "inline",
       "value": "style={{ left: floatingHeader.left, width: floatingHeader.width, height: floatingHeader.height }}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 321,
+      "line": 330,
       "category": "inline",
       "value": "style={{ minWidth: timelineMinWidth }}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 322,
+      "line": 331,
       "category": "inline",
       "value": "style={{ width: 260 }}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 322,
+      "line": 331,
       "category": "inline",
       "value": "style={compactDays.has(day.dateStr) ? { width: 64 } : undefined}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 334,
+      "line": 343,
       "category": "inline",
       "value": "style={floatingDock ? { height: floatingDock.height } : undefined}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 336,
+      "line": 345,
       "category": "inline",
       "value": "style={floatingDock ? { left: floatingDock.left, width: floatingDock.width } : undefined}"
     },
     {
       "file": "domains/projects/ui/ProjectTimeline.tsx",
-      "line": 339,
+      "line": 348,
       "category": "inline",
       "value": "style={{ width: timelineMinWidth, height: 1 }}"
     },
@@ -3580,91 +6590,91 @@
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 581,
-      "category": "shape",
-      "value": "rounded-full"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 583,
+      "line": 582,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
       "line": 584,
+      "category": "shape",
+      "value": "rounded-full"
+    },
+    {
+      "file": "domains/tasks/ui/TaskAnalytics.tsx",
+      "line": 585,
       "category": "inline",
       "value": "style={{ width: `${kpis.completionRate}%` }}"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 634,
+      "line": 635,
       "category": "styleProps",
       "value": "contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 636,
+      "line": 637,
       "category": "styleProps",
       "value": "wrapperStyle={{ fontSize: '11px' }}"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 660,
+      "line": 661,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 661,
+      "line": 662,
       "category": "inline",
       "value": "style={{ backgroundColor: COLORS[idx % COLORS.length] }}"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 676,
-      "category": "shape",
-      "value": "rounded-full"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 678,
+      "line": 677,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
       "line": 679,
-      "category": "inline",
-      "value": "style={{ width: `${item.percentage}%` }}"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 761,
-      "category": "styleProps",
-      "value": "contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 767,
-      "category": "styleProps",
-      "value": "wrapperStyle={{ fontSize: '12px' }}"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 876,
-      "category": "styleProps",
-      "value": "contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}"
-    },
-    {
-      "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 905,
       "category": "shape",
       "value": "rounded-full"
     },
     {
       "file": "domains/tasks/ui/TaskAnalytics.tsx",
-      "line": 968,
+      "line": 680,
+      "category": "inline",
+      "value": "style={{ width: `${item.percentage}%` }}"
+    },
+    {
+      "file": "domains/tasks/ui/TaskAnalytics.tsx",
+      "line": 763,
+      "category": "styleProps",
+      "value": "contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}"
+    },
+    {
+      "file": "domains/tasks/ui/TaskAnalytics.tsx",
+      "line": 769,
+      "category": "styleProps",
+      "value": "wrapperStyle={{ fontSize: '12px' }}"
+    },
+    {
+      "file": "domains/tasks/ui/TaskAnalytics.tsx",
+      "line": 878,
+      "category": "styleProps",
+      "value": "contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}"
+    },
+    {
+      "file": "domains/tasks/ui/TaskAnalytics.tsx",
+      "line": 907,
+      "category": "shape",
+      "value": "rounded-full"
+    },
+    {
+      "file": "domains/tasks/ui/TaskAnalytics.tsx",
+      "line": 970,
       "category": "styleProps",
       "value": "contentStyle={{ backgroundColor: 'var(--chart-tooltip-background)', borderRadius: '12px', color: 'var(--chart-tooltip-text)', fontSize: '12px' }}"
     },
@@ -3694,21 +6704,57 @@
     },
     {
       "file": "domains/tasks/ui/TaskSection.tsx",
-      "line": 779,
+      "line": 780,
       "category": "arbitrary",
       "value": "min-w-[180px]"
     },
     {
       "file": "domains/tasks/ui/TaskSection.tsx",
-      "line": 816,
+      "line": 818,
       "category": "arbitrary",
       "value": "min-w-[850px]"
     },
     {
       "file": "domains/tasks/ui/TaskSection.tsx",
-      "line": 895,
+      "line": 897,
       "category": "arbitrary",
       "value": "max-w-[340px]"
+    },
+    {
+      "file": "lib/supabaseSync.ts",
+      "line": 712,
+      "category": "hex",
+      "value": "#bfdbfe"
+    },
+    {
+      "file": "lib/supabaseSync.ts",
+      "line": 722,
+      "category": "hex",
+      "value": "#bfdbfe"
+    },
+    {
+      "file": "lib/supabaseSync.ts",
+      "line": 776,
+      "category": "hex",
+      "value": "#bfdbfe"
+    },
+    {
+      "file": "lib/supabaseSync.ts",
+      "line": 778,
+      "category": "hex",
+      "value": "#bfdbfe"
+    },
+    {
+      "file": "lib/supabaseSync.ts",
+      "line": 779,
+      "category": "hex",
+      "value": "#bfdbfe"
+    },
+    {
+      "file": "lib/supabaseSync.ts",
+      "line": 787,
+      "category": "hex",
+      "value": "#bfdbfe"
     },
     {
       "file": "lib/utils.ts",

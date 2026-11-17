@@ -383,7 +383,7 @@ export default function BentoDashboard({
                     onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectProject(project.id); } }}
                     className="hover:bg-surface-muted/80 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-primary">
                     <td className="px-5 py-3.5 font-mono font-bold text-text-primary">{project.installProjectNo || '-'}</td>
-                    <td className="px-5 py-3.5"><div className="text-primary font-medium">{getClientName(project.clientId)}</div><div className="font-semibold text-text-primary">{project.title}</div></td>
+                    <td className="px-5 py-3.5"><div className="text-primary-ink font-medium">{getClientName(project.clientId)}</div><div className="font-semibold text-text-primary">{project.title}</div></td>
                     <td className="px-5 py-3.5"><Badge className={status.badgeClass}>{status.name}</Badge></td>
                     <td className="px-5 py-3.5 whitespace-nowrap text-text-primary">{deliveryDate ? new Date(`${deliveryDate}T00:00:00`).toLocaleDateString('pt-PT') : '—'}</td>
                   </tr>;
@@ -502,10 +502,10 @@ export default function BentoDashboard({
                             <span className="w-1.5 h-7 bg-error rounded-full shrink-0" title="Risco Crítico do Projeto" />
                           )}
                           <div>
-                            <div className="text-body-sm text-primary font-medium flex items-center gap-1.5 flex-wrap">
+                            <div className="text-body-sm text-primary-ink font-medium flex items-center gap-1.5 flex-wrap">
                               <span>{getClientName(project.clientId)}</span>
                               {hasMissingMat && (
-                                <span title="Material em falta no projeto" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-error/10 text-error text-caption font-semibold border border-error/20">
+                                <span title="Material em falta no projeto" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-badge bg-error/10 text-error text-caption font-semibold border border-error/20">
                                   <Package className="w-3 h-3 text-error" />
                                   Material em falta
                                 </span>
@@ -527,7 +527,7 @@ export default function BentoDashboard({
                         {deliveryDate ? (
                           <span className={
                             overdueOrToday
-                              ? 'text-error font-semibold bg-error/5 border border-error/20 px-2 py-0.5 rounded inline-block shadow-2xs'
+                              ? 'text-error font-semibold bg-error/5 border border-error/20 px-2 py-0.5 rounded-badge inline-block shadow-subtle'
                               : 'text-text-secondary'
                           }>
                             {deliveryDate}
@@ -589,7 +589,7 @@ export default function BentoDashboard({
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-heading-sm text-text-primary">Projetos ativos esta semana</h3>
-              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold text-caption border border-primary/20">
+              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary-ink font-semibold text-caption border border-primary/20">
                 {activeProjectsThisWeek.length} projeto{activeProjectsThisWeek.length !== 1 ? 's' : ''}
               </span>
             </div>
@@ -617,7 +617,7 @@ export default function BentoDashboard({
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-caption font-bold text-primary truncate">{clientName}</span>
+                          <span className="font-medium text-caption font-bold text-primary-ink truncate">{clientName}</span>
 
                         </div>
                         <div className="text-body-sm font-semibold text-text-primary truncate">{project.title}</div>
@@ -685,12 +685,12 @@ export default function BentoDashboard({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-caption font-bold shrink-0">
+                        <span className="w-5 h-5 rounded-full bg-primary/10 text-primary-ink flex items-center justify-center text-caption font-bold shrink-0">
                           {globalIndex}
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-medium text-caption font-bold text-primary truncate">{clientName}</span>
+                            <span className="font-medium text-caption font-bold text-primary-ink truncate">{clientName}</span>
 
                           </div>
                           <div className="text-body-sm font-semibold text-text-primary truncate">{project.title}</div>
@@ -761,7 +761,7 @@ export default function BentoDashboard({
                       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                         <span className="font-semibold text-text-primary">{getUserName(com.authorId)}</span>
                         <span className="text-text-muted text-caption">no projeto</span>
-                        <span className="font-bold text-primary truncate max-w-[200px]" title={proj ? `${getClientName(proj.clientId)} - ${proj.title}` : 'Desconhecido'}>
+                        <span className="font-bold text-primary-ink truncate max-w-[200px]" title={proj ? `${getClientName(proj.clientId)} - ${proj.title}` : 'Desconhecido'}>
                           {proj ? `${getClientName(proj.clientId)} - ${proj.title}` : 'Desconhecido'}
                         </span>
                       </div>

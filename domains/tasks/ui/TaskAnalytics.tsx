@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { Task, Project, ProjectStatus, TaskType, TaskStatus, User, Client } from '@/lib/types';
 import { parseTimeToHours, formatHoursToHHMM, getUserInitials } from '@/lib/utils';
+import { ScrollableChart } from '@/components/ui/ScrollableChart';
 
 interface TaskAnalyticsProps {
   tasks: Task[];
@@ -749,12 +750,13 @@ export function TaskAnalytics({
         </div>
 
         {/* Chart View */}
-        <div className="h-80 w-full mb-6">
+        <ScrollableChart label="Horas por tipo de tarefa" categoryCount={pastDaysChartData.length}>
           {isMounted && pastDaysChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={pastDaysChartData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
-                <XAxis dataKey="typeName" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} interval={0} />
+                <XAxis dataKey="typeName" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} interval={0}
+                  tickFormatter={(value: string) => value.length > 24 ? `${value.slice(0, 23)}…` : value} />
                 <YAxis yAxisId="left" orientation="left" stroke="var(--chart-series-indigo)" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} />
                 <YAxis yAxisId="right" orientation="right" stroke="var(--chart-series-green)" tick={{ fontSize: 11, fill: 'var(--chart-axis)' }} />
                 <Tooltip
@@ -774,7 +776,7 @@ export function TaskAnalytics({
               Sem registos históricos para o período selecionado.
             </div>
           )}
-        </div>
+        </ScrollableChart>
 
         {/* Detailed Comparative Table */}
         <div className="overflow-x-auto">

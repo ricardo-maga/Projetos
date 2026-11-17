@@ -27,11 +27,11 @@ Na primeira extensão, o inventário desceu de 669 para 499 classes de paleta e 
 
 ## Fecho da migração de apresentação
 
-`app/visual-tones.css` define as escalas de ação, feedback, categorias, Forecast e documentação. Cada escala associa as funções às cores existentes, mantendo os tons e as opacidades anteriores; usa `@theme inline` para resolver os valores no âmbito do tema ativo. `action-*` acompanha a paleta Domino ou o tema escolhido. Feedback e categorias mantêm escalas distintas; não devem ser reduzidos todos à cor principal.
+`app/visual-tones.css` define as escalas de ação, feedback, categorias, Forecast e documentação. Usa `@theme inline` para resolver os valores no âmbito do tema ativo. `action-*` acompanha a paleta Domino ou o tema escolhido. Feedback e categorias mantêm escalas distintas; os tons de texto podem ser reforçados para garantir contraste sem substituir as cores configuradas dos dados.
 
 Os rótulos sobre ações preenchidas usam `text-inverse`. O helper `hasFilledButtonBackground` reconhece os novos nomes, mas continua a distinguir preenchimentos sólidos de seleções claras/translúcidas. Os tamanhos pequenos de etiquetas e código usam `text-micro`, `text-small-label` e `text-code-dense`. Sombras de colunas fixas têm tokens próprios.
 
-O inventário atualizado contém **zero classes de paleta explícita** nos literais TSX/CSS analisados. As restantes ocorrências têm estas justificações:
+O inventário após o PR #155 continha **zero classes de paleta explícita** nos literais TSX/CSS analisados. As restantes ocorrências têm estas justificações:
 
 | Categoria | Ocorrências | Contrato/exceção |
 |---|---:|---|
@@ -42,3 +42,36 @@ O inventário atualizado contém **zero classes de paleta explícita** nos liter
 | Propriedades `*Style` | 6 | Integração com Recharts; cores usam os tokens `--chart-*`. |
 
 A contagem continua a sinalizar exceções válidas para revisão; não as omite para fabricar um resultado zero. `docs/visual-style-inventory.json` mantém ficheiros e linhas. O scope inclui TSX/CSS das três pastas inventariadas e os helpers `lib/utils.ts` e `lib/planning/summary.ts`; não é uma afirmação sobre CSS de terceiros ou valores vindos da base de dados. Para novos componentes, preferir os componentes partilhados e as funções semânticas existentes; acrescentar uma função central se necessário.
+
+
+## Auditoria transversal e prevenção de regressões
+
+A auditoria atual inclui **303 ficheiros TS, TSX e CSS** em `app`, `components`, `domains`, `hooks` e `lib`. Abrange também placeholders, accent/caret, decorações, lados de bordas e cores de sombras. Esta extensão revelou seis classes `accent-blue-*`/`placeholder-slate-*` que a expressão anterior não cobria; foram convertidas para funções semânticas.
+
+`npm run check:visual` é executado no CI e rejeita classes de paleta explícita, raios/sombras locais sem exceção aprovada e sufixos incompletos como `-sm`. Verifica também se as classes de cor dos espaços semânticos têm uma declaração `@theme`; variáveis privadas de `:root` não geram utilitários Tailwind. Os 94 candidatos de forma restantes são exclusivamente `rounded-full`, `rounded-xs`, `rounded-none` e `shadow-none`. Há 91 valores arbitrários de geometria, 273 hexadecimais (incluindo valores de dados/defaults agora lidos nos ficheiros TS), 22 atributos de geometria/cor `style` e seis propriedades Recharts `*Style`. O JSON mantém os locais e valores para revisão.
+
+Os raios sem sufixo passaram para `rounded-badge`; `shadow-subtle` centraliza o antigo valor Tailwind `shadow-2xs` sem alterar a sua medida. Os sete temas resolvem agora os tokens M3, e o verde/âmbar usam tons de ação com contraste para texto branco. A leitura pública, a sincronização e a edição selecionam deterministicamente a mesma linha de configuração em instalações com duplicados históricos, sem eliminar esses registos.
+
+Materiais, riscos, automações e cronograma usam `Dialog`. `Dialog` e `ExpandedView` partilham `useModalInteraction`: foco inicial, ciclo de Tab, Escape apenas no modal superior, retorno de foco e bloqueio de scroll. Os formulários mantêm os handlers e os contratos de dados. As opções `SingleChoice` quebram rótulos longos dentro da largura disponível.
+
+A conformidade estática não fecha a matriz visual/CRUD: os resultados dessa execução são registados separadamente em `application-validation-matrix.md`.
+
+## Contraste do texto e das seleções
+
+`text-primary-ink` resolve `--color-primary-ink` a partir do tom 800 do tema. É a função para texto colorido em links, seleções e fundos translúcidos. Os preenchimentos continuam a usar `primary`/`action-*` com `text-inverse`. Separar estas funções permite alterar uma paleta sem tornar ilegíveis os rótulos sobrepostos a um fundo da mesma cor.
+
+Os textos de sucesso, aviso e erro e os tons suaves da análise têm valores centrais com contraste de rótulo normal. As legendas Recharts usam `--chart-label`; os marcadores continuam a representar a cor da série. O texto do tooltip usa `--chart-tooltip-text`. Os testes verificam os contrastes dos sete temas e das superfícies selecionadas; a inspeção no navegador confronta-os com os fundos efetivamente compostos.
+
+Os valores de campos desativados e os placeholders mantêm o contraste de `text-muted`; a indisponibilidade continua indicada pelo estado do controlo. Os rótulos do cronograma usam `text-on-status-dot` sobre as cores de estado existentes. A documentação tem a escala central `docs-accent-*`, independente do tema ERP, para preservar o contraste na sua superfície escura.
+
+O resultado de sincronização assinala o logótipo com um contorno semântico de sucesso/erro. A imagem e o logótipo de substituição mantêm as cores e os elementos reconhecíveis; a animação de carregamento continua independente desse resultado.
+
+O menu principal arranca compacto abaixo do breakpoint `lg` existente (64rem/1024px na configuração atual). Os tablets usam a barra de ícones; os ecrãs móveis mantêm o drawer. A expansão manual continua disponível, e atravessar o breakpoint volta a aplicar o modo adequado.
+
+`ScrollableChart` mantém espaço por categoria nos gráficos estreitos, com scroll por teclado e nomes completos nos dados e tooltips. A altura e as larguras mínimas usam os tokens centrais `--chart-plot-height`, `--chart-min-width`, `--chart-category-width` e `--chart-axis-space`. O único valor inline adicional é a contagem de categorias usada no cálculo da geometria.
+
+## Validação final em 17/11/2026
+
+Os sete temas foram revistos em desktop, tablet e móvel: 21 combinações e 4533 casos, incluindo os formulários e modais das áreas operacionais e de administração. A [matriz](application-validation-matrix.md) distingue revisão visual, persistência funcional, limitações e publicação; o [registo sanitizado](application-validation-evidence.json) identifica os casos e os commits usados. As capturas com dados ficam fora do Git.
+
+Os botões M3 de texto/contorno usam `--color-primary-ink`; ações destrutivas mantêm a função de erro. Uma sombra plana usa uma sombra transparente de geometria nula, preservando a composição do ring de foco do Tailwind. A visão geral do projeto passa a uma coluna abaixo de `xl`, e as ações de tarefas, material e risco quebram linhas no espaço disponível. As cores de estado configuradas continuam a representar dados, independentemente do tema.

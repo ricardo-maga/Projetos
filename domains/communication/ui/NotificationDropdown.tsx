@@ -53,7 +53,7 @@ export default function NotificationDropdown({ notifications, markAsRead, markAl
               <button
                 disabled={busy}
                 onClick={() => { void run(markAllAsRead); }}
-                className="text-label font-semibold text-primary hover:text-primary-hover flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="text-label font-semibold text-primary-ink hover:text-primary-hover flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 Marcar todas como lidas
@@ -94,7 +94,7 @@ export default function NotificationDropdown({ notifications, markAsRead, markAl
                       {notif.linkUrl && (
                         <a
                           href={notif.linkUrl}
-                          className="text-caption font-bold text-primary hover:text-primary-hover hover:underline flex items-center gap-0.5"
+                          className="text-caption font-bold text-primary-ink hover:text-primary-hover hover:underline flex items-center gap-0.5"
                         >
                           Ver detalhes <ExternalLink className="w-3 h-3" />
                         </a>
@@ -105,7 +105,7 @@ export default function NotificationDropdown({ notifications, markAsRead, markAl
                     <button
                       disabled={busy}
                       onClick={() => { void run(() => markAsRead(notif.id)); }}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-primary hover:bg-primary/10 transition-colors cursor-pointer self-start shrink-0 border border-primary/10"
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-primary-ink hover:bg-primary/10 transition-colors cursor-pointer self-start shrink-0 border border-primary/10"
                       title="Marcar como lida"
                     >
                       <Check className="w-4 h-4 stroke-[2.5px]" />

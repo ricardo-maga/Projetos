@@ -33,18 +33,18 @@ export default function Switch({ checked, onChange, disabled, label, ariaLabel, 
           checked={checked}
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
-          className="sr-only"
+          className="sr-only peer"
         />
         {/* Track */}
         <div className={cn(
-          "w-11 h-6 rounded-full transition-colors duration-200 shadow-flat border border-transparent",
-          checked ? "bg-primary" : "bg-border-token bg-surface-elevated"
+          "w-11 h-6 rounded-full transition-colors duration-200 shadow-flat border peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface",
+          checked ? "bg-primary border-primary" : "bg-surface-muted border-text-muted"
         )}>
           {/* Thumb */}
           <motion.div
             layout
             transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            className="w-5 h-5 rounded-full bg-surface shadow-raised mt-0.5 ml-0.5"
+            className={cn("w-5 h-5 rounded-full bg-surface shadow-raised mt-0.5 ml-0.5 border", checked ? "border-transparent" : "border-text-muted")}
             animate={{ x: checked ? 20 : 0 }}
           />
         </div>

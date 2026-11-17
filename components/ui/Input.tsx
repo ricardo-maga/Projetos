@@ -32,7 +32,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             className={cn(
               // Base Input design
               "w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none",
-              "placeholder:text-text-disabled",
+              "placeholder:text-text-muted",
               "hover:border-text-disabled",
               "focus:border-primary focus:ring-2 focus:ring-primary/20",
               "disabled:bg-surface-muted disabled:text-text-disabled disabled:border-border disabled:pointer-events-none",

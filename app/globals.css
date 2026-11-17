@@ -10,8 +10,8 @@
   animation: app-logo-breathe 1.8s ease-in-out infinite;
 }
 
-.app-logo--synced { filter: brightness(0) saturate(100%) invert(42%) sepia(93%) saturate(1055%) hue-rotate(91deg) brightness(91%) contrast(101%); }
-.app-logo--error { filter: brightness(0) saturate(100%) invert(26%) sepia(91%) saturate(3695%) hue-rotate(345deg) brightness(95%) contrast(91%); }
+.app-logo--synced { outline: 2px solid var(--color-success-strong); outline-offset: 2px; }
+.app-logo--error { outline: 2px solid var(--color-error); outline-offset: 2px; }
 
 @keyframes app-logo-breathe {
   50% { opacity: .25; }
@@ -50,24 +50,26 @@
   --color-border: var(--color-border-token);
   --color-border-subtle: var(--color-border-subtle-token);
   --color-primary: var(--primary-600);
+  --color-primary-ink: var(--primary-800);
   --color-primary-hover: var(--primary-700);
   --color-primary-active: var(--primary-800);
-  --color-success: #16a34a;
+  --color-success: #006b29;
   --color-success-strong: #007a2e;
   --color-brand-green: #009639;
   --color-brand-accent: #4298b5;
-  --color-warning: #d97706;
-  --color-error: #dc2626;
+  --color-warning: #92400e;
+  --color-error: #b91c1c;
   --color-info: var(--primary-600);
   --color-overlay: #0f172a;
   --color-on-inverse: #cbd5e1;
+  --color-on-status-dot: #000000;
 
   /* Task analytics' existing neutral palette, named by its UI role. */
   --color-analysis-subtle: #f8fafc;
   --color-analysis-muted: #f1f5f9;
   --color-analysis-border: #e2e8f0;
-  --color-analysis-text-soft: #94a3b8;
-  --color-analysis-text-muted: #64748b;
+  --color-analysis-text-soft: var(--color-text-muted-token);
+  --color-analysis-text-muted: var(--color-text-muted-token);
   --color-analysis-text-secondary: #475569;
   --color-analysis-text-body: #334155;
   --color-analysis-text-strong: #1e293b;
@@ -90,6 +92,7 @@
 
   /* Shadows (Gmail/Material Style) */
   --shadow-flat: var(--design-shadow-flat);
+  --shadow-subtle: var(--design-shadow-subtle);
   --shadow-raised: var(--design-shadow-raised);
   --shadow-overlay: var(--design-shadow-overlay);
   --shadow-modal: var(--design-shadow-modal);
@@ -103,7 +106,8 @@
   --design-radius-dialog: 16px;
   --design-radius-badge: 4px;
   --design-radius-container: 16px;
-  --design-shadow-flat: none;
+  --design-shadow-flat: 0 0 0 0 transparent;
+  --design-shadow-subtle: 0 1px rgb(0 0 0 / 5%);
   --design-shadow-raised: 0 1px 3px 0 rgb(0 0 0 / 5%), 0 1px 2px -1px rgb(0 0 0 / 5%);
   --design-shadow-overlay: 0 4px 6px -1px rgb(0 0 0 / 8%), 0 2px 4px -1px rgb(0 0 0 / 4%);
   --design-shadow-modal: 0 20px 25px -5px rgb(0 0 0 / 8%), 0 10px 10px -5px rgb(0 0 0 / 3%);
@@ -130,8 +134,8 @@ body,
   --color-surface-elevated-token: #ffffff;
   --color-text-primary-token: #111827;
   --color-text-secondary-token: #4b5563;
-  --color-text-muted-token: #9ca3af;
-  --color-text-disabled-token: #d1d5db;
+  --color-text-muted-token: #515b69;
+  --color-text-disabled-token: var(--color-text-muted-token);
   --color-border-token: #e5e7eb;
   --color-border-subtle-token: #f3f4f6;
 
@@ -169,9 +173,10 @@ body[data-theme="emerald"],
   --primary-300: #6ee7b7;
   --primary-400: #34d399;
   --primary-500: #10b981;
-  --primary-600: #059669;
-  --primary-700: #047857;
-  --primary-800: #065f46;
+  /* Filled actions retain normal white-label contrast; accents stay unchanged. */
+  --primary-600: #047857;
+  --primary-700: #065f46;
+  --primary-800: #064e3b;
   --primary-900: #064e3b;
   --primary-950: #022c22;
   --color-blue-50: #ecfdf5 !important;
@@ -180,9 +185,9 @@ body[data-theme="emerald"],
   --color-blue-300: #6ee7b7 !important;
   --color-blue-400: #34d399 !important;
   --color-blue-500: #10b981 !important;
-  --color-blue-600: #059669 !important;
-  --color-blue-700: #047857 !important;
-  --color-blue-800: #065f46 !important;
+  --color-blue-600: #047857 !important;
+  --color-blue-700: #065f46 !important;
+  --color-blue-800: #064e3b !important;
   --color-blue-900: #064e3b !important;
   --color-blue-950: #022c22 !important;
 }
@@ -225,9 +230,9 @@ body[data-theme="amber"],
   --primary-300: #fcd34d;
   --primary-400: #fbbf24;
   --primary-500: #f59e0b;
-  --primary-600: #d97706;
-  --primary-700: #b45309;
-  --primary-800: #92400e;
+  --primary-600: #b45309;
+  --primary-700: #92400e;
+  --primary-800: #78350f;
   --primary-900: #78350f;
   --primary-950: #451a03;
   --color-blue-50: #fffbeb !important;
@@ -236,9 +241,9 @@ body[data-theme="amber"],
   --color-blue-300: #fcd34d !important;
   --color-blue-400: #fbbf24 !important;
   --color-blue-500: #f59e0b !important;
-  --color-blue-600: #d97706 !important;
-  --color-blue-700: #b45309 !important;
-  --color-blue-800: #92400e !important;
+  --color-blue-600: #b45309 !important;
+  --color-blue-700: #92400e !important;
+  --color-blue-800: #78350f !important;
   --color-blue-900: #78350f !important;
   --color-blue-950: #451a03 !important;
 }
@@ -297,6 +302,30 @@ body[data-theme="rose"],
   --color-blue-800: #9f1239 !important;
   --color-blue-900: #881337 !important;
   --color-blue-950: #4c0519 !important;
+}
+
+/* Resolve the shared M3 presentation at each theme boundary, including all
+   configurable palettes. Domino below can still override its brand specifics. */
+:root, html, body, #main-root, [data-theme] {
+  --color-primary-ink: var(--primary-800);
+  --m3-primary: var(--primary-600);
+  --m3-on-primary: var(--color-inverse);
+  --m3-primary-container: var(--primary-100);
+  --m3-on-primary-container: var(--primary-900);
+  --m3-surface: var(--color-surface-token);
+  --m3-surface-container: var(--color-background-token);
+  --m3-surface-container-high: var(--color-surface-muted-token);
+  --m3-on-surface: var(--color-text-primary-token);
+  --m3-on-surface-variant: var(--color-text-secondary-token);
+  --m3-outline: var(--color-border-token);
+  --m3-outline-variant: var(--color-border-subtle-token);
+  --m3-error: var(--color-error);
+  --m3-radius-sm: var(--design-radius-control);
+  --m3-radius-md: var(--design-radius-card);
+  --m3-radius-lg: var(--design-radius-container);
+  --design-shell-header: var(--m3-surface-container);
+  --design-shell-navigation: var(--m3-surface-container);
+  --design-nav-active: var(--m3-primary-container);
 }
 
 /* Typographic Scale Classes - Legible & Accessible Heights */
@@ -408,7 +437,7 @@ body[data-theme="default"],
   --color-text-primary-token: var(--brand-charcoal);
   --color-text-secondary-token: #444746;
   --color-text-muted-token: #5e5e5e;
-  --color-text-disabled-token: #66899d;
+  --color-text-disabled-token: var(--color-text-muted-token);
   --color-border-token: var(--brand-domino-blue-30);
   --color-border-subtle-token: var(--brand-domino-blue-10);
   /* Rebind aliases at the theme boundary, not just their inherited inputs. */
@@ -464,9 +493,10 @@ body[data-theme="default"],
 .m3-button { min-height: 40px; padding: 0 20px; border: 1px solid transparent; border-radius: var(--design-action-radius); font-weight: 600; font-size: .875rem; cursor: pointer; transition: box-shadow .18s ease, background-color .18s ease; }
 .m3-button--filled { background: var(--m3-primary); color: var(--m3-on-primary); }
 .m3-button--tonal { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
-.m3-button--text { background: transparent; color: var(--m3-primary); }
-.m3-button--outlined { background: transparent; color: var(--m3-primary); border-color: var(--m3-outline); }
+.m3-button--text { background: transparent; color: var(--color-primary-ink); }
+.m3-button--outlined { background: transparent; color: var(--color-primary-ink); border-color: var(--m3-outline); }
 .m3-button--danger { --m3-primary: var(--m3-error); --m3-primary-container: #f9dedc; --m3-on-primary-container: #410e0b; }
+.m3-button--danger:is(.m3-button--text, .m3-button--outlined) { color: var(--m3-error); }
 .m3-button:hover:not(:disabled) { box-shadow: inset 0 0 0 999px rgb(0 0 0 / .06); }
 :where(.m3-icon-button) { width: 40px; height: 40px; align-items: center; justify-content: center; border: 0; border-radius: 999px; color: var(--m3-on-surface-variant); background: transparent; cursor: pointer; }
 .m3-icon-button:hover:not(:disabled) { background: var(--m3-surface-container-high); }
@@ -497,7 +527,7 @@ body[data-theme="default"],
 .m3-focus-banner {
   background-color: var(--m3-primary);
   background-image:
-    radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--brand-domino-green) 70%, transparent), transparent 65%),
+    radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--color-brand-green) 70%, transparent), transparent 65%),
     repeating-linear-gradient(135deg, transparent 0 48px, rgb(255 255 255 / 5%) 48px 49px),
     linear-gradient(120deg, var(--m3-primary), color-mix(in srgb, var(--m3-primary) 85%, black));
   color: var(--m3-on-primary);
@@ -588,4 +618,29 @@ button[data-filled="true"] :where(span, svg) {
   --chart-tooltip-text: #fff;
   --chart-grid: #e2e8f0;
   --chart-label: #334155;
+  --chart-plot-height: 20rem;
+  --chart-min-width: 20rem;
+  --chart-category-width: 9.5rem;
+  --chart-axis-space: 6rem;
+}
+
+.chart-categorical-plot {
+  height: var(--chart-plot-height);
+  min-width: max(100%, var(--chart-min-width), calc(var(--chart-axis-space) + var(--chart-category-count) * var(--chart-category-width)));
+}
+.chart-categorical-plot[data-empty="true"] { min-width: 0; }
+
+/* Series colours identify the marks; legend text has its own readable role. */
+.recharts-default-legend .recharts-legend-item-text {
+  color: var(--chart-label) !important;
+}
+
+.recharts-default-tooltip .recharts-tooltip-item {
+  color: var(--chart-tooltip-text) !important;
+}
+
+/* Raw fields and Foundation controls share the same readable hint text. */
+:is(input, textarea)::placeholder {
+  color: var(--color-text-muted-token);
+  opacity: 1;
 }

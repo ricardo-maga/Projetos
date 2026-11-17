@@ -10,7 +10,7 @@ const input = z.object({
   userId: z.guid(),
   absenceStartDate: z.iso.date(),
   absenceEndDate: z.iso.date(),
-  reason: z.string().max(2000).default(''),
+  reason: z.enum(['Vacation', 'Sick leave', 'Other']).default('Other'),
 }).refine(value => value.absenceEndDate >= value.absenceStartDate);
 
 export async function POST(req: NextRequest) {
@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
     } }, { status: 201 });
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });
+    console.error('[absences:create] Failed to persist absence', error);
     return NextResponse.json({ success: false, message: 'Não foi possível criar a ausência.' }, { status: 503 });
   }
 }

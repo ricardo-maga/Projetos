@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
+import { configurationReadQuery } from '../domains/configuration/data/configurationRepository';
 
 function loadModule(path: string, dependencies: Record<string, unknown>, env = {}) {
+  dependencies = { '@/domains/configuration/data/configurationRepository': { configurationReadQuery }, ...dependencies };
   const source = readFileSync(path, 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
   const testModule = { exports: {} as any };
@@ -32,7 +34,7 @@ describe('Public branding with modern Supabase keys', () => {
 
   it('reads database branding without browser credentials and only returns public fields', async () => {
     const row = { app_name: 'Soluções', app_description: 'Descrição da base de dados', logo_image_path: '/brand.svg', secret: 'not-public' };
-    const client = { from: () => ({ select: () => ({ limit: async () => ({ data: [row], error: null }) }) }) };
+    const client = { from: () => ({ select: () => ({ order: () => ({ limit: async () => ({ data: [row], error: null }) }) }) }) };
     const route = loadModule('app/api/supabase/config/route.ts', {
       'next/server': { NextResponse: { json: (body: unknown, init: unknown) => ({ body, init }) } },
       '@/lib/supabaseClient': { isSupabaseConfigured: false, supabase: null },

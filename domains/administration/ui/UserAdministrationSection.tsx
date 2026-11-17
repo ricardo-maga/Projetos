@@ -69,7 +69,7 @@ export default function UserAdministrationSection({ config, state, currentUser, 
     {activeTab === 'roles' && hasPermission(currentUser, 'roles_manage' as any) && <RolePermissionSection onRolesChanged={onRefreshFromDatabase} />}
     {activeTab === 'associacoes' && <form onSubmit={saveAssociations} className="space-y-4">
       <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="managers-config-card">
-        <h2 className="text-base font-bold text-text-primary mb-5 flex items-center gap-2"><Users className="w-5 h-5 text-primary" />Associação de grupos</h2>
+        <h2 className="text-base font-bold text-text-primary mb-5 flex items-center gap-2"><Users className="w-5 h-5 text-primary-ink" />Associação de grupos</h2>
         <p className="mb-5 text-sm font-normal text-text-secondary">As opções abaixo correspondem às funções ativas atribuídas aos utilizadores.</p>
         <div className="space-y-6">{groups.map(group => <div key={group.key} className={group.key === 'taskAssigneeGroupIds' ? 'space-y-2 pt-2 border-t border-border-subtle' : 'space-y-2'} id={group.key === 'taskAssigneeGroupIds' ? 'task-assignee-groups-config' : undefined}>
           <label className="block text-text-muted">{group.label}</label>
@@ -77,7 +77,7 @@ export default function UserAdministrationSection({ config, state, currentUser, 
             {(state.activeRoles || []).length === 0 ? <span className="text-text-muted font-medium">Nenhuma função ativa criada</span> : state.activeRoles!.map(role => {
               const checked = selected[group.key].includes(role.id);
               return <label key={role.id} className="flex items-center gap-2.5 p-2 bg-surface border border-border-subtle rounded-control cursor-pointer select-none hover:bg-surface-muted transition-colors">
-                <input type="checkbox" disabled={!canWriteConfig || busy} checked={checked} onChange={() => setSelected(prev => ({ ...prev, [group.key]: checked ? prev[group.key].filter(id => id !== role.id) : [...prev[group.key], role.id] }))} className="rounded border-border text-primary focus:ring-action-500 w-4 h-4 cursor-pointer" />
+                <input type="checkbox" disabled={!canWriteConfig || busy} checked={checked} onChange={() => setSelected(prev => ({ ...prev, [group.key]: checked ? prev[group.key].filter(id => id !== role.id) : [...prev[group.key], role.id] }))} className="rounded-badge border-border text-primary-ink focus:ring-action-500 w-4 h-4 cursor-pointer" />
                 <span className="text-text-secondary font-semibold text-xs">{role.name}</span>
               </label>;
             })}

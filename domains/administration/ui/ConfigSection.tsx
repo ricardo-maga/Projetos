@@ -419,9 +419,9 @@ export default function ConfigSection({
               <p className="text-body-sm text-text-secondary">
                   Suporta URLs de imagens (SVG, PNG, JPG, WebP), ficheiros locais (/logo.svg), Data URIs (base64) e código SVG inline.
               </p>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-surface-muted border border-border rounded-control">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 p-4 bg-surface-muted border border-border rounded-control">
                 <span className="text-label font-semibold text-text-secondary shrink-0">Pré-visualização</span>
-                <AppLogo logoUrl={logo} appName={appName} className="w-72 max-w-full h-10 rounded-control bg-surface border border-border shadow-2xs p-1" />
+                <AppLogo logoUrl={logo} appName={appName} className="w-72 max-w-full h-10 rounded-control bg-surface border border-border shadow-subtle p-1" />
               </div>
             </section>
 
@@ -443,7 +443,12 @@ export default function ConfigSection({
                     <button
                       key={t.id}
                       type="button"
+                      disabled={!canWriteConfig || isSavingConfig}
+                      aria-busy={isSavingConfig}
                       onClick={async () => {
+                        if (!canWriteConfig) return;
+                        await runConfigAction(async () => {
+                        const previousTheme = theme;
                         setTheme(t.id);
                         if (typeof window !== 'undefined') {
                           localStorage.setItem('erp_theme', t.id);
@@ -455,7 +460,15 @@ export default function ConfigSection({
                           if (root) root.setAttribute('data-theme', t.id);
                         }
                         const result = await updateConfig({ theme: t.id });
-                        if (!result.success) alert(result.message || 'Não foi possível guardar o tema.');
+                        if (!result.success) {
+                          setTheme(previousTheme);
+                          localStorage.setItem('erp_theme', previousTheme);
+                          document.documentElement.setAttribute('data-theme', previousTheme);
+                          document.body?.setAttribute('data-theme', previousTheme);
+                          document.getElementById('main-root')?.setAttribute('data-theme', previousTheme);
+                          alert(result.message || 'Não foi possível guardar o tema.');
+                        }
+                        });
                       }}
                       aria-pressed={theme === t.id || (theme === 'default' && t.id === 'domino')}
                       className={`flex items-center gap-3 p-3 rounded-control border text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
@@ -465,7 +478,7 @@ export default function ConfigSection({
                       }`}
                     >
                       <span
-                        className="w-4 h-4 rounded-full border border-scrim/10 shrink-0 shadow-2xs"
+                        className="w-4 h-4 rounded-full border border-scrim/10 shrink-0 shadow-subtle"
                         style={{ backgroundColor: t.hex }}
                       />
                       <div>
@@ -536,6 +549,7 @@ export default function ConfigSection({
             </p>
             <div className="space-y-4">
               <textarea
+                aria-label="Conteúdo CSV para importação de projetos"
                 value={csvText}
                 onChange={e => setCsvText(e.target.value)}
                 placeholder={`Nome de projeto;Cliente;Nº IP;Nº SF;Data início\nProjeto A;Cliente X;IP-123;SF-456;2026-10-17`}
@@ -577,7 +591,7 @@ export default function ConfigSection({
           <div className="bg-surface rounded-card border border-border p-6 text-xs animate-fade-in" id="supabase-panel">
             <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-subtle">
               <div className="flex items-center gap-2.5">
-                <Database className="w-5 h-5 text-primary" />
+                <Database className="w-5 h-5 text-primary-ink" />
                 <h3 className="text-sm font-extrabold text-text-primary">Ligação à base de dados</h3>
               </div>
               <button type="button" onClick={handleTestConnection} disabled={supabaseStatus === 'testing'}

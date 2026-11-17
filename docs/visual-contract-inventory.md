@@ -57,3 +57,10 @@ A classificação `foundation` inclui `components/ui`, `components/M3.tsx` e CSS
 Registar redução de candidatos e justificar as exceções restantes; verificar build/tipos e os testes funcionais afetados; rever os estados normal, foco, selecionado, erro e desativado em desktop/móvel. As capturas de referência de oito vistas não cobrem todos os modais nem as páginas de documentação, auditoria e automações: acrescentar evidência nessas superfícies durante a migração.
 
 O objetivo não é obter zero valores locais. É ter zero exceções de apresentação sem justificação dentro do lote, mantendo estilos de dados/geometria identificados. Este inventário não modifica a interface nem prova equivalência visual de futuras migrações.
+
+
+## Atualização da cobertura do inventário
+
+A versão atual analisa também TS, `hooks` e `lib`: 302 fontes, incluindo APIs e helpers. A expressão cobre `accent`, `placeholder`, `caret`, `decoration`, bordas laterais, ring-offset e sombras coloridas. Detetou seis classes de paleta que não entravam no contador antigo; foram corrigidas. Raios sem sufixo e `shadow-2xs` também passaram a ser detetados e foram associados aos tokens `rounded-badge` e `shadow-subtle`. Sufixos incompletos como `-sm` e `-xl` são agora detetados; foram substituídos pelas sombras semânticas correspondentes.
+
+Resultado atual: 0 classes de paleta, 94 formas funcionais aprovadas, 0 sufixos incompletos, 91 valores arbitrários, 268 hexadecimais, 21 atributos `style` e seis propriedades `*Style`. Estes totais têm um âmbito mais amplo do que a linha de base inicial. `npm run check:visual` impede a reintrodução de paletas, formas locais e sufixos incompletos no CI. Continuam a existir as exceções justificadas de dados, geometria e estilos do iframe Swagger, cujo CSS é independente da página principal.

@@ -52,6 +52,7 @@ export function getPastelColor(colorInput?: string) {
 }
 
 interface SortableAuxRowProps {
+  canWriteConfig: boolean;
   item: any;
   isEditingThis: boolean;
   activeAuxTab: string;
@@ -68,6 +69,7 @@ interface SortableAuxRowProps {
 }
 
 function SortableAuxRow({
+  canWriteConfig,
   item,
   isEditingThis,
   activeAuxTab,
@@ -89,7 +91,7 @@ function SortableAuxRow({
     transform,
     transition,
     isDragging
-  } = useSortable({ id: item.id });
+  } = useSortable({ id: item.id, disabled: !canWriteConfig });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -104,20 +106,22 @@ function SortableAuxRow({
       style={style}
       className={`border-b border-border-subtle hover:bg-surface-muted/50 text-xs transition-colors ${isDragging ? 'bg-surface-muted' : ''}`}
     >
-      <td className="p-3.5 w-10">
+      {canWriteConfig && <td className="p-3.5 w-10">
         <button
           type="button"
           {...attributes}
           {...listeners}
+          aria-label={`Reordenar ${item.name}`}
           className="p-1 text-text-muted hover:text-text-secondary cursor-grab active:cursor-grabbing"
         >
           <GripVertical className="w-4 h-4" />
         </button>
-      </td>
+      </td>}
       <td className="p-3.5">
         {isEditingThis ? (
           <input
             type="text"
+            aria-label="Nome da opção"
             value={editAuxName}
             onChange={e => setEditAuxName(e.target.value)}
             className="w-full p-1 px-2 border border-border rounded-control font-semibold text-xs text-text-primary focus:ring-2 focus:ring-action-100 outline-none"
@@ -134,12 +138,13 @@ function SortableAuxRow({
               type="number"
               min={activeAuxTab === 'projectStatuses' ? 0 : 1}
               max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskStatuses') ? 10 : 3}
+              aria-label="Nível da opção"
               value={editAuxScale}
               onChange={e => setEditAuxScale(Number(e.target.value))}
               className="w-16 p-1 px-2 border border-border rounded-control font-semibold text-xs text-text-primary focus:ring-2 focus:ring-action-100 outline-none"
             />
           ) : (
-            <span className="px-2 py-0.5 bg-surface-muted border border-border rounded text-micro font-bold text-text-secondary font-mono">
+            <span className="px-2 py-0.5 bg-surface-muted border border-border rounded-badge text-micro font-bold text-text-secondary font-mono">
               Nível {item.scale ?? (activeAuxTab === 'projectStatuses' ? 0 : 1)}
             </span>
           )}
@@ -159,7 +164,7 @@ function SortableAuxRow({
                     onClick={() => setEditAuxColor(c.hex)}
                     className={`px-2 py-0.5 rounded-control text-micro font-bold border flex items-center gap-1 transition-all cursor-pointer ${
                       isSelected
-                        ? `${c.bgClass} ${c.textClass} ${c.borderClass} ring-2 ring-border shadow-2xs`
+                        ? `${c.bgClass} ${c.textClass} ${c.borderClass} ring-2 ring-border shadow-subtle`
                         : 'bg-surface text-text-secondary border-border hover:bg-surface-muted'
                     }`}
                     title={c.name}
@@ -184,7 +189,7 @@ function SortableAuxRow({
         </td>
       )}
 
-      <td className="p-3.5 text-right">
+      {canWriteConfig && <td className="p-3.5 text-right">
         <div className="flex items-center justify-end gap-1.5">
           {isEditingThis ? (
             <>
@@ -215,7 +220,7 @@ function SortableAuxRow({
                   setEditAuxScale(item.scale || 1);
                   setEditAuxColor(item.color || '#bfdbfe');
                 }}
-                className="p-1 text-text-muted hover:text-primary hover:bg-action-50 rounded-control transition-colors flex items-center justify-center"
+                className="p-1 text-text-muted hover:text-primary-ink hover:bg-action-50 rounded-control transition-colors flex items-center justify-center"
                 title="Editar"
               >
                 <Edit2 className="w-3.5 h-3.5" />
@@ -231,7 +236,7 @@ function SortableAuxRow({
             </>
           )}
         </div>
-      </td>
+      </td>}
     </tr>
   );
 }
@@ -375,7 +380,7 @@ export default function ReferenceDataSection({
   return <div hidden={!active}>
 <div className="bg-surface rounded-card border border-border p-6 animate-fade-in text-xs font-bold text-text-secondary" id="aux-tables-card">
         <h2 className="text-base font-bold text-text-primary mb-2 flex items-center gap-2">
-          <Settings className="w-5 h-5 text-primary" />
+          <Settings className="w-5 h-5 text-primary-ink" />
           Opções e tabelas de apoio
         </h2>
         <p className="text-text-muted text-small-label font-medium mb-5 leading-relaxed">
@@ -421,7 +426,7 @@ export default function ReferenceDataSection({
         </div>
 
         {/* Addition form */}
-        <form onSubmit={handleAddAuxRecord} className="flex flex-col gap-3 bg-surface-muted/50 p-4 rounded-card border border-border-subtle mb-6">
+        {canWriteConfig && <form onSubmit={handleAddAuxRecord} className="flex flex-col gap-3 bg-surface-muted/50 p-4 rounded-card border border-border-subtle mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <div className={`${(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities' || activeAuxTab === 'riskStatuses') ? 'md:col-span-2' : 'md:col-span-3'} space-y-1`}>
               <label className="block text-small-label text-text-muted font-bold">Nome da opção *</label>
@@ -429,6 +434,7 @@ export default function ReferenceDataSection({
                 type="text"
                 required
                 placeholder={`Introduza o nome...`}
+                aria-label="Nome da opção"
                 value={newAuxName}
                 onChange={e => setNewAuxName(e.target.value)}
                 className="w-full p-2 border border-border rounded-control text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-action-100 outline-none"
@@ -443,6 +449,7 @@ export default function ReferenceDataSection({
                   min={activeAuxTab === 'projectStatuses' ? 0 : 1}
                   max={activeAuxTab === 'projectStatuses' ? 5 : (activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskStatuses') ? 10 : 3}
                   required
+                  aria-label="Nível da opção"
                   value={newAuxScale}
                   onChange={e => setNewAuxScale(Number(e.target.value))}
                   className="w-full p-2 border border-border rounded-control text-text-primary bg-surface font-semibold focus:ring-2 focus:ring-action-100 outline-none"
@@ -484,7 +491,7 @@ export default function ReferenceDataSection({
               </div>
             </div>
           )}
-        </form>
+        </form>}
 
         {/* Option List Table / Row */}
         {activeAuxItems.length === 0 ? (
@@ -492,7 +499,7 @@ export default function ReferenceDataSection({
             Nenhuma opção configurada nesta tabela auxiliar.
           </div>
         ) : (
-          <div className="bg-surface rounded-card border border-border shadow-2xs overflow-hidden mb-6">
+          <div className="bg-surface rounded-card border border-border shadow-subtle overflow-hidden mb-6">
             <div className="overflow-x-auto w-full">
               <DndContext
                 sensors={sensors}
@@ -502,7 +509,7 @@ export default function ReferenceDataSection({
                 <table className="w-full min-w-[520px] text-left border-collapse">
                   <thead>
                     <tr className="bg-surface-muted/90 border-b border-border/80 text-small-label uppercase text-text-muted font-bold tracking-wider whitespace-nowrap">
-                    <th className="p-3.5 w-10"></th>
+                    {canWriteConfig && <th className="p-3.5 w-10" aria-label="Ordenação"></th>}
                     <th className="p-3.5">Nome da Opção</th>
                     {(activeAuxTab === 'projectRisks' || activeAuxTab === 'projectPriorities' || activeAuxTab === 'projectStatuses' || activeAuxTab === 'taskStatuses' || activeAuxTab === 'taskTypes' || activeAuxTab === 'riskPriorities' || activeAuxTab === 'riskStatuses') && (
                       <th className="p-3.5 w-32">Nível</th>
@@ -510,7 +517,7 @@ export default function ReferenceDataSection({
                     {isColorAuxTab && (
                       <th className="p-3.5 w-48">Cor</th>
                     )}
-                    <th className="p-3.5 w-36 text-right">Ações</th>
+                    {canWriteConfig && <th className="p-3.5 w-36 text-right">Ações</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -522,7 +529,8 @@ export default function ReferenceDataSection({
                       <SortableAuxRow
                         key={item.id}
                         item={item}
-                        isEditingThis={editingAuxId === item.id}
+                        canWriteConfig={canWriteConfig}
+                        isEditingThis={canWriteConfig && editingAuxId === item.id}
                         activeAuxTab={activeAuxTab}
                         isColorAuxTab={isColorAuxTab}
                         editAuxName={editAuxName}

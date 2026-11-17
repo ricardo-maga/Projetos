@@ -44,7 +44,7 @@ export function SingleChoice({ label, value, options, onChange, disabled = false
           aria-checked={index === selectedIndex}
           tabIndex={index === (selectedIndex < 0 ? 0 : selectedIndex) ? 0 : -1}
           disabled={disabled}
-          className={cn('text-label border rounded-control font-semibold', option.className, index === selectedIndex && 'ring-2 ring-current')}
+          className={cn('max-w-full min-w-0 h-auto min-h-9 whitespace-normal break-words text-label border rounded-control font-semibold', option.className, index === selectedIndex && 'ring-2 ring-current')}
           onClick={() => { if (!disabled) onChange(option.value); }}
           onKeyDown={event => {
             if (disabled || !options.length) return;

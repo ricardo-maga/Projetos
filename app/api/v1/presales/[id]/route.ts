@@ -4,7 +4,7 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { createAdminClient } from '@/lib/supabase/server';
 import { presalesActionSchema } from '@/lib/presales';
 import { listPresales } from '@/lib/presalesServer';
-import { presalesError } from '../route';
+import { presalesError } from '@/lib/presalesErrors';
 import sanitizeHtml from 'sanitize-html';
 
 export const dynamic = 'force-dynamic';

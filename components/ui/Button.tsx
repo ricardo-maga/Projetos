@@ -33,7 +33,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           variant === 'ghost' && "bg-transparent text-text-secondary hover:bg-surface-muted hover:text-text-primary border border-transparent",
 
           // Selected state (dimension stable using ring and background tint without changing layout box)
-          selected && "ring-2 ring-primary border-primary bg-primary/15 text-primary font-bold shadow-raised",
+          selected && "ring-2 ring-primary border-primary bg-primary/15 text-primary-ink font-bold shadow-raised",
 
           // Sizes (md satisfies 44-48px height standard perfectly for modern web/touch apps)
           size === 'sm' && "h-9 px-3 text-body-sm rounded-control",

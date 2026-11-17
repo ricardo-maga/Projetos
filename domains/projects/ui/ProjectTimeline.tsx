@@ -27,12 +27,12 @@ interface ProjectTimelineProps {
 }
 const PAGE_SIZE = 50;
 const taskBorderColor: Record<string, string> = {
-  vermelho: 'border-l-red-500',
-  amarelo: 'border-l-amber-500',
-  verde: 'border-l-emerald-500',
-  azul: 'border-l-sky-500',
-  laranja: 'border-l-orange-500',
-  cinza: 'border-l-slate-400',
+  vermelho: 'border-l-feedback-error-500',
+  amarelo: 'border-l-feedback-warning-500',
+  verde: 'border-l-feedback-success-500',
+  azul: 'border-l-category-sky-500',
+  laranja: 'border-l-feedback-attention-500',
+  cinza: 'border-l-status-neutral-400',
 };
 const taskBorderClass = (status: ReturnType<typeof getTaskStatusStyle>) => taskBorderColor[status.id] || taskBorderColor.cinza;
 export default function ProjectTimeline({ projects, clients, tasks, users = [], absences = [], projectStatuses, taskStatuses, projectRiskItems = [], specialDays = [],
@@ -212,7 +212,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
             <th scope="col" className="p-3 border-b border-border text-left text-body-sm font-semibold bg-surface-muted lg:sticky lg:left-0 lg:z-30 lg:border-r lg:border-border">Projeto</th>
             {days.map(day => <th scope="col" key={day.dateStr} className={`p-3 border-b border-l border-border text-left text-body-sm font-semibold ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
               <span className="block">{day.weekdayShort.slice(0, 3).toUpperCase()} {day.dayNum}/{day.date.getMonth() + 1}</span>
-              {specialDays.find(s => s.date === day.dateStr) && <span className="block text-caption font-normal text-text-secondary break-words">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
+              {specialDays.find(s => s.date === day.dateStr) && <span title={specialDays.find(s => s.date === day.dateStr)?.name} className="block truncate text-caption font-normal text-text-secondary">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
             </th>)}
           </tr></thead>
           <tbody><tr className="border-t border-border align-top">
@@ -333,7 +333,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
             <th className="p-3 text-left text-body-sm font-semibold bg-surface-muted lg:sticky lg:left-0 lg:z-30 lg:border-r lg:border-border">Projeto</th>
             {days.map(day => <th key={day.dateStr} className={`p-3 border-l border-border text-left text-body-sm font-semibold ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
               <span className="block">{day.weekdayShort.slice(0, 3).toUpperCase()} {day.dayNum}/{day.date.getMonth() + 1}</span>
-              {specialDays.find(s => s.date === day.dateStr) && <span className="block text-caption font-normal text-text-secondary break-words">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
+              {specialDays.find(s => s.date === day.dateStr) && <span title={specialDays.find(s => s.date === day.dateStr)?.name} className="block truncate text-caption font-normal text-text-secondary">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
             </th>)}
           </tr></thead>
         </table>

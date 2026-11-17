@@ -30,7 +30,7 @@ export function mapClientRow(row: ClientRow, fallbackVersion = 1) {
     version: row.version || fallbackVersion,
     deleted: Boolean(row.deleted),
     createdAt: row.created_at,
-    createdDate: row.created_at,
+    createdDate: row.created_at || '',
     updatedAt: row.updated_at,
   };
 }
