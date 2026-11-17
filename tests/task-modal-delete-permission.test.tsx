@@ -83,3 +83,13 @@ describe('Task modal deletion capability', () => {
     }
   });
 });
+
+it('wires the canonical delete action from the page through the calendar to its shared task modal', () => {
+  const page = readFileSync(new URL('../app/page.tsx', import.meta.url), 'utf8');
+  const calendar = readFileSync(new URL('../domains/calendar/ui/CalendarSection.tsx', import.meta.url), 'utf8');
+  const pageCall = page.slice(page.indexOf('<CalendarSection'), page.indexOf('/>', page.indexOf('<CalendarSection')));
+  const modalCall = calendar.slice(calendar.indexOf('<TaskDetailsModal'));
+  expect(pageCall).toContain('deleteTask={deleteTask}');
+  expect(modalCall).toContain('deleteTask={deleteTask}');
+  expect(modalCall).toContain('canDelete={canDeleteTasks}');
+});
