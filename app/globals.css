@@ -594,6 +594,14 @@ button[data-filled="true"] :where(span, svg) {
 .project-timeline-table-scroll { scrollbar-width: none; }
 .project-timeline-table-scroll::-webkit-scrollbar { display: none; }
 
+/* Six timeline view choices remain reachable without widening narrow screens. */
+@media (max-width: 639px) {
+  .project-timeline-view-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; border-radius: var(--radius-control); overflow: hidden; }
+  .project-timeline-view-options .m3-segment { border-radius: 0; border: 0; }
+  .project-timeline-view-options .m3-segment:not(:nth-child(3n)) { border-right: 1px solid var(--m3-outline); }
+  .project-timeline-view-options .m3-segment:nth-child(-n+3) { border-bottom: 1px solid var(--m3-outline); }
+}
+
 /* Presales editor keeps document formatting visible without a typography plugin. */
 .presales-rich-text h2 { font-size: 1.5rem; font-weight: 700; margin: .75rem 0 .4rem; }
 .presales-rich-text h3 { font-size: 1.2rem; font-weight: 600; margin: .65rem 0 .35rem; }
