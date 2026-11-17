@@ -374,7 +374,7 @@ export async function GET() {
         type: 'object', required: ['version'], properties: {
           version: { type: 'integer', minimum: 1 },
           estimatedDate: { type: 'string', nullable: true,
-            description: 'Data planeada: omitir preserva o valor; null, vazio ou espaços removem a data; uma data usa YYYY-MM-DD.' },
+            description: 'Data planeada: omitir preserva o valor; null, vazio ou espaÃ§os removem a data; uma data usa YYYY-MM-DD.' },
         },
       } } },
     };

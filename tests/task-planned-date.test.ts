@@ -9,7 +9,7 @@ import { apiUpdateTask } from '../lib/taskOperations';
 
 describe('Planned date clearing', () => {
   it('preserves omitted temporal fields and normalizes explicit empty dates', () => {
-    const omitted = updateTaskSchema.parse({ version: 1, title: 'Novo título' });
+    const omitted = updateTaskSchema.parse({ version: 1, title: 'Novo tÃ­tulo' });
     for (const key of ['estimatedDate', 'startDate', 'endDate', 'startTime', 'endTime', 'completedDate'] as const)
       expect(omitted[key]).toBeUndefined();
     for (const value of ['', '   ', null])
