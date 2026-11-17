@@ -367,6 +367,18 @@ export async function GET() {
     put: { summary: 'Atualizar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Tarefa atualizada' } } },
     delete: { summary: 'Eliminar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Tarefa eliminada' } } },
   };
+  for (const method of ['patch', 'put']) {
+    paths['/tasks/{id}'][method].requestBody = {
+      required: true,
+      content: { 'application/json': { schema: {
+        type: 'object', required: ['version'], properties: {
+          version: { type: 'integer', minimum: 1 },
+          estimatedDate: { type: 'string', nullable: true,
+            description: 'Data planeada: omitir preserva o valor; null, vazio ou espaços removem a data; uma data usa YYYY-MM-DD.' },
+        },
+      } } },
+    };
+  }
   paths['/projects/{id}'].patch = { ...paths['/projects/{id}'].put, summary: 'Atualizar parcialmente um projeto' };
   paths['/projects/ip-duplicate'] = { get: { summary: 'Verificar duplicação de identificador IP ou SF', tags: ['Projetos'],
     parameters: [
