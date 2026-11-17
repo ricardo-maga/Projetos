@@ -19,18 +19,19 @@ describe('Compact weekly calendar', () => {
     expect(html).not.toContain('Outra tarefa');
   });
 
-  it('shows one warning beside quick creation and preserves the creation callback', () => {
+  it('stripes multiple-task cells without a warning badge and preserves quick creation', () => {
     const task: any = { id: 'a', title: 'Tarefa', assigneeIds: ['u'], estimatedDate: '2026-10-07', statusId: 's', deleted: false };
     let created = '';
     const h = createSectionHarness('../domains/calendar/ui/OperationalUserCalendar.tsx', { selectedUserIds: ['u'], anchorDate: new Date(2026, 9, 7) });
     const tree = h.render({ tasks: [task, { ...task, id: 'b' }], users: [{ id: 'u', name: 'Técnico Teste', type: 'Team', roleId: 'ug-3' }],
       appConfig: { taskAssigneeGroupIds: ['ug-3'] }, projects: [], clients: [], taskStatuses: [], canCreateTask: true, onSelectTask() {},
       onQuickCreateTask: (user: string, date: string) => created = `${user}:${date}` });
-    const row = find(tree, e => e.type === 'div' && e.props?.className === 'flex items-center justify-end gap-1'
-      && renderToStaticMarkup(e).includes('2 tarefas'));
+    const cell = find(tree, e => e.type === 'td' && e.props?.className?.includes('project-timeline-conflict-cell'));
+    const row = find(cell, e => e.type === 'div' && e.props?.className === 'flex items-center justify-end gap-1');
     const html = renderToStaticMarkup(row);
     expect(html).not.toContain('⚠');
-    expect(html.match(/lucide-triangle-alert/g)).toHaveLength(1);
+    expect(renderToStaticMarkup(cell)).not.toContain('lucide-triangle-alert');
+    expect(html).not.toContain('2 tarefas');
     expect(html).toContain('Adicionar nova tarefa');
     find(row, e => e.props?.['aria-label']?.includes('Adicionar nova tarefa')).props.onClick({ stopPropagation() {} });
     expect(created).toBe('u:2026-10-07');
