@@ -9,6 +9,8 @@ import { findProjectElement as find } from './fixtures/projects-m3-harness';
 import ProjectTimeline from '../components/ProjectTimeline';
 import DateViewNavigator from '../components/ui/DateViewNavigator';
 import { M3SegmentedControl } from '../components/M3';
+import TimelineAbsenceBadge from '../domains/projects/ui/TimelineAbsenceBadge';
+import { getOperationalCalendarDays } from '../lib/operationalCalendar';
 
 const today = new Date(2026, 9, 5, 12);
 const statuses = [1, 2, 3, 4, 5, 0].map(scale => ({ id: `s${scale}`, name: `Estado ${scale}`, scale }));
@@ -19,11 +21,200 @@ export const timelinePreviewProps: React.ComponentProps<typeof ProjectTimeline> 
   specialDays: [{ date: '2026-10-06', name: 'Dia especial' } as any], projectRiskItems: [], canCreate: true, onSelectTask: () => {}, onCreateTask: () => {},
 };
 describe('Project timeline M3', () => {
-  it('defaults to all active scales 1–4, excluding deleted and unknown projects', () => {
+  it('includes all active scales 1–4 in Todos, excluding deleted, unknown and completed projects without tasks', () => {
     const projects = [1, 2, 3, 4, 5, 0].map(scale => project(`p${scale}`, { statusId: `s${scale}` })).concat([project('gone', { deleted: true }), project('unknown', { statusId: 'unknown' })]);
     const events = buildProjectTimelineEvents(projects, [], [], false);
-    expect(filterProjectTimeline(projects, clients, statuses, events, { search: '', horizon: 'all', showCompleted: false }, today).map(p => p.id)).toEqual(['p1', 'p2', 'p3', 'p4']);
-    expect(filterProjectTimeline(projects, clients, statuses, events, { search: '', horizon: 'all', showCompleted: true }, today).map(p => p.id)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+    expect(filterProjectTimeline(projects, clients, statuses, events, new Map(), { search: '', horizon: 'all' }, today).map(p => p.id)).toEqual(['p1', 'p2', 'p3', 'p4']);
+  });
+  it('defaults to a 28-day event horizon and a seven-day normal view without a completed-project checkbox', () => {
+    const h = createSectionHarness('ProjectTimeline.tsx');
+    const tree = h.render(timelinePreviewProps);
+    expect(h.state.horizon).toBe(28);
+    expect(find(tree, e => e.type === DateViewNavigator).props.periodDays).toBe(7);
+    expect(find(tree, e => e.type === M3SegmentedControl).props.value).toBe(28);
+    expect(renderToStaticMarkup(tree)).not.toContain('Projetos concluídos');
+  });
+  it('includes completed projects only for tasks in the horizon or undated tasks, also admitting active undated tasks', () => {
+    const projects = [
+      project('active-undated'), project('done-today', { statusId: 's5' }), project('done-edge', { statusId: 's5' }),
+      project('done-later', { statusId: 's5' }), project('done-past', { statusId: 's5' }), project('done-undated', { statusId: 's5' }),
+      project('done-partial', { statusId: 's5' }), project('done-estimate', { statusId: 's5' }),
+      project('done-actual', { statusId: 's5' }), project('done-deleted-task', { statusId: 's5' }),
+      project('done-milestone', { statusId: 's5', deliveryDate: '2026-10-05' }), project('done-risk', { statusId: 's5' }),
+      project('deleted', { statusId: 's5', deleted: true }), project('unknown', { statusId: 'unknown' }),
+    ];
+    const tasks: any = [
+      { id: 'a', projectId: 'active-undated' }, { id: 'b', projectId: 'done-today', estimatedDate: '2026-10-05' },
+      { id: 'c', projectId: 'done-edge', estimatedDate: '2026-11-01' }, { id: 'd', projectId: 'done-later', estimatedDate: '2026-11-02' },
+      { id: 'e', projectId: 'done-past', estimatedDate: '2026-10-04' }, { id: 'f', projectId: 'done-undated' },
+      { id: 'g', projectId: 'done-partial', startDate: '2026-10-04' },
+      { id: 'h', projectId: 'done-estimate', startDate: '2026-12-01', estimatedDate: '2026-10-06' },
+      { id: 'i', projectId: 'done-actual', startDate: '2026-10-06', endDate: '2026-10-09', estimatedDate: '2026-12-01' },
+      { id: 'j', projectId: 'done-deleted-task', estimatedDate: '2026-10-05', deleted: true },
+      { id: 'k', projectId: 'done-deleted-task', deleted: true }, { id: 'l', projectId: 'deleted' }, { id: 'm', projectId: 'unknown' },
+    ];
+    const events = buildProjectTimelineEvents(projects, tasks, [{ id: 'r', projectId: 'done-risk', title: 'Risco', reviewDate: '2026-10-05' } as any], true);
+    const undated = buildUndatedProjectTasks(tasks);
+    const filtered = (horizon: 7 | 28 | 'all', search = '') => filterProjectTimeline(projects, clients, statuses, events, undated, { search, horizon }, today).map(p => p.id);
+    expect(filtered(28)).toEqual(['active-undated', 'done-today', 'done-edge', 'done-undated', 'done-partial', 'done-estimate', 'done-actual']);
+    expect(filtered(7)).toEqual(['active-undated', 'done-today', 'done-undated', 'done-partial', 'done-estimate', 'done-actual']);
+    expect(filtered('all')).toEqual(['active-undated', 'done-today', 'done-edge', 'done-later', 'done-past', 'done-undated', 'done-partial', 'done-estimate', 'done-actual']);
+    expect(filtered(28, 'IP-done-undated')).toEqual(['done-undated']);
+  });
+  it('keeps the event horizon anchored to today while navigating and hiding completed projects', () => {
+    const now = new Date(), date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const h = createSectionHarness('ProjectTimeline.tsx');
+    const props = { ...timelinePreviewProps, projects: [project('done', { statusId: 's5' })], tasks: [{ id: 'today', projectId: 'done', estimatedDate: date } as any] };
+    let tree = h.render(props);
+    expect(renderToStaticMarkup(tree)).toContain('Cliente Exemplo');
+    for (let i = 0; i < 8; i++) find(tree, e => e.type === DateViewNavigator).props.onNext();
+    tree = h.render(props);
+    expect(renderToStaticMarkup(tree)).toContain('Cliente Exemplo');
+    expect(h.state.horizon).toBe(28);
+    find(tree, e => e.props?.['aria-label'] === 'Ocultar projeto Projeto done da timeline').props.onClick();
+    expect(renderToStaticMarkup(h.render(props))).not.toContain('Cliente Exemplo');
+    find(h.render(props), e => e.props?.children === 'Repor todos os projetos').props.onClick();
+    expect(renderToStaticMarkup(h.render(props))).toContain('Cliente Exemplo');
+  });
+  it('selects 28/56-day HD views independently of normal periods and shares widths with the floating header and scrollbar', () => {
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all', floatingHeader: { left: 0, width: 1200, height: 60 } });
+    let tree = h.render(timelinePreviewProps);
+    for (const [mode, count] of [['28-hd', 28], ['56-hd', 56], [28, 28]] as const) {
+      const anchor = h.state.anchor;
+      find(tree, e => e.type === DateViewNavigator).props.periodSelector.props.onChange(mode);
+      tree = h.render(timelinePreviewProps);
+      expect(h.state.anchor).toBe(anchor);
+      expect(h.state.horizon).toBe('all');
+      expect(find(tree, e => e.type === DateViewNavigator).props.periodDays).toBe(count);
+      expect(find(tree, e => e.type === DateViewNavigator).props.periodSelector.props.value).toBe(mode);
+      const html = renderToStaticMarkup(tree);
+      expect(html.match(/scope="col"/g)).toHaveLength(count + 1);
+      expect(html).toContain('28 Dias HD'); expect(html).toContain('56 Dias HD');
+      const widths = find(tree, e => e.type === 'colgroup').props.children[1].map((e: any) => e.props.style?.width);
+      if (typeof mode === 'string') {
+        expect(widths[0]).toBe(36); expect(widths[1]).toBe(28); expect(widths[5]).toBe(28);
+      } else {
+        expect(widths[0]).toBeUndefined(); expect(widths[1]).toBe(64);
+      }
+      const table = find(tree, e => e.type === 'table');
+      if (mode === '28-hd') expect(table.props.style.minWidth).toBeLessThan(1200);
+      if (mode === '56-hd') expect(table.props.style.minWidth).toBeLessThan(2200);
+      const fixed = find(tree, e => e.props?.['data-project-timeline-fixed-header'] !== undefined);
+      expect(find(fixed, e => e.type === 'table').props.style.minWidth).toBe(table.props.style.minWidth);
+      expect(find(fixed, e => e.type === 'colgroup').props.children[1].map((e: any) => e.props.style)).toEqual(find(tree, e => e.type === 'colgroup').props.children[1].map((e: any) => e.props.style));
+      expect(find(tree, e => e.props?.['data-project-timeline-horizontal-scroll'] !== undefined).props.children.props.style.width).toBe(table.props.style.minWidth);
+    }
+    const defaults = renderToStaticMarkup(<DateViewNavigator periodDays={7} onPeriodDaysChange={() => {}} onPrev={() => {}} onNext={() => {}} onToday={() => {}} />);
+    expect(defaults).toContain('14 dias'); expect(defaults).not.toContain('Dias HD');
+  });
+  it('generates 56 continuous Monday-aligned days across a year boundary', () => {
+    const days = getOperationalCalendarDays(new Date(2026, 11, 31), 56);
+    expect(days).toHaveLength(56);
+    expect(days[0].dateStr).toBe('2026-12-28');
+    expect(days[55].dateStr).toBe('2027-02-21');
+    expect(new Set(days.map(day => day.dateStr)).size).toBe(56);
+  });
+  it('shows only all assignee initial badges in HD task cards, including expanded projects, and preserves task actions', () => {
+    let selected = '', created = '';
+    const updates: any[] = [];
+    const props: any = { ...timelinePreviewProps, projects: [project('one')],
+      users: [{ id: 'a', name: 'Ana Silva' }, { id: 'b', name: 'Bruno Costa' }, { id: 'c', name: 'Carla Reis' }],
+      tasks: [{ id: 'project', projectId: 'one', title: 'Título do projeto', estimatedDate: '2026-10-05', assigneeIds: ['a', 'b', 'c'], estimatedHours: '8' },
+        { id: 'other', projectId: null, title: 'Título de outra tarefa', estimatedDate: '2026-10-05', assigneeIds: ['a'], estimatedHours: '4' },
+        { id: 'unassigned', projectId: 'one', title: 'Por atribuir', estimatedDate: '2026-10-10', assigneeIds: [] }],
+      onSelectTask: (task: any) => selected = task.id, onCreateTask: (date: string) => created = date,
+      updateTask: (id: string, change: any) => updates.push([id, change]) };
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all', view: '28-hd' });
+    let tree = h.render(props);
+    const card = find(tree, e => e.props?.['data-timeline-hd-task'] === 'project');
+    const html = renderToStaticMarkup(card.props.children);
+    for (const [name, initials] of [['Ana Silva', 'AS'], ['Bruno Costa', 'BC'], ['Carla Reis', 'CR']]) {
+      expect(html).toContain(`>${initials}</span>`); expect(html).toContain(`title="${name}"`);
+      expect(html).not.toContain(`>${name}</span>`);
+    }
+    expect(html).not.toContain('Título'); expect(html).not.toContain('8h'); expect(html).toContain('rounded-full');
+    expect(find(tree, e => e.props?.['data-timeline-hd-task'] === 'other')).toBeDefined();
+    expect(renderToStaticMarkup(find(tree, e => e.props?.['data-timeline-hd-task'] === 'unassigned'))).toContain('Sem utilizador alocado');
+    const widths = find(tree, e => e.type === 'colgroup').props.children[1].map((e: any) => e.props.style.width);
+    expect(widths[5]).toBe(36); expect(widths[6]).toBe(28);
+    expect(find(tree, e => e.props?.['data-timeline-drop-cell'] === 'one:2026-10-05').props.className).toContain('project-timeline-conflict-cell');
+    card.props.onClick(); expect(selected).toBe('project');
+    find(tree, e => e.props?.['aria-expanded'] === false).props.onClick();
+    tree = h.render(props);
+    expect(renderToStaticMarkup(find(tree, e => e.props?.['data-timeline-hd-task'] === 'project').props.children)).toBe(html);
+    find(tree, e => e.props?.['data-timeline-drop-cell'] === 'one:2026-10-06').props.onDoubleClick({ target: {} });
+    expect(created).toBe('2026-10-06');
+    const values = new Map<string, string>();
+    const dataTransfer = { setData: (key: string, value: string) => values.set(key, value), getData: (key: string) => values.get(key) || '' };
+    find(tree, e => e.props?.['data-timeline-hd-task'] === 'project').props.onDragStart({ dataTransfer });
+    find(tree, e => e.props?.['data-timeline-drop-cell'] === 'one:2026-10-06').props.onDrop({ dataTransfer, preventDefault() {} });
+    expect(updates).toEqual([['project', { estimatedDate: '2026-10-06' }]]);
+    const readOnly = h.render({ ...props, canCreate: false });
+    expect(find(readOnly, e => e.props?.['data-timeline-hd-task'] === 'project').props.draggable).toBe(false);
+    expect(find(readOnly, e => e.props?.['aria-label']?.startsWith('Criar tarefa'))).toBeUndefined();
+  });
+  it('compacts absences only in HD, preserving absence descriptions and using only cell stripes for conflicts', () => {
+    const props: any = { ...timelinePreviewProps, projects: [], users: [{ id: 'a', name: 'Ana Silva' }, { id: 'gone', name: 'Eliminado', deleted: true }],
+      tasks: [{ id: 't', projectId: null, estimatedDate: '2026-10-05', title: 'Visita', assigneeIds: ['a'] }],
+      absences: [{ id: 'absence', userId: 'a', absenceStartDate: '2026-10-05', absenceEndDate: '2026-10-10', reason: 'Férias' },
+        { id: 'gone', userId: 'gone', absenceStartDate: '2026-10-05', absenceEndDate: '2026-10-10', reason: 'Eliminado' }] };
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    let tree = h.render(props);
+    expect(renderToStaticMarkup(tree)).toContain('Ana Silva: AUSENTE');
+    h.state.view = '56-hd'; tree = h.render(props);
+    const conflictBadge = find(tree, e => e.type === TimelineAbsenceBadge);
+    expect(conflictBadge.props.description).toContain('Ana Silva · 05/10/2026 · Férias');
+    expect(conflictBadge.props.description).not.toContain('Conflito');
+    const plainDay = find(tree, e => e.props?.['data-timeline-drop-cell'] === 'other:2026-10-06');
+    expect(find(plainDay, e => e.type === TimelineAbsenceBadge).props.description).toBe('Ana Silva · 06/10/2026 · Férias');
+    const html = renderToStaticMarkup(tree);
+    expect(html).toContain('>AS</span>'); expect(html).not.toContain('Ana Silva: AUSENTE');
+    expect(html).not.toContain('>Férias<'); expect(html).not.toContain('Eliminado');
+    expect(html).not.toContain('bg-error/10'); expect(html).toContain('bg-surface-muted');
+    expect(html).not.toContain('⚠'); expect(html).not.toContain('Conflito crítico');
+    expect(html).toContain('project-timeline-conflict-cell');
+    h.state.view = 28;
+    expect(renderToStaticMarkup(h.render(props))).toContain('Ana Silva: AUSENTE');
+  });
+  it('creates HD tasks by double-click or keyboard in the correct cell, without plus buttons or nested-control side effects', () => {
+    const created: any[] = [];
+    const props = { ...timelinePreviewProps, projects: [project('one')], onCreateTask: (date: string, id?: string) => created.push([date, id]) };
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
+    for (const view of ['28-hd', '56-hd']) {
+      h.state.view = view;
+      let tree = h.render(props);
+      expect(renderToStaticMarkup(tree)).not.toContain('lucide-plus');
+      expect(find(tree, e => e.props?.['aria-label']?.startsWith('Criar tarefa') && e.type !== 'td')).toBeUndefined();
+      const projectCell = find(tree, e => e.props?.['data-timeline-drop-cell'] === 'one:2026-10-06');
+      const otherCell = find(tree, e => e.props?.['data-timeline-drop-cell'] === 'other:2026-10-07');
+      expect(projectCell.props.tabIndex).toBe(0);
+      projectCell.props.onDoubleClick({ target: {} });
+      expect(created.at(-1)).toEqual(['2026-10-06', 'one']);
+      otherCell.props.onDoubleClick({ target: {} });
+      expect(created.at(-1)).toEqual(['2026-10-07', undefined]);
+      let count = created.length;
+      projectCell.props.onDoubleClick({ target: { closest: () => ({ tagName: 'BUTTON' }) } });
+      expect(created).toHaveLength(count);
+      const target = {};
+      let prevented = false;
+      projectCell.props.onKeyDown({ key: 'Enter', target, currentTarget: target, preventDefault() { prevented = true; } });
+      expect(prevented).toBe(true); expect(created.at(-1)).toEqual(['2026-10-06', 'one']);
+      count = created.length;
+      projectCell.props.onKeyDown({ key: 'Enter', target: {}, currentTarget: target });
+      expect(created).toHaveLength(count);
+      const readOnly = h.render({ ...props, canCreate: false });
+      const restrictedCell = find(readOnly, e => e.props?.['data-timeline-drop-cell'] === 'one:2026-10-06');
+      expect(restrictedCell.props.onDoubleClick).toBeUndefined(); expect(restrictedCell.props.onKeyDown).toBeUndefined();
+      expect(restrictedCell.props.tabIndex).toBeUndefined();
+      h.state.fullscreen = true;
+      otherCell.props.onDoubleClick({ target: {} });
+      expect(h.state.fullscreen).toBe(false);
+    }
+    h.state.view = 28;
+    const normal = h.render(props);
+    expect(find(normal, e => e.props?.['data-timeline-drop-cell'] === 'one:2026-10-06').props.onDoubleClick).toBeUndefined();
+    find(normal, e => e.props?.['aria-label'] === 'Criar tarefa em Projeto one no dia 2026-10-06').props.onClick();
+    expect(created.at(-1)).toEqual(['2026-10-06', 'one']);
   });
   it('filters upcoming events inclusively from today, with canonical task dates and optional risk reviews', () => {
     const projects = [project('today', { scheduledDate: '2026-10-05' }), project('edge7', { deliveryDate: '2026-10-11' }), project('edge14', { estimatedDate: '2026-10-18' }), project('edge21', { startDate: '2026-10-25' }), project('edge28', { deliveryDate: '2026-11-01' }), project('past', { deliveryDate: '2026-10-04' }), project('risk'), project('task'), project('none')];
@@ -31,10 +222,10 @@ describe('Project timeline M3', () => {
     const risks: any = [{ id: 'r', projectId: 'risk', title: 'Risco', reviewDate: '2026-10-06' }, { id: 'gone', projectId: 'none', reviewDate: '2026-10-06', deleted: true }];
     const events = buildProjectTimelineEvents(projects, tasks, risks, false);
     for (const [horizon, expected] of [[7, ['today', 'edge7', 'task']], [14, ['today', 'edge7', 'edge14', 'task']], [21, ['today', 'edge7', 'edge14', 'edge21', 'task']], [28, ['today', 'edge7', 'edge14', 'edge21', 'edge28', 'task']]] as const) {
-      expect(filterProjectTimeline(projects, clients, statuses, events, { search: '', horizon, showCompleted: false }, today).map(p => p.id)).toEqual([...expected]);
+      expect(filterProjectTimeline(projects, clients, statuses, events, new Map(), { search: '', horizon }, today).map(p => p.id)).toEqual([...expected]);
     }
     const withRisks = buildProjectTimelineEvents(projects, tasks, risks, true);
-    expect(filterProjectTimeline(projects, clients, statuses, withRisks, { search: '', horizon: 7, showCompleted: false }, today).map(p => p.id)).toContain('risk');
+    expect(filterProjectTimeline(projects, clients, statuses, withRisks, new Map(), { search: '', horizon: 7 }, today).map(p => p.id)).toContain('risk');
     expect(withRisks.has('none')).toBe(false);
     expect(events.get('task')?.get('2026-10-06')?.[0].kind).toBe('task');
   });
@@ -45,7 +236,7 @@ describe('Project timeline M3', () => {
     expect(events?.get('2026-10-06')?.[0].title).toBe('Data agendada');
     expect(events?.get('2026-10-07')?.[0].title).toBe('Previsão de entrega');
     expect(events?.get('2026-10-08')?.[0].title).toBe('Data entrega');
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     const tree = h.render({ ...timelinePreviewProps, projects: [dated] });
     const row = find(tree, e => e.type === 'th' && e.props?.scope === 'row' && e.props?.className?.includes('space-y-1'));
     expect(row.props.className).toContain('border-b');
@@ -58,10 +249,10 @@ describe('Project timeline M3', () => {
     const events = buildProjectTimelineEvents(projects, tasks, [], false);
     expect(events.get('one')?.has('2026-10-05')).toBe(true);
     expect(events.get('one')?.has('2026-12-01')).toBe(false);
-    for (const search of ['projeto one', 'CLIENTE EXEMPLO', 'IP-one']) expect(filterProjectTimeline(projects, clients, statuses, events, { search, horizon: 'all', showCompleted: false }, today).map(p => p.id)).toEqual(['one']);
+    for (const search of ['projeto one', 'CLIENTE EXEMPLO', 'IP-one']) expect(filterProjectTimeline(projects, clients, statuses, events, new Map(), { search, horizon: 'all' }, today).map(p => p.id)).toEqual(['one']);
   });
   it('shows 50 projects per page and resets pagination when filters change', () => {
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     let tree = h.render(timelinePreviewProps);
     expect(find(tree, e => e.type === M3SegmentedControl).props.value).toBe('all');
     expect(renderToStaticMarkup(tree).match(/scope="row"/g)).toHaveLength(51);
@@ -73,7 +264,7 @@ describe('Project timeline M3', () => {
     expect(h.state.page).toBe(1);
   });
   it('renders 7, 14, 21 or 28 days, shades weekend/special columns and never constrains table vertical height', () => {
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     let tree = h.render({ ...timelinePreviewProps, projects: [project('one')] });
     find(tree, e => e.type === DateViewNavigator).props.onPeriodDaysChange(14);
     tree = h.render({ ...timelinePreviewProps, projects: [project('one')] });
@@ -124,7 +315,7 @@ describe('Project timeline M3', () => {
   it('preserves task opening and canonical quick creation callbacks', () => {
     const task: any = { id: 't', projectId: 'one', title: 'Tarefa real', estimatedDate: '2026-10-05', statusId: 'pending', estimatedHours: '2', assigneeIds: ['u'] };
     let selected = '', created = '';
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     const props = { ...timelinePreviewProps, projects: [project('one')], tasks: [task], onSelectTask: (t: any) => selected = t.id, onCreateTask: (date: string, id?: string) => created = `${date}:${id || 'none'}` };
     let tree = h.render(props);
     find(tree, e => e.props?.['aria-expanded'] === false).props.onClick();
@@ -167,7 +358,7 @@ describe('Project timeline M3', () => {
     const task: any = { id: 'pending', projectId: 'one', title: 'Por planear', startDate: '2026-10-04', endDate: '', estimatedDate: '', assigneeIds: [], statusId: 'pending' };
     const updates: any[] = [];
     let selected = '';
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     const props = { ...timelinePreviewProps, projects: [project('one'), project('two')], tasks: [task], updateTask: (id: string, change: any) => updates.push([id, change]), onSelectTask: (item: any) => { selected = item.id; } };
     let tree = h.render(props);
     expect(renderToStaticMarkup(tree)).toContain('Tarefas sem data');
@@ -196,7 +387,7 @@ describe('Project timeline M3', () => {
       { id: 'b', projectId: null, title: 'Sem projeto', estimatedDate: '2026-10-05', assigneeIds: [], statusId: 'pending' },
     ];
     const updates: any[] = [];
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     const props = { ...timelinePreviewProps, projects: [project('one'), project('two')], tasks, updateTask: (id: string, change: any) => updates.push([id, change]) };
     const tree = h.render(props);
     const values = new Map<string, string>();
@@ -231,7 +422,7 @@ describe('Project timeline M3', () => {
     ];
     expect(getOtherTimelineTasks(tasks, '2026-10-05').map(task => task.id)).toEqual(['other']);
     expect(buildProjectTimelineEvents([project('one')], tasks, [], false).get('one')?.get('2026-10-05')?.map(event => event.kind === 'task' ? event.task.id : null).filter(Boolean)).toEqual(['unassigned', 'regular']);
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     const props = { ...timelinePreviewProps, projects: [project('one')], tasks };
     const html = renderToStaticMarkup(h.render(props));
     expect(html.indexOf('Outras tarefas')).toBeLessThan(html.indexOf('Cliente Exemplo'));
@@ -248,7 +439,7 @@ describe('Project timeline M3', () => {
       { id: 'other', projectId: null, title: 'Outra tarefa', estimatedDate: '2026-10-05', assigneeIds: ['u'], statusId: 'pending' },
       { id: 'project', projectId: 'one', title, estimatedDate: '2026-10-05', assigneeIds: ['u'], estimatedHours: '8', statusId: 'pending' },
     ];
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     const props = { ...timelinePreviewProps, projects: [project('one')], tasks, users: [{ id: 'u', name: 'Ana Silva' }] } as any;
     let tree = h.render(props);
     for (const key of ['other:2026-10-05', 'one:2026-10-05']) {
@@ -264,7 +455,7 @@ describe('Project timeline M3', () => {
     expect(html).not.toContain('8 h previstas');
   });
   it('reports absences in other tasks, including days without tasks, and highlights assigned conflicts', () => {
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     const props = {
       ...timelinePreviewProps, projects: [], users: [{ id: 'u', name: 'Ana Silva' }, { id: 'gone', name: 'Inativo', deleted: true }],
       tasks: [{ id: 'other', projectId: null, title: 'Visita', estimatedDate: '2026-10-05', assigneeIds: ['u'], statusId: 'pending' }],
@@ -273,7 +464,7 @@ describe('Project timeline M3', () => {
     } as any;
     const tree = h.render(props);
     const html = renderToStaticMarkup(tree);
-    expect(html).toContain('Ana Silva: ⚠️ AUSENTE (1 tarefa)');
+    expect(html).not.toContain('⚠'); expect(html).not.toContain('Conflito crítico');
     expect(html).toContain('Ana Silva: AUSENTE');
     expect(html).toContain('Férias');
     expect(html).not.toContain('Inativo:');
@@ -285,7 +476,7 @@ describe('Project timeline M3', () => {
   it('keeps compact task cards visible while project details expand and collapse', () => {
     const task: any = { id: 't', projectId: 'one', title: 'Tarefa compacta', estimatedDate: '2026-10-10', statusId: 'custom', assigneeIds: ['u'], estimatedHours: '4' };
     const props: any = { ...timelinePreviewProps, projects: [project('one')], tasks: [task], users: [{ id: 'u', name: 'Ana Silva' }], taskStatuses: [{ id: 'custom', name: 'Estado tarefa exclusivo', color: 'verde' }] };
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     let tree = h.render(props), html = renderToStaticMarkup(tree);
     expect(html).toContain('Cliente Exemplo'); expect(html).not.toContain('>Projeto one<');
     expect(html).toContain('Tarefa compacta'); expect(html).not.toContain('IP-one');

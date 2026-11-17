@@ -5,10 +5,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { M3Button, M3IconButton, M3SegmentedControl } from '../M3';
 
-interface DateViewNavigatorProps<T extends 7 | 14 | 21 | 28> {
+interface DateViewNavigatorProps<T extends 7 | 14 | 21 | 28 | 56> {
   periodDays: T;
   onPeriodDaysChange: (period: T) => void;
   periods?: readonly T[];
+  periodSelector?: React.ReactNode;
   navigationStepDays?: number;
   onPrev: () => void;
   onNext: () => void;
@@ -17,10 +18,11 @@ interface DateViewNavigatorProps<T extends 7 | 14 | 21 | 28> {
   className?: string;
 }
 
-export default function DateViewNavigator<T extends 7 | 14 | 21 | 28>({
+export default function DateViewNavigator<T extends 7 | 14 | 21 | 28 | 56>({
   periodDays,
   onPeriodDaysChange,
   periods = [7, 14] as T[],
+  periodSelector,
   navigationStepDays = periodDays,
   onPrev,
   onNext,
@@ -31,14 +33,14 @@ export default function DateViewNavigator<T extends 7 | 14 | 21 | 28>({
   return (
     <div className={cn("flex flex-wrap items-center justify-start gap-3", className)}>
       {/* Period selection on the left */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
         <span className="text-label font-bold text-text-primary">Período para visualização:</span>
-        <M3SegmentedControl<T>
+        {periodSelector ?? <M3SegmentedControl<T>
           label="Período de visualização"
           value={periodDays}
           onChange={onPeriodDaysChange}
           options={periods.map(value => ({ value, label: `${value} dias` }))}
-        />
+        />}
       </div>
 
       {/* Navigation immediately follows the period selection. */}
