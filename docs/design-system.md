@@ -69,3 +69,9 @@ O resultado de sincronização assinala o logótipo com um contorno semântico d
 O menu principal arranca compacto abaixo do breakpoint `lg` existente (64rem/1024px na configuração atual). Os tablets usam a barra de ícones; os ecrãs móveis mantêm o drawer. A expansão manual continua disponível, e atravessar o breakpoint volta a aplicar o modo adequado.
 
 `ScrollableChart` mantém espaço por categoria nos gráficos estreitos, com scroll por teclado e nomes completos nos dados e tooltips. A altura e as larguras mínimas usam os tokens centrais `--chart-plot-height`, `--chart-min-width`, `--chart-category-width` e `--chart-axis-space`. O único valor inline adicional é a contagem de categorias usada no cálculo da geometria.
+
+## Validação final em 17/11/2026
+
+Os sete temas foram revistos em desktop, tablet e móvel: 21 combinações e 4533 casos, incluindo os formulários e modais das áreas operacionais e de administração. A [matriz](application-validation-matrix.md) distingue revisão visual, persistência funcional, limitações e publicação; o [registo sanitizado](application-validation-evidence.json) identifica os casos e os commits usados. As capturas com dados ficam fora do Git.
+
+Os botões M3 de texto/contorno usam `--color-primary-ink`; ações destrutivas mantêm a função de erro. Uma sombra plana usa uma sombra transparente de geometria nula, preservando a composição do ring de foco do Tailwind. A visão geral do projeto passa a uma coluna abaixo de `xl`, e as ações de tarefas, material e risco quebram linhas no espaço disponível. As cores de estado configuradas continuam a representar dados, independentemente do tema.
