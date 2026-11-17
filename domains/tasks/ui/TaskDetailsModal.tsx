@@ -762,6 +762,12 @@ export default function TaskDetailsModal({
                 <label htmlFor="task-formEstimatedDate" className="block text-label font-bold text-text-primary">
                   Data planeada <span className="text-caption text-text-muted font-normal"></span>
                 </label>
+                {formEstimatedDate && !isPlanningReadOnly && (
+                  <Button type="button" variant="ghost" size="sm" disabled={isSubmitting}
+                    onClick={() => setFormEstimatedDate('')}>
+                    Limpar data
+                  </Button>
+                )}
                 <Input id="task-formEstimatedDate"
                   type="date"
                   readOnly={isPlanningReadOnly}

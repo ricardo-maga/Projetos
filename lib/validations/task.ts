@@ -6,6 +6,10 @@ const optionalDateField = z
   .optional()
   .transform((v) => (v && typeof v === 'string' && v.trim() ? v.trim() : null));
 
+// PATCH omission must survive validation; an explicit empty value requests clearing.
+const optionalDatePatchField = z.string().nullable().optional().transform((v) =>
+  v === undefined ? undefined : (v?.trim() || null));
+
 /**
  * Normalizes a projectId field:
  * - undefined => undefined
@@ -93,12 +97,12 @@ export const updateTaskSchema = z.object({
   priorityId: z.string().nullable().optional().transform((val) => (val === '' ? null : val)),
   estimatedHours: z.number().nonnegative().optional(),
   actualHours: z.number().nonnegative().nullable().optional(),
-  startDate: optionalDateField,
-  startTime: optionalDateField,
-  endDate: optionalDateField,
-  endTime: optionalDateField,
-  estimatedDate: optionalDateField,
-  completedDate: optionalDateField,
+  startDate: optionalDatePatchField,
+  startTime: optionalDatePatchField,
+  endDate: optionalDatePatchField,
+  endTime: optionalDatePatchField,
+  estimatedDate: optionalDatePatchField,
+  completedDate: optionalDatePatchField,
   notes: z.string().max(10000).optional(),
   assignedUserIds: z
     .array(z.string().regex(/^[A-Za-z0-9_-]{1,64}$/)).max(100)

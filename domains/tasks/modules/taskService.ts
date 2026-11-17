@@ -337,6 +337,7 @@ export async function updateTaskServer(
     p_end_date: params.endDate || null,
     p_end_time: params.endTime || null,
     p_estimated_date: params.estimatedDate || null,
+    p_update_estimated_date: params.estimatedDate !== undefined,
     p_completed_date: params.completedDate || null,
     p_task_description: params.description !== undefined ? params.description : null,
     p_notes: params.notes !== undefined ? params.notes : null,
