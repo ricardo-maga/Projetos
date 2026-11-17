@@ -10,10 +10,11 @@ import ProjectTimeline from '../components/ProjectTimeline';
 import DateViewNavigator from '../components/ui/DateViewNavigator';
 import { M3SegmentedControl } from '../components/M3';
 import TimelineAbsenceBadge from '../domains/projects/ui/TimelineAbsenceBadge';
-import { getOperationalCalendarDays } from '../lib/operationalCalendar';
+import { addCivilDays, formatDateToYYYYMMDD, getOperationalCalendarDays } from '../lib/operationalCalendar';
 
 const today = new Date(2026, 9, 5, 12);
-const statuses = [1, 2, 3, 4, 5, 0].map(scale => ({ id: `s${scale}`, name: `Estado ${scale}`, scale }));
+const visibleWeek = { visibleStartDate: '2026-10-05', visibleEndDate: '2026-10-11' };
+const statuses = [1, 2, 3, 4, 5, 6, 7, 0].map(scale => ({ id: `s${scale}`, name: `Estado ${scale}`, scale }));
 const project = (id: string, extra = {}) => ({ id, title: `Projeto ${id}`, clientId: 'c', installProjectNo: `IP-${id}`, statusId: 's2', deleted: false, ...extra }) as any;
 const clients: any = [{ id: 'c', clientName: 'Cliente Exemplo', shortName: 'Exemplo' }];
 export const timelinePreviewProps: React.ComponentProps<typeof ProjectTimeline> = {
@@ -22,9 +23,9 @@ export const timelinePreviewProps: React.ComponentProps<typeof ProjectTimeline> 
 };
 describe('Project timeline M3', () => {
   it('includes all active scales 1–4 in Todos, excluding deleted, unknown and completed projects without tasks', () => {
-    const projects = [1, 2, 3, 4, 5, 0].map(scale => project(`p${scale}`, { statusId: `s${scale}` })).concat([project('gone', { deleted: true }), project('unknown', { statusId: 'unknown' })]);
+    const projects = [1, 2, 3, 4, 5, 6, 7, 0].map(scale => project(`p${scale}`, { statusId: `s${scale}` })).concat([project('gone', { deleted: true }), project('unknown', { statusId: 'unknown' })]);
     const events = buildProjectTimelineEvents(projects, [], [], false);
-    expect(filterProjectTimeline(projects, clients, statuses, events, new Map(), { search: '', horizon: 'all' }, today).map(p => p.id)).toEqual(['p1', 'p2', 'p3', 'p4']);
+    expect(filterProjectTimeline(projects, clients, statuses, events, new Map(), { ...visibleWeek, search: '', horizon: 'all' }, today).map(p => p.id)).toEqual(['p1', 'p2', 'p3', 'p4']);
   });
   it('defaults to a 28-day event horizon and a seven-day normal view without a completed-project checkbox', () => {
     const h = createSectionHarness('ProjectTimeline.tsx');
@@ -32,14 +33,21 @@ describe('Project timeline M3', () => {
     expect(h.state.horizon).toBe(28);
     expect(find(tree, e => e.type === DateViewNavigator).props.periodDays).toBe(7);
     expect(find(tree, e => e.type === M3SegmentedControl).props.value).toBe(28);
+    const navigator = find(tree, e => e.type === DateViewNavigator);
+    expect(navigator.props.periodSelector.props.options.map((option: any) => option.label)).toEqual(['7 dias', '14 dias', '28 dias', '56 Dias HD']);
+    expect(navigator.props.periodLabelClassName).toBe('whitespace-nowrap sm:w-52 sm:shrink-0');
+    const eventFilter = find(tree, e => e.type === M3SegmentedControl);
+    expect(eventFilter.props.label).toBe('Com eventos em');
+    expect(find(tree, e => e.type === 'span' && e.props?.children === 'Com eventos em:').props.className).toContain('sm:w-52');
+    expect(renderToStaticMarkup(tree)).not.toContain('Mostrar projetos com eventos nos próximos dias');
     expect(renderToStaticMarkup(tree)).not.toContain('Projetos concluídos');
   });
-  it('includes completed projects only for tasks in the horizon or undated tasks, also admitting active undated tasks', () => {
+  it('uses the visible period for completed projects independently of the event horizon, and also admits undated tasks', () => {
     const projects = [
       project('active-undated'), project('done-today', { statusId: 's5' }), project('done-edge', { statusId: 's5' }),
       project('done-later', { statusId: 's5' }), project('done-past', { statusId: 's5' }), project('done-undated', { statusId: 's5' }),
-      project('done-partial', { statusId: 's5' }), project('done-estimate', { statusId: 's5' }),
-      project('done-actual', { statusId: 's5' }), project('done-deleted-task', { statusId: 's5' }),
+      project('done-partial', { statusId: 's5' }), project('done-estimate', { statusId: 's7' }),
+      project('done-actual', { statusId: 's6' }), project('done-deleted-task', { statusId: 's5' }),
       project('done-milestone', { statusId: 's5', deliveryDate: '2026-10-05' }), project('done-risk', { statusId: 's5' }),
       project('deleted', { statusId: 's5', deleted: true }), project('unknown', { statusId: 'unknown' }),
     ];
@@ -55,31 +63,47 @@ describe('Project timeline M3', () => {
     ];
     const events = buildProjectTimelineEvents(projects, tasks, [{ id: 'r', projectId: 'done-risk', title: 'Risco', reviewDate: '2026-10-05' } as any], true);
     const undated = buildUndatedProjectTasks(tasks);
-    const filtered = (horizon: 7 | 28 | 'all', search = '') => filterProjectTimeline(projects, clients, statuses, events, undated, { search, horizon }, today).map(p => p.id);
-    expect(filtered(28)).toEqual(['active-undated', 'done-today', 'done-edge', 'done-undated', 'done-partial', 'done-estimate', 'done-actual']);
-    expect(filtered(7)).toEqual(['active-undated', 'done-today', 'done-undated', 'done-partial', 'done-estimate', 'done-actual']);
-    expect(filtered('all')).toEqual(['active-undated', 'done-today', 'done-edge', 'done-later', 'done-past', 'done-undated', 'done-partial', 'done-estimate', 'done-actual']);
+    const filtered = (horizon: 7 | 28 | 'all', search = '', visibleEndDate = visibleWeek.visibleEndDate) => filterProjectTimeline(projects, clients, statuses, events, undated, { ...visibleWeek, visibleEndDate, search, horizon }, today).map(p => p.id);
+    const weekly = ['active-undated', 'done-today', 'done-undated', 'done-partial', 'done-estimate', 'done-actual'];
+    expect(filtered(28)).toEqual(weekly);
+    expect(filtered(7)).toEqual(weekly);
+    expect(filtered('all')).toEqual(weekly);
+    expect(filtered('all', '', '2026-11-01')).toEqual(['active-undated', 'done-today', 'done-edge', 'done-undated', 'done-partial', 'done-estimate', 'done-actual']);
+    expect(filtered('all', '', '2026-11-29')).toEqual(['active-undated', 'done-today', 'done-edge', 'done-later', 'done-undated', 'done-partial', 'done-estimate', 'done-actual']);
     expect(filtered(28, 'IP-done-undated')).toEqual(['done-undated']);
   });
-  it('keeps the event horizon anchored to today while navigating and hiding completed projects', () => {
-    const now = new Date(), date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  it('shows all active projects in Todos and includes completed projects only at the inclusive visible-period boundaries', () => {
+    const projects = [1, 2, 3, 4].map(scale => project(`active-${scale}`, { statusId: `s${scale}` })).concat([
+      project('before', { statusId: 's5' }), project('start', { statusId: 's6' }), project('end', { statusId: 's7' }), project('after', { statusId: 's5' }),
+    ]);
+    const tasks: any = ['2026-10-04', '2026-10-05', '2026-10-11', '2026-10-12'].map((date, index) => ({ id: `t${index}`, projectId: ['before', 'start', 'end', 'after'][index], estimatedDate: date }));
+    const events = buildProjectTimelineEvents(projects, tasks, [], false);
+    const filter = (range: typeof visibleWeek) => filterProjectTimeline(projects, clients, statuses, events, new Map(), { ...range, search: '', horizon: 'all' }, today).map(p => p.id);
+    expect(filter(visibleWeek)).toEqual(['active-1', 'active-2', 'active-3', 'active-4', 'start', 'end']);
+    expect(filter({ visibleStartDate: '2026-10-12', visibleEndDate: '2026-10-18' })).toEqual(['active-1', 'active-2', 'active-3', 'active-4', 'after']);
+  });
+  it('keeps the active-project horizon anchored to today while completed projects follow calendar navigation', () => {
+    const date = formatDateToYYYYMMDD(new Date()), future = addCivilDays(date, 56);
     const h = createSectionHarness('ProjectTimeline.tsx');
-    const props = { ...timelinePreviewProps, projects: [project('done', { statusId: 's5' })], tasks: [{ id: 'today', projectId: 'done', estimatedDate: date } as any] };
+    const props = { ...timelinePreviewProps,
+      projects: [project('active', { scheduledDate: date }), project('done', { statusId: 's5' }), project('future', { statusId: 's6' })],
+      tasks: [{ id: 'today', projectId: 'done', estimatedDate: date }, { id: 'future', projectId: 'future', estimatedDate: future }] as any[] };
     let tree = h.render(props);
-    expect(renderToStaticMarkup(tree)).toContain('Cliente Exemplo');
+    const visible = (id: string) => find(tree, e => e.props?.['aria-label'] === `Ocultar projeto Projeto ${id} da timeline`);
+    expect(visible('active')).toBeDefined(); expect(visible('done')).toBeDefined(); expect(visible('future')).toBeUndefined();
     for (let i = 0; i < 8; i++) find(tree, e => e.type === DateViewNavigator).props.onNext();
     tree = h.render(props);
-    expect(renderToStaticMarkup(tree)).toContain('Cliente Exemplo');
+    expect(visible('active')).toBeDefined(); expect(visible('done')).toBeUndefined(); expect(visible('future')).toBeDefined();
     expect(h.state.horizon).toBe(28);
-    find(tree, e => e.props?.['aria-label'] === 'Ocultar projeto Projeto done da timeline').props.onClick();
-    expect(renderToStaticMarkup(h.render(props))).not.toContain('Cliente Exemplo');
+    visible('future').props.onClick();
+    tree = h.render(props); expect(visible('future')).toBeUndefined();
     find(h.render(props), e => e.props?.children === 'Repor todos os projetos').props.onClick();
-    expect(renderToStaticMarkup(h.render(props))).toContain('Cliente Exemplo');
+    tree = h.render(props); expect(visible('future')).toBeDefined();
   });
-  it('selects 28/56-day HD views independently of normal periods and shares widths with the floating header and scrollbar', () => {
+  it('selects the 56-day HD view independently of normal periods and shares widths with the floating header and scrollbar', () => {
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all', floatingHeader: { left: 0, width: 1200, height: 60 } });
     let tree = h.render(timelinePreviewProps);
-    for (const [mode, count] of [['28-hd', 28], ['56-hd', 56], [28, 28]] as const) {
+    for (const [mode, count] of [['56-hd', 56], [28, 28]] as const) {
       const anchor = h.state.anchor;
       find(tree, e => e.type === DateViewNavigator).props.periodSelector.props.onChange(mode);
       tree = h.render(timelinePreviewProps);
@@ -89,7 +113,7 @@ describe('Project timeline M3', () => {
       expect(find(tree, e => e.type === DateViewNavigator).props.periodSelector.props.value).toBe(mode);
       const html = renderToStaticMarkup(tree);
       expect(html.match(/scope="col"/g)).toHaveLength(count + 1);
-      expect(html).toContain('28 Dias HD'); expect(html).toContain('56 Dias HD');
+      expect(html).not.toContain('28 Dias HD'); expect(html).toContain('56 Dias HD');
       const widths = find(tree, e => e.type === 'colgroup').props.children[1].map((e: any) => e.props.style?.width);
       if (typeof mode === 'string') {
         expect(widths[0]).toBe(36); expect(widths[1]).toBe(28); expect(widths[5]).toBe(28);
@@ -97,7 +121,6 @@ describe('Project timeline M3', () => {
         expect(widths[0]).toBeUndefined(); expect(widths[1]).toBe(64);
       }
       const table = find(tree, e => e.type === 'table');
-      if (mode === '28-hd') expect(table.props.style.minWidth).toBeLessThan(1200);
       if (mode === '56-hd') expect(table.props.style.minWidth).toBeLessThan(2200);
       const fixed = find(tree, e => e.props?.['data-project-timeline-fixed-header'] !== undefined);
       expect(find(fixed, e => e.type === 'table').props.style.minWidth).toBe(table.props.style.minWidth);
@@ -124,7 +147,7 @@ describe('Project timeline M3', () => {
         { id: 'unassigned', projectId: 'one', title: 'Por atribuir', estimatedDate: '2026-10-10', assigneeIds: [] }],
       onSelectTask: (task: any) => selected = task.id, onCreateTask: (date: string) => created = date,
       updateTask: (id: string, change: any) => updates.push([id, change]) };
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all', view: '28-hd' });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all', view: '56-hd' });
     let tree = h.render(props);
     const card = find(tree, e => e.props?.['data-timeline-hd-task'] === 'project');
     const html = renderToStaticMarkup(card.props.children);
@@ -180,7 +203,7 @@ describe('Project timeline M3', () => {
     const created: any[] = [];
     const props = { ...timelinePreviewProps, projects: [project('one')], onCreateTask: (date: string, id?: string) => created.push([date, id]) };
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
-    for (const view of ['28-hd', '56-hd']) {
+    for (const view of ['56-hd']) {
       h.state.view = view;
       let tree = h.render(props);
       expect(renderToStaticMarkup(tree)).not.toContain('lucide-plus');
@@ -222,10 +245,10 @@ describe('Project timeline M3', () => {
     const risks: any = [{ id: 'r', projectId: 'risk', title: 'Risco', reviewDate: '2026-10-06' }, { id: 'gone', projectId: 'none', reviewDate: '2026-10-06', deleted: true }];
     const events = buildProjectTimelineEvents(projects, tasks, risks, false);
     for (const [horizon, expected] of [[7, ['today', 'edge7', 'task']], [14, ['today', 'edge7', 'edge14', 'task']], [21, ['today', 'edge7', 'edge14', 'edge21', 'task']], [28, ['today', 'edge7', 'edge14', 'edge21', 'edge28', 'task']]] as const) {
-      expect(filterProjectTimeline(projects, clients, statuses, events, new Map(), { search: '', horizon }, today).map(p => p.id)).toEqual([...expected]);
+      expect(filterProjectTimeline(projects, clients, statuses, events, new Map(), { ...visibleWeek, search: '', horizon }, today).map(p => p.id)).toEqual([...expected]);
     }
     const withRisks = buildProjectTimelineEvents(projects, tasks, risks, true);
-    expect(filterProjectTimeline(projects, clients, statuses, withRisks, new Map(), { search: '', horizon: 7 }, today).map(p => p.id)).toContain('risk');
+    expect(filterProjectTimeline(projects, clients, statuses, withRisks, new Map(), { ...visibleWeek, search: '', horizon: 7 }, today).map(p => p.id)).toContain('risk');
     expect(withRisks.has('none')).toBe(false);
     expect(events.get('task')?.get('2026-10-06')?.[0].kind).toBe('task');
   });
@@ -249,7 +272,7 @@ describe('Project timeline M3', () => {
     const events = buildProjectTimelineEvents(projects, tasks, [], false);
     expect(events.get('one')?.has('2026-10-05')).toBe(true);
     expect(events.get('one')?.has('2026-12-01')).toBe(false);
-    for (const search of ['projeto one', 'CLIENTE EXEMPLO', 'IP-one']) expect(filterProjectTimeline(projects, clients, statuses, events, new Map(), { search, horizon: 'all' }, today).map(p => p.id)).toEqual(['one']);
+    for (const search of ['projeto one', 'CLIENTE EXEMPLO', 'IP-one']) expect(filterProjectTimeline(projects, clients, statuses, events, new Map(), { ...visibleWeek, search, horizon: 'all' }, today).map(p => p.id)).toEqual(['one']);
   });
   it('shows 50 projects per page and resets pagination when filters change', () => {
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
@@ -263,7 +286,7 @@ describe('Project timeline M3', () => {
     find(tree, e => e.props?.['aria-label'] === 'Pesquisar na timeline').props.onChange({ target: { value: 'IP-1' } });
     expect(h.state.page).toBe(1);
   });
-  it('renders 7, 14, 21 or 28 days, shades weekend/special columns and never constrains table vertical height', () => {
+  it('renders 7, 14 or 28 days, shades weekend/special columns and never constrains table vertical height', () => {
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     let tree = h.render({ ...timelinePreviewProps, projects: [project('one')] });
     find(tree, e => e.type === DateViewNavigator).props.onPeriodDaysChange(14);
@@ -287,11 +310,11 @@ describe('Project timeline M3', () => {
     scroll.props.onScroll({ currentTarget: tableNode });
     expect(dockNode.scrollLeft).toBe(310);
     expect(find(tree, e => e.type === 'table').props.style.minWidth).toBe(1930);
-    for (const period of [21, 28] as const) {
+    for (const period of [28] as const) {
       find(tree, e => e.type === DateViewNavigator).props.onPeriodDaysChange(period);
       tree = h.render({ ...timelinePreviewProps, projects: [project('one')] });
       expect(renderToStaticMarkup(tree).match(/scope="col"/g)).toHaveLength(period + 1);
-      expect(find(tree, e => e.type === DateViewNavigator).props.periods).toEqual([7, 14, 21, 28]);
+      expect(find(tree, e => e.type === DateViewNavigator).props.periods).toEqual([7, 14, 28]);
     }
     const navigator = find(tree, e => e.type === DateViewNavigator);
     expect(navigator.props.navigationStepDays).toBe(7);

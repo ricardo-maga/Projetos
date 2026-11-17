@@ -10,6 +10,7 @@ interface DateViewNavigatorProps<T extends 7 | 14 | 21 | 28 | 56> {
   onPeriodDaysChange: (period: T) => void;
   periods?: readonly T[];
   periodSelector?: React.ReactNode;
+  periodLabelClassName?: string;
   navigationStepDays?: number;
   onPrev: () => void;
   onNext: () => void;
@@ -23,6 +24,7 @@ export default function DateViewNavigator<T extends 7 | 14 | 21 | 28 | 56>({
   onPeriodDaysChange,
   periods = [7, 14] as T[],
   periodSelector,
+  periodLabelClassName,
   navigationStepDays = periodDays,
   onPrev,
   onNext,
@@ -34,7 +36,7 @@ export default function DateViewNavigator<T extends 7 | 14 | 21 | 28 | 56>({
     <div className={cn("flex flex-wrap items-center justify-start gap-3", className)}>
       {/* Period selection on the left */}
       <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
-        <span className="text-label font-bold text-text-primary">Período para visualização:</span>
+        <span className={cn('text-label font-bold text-text-primary', periodLabelClassName)}>Período para visualização:</span>
         {periodSelector ?? <M3SegmentedControl<T>
           label="Período de visualização"
           value={periodDays}
