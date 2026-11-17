@@ -615,7 +615,7 @@ export default function OperationalUserCalendar({
                             onDrop={(e) => {
                               handleDropTask(e, user.id, day.dateStr);
                             }}
-                            className={`p-2 border-l border-border-subtle align-top transition-all group relative ${
+                            className={`p-2 border-l border-border-subtle align-top transition-all group relative ${conflictInfo.hasMultipleTasks ? 'project-timeline-conflict-cell' : ''} ${
                               isCellDragOver
                                 ? 'bg-primary/10 ring-2 ring-primary ring-inset'
                                 : (day.isWeekend || !!specialDays.find(sd => sd.date === day.dateStr))
@@ -624,16 +624,9 @@ export default function OperationalUserCalendar({
                             }`}
                           >
                             <div className="min-h-[70px] space-y-1.5 flex flex-col justify-start">
-                              {/* Conflict and quick creation share the same compact action row. */}
-                              {((!conflictInfo.isAbsent && conflictInfo.hasMultipleTasks) || (canCreateTask && onQuickCreateTask)) && (
+                              {/* Quick task creation. */}
+                              {canCreateTask && onQuickCreateTask && (
                                 <div className="flex items-center justify-end gap-1">
-                                  {!conflictInfo.isAbsent && conflictInfo.hasMultipleTasks && (
-                                    <div className="px-2 py-0.5 bg-warning/10 text-warning border border-warning/20 rounded-control text-body-sm font-extrabold flex items-center gap-1 shadow-subtle"
-                                      title={conflictInfo.tooltipText}>
-                                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                                      <span>{conflictInfo.badgeText?.replace(/^⚠\uFE0F?\s*/, '')}</span>
-                                    </div>
-                                  )}
                                   {canCreateTask && onQuickCreateTask && (
                                   <IconButton size="sm"
                                     type="button"
