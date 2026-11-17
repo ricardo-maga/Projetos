@@ -5,7 +5,7 @@ import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User, UserAbse
 import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '@/domains/projects/modules/projectTimeline';
 import { getOperationalCalendarDays, formatOperationalDateRange, getOperationalDayConflicts, getUserDayAbsence, isTaskOnDate, isUserAssignedToTask } from '@/domains/calendar/modules/operationalCalendar';
 import { parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
-import { getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '@/lib/utils';
+import { cn, getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '@/lib/utils';
 import { M3SectionHeader, M3SegmentedControl } from '@/components/M3';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -230,7 +230,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           onToday={() => setAnchor(new Date())} />
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
-          <span className="text-label font-bold text-text-primary whitespace-nowrap sm:w-52 sm:shrink-0">Com eventos em:</span>
+          <span className={cn('text-label font-bold text-text-primary', 'whitespace-nowrap sm:w-52 sm:shrink-0')}>Com eventos em:</span>
           <M3SegmentedControl<TimelineHorizon> label="Com eventos em" value={horizon}
             onChange={value => { setHorizon(value); setPage(1); }} options={[7, 14, 21, 28].map(value => ({ value: value as TimelineHorizon, label: `${value} dias` })).concat([{ value: 'all', label: 'Todos' }])} />
           </div>
@@ -266,7 +266,6 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                   : <div key={user.id} title={`${user.name} · ${day.dateStr.split('-').reverse().join('/')} · ${absence.reason || 'Ausente'}`}
                     className="rounded-control border px-2 py-1 text-caption font-semibold bg-surface-muted text-text-secondary border-border">
                     <span className="block">{user.name}: AUSENTE</span>
-                    {absence.reason && <span className="block truncate font-normal">{absence.reason}</span>}
                   </div>)}
                 {otherDays.get(day.dateStr)?.otherTasks.map(task => {
                 if (highDensity) return renderHdTask(task, task.id);
@@ -394,7 +393,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
         className="overflow-x-auto" tabIndex={0} aria-label="Deslocar timeline na horizontal"
         data-project-timeline-horizontal-scroll><div style={{ width: timelineMinWidth, height: 1 }} /></div>
       <div className="p-4 bg-surface-muted/60 flex flex-wrap justify-between items-center gap-3">
-        <p className="text-caption text-text-secondary">{filtered.length ? `${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} de ${filtered.length} projetos` : '0 projetos'} · até 50 por página</p>
+        <p className="text-caption text-text-secondary">{filtered.length ? `${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} de ${filtered.length} projetos` : '0 projetos'}</p>
         <nav aria-label="Paginação da timeline" className="flex items-center gap-2">
           <IconButton size="sm" aria-label="Página anterior de projetos" disabled={validPage <= 1} onClick={() => setPage(validPage - 1)}><ChevronLeft className="w-4 h-4" /></IconButton>
           <span className="text-caption text-text-secondary" aria-live="polite">{validPage} / {pages}</span>
