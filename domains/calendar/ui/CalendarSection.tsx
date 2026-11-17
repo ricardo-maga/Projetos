@@ -14,7 +14,7 @@ interface CalendarSectionProps {
   specialDays?: SpecialDay[]; projectRiskItems?: ProjectRiskItem[]; projectStatuses?: any[];
   projectPriorities?: ProjectPriority[];
   onSelectProject?: (id: string) => void;
-  addTask?: (task: any) => any; updateTask?: (id: string, updates: any) => any; deleteTask?: (id: string) => any;
+  addTask?: (task: any) => any; updateTask?: (id: string, updates: any) => any; deleteTask?: (id: string) => Promise<boolean>;
   taskStatuses: any[]; taskTypes?: TaskType[]; currentUser?: any; userGroups?: any[]; appConfig?: any;
 }
 
@@ -25,10 +25,11 @@ export default function CalendarSection({ projects = [], tasks = [], absences = 
   const [view, setView] = useState<'users' | 'projects'>('users');
   const [modal, setModal] = useState<{ task: Task | null; mode: 'create' | 'edit' | 'view'; date?: string; userId?: string; projectId?: string } | null>(null);
   const canRead = hasPermission(currentUser, 'calendar_read');
+  const canDeleteTasks = hasPermission(currentUser, 'tasks_delete');
   const canWriteTasks = hasPermission(currentUser, 'tasks_write');
   const canWriteCalendar = hasPermission(currentUser, 'calendar_write');
   const canCreate = canWriteTasks || canWriteCalendar;
-  const openTask = (task: Task) => setModal({ task, mode: canWriteTasks ? 'edit' : 'view' });
+  const openTask = (task: Task) => setModal({ task, mode: canWriteTasks || canDeleteTasks ? 'edit' : 'view' });
   const createTask = (date: string, userId?: string, projectId?: string) => {
     if (canCreate) setModal({ task: null, mode: 'create', date, userId, projectId });
   };
@@ -49,6 +50,6 @@ export default function CalendarSection({ projects = [], tasks = [], absences = 
       onSelectProject={onSelectProject} onSelectTask={openTask} onCreateTask={(date, projectId) => createTask(date, undefined, projectId)} />}
     {modal && <TaskDetailsModal isOpen task={modal.task} mode={modal.mode} initialDate={modal.date} initialAssigneeId={modal.userId} initialProjectId={modal.projectId}
       onClose={() => setModal(null)} createTask={addTask} updateTask={updateTask} deleteTask={deleteTask} taskStatuses={taskStatuses} taskTypes={taskTypes}
-      projectPriorities={projectPriorities} users={users} userGroups={userGroups} appConfig={appConfig} projects={projects} clients={clients} absences={absences} tasks={tasks} canWrite={canCreate} />}
+      projectPriorities={projectPriorities} users={users} userGroups={userGroups} appConfig={appConfig} projects={projects} clients={clients} absences={absences} tasks={tasks} canWrite={modal.mode === 'create' ? canCreate : canWriteTasks} canDelete={canDeleteTasks} />}
   </div>;
 }

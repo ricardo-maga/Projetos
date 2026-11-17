@@ -40,7 +40,7 @@ interface MyFocusSectionProps {
   projectStatuses: ProjectStatus[];
   addTask?: (t: any) => void;
   updateTask: (id: string, updates: any) => void;
-  deleteTask?: (id: string) => void;
+  deleteTask?: (id: string) => Promise<boolean>;
   onSelectProject: (id: string) => void;
   onSelectMechanicalRequest?: (id: string) => void;
   onSelectPresalesRequest?: (id: string) => void;
@@ -1054,6 +1054,7 @@ export default function MyFocusSection({
         absences={userAbsences}
         tasks={tasks}
         canWrite={hasPermission(currentUser, 'tasks_write')}
+        canDelete={hasPermission(currentUser, 'tasks_delete')}
       />
 
     </div>

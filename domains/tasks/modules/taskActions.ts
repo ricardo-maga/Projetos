@@ -207,7 +207,9 @@ export function createTaskActions({
 
   const deleteTask = async (id: string) => {
     const existingTask = state?.tasks?.find(t => t.id === id);
-    if (!existingTask) return;
+    if (!existingTask || existingTask.deleted) {
+      throw new Error('A tarefa já não está disponível para eliminação. Atualize a lista.');
+    }
 
     try {
       setSyncStatus('syncing');

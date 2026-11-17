@@ -207,7 +207,7 @@ interface ProjectSectionProps {
   addTask: (task: any) => any;
   addTasks?: (tasks: any[]) => any;
   updateTask: (id: string, updates: any) => void;
-  deleteTask?: (id: string) => void;
+  deleteTask?: (id: string) => Promise<boolean>;
   taskStatuses: any[];
   taskTypes?: TaskType[];
   specialDays?: any[];
@@ -4922,13 +4922,11 @@ export default function ProjectSection({
           const res = await updateTask(id, updates);
           return res;
         }}
-        deleteTask={async (id: string) => {
-          if (deleteTask) {
-            const res = await deleteTask(id);
-            setServerTasks(prev => prev.filter(t => t.id !== id));
-            return res;
-          }
-        }}
+        deleteTask={deleteTask ? async (id: string) => {
+          const deleted = await deleteTask(id);
+          if (deleted) setServerTasks(prev => prev.filter(t => t.id !== id));
+          return deleted;
+        } : undefined}
         taskStatuses={taskStatuses}
         taskTypes={taskTypes}
         projectPriorities={projectPriorities}
@@ -4940,6 +4938,7 @@ export default function ProjectSection({
         absences={absences}
         tasks={tasks}
         canWrite={canWriteTasks}
+        canDelete={canDeleteTasks}
         onSelectTask={task => openTaskDetailsModal(task)}
       />
 
