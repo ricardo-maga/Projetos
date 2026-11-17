@@ -63,7 +63,7 @@ export interface TaskDetailsModalProps {
   onDeleteSuccess?: (taskId: string) => void;
   createTask?: (payload: any) => Promise<any> | void;
   updateTask?: (id: string, updates: any) => Promise<any> | void;
-  deleteTask?: (id: string) => Promise<any> | void;
+  deleteTask?: (id: string) => Promise<boolean>;
   taskStatuses: any[];
   taskTypes?: TaskType[];
   projectPriorities?: ProjectPriority[];
@@ -75,6 +75,7 @@ export interface TaskDetailsModalProps {
   absences?: any[];
   tasks?: Task[];
   canWrite?: boolean;
+  canDelete?: boolean;
   onSelectTask?: (task: Task) => void;
 }
 
@@ -110,6 +111,7 @@ export default function TaskDetailsModal({
   absences = [],
   tasks = [],
   canWrite = true,
+  canDelete = false,
   onSelectTask,
 }: TaskDetailsModalProps) {
   // If isOpen is explicitly passed, respect it; otherwise consider open if task or initialMode is provided
@@ -503,24 +505,27 @@ export default function TaskDetailsModal({
   };
 
   const handleDelete = async () => {
-    if (!activeTask || !deleteTask || submittingRef.current) return;
-    const confirmDelete = window.confirm(`Tem a certeza que deseja eliminar a tarefa "${activeTask.title}"?`);
+    if (!canDelete || !activeTask || activeTask.deleted || !deleteTask ||
+        (effectiveMode !== 'edit' && effectiveMode !== 'execute') || submittingRef.current) return;
+    const confirmDelete = window.confirm(`Tem a certeza que deseja eliminar a tarefa "${activeTask.title}"? As alterações não gravadas serão descartadas.`);
     if (!confirmDelete) return;
 
     submittingRef.current = true;
     setIsSubmitting(true);
     try {
-      await deleteTask(activeTask.id);
+      const deleted = await deleteTask(activeTask.id);
+      if (deleted !== true) throw new Error('Não foi possível confirmar a eliminação da tarefa.');
       if (onDeleteSuccess) onDeleteSuccess(activeTask.id);
       onClose();
     } catch (err: any) {
       setFormError(err?.message || 'Erro ao eliminar a tarefa.');
+    } finally {
       submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
 
-  const isReadOnly = effectiveMode === 'view' || !canWrite;
+  const isReadOnly = effectiveMode === 'view' || !canWrite || isSubmitting;
   const isPlanningReadOnly = isReadOnly || effectiveMode === 'execute';
 
   if (!isModalOpen) {
@@ -530,7 +535,7 @@ export default function TaskDetailsModal({
   return (
     <Dialog
       isOpen={isModalOpen}
-      onClose={onClose}
+      onClose={() => { if (!submittingRef.current) onClose(); }}
       title={isDuplication
         ? `Nova Tarefa (Cópia de "${activeTask?.title}")`
         : effectiveMode === 'create'
@@ -947,7 +952,7 @@ export default function TaskDetailsModal({
           {/* Action Buttons */}
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border bg-surface px-6 py-4">
             <div>
-              {effectiveMode !== 'create' && !isReadOnly && deleteTask && activeTask && (
+              {(effectiveMode === 'edit' || effectiveMode === 'execute') && canDelete && deleteTask && activeTask && !activeTask.deleted && (
                 <Button
                   type="button"
                   variant="danger"
@@ -966,7 +971,8 @@ export default function TaskDetailsModal({
                 type="button"
                 variant="secondary"
                 size="sm"
-                onClick={onClose}
+                disabled={isSubmitting}
+                onClick={() => { if (!submittingRef.current) onClose(); }}
               >
                 {effectiveMode === 'view' ? 'Fechar' : 'Cancelar'}
               </Button>

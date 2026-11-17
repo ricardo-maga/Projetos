@@ -61,7 +61,7 @@ interface TaskSectionProps {
   projectPriorities?: ProjectPriority[];
   addTask: (t: any) => void;
   updateTask: (id: string, updates: any) => void;
-  deleteTask: (id: string) => void;
+  deleteTask: (id: string) => Promise<boolean>;
   currentUser?: any;
   userGroups?: any[];
   appConfig?: any;
@@ -841,7 +841,7 @@ export default function TaskSection({
                       return (
                         <tr
                           key={t.id}
-                          onClick={() => openTaskModal(t, canWriteTasks ? 'edit' : 'view')}
+                          onClick={() => openTaskModal(t, canWriteTasks || canDeleteTasks ? 'edit' : 'view')}
                           className="hover:bg-surface-muted/60 transition-colors cursor-pointer group"
                         >
                           {/* 1. Execução */}
@@ -1099,6 +1099,7 @@ export default function TaskSection({
         absences={absences}
         tasks={tasks}
         canWrite={canWriteTasks}
+        canDelete={canDeleteTasks}
       />
 
       <ConfirmModal

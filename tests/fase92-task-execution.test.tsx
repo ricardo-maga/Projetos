@@ -65,7 +65,7 @@ describe('FASE 92 — UI and execution allowlist', () => {
       let deleted = false;
       let closed = false;
       let confirmed = '';
-      const context = { activeTask: { id: 'qa-task', title: 'Original' }, submittingRef: { current: false }, deleteTask: async (id: string) => { expect(id).toBe('qa-task'); deleted = true; }, window: { confirm: (message: string) => { confirmed = message; return accepted; } }, setIsSubmitting: () => {}, onDeleteSuccess: undefined, onClose: () => { closed = true; }, setFormError: () => {} };
+      const context = { canDelete: true, effectiveMode: 'edit', activeTask: { id: 'qa-task', title: 'Original' }, submittingRef: { current: false }, deleteTask: async (id: string) => { expect(id).toBe('qa-task'); deleted = true; return true; }, window: { confirm: (message: string) => { confirmed = message; return accepted; } }, setIsSubmitting: () => {}, onDeleteSuccess: undefined, onClose: () => { closed = true; }, setFormError: () => {} };
       const remove = new Function(...Object.keys(context), `${js}; return handleDelete;`)(...Object.values(context));
       await remove();
       expect(confirmed).toContain('Tem a certeza');
