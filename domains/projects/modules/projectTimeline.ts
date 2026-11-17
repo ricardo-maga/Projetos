@@ -81,7 +81,7 @@ export function buildProjectTimelineEvents(projects: Project[], tasks: Task[], r
 }
 
 export function filterProjectTimeline(projects: Project[], clients: Client[], statuses: { id: string; scale?: number }[], events: ProjectTimelineEvents,
-  undatedTasks: Map<string, Task[]>, options: { search: string; horizon: TimelineHorizon }, now = new Date()) {
+  undatedTasks: Map<string, Task[]>, options: { search: string; horizon: TimelineHorizon; visibleStartDate: string; visibleEndDate: string }, now = new Date()) {
   const today = formatDateToYYYYMMDD(now);
   const end = new Date(now); end.setDate(end.getDate() + (options.horizon === 'all' ? 0 : options.horizon - 1));
   const last = formatDateToYYYYMMDD(end);
@@ -94,9 +94,8 @@ export function filterProjectTimeline(projects: Project[], clients: Client[], st
     const client = clientMap.get(p.clientId);
     if (query && !`${p.title} ${client?.clientName || ''} ${client?.shortName || ''} ${p.installProjectNo || ''}`.toLocaleLowerCase('pt-PT').includes(query)) return false;
     if (undatedTasks.get(p.id)?.length) return true;
-    if (options.horizon === 'all' && scale <= 4) return true;
-    return [...(events.get(p.id)?.entries() || [])].some(([date, dayEvents]) =>
-      (options.horizon === 'all' || date >= today && date <= last) &&
-      (scale <= 4 || dayEvents.some(event => event.kind === 'task')));
+    if (scale >= 5) return [...(events.get(p.id)?.entries() || [])].some(([date, dayEvents]) =>
+      date >= options.visibleStartDate && date <= options.visibleEndDate && dayEvents.some(event => event.kind === 'task'));
+    return options.horizon === 'all' || [...(events.get(p.id)?.keys() || [])].some(date => date >= today && date <= last);
   });
 }

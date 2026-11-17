@@ -27,10 +27,10 @@ interface ProjectTimelineProps {
   updateTask?: (id: string, updates: Partial<Task>) => any;
 }
 const PAGE_SIZE = 50;
-type TimelineView = 7 | 14 | 21 | 28 | '28-hd' | '56-hd';
+type TimelineView = 7 | 14 | 28 | '56-hd';
 const timelineViews: { value: TimelineView; label: string }[] = [
-  ...([7, 14, 21, 28] as const).map(value => ({ value, label: `${value} dias` })),
-  { value: '28-hd', label: '28 Dias HD' }, { value: '56-hd', label: '56 Dias HD' },
+  ...([7, 14, 28] as const).map(value => ({ value, label: `${value} dias` })),
+  { value: '56-hd', label: '56 Dias HD' },
 ];
 const taskBorderColor: Record<string, string> = {
   vermelho: 'border-l-feedback-error-500',
@@ -46,7 +46,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const [anchor, setAnchor] = useState(() => new Date());
   const [view, setView] = useState<TimelineView>(7);
   const highDensity = typeof view === 'string';
-  const periodDays = view === '56-hd' ? 56 : view === '28-hd' ? 28 : view;
+  const periodDays = view === '56-hd' ? 56 : view;
   const [horizon, setHorizon] = useState<TimelineHorizon>(28);
   const [includeRiskReviews, setIncludeRiskReviews] = useState(false);
   const [search, setSearch] = useState('');
@@ -74,7 +74,8 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const days = useMemo(() => getOperationalCalendarDays(anchor, periodDays), [anchor, periodDays]);
   const events = useMemo(() => buildProjectTimelineEvents(projects, tasks, projectRiskItems, includeRiskReviews), [projects, tasks, projectRiskItems, includeRiskReviews]);
   const undatedTasks = useMemo(() => buildUndatedProjectTasks(tasks), [tasks]);
-  const filtered = filterProjectTimeline(projects, clients, projectStatuses, events, undatedTasks, { search, horizon })
+  const filtered = filterProjectTimeline(projects, clients, projectStatuses, events, undatedTasks,
+    { search, horizon, visibleStartDate: days[0].dateStr, visibleEndDate: days[days.length - 1].dateStr })
     .filter(project => !hiddenProjectIds.has(project.id));
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)), validPage = Math.min(page, pages);
   const start = (validPage - 1) * PAGE_SIZE, visibleProjects = filtered.slice(start, start + PAGE_SIZE);
@@ -222,15 +223,17 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           actions={<Button variant="outline" size="sm" onClick={() => setFullscreen(value => !value)} aria-pressed={fullscreen}>
             {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}{fullscreen ? 'Sair do ecrã cheio' : 'Ecrã cheio'}
           </Button>} />
-        <DateViewNavigator periodDays={periodDays} periods={[7, 14, 21, 28]} navigationStepDays={7}
+        <DateViewNavigator periodDays={periodDays} periods={[7, 14, 28]} navigationStepDays={7} periodLabelClassName="whitespace-nowrap sm:w-52 sm:shrink-0"
           onPeriodDaysChange={value => setView(value === 56 ? '56-hd' : value)}
           periodSelector={<M3SegmentedControl<TimelineView> className="project-timeline-view-options" label="Período de visualização" value={view} options={timelineViews} onChange={setView} />}
           onPrev={() => shift(-7)} onNext={() => shift(7)}
           onToday={() => setAnchor(new Date())} />
         <div className="space-y-3">
-          <p className="text-label font-semibold text-text-secondary">Mostrar projetos com eventos nos próximos dias</p>
-          <M3SegmentedControl<TimelineHorizon> label="Projetos com eventos nos próximos dias" value={horizon}
+          <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
+          <span className="text-label font-bold text-text-primary whitespace-nowrap sm:w-52 sm:shrink-0">Com eventos em:</span>
+          <M3SegmentedControl<TimelineHorizon> label="Com eventos em" value={horizon}
             onChange={value => { setHorizon(value); setPage(1); }} options={[7, 14, 21, 28].map(value => ({ value: value as TimelineHorizon, label: `${value} dias` })).concat([{ value: 'all', label: 'Todos' }])} />
+          </div>
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-0 basis-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted z-10 pointer-events-none" />
               <Input aria-label="Pesquisar na timeline" placeholder="Pesquisar projeto, cliente ou nº IP…" className="pl-9 text-body-sm" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} /></div>
