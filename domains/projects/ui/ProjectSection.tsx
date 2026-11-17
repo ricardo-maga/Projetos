@@ -1,5 +1,6 @@
 'use client';
 
+import { buildPlannedTaskCopy } from '@/domains/tasks/modules/taskCopy';
 import { M3FilterChip, M3SectionHeader, M3SegmentedControl } from '@/components/M3';
 import { Tabs } from '@/components/ui/Tabs';
 import ProjectAnalytics from '@/domains/projects/ui/ProjectAnalytics';
@@ -292,6 +293,11 @@ export default function ProjectSection({
   const [isSavingRisk, setIsSavingRisk] = useState(false);
   const { busy: isSavingProject, run: runProjectAction } = useAsyncAction();
   const [isSavingProjectStatus, setIsSavingProjectStatus] = useState(false);
+  const monthlyDrag = useRef<{ taskId: string; date: string; copy: boolean } | null>(null);
+  const monthlyCopying = useRef(false);
+  const [monthlyCopyBusy, setMonthlyCopyBusy] = useState(false);
+  const [monthlyCopyMessage, setMonthlyCopyMessage] = useState('');
+  const [monthlyCopyError, setMonthlyCopyError] = useState('');
   const projectStatusSaveInFlight = React.useRef(false);
   const riskSaveInFlight = React.useRef(false);
   const materialSaveInFlight = React.useRef(false);
@@ -1838,6 +1844,8 @@ export default function ProjectSection({
                         </span>
                       </div>
                     </div>
+                    {monthlyCopyMessage && <p role="status" className="text-caption text-text-secondary">{monthlyCopyMessage}</p>}
+                    {monthlyCopyError && <p role="alert" className="text-caption text-error">{monthlyCopyError}</p>}
                     <div className="bg-surface border border-border rounded-control overflow-hidden shadow-raised">
                       <div className="grid grid-cols-7 border-b border-border-subtle bg-surface-muted text-caption font-bold text-text-secondary uppercase text-center">
                         {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
@@ -1893,24 +1901,27 @@ export default function ProjectSection({
                             cells.push(
                               <div
                                 key={`day-${d}`}
-                                onDragOver={(e) => e.preventDefault()}
+                                data-monthly-task-cell={dateStr}
+                                onDragOver={(e) => {
+                                  if (!canWriteTasks || monthlyCopying.current || !monthlyDrag.current) return;
+                                  e.preventDefault(); e.dataTransfer.dropEffect = monthlyDrag.current.copy ? 'copy' : 'move';
+                                }}
                                 onDrop={(e) => {
                                   e.preventDefault();
-                                  if (!canWriteTasks) {
-                                    alert('Não tem permissão para alterar tarefas.');
-                                    return;
-                                  }
-                                  const taskId = e.dataTransfer.getData('taskId');
-                                  if (taskId && updateTask) {
-                                    const existingTask = tasks.find(t => t.id === taskId);
-                                    if (existingTask && existingTask.startDate === dateStr && existingTask.endDate === dateStr && existingTask.estimatedDate === dateStr) {
-                                      return;
-                                    }
-                                    updateTask(taskId, {
-                                      startDate: dateStr,
-                                      endDate: dateStr,
-                                      estimatedDate: dateStr
-                                    });
+                                  const context = monthlyDrag.current;
+                                  monthlyDrag.current = null;
+                                  if (!canWriteTasks || monthlyCopying.current || !context || e.dataTransfer.getData('taskId') !== context.taskId) return;
+                                  const source = projTasks.find(task => task.id === context.taskId && !task.deleted);
+                                  if (!source || source.projectId !== selectedProj.id) return;
+                                  if (context.copy) {
+                                    if (context.date === dateStr) return;
+                                    monthlyCopying.current = true; setMonthlyCopyBusy(true); setMonthlyCopyError(''); setMonthlyCopyMessage('A copiar tarefa…');
+                                    void Promise.resolve().then(() => addTask(buildPlannedTaskCopy(source, dateStr, selectedProj.id, taskStatuses, taskTypes || [])))
+                                      .then(created => { if (!created?.id) throw new Error('O servidor não confirmou a criação da tarefa.'); setMonthlyCopyMessage('Tarefa copiada.'); })
+                                      .catch(error => { setMonthlyCopyMessage(''); setMonthlyCopyError(error instanceof Error ? error.message : 'Não foi possível copiar a tarefa.'); })
+                                      .finally(() => { monthlyCopying.current = false; setMonthlyCopyBusy(false); });
+                                  } else if (!(source.startDate === dateStr && source.endDate === dateStr && source.estimatedDate === dateStr)) {
+                                    updateTask(source.id, { startDate: dateStr, endDate: dateStr, estimatedDate: dateStr });
                                   }
                                 }}
                                 onClick={() => {
@@ -1978,12 +1989,16 @@ export default function ProjectSection({
                                   {milestonesOnDay.map(m => (
                                     <div
                                       key={m.id}
-                                      draggable={canWriteTasks}
+                                      draggable={canWriteTasks && !monthlyCopyBusy}
                                       onDragStart={(e) => {
                                         e.stopPropagation();
                                         if (!canWriteTasks) { e.preventDefault(); return; }
+                                        if (monthlyCopying.current) { e.preventDefault(); return; }
+                                        monthlyDrag.current = { taskId: m.id, date: dateStr, copy: !!e.ctrlKey };
+                                        e.dataTransfer.effectAllowed = e.ctrlKey ? 'copy' : 'move';
                                         e.dataTransfer.setData('taskId', m.id);
                                       }}
+                                      onDragEnd={() => { monthlyDrag.current = null; }}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         openTaskDetailsModal(m);
@@ -2004,16 +2019,20 @@ export default function ProjectSection({
                                     return (
                                       <div
                                         key={t.id}
-                                        draggable={canWriteTasks}
+                                        draggable={canWriteTasks && !monthlyCopyBusy}
                                         onDragStart={(e) => {
                                           e.stopPropagation();
                                           if (!canWriteTasks) {
                                             e.preventDefault();
                                             return;
                                           }
+                                          if (monthlyCopying.current) { e.preventDefault(); return; }
+                                          monthlyDrag.current = { taskId: t.id, date: dateStr, copy: !!e.ctrlKey };
+                                          e.dataTransfer.effectAllowed = e.ctrlKey ? 'copy' : 'move';
                                           e.dataTransfer.setData('taskId', t.id);
                                         }}
-                                        onClick={(e) => {
+                                        onDragEnd={() => { monthlyDrag.current = null; }}
+                                      onClick={(e) => {
                                           e.stopPropagation();
                                           openTaskDetailsModal(t);
                                         }}
