@@ -63,4 +63,3 @@ describe('CTRL drag task copies',()=>{
   await flush();expect(copies).toHaveLength(1);expect(copies[0].estimatedDate).toBe('2026-10-12');expect(copies[0].startDate).toBe('');expect(moves).toHaveLength(0);
  });
 });
-
