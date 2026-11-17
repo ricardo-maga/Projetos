@@ -1007,6 +1007,7 @@ export default function Page() {
                   projectRiskItems={state.projectRiskItems || []}
                   addTask={addTask}
                   updateTask={updateTask}
+                  deleteTask={deleteTask}
                   onSelectProject={handleSelectProject}
                   currentUser={currentUser}
                   userGroups={state.userGroups}
