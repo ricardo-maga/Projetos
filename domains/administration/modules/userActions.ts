@@ -4,7 +4,7 @@ import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 
 export function createUserActions({ state, refreshFromDatabase }: Pick<LegacyActionContext, 'state' | 'refreshFromDatabase'>) {
   // ==================== USERS CRUD ====================
-  const addUser = async (user: Pick<User, 'name' | 'email' | 'type'> & { password: string }) => {
+  const addUser = async (user: Pick<User, 'name' | 'email' | 'type'> & { password?: string }) => {
     const response = await fetch('/api/users', {
       method: 'POST', headers: getAuthHeaders(),
       body: JSON.stringify({ name: user.name, email: user.email, type: user.type, password: user.password }),

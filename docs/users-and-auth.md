@@ -20,7 +20,13 @@
 
 Não existe coluna `password` em `public.users`. O SQL legado que a recriava foi removido.
 
-## Perfis históricos sem Auth
+## Utilizadores sem acesso
+
+Na criação administrativa, a password é opcional. Sem password, é criado apenas o perfil em `public.users`, com `auth_user_id` nulo, mantendo a atribuição de funções. Não é criada uma conta Auth nem enviado um convite. O perfil pode ser usado nas associações da aplicação, mas não permite login.
+
+Os dados de um perfil sem Auth podem ser editados sem definir password; isso mantém o utilizador sem acesso. Uma password vazia na criação ou edição equivale a não fornecer password. Para contas já ligadas, deixar a password em branco mantém a atual.
+
+## Ativação de perfis sem Auth
 
 O formulário de edição assinala os perfis sem `auth_user_id`. Para ativar um, o administrador define uma password de pelo menos 12 caracteres e mantém inicialmente o email existente. A API cria a conta Auth, liga-a ao perfil e preserva o `id` interno, as funções e as referências existentes. Se o email já pertencer a outra conta Auth, a operação falha e exige análise individual. Não associar contas apenas por coincidência de nomes nem gerar passwords em lote.
 

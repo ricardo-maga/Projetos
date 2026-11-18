@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { requirePermission, AuthError } from '@/lib/auth/requireAuth';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -12,9 +13,9 @@ const fields = z.object({
   name: z.string().trim().min(2).max(200),
   email: z.string().trim().max(254).email().transform(value => value.toLowerCase()),
   type: z.enum(['Team', 'Sales', 'Admin', 'External', 'Other']),
-  password: z.string().min(12).max(1024).optional(),
+  password: z.preprocess(value => value === '' ? undefined : value, z.string().min(12).max(1024).optional()),
 });
-const createFields = fields.extend({ password: z.string().min(12).max(1024) });
+const createFields = fields;
 const updateFields = fields.extend({ id: z.guid() });
 
 function failure(error: unknown) {
@@ -34,29 +35,33 @@ async function createUser(req: NextRequest) {
     if (lookupError) throw lookupError;
     if (existing) return NextResponse.json({ success: false, message: 'Já existe um perfil com este email. Edite o perfil existente.' }, { status: 409 });
 
-    const { data: created, error: authError } = await admin.auth.admin.createUser({
-      email, password, email_confirm: true, user_metadata: { name },
-    });
-    if (authError || !created.user) return NextResponse.json({ success: false, message: 'Não foi possível criar a conta de autenticação. Verifique se o email já existe.' }, { status: 409 });
-    const id = created.user.id;
+    let authId: string | null = null;
+    if (password) {
+      const { data: created, error: authError } = await admin.auth.admin.createUser({
+        email, password, email_confirm: true, user_metadata: { name },
+      });
+      if (authError || !created.user) return NextResponse.json({ success: false, message: 'Não foi possível criar a conta de autenticação. Verifique se o email já existe.' }, { status: 409 });
+      authId = created.user.id;
+    }
+    const id = authId ?? randomUUID();
     // The auth.users trigger creates the profile; upsert also works if the trigger is absent.
     const { error: profileError } = await admin.from('users').upsert({
-      id, auth_user_id: id, name, email, type, approved: true, deleted: false,
+      id, auth_user_id: authId, name, email, type, approved: true, deleted: false,
       role_id: CANONICAL_ROLE_IDS.TECHNICIAN, is_admin: false,
     }, { onConflict: 'id' });
     if (profileError) {
       const { error: profileRollbackError } = await admin.from('users').delete().eq('id', id);
-      const { error: authRollbackError } = await admin.auth.admin.deleteUser(id);
+      const authRollbackError = authId ? (await admin.auth.admin.deleteUser(authId)).error : null;
       return NextResponse.json({ success: false, message: profileRollbackError || authRollbackError
         ? 'O perfil não pôde ser gravado e a reversão da conta não ficou completa. Requer reconciliação.'
-        : 'A conta Auth foi revertida porque o perfil não pôde ser gravado.' }, { status: 500 });
+        : 'A criação do utilizador foi revertida porque o perfil não pôde ser gravado.' }, { status: 500 });
     }
     const { error: roleError } = await admin.from('user_roles').upsert({
       user_id: id, role_id: CANONICAL_ROLE_IDS.TECHNICIAN, assigned_by: actor.id,
     }, { onConflict: 'user_id,role_id' });
     if (roleError) {
       const { error: profileRollbackError } = await admin.from('users').delete().eq('id', id);
-      const { error: authRollbackError } = await admin.auth.admin.deleteUser(id);
+      const authRollbackError = authId ? (await admin.auth.admin.deleteUser(authId)).error : null;
       return NextResponse.json({ success: false, message: profileRollbackError || authRollbackError
         ? 'A função inicial falhou e a reversão da conta não ficou completa. Requer reconciliação.'
         : 'A conta foi revertida porque a função inicial não pôde ser gravada.' }, { status: 500 });
@@ -82,8 +87,11 @@ async function updateUser(req: NextRequest) {
     if (duplicate) return NextResponse.json({ success: false, message: 'O email já pertence a outro perfil.' }, { status: 409 });
 
     let authId = profile.auth_user_id as string | null;
-    if (!authId) {
-      if (!password) return NextResponse.json({ success: false, message: 'Este perfil ainda não tem conta Auth. Defina uma password para o ativar.' }, { status: 409 });
+    if (!authId && !password) {
+      const { data: updatedProfile, error: profileError } = await admin.from('users')
+        .update({ name, email, type }).eq('id', id).select('id').single();
+      if (profileError || !updatedProfile) return NextResponse.json({ success: false, message: 'Não foi possível atualizar o perfil.' }, { status: 500 });
+    } else if (!authId) {
       if (email !== profile.email?.toLowerCase()) return NextResponse.json({ success: false, message: 'Associe primeiro a conta Auth usando o email atual; altere o email depois.' }, { status: 409 });
       const { data: created, error: createError } = await admin.auth.admin.createUser({
         email, password, email_confirm: true, user_metadata: { name },
