@@ -659,11 +659,6 @@ export default function OperationalUserCalendar({
                                     <AlertTriangle className="w-3.5 h-3.5 text-error shrink-0" />
                                     <span>{conflictInfo.badgeText?.replace(/^⚠\uFE0F?\s*/, '')}</span>
                                   </div>
-                                  {dayAbsence?.reason && (
-                                    <div className="text-caption font-semibold opacity-85 mt-0.5 truncate">
-                                      {dayAbsence.reason}
-                                    </div>
-                                  )}
                                 </div>
                               )}
 
