@@ -16,6 +16,8 @@ import { stringToUUID } from '@/lib/supabaseSync';
 import { getProjectCalculatedRisk, matchTaskStatusId, parseTimeToHours, getProjectStatusStyle } from '@/lib/utils';
 import { currentForecastMonth, forecastMonth, offsetForecastMonth } from '@/domains/projects/modules/projectForecast';
 import AbsenceCalendar from '@/domains/absences/ui/AbsenceCalendar';
+import { deliveredProjectsWithPendingTasks } from '@/domains/projects/modules/deliveredProjectsWithPendingTasks';
+import PendingProjectTaskList from '@/domains/projects/ui/PendingProjectTaskList';
 
 interface BentoDashboardProps {
   projects: Project[];
@@ -34,6 +36,8 @@ interface BentoDashboardProps {
   projectPriorities: any[];
   onNavigate: (tab: string) => void;
   onSelectProject: (id: string) => void;
+  onSelectTask?: (id: string) => void;
+  canOpenProjects?: boolean;
 }
 
 export default function BentoDashboard({
@@ -53,6 +57,8 @@ export default function BentoDashboard({
   projectPriorities,
   onNavigate,
   onSelectProject,
+  onSelectTask,
+  canOpenProjects = true,
 }: BentoDashboardProps) {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [projectSearchQuery, setProjectSearchQuery] = useState<string>('');
@@ -68,6 +74,9 @@ export default function BentoDashboard({
   const forecastProjects = useMemo(() => projects.filter(project =>
     !project.deleted && forecastMonth(project.forecastDate) === forecastSelectedMonth
   ).sort((a, b) => a.title.localeCompare(b.title, 'pt-PT')), [projects, forecastSelectedMonth]);
+  const deliveredProjects = useMemo(() => deliveredProjectsWithPendingTasks({
+    projects, tasks, clients, users, projectStatuses, taskStatuses,
+  }), [projects, tasks, clients, users, projectStatuses, taskStatuses]);
 
   // Robust ID normalization matcher for legacy, short, or standard UUID formats
   const matchId = (idA: string | null | undefined, idB: string | null | undefined) => {
@@ -388,6 +397,34 @@ export default function BentoDashboard({
                     <td className="px-5 py-3.5 whitespace-nowrap text-text-primary">{deliveryDate ? new Date(`${deliveryDate}T00:00:00`).toLocaleDateString('pt-PT') : '—'}</td>
                   </tr>;
                 })}
+              </tbody>
+            </table>}
+        </div>
+      </Card>
+
+      <Card className="md:col-span-12 flex flex-col overflow-hidden" aria-label="Projetos entregues com pendentes">
+        <div className="p-4 sm:p-5 border-b border-border/80 flex flex-wrap items-center justify-between gap-3 bg-surface-muted/60">
+          <h2 className="text-heading-sm text-text-primary">Projetos entregues com pendentes</h2>
+        </div>
+        <div className="overflow-x-auto w-full">
+          {deliveredProjects.length === 0 ? <p className="p-5 text-body-sm text-text-muted">Sem projetos entregues com pendentes.</p> :
+            <table aria-label="Projetos entregues com pendentes" className="w-full min-w-[760px] table-fixed text-left border-collapse text-body-sm">
+              <colgroup><col className="w-[10%]" /><col className="w-[40%]" /><col className="w-1/2" /></colgroup>
+              <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
+                <tr><th scope="col" className="px-5 py-3.5">IP</th><th scope="col" className="px-5 py-3.5">Projeto</th><th scope="col" className="px-5 py-3.5">Tarefas por concluir</th></tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle font-medium">
+                {deliveredProjects.map(({ project, clientName, pendingTasks }) => <tr key={project.id} className="hover:bg-surface-muted/80 transition-colors align-top">
+                  <td className="px-5 py-3.5 font-mono font-bold text-text-primary break-words">{project.installProjectNo || '-'}</td>
+                  <td className="px-5 py-3.5">
+                    <div className="text-primary-ink font-medium break-words">{clientName}</div>
+                    {canOpenProjects ? <Button type="button" variant="ghost" size="sm"
+                      className="h-auto min-h-9 max-w-full px-0 py-1 whitespace-normal break-words justify-start text-left font-semibold text-text-primary"
+                      aria-label={`Abrir projeto ${project.title}`} onClick={() => onSelectProject(project.id)}>{project.title}</Button>
+                      : <div className="font-semibold text-text-primary break-words">{project.title}</div>}
+                  </td>
+                  <td className="px-5 py-3.5"><PendingProjectTaskList tasks={pendingTasks} onSelectTask={onSelectTask} /></td>
+                </tr>)}
               </tbody>
             </table>}
         </div>

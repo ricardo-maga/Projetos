@@ -47,6 +47,7 @@ const CalendarSection = dynamic(() => import('@/domains/calendar/ui/CalendarSect
 const CalendarSubscriptions = dynamic(() => import('@/domains/calendar/ui/CalendarSubscriptions'), { loading: SectionLoading });
 const MyFocusSection = dynamic(() => import('@/domains/monitoring/ui/MyFocusSection'), { loading: SectionLoading });
 const ReportsSection = dynamic(() => import('@/domains/reports/ui/ReportsSection'), { loading: SectionLoading });
+const TaskDetailsModal = dynamic(() => import('@/domains/tasks/ui/TaskDetailsModal'));
 
 const AUTH_SCREEN = 'min-h-screen flex items-center justify-center bg-surface-muted p-6';
 const AUTH_INPUT = 'w-full p-3 border border-border rounded-card font-medium focus:ring-2 focus:ring-action-500 focus:border-action-500 outline-none disabled:bg-surface-muted disabled:text-text-muted disabled:cursor-not-allowed transition-colors';
@@ -54,6 +55,7 @@ const AUTH_INPUT = 'w-full p-3 border border-border rounded-card font-medium foc
 export default function Page() {
   const [mounted, setMounted] = React.useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
 
   // Login state
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -184,6 +186,9 @@ export default function Page() {
     sidebarOpen, setSidebarOpen, navKey,
     handleTabChange, handleConfigTabChange, handleSelectProject,
   } = usePageNavigation(mounted, Boolean(state));
+
+  const pendingTask = pendingTaskId ? state?.tasks.find(task => task.id === pendingTaskId && !task.deleted) : undefined;
+  const openPendingTask = hasPermission(currentUser, 'tasks_read') ? (id: string) => setPendingTaskId(id) : undefined;
 
   React.useEffect(() => {
     // Match Tailwind's existing lg boundary between tablet and desktop.
@@ -873,6 +878,8 @@ export default function Page() {
                   projectPriorities={state.projectPriorities}
                   onNavigate={handleTabChange}
                   onSelectProject={handleSelectProject}
+                  onSelectTask={openPendingTask}
+                  canOpenProjects={hasPermission(currentUser, 'projects_read')}
                 />
               )}
 
@@ -910,7 +917,11 @@ export default function Page() {
                   clients={state.clients || []}
                   projectPriorities={state.projectPriorities || []}
                   taskStatuses={state.taskStatuses || []}
+                  projectStatuses={state.projectStatuses || []}
+                  users={state.users || []}
                   onSelectProject={handleSelectProject}
+                  onSelectTask={openPendingTask}
+                  canOpenProjects={hasPermission(currentUser, 'projects_read')}
                 />
               )}
 
@@ -1205,6 +1216,30 @@ export default function Page() {
           Terminar sessão
         </button>
       </Dialog>
+
+      {pendingTask && hasPermission(currentUser, 'tasks_read') && (activeTab === 'dashboard' || activeTab === 'reports') && <TaskDetailsModal
+        key={pendingTask.id}
+        isOpen
+        task={pendingTask}
+        mode="edit"
+        onClose={() => setPendingTaskId(null)}
+        onSaveSuccess={() => setPendingTaskId(null)}
+        onDeleteSuccess={() => setPendingTaskId(null)}
+        updateTask={updateTask}
+        deleteTask={deleteTask}
+        taskStatuses={state.taskStatuses}
+        taskTypes={state.taskTypes || []}
+        projectPriorities={state.projectPriorities || []}
+        users={state.users}
+        userGroups={state.userGroups}
+        appConfig={state.appConfig}
+        projects={state.projects}
+        clients={state.clients}
+        absences={state.userAbsences || []}
+        tasks={state.tasks}
+        canWrite={hasPermission(currentUser, 'tasks_write')}
+        canDelete={hasPermission(currentUser, 'tasks_delete')}
+      />}
 
     </div>
   );
