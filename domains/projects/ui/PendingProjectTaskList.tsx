@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/Button';
 import { getUserInitials } from '@/lib/utils';
 import type { PendingProjectTask } from '@/domains/projects/modules/deliveredProjectsWithPendingTasks';
 
-export default function PendingProjectTaskList({ tasks, onSelectTask }: {
+export default function PendingProjectTaskList({ tasks, onSelectTask, compactDate = false }: {
   tasks: PendingProjectTask[];
   onSelectTask?: (id: string) => void;
+  compactDate?: boolean;
 }) {
   return <ul className="space-y-2" aria-label="Tarefas por concluir">
     {tasks.map(({ task, date, assignees }) => <li key={task.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm">
-      <span className="text-text-secondary whitespace-nowrap">{date ? date.split('-').reverse().join('/') : 'Sem data prevista'} —</span>
+      <span className="text-text-secondary whitespace-nowrap">{date ? date.split('-').reverse().join('/') : compactDate ? 'Sem data' : 'Sem data prevista'}{compactDate ? '' : ' —'}</span>
       {onSelectTask ? <Button type="button" variant="ghost" size="sm"
         className="h-auto min-h-9 min-w-0 px-1 py-1 whitespace-normal break-words text-left justify-start text-text-primary"
         aria-label={`Abrir tarefa ${task.title}`} onClick={() => onSelectTask(task.id)}>{task.title}</Button>

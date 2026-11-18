@@ -424,7 +424,7 @@ export default function BentoDashboard({
                       aria-label={`Abrir projeto ${project.title}`} onClick={() => onSelectProject(project.id)}>{project.title}</Button>
                       : <div className="font-semibold text-text-primary break-words">{project.title}</div>}
                   </td>
-                  <td className="px-5 py-3.5"><PendingProjectTaskList tasks={pendingTasks} onSelectTask={onSelectTask} /></td>
+                  <td className="px-5 py-3.5"><PendingProjectTaskList tasks={pendingTasks} onSelectTask={onSelectTask} compactDate /></td>
                 </tr>)}
               </tbody>
             </table>}
