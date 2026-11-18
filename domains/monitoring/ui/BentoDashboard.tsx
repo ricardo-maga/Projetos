@@ -379,7 +379,8 @@ export default function BentoDashboard({
         </div>
         <div className="overflow-x-auto w-full">
           {forecastProjects.length === 0 ? <p className="p-5 text-body-sm text-text-muted">Sem projetos em Forecast neste mês.</p> :
-            <table aria-label="Projetos em Forecast" className="w-full min-w-[760px] text-left border-collapse text-body-sm">
+            <table aria-label="Projetos em Forecast" className="w-full min-w-[760px] table-fixed text-left border-collapse text-body-sm">
+              <colgroup><col className="w-[15%]" /><col className="w-[35%]" /><col className="w-1/5" /><col className="w-[30%]" /></colgroup>
               <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
                 <tr><th className="px-5 py-3.5">IP</th><th className="px-5 py-3.5">Projeto</th><th className="px-5 py-3.5">Estado</th><th className="px-5 py-3.5">Prazo de entrega</th></tr>
               </thead>
@@ -409,13 +410,13 @@ export default function BentoDashboard({
         <div className="overflow-x-auto w-full">
           {deliveredProjects.length === 0 ? <p className="p-5 text-body-sm text-text-muted">Sem projetos entregues com pendentes.</p> :
             <table aria-label="Projetos entregues com pendentes" className="w-full min-w-[760px] table-fixed text-left border-collapse text-body-sm">
-              <colgroup><col className="w-[10%]" /><col className="w-[40%]" /><col className="w-1/2" /></colgroup>
+              <colgroup><col className="w-[15%]" /><col className="w-[35%]" /><col className="w-1/2" /></colgroup>
               <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
                 <tr><th scope="col" className="px-5 py-3.5">IP</th><th scope="col" className="px-5 py-3.5">Projeto</th><th scope="col" className="px-5 py-3.5">Tarefas por concluir</th></tr>
               </thead>
               <tbody className="divide-y divide-border-subtle font-medium">
                 {deliveredProjects.map(({ project, clientName, pendingTasks }) => <tr key={project.id} className="hover:bg-surface-muted/80 transition-colors align-top">
-                  <td className="px-5 py-3.5 font-mono font-bold text-text-primary break-words">{project.installProjectNo || '-'}</td>
+                  <td className="px-5 py-3.5 font-mono font-bold text-text-primary whitespace-nowrap">{project.installProjectNo || '-'}</td>
                   <td className="px-5 py-3.5">
                     <div className="text-primary-ink font-medium break-words">{clientName}</div>
                     {canOpenProjects ? <Button type="button" variant="ghost" size="sm"

@@ -57,7 +57,9 @@ describe('Delivered projects with pending tasks', () => {
     const html = renderToStaticMarkup(<PendingProjectTaskList tasks={groups[1].pendingTasks} onSelectTask={() => {}} />);
     expect(html).toContain('18/11/2026');
     expect(html).toContain('Sem data prevista');
-    expect(html).toContain('Sem utilizadores atribuídos');
+    expect(html).not.toContain('Sem utilizadores atribuídos');
+    expect(html).toContain('>AS</span>');
+    expect(html).toContain('>BC</span>');
     expect(html).toContain('Ana Silva');
     expect(html).toContain('Bruno Costa');
   });
