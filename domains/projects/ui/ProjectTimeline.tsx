@@ -200,8 +200,8 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       className={`w-full min-h-6 h-auto px-0.5 py-0.5 justify-start text-left bg-surface border border-border border-l-2 ${taskBorderClass(getTaskStatusStyle(task.statusId, taskStatuses))} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
       onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
       <span className="flex flex-wrap items-center gap-0.5 w-full min-w-0">
-        {names.map((name, index) => <span key={index} title={name} aria-label={name} className="w-5 h-5 rounded-full bg-primary text-inverse flex items-center justify-center text-micro font-bold shrink-0">{getUserInitials(name)}</span>)}
-        {!names.length && <span className="block w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
+        {names.map((name, index) => <span key={index} aria-label={name} className="w-5 h-5 rounded-full bg-primary text-inverse flex items-center justify-center text-micro font-bold shrink-0">{getUserInitials(name)}</span>)}
+        {!names.length && <span className="block w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" />}
       </span>
     </Button>;
   };

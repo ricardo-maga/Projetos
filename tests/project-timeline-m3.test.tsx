@@ -152,10 +152,13 @@ describe('Project timeline M3', () => {
     const card = find(tree, e => e.props?.['data-timeline-hd-task'] === 'project');
     const html = renderToStaticMarkup(card.props.children);
     for (const [name, initials] of [['Ana Silva', 'AS'], ['Bruno Costa', 'BC'], ['Carla Reis', 'CR']]) {
-      expect(html).toContain(`>${initials}</span>`); expect(html).toContain(`title="${name}"`);
+      expect(html).toContain(`>${initials}</span>`); expect(html).toContain(`aria-label="${name}"`);
       expect(html).not.toContain(`>${name}</span>`);
     }
     expect(html).not.toContain('Título'); expect(html).not.toContain('8h'); expect(html).toContain('rounded-full');
+    expect(card.props.title).toBe('Título do projeto · Ana Silva · Bruno Costa · Carla Reis');
+    expect(html).not.toContain('title=');
+    expect(renderToStaticMarkup(find(tree, e => e.props?.['data-timeline-hd-task'] === 'unassigned').props.children)).not.toContain('title=');
     expect(find(tree, e => e.props?.['data-timeline-hd-task'] === 'other')).toBeDefined();
     expect(renderToStaticMarkup(find(tree, e => e.props?.['data-timeline-hd-task'] === 'unassigned'))).toContain('Sem utilizador alocado');
     const widths = find(tree, e => e.type === 'colgroup').props.children[1].map((e: any) => e.props.style.width);
