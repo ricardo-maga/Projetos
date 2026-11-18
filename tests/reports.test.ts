@@ -19,7 +19,7 @@ describe('Reports catalog', () => {
     expect(report.details.map((row: any) => row.id)).toEqual(['late']);
   });
   it('lists the available reports', () => {
-    expect(REPORT_CATALOG.map(item => item.id)).toEqual(['overdue-materials', 'critical-open-tasks', 'unallocated-tasks']);
+    expect(REPORT_CATALOG.map(item => item.id)).toEqual(['overdue-materials', 'critical-open-tasks', 'unallocated-tasks', 'delivered-projects-with-pending-tasks']);
   });
   it('includes critical open tasks with or without a project or date', () => {
     const report = buildReport('critical-open-tasks', input({

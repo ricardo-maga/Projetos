@@ -1,12 +1,14 @@
-import type { Client, Project, ProjectMaterial, ProjectPriority, Task, TaskStatus } from '@/lib/types';
+import type { Client, Project, ProjectMaterial, ProjectPriority, ProjectStatus, Task, TaskStatus, User } from '@/lib/types';
+import { deliveredProjectsWithPendingTasks } from '@/domains/projects/modules/deliveredProjectsWithPendingTasks';
 import { getTaskEffectiveDate, matchId, matchTaskStatusId } from '@/lib/utils';
 
-export type ReportId = 'overdue-materials' | 'critical-open-tasks' | 'unallocated-tasks';
+export type ReportId = 'overdue-materials' | 'critical-open-tasks' | 'unallocated-tasks' | 'delivered-projects-with-pending-tasks';
 
 export const REPORT_CATALOG: Array<{ id: ReportId; label: string; description: string }> = [
   { id: 'overdue-materials', label: 'Materiais em atraso', description: 'Materiais pendentes cuja entrega prevista já passou.' },
   { id: 'critical-open-tasks', label: 'Tarefas críticas em aberto', description: 'Tarefas com prioridade de nível 3 e estado de nível 1 ou 2.' },
   { id: 'unallocated-tasks', label: 'Tarefas por alocar', description: 'Tarefas em estado de nível 1 ou 2 sem responsável e/ou sem data prevista.' },
+  { id: 'delivered-projects-with-pending-tasks', label: 'Projetos entregues com pendentes', description: 'Projetos com estado de nível 5 e tarefas por concluir com estado de nível 1 ou 2.' },
 ];
 
 const iso = (value?: string) => (value || '').trim().slice(0, 10);
@@ -19,10 +21,19 @@ export interface ReportsInput {
   clients: Client[];
   projectPriorities: ProjectPriority[];
   taskStatuses: TaskStatus[];
+  projectStatuses?: ProjectStatus[];
+  users?: User[];
   now?: Date;
 }
 
 export function buildReport(id: ReportId, input: ReportsInput) {
+  if (id === 'delivered-projects-with-pending-tasks') {
+    const rows = deliveredProjectsWithPendingTasks({ ...input, projectStatuses: input.projectStatuses || [], users: input.users || [] });
+    return { rows, total: rows.length, details: rows.map(group => ({
+      id: group.project.id, primary: `${group.clientName} · ${group.project.title}`, secondary: '',
+      date: '', projectId: group.project.id, value: '', pendingTasks: group.pendingTasks,
+    })) };
+  }
   const activeProjects = new Map(input.projects.filter(project => !project.deleted).map(project => [project.id, project]));
   const clientName = (project?: Project) => input.clients.find(client => client.id === project?.clientId)?.clientName || 'Sem cliente';
 
