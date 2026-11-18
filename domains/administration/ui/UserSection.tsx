@@ -139,10 +139,6 @@ export default function UserSection({
       alert('Por favor, preencha o nome e email do utilizador.');
       return;
     }
-    if (!uPassword) {
-      alert('Por favor, defina uma password para o novo utilizador.');
-      return;
-    }
     if (uPassword !== uPasswordConfirm) {
       alert('As passwords introduzidas não coincidem.');
       return;
@@ -155,7 +151,7 @@ export default function UserSection({
     try { newUserId = await addUser({
       name: uName,
       email: uEmail,
-      password: uPassword,
+      password: uPassword || undefined,
       type: uType,
     }); } catch (error) {
       alert(error instanceof Error ? error.message : 'Não foi possível criar o utilizador.');
@@ -201,11 +197,11 @@ export default function UserSection({
       type: uType,
     };
 
+    if (uPassword !== uPasswordConfirm) {
+      alert('As passwords introduzidas não coincidem.');
+      return;
+    }
     if (uPassword) {
-      if (uPassword !== uPasswordConfirm) {
-        alert('As passwords introduzidas não coincidem.');
-        return;
-      }
       updates.password = uPassword;
     }
 
@@ -305,14 +301,15 @@ export default function UserSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label htmlFor="admin-user-password" className="block text-text-secondary">Password {isAddingUser ? '*' : editingUser && !editingUser.authUserId ? '(Necessária para ativar a conta)' : '(Deixe em branco para manter a atual)'}</label>
-                  {!isAddingUser && editingUser && !editingUser.authUserId && (
-                    <p className="text-xs text-feedback-warning-700">Este perfil não tem conta de autenticação. Defina uma password para criar a conta e permitir o acesso.</p>
+                  <label htmlFor="admin-user-password" className="block text-text-secondary">Password {isAddingUser || !editingUser?.authUserId ? '(Opcional)' : '(Deixe em branco para manter a atual)'}</label>
+                  {(isAddingUser || !editingUser?.authUserId) && (
+                    <p id="admin-user-password-help" className="text-xs text-text-secondary">Deixe em branco para manter o utilizador sem acesso à aplicação. Defina uma password de pelo menos 12 caracteres para criar a conta de autenticação.</p>
                   )}
                   <input
                     id="admin-user-password"
                     type="password"
-                    required={isAddingUser || Boolean(editingUser && !editingUser.authUserId)}
+                    aria-describedby={isAddingUser || !editingUser?.authUserId ? 'admin-user-password-help' : undefined}
+                    autoComplete="new-password"
                     minLength={12}
                     value={uPassword}
                     onChange={e => setUPassword(e.target.value)}
@@ -322,11 +319,12 @@ export default function UserSection({
                 </div>
 
                 <div className="space-y-1">
-                  <label htmlFor="admin-user-password-confirm" className="block text-text-secondary">Confirmar Password {isAddingUser ? '*' : ''}</label>
+                  <label htmlFor="admin-user-password-confirm" className="block text-text-secondary">Confirmar Password {uPassword ? '*' : ''}</label>
                   <input
                     id="admin-user-password-confirm"
                     type="password"
-                    required={isAddingUser && !!uPassword}
+                    required={!!uPassword}
+                    autoComplete="new-password"
                     minLength={12}
                     value={uPasswordConfirm}
                     onChange={e => setUPasswordConfirm(e.target.value)}
