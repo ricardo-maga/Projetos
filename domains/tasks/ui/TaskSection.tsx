@@ -106,7 +106,7 @@ export default function TaskSection({
   // Filters state
   const [search, setSearch] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('');
-  const [datePreset, setFilterDatePreset] = useState<'all' | 'today' | 'tomorrow' | 'this_week' | 'overdue' | 'completed' | 'completed_this_week'>('all');
+  const [datePreset, setFilterDatePreset] = useState<'all' | 'no_date' | 'today' | 'tomorrow' | 'this_week' | 'overdue' | 'completed' | 'completed_this_week'>('all');
 
   // Pagination & Sorting state
   const [pageSize, setPageSize] = useState<number>(25);
@@ -338,6 +338,8 @@ export default function TaskSection({
 
       if (datePreset === 'all') {
         matchesPreset = scale !== 3; // default: do NOT show level 3
+      } else if (datePreset === 'no_date') {
+        matchesPreset = !t.estimatedDate?.trim() && (scale === 1 || scale === 2);
       } else if (datePreset === 'today') {
         matchesPreset = targetDate === todayStr && (scale === 1 || scale === 2);
       } else if (datePreset === 'tomorrow') {
@@ -620,6 +622,16 @@ export default function TaskSection({
                 className="h-8 px-3 text-caption font-bold"
               >
                 Todas
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                variant={datePreset === 'no_date' ? 'primary' : 'secondary'}
+                onClick={() => setFilterDatePreset('no_date')}
+                className="h-8 px-3 text-caption font-bold"
+              >
+                Sem data
               </Button>
 
               <Button
