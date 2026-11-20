@@ -8,6 +8,8 @@ import { projectDeliveryAnalysis } from '@/domains/projects/modules/projectAnaly
 import ProjectActivityTable from './ProjectActivityTable';
 import MarkdownCommentBody from '@/components/ui/MarkdownCommentBody';
 import MarkdownCommentComposer from '@/components/ui/MarkdownCommentComposer';
+import MarkdownEditor from '@/components/ui/MarkdownEditor';
+import MarkdownBody from '@/components/ui/MarkdownBody';
 import React, { useState, useEffect, useRef } from 'react';
 import { Project, Client, Comment, Task, TaskType, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '@/lib/types';
 import {
@@ -1792,7 +1794,7 @@ export default function ProjectSection({
                 {/* Description Block */}
                 <div className="bg-surface-muted p-4 rounded-control border border-border-subtle">
                   <h3 className="font-bold text-body-sm uppercase text-text-muted mb-2 flex items-center gap-1"><FileText className="w-3.5 h-3.5"/> Descrição do Projeto</h3>
-                  <p className="text-body-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{selectedProj.description || 'Sem descrição registada.'}</p>
+                  <div className="text-body-sm leading-relaxed"><MarkdownBody text={selectedProj.description || 'Sem descrição registada.'} /></div>
                 </div>
 
               {/* Vistas da atividade e planeamento do projeto */}
@@ -3676,13 +3678,11 @@ export default function ProjectSection({
             {/* Description */}
             <div className="space-y-1 md:col-span-2">
               <label className="block text-text-secondary">Descrição</label>
-              <Textarea aria-label="Descrição"
-                value={formDesc}
-                onChange={e => setFormDesc(e.target.value)}
-                rows={4}
+              <MarkdownEditor ariaLabel="Descrição" value={formDesc} onChange={setFormDesc}
+                maxLength={10000} heightClassName="h-40"
                 placeholder="Introduza os detalhes do projeto..."
-                className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-none text-body-sm font-medium"
               />
+              <p className="text-caption text-text-muted">{formDesc.length}/10000</p>
             </div>
 
             {/* Budget */}
