@@ -380,16 +380,22 @@ describe('Project timeline M3', () => {
     expect(computeTimelineTaskDropUpdates(tasks[1], '2026-10-06', 'one')).toEqual({ estimatedDate: '2026-10-06' });
     expect(tasks[1].startDate).toBe('2026-10-04');
   });
-  it('opens compact undated tasks and schedules them by drag within the project', () => {
+  it.each([7, 14, 28, '56-hd'])('expands undated tasks with the project and schedules them by drag in view %s', (view) => {
     const task: any = { id: 'pending', projectId: 'one', title: 'Por planear', startDate: '2026-10-04', endDate: '', estimatedDate: '', assigneeIds: [], statusId: 'pending' };
     const updates: any[] = [];
     let selected = '';
-    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all', view });
     const props = { ...timelinePreviewProps, projects: [project('one'), project('two')], tasks: [task], updateTask: (id: string, change: any) => updates.push([id, change]), onSelectTask: (item: any) => { selected = item.id; } };
     let tree = h.render(props);
-    expect(renderToStaticMarkup(tree)).toContain('Tarefas sem data');
-    find(tree, e => e.props?.['aria-label'] === 'Mostrar 1 tarefas sem data de Projeto one').props.onClick();
+    const cell = find(tree, e => e.props?.['data-timeline-project-cell'] === 'one');
+    expect(find(cell, e => e.props?.role === 'img').props['aria-label']).toBe('1 tarefa sem data de Projeto one');
+    expect(renderToStaticMarkup(cell)).toContain('lucide-calendar-days');
+    expect(renderToStaticMarkup(cell)).not.toContain('>Tarefas sem data<');
+    expect(find(cell, e => e.props?.['aria-label'] === 'Abrir tarefa sem data Por planear')).toBeUndefined();
+    expect(find(find(tree, e => e.props?.['data-timeline-project-cell'] === 'two'), e => e.props?.role === 'img')).toBeUndefined();
+    find(cell, e => e.props?.['aria-expanded'] === false).props.onClick();
     tree = h.render(props);
+    expect(renderToStaticMarkup(tree)).toContain('Data incompleta');
     const card = find(tree, e => e.props?.['aria-label'] === 'Abrir tarefa sem data Por planear');
     expect(card.props.draggable).toBe(true);
     card.props.onClick();
@@ -403,6 +409,10 @@ describe('Project timeline M3', () => {
     expect(updates).toHaveLength(0);
     drop('one:2026-10-07');
     expect(updates[0]).toEqual(['pending', { estimatedDate: '2026-10-07' }]);
+    find(find(tree, e => e.props?.['data-timeline-project-cell'] === 'one'), e => e.props?.['aria-expanded'] === true).props.onClick();
+    tree = h.render(props);
+    expect(find(tree, e => e.props?.['aria-label'] === 'Abrir tarefa sem data Por planear')).toBeUndefined();
+    find(find(tree, e => e.props?.['data-timeline-project-cell'] === 'one'), e => e.props?.['aria-expanded'] === false).props.onClick();
     tree = h.render({ ...props, canCreate: false });
     expect(find(tree, e => e.props?.['aria-label'] === 'Abrir tarefa sem data Por planear').props.draggable).toBe(false);
     expect(find(tree, e => e.props?.['aria-label'] === 'Planear Por planear em Projeto one')).toBeUndefined();

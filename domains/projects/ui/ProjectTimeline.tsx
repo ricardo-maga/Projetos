@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
 import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User, UserAbsence } from '@/lib/types';
 import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '@/domains/projects/modules/projectTimeline';
 import { getOperationalCalendarDays, formatOperationalDateRange, getOperationalDayConflicts, getUserDayAbsence, isTaskOnDate, isUserAssignedToTask } from '@/domains/calendar/modules/operationalCalendar';
@@ -56,7 +56,6 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const [fullscreen, setFullscreen] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(new Set());
-  const [expandedUndatedProjects, setExpandedUndatedProjects] = useState<Set<string>>(new Set());
   const [dragOverCell, setDragOverCell] = useState<string | null>(null);
   const [moveError, setMoveError] = useState('');
   const dragContext = useRef<{ operation: 'copy' | 'move'; date: string | null } | null>(null);
@@ -307,16 +306,20 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               {canCreate && !highDensity && <div className="flex justify-end"><IconButton size="sm" aria-label={`Criar tarefa sem projeto no dia ${day.dateStr}`} title="Criar tarefa"
                 onClick={() => openOutsideTimeline(() => onCreateTask(day.dateStr))}><Plus className="w-4 h-4" /></IconButton></div>}
             </td>)}
-          </tr>{visibleProjects.map(project => { const style = getProjectStatusStyle(project.statusId, projectStatuses); const expanded = expandedProjects.has(project.id); const pending = undatedTasks.get(project.id) || []; const undatedOpen = expandedUndatedProjects.has(project.id); return <tr key={project.id} className="align-top">
-            <th scope="row" className="p-3 border-b border-border text-left font-medium text-text-primary space-y-1 bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" className="min-w-0 flex-1 justify-between px-0 text-left" aria-expanded={expanded}
+          </tr>{visibleProjects.map(project => { const style = getProjectStatusStyle(project.statusId, projectStatuses); const expanded = expandedProjects.has(project.id); const pending = undatedTasks.get(project.id) || []; const pendingLabel = `${pending.length} ${pending.length === 1 ? 'tarefa sem data' : 'tarefas sem data'} de ${project.title}`; return <tr key={project.id} className="align-top">
+            <th scope="row" data-timeline-project-cell={project.id} className={`${highDensity ? 'p-1.5' : 'p-[0.6rem]'} relative border-b border-border text-left font-medium text-text-primary space-y-1 bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border`}>
+              <div>
+                <Button variant="ghost" size="sm" className="w-full min-w-0 h-auto min-h-9 px-0 py-0 text-left whitespace-normal" aria-expanded={expanded}
                   aria-label={`${expanded ? 'Recolher' : 'Expandir'} projeto de ${clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}`}
+                  aria-describedby={pending.length ? `timeline-undated-${project.id}` : undefined}
                   onClick={() => setExpandedProjects(previous => { const next = new Set(previous); if (next.has(project.id)) next.delete(project.id); else next.add(project.id); return next; })}>
-                  <span className="truncate" title={clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}>{clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}</span>
-                  <ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 ${expanded ? 'rotate-180' : ''}`} />
+                  <span className="min-w-0 flex-1 leading-5 [overflow-wrap:anywhere]" title={clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}>
+                    {pending.length > 0 && <span id={`timeline-undated-${project.id}`} role="img" aria-label={pendingLabel} title={pendingLabel} className="mr-1 inline-block align-text-bottom text-error"><CalendarDays aria-hidden="true" className="w-4 h-4" /></span>}
+                    {clientMap.get(project.clientId)?.clientName || 'Cliente N/D'}
+                    <ChevronDown aria-hidden="true" className={`ml-1 inline-block align-text-bottom w-4 h-4 ${expanded ? 'rotate-180' : ''}`} />
+                  </span>
                 </Button>
-                {!expanded && <IconButton size="sm" aria-label={`Ocultar projeto ${project.title} da timeline`} onClick={() => setHiddenProjectIds(previous => new Set(previous).add(project.id))}><X className="w-4 h-4" /></IconButton>}
+                {!expanded && <IconButton size="sm" className="absolute top-0 right-0 z-10 w-[27px] h-[27px]" title="Ocultar projeto da timeline" aria-label={`Ocultar projeto ${project.title} da timeline`} onClick={() => setHiddenProjectIds(previous => new Set(previous).add(project.id))}><X aria-hidden="true" className="w-3 h-3" /></IconButton>}
               </div>
               {expanded && <div className="space-y-1">
               <Button variant="ghost" size="sm" className="px-0 h-auto min-h-9 text-body whitespace-normal text-left justify-start" onClick={() => openOutsideTimeline(() => onSelectProject?.(project.id))}>{project.title}</Button>
@@ -325,13 +328,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                 <Badge className={`${style.badgeClass} px-1 py-0 text-micro leading-4`}>{style.name}</Badge>
               </div>
               </div>}
-              {pending.length > 0 && <div className="pt-1">
-                <Button variant="ghost" size="sm" className="w-full min-h-8 h-auto px-1 justify-between text-left text-caption" aria-expanded={undatedOpen}
-                  aria-label={`${undatedOpen ? 'Recolher' : 'Mostrar'} ${pending.length} tarefas sem data de ${project.title}`}
-                  onClick={() => setExpandedUndatedProjects(previous => { const next = new Set(previous); if (next.has(project.id)) next.delete(project.id); else next.add(project.id); return next; })}>
-                  <span>Tarefas sem data</span><ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 ${undatedOpen ? 'rotate-180' : ''}`} />
-                </Button>
-                {undatedOpen && <div className="max-h-32 overflow-y-auto space-y-2 pt-1" aria-label={`Tarefas sem data de ${project.title}`}>
+              {expanded && pending.length > 0 && <div className="max-h-32 overflow-y-auto space-y-2 pt-1" aria-label={`Tarefas sem data de ${project.title}`}>
                   {pending.map(task => { const taskStyle = getTaskStatusStyle(task.statusId, taskStatuses); const incomplete = Boolean(task.startDate?.trim() || task.endDate?.trim()); return <div key={task.id} className={`rounded-control border border-border border-l-4 ${taskBorderClass(taskStyle)} bg-surface-muted p-1 space-y-1`}>
                     <Button {...dragProps(task)} variant="ghost" size="sm" className={`w-full h-auto min-h-8 px-1 justify-start text-left ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
                       title={task.title} aria-label={`Abrir tarefa sem data ${task.title}`} onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
@@ -340,7 +337,6 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                     </Button>
                     {incomplete && <span className="block text-caption text-warning">Data incompleta</span>}
                   </div>; })}
-                </div>}
               </div>}
             </th>
             {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, project.id)} className={`${highDensity ? 'p-0.5' : 'p-2'} border-b border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${(events.get(project.id)?.get(day.dateStr) || []).some(event => event.kind === 'task' && conflictTaskIds.get(day.dateStr)?.has(event.task.id)) ? 'project-timeline-conflict-cell' : ''} ${dragOverCell === `${project.id}:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
