@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Client } from '@/lib/types';
 import { Plus, Search, Edit2, Trash2, Building, Mail, Phone, MapPin, Hash, X, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
+import MarkdownContent from '@/components/ui/MarkdownContent';
 
 import { hasPermission } from '@/lib/permissions';
 import { M3SectionHeader } from '@/components/M3';
@@ -602,7 +603,7 @@ export default function ClientSection({
                               {proj.title}
                             </div>
                             <div className="text-caption text-text-muted truncate max-w-md font-medium">
-                              {proj.description || 'Sem descrição'}
+                              <MarkdownContent text={proj.description || 'Sem descrição'} inline />
                             </div>
                           </div>
                           <div className="flex items-center gap-3">

@@ -307,7 +307,7 @@ describe('Projects M3 presentation', () => {
       isEditing: true, editingId: project.id, formTitle: 'Projeto editado',
       formClient: 'qa-client', clientSearchQuery: 'Cliente de exemplo',
       formStatus: 'qa-status', formBudget: '1500', formTeams: ['qa-team'],
-      formPartners: ['qa-partner'], formCategories: ['qa-category'],
+      formPartners: ['qa-partner'], formCategories: ['qa-category'], formDesc: '**Descrição**\n\n- Material',
     });
     const tree = harness.render({ ...projectPreviewProps, updateProject: async (id: string, payload: any) => { saved.push({ id, payload }); } });
     const form = findProjectElement(tree, el => el.type === 'form');
@@ -315,6 +315,7 @@ describe('Projects M3 presentation', () => {
     expect(saved).toHaveLength(1);
     expect(saved[0].id).toBe(project.id);
     expect(saved[0].payload.title).toBe('Projeto editado');
+    expect(saved[0].payload.description).toBe('**Descrição**\n\n- Material');
     expect(saved[0].payload.clientId).toBe('qa-client');
     expect(saved[0].payload.statusId).toBe('qa-status');
     expect(saved[0].payload.budgetValue).toBe(1500);
@@ -322,5 +323,16 @@ describe('Projects M3 presentation', () => {
     expect(saved[0].payload.teamsInvolvedIds).toEqual(['qa-team']);
     expect(saved[0].payload.partnersIds).toEqual(['qa-partner']);
     expect(harness.state.isEditing).toBe(false);
+  });
+
+  it('uses the shared description editor and keeps its updates in the project form', () => {
+    const harness = createProjectHarness({ isEditing: true, formDesc: 'Texto antigo' });
+    const editor = findProjectElement(harness.render(projectPreviewProps), el => el.type?.name === 'MarkdownEditor');
+    expect(editor.props.value).toBe('Texto antigo');
+    expect(editor.props.maxLength).toBe(10000);
+    editor.props.onChange('**Novo texto**');
+    expect(harness.state.formDesc).toBe('**Novo texto**');
+    editor.props.onChange('');
+    expect(harness.state.formDesc).toBe('');
   });
 });

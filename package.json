@@ -20,6 +20,7 @@
     "test:full": "bun test tests",
     "test:ci": "node scripts/run-full-test-regression.mjs",
     "test:e2e:security": "playwright test --config=playwright.config.ts",
+    "test:e2e:markdown": "playwright test --config=playwright.markdown.config.ts",
     "clean": "next clean"
   },
   "dependencies": {
