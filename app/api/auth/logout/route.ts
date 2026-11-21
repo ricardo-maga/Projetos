@@ -8,24 +8,20 @@ import { SESSION_PREFERENCE_COOKIE } from '@/lib/auth/sessionPersistence';
 
 export async function POST(req: NextRequest) {
   const auth = await authenticateRequest(req);
-  if (auth.authenticated && auth.user) {
-    await logAuditEvent({
-      action: 'LOGOUT',
-      userId: auth.user.id,
-      entity: 'users',
-      entityId: auth.user.id,
-      details: { email: auth.user.email },
-    });
-  }
-
-  // Clear Supabase session cookies if present
+  let outcome: 'succeeded' | 'failed' = 'succeeded';
   try {
     const supabase = await createClient();
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
+    const result = await supabase.auth.signOut();
+    if (result.error) outcome = 'failed';
   } catch (error) {
+    outcome = 'failed';
     console.warn('[LOGOUT] Supabase sign out warning:', error);
+  }
+  if (auth.authenticated && auth.user) {
+    await logAuditEvent({
+      action: 'LOGOUT', userId: auth.user.id, userName: auth.user.name, entity: 'users', entityId: auth.user.id,
+      outcome, requestId: auth.requestId,
+    });
   }
 
   const response = NextResponse.json({

@@ -4,8 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
 import { createTaskSchema, queryTaskSchema } from '@/lib/validations/task';
 import { validationError, badRequest, internalServerError } from '@/lib/apiErrors';
-import { logAuditEvent } from '@/lib/audit';
-import { getServerDbClient } from '@/lib/supabase/server';
+import { auditRequestHeaders, createAdminClient, getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 import { listTasksServer, createTaskServer } from '@/domains/tasks/modules/taskService';
 import { getIdempotentEntityId, withUserIdempotency } from '@/lib/apiIdempotency';
@@ -85,6 +84,21 @@ async function createTaskHandler(req: NextRequest) {
       }
     }
 
+    let mutationClient = sb;
+    if (t.copiedFromTaskId) {
+      const readAccess = await requirePermission(req, 'tasks_read');
+      if (!readAccess.success) return readAccess.response;
+      const { data: original, error } = await sb.from('tasks').select('project_id')
+        .eq('id', t.copiedFromTaskId).eq('deleted', false).maybeSingle();
+      if (error) return internalServerError('Erro ao verificar a tarefa de origem.', requestId);
+      if (!original || (original.project_id && original.project_id !== t.projectId)) {
+        return badRequest('A tarefa de origem não está disponível para este projeto.', requestId);
+      }
+      const auditedClient = createAdminClient({ ...auditRequestHeaders(user), 'x-projetos-audit-task-source': t.copiedFromTaskId });
+      if (!auditedClient) return internalServerError('Base de dados Supabase não disponível.', requestId);
+      mutationClient = auditedClient;
+    }
+
     // 2. Validate assigned user IDs if provided
     if (t.assignedUserIds && t.assignedUserIds.length > 0) {
       const { data: dbUsers, error: usersError } = await sb
@@ -106,7 +120,7 @@ async function createTaskHandler(req: NextRequest) {
     }
 
     // 3. Delegate atomic creation to taskService
-    const createRes = await createTaskServer(sb, {
+    const createRes = await createTaskServer(mutationClient, {
       ...t,
       ...(getIdempotentEntityId(req) ? { id: getIdempotentEntityId(req)! } : {}),
       userId: user.id,
@@ -118,14 +132,6 @@ async function createTaskHandler(req: NextRequest) {
       }
       return internalServerError('Erro ao criar tarefa.', requestId);
     }
-
-    await logAuditEvent({
-      action: 'TASK_CREATED',
-      userId: user.id,
-      entity: 'tasks',
-      entityId: createRes.data.id,
-      details: { title: t.title, projectId: t.projectId },
-    });
 
     return NextResponse.json(
       {

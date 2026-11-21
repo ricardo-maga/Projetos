@@ -69,13 +69,14 @@ describe('FASE 33-C1 — Verificação Estática de Contrato da API de Clients c
       expect(mapper).toContain('createdDate: row.created_at');
     });
 
-    it('mantém releitura autoritativa, concorrência e auditoria no serviço', () => {
+    it('mantém releitura e concorrência no serviço e audita na transação', () => {
       expect(service).toContain('findClient(db, id)');
       expect(service).toContain('currentVersion + 1');
       expect(service).toContain('findActiveProjects(db, id)');
-      expect(service).toContain("action: 'CLIENT_CREATED'");
-      expect(service).toContain("action: 'CLIENT_UPDATED'");
-      expect(service).toContain("action: 'CLIENT_DELETED'");
+      expect(service).not.toContain('logAuditEvent');
+      expect(readFileSync(join(process.cwd(), 'supabase/migrations/20261121150333_application_audit_events.sql'), 'utf8'))
+        .toContain("capture_row('client', 'client_name'");
+
     });
   });
 

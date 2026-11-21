@@ -5,7 +5,6 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { createProjectSchema, queryProjectSchema } from '@/domains/projects/contracts/project';
 import { validateProjectRelations } from '@/domains/projects/contracts/projectRelations';
 import { validationError, badRequest, internalServerError } from '@/lib/apiErrors';
-import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 import { createProject, listProjects } from '@/domains/projects/modules/projectService';
@@ -129,14 +128,6 @@ async function createProjectHandler(req: NextRequest) {
     };
 
     const newProject = await createProject(sb, finalInput, user.id);
-
-    await logAuditEvent({
-      action: 'PROJECT_CREATED',
-      userId: user.id,
-      entity: 'projects',
-      entityId: newProject.id,
-      details: { title: newProject.title, clientId: newProject.clientId },
-    });
 
     return NextResponse.json(
       {

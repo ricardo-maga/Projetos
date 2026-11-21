@@ -22,7 +22,7 @@
 
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { ERPState, Project, Task, Comment, UserAbsence, User, Client, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem, AuditLog } from './types';
+import { ERPState, Project, Task, Comment, UserAbsence, User, Client, SpecialDay, DefaultTask, UserGroup, RiskCategory, RiskStatus, RiskPriority, ProjectRiskItem } from './types';
 import { getProjectsServerData } from './projects/projectService';
 import { normalizeRoleId } from './permissions';
 import { getAuthHeaders } from './clientAuth';
@@ -1433,32 +1433,4 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs (created_at D
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs (user_id);
 `;
 
-/**
- * Registers an event in the audit log system in Supabase
- */
-export async function logAuditEventToSupabase(log: {
-  userId?: string;
-  userName?: string;
-  userEmail?: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'EXPORT' | 'SETTINGS' | string;
-  entityType: 'PROJECT' | 'TASK' | 'CLIENT' | 'USER' | 'RISK' | 'SYSTEM' | string;
-  entityId?: string;
-  entityName?: string;
-  details: string;
-}): Promise<{ success: boolean; data?: AuditLog; message?: string }> {
-  try {
-    const response = await fetch('/api/audit', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ action: log.action }), credentials: 'same-origin' });
-    return await response.json();
-  } catch (err: any) { return { success: false, message: formatSupabaseError(err) }; }
-}
-
-/**
- * Fetches recent audit logs from Supabase
- */
-export async function fetchAuditLogsFromSupabase(limit = 100): Promise<{ success: boolean; data?: AuditLog[]; message?: string }> {
-  try {
-    const response = await fetch(`/api/audit?limit=${encodeURIComponent(limit)}`, { headers: getAuthHeaders(), credentials: 'same-origin' });
-    return await response.json();
-  } catch (err: any) { return { success: false, message: formatSupabaseError(err) }; }
-}
 import { configurationReadQuery } from '@/domains/configuration/data/configurationRepository';

@@ -5,7 +5,6 @@ import { requirePermission } from '@/lib/auth/authorization';
 import { updateProjectSchema } from '@/domains/projects/contracts/project';
 import { validateProjectRelations } from '@/domains/projects/contracts/projectRelations';
 import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
-import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 import { getProject, updateProject, deleteProject } from '@/domains/projects/modules/projectService';
@@ -149,14 +148,6 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     try {
       const updatedProject = await updateProject(sb, id, updateInput, user.id, updates.version);
 
-      await logAuditEvent({
-        action: 'PROJECT_UPDATED',
-        userId: user.id,
-        entity: 'projects',
-        entityId: id,
-        details: { updatedFields: Object.keys(updates) },
-      });
-
       return NextResponse.json({
         success: true,
         message: 'Projeto atualizado com sucesso.',
@@ -192,13 +183,6 @@ export async function DELETE(req: NextRequest, ctx: any) {
 
     try {
       await deleteProject(sb, id, user.id);
-
-      await logAuditEvent({
-        action: 'PROJECT_DELETED',
-        userId: user.id,
-        entity: 'projects',
-        entityId: id,
-      });
 
       return NextResponse.json({
         success: true,

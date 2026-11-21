@@ -1,7 +1,8 @@
+import { logAuditEvent } from '@/lib/audit';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
-import { createAdminClient } from '@/lib/supabase/server';
+import { auditRequestHeaders, createAdminClient } from '@/lib/supabase/server';
 import { hasPermission } from '@/lib/permissions';
 import { hasImageSignature } from '@/lib/security/imageSignature';
 
@@ -15,7 +16,8 @@ export async function POST(req: NextRequest, context: Context) {
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Sem acesso.' }, { status: 403 });
   const { id } = await context.params;
   if (!z.guid().safeParse(id).success) return NextResponse.json({ success: false, message: 'Identificador inválido.' }, { status: 400 });
-  const db = createAdminClient();
+  const auditHeaders = auditRequestHeaders(auth.user);
+  const db = createAdminClient(auditHeaders);
   if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
   const { data: request, error: requestError } = await db.from('work_requests').select('area_owner_id,kind')
     .eq('id', id).eq('kind', 'presales').maybeSingle();
@@ -41,7 +43,10 @@ export async function POST(req: NextRequest, context: Context) {
   const { error: insertError } = await db.from('presales_assets').insert({ id: assetId, request_id: id,
     storage_path: path, filename, media_type: file.type, uploaded_by: auth.user.id });
   if (insertError) {
-    await db.storage.from('presales-assets').remove([path]);
+    const { error: compensationError } = await db.storage.from('presales-assets').remove([path]);
+    await logAuditEvent({ action: 'PRESALES_ASSET_UPLOAD_FAILED', userId: auth.user.id, userName: auth.user.name,
+      outcome: compensationError ? 'partial' : 'failed', entity: 'presales_asset', entityId: assetId,
+      requestId: auditHeaders['x-projetos-audit-operation'], details: { compensationCompleted: !compensationError } });
     return NextResponse.json({ success: false, message: 'Não foi possível registar a imagem.' }, { status: 500 });
   }
   return NextResponse.json({ success: true, data: { id: assetId } }, { status: 201 });

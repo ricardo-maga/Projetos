@@ -26,3 +26,10 @@ Não foram introduzidas migrações SQL. A leitura das migrações aplicadas e d
 - `git diff --check`: passou.
 
 A validação autenticada da interface e API em pré-visualização é um passo de aceitação separado. Typecheck, testes simulados, CI e build não a substituem. Não foi usada a conta desativada indicada em `AGENTS.md`.
+
+## Adicionar uma operação auditável
+
+- Para alterações PostgreSQL, usar a operação transacional do domínio com o cliente de base de dados do servidor associado ao ator já autorizado. Registar a tabela ou a operação na migração de auditoria, com uma lista explícita dos campos que podem aparecer nos valores anterior e novo.
+- Adicionar o nome do módulo, da ação e dos campos em `auditPresentation.ts`. As APIs de consulta e o CSV usam o mesmo formato de evento. Incluir um módulo no histórico do projeto apenas quando a API pode verificar a permissão de leitura correspondente.
+- Em operações com vários sistemas, emitir o resultado depois da confirmação ou da compensação. Usar o mesmo identificador para correlacionar os efeitos de uma automação ou as linhas de uma importação.
+- Validar a gravação pelo ponto de entrada normal do domínio, incluindo rollback, repetição e permissões de leitura. A migração deve preceder o código que começa a emitir os eventos. Produção e staging têm históricos de migração próprios.

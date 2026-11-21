@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AuthError } from '@/lib/auth/requireAuth';
 import { authorizeRbac } from '@/domains/administration/modules/rbacAdmin';
-import { logAuditEvent } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,8 +67,6 @@ export async function POST(req: NextRequest) {
       created_by: user.id,
     }).select('id,name,key_prefix,permissions,client_ids,project_ids,rate_limit_per_minute,expires_at').single();
     if (error) throw error;
-    await logAuditEvent({ action: 'INTEGRATION_CREATED', userId: user.id, entity: 'api_integrations', entityId: data.id,
-      details: { name: data.name, permissions: data.permissions, clientIds: data.client_ids, projectIds: data.project_ids } });
     return NextResponse.json({ data, key }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return failure(error); }
 }

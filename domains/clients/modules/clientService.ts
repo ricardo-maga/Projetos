@@ -5,7 +5,6 @@ import {
   findActiveProjects, findClient, findClients, insertClient, updateClientRow,
   type ClientDatabase,
 } from '../data/clientRepository';
-import { logAuditEvent } from '@/lib/audit';
 
 export class ClientFailure extends Error {
   constructor(
@@ -68,8 +67,6 @@ export async function createClient(db: ClientDatabase, input: z.infer<typeof cre
     console.error('[API CLIENT READ AFTER CREATE]', error);
     throw new ClientFailure(500, 'Erro ao ler o cliente criado.');
   }
-  await logAuditEvent({ action: 'CLIENT_CREATED', userId, entity: 'clients', entityId: id,
-    details: { clientName: data.client_name } });
   return mapClientRow(data);
 }
 
@@ -110,8 +107,6 @@ export async function editClient(db: ClientDatabase, id: string, updates: z.infe
     throw new ClientFailure(500, 'Erro ao ler cliente atualizado.');
   }
   const updated = mapClientRow(reRead, currentVersion + 1);
-  await logAuditEvent({ action: 'CLIENT_UPDATED', userId, entity: 'clients', entityId: id,
-    details: { version: updated.version, ...(current.deleted && !updated.deleted ? { restored: true } : {}) } });
   return updated;
 }
 
@@ -146,8 +141,6 @@ export async function removeClient(db: ClientDatabase, id: string, userId: strin
     deleteError = fallback.error;
   }
   if (deleteError) throw new ClientFailure(400, `Erro ao eliminar cliente: ${deleteError.message}`);
-  await logAuditEvent({ action: 'CLIENT_DELETED', userId, entity: 'clients', entityId: id,
-    details: { deleted: true } });
   const { data: removed, error: readError } = await findClient(db, id);
   if (readError || !removed) throw new ClientFailure(500, 'Erro ao ler cliente eliminado.');
   return mapClientRow(removed);

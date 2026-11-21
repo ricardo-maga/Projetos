@@ -46,6 +46,7 @@ import { M3SectionHeader, M3Button } from '@/components/M3';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 
+import { getAuthHeaders } from '@/lib/clientAuth';
 import { hasPermission } from '@/lib/permissions';
 import { formatHoursToHHMM, parseTimeToHours } from '@/lib/utils';
 
@@ -78,10 +79,6 @@ interface ConfigSectionProps {
   state: ERPState;
   databaseStatus: 'idle' | 'syncing' | 'synced' | 'error';
   databaseError?: string | null;
-  auditStatus?: 'idle' | 'loading' | 'loaded' | 'error';
-  addProject?: any;
-  clients?: import('@/lib/types').Client[];
-  addClient?: any;
   addUser?: any;
   updateUser?: any;
   deleteUser?: any;
@@ -92,6 +89,7 @@ interface ConfigSectionProps {
   updateAutomationRule?: any;
   deleteAutomationRule?: any;
   toggleAutomationRule?: any;
+  canReadAudit?: boolean;
   onRefreshFromDatabase?: () => Promise<boolean>;
 }
 
@@ -126,10 +124,6 @@ export default function ConfigSection({
   state,
   databaseStatus,
   databaseError,
-  auditStatus = 'idle',
-  addProject,
-  clients = [],
-  addClient,
   addUser,
   updateUser,
   deleteUser,
@@ -140,6 +134,7 @@ export default function ConfigSection({
   updateAutomationRule,
   deleteAutomationRule,
   toggleAutomationRule,
+  canReadAudit = false,
   onRefreshFromDatabase,
 }: ConfigSectionProps) {
   const canReadConfig = hasPermission(currentUser, 'config_read');
@@ -273,72 +268,14 @@ export default function ConfigSection({
     setImportingCsv(true);
     setCsvResult(null);
     try {
-      if (!addProject || !currentUser?.id || !hasPermission(currentUser, 'projects_write')) {
-        throw new Error('Sem permissão para criar projetos.');
-      }
-      const PapaModule = await import('papaparse');
-      const Papa = PapaModule.default || PapaModule;
-      const parsed = Papa.parse<Record<string, string>>(csvText.trim(), { header: true, skipEmptyLines: 'greedy' });
-      if (parsed.errors.length) throw new Error(`CSV inválido: ${parsed.errors[0].message}`);
-      const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const aliases = {
-        title: ['nomedeprojeto', 'nomedoprojeto', 'titulodoprojeto', 'titulo', 'projeto'],
-        client: ['cliente'],
-        ip: ['nIP', 'numeroip', 'noip', 'ip'].map(normalize),
-        sf: ['nSF', 'numerosf', 'nosf', 'sf'].map(normalize),
-        start: ['datainicio', 'datadeinicio', 'inicio'],
-      };
-      const columns = Object.fromEntries(Object.entries(aliases).map(([field, names]) => [field, parsed.meta.fields?.find(header => names.includes(normalize(header)))])) as Record<string, string | undefined>;
-      const missing = Object.entries(columns).filter(([, header]) => !header).map(([field]) => field);
-      if (missing.length) throw new Error(`Colunas em falta: ${missing.join(', ')}.`);
-      const parseDate = (value: string) => {
-        const trimmed = value.trim();
-        const pt = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
-        const iso = pt ? `${pt[3]}-${pt[2]}-${pt[1]}` : trimmed;
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || Number.isNaN(Date.parse(`${iso}T00:00:00Z`)) || new Date(`${iso}T00:00:00Z`).toISOString().slice(0, 10) !== iso) {
-          throw new Error('Data início inválida. Use AAAA-MM-DD ou DD/MM/AAAA.');
-        }
-        return iso;
-      };
-      const knownClients = new Map((clients || []).filter(c => !c.deleted).flatMap(c => [c.clientName, c.shortName].filter(Boolean).map(name => [normalize(name), c.id] as const)));
-      let success = 0;
-      const errors: string[] = [];
-      for (let index = 0; index < parsed.data.length; index++) {
-        const row = parsed.data[index];
-        try {
-          const get = (field: keyof typeof aliases) => String(row[columns[field]!] || '').trim();
-          const title = get('title');
-          const clientName = get('client');
-          if (!title || !clientName) throw new Error('Nome de projeto e cliente são obrigatórios.');
-          if (title.length > 255) throw new Error('Nome de projeto excede 255 caracteres.');
-          const startDate = parseDate(get('start'));
-          let clientId = knownClients.get(normalize(clientName));
-          if (!clientId) {
-            if (!addClient || !hasPermission(currentUser, 'clients_write')) throw new Error(`Cliente "${clientName}" inexistente e sem permissão para o criar.`);
-            const created = await addClient({ clientName, shortName: clientName, location: '', notes: '' });
-            clientId = created?.id;
-            if (!clientId) throw new Error(`Não foi possível criar o cliente "${clientName}".`);
-            knownClients.set(normalize(clientName), clientId);
-          }
-          await addProject({
-            demo: false, title, clientId, description: 'Importado por CSV',
-            categoryId: projectCategories.find(c => !c.deleted)?.id || '',
-            categoryIds: projectCategories.find(c => !c.deleted)?.id ? [projectCategories.find(c => !c.deleted).id] : [],
-            statusId: projectStatuses.find(s => !s.deleted)?.id || '',
-            projectManagerId: currentUser.id,
-            fieldManagerId: '', salesRepId: '', startDate,
-            deliveryDate: '', estimatedDate: '', scheduledDate: '',
-            installProjectNo: get('ip'), sfOpportunityNo: get('sf'),
-            riskId: '', priorityId: '', teamsInvolvedIds: [], partnersIds: [],
-            documents: [], budgetValue: 0,
-          });
-          success++;
-        } catch (error: any) {
-          errors.push(`Linha ${index + 2}: ${error?.message || 'Erro ao importar projeto.'}`);
-        }
-      }
-      setCsvResult({ success, failed: errors.length, errors });
-      if (success && !errors.length) setCsvText('');
+      const response = await fetch('/api/v1/projects/import', {
+        method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ csv: csvText.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível importar o CSV.');
+      setCsvResult({ ...result.data, errors: result.message ? [...result.data.errors, result.message] : result.data.errors });
+      if (result.data.success && !result.data.failed) setCsvText('');
+      await onRefreshFromDatabase?.();
     } catch (error: any) {
       setCsvResult({ success: 0, failed: 1, errors: [error?.message || 'Erro ao ler CSV.'] });
     } finally {
@@ -368,7 +305,7 @@ export default function ConfigSection({
           <M3SectionHeader title="Sistema" />
           <Tabs
             tabs={[
-              { id: 'auditoria', label: 'Registo de auditoria' },
+              ...(canReadAudit ? [{ id: 'auditoria', label: 'Registo de auditoria' }] : []),
               { id: 'importacao', label: 'Base de dados' },
             ]}
             activeTabId={activeConfigTab}
@@ -686,10 +623,8 @@ export default function ConfigSection({
       )}
 
       {/* AUDITORIA TAB */}
-      {activeConfigTab === 'auditoria' && (
-        auditStatus === 'loaded'
-          ? <AuditLogSection auditLogs={state.auditLogs || []} currentUser={currentUser} />
-          : <p role="status" className="text-body-sm text-text-secondary">{auditStatus === 'error' ? 'Não foi possível carregar a auditoria. Recarregue os dados para tentar novamente.' : 'A carregar auditoria…'}</p>
+      {activeConfigTab === 'auditoria' && canReadAudit && (
+        <AuditLogSection />
       )}
 
       {/* UTILIZADORES TAB */}

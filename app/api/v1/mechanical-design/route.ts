@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
-import { createAdminClient } from '@/lib/supabase/server';
+import { auditRequestHeaders, createAdminClient } from '@/lib/supabase/server';
 import { runIdempotent, getIdempotentEntityId } from '@/lib/apiIdempotency';
 import { createDesignSchema } from '@/lib/mechanicalDesign';
 import { listMechanicalDesign, listEligibleDesignExecutors, designRpcError } from '@/lib/mechanicalDesignServer';
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode consultar pedidos de desenho.' }, { status: 403 });
   try {
-    const db = createAdminClient();
+    const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
     const page = Number(new URL(req.url).searchParams.get('page') || 1);
     const onlyMine = new URL(req.url).searchParams.get('owner') === 'mine';
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: `Dados do pedido inválidos. Verifique: ${labels[field] || field}.`,
         details: parsed.error.flatten() }, { status: 400 });
     }
-    const db = createAdminClient();
+    const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
     const { data, error } = await db.rpc('create_mechanical_design_request_v3', {
       p_id: getIdempotentEntityId(claimedReq), p_actor_id: auth.user.id,

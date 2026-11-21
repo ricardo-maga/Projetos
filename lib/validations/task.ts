@@ -29,6 +29,7 @@ const optionalNullableProjectId = z
   });
 
 export const createTaskSchema = z.object({
+  copiedFromTaskId: z.guid().optional(),
   projectId: optionalNullableProjectId.default(null),
   title: z.string().trim().min(2, 'O título da tarefa deve ter no mínimo 2 caracteres').max(255),
   description: z.string().max(10000).optional().default(''),

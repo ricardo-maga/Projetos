@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { saveActiveStateToSupabase } from '@/lib/supabaseSync';
+import { persistProjectMaterial } from '@/domains/projects/services/persistProjectMaterial';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { ProjectMaterial } from '@/lib/types';
 import { requirePermission } from '@/lib/auth/authorization';
@@ -91,13 +91,13 @@ async function createMaterial(req: NextRequest) {
       createdDate: new Date().toISOString()
     };
 
-    const saveResult = await saveActiveStateToSupabase({} as any, databaseClient, { projectMaterials: [newMaterial] });
+    const saveResult = await persistProjectMaterial(databaseClient, newMaterial, 'create');
 
     if (!saveResult.success) {
       return NextResponse.json(saveResult, { status: saveResult.status || 500 });
     }
 
-    return NextResponse.json({ success: true, message: 'Linha de material criada.', data: { ...newMaterial, syncVersion: saveResult.versions?.projectMaterials?.[newMaterial.id] } }, { status: 201 });
+    return NextResponse.json({ success: true, message: 'Linha de material criada.', data: { ...newMaterial, syncVersion: saveResult.syncVersion } }, { status: 201 });
   } catch (error: any) {
     console.error('[API MATERIALS POST]', error);
     return NextResponse.json({ success: false, message: 'Falha ao criar material.' }, { status: 500 });

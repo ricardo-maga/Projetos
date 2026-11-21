@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
 import { updateTaskSchema } from '@/lib/validations/task';
 import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
-import { logAuditEvent } from '@/lib/audit';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 import { getTaskServer, updateTaskServer, deleteTaskServer } from '@/domains/tasks/modules/taskService';
@@ -177,17 +176,6 @@ async function handleUpdate(req: NextRequest, ctx: any) {
       return internalServerError(updateRes.error || 'Erro ao atualizar tarefa.', requestId);
     }
 
-    const isStatusChange = updates.statusId && updates.statusId !== current.status_id;
-    await logAuditEvent({
-      action: isStatusChange ? 'TASK_STATUS_CHANGED' : 'TASK_UPDATED',
-      userId: user.id,
-      entity: 'tasks',
-      entityId: id,
-      details: {
-        version: updateRes.data.version,
-        ...(isStatusChange ? { oldStatus: current.status_id, newStatus: updates.statusId } : {}),
-      },
-    });
 
     return NextResponse.json({
       success: true,
@@ -227,14 +215,6 @@ export async function DELETE(req: NextRequest, ctx: any) {
       if (deleteRes.statusCode === 404) return notFound('Tarefa não encontrada.', requestId);
       return badRequest(deleteRes.error || 'Erro ao eliminar tarefa.', requestId);
     }
-
-    await logAuditEvent({
-      action: 'TASK_UPDATED',
-      userId: user.id,
-      entity: 'tasks',
-      entityId: id,
-      details: { deleted: true },
-    });
 
     return NextResponse.json({
       success: true,

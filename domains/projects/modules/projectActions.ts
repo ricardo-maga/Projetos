@@ -11,13 +11,12 @@ interface ActionContext {
   setState: Dispatch<SetStateAction<ERPState | null>>;
   setSyncStatus: Dispatch<SetStateAction<SyncStatus>>;
   setSyncError: Dispatch<SetStateAction<string | null>>;
-  logAudit: (action: string, entityType: string, entityId?: string, entityName?: string, details?: string) => unknown;
   refreshFromDatabase: () => Promise<boolean>;
   getApiErrorMessage: (result: any, fallback: string) => string;
 }
 
 export function createProjectActions({
-  isDbConfigured, state, setState, setSyncStatus, setSyncError, logAudit, refreshFromDatabase, getApiErrorMessage,
+  isDbConfigured, state, setState, setSyncStatus, setSyncError, refreshFromDatabase, getApiErrorMessage,
 }: ActionContext) {
   // ==================== PROJECTS CRUD ====================
   const addProject = async (project: Omit<Project, 'id' | 'deleted' | 'createdDate' | 'updatedDate'>) => {
@@ -98,8 +97,6 @@ export function createProjectActions({
           version: result.data.version || 1,
         };
 
-        logAudit('CREATE', 'PROJECT', newProj.id, newProj.title, `Criado o projeto "${newProj.title}" (Cód. Instalação: ${newProj.installProjectNo || 'N/A'})`);
-
         setState(prev => prev ? ({ ...prev, projects: [newProj, ...prev.projects] }) : prev);
         await refreshFromDatabase();
 
@@ -132,7 +129,6 @@ export function createProjectActions({
     }
 
     const currentVersion = (existingProj as any).version || 1;
-    const projName = updates.title || existingProj.title || id;
 
     const patchPayload: Record<string, any> = {
       version: currentVersion
@@ -223,16 +219,6 @@ export function createProjectActions({
       if (finalRes.ok && finalResult.success && finalResult.data) {
         const nextVersion = finalResult.data.version || (currentVersion + 1);
 
-        let detailMsg = `Atualizado projeto "${projName}"`;
-        if (updates.title && existingProj && updates.title !== existingProj.title) {
-          detailMsg = `Nome do projeto alterado de "${existingProj.title}" para "${updates.title}"`;
-        } else if (updates.statusId && existingProj && updates.statusId !== existingProj.statusId) {
-          const oldStatus = state?.projectStatuses?.find(s => s.id === existingProj.statusId)?.name || existingProj.statusId;
-          const newStatus = state?.projectStatuses?.find(s => s.id === updates.statusId)?.name || updates.statusId;
-          detailMsg = `Estado do projeto "${projName}" alterado de "${oldStatus}" para "${newStatus}"`;
-        }
-
-        logAudit('UPDATE', 'PROJECT', id, projName, detailMsg);
 
         setState(prev => {
           if (!prev) return prev;
@@ -325,7 +311,6 @@ export function createProjectActions({
       const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
 
       if (res.ok && result.success) {
-        logAudit('DELETE', 'PROJECT', id, existingProj?.title, `Eliminado projeto "${existingProj?.title || id}"`);
         setState(prev => {
           if (!prev) return prev;
           return {

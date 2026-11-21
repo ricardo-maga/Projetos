@@ -11,12 +11,11 @@ interface ClientActionContext {
   setSyncStatus: Dispatch<SetStateAction<SyncStatus>>;
   setSyncError: Dispatch<SetStateAction<string | null>>;
   matchId: (left?: string | null, right?: string | null) => boolean;
-  logAudit: (action: string, entityType: string, entityId?: string, entityName?: string, details?: string) => unknown;
   getApiErrorMessage: (result: any, fallback: string) => string;
 }
 
 export function createClientActions({
-  isDbConfigured, state, setState, setSyncStatus, setSyncError, matchId, logAudit, getApiErrorMessage,
+  isDbConfigured, state, setState, setSyncStatus, setSyncError, matchId, getApiErrorMessage,
 }: ClientActionContext) {
   // ==================== CLIENTS CRUD (FASE 33: DEDICATED API) ====================
   const addClient = async (clientData: Omit<Client, 'id' | 'deleted' | 'createdDate'> | any) => {
@@ -81,8 +80,6 @@ export function createClientActions({
           createdDate: s.createdDate || s.createdAt || '',
           version: s.version || 1,
         };
-
-        logAudit('CREATE', 'CLIENT', newClient.id, newClient.clientName, `Criado cliente "${newClient.clientName}"`);
 
         setState(prev => {
           if (!prev) return prev;
@@ -189,8 +186,6 @@ export function createClientActions({
           version: s.version,
         };
 
-        logAudit('UPDATE', 'CLIENT', id, updatedClient.clientName, `Atualizado cliente "${updatedClient.clientName}"`);
-
         setState(prev => {
           if (!prev) return prev;
           return {
@@ -241,7 +236,6 @@ export function createClientActions({
       const result = await res.json().catch(() => ({ success: false, message: 'Resposta inválida do servidor.' }));
 
       if (res.ok && result.success) {
-        logAudit('DELETE', 'CLIENT', id, existingClient?.clientName, `Eliminado cliente "${existingClient?.clientName || id}"`);
 
         setState(prev => {
           if (!prev) return prev;

@@ -1,6 +1,6 @@
 import { NextRequest,NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
-import { createAdminClient } from '@/lib/supabase/server';
+import { auditRequestHeaders, createAdminClient } from '@/lib/supabase/server';
 import { getIdempotentEntityId,runIdempotent } from '@/lib/apiIdempotency';
 import { presalesRegistrySchema } from '@/lib/presalesRegistry';
 import { presalesError } from '@/lib/presalesErrors';
@@ -13,7 +13,7 @@ export async function POST(req:NextRequest) {
   return runIdempotent(req,auth.user.id,'presales:registry:create',async claimedReq => {
     const parsed=presalesRegistrySchema.safeParse(await claimedReq.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({success:false,message:'Dados do processo inválidos.',details:parsed.error.flatten()},{status:400});
-    const db=createAdminClient();
+    const db=createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
     if (!db) return NextResponse.json({success:false,message:'Base de dados indisponível.'},{status:503});
     const id=getIdempotentEntityId(claimedReq);
     const {error}=await db.rpc('presales_registry_mutate',{p_id:id,p_actor_id:auth.user.id,

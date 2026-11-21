@@ -1,10 +1,9 @@
+import { POST as terminateSession } from '../logout/route';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { requireAuth, AuthError } from '@/lib/auth/requireAuth';
 import { withCanonicalErrors } from '@/lib/apiErrors';
-import { SESSION_PREFERENCE_COOKIE } from '@/lib/auth/sessionPersistence';
 import { z } from 'zod';
 
 async function getAuthenticatedUserSession(req?: NextRequest) {
@@ -49,7 +48,6 @@ async function getSession(req: NextRequest) {
 
 async function postSession(req: NextRequest) {
   try {
-    const supabase = await createClient();
     let body: unknown = {};
     try {
       body = await req.json();
@@ -60,19 +58,7 @@ async function postSession(req: NextRequest) {
     const parsed = z.object({ logout: z.literal(true).optional() }).safeParse(body);
     if (!parsed.success) return NextResponse.json({ success: false, message: 'Pedido inválido.' }, { status: 400 });
 
-    if (parsed.data.logout) {
-      await supabase.auth.signOut();
-      const response = NextResponse.json({ success: true, message: 'Sessão encerrada com sucesso.' });
-      response.cookies.set('erp_session', '', {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 0,
-      });
-      response.cookies.delete(SESSION_PREFERENCE_COOKIE);
-      return response;
-    }
+    if (parsed.data.logout) return terminateSession(req);
 
     const user = await getAuthenticatedUserSession(req);
     if (!user) {
@@ -89,26 +75,6 @@ async function postSession(req: NextRequest) {
   }
 }
 
-async function deleteSession(_req: NextRequest) {
-  try {
-    const supabase = await createClient();
-    await supabase.auth.signOut();
-    const response = NextResponse.json({ success: true, message: 'Sessão encerrada com sucesso.' });
-    response.cookies.set('erp_session', '', {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 0,
-    });
-    response.cookies.delete(SESSION_PREFERENCE_COOKIE);
-    return response;
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error?.message || 'Erro ao encerrar sessão.' }, { status: 500 });
-  }
-}
-
 export const GET = withCanonicalErrors(getSession);
 export const POST = withCanonicalErrors(postSession);
-export const DELETE = withCanonicalErrors(deleteSession);
-
+export const DELETE = withCanonicalErrors(terminateSession);

@@ -8,8 +8,6 @@ import { usePageNavigation } from '../hooks/usePageNavigation';
 import { useAsyncAction } from '../hooks/useAsyncAction';
 import BentoDashboard from '@/domains/monitoring/ui/BentoDashboard';
 import NotificationDropdown from '@/domains/communication/ui/NotificationDropdown';
-import { isSupabaseConfigured } from '../lib/supabaseClient';
-import { logAuditEventToSupabase } from '../lib/supabaseSync';
 import { hasPermission } from '../lib/permissions';
 import { APP_SECTIONS } from '../lib/sectionCatalog';
 import AppLogo from '../components/AppLogo';
@@ -169,8 +167,6 @@ export default function Page() {
     syncError,
     isDbConfigured,
     refreshFromDatabase,
-    loadAuditLogs,
-    auditStatus,
     loadProjectMaterials,
     materialsStatus,
     loadConfigRuntime,
@@ -201,12 +197,6 @@ export default function Page() {
     compactViewport.addEventListener('change', applyViewport);
     return () => compactViewport.removeEventListener('change', applyViewport);
   }, [setSidebarOpen]);
-
-  React.useEffect(() => {
-    if (currentUser && isInitialDataLoaded && activeTab === 'configuracoes' && activeConfigTab === 'auditoria' && auditStatus === 'idle') {
-      void loadAuditLogs();
-    }
-  }, [currentUser, isInitialDataLoaded, activeTab, activeConfigTab, auditStatus, loadAuditLogs]);
 
   const requiresProjectMaterials = activeTab === 'dashboard' || activeTab === 'projetos' || activeTab === 'reports';
   React.useEffect(() => {
@@ -392,6 +382,15 @@ export default function Page() {
     return APP_SECTIONS.filter(section => !section.requiredPermission ||
       hasPermission(currentUser, section.requiredPermission as any));
   }, [state, currentUser]);
+
+  const canReadAudit = Boolean(currentUser?.isAdmin ||
+    (Array.isArray(currentUser?.permissions) && currentUser.permissions.includes('admin.access')));
+
+  React.useEffect(() => {
+    if (currentUser && activeTab === 'configuracoes' && activeConfigTab === 'auditoria' && !canReadAudit) {
+      handleConfigTabChange('importacao');
+    }
+  }, [currentUser, activeTab, activeConfigTab, canReadAudit, handleConfigTabChange]);
 
   // Fallback if active tab is not allowed
   React.useEffect(() => {
@@ -753,7 +752,7 @@ export default function Page() {
                           return (
                             <button
                               key={sub.id}
-                              onClick={() => handleConfigTabChange(sub.id === 'aplicacao-menu' ? 'sistema' : sub.id === 'sistema-menu' ? 'auditoria' : sub.id)}
+                              onClick={() => handleConfigTabChange(sub.id === 'aplicacao-menu' ? 'sistema' : sub.id === 'sistema-menu' ? (canReadAudit ? 'auditoria' : 'importacao') : sub.id)}
                               className={cn(
                                 "w-full flex items-center gap-2.5 py-2 rounded-control text-caption font-semibold transition-all duration-150 cursor-pointer select-none border-l-2",
                                 isCollapsed ? 'md:justify-center md:px-0 md:border-l-0' : 'px-3',
@@ -1067,6 +1066,7 @@ export default function Page() {
                   specialDays={state.specialDays}
                   updateConfig={updateConfig}
                   onRefreshFromDatabase={refreshFromDatabase}
+                  canReadAudit={canReadAudit}
                   addSpecialDay={addSpecialDay!}
                   updateSpecialDay={updateSpecialDay!}
                   deleteSpecialDay={deleteSpecialDay!}
@@ -1089,10 +1089,6 @@ export default function Page() {
                   state={state}
                   databaseStatus={syncStatus}
                   databaseError={syncError}
-                  auditStatus={auditStatus}
-                  addProject={addProject}
-                  clients={state.clients}
-                  addClient={addClient}
                   addUser={addUser}
                   updateUser={updateUser}
                   deleteUser={deleteUser}
@@ -1192,18 +1188,6 @@ export default function Page() {
         <button
           type="button"
           onClick={() => {
-            if (currentUser) {
-              logAuditEventToSupabase({
-                userId: currentUser.id,
-                userName: currentUser.name,
-                userEmail: currentUser.email,
-                action: 'LOGOUT',
-                entityType: 'USER',
-                entityId: currentUser.id,
-                entityName: currentUser.name,
-                details: `Sessão terminada por ${currentUser.name}`
-              }).catch(() => {});
-            }
             clearClientSession();
             fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
             setIsChangingPassword(false);

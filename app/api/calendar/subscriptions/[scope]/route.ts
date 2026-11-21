@@ -1,3 +1,4 @@
+import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 import { randomBytes } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthError, requirePermission } from '@/lib/auth/requireAuth';
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest, context: Context) {
     if (!(await checkRateLimit(`calendar-feed-rotate:${user.id}`, { limit: 10, windowSeconds: 3600 })).success)
       return NextResponse.json({ error: 'Limite de renovações atingido.' }, { status: 429, headers: { ...privateHeaders, 'Retry-After': '3600' } });
     const token = randomBytes(32).toString('base64url');
-    const { error } = await calendarFeedDb().from('calendar_feed_tokens').upsert({
+    const { error } = await requireServerDbClient(user).from('calendar_feed_tokens').upsert({
       user_id: user.id, scope, token_hash: hashFeedToken(token), rotated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,scope' });
     if (error) throw error;
@@ -52,7 +53,7 @@ export async function DELETE(req: NextRequest, context: Context) {
     return NextResponse.json({ error: 'Origem inválida.' }, { status: 403, headers: privateHeaders });
   try {
     const user = await requirePermission(req, 'calendar_read');
-    const { error } = await calendarFeedDb().from('calendar_feed_tokens')
+    const { error } = await requireServerDbClient(user).from('calendar_feed_tokens')
       .delete().eq('user_id', user.id).eq('scope', scope);
     if (error) throw error;
     return NextResponse.json({ configured: false }, { headers: privateHeaders });

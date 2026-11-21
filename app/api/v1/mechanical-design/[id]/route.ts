@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requirePermission } from '@/lib/auth/authorization';
-import { createAdminClient } from '@/lib/supabase/server';
+import { auditRequestHeaders, createAdminClient } from '@/lib/supabase/server';
 import { manageDesignSchema } from '@/lib/mechanicalDesign';
 import { listMechanicalDesign, designRpcError } from '@/lib/mechanicalDesignServer';
 import { z } from 'zod';
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, context: Context) {
   const { id } = await context.params;
   if (!z.guid().safeParse(id).success) return NextResponse.json({ success: false, message: 'Identificador inválido.' }, { status: 400 });
   try {
-    const db = createAdminClient();
+    const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
     const row = (await listMechanicalDesign(db, id))[0];
     return row ? NextResponse.json({ success: true, data: row })
@@ -39,7 +39,7 @@ export async function PATCH(req: NextRequest, context: Context) {
   const permission = await requirePermission(req, requiredPermission);
   if (!permission.success) return permission.response;
   try {
-    const db = createAdminClient();
+    const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
     const input = parsed.data;
     let result;
@@ -114,7 +114,7 @@ export async function DELETE(req: NextRequest, context: Context) {
   const version = Number(new URL(req.url).searchParams.get('version'));
   if (!z.guid().safeParse(id).success || !Number.isInteger(version) || version < 1)
     return NextResponse.json({ success: false, message: 'Pedido ou versão inválidos.' }, { status: 400 });
-  const db = createAdminClient();
+  const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
   if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
   const { error } = await db.rpc('archive_work_request', { p_id: id, p_actor_id: auth.user.id, p_expected_version: version });
   if (error) { const mapped = designRpcError(error); return NextResponse.json({ success: false, message: mapped.message }, { status: mapped.status }); }
