@@ -55,6 +55,7 @@ export function checkTaskConflicts(
 }
 
 export interface TaskCreateInput {
+  copiedFromTaskId?: string;
   projectId?: string | null;
   title: string;
   description?: string;
@@ -272,6 +273,7 @@ export async function apiCreateTask(input: TaskCreateInput): Promise<TaskOperati
 
   const payload = {
     projectId: input.projectId ? input.projectId.trim() : null,
+    copiedFromTaskId: input.copiedFromTaskId,
     title: input.title.trim(),
     description: input.description?.trim() || '',
     statusId: input.statusId || undefined,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
-import { createAdminClient } from '@/lib/supabase/server';
+import { auditRequestHeaders, createAdminClient } from '@/lib/supabase/server';
 import { hasImageSignature } from '@/lib/security/imageSignature';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, context: Context) {
   const { id, assetId } = await context.params;
   if (!z.guid().safeParse(id).success || !z.guid().safeParse(assetId).success)
     return NextResponse.json({ success: false, message: 'Identificador inválido.' }, { status: 400 });
-  const db = createAdminClient();
+  const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
   if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
   const { data: asset, error } = await db.from('presales_assets').select('storage_path,media_type')
     .eq('id', assetId).eq('request_id', id).maybeSingle();

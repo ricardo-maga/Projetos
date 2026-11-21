@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { saveActiveStateToSupabase } from '@/lib/supabaseSync';
+import { persistProjectMaterial } from '@/domains/projects/services/persistProjectMaterial';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import { requirePermission } from '@/lib/auth/authorization';
 import { activeRelationExists, getOperationalRecord, mapProjectMaterial } from '@/lib/supabase/operationalRecords';
@@ -58,7 +58,7 @@ async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ 
       id
     };
 
-    const saveResult = await saveActiveStateToSupabase({} as any, databaseClient, { projectMaterials: [updatedMaterial] });
+    const saveResult = await persistProjectMaterial(databaseClient, updatedMaterial, 'update');
     if (!saveResult.success) {
       return NextResponse.json(saveResult, { status: saveResult.status || 500 });
     }
@@ -66,7 +66,7 @@ async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({
       success: true,
       message: 'Linha de material atualizada.',
-      data: { ...updatedMaterial, syncVersion: saveResult.versions?.projectMaterials?.[id] }
+      data: { ...updatedMaterial, syncVersion: saveResult.syncVersion }
     });
   } catch (error: any) {
     console.error('[API MATERIAL UPDATE]', error);
@@ -92,7 +92,7 @@ async function deleteMaterial(req: NextRequest, { params }: { params: Promise<{ 
     }
 
     const deletedMaterial = { ...existingMaterial, deleted: true };
-    const saveResult = await saveActiveStateToSupabase({} as any, databaseClient, { projectMaterials: [deletedMaterial] });
+    const saveResult = await persistProjectMaterial(databaseClient, deletedMaterial, 'delete');
     if (!saveResult.success) {
       return NextResponse.json(saveResult, { status: saveResult.status || 500 });
     }

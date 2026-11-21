@@ -11,6 +11,9 @@ export type AuditAction =
   | 'PASSWORD_RESET_COMPLETED'
   | 'USER_CREATED'
   | 'USER_UPDATED'
+  | 'USER_ACCESS_ACTIVATED'
+  | 'USER_OPERATION_FAILED'
+  | 'PRESALES_ASSET_UPLOAD_FAILED'
   | 'USER_DELETED'
   | 'USER_ROLE_CHANGED'
   | 'BOOTSTRAP_ADMIN_CREATED'
@@ -32,8 +35,11 @@ export type AuditAction =
 export interface AuditLogEntry {
   action: AuditAction;
   userId?: string | null;
+  userName?: string;
   entity?: string;
   entityId?: string;
+  requestId?: string;
+  outcome?: 'succeeded' | 'failed' | 'partial';
   ip?: string;
   userAgent?: string;
   details?: Record<string, any>;
@@ -45,7 +51,7 @@ export interface AuditLogEntry {
 function sanitizeDetails(details?: Record<string, any>): Record<string, any> | undefined {
   if (!details) return undefined;
   const sanitized: Record<string, any> = {};
-  const forbiddenPatterns = [/pass/i, /token/i, /secret/i, /hash/i, /key/i, /auth/i, /credential/i];
+  const forbiddenPatterns = [/pass/i, /token/i, /secret/i, /hash/i, /key/i, /auth/i, /credential/i, /email/i];
 
   for (const [key, value] of Object.entries(details)) {
     const isSensitive = forbiddenPatterns.some((pattern) => pattern.test(key));
@@ -70,18 +76,30 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
       return;
     }
 
+    const details = sanitizeDetails(entry.details) || {};
+    const changes = Object.fromEntries(
+      ['compensationCompleted', 'accessEnabled', 'field', 'method']
+        .filter(field => typeof details[field] === 'boolean' || typeof details[field] === 'string')
+        .map(field => [field, { after: details[field] }]),
+    );
     const payload = {
+      audit_version: 1,
+      actor_id: entry.userId || null,
+      source: 'application',
+      outcome: entry.outcome || 'succeeded',
+      request_id: entry.requestId || crypto.randomUUID(),
       action: entry.action,
       user_id: entry.userId || null,
+      user_name: entry.userName || null,
       entity_type: entry.entity || 'SYSTEM',
       entity_id: entry.entityId || null,
-      details: JSON.stringify(sanitizeDetails(entry.details) || {}),
+      details: JSON.stringify(details),
+      changes,
       created_at: new Date().toISOString(),
     };
 
     const { error } = await sb.from('audit_logs').insert([payload]);
     if (error) {
-      // If column names in legacy audit_logs differ, fallback to insert with general payload
       console.warn('[AUDIT LOG NOTICE] Could not write to audit_logs:', error.message);
     }
   } catch (err) {

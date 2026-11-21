@@ -1,10 +1,11 @@
+import * as asyncHooks from 'node:async_hooks';
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { configurationReadQuery } from '../domains/configuration/data/configurationRepository';
 
 function loadModule(path: string, dependencies: Record<string, unknown>, env = {}) {
-  dependencies = { '@/domains/configuration/data/configurationRepository': { configurationReadQuery }, ...dependencies };
+  dependencies = { 'node:async_hooks': asyncHooks, '@/domains/configuration/data/configurationRepository': { configurationReadQuery }, ...dependencies };
   const source = readFileSync(path, 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
   const testModule = { exports: {} as any };

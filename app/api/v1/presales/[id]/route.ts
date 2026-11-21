@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
-import { createAdminClient } from '@/lib/supabase/server';
+import { auditRequestHeaders, createAdminClient } from '@/lib/supabase/server';
 import { presalesActionSchema } from '@/lib/presales';
 import { listPresales } from '@/lib/presalesServer';
 import { presalesError } from '@/lib/presalesErrors';
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, context: Context) {
   const { id } = await context.params;
   if (!z.guid().safeParse(id).success) return NextResponse.json({ success: false, message: 'Identificador inválido.' }, { status: 400 });
   try {
-    const db = createAdminClient();
+    const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
     const row = (await listPresales(db, { id }))[0];
     return row ? NextResponse.json({ success: true, data: row })
@@ -39,7 +39,7 @@ export async function PATCH(req: NextRequest, context: Context) {
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode gerir Presales.' }, { status: 403 });
   try {
-    const db = createAdminClient();
+    const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
     const payload = action.action === 'save_document' ? { ...action, document: { ...action.document,
       blocks: action.document.blocks.map(block => block.type === 'rich_text'
@@ -64,7 +64,7 @@ export async function DELETE(req: NextRequest, context: Context) {
   const version = Number(new URL(req.url).searchParams.get('version'));
   if (!z.guid().safeParse(id).success || !Number.isInteger(version) || version < 1)
     return NextResponse.json({ success: false, message: 'Pedido ou versão inválidos.' }, { status: 400 });
-  const db = createAdminClient();
+  const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
   if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
   const { error } = await db.rpc('archive_work_request', { p_id: id, p_actor_id: auth.user.id, p_expected_version: version });
   if (error) return presalesError(error);

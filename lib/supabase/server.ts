@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createServerClient } from '@supabase/ssr';
 import { createClient as createSupabaseJsClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
@@ -48,7 +49,7 @@ export async function createClient(customToken?: string, loginPreference?: strin
  * Creates a server-only administrative Supabase client using the Service Role Key.
  * NEVER exposed to the browser. Used exclusively for operations like bootstrap and recovery.
  */
-export function createAdminClient() {
+export function createAdminClient(headers?: Record<string, string>) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -57,6 +58,7 @@ export function createAdminClient() {
   }
 
   return createSupabaseJsClient(supabaseUrl, serviceRoleKey, {
+    global: headers ? { headers } : undefined,
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -71,7 +73,9 @@ export function createAdminClient() {
  */
 export async function getServerDbClient(req: Request, actor: { id: string }) {
   if (!actor?.id) throw new Error('Authenticated actor required for database access.');
-  const admin = createAdminClient();
+  const admin = createAdminClient(
+    req && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) ? auditRequestHeaders(actor) : undefined,
+  );
   if (admin) return admin;
 
   const header = req?.headers?.get('authorization');
@@ -106,4 +110,18 @@ export async function getServerDbClient(req: Request, actor: { id: string }) {
   }
 
   return null;
+}
+
+const auditOperation = new AsyncLocalStorage<string>();
+
+export function runWithAuditOperation<T>(id: string, operation: () => T): T {
+  return auditOperation.run(id, operation);
+}
+
+/** Only the server, after resolving the actor, sends these headers to PostgREST. */
+export function auditRequestHeaders(actor: { id: string }) {
+  return {
+    'x-projetos-audit-actor': actor.id,
+    'x-projetos-audit-operation': auditOperation.getStore() || crypto.randomUUID(),
+  };
 }

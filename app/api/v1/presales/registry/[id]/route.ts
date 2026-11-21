@@ -1,7 +1,7 @@
 import { NextRequest,NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
-import { createAdminClient } from '@/lib/supabase/server';
+import { auditRequestHeaders, createAdminClient } from '@/lib/supabase/server';
 import { presalesRegistrySchema } from '@/lib/presalesRegistry';
 import { listPresales } from '@/lib/presalesServer';
 import { presalesError } from '@/lib/presalesErrors';
@@ -16,7 +16,7 @@ export async function PATCH(req:NextRequest,context:Context) {
   const parsed=presalesRegistrySchema.safeParse(body);
   if (!parsed.success || !Number.isInteger(body?.version) || body.version<1)
     return NextResponse.json({success:false,message:'Dados do processo inválidos.'},{status:400});
-  const db=createAdminClient();
+  const db=createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
   if (!db) return NextResponse.json({success:false,message:'Base de dados indisponível.'},{status:503});
   const {error}=await db.rpc('presales_registry_mutate',{p_id:id,p_actor_id:auth.user.id,
     p_expected_version:body.version,p_action:'edit',p_payload:parsed.data});

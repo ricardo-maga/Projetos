@@ -23,6 +23,12 @@ function failure(error: unknown) {
   return NextResponse.json({ success: false, message: status === 500 ? 'Falha ao guardar o utilizador.' : error instanceof Error ? error.message : 'Operação recusada.' }, { status });
 }
 
+async function recordUserFailure(actor: { id: string; name: string }, id: string, compensationFailed: boolean) {
+  await logAuditEvent({ action: 'USER_OPERATION_FAILED', userId: actor.id, userName: actor.name,
+    entity: 'users', entityId: id, outcome: compensationFailed ? 'partial' : 'failed',
+    details: { compensationCompleted: !compensationFailed } });
+}
+
 async function createUser(req: NextRequest) {
   try {
     const actor = await requirePermission(req, 'users_write');
@@ -52,6 +58,7 @@ async function createUser(req: NextRequest) {
     if (profileError) {
       const { error: profileRollbackError } = await admin.from('users').delete().eq('id', id);
       const authRollbackError = authId ? (await admin.auth.admin.deleteUser(authId)).error : null;
+      await recordUserFailure(actor, id, Boolean(profileRollbackError || authRollbackError));
       return NextResponse.json({ success: false, message: profileRollbackError || authRollbackError
         ? 'O perfil não pôde ser gravado e a reversão da conta não ficou completa. Requer reconciliação.'
         : 'A criação do utilizador foi revertida porque o perfil não pôde ser gravado.' }, { status: 500 });
@@ -62,11 +69,12 @@ async function createUser(req: NextRequest) {
     if (roleError) {
       const { error: profileRollbackError } = await admin.from('users').delete().eq('id', id);
       const authRollbackError = authId ? (await admin.auth.admin.deleteUser(authId)).error : null;
+      await recordUserFailure(actor, id, Boolean(profileRollbackError || authRollbackError));
       return NextResponse.json({ success: false, message: profileRollbackError || authRollbackError
         ? 'A função inicial falhou e a reversão da conta não ficou completa. Requer reconciliação.'
         : 'A conta foi revertida porque a função inicial não pôde ser gravada.' }, { status: 500 });
     }
-    await logAuditEvent({ action: 'USER_CREATED', userId: actor.id, entity: 'users', entityId: id, details: { email } });
+    await logAuditEvent({ action: 'USER_CREATED', userId: actor.id, userName: actor.name, entity: 'users', entityId: id, details: { accessEnabled: Boolean(authId) } });
     return NextResponse.json({ success: true, id }, { status: 201 });
   } catch (error) { return failure(error); }
 }
@@ -101,6 +109,7 @@ async function updateUser(req: NextRequest) {
       const { error: linkError } = await admin.from('users').update({ auth_user_id: authId, name, type }).eq('id', id);
       if (linkError) {
         const { error: rollbackError } = await admin.auth.admin.deleteUser(authId);
+        await recordUserFailure(actor, id, Boolean(rollbackError));
         return NextResponse.json({ success: false, message: rollbackError
           ? 'O perfil não pôde ser associado e a reversão da conta Auth falhou. Requer reconciliação.'
           : 'A conta Auth foi revertida porque o perfil não pôde ser associado.' }, { status: 500 });
@@ -118,12 +127,13 @@ async function updateUser(req: NextRequest) {
       });
       if (authError) {
         const { error: rollbackError } = await admin.from('users').update({ name: profile.name, email: profile.email, type: profile.type }).eq('id', id);
+        await recordUserFailure(actor, id, Boolean(rollbackError));
         return NextResponse.json({ success: false, message: rollbackError
           ? 'A conta Auth não foi alterada e a reversão do perfil falhou. Requer reconciliação.'
           : 'Não foi possível atualizar a conta Auth; o perfil foi revertido.' }, { status: 409 });
       }
     }
-    await logAuditEvent({ action: 'USER_UPDATED', userId: actor.id, entity: 'users', entityId: id, details: { email } });
+    await logAuditEvent({ action: !profile.auth_user_id && authId ? 'USER_ACCESS_ACTIVATED' : 'USER_UPDATED', userId: actor.id, userName: actor.name, entity: 'users', entityId: id, details: { accessEnabled: Boolean(authId) } });
     return NextResponse.json({ success: true, id });
   } catch (error) { return failure(error); }
 }

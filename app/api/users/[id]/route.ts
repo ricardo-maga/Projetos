@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth, AuthError, ForbiddenError } from '@/lib/auth/requireAuth';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
-import { logAuditEvent } from '@/lib/audit';
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -25,7 +24,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (target.email?.toLowerCase() === 'ricardo75@gmail.com') throw new ForbiddenError();
     const { data, error } = await db.from('users').update({ deleted: true }).eq('id', id).eq('deleted', false).select('id').single();
     if (error || !data) throw error || new Error('Missing updated user');
-    await logAuditEvent({ action: 'USER_DELETED', userId: actor.id, entity: 'users', entityId: id, details: { name: target.name } });
     return NextResponse.json({ success: true, id });
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });

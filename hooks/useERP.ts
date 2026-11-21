@@ -32,9 +32,9 @@ import { createClientActions } from '@/domains/clients/modules/clientActions';
 import { ERPState, AppConfiguration, Project, Task, Comment, UserAbsence, User, Client, SpecialDay } from '../lib/types';
 import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
-import { mapStateToUUIDs, fetchAuditLogsFromSupabase, logAuditEventToSupabase } from '../lib/supabaseSync';
+import { mapStateToUUIDs } from '../lib/supabaseSync';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
-import { getAuthHeaders, getClientUser, clearClientSession } from '../lib/clientAuth';
+import { getAuthHeaders, clearClientSession } from '../lib/clientAuth';
 import { apiCreateTask, apiUpdateTask, apiDeleteTask, parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
 import { listProjectMaterials, createProjectMaterial as apiCreateProjectMaterial, updateProjectMaterial as apiUpdateProjectMaterial, deleteProjectMaterial as apiDeleteProjectMaterial } from '../lib/projectMaterials/client';
 import { mergeSyncPartitions, SYNC_PARTITIONS, type SyncPartition } from '../lib/supabase/syncPartitions';
@@ -73,7 +73,6 @@ export function useERP() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
   const refreshGeneration = useRef(0);
-  const [auditStatus, setAuditStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const [materialsStatus, setMaterialsStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const materialsGeneration = useRef(0);
   const [configRuntimeStatus, setConfigRuntimeStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
@@ -105,7 +104,6 @@ export function useERP() {
         const parts = Object.fromEntries(responses.map(({ partition, body }) => [partition, body.data])) as Record<SyncPartition, unknown>;
         const mapped = mapStateToUUIDs(mergeSyncPartitions(parts));
         setState(mapped);
-        setAuditStatus('idle');
         setMaterialsStatus('idle');
         setConfigRuntimeStatus('idle');
         setDefaultTasksStatus('idle');
@@ -187,18 +185,6 @@ export function useERP() {
       if (generation !== defaultTasksGeneration.current) return;
       console.error('[DEFAULT TASKS LOAD]', error);
       setDefaultTasksStatus('error');
-    }
-  }, []);
-
-  const loadAuditLogs = useCallback(async () => {
-    setAuditStatus('loading');
-    try {
-      const result = await fetchAuditLogsFromSupabase(100);
-      if (!result.success || !result.data) throw new Error(result.message || 'Não foi possível carregar a auditoria.');
-      setState(prev => prev ? { ...prev, auditLogs: result.data! } : null);
-      setAuditStatus('loaded');
-    } catch {
-      setAuditStatus('error');
     }
   }, []);
 
@@ -299,80 +285,12 @@ export function useERP() {
   };
 
   // Helper to generate IDs
-  const genId = (prefix: string) => {
-    if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
-      return window.crypto.randomUUID();
-    }
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-  };
-
-  // Helper to record audit log in state and Supabase
-  const logAudit = (
-    action: string,
-    entityType: string,
-    entityId?: string,
-    entityName?: string,
-    details?: string
-  ) => {
-    let userName = 'Sistema';
-    let userEmail = '';
-    let userId: string | undefined = undefined;
-
-    const cu = getClientUser();
-    if (cu) {
-      userId = cu.id;
-      userName = cu.name || cu.email || 'Utilizador';
-      userEmail = cu.email || '';
-    }
-
-    const logItem: import('../lib/types').AuditLog = {
-      id: genId('audit'),
-      timestamp: new Date().toISOString(),
-      userId,
-      userName,
-      userEmail,
-      action,
-      entityType,
-      entityId,
-      entityName,
-      details: details || `${action} em ${entityType} ${entityName ? `"${entityName}"` : ''}`,
-      createdDate: new Date().toISOString()
-    };
-
-    // Update local state auditLogs immediately so UI reflects it instantly
-    setState(prev => prev ? {
-      ...prev,
-      auditLogs: [logItem, ...(prev.auditLogs || [])]
-    } : prev);
-
-    // Persist directly to Supabase table audit_logs
-    if (isSupabaseConfigured) {
-      logAuditEventToSupabase({
-        userId,
-        userName,
-        userEmail,
-        action,
-        entityType,
-        entityId,
-        entityName,
-        details: logItem.details
-      }).catch(err => {
-        console.warn('Erro ao gravar audit_log no Supabase:', err);
-      });
-    }
-
-    return logItem;
-  };
-
   const { addProject, updateProject, deleteProject } = createProjectActions({
-    isDbConfigured, state, setState, setSyncStatus, setSyncError, logAudit, refreshFromDatabase, getApiErrorMessage,
+    isDbConfigured, state, setState, setSyncStatus, setSyncError, refreshFromDatabase, getApiErrorMessage,
   });
 
   const { addTask, addTasks, updateTask, deleteTask } = createTaskActions({
-    isDbConfigured, state, setState, setSyncStatus, setSyncError, logAudit, refreshFromDatabase, getApiErrorMessage,
+    isDbConfigured, state, setState, setSyncStatus, setSyncError, refreshFromDatabase, getApiErrorMessage,
   });
 
   const deleteSyncedEntity = async (entity: 'comments' | 'userAbsences' | 'specialDays' | 'defaultTasks', id: string) => {
@@ -401,7 +319,7 @@ export function useERP() {
   const { addUser, updateUser, deleteUser } = createUserActions({ state, refreshFromDatabase });
 
   const { addClient, updateClient, deleteClient } = createClientActions({
-    isDbConfigured, state, setState, setSyncStatus, setSyncError, matchId, logAudit, getApiErrorMessage,
+    isDbConfigured, state, setState, setSyncStatus, setSyncError, matchId, getApiErrorMessage,
   });
 
   const { addProjectMaterial, updateProjectMaterial, deleteProjectMaterial } = createProjectMaterialActions({ state, setState, matchId });
@@ -481,8 +399,6 @@ export function useERP() {
     deleteAutomationRule,
     toggleAutomationRule,
     refreshFromDatabase,
-    loadAuditLogs,
-    auditStatus,
     loadProjectMaterials,
     materialsStatus,
     loadConfigRuntime,

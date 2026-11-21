@@ -15,13 +15,14 @@ describe('RLS server-only boundary safeguards', () => {
     const code = read('lib/supabaseSync.ts') + domainWriteSource();
     expect(code).toContain('const supabase = databaseClient;');
     expect(code).toContain("typeof window !== 'undefined' || !supabase");
-    expect(code.slice(code.indexOf('export async function logAuditEventToSupabase'))).not.toContain(".from('audit_logs')");
+    expect(code).not.toContain(".from('audit_logs')");
+    expect(code).not.toContain('logAuditEventToSupabase');
   });
-  test('all legacy route writers inject server client into read and save', () => {
+  test('material routes inject the server client into domain writes', () => {
     for (const path of ['app/api/v1/project-materials/route.ts','app/api/v1/project-materials/[id]/route.ts']) {
       const code = read(path);
       expect(code).not.toContain('getActiveStateFromSupabase()');
-      expect(code.match(/saveActiveStateToSupabase\([^,]*, databaseClient, /g)?.length).toBeGreaterThan(0);
+      expect(code.match(/persistProjectMaterial\(databaseClient, /g)?.length).toBeGreaterThan(0);
     }
     expect(read('app/api/supabase/sync/route.ts')).toContain('saveActiveStateToSupabase(state, clientToUse)');
   });
@@ -56,11 +57,13 @@ describe('RLS server-only boundary safeguards', () => {
     expect(writes[0].rows[0].id).toBe('92000000-0000-4000-8000-000000000010');
   });
   test('audit read permission and actor derive from server; reports cannot impersonate authoritative actions', () => {
-    const code = read('app/api/audit/route.ts');
+    const code = read('domains/administration/modules/auditHttp.ts');
     expect(code).toContain("p_permission_code: 'admin:access'");
     expect(code).toContain('if (permitted !== true)');
     expect(code).toContain('user_id: user.id');
-    expect(code).toContain("action: 'CLIENT_EVENT'");
+    expect(read('app/api/audit/route.ts')).not.toContain('export const POST');
+    expect(read('app/api/audit/export/route.ts')).toContain('handleAudit(req, true)');
+    expect(code).not.toContain('req.json()');
     expect(code).not.toContain('body.userId');
     expect(read('lib/audit.ts')).not.toContain('defaultSupabase');
   });

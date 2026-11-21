@@ -25,7 +25,10 @@ export async function POST(req: NextRequest) {
     const preference = sessionPreference(parsed.data.rememberMe);
     const supabase = await createClient(undefined, preference);
     const { data: signIn, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email.trim().toLowerCase(), password: parsed.data.password });
-    if (error || !signIn.user) return unauthorized('Email ou palavra-passe incorretos.', requestId);
+    if (error || !signIn.user) {
+      await logAuditEvent({ action: 'LOGIN_FAILED', entity: 'users', outcome: 'failed', requestId });
+      return unauthorized('Email ou palavra-passe incorretos.', requestId);
+    }
     const admin = createAdminClient();
     if (!admin) return internalServerError('Serviço de autenticação não configurado.', requestId);
     const { data: profile, error: profileError } = await admin.from('users')
@@ -54,7 +57,7 @@ export async function POST(req: NextRequest) {
       isAdmin: Boolean(profile.is_admin), isSuperAdmin: (roles || []).some((role: any) => role.code === 'SUPER_ADMIN'),
       permissions: [...new Set((permissionRows || []).map((item: any) => item.code))],
     };
-    await logAuditEvent({ action: 'LOGIN', userId: profile.id, entity: 'users', entityId: profile.id, ip, details: { method: 'supabase_auth' } });
+    await logAuditEvent({ action: 'LOGIN', userId: profile.id, userName: profile.name, entity: 'users', entityId: profile.id, requestId, details: { method: 'supabase_auth' } });
     (await cookies()).set(SESSION_PREFERENCE_COOKIE, preference, {
       ...preferenceCookieLifetime(parsed.data.rememberMe),
       httpOnly: false,

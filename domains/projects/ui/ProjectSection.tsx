@@ -6,6 +6,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import ProjectAnalytics from '@/domains/projects/ui/ProjectAnalytics';
 import { projectDeliveryAnalysis } from '@/domains/projects/modules/projectAnalytics';
 import ProjectActivityTable from './ProjectActivityTable';
+import AuditLogSection from '@/domains/administration/ui/AuditLogSection';
 import MarkdownCommentBody from '@/components/ui/MarkdownCommentBody';
 import MarkdownCommentComposer from '@/components/ui/MarkdownCommentComposer';
 import MarkdownEditor from '@/components/ui/MarkdownEditor';
@@ -443,7 +444,7 @@ export default function ProjectSection({
   };
 
   // Project View Tab (Calendário / Cronograma)
-  const [projectViewTab, setProjectViewTab] = useState<'atividade' | 'calendario' | 'cronograma'>('atividade');
+  const [projectViewTab, setProjectViewTab] = useState<'atividade' | 'calendario' | 'cronograma' | 'historico'>('atividade');
   useEffect(() => setProjectViewTab('atividade'), [selectedProjectId]);
 
   // Full Timeline Modal State
@@ -1801,13 +1802,17 @@ export default function ProjectSection({
               <div className="space-y-4">
                 <Tabs tabs={[{ id: 'atividade', label: 'Atividade', icon: <ListTodo className="w-4 h-4" /> },
                   { id: 'calendario', label: 'Calendário mensal', icon: <Calendar className="w-4 h-4" /> },
-                  { id: 'cronograma', label: 'Cronograma', icon: <Clock className="w-4 h-4" /> }]}
-                  activeTabId={projectViewTab} onChange={id => setProjectViewTab(id as 'atividade' | 'calendario' | 'cronograma')} variant="line" />
+                  { id: 'cronograma', label: 'Cronograma', icon: <Clock className="w-4 h-4" /> },
+                  { id: 'historico', label: 'Histórico de alterações', icon: <Clock className="w-4 h-4" /> }]}
+                  activeTabId={projectViewTab} onChange={id => setProjectViewTab(id as 'atividade' | 'calendario' | 'cronograma' | 'historico')}
+                  className="flex-wrap sm:flex-nowrap" variant="line" />
 
                 {projectViewTab === 'atividade' ? (
                   <ProjectActivityTable project={selectedProj} tasks={projTasks} comments={projComments} risks={projRiskItems}
                     materials={projMaterials} taskStatuses={taskStatuses} riskStatuses={riskStatuses || []}
                     getUserName={getUserName} pendingMaterialStatuses={pendingMaterialStatuses} />
+                ) : projectViewTab === 'historico' ? (
+                  <AuditLogSection key={selectedProj.id} projectId={selectedProj.id} />
                 ) : projectViewTab === 'calendario' ? (
                   <div className="space-y-4 animate-fade-in">
                     <div className="flex flex-wrap items-center justify-between gap-3">

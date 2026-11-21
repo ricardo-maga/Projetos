@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { presalesError } from '@/lib/presalesErrors';
 import { requirePermission } from '@/lib/auth/authorization';
-import { createAdminClient } from '@/lib/supabase/server';
+import { auditRequestHeaders, createAdminClient } from '@/lib/supabase/server';
 import { runIdempotent, getIdempotentEntityId } from '@/lib/apiIdempotency';
 import { createPresalesSchema } from '@/lib/presales';
 import { listPresales, personalPresalesIds, usersWithPresalesPermission } from '@/lib/presalesServer';
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const page = Number(new URL(req.url).searchParams.get('page') || 1);
   if (!Number.isInteger(page) || page < 1 || page > 10000) return NextResponse.json({ success: false, message: 'Página inválida.' }, { status: 400 });
   try {
-    const db = createAdminClient();
+    const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
     const mine = new URL(req.url).searchParams.get('scope') === 'mine';
     const assignedIds = mine ? await personalPresalesIds(db, auth.user.id) : [];
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   return runIdempotent(req, auth.user.id, 'presales:create', async claimedReq => {
     const parsed = createPresalesSchema.safeParse(await claimedReq.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ success: false, message: 'Dados Presales inválidos.', details: parsed.error.flatten() }, { status: 400 });
-    const db = createAdminClient();
+    const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
     const id = getIdempotentEntityId(claimedReq);
     const { error } = await db.rpc('presales_mutate_v2', {

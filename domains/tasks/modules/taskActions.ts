@@ -13,20 +13,19 @@ interface ActionContext {
   setState: Dispatch<SetStateAction<ERPState | null>>;
   setSyncStatus: Dispatch<SetStateAction<SyncStatus>>;
   setSyncError: Dispatch<SetStateAction<string | null>>;
-  logAudit: (action: string, entityType: string, entityId?: string, entityName?: string, details?: string) => unknown;
   refreshFromDatabase: () => Promise<boolean>;
   getApiErrorMessage: (result: any, fallback: string) => string;
 }
 
 export function createTaskActions({
-  isDbConfigured, state, setState, setSyncStatus, setSyncError, logAudit, refreshFromDatabase, getApiErrorMessage,
+  isDbConfigured, state, setState, setSyncStatus, setSyncError, refreshFromDatabase, getApiErrorMessage,
 }: ActionContext) {
   // ==================== TASKS CRUD ====================
   const parseHoursToFloat = (hoursStr: any): number => {
     return parseTaskHoursToFloat(hoursStr);
   };
 
-  const addTask = async (task: Omit<Task, 'id' | 'deleted' | 'createdDate'>) => {
+  const addTask = async (task: Omit<Task, 'id' | 'deleted' | 'createdDate'> & { copiedFromTaskId?: string }) => {
     const now = new Date().toISOString();
 
     if (!isDbConfigured) {
@@ -51,6 +50,7 @@ export function createTaskActions({
 
       const opResult = await apiCreateTask({
         projectId: task.projectId,
+        copiedFromTaskId: task.copiedFromTaskId,
         title: task.title,
         description: task.description || '',
         statusId: resolvedStatusId,
@@ -69,8 +69,6 @@ export function createTaskActions({
 
       if (opResult.success && opResult.data) {
         const newTask: Task = opResult.data;
-
-        logAudit('CREATE', 'TASK', newTask.id, newTask.title, `Criada a tarefa "${newTask.title}"`);
 
         setState(prev => {
           if (!prev) return prev;
@@ -125,7 +123,6 @@ export function createTaskActions({
     }
 
     const currentVersion = (existingTask as any).version || 1;
-    const taskTitle = updates.title || existingTask.title || id;
 
     try {
       setSyncStatus('syncing');
@@ -167,15 +164,6 @@ export function createTaskActions({
       const updatedTask = opResult.data;
       const nextVersion = updatedTask.version || (currentVersion + 1);
 
-      let detailMsg = `Atualizada tarefa "${taskTitle}"`;
-      if (updates.statusId && updates.statusId !== existingTask.statusId) {
-        const oldStatus = state?.taskStatuses?.find(s => s.id === existingTask.statusId || matchTaskStatusId(s.id, existingTask.statusId))?.name || existingTask.statusId;
-        const newStatus = state?.taskStatuses?.find(s => s.id === updates.statusId || matchTaskStatusId(s.id, updates.statusId))?.name || updates.statusId;
-        detailMsg = `Estado da tarefa "${taskTitle}" alterado de "${oldStatus}" para "${newStatus}"`;
-      } else if (updates.title && updates.title !== existingTask.title) {
-        detailMsg = `Título da tarefa alterado de "${existingTask.title}" para "${updates.title}"`;
-      }
-      logAudit('UPDATE', 'TASK', id, taskTitle, detailMsg);
 
       setState(prev => {
         if (!prev) return prev;
@@ -218,7 +206,6 @@ export function createTaskActions({
       const opResult = await apiDeleteTask(id);
 
       if (opResult.success) {
-        logAudit('DELETE', 'TASK', id, existingTask?.title, `Eliminada a tarefa "${existingTask?.title || id}"`);
         setState(prev => {
           if (!prev) return prev;
           return {

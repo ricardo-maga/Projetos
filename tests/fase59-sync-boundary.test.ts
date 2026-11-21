@@ -204,8 +204,8 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
       const idRouteContent = readFileSync(join(process.cwd(), 'app/api/v1/project-materials/[id]/route.ts'), 'utf-8');
 
       // Ambas as rotas persistem apenas os materiais pedidos.
-      expect(routeContent).toContain('saveActiveStateToSupabase');
-      expect(idRouteContent).toContain('saveActiveStateToSupabase');
+      expect(routeContent).toContain('persistProjectMaterial');
+      expect(idRouteContent).toContain('persistProjectMaterial');
     });
   });
 });

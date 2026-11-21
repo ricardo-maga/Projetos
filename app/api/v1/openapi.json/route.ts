@@ -87,6 +87,7 @@ export async function GET() {
             projectId: { type: "string", format: "uuid" },
             statusId: { type: "string", example: "ts-1" },
             taskTypeId: { type: "string", format: "uuid", example: "33333333-3333-3333-3333-333333333304", description: "ID do Tipo de Tarefa (configurável em Campos Auxiliares)" },
+            copiedFromTaskId: { type: 'string', format: 'uuid', description: 'Tarefa de origem para a auditoria de uma cópia autorizada.' },
             isMilestone: { type: "boolean", default: false, description: "Retrocompatibilidade (Indica se é um Lembrete)" },
             estimatedHours: { type: "number", example: 8 },
             actualHours: { type: "number", nullable: true, description: "NULL quando não há horas reais registadas; ao concluir sem valor, a previsão é copiada." },
@@ -379,6 +380,25 @@ export async function GET() {
       } } },
     };
   }
+  paths['/projects/{id}/history'] = { get: {
+    summary: 'Consultar alterações autorizadas de um projeto', tags: ['Projetos'],
+    parameters: [
+      { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+      { name: 'cursor', in: 'query', schema: { type: 'string' } },
+      { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 200 } },
+      ...['from', 'to'].map(name => ({ name, in: 'query', schema: { type: 'string', format: 'date-time' } })),
+    ],
+    responses: { '200': { description: 'Eventos autorizados e cursor da página seguinte' },
+      '400': { description: 'Filtros inválidos' }, '404': { description: 'Projeto não encontrado' } },
+  } };
+  paths['/projects/import'] = { post: {
+    summary: 'Importar um lote CSV de projetos', tags: ['Projetos'],
+    requestBody: { required: true, content: { 'application/json': { schema: {
+      type: 'object', required: ['csv'], properties: { csv: { type: 'string', maxLength: 256000 } },
+    } } } },
+    responses: { '200': { description: 'Resultado por linha e identificador do lote' },
+      '400': { description: 'CSV inválido ou acima do limite' } },
+  } };
   paths['/projects/{id}'].patch = { ...paths['/projects/{id}'].put, summary: 'Atualizar parcialmente um projeto' };
   paths['/projects/ip-duplicate'] = { get: { summary: 'Verificar duplicação de identificador IP ou SF', tags: ['Projetos'],
     parameters: [
