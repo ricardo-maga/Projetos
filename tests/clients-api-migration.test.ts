@@ -74,7 +74,7 @@ describe('FASE 33-C1 — Verificação Estática de Contrato da API de Clients c
       expect(service).toContain('currentVersion + 1');
       expect(service).toContain('findActiveProjects(db, id)');
       expect(service).not.toContain('logAuditEvent');
-      expect(readFileSync(join(process.cwd(), 'supabase/migrations/20261121143040_application_audit_events.sql'), 'utf8'))
+      expect(readFileSync(join(process.cwd(), 'supabase/migrations/20261121150333_application_audit_events.sql'), 'utf8'))
         .toContain("capture_row('client', 'client_name'");
 
     });
