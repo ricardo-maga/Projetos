@@ -59,14 +59,10 @@ try {
   await expectStatus('Viewer não cria projeto',await request('/api/v1/projects',viewer,{method:'POST',body:'{}'}),403);
   await expectStatus('Viewer não lê auditoria',await request('/api/audit',viewer),403);
   await expectStatus('Admin lê auditoria',await request('/api/audit',admin),200);
-  await expectStatus('Relato de cliente sem identidade controlável',await request('/api/audit',admin,
-    { method:'POST',body:JSON.stringify({action:'UPDATE',userId:'fake',details:'ignored',entityType:'PROJECT'}) }),200);
-  const response = await request('/api/audit',admin);
-  const result = await response.json();
-  const reported = result.data?.find(item => item.action === 'CLIENT_EVENT');
-  if (!reported || reported.userEmail !== 'admin.staging@example.com' || reported.entityType !== 'SYSTEM')
-    throw new Error('Falha na identidade/rotulagem do evento de cliente');
-  outcomes.push({check:'Identidade server-side e CLIENT_EVENT',pass:true});
+  await expectStatus('Relatos do browser não são aceites', await request('/api/audit', admin,
+    { method: 'POST', body: JSON.stringify({ action: 'UPDATE', userId: 'fake' }) }), 405);
+  await expectStatus('Viewer não exporta auditoria', await request('/api/audit/export', viewer,
+    { method: 'POST' }), 403);
   const fixtures = await (await request('/api/v1/projects',admin)).json();
   const fixture = fixtures.data?.find(p => p.title === 'Projeto fictício STAGING');
   if (!fixture) throw new Error('Projeto base de staging não encontrado');
