@@ -1,4 +1,5 @@
 'use client';
+import MobileTaskList from './MobileTaskList';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Task, Project, Client, TaskType, ProjectPriority, ProjectStatus } from '@/lib/types';
@@ -484,7 +485,7 @@ export default function TaskSection({
           activeTabId={activeTaskViewTab}
           onChange={(id) => setActiveTaskViewTab(id as 'lista' | 'analise')}
           variant="line"
-          className="mb-4"
+          className="mb-4 mobile-operational-tabs"
         />
 
         {/* OPERATIONAL KPI CARDS */}
@@ -712,7 +713,7 @@ export default function TaskSection({
             {/* Detailed Filters Row */}
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Search Input - expands to fill space */}
-              <div className="flex-1 min-w-[200px] relative">
+              <div className="flex-1 min-w-0 sm:min-w-[200px] relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-disabled w-4 h-4 pointer-events-none z-10" />
                 <Input aria-label="Pesquisar tarefas"
                   type="text"
@@ -724,7 +725,7 @@ export default function TaskSection({
               </div>
 
               {/* Assignee Filter */}
-              <div className="w-full sm:w-auto min-w-[220px]">
+              <div className="w-full min-w-0 sm:w-auto sm:min-w-[220px]">
                 <Select aria-label="Filtrar por responsável"
                   value={filterAssignee}
                   onChange={e => setFilterAssignee(e.target.value)}
@@ -741,7 +742,7 @@ export default function TaskSection({
 
         {/* LISTA DE TAREFAS */}
         {activeTaskViewTab === 'lista' && (
-          <Card className="overflow-hidden shadow-flat">
+          <Card className="mobile-task-section overflow-visible md:overflow-hidden shadow-flat">
             <div className="p-4 sm:p-5 border-b border-border bg-surface-muted/50 space-y-3.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -787,14 +788,14 @@ export default function TaskSection({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex w-full flex-col items-start gap-1.5 sm:w-auto sm:flex-row sm:items-center">
                     <span className="text-text-secondary font-medium text-body-sm">Ordenar por:</span>
-                    <div className="w-auto min-w-[180px]">
+                    <div className="w-full min-w-0 sm:w-auto sm:min-w-[180px]">
                       <Select
                         aria-label="Ordenar tarefas por"
                         value={sortBy}
                         onChange={e => setSortBy(e.target.value as 'estimatedDate' | 'status')}
-                        className="h-9 py-1 px-2.5 text-body-sm font-semibold"
+                        className="h-9 py-1 pl-2.5 pr-10 text-body-sm font-semibold"
                         options={[
                           { value: 'estimatedDate', label: 'Data prevista (padrão)' },
                           { value: 'status', label: 'Estado' },
@@ -819,7 +820,7 @@ export default function TaskSection({
             </div>
 
             {/* Table List Output */}
-            <div className="overflow-x-auto w-full">
+            <div className="w-full md:overflow-x-auto">
               {paginatedTasks.length === 0 ? (
                 <div className="p-12 text-center text-text-muted font-medium text-body-sm space-y-2">
                   <ListTodo className="w-8 h-8 text-text-disabled mx-auto" />
@@ -827,16 +828,23 @@ export default function TaskSection({
                   <p className="text-caption text-text-muted">Tente ajustar a pesquisa ou limpar os filtros operacionais selecionados.</p>
                 </div>
               ) : (
-                <table className="w-full min-w-[850px] text-left border-collapse">
+                <>
+                <MobileTaskList tasks={paginatedTasks} taskStatuses={taskStatuses} projectLabel={getProjectTitle} getTaskScale={getTaskScale}
+                  onOpen={task => openTaskModal(task, canWriteTasks || canDeleteTasks ? 'edit' : 'view')}
+                  onExecute={canWriteTasks ? task => openTaskModal(task, 'execute') : undefined}
+                  onEdit={canWriteTasks ? task => openTaskModal(task, 'edit') : undefined}
+                  onDuplicate={canWriteTasks ? task => openTaskModal(task, 'create') : undefined}
+                  onDelete={canDeleteTasks ? task => askConfirmation('Confirmar Eliminação de Tarefa', 'Tem a certeza que deseja eliminar esta tarefa? Esta ação não pode ser anulada.', () => deleteTask(task.id)) : undefined} />
+                <table className="hidden md:table w-full min-w-[850px] text-left border-collapse">
                   <thead className="bg-surface-muted text-label font-bold text-text-secondary border-b border-border whitespace-nowrap select-none">
                     <tr>
-                      <th className="px-3 py-3 text-center w-10"></th>
-                      <th className="px-4 py-3 text-left">Data</th>
-                      <th className="px-4 py-3 text-left">Tarefa</th>
-                      <th className="px-4 py-3 text-left">Responsáveis</th>
-                      <th className="px-4 py-3 text-center">Horas</th>
-                      <th className="px-4 py-3 text-left">Tipo</th>
-                      <th className="px-4 py-3 text-right">Ações</th>
+                      <th scope="col" className="px-3 py-3 text-center w-10"><span className="sr-only">Execução</span></th>
+                      <th scope="col" className="px-4 py-3 text-left">Data</th>
+                      <th scope="col" className="px-4 py-3 text-left">Tarefa</th>
+                      <th scope="col" className="px-4 py-3 text-left">Responsáveis</th>
+                      <th scope="col" className="px-4 py-3 text-center">Horas</th>
+                      <th scope="col" className="px-4 py-3 text-left">Tipo</th>
+                      <th scope="col" className="px-4 py-3 text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="text-body-sm divide-y divide-border">
@@ -1011,6 +1019,7 @@ export default function TaskSection({
                     })}
                   </tbody>
                 </table>
+                </>
               )}
             </div>
 
@@ -1026,7 +1035,7 @@ export default function TaskSection({
                 </div>
 
                 {totalPages > 1 && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-wrap justify-center items-center gap-1">
                     <Button
                       type="button"
                       size="sm"
@@ -1039,7 +1048,7 @@ export default function TaskSection({
                       <span>Anterior</span>
                     </Button>
 
-                    <div className="flex items-center gap-1 mx-1">
+                    <div className="flex flex-wrap justify-center items-center gap-1 mx-1">
                       {getPaginationPages(validCurrentPage, totalPages).map((p, idx) => (
                         p === '...' ? (
                           <span key={`ellipsis-${idx}`} className="px-1 text-text-muted font-bold">...</span>

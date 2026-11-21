@@ -4121,10 +4121,10 @@ export default function ProjectSection({
         // Project list and analysis share the existing Foundation tab pattern.
         <div className="space-y-4">
         <Tabs tabs={[{ id: 'lista', label: 'Lista de projetos', icon: <ListTodo className="w-4 h-4" /> }, { id: 'analise', label: 'Análise de projetos', icon: <BarChart3 className="w-4 h-4" /> }]}
-          activeTabId={projectListView} onChange={id => setProjectListView(id as 'lista' | 'analise')} variant="line" />
+          activeTabId={projectListView} onChange={id => setProjectListView(id as 'lista' | 'analise')} variant="line" className="mobile-operational-tabs" />
         {projectListView === 'analise' ? <ProjectAnalytics projects={projects} projectStatuses={projectStatuses}
           categories={projectCategories} users={users} clients={clients} materials={projectMaterials} onSelectProject={setSelectedProjectId} /> : (
-        <Card className="bg-surface rounded-card border border-border shadow-raised overflow-hidden animate-fade-in">
+        <Card className="mobile-project-section min-w-0 bg-surface rounded-card border border-border shadow-raised overflow-hidden animate-fade-in">
 
           {/* List Header and Filter controls */}
           <div className="p-4 sm:p-5 border-b border-border/80 bg-surface-muted/60 space-y-3.5">
@@ -4134,7 +4134,7 @@ export default function ProjectSection({
 
             {/* Filter inputs */}
             <div className="flex flex-wrap items-center gap-2.5">
-              <div className="flex-1 min-w-[240px] relative">
+              <div className="flex-1 min-w-0 sm:min-w-[240px] relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4 pointer-events-none z-10" />
                 <Input aria-label="Pesquisar projetos"
                   type="text"
@@ -4203,7 +4203,30 @@ export default function ProjectSection({
             ) : paginatedProjects.length === 0 ? (
               <div className="p-10 text-center text-text-muted font-medium text-body-sm">Nenhum projeto encontrado para os filtros selecionados.</div>
             ) : (
-              <table className="w-full min-w-[700px] text-left border-collapse">
+              <>
+              <ul aria-label="Lista compacta de projetos" className="mobile-controls divide-y divide-border md:hidden">
+                {paginatedProjects.map(proj => {
+                  const risk = getProjectCalculatedRisk(proj.id, projectRiskItems, riskStatuses);
+                  const status = getProjectStatusStyle(proj.statusId, projectStatuses);
+                  return <li key={proj.id} className={`min-w-0 p-3 ${risk.score >= 16 ? 'border-l-4 border-error bg-error/10' : ''}`}>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <button type="button" onClick={() => setSelectedProjectId(proj.id)} aria-label={`Abrir projeto ${proj.title}`}
+                        className="min-h-11 min-w-0 flex-1 space-y-1 text-left [overflow-wrap:anywhere] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                        <span className="block text-caption text-primary-ink">{getClientName(proj.clientId)}</span>
+                        <span className="block text-body font-bold text-text-primary">{proj.title}</span>
+                        <span className="block text-caption text-text-secondary">IP: {proj.installProjectNo || '—'}</span>
+                        <span className="flex flex-wrap items-center gap-2 text-body-sm text-text-secondary">
+                          <Badge className={status.badgeClass}>{status.name}</Badge>
+                          {forecastMonth(proj.forecastDate) === currentForecastMonth() && <ForecastBadge project={proj} statuses={projectStatuses} canEdit={canWriteProjects} updateProject={updateProject} compact />}
+                          <span>Entrega: {proj.scheduledDate || proj.estimatedDate || proj.deliveryDate || '—'}</span>
+                          {risk.score >= 16 && <Badge variant="error">Risco crítico</Badge>}
+                        </span>
+                      </button>
+                    </div>
+                  </li>;
+                })}
+              </ul>
+              <table className="hidden md:table w-full min-w-[700px] text-left border-collapse">
                 <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
                   <tr>
                     <th className="px-5 py-3.5 text-left">IP / Gestor</th>
@@ -4273,13 +4296,14 @@ export default function ProjectSection({
                   })}
                 </tbody>
               </table>
+              </>
             )}
           </div>
 
           {/* Project List Pagination Controls */}
           {totalProjects > 0 && (!projectsListPending || cachedProjectsPage) && (
             <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-surface-muted/70 border-t border-border/80 text-body-sm gap-3 font-medium">
-              <div className="flex items-center gap-3 text-text-secondary font-medium">
+              <div className="flex flex-wrap items-center justify-center gap-3 text-text-secondary font-medium">
                 <span>
                   A mostrar <span className="font-bold text-text-secondary">{totalProjects === 0 ? 0 : startProjectIndex + 1}</span> a{' '}
                   <span className="font-bold text-text-secondary">{endProjectIndex}</span> de{' '}
@@ -4304,7 +4328,7 @@ export default function ProjectSection({
               </div>
 
               {totalProjectPages > 1 && (
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap justify-center items-center gap-1">
                   <Button variant="ghost" size="sm"
                     onClick={() => setProjectCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={validProjectPage === 1}
@@ -4314,7 +4338,7 @@ export default function ProjectSection({
                     <span>Anterior</span>
                   </Button>
 
-                  <div className="flex items-center gap-1 mx-1">
+                  <div className="flex flex-wrap justify-center items-center gap-1 mx-1">
                     {getPaginationPages(validProjectPage, totalProjectPages).map((p, idx) => (
                       p === '...' ? (
                         <span key={`ellipsis-proj-${idx}`} className="px-1 text-text-muted font-bold">...</span>
