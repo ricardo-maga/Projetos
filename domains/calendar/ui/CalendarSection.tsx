@@ -41,7 +41,7 @@ export default function CalendarSection({ projects = [], tasks = [], absences = 
   return <div className="space-y-6">
     <Tabs tabs={[{ id: 'users', label: 'Calendário semanal', icon: <CalendarDays className="w-4 h-4" /> },
       { id: 'projects', label: 'Timeline de projetos', icon: <GanttChart className="w-4 h-4" /> }]}
-      activeTabId={view} onChange={value => setView(value as 'users' | 'projects')} variant="line" />
+      activeTabId={view} onChange={value => setView(value as 'users' | 'projects')} variant="line" className="mobile-operational-tabs" />
     {view === 'users' ? <OperationalUserCalendar tasks={tasks} users={users} projects={projects} clients={clients}
       absences={absences} taskStatuses={taskStatuses} taskTypes={taskTypes} specialDays={specialDays} userGroups={userGroups}
       onSelectTask={openTask} onDuplicateTask={duplicateTask} onQuickCreateTask={(userId, date, projectId) => createTask(date, userId, projectId)}

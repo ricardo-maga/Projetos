@@ -543,6 +543,17 @@ body[data-theme="default"],
 .m3-focus-banner__stat { border-color: var(--m3-outline-variant); }
 
 @media (max-width: 767px) {
+  .mobile-operational-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .mobile-operational-tabs button {
+    min-height: 44px;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
   .m3-nav-rail { border-radius: 0 var(--m3-radius-lg) var(--m3-radius-lg) 0; }
   .m3-section-header__actions { width: 100%; }
   .m3-section-header__actions .m3-segmented-control { width: 100%; }
@@ -651,4 +662,31 @@ button[data-filled="true"] :where(span, svg) {
 :is(input, textarea)::placeholder {
   color: var(--color-text-muted-token);
   opacity: 1;
+}
+
+/* Compact operational views share the app's 768px mobile breakpoint. */
+@media (max-width: 767px) {
+  :is(.mobile-task-section, .mobile-project-section, .mobile-calendar-section, .mobile-timeline-section) {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  :is(.mobile-task-section, .mobile-project-section) input {
+    min-width: 0;
+  }
+  :is(.mobile-task-section, .mobile-project-section, .mobile-calendar-section, .mobile-timeline-section, .mobile-controls) :is(button, select) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  :is(.mobile-task-section, .mobile-project-section, .mobile-calendar-section, .mobile-timeline-section, .mobile-controls) :is(button, select, input) {
+    max-width: 100%;
+  }
+  .mobile-controls .whitespace-nowrap {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .mobile-timeline-section .m3-segmented-control {
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
 }

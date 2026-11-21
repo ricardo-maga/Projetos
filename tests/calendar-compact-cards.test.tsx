@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { createSectionHarness } from './fixtures/m3-section-harness';
+import { createSectionHarness as createHarness } from './fixtures/m3-section-harness';
 import { findProjectElement as find } from './fixtures/projects-m3-harness';
+
+// These regressions describe the full grid; the daily agenda exposes more detail.
+const createSectionHarness: typeof createHarness = (file, initial) => createHarness(file, { mobileGrid: true, ...initial });
 
 describe('Compact weekly calendar', () => {
   it('uses the task title only when no project is assigned', () => {

@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks } from '../lib/projectTimeline';
 import { getTaskConflictWarnings } from '../lib/taskConflicts';
-import { createSectionHarness } from './fixtures/m3-section-harness';
+import { createSectionHarness as createHarness } from './fixtures/m3-section-harness';
 import { findProjectElement as find } from './fixtures/projects-m3-harness';
 import ProjectTimeline from '../components/ProjectTimeline';
 import DateViewNavigator from '../components/ui/DateViewNavigator';
@@ -13,6 +13,8 @@ import TimelineAbsenceBadge from '../domains/projects/ui/TimelineAbsenceBadge';
 import { addCivilDays, formatDateToYYYYMMDD, getOperationalCalendarDays } from '../lib/operationalCalendar';
 
 const today = new Date(2026, 9, 5, 12);
+// Keep existing grid regressions independent of the mobile agenda presentation.
+const createSectionHarness: typeof createHarness = (file, initial) => createHarness(file, { mobileGrid: true, ...initial });
 const visibleWeek = { visibleStartDate: '2026-10-05', visibleEndDate: '2026-10-11' };
 const statuses = [1, 2, 3, 4, 5, 6, 7, 0].map(scale => ({ id: `s${scale}`, name: `Estado ${scale}`, scale }));
 const project = (id: string, extra = {}) => ({ id, title: `Projeto ${id}`, clientId: 'c', installProjectNo: `IP-${id}`, statusId: 's2', deleted: false, ...extra }) as any;

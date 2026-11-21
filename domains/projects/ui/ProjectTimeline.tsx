@@ -1,4 +1,6 @@
 'use client';
+import MobileProjectAgenda from './MobileProjectAgenda';
+import MobileViewToggle from '@/components/ui/MobileViewToggle';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
 import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User, UserAbsence } from '@/lib/types';
@@ -54,6 +56,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
+  const [mobileGrid, setMobileGrid] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(new Set());
   const [dragOverCell, setDragOverCell] = useState<string | null>(null);
@@ -233,15 +236,16 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
     const observer = new ResizeObserver(updateDock);
     for (const element of [tableScrollRef.current, cardRef.current, dockRef.current]) if (element) observer.observe(element);
     return () => { document.removeEventListener('scroll', updateDock, true); window.removeEventListener('resize', updateDock); observer.disconnect(); };
-  }, [fullscreen]);
+  }, [fullscreen, mobileGrid]);
   return <ExpandedView open={fullscreen} onClose={() => setFullscreen(false)} title="Timeline de projetos">
     <div data-project-timeline-master data-timeline-density={highDensity ? 'high' : 'normal'} className={fullscreen ? 'p-3 sm:p-5' : ''}>
-    <Card ref={cardRef} className="overflow-visible">
+    <Card ref={cardRef} className="mobile-timeline-section min-w-0 overflow-visible">
       <div className="p-4 sm:p-5 bg-surface-muted/60 border-b border-border/80 space-y-4">
         <M3SectionHeader title="Timeline de projetos" description="Eventos por projeto, tarefas e datas de entrega."
           actions={<Button variant="outline" size="sm" onClick={() => setFullscreen(value => !value)} aria-pressed={fullscreen}>
             {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}{fullscreen ? 'Sair do ecrã cheio' : 'Ecrã cheio'}
           </Button>} />
+        <MobileViewToggle grid={mobileGrid} onChange={setMobileGrid} label="timeline" />
         <DateViewNavigator periodDays={periodDays} periods={[7, 14, 28]} navigationStepDays={7} periodLabelClassName="whitespace-nowrap sm:w-52 sm:shrink-0"
           onPeriodDaysChange={value => setView(value === 56 ? '56-hd' : value)}
           periodSelector={<M3SegmentedControl<TimelineView> className="project-timeline-view-options" label="Período de visualização" value={view} options={timelineViews} onChange={setView} />}
@@ -262,9 +266,17 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
         </div>
       </div>
       {/* The dock stays at the viewport bottom while the table passes through the vertical scroll area. */}
+      {!mobileGrid && <MobileProjectAgenda projects={visibleProjects} clients={clients} users={users} projectStatuses={projectStatuses}
+        taskStatuses={taskStatuses} days={days} events={events} undatedTasks={undatedTasks} otherDays={otherDays}
+        conflictTaskIds={conflictTaskIds} specialDays={specialDays} expanded={expandedProjects}
+        onToggle={id => setExpandedProjects(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; })}
+        onHide={id => setHiddenProjectIds(previous => new Set(previous).add(id))}
+        onOpenProject={id => openOutsideTimeline(() => onSelectProject?.(id))}
+        onOpenTask={task => openOutsideTimeline(() => onSelectTask(task))}
+        onCreate={canCreate ? (date, projectId) => openOutsideTimeline(() => onCreateTask(date, projectId)) : undefined} />}
       <div className="relative">
       <div ref={tableScrollRef} onScroll={event => syncHorizontalScroll(event.currentTarget, dockScrollRef.current)}
-        className="project-timeline-table-scroll overflow-x-auto overflow-y-hidden" data-project-timeline-scroll>
+        className={`${mobileGrid ? '' : 'hidden md:block'} project-timeline-table-scroll overflow-x-auto overflow-y-hidden`} data-project-timeline-scroll>
         <table className="w-full table-fixed border-separate border-spacing-0 text-body-sm" style={{ minWidth: timelineMinWidth }}>
           <caption className="sr-only">Timeline de projetos · {formatOperationalDateRange(days)}</caption>
           <colgroup><col style={{ width: projectColumnWidth }} />{days.map(day => <col key={day.dateStr} style={columnStyle(day.dateStr)} />)}</colgroup>
@@ -407,7 +419,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       <div ref={dockRef} data-project-timeline-dock className={`${floatingDock ? 'fixed bottom-0 z-40' : 'relative'} border-t border-border bg-surface shadow-raised rounded-b-card`}
         style={floatingDock ? { left: floatingDock.left, width: floatingDock.width } : undefined}>
       <div ref={dockScrollRef} onScroll={event => syncHorizontalScroll(event.currentTarget, tableScrollRef.current)}
-        className="overflow-x-auto" tabIndex={0} aria-label="Deslocar timeline na horizontal"
+        className={`${mobileGrid ? '' : 'hidden md:block'} overflow-x-auto`} tabIndex={0} aria-label="Deslocar timeline na horizontal"
         data-project-timeline-horizontal-scroll><div style={{ width: timelineMinWidth, height: 1 }} /></div>
       <div className="p-4 bg-surface-muted/60 flex flex-wrap justify-between items-center gap-3">
         <p className="text-caption text-text-secondary">{filtered.length ? `${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} de ${filtered.length} projetos` : '0 projetos'}</p>

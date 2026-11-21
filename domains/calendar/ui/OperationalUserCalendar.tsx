@@ -1,4 +1,6 @@
 'use client';
+import MobileDayAgenda from './MobileDayAgenda';
+import MobileViewToggle from '@/components/ui/MobileViewToggle';
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
@@ -94,6 +96,7 @@ export default function OperationalUserCalendar({
   currentUser,
 }: OperationalUserCalendarProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mobileGrid, setMobileGrid] = useState(false);
   const [expandedTaskCards, setExpandedTaskCards] = useState<Set<string>>(new Set());
 
   // 2. Period state: 7 days (default) or 14 days
@@ -361,12 +364,12 @@ export default function OperationalUserCalendar({
     <ExpandedView open={isFullscreen} onClose={() => setIsFullscreen(false)} title="Calendário semanal">
     <div className={isFullscreen ? 'p-3 sm:p-5' : ''}>
       {/* TOP CONTROL BAR */}
-      <Card className="overflow-hidden">
+      <Card className="mobile-calendar-section min-w-0 overflow-hidden">
       <div className="p-4 sm:p-5 bg-surface-muted/60 border-b border-border/80 space-y-4">
         {/* Title & Actions */}
         <M3SectionHeader title="Calendário semanal" description="Planeamento diário de tarefas, técnicos e horas previstas."
           actions={<div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" type="button" aria-pressed={allTasksExpanded}
+            <Button variant="outline" size="sm" type="button" className={mobileGrid ? '' : 'hidden md:inline-flex'} aria-pressed={allTasksExpanded}
               onClick={() => setExpandedTaskCards(allTasksExpanded ? new Set() : new Set(visibleTaskKeys))}>
               {allTasksExpanded ? 'Fechar' : 'Expandir'}
             </Button>
@@ -380,7 +383,7 @@ export default function OperationalUserCalendar({
                 type="button"
                 onClick={() => {
                   const defaultUser = displayedUsers[0]?.id || activeEligibleUsers[0]?.id || '';
-                  const defaultDate = calendarDays[0]?.dateStr || formatDateToYYYYMMDD(new Date());
+                  const defaultDate = !mobileGrid && window.matchMedia('(max-width: 767px)').matches ? formatDateToYYYYMMDD(anchorDate) : calendarDays[0]?.dateStr || formatDateToYYYYMMDD(new Date());
                   setIsFullscreen(false);
                   onQuickCreateTask(defaultUser, defaultDate);
                 }}
@@ -392,7 +395,8 @@ export default function OperationalUserCalendar({
           </div>} />
 
         {/* LINE 1: Datas de visualização (DateViewNavigator) */}
-        <div>
+        <MobileViewToggle grid={mobileGrid} onChange={setMobileGrid} label="calendário" />
+        <div className={mobileGrid ? '' : 'hidden md:block'}>
           <DateViewNavigator
             periodDays={periodDays}
             onPeriodDaysChange={setPeriodDays}
@@ -450,7 +454,13 @@ export default function OperationalUserCalendar({
       </div>
 
       {/* OPERATIONAL CALENDAR TABLE */}
-        <div className="overflow-x-auto">
+        {!mobileGrid && <MobileDayAgenda date={anchorDate} onDateChange={setAnchorDate} users={displayedUsers}
+          tasksByUserDay={userDayTasksMap} absencesByUserDay={userDayAbsenceMap} projects={projects} clients={clients}
+          taskStatuses={taskStatuses} specialDays={specialDays}
+          onOpen={task => { setIsFullscreen(false); onSelectTask(task); }}
+          onCreate={canCreateTask && onQuickCreateTask ? (userId, date) => { setIsFullscreen(false); onQuickCreateTask(userId, date); } : undefined}
+          onDuplicate={canDuplicateTask && onDuplicateTask ? task => { setIsFullscreen(false); onDuplicateTask(task); } : undefined} />}
+        <div className={`${mobileGrid ? '' : 'hidden md:block'} overflow-x-auto`}>
           <table className="border-collapse text-left table-fixed" style={{ minWidth: calendarMinWidth, width: occupiedDates.size ? '100%' : calendarMinWidth }}>
             <colgroup>
               <col style={{ width: 168 }} />
