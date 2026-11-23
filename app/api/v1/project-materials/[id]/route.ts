@@ -10,6 +10,22 @@ import { activeRelationExists, getOperationalRecord, mapProjectMaterial } from '
 import { withCanonicalErrors } from '@/lib/apiErrors';
 import { updateProjectMaterialSchema } from '@/lib/validations/operational';
 import { isSafeIdentifier } from '@/lib/security/identifiers';
+import { isNotModified, mutationPrecondition, preconditionFailed, resourceTag, validationHeaders, warnMissingPrecondition } from '@/lib/security/resourceVersion';
+
+async function getMaterial(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requirePermission(req, 'project_materials:read');
+  if (!auth.success) return auth.response;
+  const { id } = await params;
+  if (!isSafeIdentifier(id))
+    return NextResponse.json({ success: false, message: 'ID de material inválido.' }, { status: 400 });
+  const db = requireServerDbClient(auth.user);
+  const data = await getOperationalRecord(db, 'project_materials', id, mapProjectMaterial);
+  if (!data || data.deleted) return NextResponse.json({ success: false, message: 'Material não encontrado.' }, { status: 404 });
+  const etag = resourceTag(data);
+  const headers = validationHeaders(etag);
+  if (isNotModified(req, etag)) return new NextResponse(null, { status: 304, headers });
+  return NextResponse.json({ success: true, data }, { headers });
+}
 
 async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(req, 'project_materials:write');
@@ -44,10 +60,10 @@ async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
+    const precondition = mutationPrecondition(req, resourceTag(existingMaterial), updates.syncVersion,
+      existingMaterial.syncVersion, auth.requestId);
+    if (precondition) return precondition;
     // Write permission must not permit soft-delete or rewriting server identity.
-    if (updates.syncVersion !== undefined && updates.syncVersion !== existingMaterial.syncVersion) {
-      return NextResponse.json({ success: false, message: 'O material foi alterado entretanto. Atualize antes de repetir.' }, { status: 409 });
-    }
     const mutableFields = ['projectId', 'description', 'supplier', 'quantity', 'reference',
       'budget', 'costPrice', 'salePrice', 'expectedDeliveryDate', 'status'];
     const permittedUpdates = Object.fromEntries(mutableFields
@@ -60,14 +76,17 @@ async function updateMaterial(req: NextRequest, { params }: { params: Promise<{ 
 
     const saveResult = await persistProjectMaterial(databaseClient, updatedMaterial, 'update');
     if (!saveResult.success) {
+      if (req.headers.has('if-match') && saveResult.status === 409) return preconditionFailed(auth.requestId);
       return NextResponse.json(saveResult, { status: saveResult.status || 500 });
     }
 
-    return NextResponse.json({
+    const data = { ...updatedMaterial, syncVersion: saveResult.syncVersion };
+    const response = NextResponse.json({
       success: true,
       message: 'Linha de material atualizada.',
-      data: { ...updatedMaterial, syncVersion: saveResult.syncVersion }
-    });
+      data,
+    }, { headers: { 'Cache-Control': 'no-store' } });
+    return warnMissingPrecondition(req, updates.syncVersion, response);
   } catch (error: any) {
     console.error('[API MATERIAL UPDATE]', error);
     return NextResponse.json({ success: false, message: 'Falha ao atualizar material.' }, { status: 500 });
@@ -104,5 +123,6 @@ async function deleteMaterial(req: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
+export const GET = withCanonicalErrors(getMaterial);
 export const PUT = withCanonicalErrors(updateMaterial);
 export const DELETE = withCanonicalErrors(deleteMaterial);

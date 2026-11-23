@@ -1,3 +1,4 @@
+import { createApiHandler } from '@/lib/apiErrors';
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
 import { auditRequestHeaders, createAdminClient } from '@/lib/supabase/server';
@@ -7,7 +8,7 @@ import { listMechanicalDesign, listEligibleDesignExecutors, designRpcError } fro
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest) {
+async function handleGet(req: NextRequest) {
   const auth = await requirePermission(req, 'mechanical_design.read');
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode consultar pedidos de desenho.' }, { status: 403 });
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePost(req: NextRequest) {
   const auth = await requirePermission(req, 'mechanical_design.create');
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode criar pedidos de desenho.' }, { status: 403 });
@@ -65,3 +66,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { id: data } }, { status: 201 });
   });
 }
+
+export const GET = createApiHandler(handleGet);
+
+export const POST = createApiHandler(handlePost);

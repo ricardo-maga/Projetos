@@ -19,7 +19,10 @@ test('maintenance page is accessible and never contains credentials or a bypass'
   expect(response.status).toBe(503);
   expect(await response.text()).toContain('Manutenção em curso');
 });
-test('maintenance intercepts before the unchanged session handler', () => {
+test('maintenance intercepts before the session handler', () => {
   const middleware = readFileSync(new URL('../middleware.ts',import.meta.url),'utf8');
-  expect(middleware.indexOf('if (maintenance) return maintenance')).toBeLessThan(middleware.indexOf('return await updateSession(request)'));
+  const maintenance = middleware.indexOf('return maintenance;');
+  const session = middleware.indexOf('await updateSession(request, requestId)');
+  expect(maintenance).toBeGreaterThan(0);
+  expect(session).toBeGreaterThan(maintenance);
 });

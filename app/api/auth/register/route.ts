@@ -10,7 +10,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { clientIp } from '@/lib/security/clientIp';
 
 export async function POST(req: NextRequest) {
-  const requestId = crypto.randomUUID();
+  const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
   const ip = clientIp(req);
 
   // 1. Rate limiting (3 registrations per minute per IP)
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   try {
     rawBody = await req.json();
   } catch {
-    return validationError('Corpo da mensagem inválido (JSON esperado).', requestId);
+    return badRequest('Corpo da mensagem inválido (JSON esperado).', requestId);
   }
 
   const parseResult = registerSchema.safeParse(rawBody);

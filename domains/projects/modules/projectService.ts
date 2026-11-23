@@ -2,8 +2,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Project } from '@/lib/types';
 import { projectScopeFilter } from '@/lib/integrations/scope';
 import { orLike, quotedLikePattern } from '@/lib/security/postgrestSearch';
+import { isUuid } from '@/lib/security/identifiers';
+import { encodeProjectCursor, type ProjectListCursor } from '../contracts/projectListCursor';
 
 export interface GetProjectsServerDataOptions {
+  projectId?: string;
+  sort?: ProjectListCursor['sort'];
+  cursorPagination?: boolean;
+  cursor?: ProjectListCursor;
   allowedClientIds?: string[];
   allowedProjectIds?: string[];
   page?: number;
@@ -24,6 +30,7 @@ export interface GetProjectsServerDataResult {
   page?: number;
   pageSize?: number;
   totalPages?: number;
+  nextCursor?: string | null;
 }
 
 const parseCommaSeparated = (val: any): string[] => {
@@ -45,7 +52,9 @@ export async function getProjectsServerData(
   const page = options.page && options.page > 0 ? options.page : 1;
   const pageSize = options.pageSize && options.pageSize > 0 ? options.pageSize : 20;
 
-  let query = client.from('projects').select('*', { count: 'exact' });
+  let query = options.projectId
+    ? client.from('projects').select('*').eq('id', options.projectId)
+    : client.from('projects').select('*', options.cursorPagination ? undefined : { count: 'exact' });
 
   if (!includeDeleted) {
     query = query.eq('deleted', false);
@@ -66,10 +75,10 @@ export async function getProjectsServerData(
       .from('clients')
       .select('id')
       .or(orLike(['client_name', 'short_name'], options.search));
-    const clientIds = (matchedClients || []).map((c: any) => c.id);
+    const clientIds = (matchedClients || []).map((c: any) => c.id).filter(isUuid);
 
     const { data: matchedUsers } = await client.from('users').select('id').ilike('name', q);
-    const userIds = (matchedUsers || []).map((u: any) => u.id);
+    const userIds = (matchedUsers || []).map((u: any) => u.id).filter(isUuid);
 
     let orClauses = [
       `project_title.ilike.${safePattern}`,
@@ -119,6 +128,7 @@ export async function getProjectsServerData(
     query = query.eq('category_id', options.categoryId);
   }
   if (options.managerId) {
+    if (!isUuid(options.managerId)) throw new TypeError('ID de gestor inválido.');
     query = query.or(
       `project_manager_id.eq.${options.managerId},field_manager_id.eq.${options.managerId},sales_rep_id.eq.${options.managerId}`
     );
@@ -128,20 +138,33 @@ export async function getProjectsServerData(
   }
 
   // 4. Order and Range Execution
-  query = query.order('created_at', { ascending: false }).order('id', { ascending: false });
+  const sort = options.sort || '-createdAt';
+  const ascending = sort === 'createdAt';
+  query = query.order('created_at', { ascending }).order('id', { ascending });
 
-  if (!fetchAll) {
+  if (options.cursorPagination) {
+    const cursor = options.cursor;
+    if (cursor) {
+      const operator = ascending ? 'gt' : 'lt';
+      query = query.or(`created_at.${operator}."${cursor.createdAt}",and(created_at.eq."${cursor.createdAt}",id.${operator}.${cursor.id})`);
+    }
+    query = query.limit(pageSize + 1);
+  } else if (!fetchAll) {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
     query = query.range(from, to);
   }
 
-  const { data: projectsData, count, error } = await query;
+  const { data: received, count, error } = await query;
 
   if (error) {
     throw error;
   }
 
+  const hasNext = Boolean(options.cursorPagination && received && received.length > pageSize);
+  const projectsData = options.cursorPagination ? received?.slice(0, pageSize) : received;
+  const last = projectsData?.at(-1);
+  const nextCursor = hasNext && last ? encodeProjectCursor({ id: last.id, createdAt: last.created_at, sort }) : null;
   const total = count || (projectsData || []).length;
   const totalPages = fetchAll ? 1 : Math.ceil(total / pageSize);
   const projectIds = (projectsData || []).map((p: any) => p.id);
@@ -153,6 +176,7 @@ export async function getProjectsServerData(
       page: fetchAll ? 1 : page,
       pageSize: fetchAll ? 0 : pageSize,
       totalPages: 0,
+      ...(options.cursorPagination ? { nextCursor } : {}),
     };
   }
 
@@ -214,55 +238,13 @@ export async function getProjectsServerData(
     }
   });
 
-  // 6. Map database rows to Project interface
-  const data: Project[] = (projectsData || []).map((row: any) => {
-    const categoryIds = categoriesByProject.get(row.id) || [];
-    const teamsInvolvedIds = teamsByProject.get(row.id) || [];
-    const partnersIds = partnersByProject.get(row.id) || [];
-
-    return {
-      id: row.id,
-      demo: Boolean(row.demo),
-      clientId: row.client_id || row.clientId || '',
-      title: row.project_title || row.title || '',
-      description: row.project_description || row.description || '',
-      categoryId: row.category_id || row.categoryId || categoryIds[0] || '',
-      categoryIds,
-      statusId: row.status_id || row.statusId || '',
-      priorityId: priorityByProject.get(row.id) || '',
-      riskId: riskByProject.get(row.id) || '',
-      projectManagerId: row.project_manager_id || row.projectManagerId || '',
-      fieldManagerId: row.field_manager_id || row.fieldManagerId || '',
-      salesRepId: row.sales_rep_id || row.salesRepId || '',
-      teamsInvolvedIds,
-      partnersIds,
-      startDate: row.start_date || row.startDate || '',
-      deliveryDate: row.delivery_date || row.deliveryDate || '',
-      estimatedDate: row.estimated_date || row.estimatedDate || '',
-      scheduledDate: row.scheduled_date || row.scheduledDate || '',
-      forecastDate: row.forecast_date || row.forecastDate || '',
-      completedDate: row.completed_date || row.completedDate || '',
-      installProjectNo: row.install_project_no || row.installProjectNo || '',
-      sfOpportunityNo: row.sf_opportunity_no || row.sfOpportunityNo || '',
-      budgetValue: Number(row.budget_value ?? row.budgetValue ?? 0),
-      isUrgent: Boolean(row.is_urgent),
-      documents: parseCommaSeparated(row.documents),
-      clientContactName: row.client_contact_name || row.clientContactName || '',
-      clientContactEmail: row.client_contact_email || row.clientContactEmail || '',
-      clientContactPhone: row.client_contact_phone || row.clientContactPhone || '',
-      color: row.color || '',
-      notes: row.notes || '',
-      createdById: row.created_by || row.createdById || '',
-      deleted: Boolean(row.deleted),
-      createdDate: row.created_at || row.createdDate || '',
-      updatedDate: row.updated_at || row.updatedDate || '',
-      createdAt: row.created_at || row.createdAt || '',
-      updatedAt: row.updated_at || row.updatedAt || '',
-      createdBy: row.created_by || row.createdBy || '',
-      updatedBy: row.updated_by || row.updatedBy || '',
-      version: row.version !== undefined && row.version !== null ? Number(row.version) : row.version,
-    } as any;
-  });
+  const data = (projectsData || []).map((row: any) => mapProjectRow(row, {
+    categoryIds: categoriesByProject.get(row.id) || [],
+    teamsInvolvedIds: teamsByProject.get(row.id) || [],
+    partnersIds: partnersByProject.get(row.id) || [],
+    priorityId: priorityByProject.get(row.id),
+    riskId: riskByProject.get(row.id),
+  }));
 
   return {
     data,
@@ -270,7 +252,69 @@ export async function getProjectsServerData(
     page: fetchAll ? 1 : page,
     pageSize: fetchAll ? data.length : pageSize,
     totalPages,
+    ...(options.cursorPagination ? { nextCursor } : {}),
   };
+}
+
+function mapProjectRow(row: any, relations: {
+  categoryIds: string[]; teamsInvolvedIds: string[]; partnersIds: string[];
+  priorityId?: string; riskId?: string;
+}): Project {
+  const categoryIds = relations.categoryIds.sort();
+  const teamsInvolvedIds = relations.teamsInvolvedIds.sort();
+  const partnersIds = relations.partnersIds.sort();
+  const { priorityId, riskId } = relations;
+  return {
+    id: row.id,
+    demo: Boolean(row.demo),
+    clientId: row.client_id || row.clientId || '',
+    title: row.project_title || row.title || '',
+    description: row.project_description || row.description || '',
+    categoryId: row.category_id || row.categoryId || categoryIds[0] || '',
+    categoryIds,
+    statusId: row.status_id || row.statusId || '',
+    priorityId: priorityId || '',
+    riskId: riskId || '',
+    projectManagerId: row.project_manager_id || row.projectManagerId || '',
+    fieldManagerId: row.field_manager_id || row.fieldManagerId || '',
+    salesRepId: row.sales_rep_id || row.salesRepId || '',
+    teamsInvolvedIds,
+    partnersIds,
+    startDate: row.start_date || row.startDate || '',
+    deliveryDate: row.delivery_date || row.deliveryDate || '',
+    estimatedDate: row.estimated_date || row.estimatedDate || '',
+    scheduledDate: row.scheduled_date || row.scheduledDate || '',
+    forecastDate: row.forecast_date || row.forecastDate || '',
+    completedDate: row.completed_date || row.completedDate || '',
+    installProjectNo: row.install_project_no || row.installProjectNo || '',
+    sfOpportunityNo: row.sf_opportunity_no || row.sfOpportunityNo || '',
+    budgetValue: Number(row.budget_value ?? row.budgetValue ?? 0),
+    isUrgent: Boolean(row.is_urgent),
+    documents: parseCommaSeparated(row.documents),
+    clientContactName: row.client_contact_name || row.clientContactName || '',
+    clientContactEmail: row.client_contact_email || row.clientContactEmail || '',
+    clientContactPhone: row.client_contact_phone || row.clientContactPhone || '',
+    color: row.color || '',
+    notes: row.notes || '',
+    createdById: row.created_by || row.createdById || '',
+    deleted: Boolean(row.deleted),
+    createdDate: row.created_at || row.createdDate || '',
+    updatedDate: row.updated_at || row.updatedDate || '',
+    createdAt: row.created_at || row.createdAt || '',
+    updatedAt: row.updated_at || row.updatedAt || '',
+    createdBy: row.created_by || row.createdBy || '',
+    updatedBy: row.updated_by || row.updatedBy || '',
+    version: row.version !== undefined && row.version !== null ? Number(row.version) : row.version,
+  } as any;
+}
+
+export async function getScopedProject(client: SupabaseClient, id: string): Promise<Project | null> {
+  const { data: row, error } = await client.rpc('scoped_project_detail', { p_id: id });
+  if (error) throw error;
+  return row ? mapProjectRow(row, {
+    categoryIds: row.categories, teamsInvolvedIds: row.teams, partnersIds: row.partners,
+    priorityId: row.priorities.at(-1), riskId: row.risks.at(-1),
+  }) : null;
 }
 
 /**
@@ -428,9 +472,8 @@ export async function getProject(
   client: SupabaseClient,
   id: string
 ): Promise<Project | null> {
-  const result = await getProjectsServerData(client, { all: true, includeDeleted: true });
-  const found = result.data.find(p => p.id === id);
-  return found || null;
+  const result = await getProjectsServerData(client, { projectId: id, all: true, includeDeleted: true });
+  return result.data[0] || null;
 }
 
 export async function listProjects(

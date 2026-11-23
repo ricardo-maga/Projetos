@@ -1,3 +1,4 @@
+import { createApiHandler } from '@/lib/apiErrors';
 import { NextRequest, NextResponse } from 'next/server';
 import { presalesError } from '@/lib/presalesErrors';
 import { requirePermission } from '@/lib/auth/authorization';
@@ -8,7 +9,7 @@ import { listPresales, personalPresalesIds, usersWithPresalesPermission } from '
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest) {
+async function handleGet(req: NextRequest) {
   const auth = await requirePermission(req, 'presales.read');
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode consultar Presales.' }, { status: 403 });
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePost(req: NextRequest) {
   const auth = await requirePermission(req, 'presales.create');
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode criar Presales.' }, { status: 403 });
@@ -54,3 +55,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { id } }, { status: 201 });
   });
 }
+
+export const GET = createApiHandler(handleGet);
+
+export const POST = createApiHandler(handlePost);

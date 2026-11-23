@@ -68,7 +68,7 @@ test('client IP ignores spoofed forwarding headers outside trusted ingress', () 
     const req = new Request('https://example.test/api/x', { headers: {
       'x-forwarded-for': '1.2.3.4', 'x-real-ip': '5.6.7.8',
     } });
-    assert.equal(clientIp(req), 'unknown');
+    assert.equal(clientIp(req), null);
     process.env.VERCEL_ENV = 'production';
     assert.equal(clientIp(new Request(req.url, { headers: {
       'x-forwarded-for': '1.2.3.4', 'x-vercel-forwarded-for': '9.8.7.6',
@@ -82,10 +82,10 @@ test('client IP ignores spoofed forwarding headers outside trusted ingress', () 
 });
 
 test('quota failures use 429 and Retry-After; unavailable storage uses 503', async () => {
-  const exceeded = quotaResponse({ success: false, resetAt: Date.now() + 30000 }, 'request-1');
+  const exceeded = quotaResponse({ success: false, resetAt: Date.now() + 30000, remaining: 0, limit: 120 }, 'request-1');
   assert.equal(exceeded.status, 429);
   assert.ok(Number(exceeded.headers.get('Retry-After')) >= 1);
   assert.equal((await exceeded.json()).error.code, 'TOO_MANY_REQUESTS');
-  assert.equal(quotaResponse({ success: true, resetAt: Date.now() }, 'request-1'), null);
+  assert.equal(quotaResponse({ success: true, resetAt: Date.now(), remaining: 1, limit: 120 }, 'request-1'), null);
   assert.equal(quotaUnavailable('request-1').status, 503);
 });

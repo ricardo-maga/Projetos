@@ -1,14 +1,15 @@
+import { createApiHandler } from '@/lib/apiErrors';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
 import { updateProjectSchema } from '@/domains/projects/contracts/project';
 import { validateProjectRelations } from '@/domains/projects/contracts/projectRelations';
-import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
-import { getServerDbClient } from '@/lib/supabase/server';
-import { supabase as defaultSupabase } from '@/lib/supabaseClient';
-import { getProject, updateProject, deleteProject } from '@/domains/projects/modules/projectService';
-import { isSafeIdentifier } from '@/lib/security/identifiers';
+import { notFound, conflict, validationError, internalServerError, badRequest, serviceUnavailable } from '@/lib/apiErrors';
+import { createClient, getServerDbClient } from '@/lib/supabase/server';
+import { getProject, getScopedProject, updateProject, deleteProject } from '@/domains/projects/modules/projectService';
+import { isUuid } from '@/lib/security/identifiers';
+import { isNotModified, mutationPrecondition, preconditionFailed, resourceTag, validationHeaders, warnMissingPrecondition } from '@/lib/security/resourceVersion';
 
 async function getIdFromParams(input: any): Promise<string> {
   if (!input) return '';
@@ -21,38 +22,48 @@ async function getIdFromParams(input: any): Promise<string> {
   return resolved?.id || '';
 }
 
-export async function GET(req: NextRequest, ctx: any) {
+async function handleGet(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'projects_read');
   if (!auth.success) return auth.response;
 
   const id = await getIdFromParams(ctx);
   const { requestId } = auth;
-  if (!isSafeIdentifier(id)) return badRequest('ID de projeto inválido.', requestId);
+  if (!isUuid(id)) return badRequest('ID de projeto inválido.', requestId);
 
   try {
-    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
-    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
-
-    const project = await getProject(sb, id);
+    const useRls = process.env.API_PROJECT_RLS_READ === 'true'
+      || (process.env.VERCEL === '1' && process.env.API_PROJECT_RLS_READ !== 'false');
+    let project;
+    if (useRls) {
+      const token = req.headers.get('authorization')?.slice(7).trim();
+      project = await getScopedProject(await createClient(token), id);
+    } else {
+      const sb = await getServerDbClient(req, auth.user);
+      if (!sb) return serviceUnavailable('Base de dados Supabase não disponível.', requestId);
+      project = await getProject(sb, id);
+    }
     if (!project || project.deleted) {
       return notFound('Projeto não encontrado.', requestId);
     }
 
+    const etag = resourceTag(project);
+    const headers = validationHeaders(etag);
+    if (isNotModified(req, etag)) return new NextResponse(null, { status: 304, headers });
     return NextResponse.json({
       success: true,
       data: project,
-    });
+    }, { headers });
   } catch (error: any) {
     console.error('[API PROJECT GET ID EXCEPTION]', error);
     return internalServerError('Erro ao consultar projeto.', requestId);
   }
 }
 
-export async function PUT(req: NextRequest, ctx: any) {
+async function handlePut(req: NextRequest, ctx: any) {
   return handleUpdate(req, ctx);
 }
 
-export async function PATCH(req: NextRequest, ctx: any) {
+async function handlePatch(req: NextRequest, ctx: any) {
   return handleUpdate(req, ctx);
 }
 
@@ -62,7 +73,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
 
   const id = await getIdFromParams(ctx);
   const { user, requestId } = auth;
-  if (!isSafeIdentifier(id)) return badRequest('ID de projeto inválido.', requestId);
+  if (!isUuid(id)) return badRequest('ID de projeto inválido.', requestId);
 
   try {
     let rawBody: unknown;
@@ -75,9 +86,9 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     }
 
     const updates = parseResult.data;
-    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
+    const sb = await getServerDbClient(req, auth.user);
     if (!sb) {
-      return internalServerError('Base de dados Supabase não disponível.', requestId);
+      return serviceUnavailable('Base de dados Supabase não disponível.', requestId);
     }
 
     const currentProject = await getProject(sb, id);
@@ -85,12 +96,8 @@ async function handleUpdate(req: NextRequest, ctx: any) {
       return notFound('Projeto não encontrado ou já eliminado.', requestId);
     }
 
-    // Version concurrency check if provided
-    if (updates.version !== undefined && currentProject.version !== undefined && currentProject.version !== updates.version) {
-      return conflict('Conflito de concorrência. O projeto foi modificado por outro utilizador.', requestId, {
-        currentVersion: currentProject.version,
-      });
-    }
+    const precondition = mutationPrecondition(req, resourceTag(currentProject), updates.version, currentProject.version, requestId);
+    if (precondition) return precondition;
 
     const effectiveTeams = updates.teamsInvolvedIds !== undefined
       ? updates.teamsInvolvedIds
@@ -146,15 +153,17 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     });
 
     try {
-      const updatedProject = await updateProject(sb, id, updateInput, user.id, updates.version);
+      const updatedProject = await updateProject(sb, id, updateInput, user.id, currentProject.version);
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         message: 'Projeto atualizado com sucesso.',
         data: updatedProject,
-      });
+      }, { headers: validationHeaders(resourceTag(updatedProject)) });
+      return warnMissingPrecondition(req, updates.version, response);
     } catch (err: any) {
       if (err?.code === 'concurrency' || err?.message?.includes('Conflito de concorrência') || err?.message?.includes('Concurrency')) {
+        if (req.headers.has('if-match')) return preconditionFailed(requestId);
         return conflict('Conflito de concorrência. O projeto foi modificado por outro utilizador.', requestId, {
           currentVersion: err.currentVersion || currentProject.version,
         });
@@ -167,18 +176,18 @@ async function handleUpdate(req: NextRequest, ctx: any) {
   }
 }
 
-export async function DELETE(req: NextRequest, ctx: any) {
+async function handleDelete(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'projects_delete');
   if (!auth.success) return auth.response;
 
   const id = await getIdFromParams(ctx);
   const { user, requestId } = auth;
-  if (!isSafeIdentifier(id)) return badRequest('ID de projeto inválido.', requestId);
+  if (!isUuid(id)) return badRequest('ID de projeto inválido.', requestId);
 
   try {
-    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
+    const sb = await getServerDbClient(req, auth.user);
     if (!sb) {
-      return internalServerError('Base de dados Supabase não disponível.', requestId);
+      return serviceUnavailable('Base de dados Supabase não disponível.', requestId);
     }
 
     try {
@@ -202,3 +211,11 @@ export async function DELETE(req: NextRequest, ctx: any) {
     return internalServerError('Erro inesperado ao eliminar projeto.', requestId);
   }
 }
+
+export const GET = createApiHandler(handleGet);
+
+export const PUT = createApiHandler(handlePut);
+
+export const PATCH = createApiHandler(handlePatch);
+
+export const DELETE = createApiHandler(handleDelete);

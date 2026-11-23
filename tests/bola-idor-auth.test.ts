@@ -140,11 +140,11 @@ describe('FASE 25-B — Auditoria e Correção BOLA/IDOR (Resource Authorization
 
   describe('Teste D: Consulta por ID de recursos inexistentes', () => {
     it('devolve HTTP 404 para projeto inexistente', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/projects/non-existent-id', {
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/10000000-0000-4000-8000-000000000003', {
         method: 'GET',
       });
 
-      const res = await getProject(req, { params: Promise.resolve({ id: 'non-existent-id' }) });
+      const res = await getProject(req, { params: Promise.resolve({ id: '10000000-0000-4000-8000-000000000003' }) });
       expect(res.status).toBe(404);
 
       const json = await res.json();

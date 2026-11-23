@@ -1,11 +1,11 @@
+import { createApiHandler } from '@/lib/apiErrors';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
 import { updateTaskSchema } from '@/lib/validations/task';
-import { notFound, conflict, validationError, internalServerError, badRequest } from '@/lib/apiErrors';
+import { notFound, conflict, validationError, internalServerError, badRequest, serviceUnavailable } from '@/lib/apiErrors';
 import { getServerDbClient } from '@/lib/supabase/server';
-import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 import { getTaskServer, updateTaskServer, deleteTaskServer } from '@/domains/tasks/modules/taskService';
 import { isSafeIdentifier } from '@/lib/security/identifiers';
 
@@ -20,7 +20,7 @@ async function getIdFromParams(input: any): Promise<string> {
   return resolved?.id || '';
 }
 
-export async function GET(req: NextRequest, ctx: any) {
+async function handleGet(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'tasks_read');
   if (!auth.success) return auth.response;
 
@@ -29,8 +29,8 @@ export async function GET(req: NextRequest, ctx: any) {
   if (!isSafeIdentifier(id)) return badRequest('ID de tarefa inválido.', requestId);
 
   try {
-    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
-    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
+    const sb = await getServerDbClient(req, auth.user);
+    if (!sb) return serviceUnavailable('Base de dados Supabase não disponível.', requestId);
 
     const result = await getTaskServer(sb, id);
     if (!result.success || !result.data) {
@@ -47,11 +47,11 @@ export async function GET(req: NextRequest, ctx: any) {
   }
 }
 
-export async function PATCH(req: NextRequest, ctx: any) {
+async function handlePatch(req: NextRequest, ctx: any) {
   return handleUpdate(req, ctx);
 }
 
-export async function PUT(req: NextRequest, ctx: any) {
+async function handlePut(req: NextRequest, ctx: any) {
   return handleUpdate(req, ctx);
 }
 
@@ -74,8 +74,8 @@ async function handleUpdate(req: NextRequest, ctx: any) {
     }
 
     const updates = parseResult.data;
-    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
-    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
+    const sb = await getServerDbClient(req, auth.user);
+    if (!sb) return serviceUnavailable('Base de dados Supabase não disponível.', requestId);
 
     // 1. Fetch current version and dates for validation
     const { data: current, error: fetchError } = await sb
@@ -187,7 +187,7 @@ async function handleUpdate(req: NextRequest, ctx: any) {
   }
 }
 
-export async function DELETE(req: NextRequest, ctx: any) {
+async function handleDelete(req: NextRequest, ctx: any) {
   const auth = await requirePermission(req, 'tasks_delete');
   if (!auth.success) return auth.response;
 
@@ -196,8 +196,8 @@ export async function DELETE(req: NextRequest, ctx: any) {
   if (!isSafeIdentifier(id)) return badRequest('ID de tarefa inválido.', requestId);
 
   try {
-    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
-    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
+    const sb = await getServerDbClient(req, auth.user);
+    if (!sb) return serviceUnavailable('Base de dados Supabase não disponível.', requestId);
 
     const { data: current, error: fetchErr } = await sb.from('tasks').select('*').eq('id', id).maybeSingle();
     if (fetchErr) { console.error('[API TASK DELETE READ]', fetchErr); return internalServerError('Erro ao ler tarefa.', requestId); }
@@ -224,3 +224,11 @@ export async function DELETE(req: NextRequest, ctx: any) {
     return internalServerError('Falha inesperada ao eliminar tarefa.', requestId);
   }
 }
+
+export const GET = createApiHandler(handleGet);
+
+export const PATCH = createApiHandler(handlePatch);
+
+export const PUT = createApiHandler(handlePut);
+
+export const DELETE = createApiHandler(handleDelete);

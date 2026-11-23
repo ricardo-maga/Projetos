@@ -39,7 +39,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { user, db } = await authorize(req);
-    const parsed = createSchema.safeParse(await req.json());
+    let body: unknown;
+    try { body = await req.json(); }
+    catch { return NextResponse.json({ success: false, message: 'Corpo JSON inválido.' }, { status: 400 }); }
+    const parsed = createSchema.safeParse(body);
     if (!parsed.success || (parsed.success && new Date(parsed.data.expiresAt).getTime() <= Date.now()))
       return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message: 'Dados ou validade da integração inválidos.' } }, { status: 422 });
     if (parsed.data.clientIds.length) {

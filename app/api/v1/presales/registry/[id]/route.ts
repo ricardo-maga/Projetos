@@ -1,3 +1,4 @@
+import { createApiHandler } from '@/lib/apiErrors';
 import { NextRequest,NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
@@ -7,7 +8,7 @@ import { listPresales } from '@/lib/presalesServer';
 import { presalesError } from '@/lib/presalesErrors';
 
 type Context={params:Promise<{id:string}>};
-export async function PATCH(req:NextRequest,context:Context) {
+async function handlePatch(req:NextRequest,context:Context) {
   const auth=await requirePermission(req,'presales.manage');
   if (!auth.success) return auth.response;
   const {id}=await context.params;
@@ -23,3 +24,5 @@ export async function PATCH(req:NextRequest,context:Context) {
   if (error) return presalesError(error);
   return NextResponse.json({success:true,data:(await listPresales(db,{id}))[0]});
 }
+
+export const PATCH = createApiHandler(handlePatch);

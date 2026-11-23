@@ -1,14 +1,14 @@
+import { createApiHandler } from '@/lib/apiErrors';
+import { createProjectCommentSchema } from '@/lib/validations/apiInputs';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 
-const input = z.object({ projectId: z.guid(), comment: z.string().trim().min(1).max(20000) });
 
-export async function POST(req: NextRequest) {
+async function handlePost(req: NextRequest) {
   const auth = await requirePermission(req, 'projects_write');
   if (!auth.success) return auth.response;
   if (!(await checkRateLimit(`comment-create:${auth.user.id}`, { limit: 30, windowSeconds: 60 })).success)
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   let body: unknown;
   try { body = await req.json(); }
   catch { return NextResponse.json({ success: false, message: 'Pedido JSON inválido.' }, { status: 400 }); }
-  const parsed = input.safeParse(body);
+  const parsed = createProjectCommentSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ success: false, message: 'Comentário inválido.' }, { status: 400 });
   try {
     const db = await getServerDbClient(req, auth.user);
@@ -36,3 +36,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: 'Não foi possível gravar o comentário.' }, { status: 503 });
   }
 }
+
+export const POST = createApiHandler(handlePost);

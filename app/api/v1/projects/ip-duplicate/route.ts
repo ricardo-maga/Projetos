@@ -1,13 +1,13 @@
+import { createApiHandler } from '@/lib/apiErrors';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
 import { getServerDbClient } from '@/lib/supabase/server';
-import { supabase as defaultSupabase } from '@/lib/supabaseClient';
-import { badRequest, internalServerError } from '@/lib/apiErrors';
+import { badRequest, internalServerError, serviceUnavailable } from '@/lib/apiErrors';
 import { z } from 'zod';
 
-export async function GET(req: NextRequest) {
+async function handleGet(req: NextRequest) {
   const auth = await requirePermission(req, 'projects_read');
   if (!auth.success) return auth.response;
 
@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
-    if (!sb) return internalServerError('Base de dados Supabase não disponível.', auth.requestId);
+    const sb = await getServerDbClient(req, auth.user);
+    if (!sb) return serviceUnavailable('Base de dados Supabase não disponível.', auth.requestId);
 
     let query = sb.from('projects')
       .select('id, project_title, client_id, clients(client_name)')
@@ -46,3 +46,4 @@ export async function GET(req: NextRequest) {
   }
 }
 
+export const GET = createApiHandler(handleGet);

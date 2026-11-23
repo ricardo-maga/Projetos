@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { loginSchema } from '@/lib/validations/auth';
-import { rateLimitExceeded, validationError, unauthorized, forbidden, internalServerError } from '@/lib/apiErrors';
+import { badRequest, serviceUnavailable, rateLimitExceeded, validationError, unauthorized, forbidden, internalServerError } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { profileEligibility } from '@/lib/auth/profileEligibility';
@@ -13,11 +13,14 @@ import { preferenceCookieLifetime, sessionPreference, SESSION_PREFERENCE_COOKIE 
 import { clientIp } from '@/lib/security/clientIp';
 
 export async function POST(req: NextRequest) {
-  const requestId = crypto.randomUUID();
+  const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
   const ip = clientIp(req);
-  if (!(await checkRateLimit(`login:${ip}`, { limit: 10, windowSeconds: 60 })).success) return rateLimitExceeded(requestId);
+  try {
+    if (!ip) return serviceUnavailable('Não foi possível verificar o pedido.', requestId);
+    if (!(await checkRateLimit(`login:${ip}`, { limit: 10, windowSeconds: 60 })).success) return rateLimitExceeded(requestId);
+  } catch { return serviceUnavailable('Serviço de limites indisponível.', requestId); }
   let body: unknown;
-  try { body = await req.json(); } catch { return validationError('Corpo da mensagem inválido (JSON esperado).', requestId); }
+  try { body = await req.json(); } catch { return badRequest('Corpo da mensagem inválido (JSON esperado).', requestId); }
   const parsed = loginSchema.safeParse(body);
   if (!parsed.success) return validationError('Dados de login inválidos.', requestId, parsed.error.flatten());
 

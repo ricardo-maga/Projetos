@@ -2,7 +2,6 @@ import { createHash, randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
 import { requirePermission } from '@/lib/auth/authorization';
-import type { GroupPermissions } from '@/lib/permissions';
 
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 const asUuid = (hash: string) => `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
@@ -10,6 +9,19 @@ const asUuid = (hash: string) => `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${ha
 type Handler = (req: NextRequest) => Promise<NextResponse>;
 const claimedEntityIds = new WeakMap<NextRequest, string>();
 export const getIdempotentEntityId = (req: NextRequest) => claimedEntityIds.get(req);
+
+const idempotentTables: Record<string, string> = {
+  'projects:create': 'projects',
+  'tasks:create': 'tasks',
+  'mechanical_design:create': 'work_requests',
+  'presales:create': 'work_requests',
+  'presales:registry:create': 'work_requests',
+  'clients:create': 'clients',
+  'project_materials:create': 'project_materials',
+  'automation_rules:create': 'automation_rules',
+  'absences:create': 'user_absences',
+  'users:create-profile': 'users',
+};
 
 export async function runIdempotent(req: NextRequest, principal: string, operation: string, handler: Handler): Promise<NextResponse> {
   const key = req.headers.get('idempotency-key');
@@ -36,9 +48,11 @@ export async function runIdempotent(req: NextRequest, principal: string, operati
       if (error || !existing) throw error || new Error('Claim missing');
       if (existing.request_hash !== requestHash)
         return NextResponse.json({ error: { code: 'CONFLICT', message: 'A chave já foi usada com outro pedido.', requestId } }, { status: 409 });
-      if (existing.completed_at)
-        return NextResponse.json(existing.response_body, { status: existing.response_status,
-          headers: { 'Idempotency-Replayed': 'true', 'Cache-Control': 'no-store' } });
+      if (existing.completed_at) {
+        const init = { status: existing.response_status,
+          headers: { 'Idempotency-Replayed': 'true', 'Cache-Control': 'no-store' } };
+        return init.status === 204 ? new NextResponse(null, init) : NextResponse.json(existing.response_body, init);
+      }
       const cutoff = new Date(Date.now() - 5 * 60_000).toISOString();
       const { data: taken, error: takeError } = await db.from('api_idempotency')
         .update({ claim_token: claimToken, claimed_at: new Date().toISOString() })
@@ -51,18 +65,17 @@ export async function runIdempotent(req: NextRequest, principal: string, operati
     }
 
     // A previous worker may have persisted the entity but failed before storing the response.
-    const table = operation === 'projects:create' ? 'projects'
-      : ['mechanical_design:create', 'presales:create', 'presales:registry:create'].includes(operation) ? 'work_requests' : 'tasks';
+    const table = idempotentTables[operation];
+    if (!table) throw new Error('Operação idempotente sem recurso registado.');
     const { data: persisted, error: persistedError } = await db.from(table).select('id').eq('id', entityId).maybeSingle();
     if (persistedError) throw persistedError;
     if (persisted)
       return NextResponse.json({ error: { code: 'CONFLICT', message: 'O registo foi criado; consulte-o pelo ID indicado.', requestId, entityId } }, { status: 409 });
 
-    const request = new NextRequest(req.url, { method: req.method, headers: req.headers, body: raw });
-    claimedEntityIds.set(request, entityId);
-    const response = await handler(request);
+    claimedEntityIds.set(req, entityId);
+    const response = await handler(req);
     if (response.status >= 200 && response.status < 300) {
-      const body = await response.clone().json();
+      const body = response.status === 204 ? {} : await response.clone().json();
       const { error } = await db.from('api_idempotency').update({ response_status: response.status, response_body: body,
         completed_at: new Date().toISOString() }).eq('key_hash', keyHash).eq('claim_token', claimToken);
       if (error) throw error;
@@ -76,7 +89,7 @@ export async function runIdempotent(req: NextRequest, principal: string, operati
   }
 }
 
-export function withUserIdempotency(handler: Handler, operation: string, permission: keyof GroupPermissions): Handler {
+export function withUserIdempotency(handler: Handler, operation: string, permission: string): Handler {
   return async (req) => {
     if (!req.headers.has('idempotency-key')) return handler(req);
     const auth = await requirePermission(req, permission);

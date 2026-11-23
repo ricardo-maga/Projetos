@@ -137,24 +137,24 @@ describe('FASE 66-B-HARDENING-8 — RBAC Execution Contract Hardening', () => {
 
     it('requirePermission() nunca confia num user_id vindo de input de cliente', () => {
       const content = readFileSync(requireAuthPath, 'utf-8');
-      // O utilizador vem estritamente de requireAuth()
-      expect(content).toContain('const user = await requireAuth(');
-      expect(content).toContain('p_user_id: user.auth_user_id');
+      // A identidade vem de uma sessão verificada pelo Supabase.
+      expect(content).toContain('const userAuth = await verifiedIdentity(req)');
+      expect(content).toContain('p_auth_user_id: userAuth.id');
       expect(content).not.toContain('p_user_id: user.id');
     });
 
-    it('requirePermission() invoca a RPC PostgreSQL has_permission com o admin client', () => {
+    it('requirePermission() utiliza a RPC de contexto com o cliente de serviço', () => {
       const content = readFileSync(requireAuthPath, 'utf-8');
-      expect(content).toContain("admin.rpc('has_permission', {");
-      expect(content).toContain('p_permission_code: code');
-      expect(content).toContain('p_user_id: user.auth_user_id');
+      expect(content).toContain("admin.rpc('api_actor_context', {");
+      expect(content).toContain('p_permission: options.permission');
+      expect(content).toContain('p_auth_user_id: userAuth.id');
     });
 
     it('erros de infraestrutura ou autorização falham fechados (ForbiddenError / AuthError)', () => {
       const content = readFileSync(requireAuthPath, 'utf-8');
-      expect(content).toContain('if (hasPerm !== true)');
+      expect(content).toContain('if (allowed !== true)');
       expect(content).toContain('throw new ForbiddenError');
-      expect(content).toContain('if (error)');
+      expect(content).toContain('if (error || !data)');
       expect(content).toContain('throw new AuthError');
     });
 

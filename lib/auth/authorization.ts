@@ -13,6 +13,7 @@ export { AuthError, ForbiddenError };
 
 export interface AuthenticatedUser {
   id: string;
+  requestId?: string;
   email: string;
   name: string;
   type?: string;
@@ -40,6 +41,7 @@ export async function requireAuth(req?: NextRequest): Promise<AuthResult> {
     const centralUser = await requireCentralAuth(req);
     const user: AuthenticatedUser = {
       id: centralUser.id,
+      requestId,
       email: centralUser.email,
       name: centralUser.name,
       type: centralUser.type,
@@ -97,6 +99,7 @@ export async function requirePermission(
     const centralUser = await requireCentralPermission(req, permCode);
     const user: AuthenticatedUser = {
       id: centralUser.id,
+      requestId,
       email: centralUser.email,
       name: centralUser.name,
       type: centralUser.type,

@@ -65,7 +65,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
       ],
       projects: [
         {
-          id: 'proj-ativo-1',
+          id: '10000000-0000-4000-8000-000000000001',
           project_title: 'Instalação Solar Hospital',
           client_id: validUUID1,
           status_id: validUUID3,
@@ -76,7 +76,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
           updated_at: '2026-01-01T00:00:00.000Z',
         },
         {
-          id: 'proj-eliminado-1',
+          id: '10000000-0000-4000-8000-000000000002',
           project_title: 'Projeto Antigo Eliminado',
           client_id: validUUID1,
           deleted: true,
@@ -86,7 +86,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
       tasks: [
         {
           id: 'task-ativa-1',
-          project_id: 'proj-ativo-1',
+          project_id: '10000000-0000-4000-8000-000000000001',
           task_title: 'Montagem de Painéis',
           task_description: 'Instalar estruturas na cobertura',
           status_id: 'ts-1',
@@ -98,7 +98,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
         },
         {
           id: 'task-eliminada-1',
-          project_id: 'proj-ativo-1',
+          project_id: '10000000-0000-4000-8000-000000000001',
           task_title: 'Tarefa Removida',
           deleted: true,
           version: 1,
@@ -426,7 +426,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
     });
 
     it('UPDATE com versão correta → sucesso (200) e incrementa versão', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/10000000-0000-4000-8000-000000000001', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -435,16 +435,16 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
         }),
       });
 
-      const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      const res = await updateProject(req, { params: Promise.resolve({ id: '10000000-0000-4000-8000-000000000001' }) });
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.success).toBe(true);
       expect(json.data.version).toBe(2);
-      expect(mockDbData.projects.find((p: any) => p.id === 'proj-ativo-1').version).toBe(2);
+      expect(mockDbData.projects.find((p: any) => p.id === '10000000-0000-4000-8000-000000000001').version).toBe(2);
     });
 
     it('UPDATE com versão incorreta → 409 Conflict', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/10000000-0000-4000-8000-000000000001', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -453,7 +453,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
         }),
       });
 
-      const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      const res = await updateProject(req, { params: Promise.resolve({ id: '10000000-0000-4000-8000-000000000001' }) });
       expect(res.status).toBe(409);
       const json = await res.json();
       const msg = json.message || json.error?.message || '';
@@ -463,11 +463,11 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
     it('Simulação de conflito entre leitura e UPDATE → 409 Conflict', async () => {
       // Simula uma alteração concorrente que ocorre logo antes do UPDATE ser executado na BD
       onBeforeUpdateProjectsHook = () => {
-        const proj = mockDbData.projects.find((p: any) => p.id === 'proj-ativo-1');
+        const proj = mockDbData.projects.find((p: any) => p.id === '10000000-0000-4000-8000-000000000001');
         if (proj) proj.version = 2; // Outro utilizador acabou de gravar a versão 2
       };
 
-      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/10000000-0000-4000-8000-000000000001', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -476,7 +476,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
         }),
       });
 
-      const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      const res = await updateProject(req, { params: Promise.resolve({ id: '10000000-0000-4000-8000-000000000001' }) });
       expect(res.status).toBe(409);
       const json = await res.json();
       const msg = json.message || json.error?.message || '';
@@ -486,7 +486,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
     it('Falha na atualização de project_teams_link não resulta em 200 (retorna erro)', async () => {
       mockTableErrors.project_teams_link = 'Falha simulada na base de dados de equipas';
 
-      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/10000000-0000-4000-8000-000000000001', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -495,7 +495,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
         }),
       });
 
-      const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      const res = await updateProject(req, { params: Promise.resolve({ id: '10000000-0000-4000-8000-000000000001' }) });
       expect(res.status).not.toBe(200);
       expect(res.status).toBe(400);
       const json = await res.json();
@@ -506,7 +506,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
     it('Falha na atualização de project_partners_link não resulta em 200 (retorna erro)', async () => {
       mockTableErrors.project_partners_link = 'Falha simulada na base de dados de parceiros';
 
-      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/10000000-0000-4000-8000-000000000001', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -515,7 +515,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
         }),
       });
 
-      const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      const res = await updateProject(req, { params: Promise.resolve({ id: '10000000-0000-4000-8000-000000000001' }) });
       expect(res.status).not.toBe(200);
       expect(res.status).toBe(400);
       const json = await res.json();
@@ -526,7 +526,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
     it('Falha na atualização de project_category_link não resulta em 200 (retorna erro)', async () => {
       mockTableErrors.project_category_link = 'Falha simulada na base de dados de categorias';
 
-      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/10000000-0000-4000-8000-000000000001', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -535,7 +535,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
         }),
       });
 
-      const res = await updateProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      const res = await updateProject(req, { params: Promise.resolve({ id: '10000000-0000-4000-8000-000000000001' }) });
       expect(res.status).not.toBe(200);
       expect(res.status).toBe(400);
       const json = await res.json();
@@ -544,11 +544,11 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
     });
 
     it('Bloqueia eliminação de Project com tarefas ativas associadas (409 Conflict)', async () => {
-      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/10000000-0000-4000-8000-000000000001', {
         method: 'DELETE',
       });
 
-      const res = await deleteProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      const res = await deleteProject(req, { params: Promise.resolve({ id: '10000000-0000-4000-8000-000000000001' }) });
       expect(res.status).toBe(409);
       const json = await res.json();
       const msg = json.message || json.error?.message || '';
@@ -558,13 +558,13 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
     it('Elimina Project sem dependências ativas com soft delete (200)', async () => {
       mockDbData.tasks = [];
 
-      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', {
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/10000000-0000-4000-8000-000000000001', {
         method: 'DELETE',
       });
 
-      const res = await deleteProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      const res = await deleteProject(req, { params: Promise.resolve({ id: '10000000-0000-4000-8000-000000000001' }) });
       expect(res.status).toBe(200);
-      expect(mockDbData.projects.find((p: any) => p.id === 'proj-ativo-1').deleted).toBe(true);
+      expect(mockDbData.projects.find((p: any) => p.id === '10000000-0000-4000-8000-000000000001').deleted).toBe(true);
     });
   });
 
@@ -574,7 +574,7 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          projectId: 'proj-ativo-1',
+          projectId: '10000000-0000-4000-8000-000000000001',
           title: 'Ligação de Cabos Principais',
           statusId: validUUID3,
           taskTypeId: validUUID4,
@@ -687,8 +687,8 @@ describe('FASE 28-A — Integridade Operacional de Projects & Tasks', () => {
         response: NextResponse.json({ success: false, message: 'Sem permissão' }, { status: 403 }),
       }));
 
-      const req = new NextRequest('http://localhost:3000/api/v1/projects/proj-ativo-1', { method: 'DELETE' });
-      const res = await deleteProject(req, { params: Promise.resolve({ id: 'proj-ativo-1' }) });
+      const req = new NextRequest('http://localhost:3000/api/v1/projects/10000000-0000-4000-8000-000000000001', { method: 'DELETE' });
+      const res = await deleteProject(req, { params: Promise.resolve({ id: '10000000-0000-4000-8000-000000000001' }) });
       expect(res.status).toBe(403);
     });
   });

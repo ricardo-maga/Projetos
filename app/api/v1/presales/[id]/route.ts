@@ -1,3 +1,4 @@
+import { createApiHandler } from '@/lib/apiErrors';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
@@ -10,7 +11,7 @@ import sanitizeHtml from 'sanitize-html';
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ id: string }> };
 
-export async function GET(req: NextRequest, context: Context) {
+async function handleGet(req: NextRequest, context: Context) {
   const auth = await requirePermission(req, 'presales.read');
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode consultar Presales.' }, { status: 403 });
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest, context: Context) {
   }
 }
 
-export async function PATCH(req: NextRequest, context: Context) {
+async function handlePatch(req: NextRequest, context: Context) {
   const { id } = await context.params;
   if (!z.guid().safeParse(id).success) return NextResponse.json({ success: false, message: 'Identificador inválido.' }, { status: 400 });
   const parsed = presalesActionSchema.safeParse(await req.json().catch(() => null));
@@ -57,7 +58,7 @@ export async function PATCH(req: NextRequest, context: Context) {
   }
 }
 
-export async function DELETE(req: NextRequest, context: Context) {
+async function handleDelete(req: NextRequest, context: Context) {
   const auth = await requirePermission(req, 'presales.manage');
   if (!auth.success) return auth.response;
   const { id } = await context.params;
@@ -70,3 +71,9 @@ export async function DELETE(req: NextRequest, context: Context) {
   if (error) return presalesError(error);
   return NextResponse.json({ success: true });
 }
+
+export const GET = createApiHandler(handleGet);
+
+export const PATCH = createApiHandler(handlePatch);
+
+export const DELETE = createApiHandler(handleDelete);

@@ -1,3 +1,4 @@
+import { createApiHandler } from '@/lib/apiErrors';
 import { NextRequest,NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
 import { auditRequestHeaders, createAdminClient } from '@/lib/supabase/server';
@@ -5,7 +6,7 @@ import { getIdempotentEntityId,runIdempotent } from '@/lib/apiIdempotency';
 import { presalesRegistrySchema } from '@/lib/presalesRegistry';
 import { presalesError } from '@/lib/presalesErrors';
 
-export async function POST(req:NextRequest) {
+async function handlePost(req:NextRequest) {
   const auth=await requirePermission(req,'presales.create');
   if (!auth.success) return auth.response;
   if (auth.user.type==='External') return NextResponse.json({success:false,message:'Apenas a equipa pode criar processos.'},{status:403});
@@ -22,3 +23,5 @@ export async function POST(req:NextRequest) {
     return NextResponse.json({success:true,data:{id}},{status:201});
   });
 }
+
+export const POST = createApiHandler(handlePost);

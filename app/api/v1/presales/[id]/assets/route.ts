@@ -1,3 +1,4 @@
+import { createApiHandler } from '@/lib/apiErrors';
 import { logAuditEvent } from '@/lib/audit';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -10,7 +11,7 @@ export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ id: string }> };
 const mediaTypes: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
 
-export async function POST(req: NextRequest, context: Context) {
+async function handlePost(req: NextRequest, context: Context) {
   const auth = await requirePermission(req, 'presales.manage');
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Sem acesso.' }, { status: 403 });
@@ -51,3 +52,5 @@ export async function POST(req: NextRequest, context: Context) {
   }
   return NextResponse.json({ success: true, data: { id: assetId } }, { status: 201 });
 }
+
+export const POST = createApiHandler(handlePost);

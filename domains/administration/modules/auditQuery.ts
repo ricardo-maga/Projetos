@@ -95,3 +95,6 @@ export function auditCsvCell(value: unknown): string {
   const safe = /^[\s\uFEFF]*[=+\-@\t\r\n]/u.test(cell) ? "'" + cell : cell;
   return '"' + safe.replaceAll('"', '""') + '"';
 }
+
+export const auditCsvColumns = ['Data/hora UTC', 'Autor', 'Ação', 'Origem', 'Resultado', 'Entidade', 'ID',
+  'Projeto', 'Alterações', 'Pedido'];

@@ -1,3 +1,4 @@
+import { createApiHandler } from '@/lib/apiErrors';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
@@ -7,7 +8,7 @@ import { hasImageSignature } from '@/lib/security/imageSignature';
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ id: string; assetId: string }> };
 
-export async function GET(req: NextRequest, context: Context) {
+async function handleGet(req: NextRequest, context: Context) {
   const auth = await requirePermission(req, 'presales.read');
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Sem acesso.' }, { status: 403 });
@@ -27,3 +28,5 @@ export async function GET(req: NextRequest, context: Context) {
   return new Response(blob, { headers: { 'Content-Type': asset.media_type,
     'Content-Disposition': 'inline', 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
 }
+
+export const GET = createApiHandler(handleGet);
