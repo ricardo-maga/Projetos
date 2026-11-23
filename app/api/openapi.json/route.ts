@@ -1,7 +1,5 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from 'next/server';
-
 export async function GET() {
-  return NextResponse.redirect(new URL('/api/v1/openapi.json', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'));
+  return new Response(null, { status: 307, headers: { Location: '/api/v1/openapi.json' } });
 }

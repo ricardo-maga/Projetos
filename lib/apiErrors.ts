@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { AuthError } from '@/lib/auth/requireAuth';
 
 export type ApiErrorCode =
   | 'BAD_REQUEST'
@@ -16,6 +17,8 @@ export type ApiErrorCode =
   | 'RATE_LIMIT_EXCEEDED';
 
 export interface ApiErrorPayload {
+  success: false;
+  message: string;
   error: {
     code: ApiErrorCode | string;
     message: string;
@@ -32,6 +35,8 @@ export function createErrorResponse(
   details?: any
 ): NextResponse<ApiErrorPayload> {
   const payload: ApiErrorPayload = {
+    success: false,
+    message,
     error: {
       code,
       message,
@@ -85,13 +90,21 @@ export const rateLimitExceeded = tooManyRequests;
 
 // Migration adapter: retain the legacy `message` field for existing clients while
 // giving every operational v1 error the canonical error envelope and request ID.
-export function withCanonicalErrors<F extends (req: NextRequest, ...args: any[]) => Promise<NextResponse>>(handler: F): F {
+export function createApiHandler<F extends (req: NextRequest, ...args: any[]) => Promise<Response>>(handler: F): F {
   return (async (req: NextRequest, ...args: any[]) => {
-    const response = await handler(req, ...args);
+    const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
+    let response: Response;
+    try {
+      response = await handler(req, ...args);
+    } catch (error) {
+      if (error instanceof AuthError)
+        return createErrorResponse(error.statusCode, error.statusCode >= 500 ? 'SERVICE_UNAVAILABLE' : 'ACCESS_DENIED', error.message, requestId);
+      console.error('[API REQUEST]', requestId, error);
+      return internalServerError('Ocorreu um erro interno no servidor.', requestId);
+    }
     if (response.status < 400) return response;
     const body = await response.clone().json().catch(() => null);
     if (!body || typeof body !== 'object' || body.error || typeof body.message !== 'string') return response;
-    const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
     const code = ({400:'BAD_REQUEST',401:'UNAUTHORIZED',403:'FORBIDDEN',404:'NOT_FOUND',409:'CONFLICT',413:'PAYLOAD_TOO_LARGE',422:'VALIDATION_ERROR',429:'TOO_MANY_REQUESTS',503:'AUTH_SERVICE_UNAVAILABLE'} as Record<number,string>)[response.status]
       || (response.status >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST');
     const headers = new Headers(response.headers);
@@ -101,6 +114,12 @@ export function withCanonicalErrors<F extends (req: NextRequest, ...args: any[])
   }) as F;
 }
 
+export const withCanonicalErrors = createApiHandler;
+
 export function internalServerError(message: string = 'Ocorreu um erro interno no servidor.', requestId: string) {
   return createErrorResponse(500, 'INTERNAL_SERVER_ERROR', message, requestId);
+}
+
+export function serviceUnavailable(message: string, requestId: string) {
+  return createErrorResponse(503, 'SERVICE_UNAVAILABLE', message, requestId);
 }

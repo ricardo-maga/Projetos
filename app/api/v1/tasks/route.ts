@@ -1,15 +1,15 @@
+import { createApiHandler } from '@/lib/apiErrors';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth/authorization';
 import { createTaskSchema, queryTaskSchema } from '@/lib/validations/task';
-import { validationError, badRequest, internalServerError } from '@/lib/apiErrors';
+import { validationError, badRequest, internalServerError, serviceUnavailable } from '@/lib/apiErrors';
 import { auditRequestHeaders, createAdminClient, getServerDbClient } from '@/lib/supabase/server';
-import { supabase as defaultSupabase } from '@/lib/supabaseClient';
 import { listTasksServer, createTaskServer } from '@/domains/tasks/modules/taskService';
 import { getIdempotentEntityId, withUserIdempotency } from '@/lib/apiIdempotency';
 
-export async function GET(req: NextRequest) {
+async function handleGet(req: NextRequest) {
   const auth = await requirePermission(req, 'tasks_read');
   if (!auth.success) return auth.response;
 
@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
-    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
+    const sb = await getServerDbClient(req, auth.user);
+    if (!sb) return serviceUnavailable('Base de dados Supabase não disponível.', requestId);
 
     const result = await listTasksServer(sb, parseResult.data);
     if (!result.success) {
@@ -63,8 +63,8 @@ async function createTaskHandler(req: NextRequest) {
     }
 
     const t = parseResult.data;
-    const sb = (await getServerDbClient(req, auth.user)) || defaultSupabase;
-    if (!sb) return internalServerError('Base de dados Supabase não disponível.', requestId);
+    const sb = await getServerDbClient(req, auth.user);
+    if (!sb) return serviceUnavailable('Base de dados Supabase não disponível.', requestId);
 
     // 1. Validate associated project ONLY if provided
     if (t.projectId) {
@@ -95,7 +95,7 @@ async function createTaskHandler(req: NextRequest) {
         return badRequest('A tarefa de origem não está disponível para este projeto.', requestId);
       }
       const auditedClient = createAdminClient({ ...auditRequestHeaders(user), 'x-projetos-audit-task-source': t.copiedFromTaskId });
-      if (!auditedClient) return internalServerError('Base de dados Supabase não disponível.', requestId);
+      if (!auditedClient) return serviceUnavailable('Base de dados Supabase não disponível.', requestId);
       mutationClient = auditedClient;
     }
 
@@ -148,3 +148,5 @@ async function createTaskHandler(req: NextRequest) {
 }
 
 export const POST = withUserIdempotency(createTaskHandler, 'tasks:create', 'tasks_write');
+
+export const GET = createApiHandler(handleGet);

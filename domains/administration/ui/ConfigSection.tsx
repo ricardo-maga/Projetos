@@ -47,6 +47,7 @@ import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 
 import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
+import { waitForApiJob } from '@/lib/clientApiJobs';
 import { hasPermission } from '@/lib/permissions';
 import { formatHoursToHHMM, parseTimeToHours } from '@/lib/utils';
 
@@ -269,12 +270,13 @@ export default function ConfigSection({
     setCsvResult(null);
     try {
       const response = await authenticatedRequest('/api/v1/projects/import', {
-        method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ csv: csvText.trim() }),
+        method: 'POST', headers: getAuthHeaders({ Prefer: 'respond-async' }), body: JSON.stringify({ csv: csvText.trim() }),
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível importar o CSV.');
-      setCsvResult({ ...result.data, errors: result.message ? [...result.data.errors, result.message] : result.data.errors });
-      if (result.data.success && !result.data.failed) setCsvText('');
+      const imported = response.status === 202 ? await waitForApiJob<NonNullable<typeof csvResult>>(result.data.jobId) : result.data;
+      setCsvResult({ ...imported, errors: result.message ? [...imported.errors, result.message] : imported.errors });
+      if (imported.success && !imported.failed) setCsvText('');
       await onRefreshFromDatabase?.();
     } catch (error: any) {
       setCsvResult({ success: 0, failed: 1, errors: [error?.message || 'Erro ao ler CSV.'] });

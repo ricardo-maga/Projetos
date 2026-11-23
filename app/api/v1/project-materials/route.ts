@@ -9,6 +9,7 @@ import { ProjectMaterial } from '@/lib/types';
 import { requirePermission } from '@/lib/auth/authorization';
 import { activeRelationExists, isUuid, mapProjectMaterial, parsePage } from '@/lib/supabase/operationalRecords';
 import { withCanonicalErrors } from '@/lib/apiErrors';
+import { getIdempotentEntityId, withUserIdempotency } from '@/lib/apiIdempotency';
 import { createProjectMaterialSchema } from '@/lib/validations/operational';
 
 async function getMaterials(req: NextRequest) {
@@ -76,7 +77,7 @@ async function createMaterial(req: NextRequest) {
     }
 
     const newMaterial: ProjectMaterial = {
-      id: crypto.randomUUID(),
+      id: getIdempotentEntityId(req) || crypto.randomUUID(),
       projectId: body.projectId,
       description: body.description,
       supplier: body.supplier,
@@ -105,4 +106,4 @@ async function createMaterial(req: NextRequest) {
 }
 
 export const GET = withCanonicalErrors(getMaterials);
-export const POST = withCanonicalErrors(createMaterial);
+export const POST = withCanonicalErrors(withUserIdempotency(createMaterial, 'project_materials:create', 'project_materials:write'));

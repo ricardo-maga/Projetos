@@ -1,3 +1,4 @@
+import { createApiHandler } from '@/lib/apiErrors';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -6,7 +7,7 @@ import { getServerDbClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { mapRisk, riskInput, riskPayload } from '@/domains/projects/data/riskRepository';
 
-export async function POST(req: NextRequest) {
+async function handlePost(req: NextRequest) {
   const auth = await requirePermission(req, 'projects_write');
   if (!auth.success) return auth.response;
   if (!(await checkRateLimit(`risk-create:${auth.user.id}`, { limit: 30, windowSeconds: 60 })).success)
@@ -26,3 +27,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: mapRisk(data) }, { status: 201 });
   } catch { return NextResponse.json({ success: false, message: 'Não foi possível criar o risco.' }, { status: 503 }); }
 }
+
+export const POST = createApiHandler(handlePost);

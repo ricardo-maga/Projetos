@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthError, ForbiddenError, requireAuth } from '@/lib/auth/requireAuth';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
-import { auditCsvCell, auditFilters, decodeAuditCursor, queryAudit } from '@/domains/administration/modules/auditQuery';
+import { auditCsvCell, auditCsvColumns, auditFilters, decodeAuditCursor, queryAudit } from '@/domains/administration/modules/auditQuery';
+import { enqueueApiJob, wantsAsyncResponse } from '@/lib/apiJobs';
 
 export async function handleAudit(req: NextRequest, exportCsv: boolean) {
   try {
@@ -24,6 +25,7 @@ export async function handleAudit(req: NextRequest, exportCsv: boolean) {
     }
 
     const filters = { ...parsed.data, limit: 200, cursor: undefined, to: parsed.data.to ?? new Date().toISOString() };
+    if (wantsAsyncResponse(req)) return await enqueueApiJob(client, user, 'audit_export', filters);
     const rows: Awaited<ReturnType<typeof queryAudit>>['data'] = [];
     let cursor: string | undefined;
     do {
@@ -39,13 +41,13 @@ export async function handleAudit(req: NextRequest, exportCsv: boolean) {
     const { error: writeError } = await client.from('audit_logs').insert({
       audit_version: 1, user_id: user.id, actor_id: user.id, user_name: user.name,
       action: 'audit.export_prepared', entity_type: 'audit',
-      source: 'application', outcome: 'succeeded', request_id: crypto.randomUUID(),
+      source: 'application', outcome: 'succeeded', request_id: user.requestId || crypto.randomUUID(),
       changes: { filters: { after: { ...recordedFilters, searchApplied: Boolean(search) } }, row_count: { after: rows.length } },
     });
     if (writeError) throw writeError;
 
     const csv = [
-      ['Data/hora UTC', 'Autor', 'Ação', 'Origem', 'Resultado', 'Entidade', 'ID', 'Projeto', 'Alterações', 'Pedido'],
+      auditCsvColumns,
       ...rows.map(row => [row.timestamp, row.userName, row.action, row.source, row.outcome,
         row.entityName || row.entityType, row.entityId, row.projectId, row.changes, row.requestId]),
     ].map(row => row.map(auditCsvCell).join(';')).join('\r\n');

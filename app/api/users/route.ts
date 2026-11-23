@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { logAuditEvent } from '@/lib/audit';
 import { CANONICAL_ROLE_IDS } from '@/lib/permissions';
 import { withCanonicalErrors } from '@/lib/apiErrors';
+import { getIdempotentEntityId, runIdempotent } from '@/lib/apiIdempotency';
 
 const fields = z.object({
   name: z.string().trim().min(2).max(200),
@@ -32,51 +33,60 @@ async function recordUserFailure(actor: { id: string; name: string }, id: string
 async function createUser(req: NextRequest) {
   try {
     const actor = await requirePermission(req, 'users_write');
-    const parsed = createFields.safeParse(await req.json().catch(() => null));
+    const parsed = createFields.safeParse(await req.clone().json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ success: false, message: 'Nome, email, tipo ou password inválidos.' }, { status: 400 });
-    const admin = createAdminClient();
-    if (!admin) throw new AuthError('Serviço de autenticação indisponível.', 503);
-    const { name, email, type, password } = parsed.data;
-    const { data: existing, error: lookupError } = await admin.from('users').select('id').ilike('email', email).maybeSingle();
-    if (lookupError) throw lookupError;
-    if (existing) return NextResponse.json({ success: false, message: 'Já existe um perfil com este email. Edite o perfil existente.' }, { status: 409 });
-
-    let authId: string | null = null;
-    if (password) {
-      const { data: created, error: authError } = await admin.auth.admin.createUser({
-        email, password, email_confirm: true, user_metadata: { name },
-      });
-      if (authError || !created.user) return NextResponse.json({ success: false, message: 'Não foi possível criar a conta de autenticação. Verifique se o email já existe.' }, { status: 409 });
-      authId = created.user.id;
+    if (req.headers.has('idempotency-key') && parsed.data.password) {
+      return NextResponse.json({ success: false, message: 'A chave de idempotência aplica-se à criação de perfis sem login.' }, { status: 400 });
     }
-    const id = authId ?? randomUUID();
-    // The auth.users trigger creates the profile; upsert also works if the trigger is absent.
-    const { error: profileError } = await admin.from('users').upsert({
-      id, auth_user_id: authId, name, email, type, approved: true, deleted: false,
-      role_id: CANONICAL_ROLE_IDS.TECHNICIAN, is_admin: false,
-    }, { onConflict: 'id' });
-    if (profileError) {
-      const { error: profileRollbackError } = await admin.from('users').delete().eq('id', id);
-      const authRollbackError = authId ? (await admin.auth.admin.deleteUser(authId)).error : null;
-      await recordUserFailure(actor, id, Boolean(profileRollbackError || authRollbackError));
-      return NextResponse.json({ success: false, message: profileRollbackError || authRollbackError
-        ? 'O perfil não pôde ser gravado e a reversão da conta não ficou completa. Requer reconciliação.'
-        : 'A criação do utilizador foi revertida porque o perfil não pôde ser gravado.' }, { status: 500 });
-    }
-    const { error: roleError } = await admin.from('user_roles').upsert({
-      user_id: id, role_id: CANONICAL_ROLE_IDS.TECHNICIAN, assigned_by: actor.id,
-    }, { onConflict: 'user_id,role_id' });
-    if (roleError) {
-      const { error: profileRollbackError } = await admin.from('users').delete().eq('id', id);
-      const authRollbackError = authId ? (await admin.auth.admin.deleteUser(authId)).error : null;
-      await recordUserFailure(actor, id, Boolean(profileRollbackError || authRollbackError));
-      return NextResponse.json({ success: false, message: profileRollbackError || authRollbackError
-        ? 'A função inicial falhou e a reversão da conta não ficou completa. Requer reconciliação.'
-        : 'A conta foi revertida porque a função inicial não pôde ser gravada.' }, { status: 500 });
-    }
-    await logAuditEvent({ action: 'USER_CREATED', userId: actor.id, userName: actor.name, entity: 'users', entityId: id, details: { accessEnabled: Boolean(authId) } });
-    return NextResponse.json({ success: true, id }, { status: 201 });
+    return await runIdempotent(req, actor.id, 'users:create-profile',
+      claimed => createUserRecord(parsed.data, actor, getIdempotentEntityId(claimed)));
   } catch (error) { return failure(error); }
+}
+
+async function createUserRecord(input: z.infer<typeof createFields>, actor: { id: string; name: string; requestId?: string }, requestedId?: string) {
+  const admin = createAdminClient();
+  if (!admin) throw new AuthError('Serviço de autenticação indisponível.', 503);
+  const { name, email, type, password } = input;
+  const { data: existing, error: lookupError } = await admin.from('users').select('id').ilike('email', email).maybeSingle();
+  if (lookupError) throw lookupError;
+  if (existing) return NextResponse.json({ success: false, message: 'Já existe um perfil com este email. Edite o perfil existente.' }, { status: 409 });
+
+  let authId: string | null = null;
+  if (password) {
+    const { data: created, error: authError } = await admin.auth.admin.createUser({
+      email, password, email_confirm: true, user_metadata: { name },
+    });
+    if (authError || !created.user) return NextResponse.json({ success: false, message: 'Não foi possível criar a conta de autenticação. Verifique se o email já existe.' }, { status: 409 });
+    authId = created.user.id;
+  }
+  const id = authId ?? requestedId ?? randomUUID();
+  // The auth.users trigger creates the profile; upsert also works if the trigger is absent.
+  const { error: profileError } = await admin.from('users').upsert({
+    id, auth_user_id: authId, name, email, type, approved: true, deleted: false,
+    role_id: CANONICAL_ROLE_IDS.TECHNICIAN, is_admin: false,
+  }, { onConflict: 'id' });
+  if (profileError) {
+    const { error: profileRollbackError } = await admin.from('users').delete().eq('id', id);
+    const authRollbackError = authId ? (await admin.auth.admin.deleteUser(authId)).error : null;
+    await recordUserFailure(actor, id, Boolean(profileRollbackError || authRollbackError));
+    return NextResponse.json({ success: false, message: profileRollbackError || authRollbackError
+      ? 'O perfil não pôde ser gravado e a reversão da conta não ficou completa. Requer reconciliação.'
+      : 'A criação do utilizador foi revertida porque o perfil não pôde ser gravado.' }, { status: 500 });
+  }
+  const { error: roleError } = await admin.from('user_roles').upsert({
+    user_id: id, role_id: CANONICAL_ROLE_IDS.TECHNICIAN, assigned_by: actor.id,
+  }, { onConflict: 'user_id,role_id' });
+  if (roleError) {
+    const { error: profileRollbackError } = await admin.from('users').delete().eq('id', id);
+    const authRollbackError = authId ? (await admin.auth.admin.deleteUser(authId)).error : null;
+    await recordUserFailure(actor, id, Boolean(profileRollbackError || authRollbackError));
+    return NextResponse.json({ success: false, message: profileRollbackError || authRollbackError
+      ? 'A função inicial falhou e a reversão da conta não ficou completa. Requer reconciliação.'
+      : 'A conta foi revertida porque a função inicial não pôde ser gravada.' }, { status: 500 });
+  }
+  await logAuditEvent({ action: 'USER_CREATED', userId: actor.id, userName: actor.name, entity: 'users', entityId: id,
+    requestId: actor.requestId, details: { accessEnabled: Boolean(authId) } });
+  return NextResponse.json({ success: true, id }, { status: 201 });
 }
 
 async function updateUser(req: NextRequest) {

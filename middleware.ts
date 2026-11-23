@@ -1,13 +1,43 @@
-import { type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
 import { cutoverMaintenanceResponse } from './lib/cutoverMaintenance';
-import { consumeEdgeQuota, quotaResponse, quotaUnavailable } from './lib/security/edgeRateLimit';
+import { consumeEdgeQuotas, quotaHeaders, quotaResponse, quotaUnavailable } from './lib/security/edgeRateLimit';
 import { clientIp } from './lib/security/clientIp';
+import { isUuid } from './lib/security/identifiers';
 
-async function validateApiEnvelope(request: NextRequest): Promise<Response | null> {
+function validateMutationOrigin(request: NextRequest, requestId: string) {
+  const { pathname, origin } = request.nextUrl;
+  if (!pathname.startsWith('/api/') || ['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return null;
+  const hasBearer = /^Bearer [^\s]+$/i.test(request.headers.get('authorization') || '');
+  const cookieAuth = request.cookies.getAll().some(({ name }) => /^sb-.+-auth-token(?:\.\d+)?$/.test(name));
+  const originHeader = request.headers.get('origin');
+  const referer = request.headers.get('referer');
+  const browser = originHeader !== null || referer !== null || request.headers.has('sec-fetch-site');
+  const reject = (status: number, code: string, message: string) => Response.json({
+    success: false, message, error: { code, message, requestId },
+  }, { status, headers: { 'x-request-id': requestId } });
+
+  if (!hasBearer && (cookieAuth || browser)) {
+    let source = originHeader;
+    if (!source && referer) {
+      try { source = new URL(referer).origin; } catch { source = null; }
+    }
+    if (source !== origin)
+      return reject(403, 'FORBIDDEN', 'A origem do pedido não é autorizada.');
+  }
+
+  if (!hasBearer && (cookieAuth || browser) && request.body && request.headers.get('content-length') !== '0') {
+    const contentType = request.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+    const upload = pathname.startsWith('/api/v1/presales/') && pathname.endsWith('/assets');
+    if (contentType !== 'application/json' && !(upload && contentType === 'multipart/form-data'))
+      return reject(415, 'UNSUPPORTED_MEDIA_TYPE', 'Formato do pedido não suportado.');
+  }
+  return null;
+}
+
+async function validateApiEnvelope(request: NextRequest, requestId: string): Promise<Response | null> {
   const { pathname, searchParams } = request.nextUrl;
   if (!pathname.startsWith('/api/')) return null;
-  const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
   const reject = (status: number, message: string) => Response.json({ error: {
     code: status === 413 ? 'PAYLOAD_TOO_LARGE' : 'BAD_REQUEST', message, requestId,
   } }, { status, headers: { 'x-request-id': requestId } });
@@ -31,7 +61,7 @@ async function validateApiEnvelope(request: NextRequest): Promise<Response | nul
         if (done) break;
         received += value.byteLength;
         if (received > maxBytes) {
-          await reader.cancel();
+          void reader.cancel().catch(() => undefined);
           return reject(413, 'Corpo do pedido demasiado grande.');
         }
       }
@@ -42,31 +72,74 @@ async function validateApiEnvelope(request: NextRequest): Promise<Response | nul
   return null;
 }
 
-async function apiQuota(request: NextRequest) {
+async function apiQuota(request: NextRequest, requestId: string) {
   if (!request.nextUrl.pathname.startsWith('/api/')) return null;
-  const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
   const url = request.nextUrl;
   const isV1 = url.pathname.startsWith('/api/v1/') || url.pathname.startsWith('/api/integrations/v1/');
   const ip = clientIp(request);
+  if (!ip) return quotaUnavailable(requestId);
   try {
-    const general = quotaResponse(await consumeEdgeQuota(`api:ip:${ip}`, 600), requestId);
-    if (general) return general;
+    const limits = [{ identifier: `api:ip:${ip}`, limit: 600 }];
     if (isV1 && url.pathname !== '/api/v1/openapi.json')
-      return quotaResponse(await consumeEdgeQuota(`v1:${ip}`, 120), requestId);
-    return null;
+      limits.push({ identifier: `v1:${ip}`, limit: 120 });
+    const quotas = await consumeEdgeQuotas(limits);
+    const overLimit = quotas.find(quota => !quota.success);
+    return overLimit ? quotaResponse(overLimit, requestId) : quotas.at(-1);
   } catch {
     return quotaUnavailable(requestId);
   }
 }
 
+function applyLegacyHeaders(request: NextRequest, response: Response) {
+  if (!request.nextUrl.pathname.startsWith('/api/supabase/')) return;
+  const deprecated = Date.parse(process.env.API_LEGACY_DEPRECATION_DATE || '2026-11-23T00:00:00Z');
+  if (Number.isFinite(deprecated)) response.headers.set('Deprecation', `@${Math.floor(deprecated / 1000)}`);
+  const sunset = Date.parse(process.env.API_LEGACY_SUNSET || '');
+  if (Number.isFinite(sunset) && sunset >= deprecated) response.headers.set('Sunset', new Date(sunset).toUTCString());
+  response.headers.append('Link', '</api/v1/openapi.json>; rel="service-desc"');
+}
+
+function integrationCors(request: NextRequest) {
+  if (!request.nextUrl.pathname.startsWith('/api/integrations/v1/')) return null;
+  const origin = request.headers.get('origin');
+  if (!origin || !process.env.API_INTEGRATION_CORS_ORIGINS?.split(',').map(value => value.trim()).includes(origin)) return null;
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, X-Api-Key, If-None-Match, X-Request-Id',
+    'Access-Control-Expose-Headers': 'RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Retry-After, X-Request-Id',
+    'Access-Control-Max-Age': '600',
+  };
+}
+
 export async function middleware(request: NextRequest) {
+  const incomingId = request.headers.get('x-request-id');
+  const requestId = isUuid(incomingId) ? incomingId : crypto.randomUUID();
   const maintenance = cutoverMaintenanceResponse(request.nextUrl.pathname, process.env.ERP_CUTOVER_MAINTENANCE);
-  if (maintenance) return maintenance;
-  const invalid = await validateApiEnvelope(request);
+  if (maintenance) {
+    maintenance.headers.set('x-request-id', requestId);
+    return maintenance;
+  }
+  if (request.nextUrl.pathname === '/api/health' || request.nextUrl.pathname === '/api/ready') {
+    const response = NextResponse.next();
+    response.headers.set('x-request-id', requestId);
+    return response;
+  }
+  const cors = integrationCors(request);
+  if (request.method === 'OPTIONS' && cors)
+    return new Response(null, { status: 204, headers: { ...cors, Vary: 'Origin', 'x-request-id': requestId } });
+  const originError = validateMutationOrigin(request, requestId);
+  if (originError) return originError;
+  const invalid = await validateApiEnvelope(request, requestId);
   if (invalid) return invalid;
-  const quota = await apiQuota(request);
-  if (quota) return quota;
-  return await updateSession(request);
+  const quota = await apiQuota(request, requestId);
+  const response = quota instanceof Response ? quota : await updateSession(request, requestId);
+  if (quota && !(quota instanceof Response) && !response.headers.has('RateLimit-Limit'))
+    for (const [key, value] of Object.entries(quotaHeaders(quota))) response.headers.set(key, value);
+  applyLegacyHeaders(request, response);
+  if (request.nextUrl.pathname.startsWith('/api/integrations/v1/')) response.headers.append('Vary', 'Origin');
+  if (cors) for (const [key, value] of Object.entries(cors)) response.headers.set(key, value);
+  return response;
 }
 
 export const config = {

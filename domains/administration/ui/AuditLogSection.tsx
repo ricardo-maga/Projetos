@@ -6,6 +6,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { M3SectionHeader } from '@/components/M3';
 import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
+import { waitForApiJob } from '@/lib/clientApiJobs';
 import { auditModuleLabels, auditActionLabel, auditFieldLabel, auditSourceLabels, auditOutcomeLabels } from '../modules/auditPresentation';
 
 type Change = { before?: unknown; after?: unknown; changed?: boolean };
@@ -99,7 +100,16 @@ export default function AuditLogSection({ projectId }: { projectId?: string }) {
     setExportError('');
     try {
       const params = new URLSearchParams(filters);
-      const response = await authenticatedRequest(`/api/audit/export?${params}`, { method: 'POST', headers: getAuthHeaders(), cache: 'no-store' });
+      let response = await authenticatedRequest(`/api/audit/export?${params}`, {
+        method: 'POST', headers: getAuthHeaders({ Prefer: 'respond-async' }), cache: 'no-store',
+      });
+      if (response.status === 202) {
+        const { data } = await response.json();
+        await waitForApiJob(data.jobId);
+        response = await authenticatedRequest(`/api/v1/jobs/${encodeURIComponent(data.jobId)}?download=1`, {
+          headers: getAuthHeaders(), cache: 'no-store',
+        });
+      }
       if (!response.ok) {
         const result = await response.json();
         throw new Error(result.message);

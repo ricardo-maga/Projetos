@@ -93,3 +93,18 @@ export const queryProjectSchema = z.object({
   clientId: z.preprocess(value => value === '' ? undefined : value, z.guid().optional()),
   statusGroup: z.enum(['active', 'implementation', 'all', 'completed']).optional(),
 });
+
+export const projectSort = z.enum(['createdAt', '-createdAt']);
+export const projectFields = z.enum([
+  'id', 'title', 'description', 'clientId', 'statusId', 'categoryId', 'projectManagerId', 'fieldManagerId',
+  'salesRepId', 'startDate', 'deliveryDate', 'estimatedDate', 'scheduledDate', 'forecastDate', 'completedDate',
+  'installProjectNo', 'sfOpportunityNo', 'budgetValue', 'isUrgent', 'createdAt', 'updatedAt', 'version',
+]);
+export const projectIncludes = z.enum(['teams', 'partners', 'categories', 'priority', 'risk']);
+export const projectListSchema = queryProjectSchema.extend({
+  cursor: z.string().max(160).regex(/^[A-Za-z0-9_-]+$/).optional(),
+  pagination: z.enum(['offset', 'cursor']).optional(),
+  sort: projectSort.optional(),
+  fields: z.string().max(512).refine(value => value.split(',').every(field => projectFields.safeParse(field).success)).optional(),
+  include: z.string().max(100).refine(value => value.split(',').every(name => projectIncludes.safeParse(name).success)).optional(),
+});

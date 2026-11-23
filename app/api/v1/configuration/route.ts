@@ -1,28 +1,19 @@
+import { createApiHandler } from '@/lib/apiErrors';
+import { updateConfigurationSchema } from '@/lib/validations/apiInputs';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
 import { getServerDbClient } from '@/lib/supabase/server';
 import { configurationReadQuery } from '@/domains/configuration/data/configurationRepository';
 
-const changes = z.object({
-  appName: z.string().max(200).optional(), appDescription: z.string().max(2000).optional(),
-  footerText: z.string().max(2000).optional(), footerCopyrightText: z.string().max(2000).optional(),
-  logo: z.string().max(524288).optional(), logoImagePath: z.string().max(524288).optional(), theme: z.string().max(100).optional(),
-  salesRepGroupIds: z.array(z.guid()).optional(), projManagerGroupIds: z.array(z.guid()).optional(),
-  fieldManagerGroupIds: z.array(z.guid()).optional(), taskAssigneeGroupIds: z.array(z.guid()).optional(),
-  salesRepGroupId: z.string().optional(), projManagerGroupId: z.string().optional(),
-  fieldManagerGroupId: z.string().optional(), taskAssigneeGroupId: z.string().optional(),
-}).strict();
-const input = z.object({ syncVersion: z.number().int().positive(), updates: changes });
 
-export async function PATCH(req: NextRequest) {
+async function handlePatch(req: NextRequest) {
   const auth = await requirePermission(req, 'config_write');
   if (!auth.success) return auth.response;
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ success: false, message: 'Pedido JSON inválido.' }, { status: 400 }); }
-  const parsed = input.safeParse(body);
+  const parsed = updateConfigurationSchema.safeParse(body);
   if (!parsed.success || !Object.keys(parsed.data.updates).length)
     return NextResponse.json({ success: false, message: 'Configuração inválida.' }, { status: 400 });
   const updates = parsed.data.updates;
@@ -63,3 +54,5 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: false, message: 'Não foi possível guardar a configuração.' }, { status: 503 });
   }
 }
+
+export const PATCH = createApiHandler(handlePatch);

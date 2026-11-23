@@ -1,3 +1,4 @@
+import { createApiHandler } from '@/lib/apiErrors';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AuthError, requirePermission } from '@/lib/auth/requireAuth';
@@ -6,7 +7,7 @@ import { auditFilters, decodeAuditCursor, queryAudit } from '@/domains/administr
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+async function handleGet(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const parsed = auditFilters.safeParse(Object.fromEntries(req.nextUrl.searchParams));
   if (!z.guid().safeParse(id).success || !parsed.success ||
@@ -33,3 +34,5 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ success: false, message: 'Não foi possível consultar o histórico.' }, { status: 503 });
   }
 }
+
+export const GET = createApiHandler(handleGet);

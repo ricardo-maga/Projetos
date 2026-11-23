@@ -1,3 +1,4 @@
+import { createApiHandler } from '@/lib/apiErrors';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,7 +10,7 @@ import { mapRule, ruleInput, rulePayload, validateAgainstStatuses } from '@/doma
 type Context = { params: Promise<{ id: string }> };
 const version = z.number().int().positive();
 
-export async function PATCH(req: NextRequest, { params }: Context) {
+async function handlePatch(req: NextRequest, { params }: Context) {
   const auth = await requirePermission(req, 'config_write');
   if (!auth.success) return auth.response;
   const { id } = await params;
@@ -31,7 +32,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
   } catch { return NextResponse.json({ success: false, message: 'Não foi possível atualizar a regra.' }, { status: 503 }); }
 }
 
-export async function DELETE(req: NextRequest, { params }: Context) {
+async function handleDelete(req: NextRequest, { params }: Context) {
   const auth = await requirePermission(req, 'config_write');
   if (!auth.success) return auth.response;
   const { id } = await params;
@@ -50,3 +51,7 @@ export async function DELETE(req: NextRequest, { params }: Context) {
     return NextResponse.json({ success: true, id });
   } catch { return NextResponse.json({ success: false, message: 'Não foi possível eliminar a regra.' }, { status: 503 }); }
 }
+
+export const PATCH = createApiHandler(handlePatch);
+
+export const DELETE = createApiHandler(handleDelete);

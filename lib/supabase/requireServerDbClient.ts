@@ -2,7 +2,7 @@ import { auditRequestHeaders, createAdminClient } from './server';
 import { AuthError } from '../auth/requireAuth';
 
 /** Privileged client for an already authenticated actor; callers enforce the route permission first. */
-export function requireServerDbClient(actor: { id: string }) {
+export function requireServerDbClient(actor: { id: string; requestId?: string }) {
   if (!actor?.id) throw new AuthError('Utilizador não autenticado.');
   return requireAdminDatabase(auditRequestHeaders(actor));
 }

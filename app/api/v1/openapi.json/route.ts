@@ -1,10 +1,11 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
+import { addV1Contracts } from '@/lib/openapi/v1Contracts';
 
 export async function GET() {
   const openApiSpec = {
-    openapi: "3.0.3",
+    openapi: "3.1.0",
     info: {
       title: "ERP Gestão de Projetos & Encomendas API",
       version: "1.0.0",
@@ -20,7 +21,7 @@ export async function GET() {
         description: "Servidor Principal API v1"
       }
     ],
-    security: [{ BearerAuth: [] }],
+    security: [{ BearerAuth: [] }, { CookieAuth: [] }],
     components: {
       securitySchemes: {
         BearerAuth: {
@@ -28,7 +29,9 @@ export async function GET() {
           scheme: "bearer",
           bearerFormat: "JWT",
           description: "Token de sessão gerado no Login do sistema"
-        }
+        },
+        CookieAuth: { type: "apiKey", in: "cookie", name: "sb-<project-ref>-auth-token",
+          description: "Sessão Supabase SSR no navegador. O nome inclui a referência do projeto e pode usar cookies segmentados." },
       },
       schemas: {
         PaginatedResult: {
@@ -420,7 +423,8 @@ export async function GET() {
       responses: { '410': { description: 'PLANNING_RETIRED: utilizar datas e horas previstas da tarefa' } },
     };
   }
-  for (const path of ['/projects', '/tasks']) {
+  addV1Contracts(paths);
+  for (const path of ['/projects', '/tasks', '/clients', '/project-materials', '/automation-rules', '/absences']) {
     paths[path].post.parameters = [
       ...(paths[path].post.parameters || []),
       { name: 'Idempotency-Key', in: 'header', required: false, schema: { type: 'string', minLength: 8, maxLength: 128 },
@@ -431,10 +435,19 @@ export async function GET() {
   for (const path of Object.values(paths)) {
     for (const operation of Object.values(path)) {
       operation.responses ||= {};
+      if (operation.security?.length === 0) continue;
       for (const [status, description] of [['401', 'Autenticação necessária'], ['403', 'Permissão insuficiente'], ['429', 'Limite de pedidos excedido']]) {
         operation.responses[status] ||= { description, content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } };
       }
     }
   }
-  return NextResponse.json(openApiSpec);
+  return NextResponse.json(normalizeNullable(openApiSpec));
+}
+
+function normalizeNullable(value: any): any {
+  if (Array.isArray(value)) return value.map(normalizeNullable);
+  if (!value || typeof value !== 'object') return value;
+  const { nullable, ...object } = value;
+  if (nullable === true && typeof object.type === 'string') object.type = [object.type, 'null'];
+  return Object.fromEntries(Object.entries(object).map(([key, child]) => [key, normalizeNullable(child)]));
 }

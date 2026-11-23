@@ -9,7 +9,10 @@ import { logAuditEvent } from '@/lib/audit';
 export async function PATCH(req: NextRequest) {
   try {
     const user = await requireAuth(req);
-    const parsed = z.object({ name: z.string().trim().min(2).max(200) }).safeParse(await req.json());
+    let body: unknown;
+    try { body = await req.json(); }
+    catch { return NextResponse.json({ success: false, message: 'Corpo JSON inválido.' }, { status: 400 }); }
+    const parsed = z.object({ name: z.string().trim().min(2).max(200) }).safeParse(body);
     if (!parsed.success) return NextResponse.json({ success: false, message: 'Nome inválido.' }, { status: 400 });
     const admin = createAdminClient();
     if (!admin) throw new AuthError('Serviço de autenticação indisponível.', 503);

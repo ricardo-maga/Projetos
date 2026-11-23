@@ -40,7 +40,7 @@ export interface AuditLogEntry {
   entityId?: string;
   requestId?: string;
   outcome?: 'succeeded' | 'failed' | 'partial';
-  ip?: string;
+  ip?: string | null;
   userAgent?: string;
   details?: Record<string, any>;
 }

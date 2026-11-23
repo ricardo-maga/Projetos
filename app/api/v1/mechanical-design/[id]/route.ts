@@ -1,5 +1,6 @@
+import { createApiHandler } from '@/lib/apiErrors';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, requirePermission } from '@/lib/auth/authorization';
+import { requirePermission } from '@/lib/auth/authorization';
 import { auditRequestHeaders, createAdminClient } from '@/lib/supabase/server';
 import { manageDesignSchema } from '@/lib/mechanicalDesign';
 import { listMechanicalDesign, designRpcError } from '@/lib/mechanicalDesignServer';
@@ -8,7 +9,7 @@ import { z } from 'zod';
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ id: string }> };
 
-export async function GET(req: NextRequest, context: Context) {
+async function handleGet(req: NextRequest, context: Context) {
   const auth = await requirePermission(req, 'mechanical_design.read');
   if (!auth.success) return auth.response;
   if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode consultar pedidos de desenho.' }, { status: 403 });
@@ -26,18 +27,16 @@ export async function GET(req: NextRequest, context: Context) {
   }
 }
 
-export async function PATCH(req: NextRequest, context: Context) {
-  const auth = await requireAuth(req);
-  if (!auth.success) return auth.response;
-  if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode gerir pedidos de desenho.' }, { status: 403 });
+async function handlePatch(req: NextRequest, context: Context) {
   const { id } = await context.params;
   if (!z.guid().safeParse(id).success) return NextResponse.json({ success: false, message: 'Identificador inválido.' }, { status: 400 });
   const parsed = manageDesignSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: 'Operação inválida.', details: parsed.error.flatten() }, { status: 400 });
   const requiredPermission = ['start','block','resume','complete','file','deliver'].includes(parsed.data.action)
     ? 'mechanical_design.execute' : 'mechanical_design.manage';
-  const permission = await requirePermission(req, requiredPermission);
-  if (!permission.success) return permission.response;
+  const auth = await requirePermission(req, requiredPermission);
+  if (!auth.success) return auth.response;
+  if (auth.user.type === 'External') return NextResponse.json({ success: false, message: 'Apenas a equipa pode gerir pedidos de desenho.' }, { status: 403 });
   try {
     const db = createAdminClient(req.method === 'GET' ? undefined : auditRequestHeaders(auth.user));
     if (!db) return NextResponse.json({ success: false, message: 'Base de dados indisponível.' }, { status: 503 });
@@ -107,7 +106,7 @@ export async function PATCH(req: NextRequest, context: Context) {
   }
 }
 
-export async function DELETE(req: NextRequest, context: Context) {
+async function handleDelete(req: NextRequest, context: Context) {
   const auth = await requirePermission(req, 'mechanical_design.manage');
   if (!auth.success) return auth.response;
   const { id } = await context.params;
@@ -120,3 +119,9 @@ export async function DELETE(req: NextRequest, context: Context) {
   if (error) { const mapped = designRpcError(error); return NextResponse.json({ success: false, message: mapped.message }, { status: mapped.status }); }
   return NextResponse.json({ success: true });
 }
+
+export const GET = createApiHandler(handleGet);
+
+export const PATCH = createApiHandler(handlePatch);
+
+export const DELETE = createApiHandler(handleDelete);

@@ -53,6 +53,20 @@ test('admin session and Supabase Data API boundaries are valid', async ({ reques
   const profile = await request.get('/api/auth/me');
   expect(profile.status()).toBe(200);
 
+  const ready = await request.get('/api/ready');
+  expect(ready.status()).toBe(200);
+  const listing = await request.get('/api/v1/projects?pagination=cursor&pageSize=1&fields=title');
+  expect(listing.status()).toBe(200);
+  const { data: [project] } = await listing.json();
+  if (project) {
+    const url = `/api/v1/projects/${project.id}`;
+    const detail = await request.get(url);
+    expect(detail.status()).toBe(200);
+    const etag = detail.headers().etag;
+    expect(etag).toBeTruthy();
+    expect((await request.get(url, { headers: { 'If-None-Match': etag } })).status()).toBe(304);
+  }
+
   const adminToken = await supabaseToken(request, environment('E2E_ADMIN_EMAIL'), environment('E2E_ADMIN_PASSWORD'));
   const headers = {
     apikey: environment('E2E_SUPABASE_ANON_KEY'),
@@ -60,6 +74,7 @@ test('admin session and Supabase Data API boundaries are valid', async ({ reques
   };
   const supabaseUrl = environment('E2E_SUPABASE_URL');
   for (const table of [
+    'projects',
     'notifications',
     'notification_reads',
     'user_roles',

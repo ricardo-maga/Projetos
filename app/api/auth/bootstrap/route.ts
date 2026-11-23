@@ -34,7 +34,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const rawBody = await req.json();
+    let rawBody: unknown;
+    try { rawBody = await req.json(); }
+    catch { return badRequest('Corpo da mensagem inválido (JSON esperado).', requestId); }
     const parseResult = bootstrapSchema.safeParse(rawBody);
 
     if (!parseResult.success) {

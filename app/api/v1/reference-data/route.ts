@@ -1,20 +1,19 @@
+import { createApiHandler } from '@/lib/apiErrors';
+import { createReferenceSchema, updateReferenceSchema } from '@/lib/validations/apiInputs';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/authorization';
 import { getServerDbClient } from '@/lib/supabase/server';
-import { referenceCollection, referenceFields, referencePayload, referenceTables } from '@/domains/administration/data/referenceData';
+import { referencePayload, referenceTables } from '@/domains/administration/data/referenceData';
 
-const create = z.object({ collection: referenceCollection, fields: referenceFields.extend({ name: z.string().trim().min(1).max(200) }) });
-const edit = z.object({ collection: referenceCollection, id: z.guid(), syncVersion: z.number().int().positive(), fields: referenceFields });
 
-export async function POST(req: NextRequest) {
+async function handlePost(req: NextRequest) {
   const auth = await requirePermission(req, 'config_write');
   if (!auth.success) return auth.response;
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ success: false, message: 'Pedido JSON inválido.' }, { status: 400 }); }
-  const parsed = create.safeParse(body);
+  const parsed = createReferenceSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ success: false, message: 'Opção inválida.' }, { status: 400 });
   try {
     const db = await getServerDbClient(req, auth.user);
@@ -29,12 +28,12 @@ export async function POST(req: NextRequest) {
   } catch { return NextResponse.json({ success: false, message: 'Não foi possível criar a opção.' }, { status: 503 }); }
 }
 
-export async function PATCH(req: NextRequest) {
+async function handlePatch(req: NextRequest) {
   const auth = await requirePermission(req, 'config_write');
   if (!auth.success) return auth.response;
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ success: false, message: 'Pedido JSON inválido.' }, { status: 400 }); }
-  const parsed = edit.safeParse(body);
+  const parsed = updateReferenceSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ success: false, message: 'Opção inválida.' }, { status: 400 });
   const fields = referencePayload(parsed.data.collection, parsed.data.fields);
   if (!Object.keys(fields).length) return NextResponse.json({ success: false, message: 'Sem alterações.' }, { status: 400 });
@@ -49,12 +48,12 @@ export async function PATCH(req: NextRequest) {
   } catch { return NextResponse.json({ success: false, message: 'Não foi possível alterar a opção.' }, { status: 503 }); }
 }
 
-export async function DELETE(req: NextRequest) {
+async function handleDelete(req: NextRequest) {
   const auth = await requirePermission(req, 'config_write');
   if (!auth.success) return auth.response;
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ success: false, message: 'Pedido JSON inválido.' }, { status: 400 }); }
-  const parsed = edit.pick({ collection: true, id: true, syncVersion: true }).safeParse(body);
+  const parsed = updateReferenceSchema.pick({ collection: true, id: true, syncVersion: true }).safeParse(body);
   if (!parsed.success) return NextResponse.json({ success: false, message: 'Opção inválida.' }, { status: 400 });
   try {
     const db = await getServerDbClient(req, auth.user);
@@ -66,3 +65,9 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true, id: parsed.data.id });
   } catch { return NextResponse.json({ success: false, message: 'Não foi possível eliminar a opção.' }, { status: 503 }); }
 }
+
+export const POST = createApiHandler(handlePost);
+
+export const PATCH = createApiHandler(handlePatch);
+
+export const DELETE = createApiHandler(handleDelete);

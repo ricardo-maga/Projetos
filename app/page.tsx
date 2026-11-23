@@ -99,6 +99,7 @@ export default function Page() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [changePasswordError, setChangePasswordError] = useState('');
   const [changePasswordSuccess, setChangePasswordSuccess] = useState(false);
@@ -440,12 +441,22 @@ export default function Page() {
       setChangePasswordError('A password deve ter pelo menos 12 caracteres.');
       return;
     }
+    if (newPassword && !currentPassword) {
+      setChangePasswordError('Indique a palavra-passe atual.');
+      return;
+    }
 
     const nameChanged = Boolean(profileName && profileName !== currentUser.name);
     const headers = { 'Content-Type': 'application/json' };
     if (newPassword) {
-      const response = await authenticatedRequest('/api/auth/password', { method: 'POST', headers, body: JSON.stringify({ password: newPassword }) });
-      if (!response.ok) { setChangePasswordError('Não foi possível alterar a password.'); return; }
+      const response = await authenticatedRequest('/api/auth/password', {
+        method: 'POST', headers, body: JSON.stringify({ currentPassword, password: newPassword }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        setChangePasswordError(result?.error?.message || 'Não foi possível alterar a password.');
+        return;
+      }
     }
 
     if (nameChanged) {
@@ -463,6 +474,7 @@ export default function Page() {
     setTimeout(() => {
       setIsChangingPassword(false);
       setNewPassword('');
+      setCurrentPassword('');
       setConfirmNewPassword('');
       setChangePasswordSuccess(false);
     }, 2000);
@@ -672,6 +684,9 @@ export default function Page() {
 
 
 
+            <Link href="/reset-password" className="flex min-h-11 items-center justify-center text-sm font-semibold text-primary underline underline-offset-4">
+              Esqueci-me da palavra-passe
+            </Link>
             <div className="pt-4 text-center text-xs text-text-muted">
               <p>Acesso Restrito - Uso Interno</p>
             </div>
@@ -790,6 +805,7 @@ export default function Page() {
             onClick={() => {
               setProfileName(currentUser.name);
               setNewPassword('');
+              setCurrentPassword('');
               setConfirmNewPassword('');
               setIsChangingPassword(true);
             }}
@@ -1290,9 +1306,23 @@ export default function Page() {
             </div>
 
             <div className="space-y-1.5">
+              <label htmlFor="profile-current-password" className="block text-label font-bold text-text-secondary">Palavra-passe atual</label>
+              <input id="profile-current-password"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={e => setCurrentPassword(e.target.value)}
+                required={Boolean(newPassword)}
+                maxLength={1024}
+                className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="space-y-1.5">
               <label htmlFor="profile-password" className="block text-label font-bold text-text-secondary select-none">Nova password (Opcional)</label>
               <input id="profile-password"
                 type="password"
+                autoComplete="new-password"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 placeholder="Deixe em branco para manter a atual"
@@ -1304,6 +1334,7 @@ export default function Page() {
               <label htmlFor="profile-password-confirm" className="block text-label font-bold text-text-secondary select-none">Confirmar nova password</label>
               <input id="profile-password-confirm"
                 type="password"
+                autoComplete="new-password"
                 value={confirmNewPassword}
                 onChange={e => setConfirmNewPassword(e.target.value)}
                 placeholder="Deixe em branco para manter a atual"

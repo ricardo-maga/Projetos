@@ -28,3 +28,7 @@ export const resetPasswordSchema = passwordResetRequestSchema;
 export const passwordResetConfirmSchema = z.object({
   password: z.string().min(12, 'A nova password deve ter no mínimo 12 caracteres').max(1024),
 });
+
+export const passwordChangeSchema = passwordResetConfirmSchema.extend({
+  currentPassword: z.string().min(1).max(1024),
+});
