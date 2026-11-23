@@ -9,6 +9,7 @@ import { findProjectElement as find } from './fixtures/projects-m3-harness';
 import ProjectTimeline from '../components/ProjectTimeline';
 import DateViewNavigator from '../components/ui/DateViewNavigator';
 import { M3SegmentedControl } from '../components/M3';
+import MobileProjectAgenda from '../domains/projects/ui/MobileProjectAgenda';
 import TimelineAbsenceBadge from '../domains/projects/ui/TimelineAbsenceBadge';
 import { addCivilDays, formatDateToYYYYMMDD, getOperationalCalendarDays } from '../lib/operationalCalendar';
 
@@ -17,6 +18,7 @@ const today = new Date(2026, 9, 5, 12);
 const createSectionHarness: typeof createHarness = (file, initial) => createHarness(file, { mobileGrid: true, ...initial });
 const visibleWeek = { visibleStartDate: '2026-10-05', visibleEndDate: '2026-10-11' };
 const statuses = [1, 2, 3, 4, 5, 6, 7, 0].map(scale => ({ id: `s${scale}`, name: `Estado ${scale}`, scale }));
+const taskStatuses = ['Por iniciar', 'Em curso', 'Completa'].map((name, index) => ({ id: `ts-${index + 1}`, name, scale: index + 1 }));
 const project = (id: string, extra = {}) => ({ id, title: `Projeto ${id}`, clientId: 'c', installProjectNo: `IP-${id}`, statusId: 's2', deleted: false, ...extra }) as any;
 const clients: any = [{ id: 'c', clientName: 'Cliente Exemplo', shortName: 'Exemplo' }];
 export const timelinePreviewProps: React.ComponentProps<typeof ProjectTimeline> = {
@@ -29,7 +31,7 @@ describe('Project timeline M3', () => {
     const events = buildProjectTimelineEvents(projects, [], [], false);
     expect(filterProjectTimeline(projects, clients, statuses, events, new Map(), { ...visibleWeek, search: '', horizon: 'all' }, today).map(p => p.id)).toEqual(['p1', 'p2', 'p3', 'p4']);
   });
-  it('defaults to a 28-day event horizon and a seven-day normal view without a completed-project checkbox', () => {
+  it('defaults to a 28-day event horizon, a seven-day view and completed projects enabled', () => {
     const h = createSectionHarness('ProjectTimeline.tsx');
     const tree = h.render(timelinePreviewProps);
     expect(h.state.horizon).toBe(28);
@@ -42,7 +44,14 @@ describe('Project timeline M3', () => {
     expect(eventFilter.props.label).toBe('Com eventos em');
     expect(find(tree, e => e.type === 'span' && e.props?.children === 'Com eventos em:').props.className).toContain('sm:w-52');
     expect(renderToStaticMarkup(tree)).not.toContain('Mostrar projetos com eventos nos próximos dias');
-    expect(renderToStaticMarkup(tree)).not.toContain('Projetos concluídos');
+    const risk = find(tree, e => e.props?.label === 'Revisões de risco');
+    const completed = find(tree, e => e.props?.label === 'Concluídos com tarefas');
+    const controls = find(tree, e => e.props?.children?.[0]?.props?.label === risk.props.label &&
+      e.props?.children?.[1]?.props?.label === completed.props.label);
+    expect(controls).toBeDefined();
+    expect(completed.type).toBe(risk.type);
+    expect(completed.props.checked).toBe(true);
+    expect(risk.props.checked).toBe(false);
   });
   it('uses the visible period for completed projects independently of the event horizon, and also admits undated tasks', () => {
     const projects = [
@@ -51,6 +60,7 @@ describe('Project timeline M3', () => {
       project('done-partial', { statusId: 's5' }), project('done-estimate', { statusId: 's7' }),
       project('done-actual', { statusId: 's6' }), project('done-deleted-task', { statusId: 's5' }),
       project('done-milestone', { statusId: 's5', deliveryDate: '2026-10-05' }), project('done-risk', { statusId: 's5' }),
+      project('done-no-pending', { statusId: 's5' }),
       project('deleted', { statusId: 's5', deleted: true }), project('unknown', { statusId: 'unknown' }),
     ];
     const tasks: any = [
@@ -62,10 +72,15 @@ describe('Project timeline M3', () => {
       { id: 'i', projectId: 'done-actual', startDate: '2026-10-06', endDate: '2026-10-09', estimatedDate: '2026-12-01' },
       { id: 'j', projectId: 'done-deleted-task', estimatedDate: '2026-10-05', deleted: true },
       { id: 'k', projectId: 'done-deleted-task', deleted: true }, { id: 'l', projectId: 'deleted' }, { id: 'm', projectId: 'unknown' },
+      { id: 'n', projectId: 'done-no-pending', estimatedDate: '2026-10-05', statusId: 'ts-3' },
+      { id: 'o', projectId: 'done-no-pending', statusId: 'ts-3' },
+      { id: 'p', projectId: 'done-no-pending', estimatedDate: '2026-10-05', statusId: 'unknown' },
     ];
+    for (const task of tasks) task.statusId ??= 'ts-1';
+    tasks.find((task: any) => task.id === 'f').statusId = '99999999-9999-9999-9999-999999999902';
     const events = buildProjectTimelineEvents(projects, tasks, [{ id: 'r', projectId: 'done-risk', title: 'Risco', reviewDate: '2026-10-05' } as any], true);
     const undated = buildUndatedProjectTasks(tasks);
-    const filtered = (horizon: 7 | 28 | 'all', search = '', visibleEndDate = visibleWeek.visibleEndDate) => filterProjectTimeline(projects, clients, statuses, events, undated, { ...visibleWeek, visibleEndDate, search, horizon }, today).map(p => p.id);
+    const filtered = (horizon: 7 | 28 | 'all', search = '', visibleEndDate = visibleWeek.visibleEndDate) => filterProjectTimeline(projects, clients, statuses, events, undated, { ...visibleWeek, visibleEndDate, search, horizon, taskStatuses }, today).map(p => p.id);
     const weekly = ['active-undated', 'done-today', 'done-undated', 'done-partial', 'done-estimate', 'done-actual'];
     expect(filtered(28)).toEqual(weekly);
     expect(filtered(7)).toEqual(weekly);
@@ -76,20 +91,20 @@ describe('Project timeline M3', () => {
   });
   it('shows all active projects in Todos and includes completed projects only at the inclusive visible-period boundaries', () => {
     const projects = [1, 2, 3, 4].map(scale => project(`active-${scale}`, { statusId: `s${scale}` })).concat([
-      project('before', { statusId: 's5' }), project('start', { statusId: 's6' }), project('end', { statusId: 's7' }), project('after', { statusId: 's5' }),
+      project('before', { statusId: 's5' }), project('start', { statusId: 's5' }), project('end', { statusId: 's5' }), project('after', { statusId: 's5' }),
     ]);
-    const tasks: any = ['2026-10-04', '2026-10-05', '2026-10-11', '2026-10-12'].map((date, index) => ({ id: `t${index}`, projectId: ['before', 'start', 'end', 'after'][index], estimatedDate: date }));
+    const tasks: any = ['2026-10-04', '2026-10-05', '2026-10-11', '2026-10-12'].map((date, index) => ({ id: `t${index}`, projectId: ['before', 'start', 'end', 'after'][index], estimatedDate: date, statusId: 'ts-2' }));
     const events = buildProjectTimelineEvents(projects, tasks, [], false);
-    const filter = (range: typeof visibleWeek) => filterProjectTimeline(projects, clients, statuses, events, new Map(), { ...range, search: '', horizon: 'all' }, today).map(p => p.id);
+    const filter = (range: typeof visibleWeek) => filterProjectTimeline(projects, clients, statuses, events, new Map(), { ...range, search: '', horizon: 'all', taskStatuses }, today).map(p => p.id);
     expect(filter(visibleWeek)).toEqual(['active-1', 'active-2', 'active-3', 'active-4', 'start', 'end']);
     expect(filter({ visibleStartDate: '2026-10-12', visibleEndDate: '2026-10-18' })).toEqual(['active-1', 'active-2', 'active-3', 'active-4', 'after']);
   });
   it('keeps the active-project horizon anchored to today while completed projects follow calendar navigation', () => {
     const date = formatDateToYYYYMMDD(new Date()), future = addCivilDays(date, 56);
     const h = createSectionHarness('ProjectTimeline.tsx');
-    const props = { ...timelinePreviewProps,
+    const props = { ...timelinePreviewProps, taskStatuses,
       projects: [project('active', { scheduledDate: date }), project('done', { statusId: 's5' }), project('future', { statusId: 's6' })],
-      tasks: [{ id: 'today', projectId: 'done', estimatedDate: date }, { id: 'future', projectId: 'future', estimatedDate: future }] as any[] };
+      tasks: [{ id: 'today', projectId: 'done', estimatedDate: date, statusId: 'ts-1' }, { id: 'future', projectId: 'future', estimatedDate: future }] as any[] };
     let tree = h.render(props);
     const visible = (id: string) => find(tree, e => e.props?.['aria-label'] === `Ocultar projeto Projeto ${id} da timeline`);
     expect(visible('active')).toBeDefined(); expect(visible('done')).toBeDefined(); expect(visible('future')).toBeUndefined();
@@ -101,6 +116,57 @@ describe('Project timeline M3', () => {
     tree = h.render(props); expect(visible('future')).toBeUndefined();
     find(h.render(props), e => e.props?.children === 'Repor todos os projetos').props.onClick();
     tree = h.render(props); expect(visible('future')).toBeDefined();
+  });
+  it('moves completed projects’ dated and undated tasks to Outras tarefas in the grid and agenda', () => {
+    const h = createHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
+    const date = visibleWeek.visibleStartDate;
+    const updates: unknown[] = [];
+    const task = (id: string, projectId: string | null, statusId: string, estimatedDate = date) =>
+      ({ id, title: id, projectId, statusId, estimatedDate });
+    const props = { ...timelinePreviewProps, taskStatuses,
+      projects: [project('active'), project('mixed', { statusId: 's5' }), project('finished', { statusId: 's5' }),
+        project('paused', { statusId: 's6' }), project('deleted', { statusId: 's5', deleted: true })],
+      tasks: [task('pending', 'mixed', 'ts-1'), task('closed', 'finished', 'ts-3'), task('undated', 'finished', 'ts-3', ''),
+        task('normal', 'active', 'ts-1'), task('paused', 'paused', 'ts-3'), task('standalone', null, 'ts-1'),
+        task('deleted-project', 'deleted', 'ts-1'), { ...task('deleted-task', 'mixed', 'ts-1'), deleted: true }] as any[],
+      updateTask: (id: string, change: any) => updates.push([id, change]),
+    };
+    let tree = h.render(props);
+    const toggle = (checked: boolean) => find(tree, e => e.props?.label === 'Concluídos com tarefas').props.onChange({ target: { checked } });
+    const projectRow = (id: string) => find(tree, e => e.props?.['data-timeline-project-cell'] === id);
+    const otherCell = (day: string) => find(tree, e => e.props?.['data-timeline-drop-cell'] === `other:${day}`);
+    const mobile = () => find(tree, e => e.type === MobileProjectAgenda).props;
+    expect(projectRow('mixed')).toBeDefined();
+    expect(projectRow('finished')).toBeUndefined();
+    expect(mobile().otherDays.get(date).otherTasks.map((t: any) => t.id)).toEqual(['standalone']);
+
+    h.state.page = 2;
+    toggle(false);
+    tree = h.render(props);
+    expect(h.state.page).toBe(1);
+    expect(projectRow('mixed')).toBeUndefined();
+    expect(projectRow('active')).toBeDefined();
+    expect(projectRow('paused')).toBeDefined();
+    expect(mobile().otherDays.get(date).otherTasks.map((t: any) => t.id)).toEqual(['pending', 'closed', 'standalone']);
+    expect(mobile().otherUndatedTasks.map((t: any) => t.id)).toEqual(['undated']);
+    expect(renderToStaticMarkup(<MobileProjectAgenda {...mobile()} />)).toContain('Tarefas sem data');
+    expect(find(tree, e => e.props?.['aria-label'] === 'Abrir tarefa sem data undated')).toBeDefined();
+    const pendingCard = find(otherCell(date), e => e.props?.['aria-label'] === 'Abrir tarefa pending');
+    const dragData = new Map<string, string>();
+    const dataTransfer = { setData: (key: string, value: string) => dragData.set(key, value), getData: (key: string) => dragData.get(key) || '' };
+    pendingCard.props.onDragStart({ dataTransfer });
+    otherCell(addCivilDays(date, 1)).props.onDrop({ dataTransfer, preventDefault() {} });
+    expect(updates).toEqual([['pending', { estimatedDate: addCivilDays(date, 1) }]]);
+
+    h.state.view = '56-hd';
+    h.state.fullscreen = true;
+    tree = h.render(props);
+    expect(find(otherCell(date), e => e.props?.['data-timeline-hd-task'] === 'closed')).toBeDefined();
+    toggle(true);
+    tree = h.render(props);
+    expect(projectRow('mixed')).toBeDefined();
+    expect(mobile().otherUndatedTasks).toEqual([]);
+    expect(find(otherCell(date), e => e.props?.['data-timeline-hd-task'] === 'pending')).toBeUndefined();
   });
   it('selects the 56-day HD view independently of normal periods and shares widths with the floating header and scrollbar', () => {
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all', floatingHeader: { left: 0, width: 1200, height: 60 } });
@@ -330,7 +396,7 @@ describe('Project timeline M3', () => {
     expect(renderToStaticMarkup(<DateViewNavigator periodDays={28} navigationStepDays={7} onPeriodDaysChange={() => {}} onPrev={() => {}} onNext={() => {}} onToday={() => {}} />)).toContain('title="Avançar 7 dias"');
     const stickyHeaders = [
       find(tree, e => e.type === 'th' && e.props?.scope === 'col' && e.props?.children === 'Projeto'),
-      find(tree, e => e.type === 'th' && e.props?.scope === 'row' && e.props?.children === 'Outras tarefas'),
+      find(tree, e => e.type === 'th' && e.props?.scope === 'row' && e.props?.children?.[0] === 'Outras tarefas'),
       find(tree, e => e.type === 'th' && e.props?.scope === 'row' && e.props?.className?.includes('space-y-1')),
     ];
     stickyHeaders.forEach(header => expect(header.props.className).toContain('lg:sticky lg:left-0'));
