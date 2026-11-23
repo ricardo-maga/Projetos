@@ -1,4 +1,5 @@
 'use client';
+import { authenticatedRequest } from '@/lib/clientAuth';
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import type {Client,ProjectPriority,User} from '../lib/types';
 import type {PresalesRequest} from '../lib/presales';
@@ -35,7 +36,7 @@ export default function PresalesRegistrySection({currentUser,users,clients,proje
  const name=(id:string|null)=>activeUsers.find(user=>user.id===id)?.name||'—';
  const clientName=(id:string|null)=>clients.find(client=>client.id===id)?.clientName||'—';
  const update=<K extends keyof Form>(field:K,value:Form[K])=>setForm(current=>({...current,[field]:value}));
- const load=useCallback(async(targetPage=1)=>{try{const response=await fetch(`/api/v1/presales?page=${targetPage}`,{headers:getAuthHeaders(),cache:'no-store'});
+ const load=useCallback(async(targetPage=1)=>{try{const response=await authenticatedRequest(`/api/v1/presales?page=${targetPage}`,{headers:getAuthHeaders(),cache:'no-store'});
    const result=await response.json();if(!response.ok||!result.success)throw Error(result.message||'Falha ao consultar Presales.');
    setRows(current=>targetPage===1?result.data:[...current,...result.data.filter((row:PresalesRequest)=>!current.some(old=>old.id===row.id))]);
    setPage(targetPage);setTotal(result.total);setError('');}catch(cause){setError(cause instanceof Error?cause.message:'Erro de consulta.');}},[]);
@@ -43,7 +44,7 @@ export default function PresalesRegistrySection({currentUser,users,clients,proje
  useEffect(()=>{if(initialRequestId)setSelectedId(initialRequestId);},[initialRequestId]);
  useEffect(()=>{if(!selectedId||rows.some(row=>row.id===selectedId))return;
    let cancelled=false;
-   void fetch(`/api/v1/presales/${selectedId}`,{headers:getAuthHeaders(),cache:'no-store'})
+   void authenticatedRequest(`/api/v1/presales/${selectedId}`,{headers:getAuthHeaders(),cache:'no-store'})
      .then(response=>response.ok?response.json():null)
      .then(result=>{if(!cancelled&&result?.success)setRows(current=>current.some(row=>row.id===selectedId)?current:[result.data,...current]);})
      .catch(()=>{});
@@ -58,7 +59,7 @@ export default function PresalesRegistrySection({currentUser,users,clients,proje
    try{const payload={...form,originCode:form.originCode||null,priorityId:form.priorityId||null,
      commercialManagerId:form.commercialManagerId||null,projectManagerId:form.projectManagerId||null,
      potentialValue:form.potentialValue===''?null:Number(form.potentialValue),saleValue:form.saleValue===''?null:Number(form.saleValue)};
-     const response=await fetch(selected?`/api/v1/presales/registry/${selected.id}`:'/api/v1/presales/registry',{
+     const response=await authenticatedRequest(selected?`/api/v1/presales/registry/${selected.id}`:'/api/v1/presales/registry',{
        method:selected?'PATCH':'POST',headers:getAuthHeaders(selected?undefined:{'Idempotency-Key':key.current}),
        body:JSON.stringify(selected?{...payload,version:selected.version}:payload)});
      const result=await response.json();if(!response.ok||!result.success)throw Error(result.message||'Não foi possível guardar.');

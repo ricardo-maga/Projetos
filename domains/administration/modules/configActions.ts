@@ -1,5 +1,5 @@
 import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import type { AppConfiguration } from '@/lib/types';
 
 export function createConfigActions({ state, setState, refreshFromDatabase }: Pick<LegacyActionContext, 'state' | 'setState' | 'refreshFromDatabase'>) {
@@ -8,7 +8,7 @@ export function createConfigActions({ state, setState, refreshFromDatabase }: Pi
     const syncVersion = state?.appConfig?.syncVersion;
     if (!syncVersion) return { success: false, message: 'Recarregue a configuração antes de alterar.' };
     try {
-      const response = await fetch('/api/v1/configuration', {
+      const response = await authenticatedRequest('/api/v1/configuration', {
         method: 'PATCH', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ syncVersion, updates }),
       });

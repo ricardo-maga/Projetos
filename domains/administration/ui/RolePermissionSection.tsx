@@ -1,4 +1,5 @@
 'use client';
+import { authenticatedRequest } from '@/lib/clientAuth';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LoaderCircle, Plus, ShieldCheck } from 'lucide-react';
@@ -25,7 +26,7 @@ export default function RolePermissionSection({ onRolesChanged }: { onRolesChang
   const [message, setMessage] = useState('');
 
   const request = useCallback(async (url: string, init?: RequestInit) => {
-    const response = await fetch(url, {
+    const response = await authenticatedRequest(url, {
       ...init,
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },

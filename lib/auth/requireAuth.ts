@@ -72,7 +72,12 @@ export async function requireAuth(req?: Request, options: { includePermissions?:
     }
   }
 
-  if (!userAuth) throw new AuthError('Sessão inválida ou expirada.');
+  if (!userAuth) {
+    if (authError?.name === 'AuthRetryableFetchError' || authError?.status >= 500) {
+      throw new AuthError('Serviço de autenticação temporariamente indisponível.', 503);
+    }
+    throw new AuthError('Sessão inválida ou expirada.');
+  }
 
   const admin = createAdminClient();
   if (!admin) throw new AuthError('Serviço de autenticação não configurado.', 503);
@@ -81,7 +86,8 @@ export async function requireAuth(req?: Request, options: { includePermissions?:
     .select('id, auth_user_id, name, email, role_id, is_admin, type, approved, deleted')
     .eq('auth_user_id', userAuth.id).maybeSingle();
 
-  if (profileError || !profile) throw new AuthError('Utilizador não encontrado ou inativo.');
+  if (profileError) throw new AuthError('Não foi possível verificar o perfil do utilizador.', 503);
+  if (!profile) throw new AuthError('Utilizador não encontrado ou inativo.');
   const eligibility = profileEligibility(profile);
   if (eligibility === 'deleted') throw new AuthError('Utilizador não encontrado ou inativo.');
   if (eligibility === 'pending') throw new ForbiddenError('A conta aguarda aprovação por um administrador.');

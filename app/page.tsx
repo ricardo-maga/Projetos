@@ -4,12 +4,16 @@ import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useERP } from '../hooks/useERP';
-import { usePageNavigation } from '../hooks/usePageNavigation';
+import { resolveNavigationTarget, usePageNavigation } from '../hooks/usePageNavigation';
+import { useFieldErrors } from '../hooks/useFieldErrors';
+import { useSlowRead } from '../hooks/useSlowRead';
+import { ApplicationFeedbackProvider, useApplicationFeedback } from '../components/ApplicationFeedback';
+import Button from '../components/ui/Button';
 import { useAsyncAction } from '../hooks/useAsyncAction';
 import BentoDashboard from '@/domains/monitoring/ui/BentoDashboard';
 import NotificationDropdown from '@/domains/communication/ui/NotificationDropdown';
 import { hasPermission } from '../lib/permissions';
-import { APP_SECTIONS } from '../lib/sectionCatalog';
+import { APP_SECTIONS, canOpenSection } from '../lib/sectionCatalog';
 import AppLogo from '../components/AppLogo';
 import AppLoadingScreen from '../components/AppLoadingScreen';
 import Dialog from '../components/ui/Dialog';
@@ -23,14 +27,31 @@ import {
   Bell, ShieldCheck, Database, ListTodo, Loader2, Eye, EyeOff, AlertCircle
 } from 'lucide-react';
 
-import { clearClientSession, setClientUser } from '../lib/clientAuth';
+import {
+  apiRequestError, authenticatedRequest, clearClientSession, CONNECTION_INTERRUPTED_EVENT,
+  getClientUser, readRequest, SESSION_EXPIRED_EVENT, setCheckingConnection, setClientUser,
+} from '../lib/clientAuth';
 
-const SectionLoading = () => (
-  <div role="status" aria-live="polite" className="flex min-h-48 items-center justify-center gap-3 text-text-muted">
+function SectionLoading() {
+  const slow = useSlowRead(true);
+  return <div role="status" className="flex min-h-32 items-center justify-center gap-3 text-body-sm text-text-secondary">
     <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-    A carregar secção...
-  </div>
-);
+    {slow ? 'Está a demorar mais do que o habitual.' : 'A carregar…'}
+  </div>;
+}
+
+function SectionDataFeedback({ status, retry, blocked }: {
+  status: 'idle' | 'loading' | 'loaded' | 'error';
+  retry: () => Promise<void>;
+  blocked: boolean;
+}) {
+  if (blocked) return <p role="status" className="p-4 text-body-sm text-text-secondary">Dados disponíveis quando a ligação for restabelecida.</p>;
+  if (status !== 'error') return <SectionLoading />;
+  return <div className="flex flex-wrap items-center gap-3 p-4 text-body-sm">
+    <span role="alert">Não foi possível carregar os dados desta secção.</span>
+    <Button type="button" variant="secondary" size="sm" onClick={() => void retry()}>Tentar novamente</Button>
+  </div>;
+}
 
 // Load feature screens when their tab is visited. The dashboard stays in the
 // initial bundle because it is the default view after authentication.
@@ -62,7 +83,14 @@ export default function Page() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const loginValidation = useFieldErrors();
+  const [connection, setConnection] = useState<'ready' | 'offline' | 'checking' | 'unavailable'>('ready');
+  const [sessionDenied, setSessionDenied] = useState(false);
+  const sessionCheck = React.useRef(0);
+  const manualSignIn = React.useRef(false);
+  const writesBlocked = connection !== 'ready';
+  const { feedback, saved, setSaved, capture, discard, notice, notify } = useApplicationFeedback(currentUser?.id, writesBlocked);
+  const [logoutPending, setLogoutPending] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const loginInFlight = React.useRef(false);
   const { busy: isSavingProfile, run: runProfileAction } = useAsyncAction();
@@ -74,48 +102,6 @@ export default function Page() {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [changePasswordError, setChangePasswordError] = useState('');
   const [changePasswordSuccess, setChangePasswordSuccess] = useState(false);
-
-  // Restore the server-managed cookie session.
-  React.useEffect(() => {
-    const restoreSession = async () => {
-      try {
-        clearClientSession(); // Remove credentials left by older browser sessions.
-        const res = await fetch('/api/auth/session', { method: 'GET', credentials: 'same-origin' });
-        let data: any = null;
-        try {
-          data = await res.json();
-        } catch {}
-
-        if (res.ok && data && data.success && data.user) {
-          setClientUser(data.user);
-          setCurrentUser(data.user);
-        } else {
-          if (res.status === 401) {
-            clearClientSession();
-            setCurrentUser(null);
-          } else setCurrentUser(null);
-        }
-      } catch (fetchErr) {
-        console.warn('Erro na verificação de sessão com o servidor:', fetchErr);
-        setCurrentUser(null);
-      } finally {
-        setMounted(true);
-      }
-    };
-    restoreSession();
-  }, []);
-
-  // Listen for session expiration events from write operations
-  React.useEffect(() => {
-    const handleSessionExpired = (e: any) => {
-      clearClientSession();
-      setCurrentUser(null);
-      const msg = e?.detail?.message || 'A sua sessão expirou ou é inválida. Por favor, faça login novamente.';
-      setLoginError(msg);
-    };
-    window.addEventListener('erp_auth_session_expired', handleSessionExpired);
-    return () => window.removeEventListener('erp_auth_session_expired', handleSessionExpired);
-  }, []);
 
   const {
     isInitialDataLoaded,
@@ -167,21 +153,136 @@ export default function Page() {
     syncError,
     isDbConfigured,
     refreshFromDatabase,
+    refreshProgress,
+    resetAuthorizedData,
     loadProjectMaterials,
     materialsStatus,
     loadConfigRuntime,
     configRuntimeStatus,
     loadDefaultTasks,
     defaultTasksStatus,
-  } = useERP();
+  } = useERP(currentUser?.id);
+
+  const expireSession = React.useCallback(() => {
+    const user = getClientUser();
+    if (!user) return;
+    capture(user.id);
+    manualSignIn.current = true;
+    sessionCheck.current += 1;
+    resetAuthorizedData();
+    clearClientSession();
+    setCurrentUser(null);
+    setPendingTaskId(null);
+    setIsChangingPassword(false);
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setLoginError('A sua sessão expirou. Inicie sessão novamente.');
+    const next = navigator.onLine === false ? 'offline' : 'ready';
+    setCheckingConnection(next !== 'ready');
+    setConnection(next);
+  }, [capture, resetAuthorizedData]);
+
+  const checkSession = React.useCallback(async () => {
+    const generation = ++sessionCheck.current;
+    const existing = getClientUser();
+    if (navigator.onLine === false) {
+      setCheckingConnection(true);
+      setConnection('offline');
+      setMounted(true);
+      return;
+    }
+    if (manualSignIn.current) {
+      setCheckingConnection(false);
+      setConnection('ready');
+      return;
+    }
+    setCheckingConnection(true);
+    setConnection('checking');
+    try {
+      const response = await readRequest('/api/auth/session', { cache: 'no-store', credentials: 'same-origin' });
+      if (sessionCheck.current !== generation) return;
+      if (response.status === 401) {
+        if (existing) { expireSession(); return; }
+        setSessionDenied(false);
+        clearClientSession();
+      } else if (response.status === 403) {
+        discard();
+        resetAuthorizedData();
+        clearClientSession();
+        setPendingTaskId(null);
+        setIsChangingPassword(false);
+        setCurrentUser(null);
+        setSessionDenied(true);
+      } else {
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const result = await response.json();
+        if (sessionCheck.current !== generation) return;
+        if (!result.success || !result.user?.id) throw new Error('Resposta de sessão inválida');
+        const permissionsChanged = existing?.id === result.user.id &&
+          JSON.stringify([existing.roleId, existing.isAdmin, [...(existing.permissions || [])].sort()]) !==
+          JSON.stringify([result.user.roleId, result.user.isAdmin, [...(result.user.permissions || [])].sort()]);
+        if (existing && (existing.id !== result.user.id || permissionsChanged)) {
+          if (permissionsChanged) capture(existing.id);
+          else discard();
+          resetAuthorizedData();
+          setPendingTaskId(null);
+          setIsChangingPassword(false);
+        }
+        setSessionDenied(false);
+        setClientUser(result.user);
+        setCurrentUser(result.user);
+        if (existing?.id === result.user.id && !await refreshFromDatabase()) {
+          if (sessionCheck.current === generation) setConnection('unavailable');
+          return;
+        }
+      }
+      if (sessionCheck.current !== generation) return;
+      setCheckingConnection(false);
+      setConnection('ready');
+    } catch (error) {
+      if (sessionCheck.current !== generation) return;
+      console.warn('[SESSION CHECK]', error);
+      setConnection(navigator.onLine ? 'unavailable' : 'offline');
+    } finally {
+      if (sessionCheck.current === generation) setMounted(true);
+    }
+  }, [capture, discard, expireSession, refreshFromDatabase, resetAuthorizedData]);
+
+  React.useEffect(() => {
+    clearClientSession();
+    void checkSession();
+    const offline = () => {
+      sessionCheck.current += 1;
+      setCheckingConnection(true);
+      setMounted(true);
+      setConnection('offline');
+    };
+    const online = () => { void checkSession(); };
+    const interrupted = () => {
+      sessionCheck.current += 1;
+      setCheckingConnection(true);
+      setConnection('unavailable');
+    };
+    window.addEventListener('offline', offline);
+    window.addEventListener('online', online);
+    window.addEventListener(SESSION_EXPIRED_EVENT, expireSession);
+    window.addEventListener(CONNECTION_INTERRUPTED_EVENT, interrupted);
+    return () => {
+      sessionCheck.current += 1;
+      window.removeEventListener('offline', offline);
+      window.removeEventListener('online', online);
+      window.removeEventListener(SESSION_EXPIRED_EVENT, expireSession);
+      window.removeEventListener(CONNECTION_INTERRUPTED_EVENT, interrupted);
+    };
+  }, [checkSession, expireSession]);
 
   const {
-    activeTab, setActiveTab, activeConfigTab, selectedProjectId,
+    activeTab, activeConfigTab, selectedProjectId,
     selectedMechanicalRequestId, setSelectedMechanicalRequestId,
     selectedPresalesRequestId, setSelectedPresalesRequestId,
     sidebarOpen, setSidebarOpen, navKey,
     handleTabChange, handleConfigTabChange, handleSelectProject,
-  } = usePageNavigation(mounted, Boolean(state));
+  } = usePageNavigation(mounted, isInitialDataLoaded);
 
   const pendingTask = pendingTaskId ? state?.tasks.find(task => task.id === pendingTaskId && !task.deleted) : undefined;
   const openPendingTask = hasPermission(currentUser, 'tasks_read') ? (id: string) => setPendingTaskId(id) : undefined;
@@ -198,27 +299,28 @@ export default function Page() {
     return () => compactViewport.removeEventListener('change', applyViewport);
   }, [setSidebarOpen]);
 
-  const requiresProjectMaterials = activeTab === 'dashboard' || activeTab === 'projetos' || activeTab === 'reports';
+  const canReadActiveTab = canOpenSection(currentUser, activeTab, activeConfigTab);
+  const requiresProjectMaterials = canReadActiveTab && ['dashboard', 'projetos', 'reports'].includes(activeTab);
   React.useEffect(() => {
-    if (currentUser && isInitialDataLoaded && requiresProjectMaterials && materialsStatus === 'idle') {
+    if (currentUser && !writesBlocked && isInitialDataLoaded && requiresProjectMaterials && materialsStatus === 'idle') {
       void loadProjectMaterials();
     }
-  }, [currentUser, isInitialDataLoaded, requiresProjectMaterials, materialsStatus, loadProjectMaterials]);
+  }, [currentUser, writesBlocked, isInitialDataLoaded, requiresProjectMaterials, materialsStatus, loadProjectMaterials]);
 
-  const requiresConfigRuntime = activeTab === 'configuracoes' && (activeConfigTab === 'notificacoes' || activeConfigTab === 'automacoes');
+  const requiresConfigRuntime = canReadActiveTab && activeTab === 'configuracoes' && (activeConfigTab === 'notificacoes' || activeConfigTab === 'automacoes');
   React.useEffect(() => {
-    if (currentUser && isInitialDataLoaded && requiresConfigRuntime && configRuntimeStatus === 'idle') {
+    if (currentUser && !writesBlocked && isInitialDataLoaded && requiresConfigRuntime && configRuntimeStatus === 'idle') {
       void loadConfigRuntime();
     }
-  }, [currentUser, isInitialDataLoaded, requiresConfigRuntime, configRuntimeStatus, loadConfigRuntime]);
+  }, [currentUser, writesBlocked, isInitialDataLoaded, requiresConfigRuntime, configRuntimeStatus, loadConfigRuntime]);
 
   const requiresDefaultTasks = Boolean(currentUser && hasPermission(currentUser, 'config_read')) &&
     (activeTab === 'projetos' || (activeTab === 'configuracoes' && activeConfigTab === 'tarefas'));
   React.useEffect(() => {
-    if (currentUser && isInitialDataLoaded && requiresDefaultTasks && defaultTasksStatus === 'idle') {
+    if (currentUser && !writesBlocked && isInitialDataLoaded && requiresDefaultTasks && defaultTasksStatus === 'idle') {
       void loadDefaultTasks();
     }
-  }, [currentUser, isInitialDataLoaded, requiresDefaultTasks, defaultTasksStatus, loadDefaultTasks]);
+  }, [currentUser, writesBlocked, isInitialDataLoaded, requiresDefaultTasks, defaultTasksStatus, loadDefaultTasks]);
 
   const [logoResult, setLogoResult] = useState<'synced' | 'error' | null>(null);
   const previousSyncStatus = React.useRef(syncStatus);
@@ -247,8 +349,9 @@ export default function Page() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginInFlight.current) return;
+    if (loginInFlight.current || logoutPending || writesBlocked) return;
     loginInFlight.current = true;
+    loginValidation.clear();
     setLoginError('');
     setIsLoggingIn(true);
 
@@ -281,22 +384,15 @@ export default function Page() {
 
       if (res.ok && data?.success) {
 
+        if (saved && saved.userId !== data.user.id) discard();
+        resetAuthorizedData();
         setClientUser(data.user);
-
-        // Show loading screen immediately and activate user session
-        setIsTransitioning(true);
         setCurrentUser(data.user);
-
-        // Fetch authoritative database records using the server-managed session.
-        try {
-          await refreshFromDatabase();
-        } catch (refreshErr) {
-          console.warn('Erro ao atualizar dados após autenticação:', refreshErr);
-        } finally {
-          setIsTransitioning(false);
-          setIsLoggingIn(false);
-        }
+        manualSignIn.current = false;
+        setSessionDenied(false);
+        setLoginPassword('');
       } else {
+        if (res.status === 422 && loginValidation.showApiError(apiRequestError(res, data, 'Verifique os dados de acesso.'))) return;
         let errorMessage =
           data?.error?.message ||
           data?.message ||
@@ -318,14 +414,13 @@ export default function Page() {
         }
 
         setLoginError(errorMessage);
-        setIsLoggingIn(false);
       }
     } catch (err) {
       console.error('Error logging in:', err);
       setLoginError('Ocorreu um erro ao ligar ao servidor de autenticação. Por favor, tente novamente.');
-      setIsLoggingIn(false);
     }
     finally {
+      setIsLoggingIn(false);
       loginInFlight.current = false;
     }
   };
@@ -349,12 +444,12 @@ export default function Page() {
     const nameChanged = Boolean(profileName && profileName !== currentUser.name);
     const headers = { 'Content-Type': 'application/json' };
     if (newPassword) {
-      const response = await fetch('/api/auth/password', { method: 'POST', headers, body: JSON.stringify({ password: newPassword }) });
+      const response = await authenticatedRequest('/api/auth/password', { method: 'POST', headers, body: JSON.stringify({ password: newPassword }) });
       if (!response.ok) { setChangePasswordError('Não foi possível alterar a password.'); return; }
     }
 
     if (nameChanged) {
-      const response = await fetch('/api/auth/profile', { method: 'PATCH', headers, body: JSON.stringify({ name: profileName }) });
+      const response = await authenticatedRequest('/api/auth/profile', { method: 'PATCH', headers, body: JSON.stringify({ name: profileName }) });
       if (!response.ok) {
         setChangePasswordError(newPassword ? 'A password foi alterada, mas não foi possível atualizar o nome.' : 'Não foi possível atualizar o nome.');
         return;
@@ -377,41 +472,83 @@ export default function Page() {
     }
   };
 
-  const tabs = React.useMemo(() => {
-    if (!state || !currentUser) return [];
-    return APP_SECTIONS.filter(section => !section.requiredPermission ||
-      hasPermission(currentUser, section.requiredPermission as any));
-  }, [state, currentUser]);
+  const tabs = React.useMemo(() => APP_SECTIONS.filter(section => canOpenSection(currentUser, section.id)), [currentUser]);
+  const canReadAudit = canOpenSection(currentUser, 'configuracoes', 'auditoria');
+  const accessRestricted = !canReadActiveTab;
 
-  const canReadAudit = Boolean(currentUser?.isAdmin ||
-    (Array.isArray(currentUser?.permissions) && currentUser.permissions.includes('admin.access')));
-
-  React.useEffect(() => {
-    if (currentUser && activeTab === 'configuracoes' && activeConfigTab === 'auditoria' && !canReadAudit) {
-      handleConfigTabChange('importacao');
+  const canOpenNotificationLink = (destination: string) => {
+    try {
+      const url = new URL(destination, window.location.origin);
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
+      if (url.origin !== window.location.origin || url.pathname !== '/') return true;
+      const target = resolveNavigationTarget(url.searchParams);
+      return canOpenSection(currentUser, target.tab, target.configTab);
+    } catch {
+      return false;
     }
-  }, [currentUser, activeTab, activeConfigTab, canReadAudit, handleConfigTabChange]);
+  };
 
-  // Fallback if active tab is not allowed
-  React.useEffect(() => {
-    if (mounted && state && currentUser && tabs.length > 0) {
-      const nestedPagePermission = activeTab === 'clientes' ? 'clients_read'
-        : activeTab === 'ausencias' ? 'absences_read' : null;
-      const allowed = tabs.some(t => t.id === activeTab) || (
-        nestedPagePermission !== null &&
-        hasPermission(currentUser, nestedPagePermission as any)
-      );
-      if (!allowed) {
-        setActiveTab('dashboard');
-      }
+  const resumeDraft = saved?.userId === currentUser?.id && isInitialDataLoaded ? saved?.draft : null;
+  const draftTab = resumeDraft?.kind === 'project' ? 'projetos' : resumeDraft?.kind === 'client' ? 'clientes' : 'tarefas';
+  const draftRecords = resumeDraft?.kind === 'project' ? state.projects : resumeDraft?.kind === 'client' ? state.clients : state.tasks;
+  const draftRecord = resumeDraft?.recordId && draftRecords.find(row => row.id === resumeDraft.recordId && !row.deleted);
+  const [draftRead, draftWrite] = resumeDraft?.kind === 'project' ? ['projects_read', 'projects_write'] as const
+    : resumeDraft?.kind === 'client' ? ['clients_read', 'clients_write'] as const : ['tasks_read', 'tasks_write'] as const;
+  const canResume = resumeDraft && hasPermission(currentUser, draftRead) && hasPermission(currentUser, draftWrite) &&
+    (!resumeDraft.recordId || (draftRecord && (draftRecord.version ?? 0) === (resumeDraft.version ?? 0))) &&
+    (!resumeDraft.projectId || state.projects.some(project => project.id === resumeDraft.projectId && !project.deleted));
+  const refreshSlow = useSlowRead(refreshProgress !== null);
+
+  const logout = async () => {
+    manualSignIn.current = true;
+    sessionCheck.current += 1;
+    discard();
+    resetAuthorizedData();
+    clearClientSession();
+    setCurrentUser(null);
+    setPendingTaskId(null);
+    setIsChangingPassword(false);
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setLogoutPending(true);
+    try {
+      const result = await fetch('/api/auth/session', { method: 'DELETE' });
+      if (!result.ok) throw new Error('HTTP ' + result.status);
+    } catch (error) {
+      console.warn('[LOGOUT]', error);
+      setLoginError('Não foi possível confirmar o fim da sessão no servidor.');
+    } finally {
+      setLogoutPending(false);
     }
-  }, [activeTab, tabs, mounted, state, currentUser, setActiveTab]);
+  };
 
   // useERP exposes a clean baseline before authenticated data loads; never let
   // its default branding override the public configuration on a fresh login.
   const loginBranding = publicAppConfig || (isInitialDataLoaded ? state?.appConfig : null);
 
-  if (!mounted) {
+  if (connection !== 'ready' && connection !== 'checking' && !isInitialDataLoaded) {
+    return <main className={AUTH_SCREEN}>
+      <div className="w-full max-w-md space-y-4 rounded-card border border-border bg-surface p-8 text-center">
+        <h1 className="text-xl font-bold">{connection === 'offline' ? 'Sem ligação' : 'Serviço temporariamente indisponível'}</h1>
+        <p role="status" className="text-body-sm text-text-secondary">
+          {connection === 'offline' ? 'Verifique a ligação à internet.' : 'Não foi possível confirmar a sessão ou atualizar os dados.'}
+        </p>
+        <Button type="button" onClick={() => void checkSession()}>Tentar novamente</Button>
+      </div>
+    </main>;
+  }
+
+  if (sessionDenied) {
+    return <main className={AUTH_SCREEN}>
+      <div className="w-full max-w-md space-y-4 rounded-card border border-border bg-surface p-8 text-center">
+        <h1 className="text-xl font-bold">Acesso restrito</h1>
+        <p role="alert" className="text-body-sm text-text-secondary">A sua conta não pode aceder à aplicação. Contacte um administrador.</p>
+        <Button type="button" onClick={() => { setSessionDenied(false); void logout(); }}>Voltar ao início de sessão</Button>
+      </div>
+    </main>;
+  }
+
+  if (!mounted || (!currentUser && connection === 'checking')) {
     return (
       <AppLoadingScreen id="session-check-screen" />
     );
@@ -436,7 +573,7 @@ export default function Page() {
             ) : null}
           </div>
 
-          <form onSubmit={handleLogin} className="p-8 space-y-5">
+          <form ref={loginValidation.form} onChangeCapture={loginValidation.clearChanged} onSubmit={handleLogin} className="p-8 space-y-5">
             {loginError && (
               <div role="alert" className="p-3 bg-feedback-error-50 text-feedback-error-600 rounded-control text-sm font-medium text-center border border-feedback-error-100">
                 {loginError}
@@ -445,7 +582,9 @@ export default function Page() {
 
             <div className="space-y-1">
               <label htmlFor="login-email" className="block text-sm font-medium text-text-primary">E-mail</label>
-              <input id="login-email"
+              <input id="login-email" name="email"
+                aria-invalid={!!loginValidation.errors.email}
+                aria-describedby={loginValidation.errors.email ? 'login-email-error' : undefined}
                 type="email"
                 value={loginEmail}
                 onChange={e => {
@@ -454,10 +593,11 @@ export default function Page() {
                 }}
                 autoComplete="username"
                 placeholder="nome@empresa.com"
-                disabled={isLoggingIn}
+                disabled={isLoggingIn || logoutPending}
                 className={AUTH_INPUT}
                 required
               />
+                {loginValidation.errors.email && <p id="login-email-error" className="text-caption text-error">{loginValidation.errors.email}</p>}
             </div>
 
             <div className="space-y-1">
@@ -466,7 +606,9 @@ export default function Page() {
 
               </div>
               <div className="relative">
-                <input id="login-password"
+                <input id="login-password" name="password"
+                aria-invalid={!!loginValidation.errors.password}
+                aria-describedby={loginValidation.errors.password ? 'login-password-error' : undefined}
                   type={showPassword ? 'text' : 'password'}
                   value={loginPassword}
                   onChange={e => {
@@ -475,10 +617,11 @@ export default function Page() {
                   }}
                   autoComplete="current-password"
                   placeholder="Introduza a password"
-                  disabled={isLoggingIn}
+                  disabled={isLoggingIn || logoutPending}
                   className={`${AUTH_INPUT} pr-10`}
                   required
                 />
+                {loginValidation.errors.password && <p id="login-password-error" className="text-caption text-error">{loginValidation.errors.password}</p>}
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -498,7 +641,7 @@ export default function Page() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={e => setRememberMe(e.target.checked)}
-                  disabled={isLoggingIn}
+                  disabled={isLoggingIn || logoutPending}
                   className="rounded-badge border-border text-action-600 focus:ring-action-500 w-4 h-4"
                 />
                 Lembrar login
@@ -510,7 +653,7 @@ export default function Page() {
 
             <button
               type="submit"
-              disabled={isLoggingIn}
+              disabled={isLoggingIn || logoutPending}
               className={`w-full py-3 text-inverse rounded-card font-bold transition-all duration-200 shadow-raised flex items-center justify-center gap-2.5 ${
                 isLoggingIn
                   ? 'bg-action-500/90 cursor-wait'
@@ -568,16 +711,17 @@ export default function Page() {
   }
 
   // 4. Authenticated user: Authoritative data not yet loaded or transition in progress
-  if (!isInitialDataLoaded || isTransitioning) {
+  if (!isInitialDataLoaded) {
     return (
-      <AppLoadingScreen id="loading-screen" />
+      <AppLoadingScreen id="loading-screen" progress={refreshProgress} />
     );
   }
 
   const appConfig = state?.appConfig || {};
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-text-primary" id="main-root" data-active-tab={activeTab} data-theme={appConfig.theme || 'default'} inert={syncStatus === 'syncing'} aria-busy={syncStatus === 'syncing'}>
+    <ApplicationFeedbackProvider value={feedback}>
+    <div className="min-h-screen flex flex-col bg-background text-text-primary" id="main-root" data-active-tab={activeTab} data-theme={appConfig.theme || 'default'}>
 
       {/* HEADER BAR (Gmail / Material inspired contract: exactly 3 zones) */}
       <header className="m3-top-app-bar sticky top-0 z-50 h-16 px-4 flex items-center justify-between shrink-0" id="app-header">
@@ -633,6 +777,7 @@ export default function Page() {
 
           <NotificationDropdown
             notifications={(state.notifications || []).filter(n => !n.userId || n.userId === currentUser.id || n.userId === 'all')}
+            canOpenLink={canOpenNotificationLink}
             markAsRead={markNotificationAsRead}
             markAllAsRead={() => markAllNotificationsAsRead(currentUser.id)}
           />
@@ -814,51 +959,52 @@ export default function Page() {
           <div className="max-w-7xl mx-auto space-y-6">
 
 
-            {/* Error or Rollback Notification */}
-            {syncStatus === 'error' && (
-              <div className="bg-error/5 border border-error/20 rounded-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-error text-body-sm font-semibold shadow-raised" id="db-error-banner">
-                <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-error shrink-0 animate-ping" />
-                  <div>
-                    <span className="font-bold">Aviso de Integridade da Base de Dados: </span>
-                    <span className="font-medium">{syncError || 'A última operação não pôde ser gravada na base de dados e foi revertida para proteção de dados.'}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => refreshFromDatabase()}
-                  className="px-4 py-2 bg-error hover:opacity-90 text-inverse font-bold rounded-control text-caption transition-colors shrink-0 flex items-center gap-1.5 shadow-raised cursor-pointer"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Recarregar da Base de Dados
-                </button>
+            {connection !== 'ready' && <div role="status" className="rounded-card border border-border bg-surface p-4 text-body-sm">
+              <strong>{connection === 'offline' ? 'Sem ligação' : connection === 'checking' ? 'A verificar a ligação…' : 'Ligação indisponível'}</strong>
+              <p className="text-text-secondary">Pode consultar os dados já carregados. As gravações ficam disponíveis após a verificação.</p>
+              {connection === 'unavailable' && <Button type="button" size="sm" className="mt-2" onClick={() => void checkSession()}>Tentar novamente</Button>}
+            </div>}
+
+            {syncStatus === 'error' && connection === 'ready' && (
+              <div id="db-error-banner" className="flex flex-wrap items-center gap-3 rounded-card border border-error/20 bg-surface p-4 text-body-sm">
+                <span role="alert">{syncError || 'Não foi possível concluir a operação.'}</span>
+                <Button type="button" variant="secondary" size="sm" onClick={() => void refreshFromDatabase()}>Atualizar dados</Button>
               </div>
             )}
+            {refreshSlow && <p role="status" className="text-body-sm text-text-secondary">A atualização está a demorar mais do que o habitual.</p>}
 
-            {/* Content view switcher */}
+            {resumeDraft && !writesBlocked && <div className="flex flex-wrap items-center gap-3 rounded-card border border-border bg-surface p-4 text-body-sm">
+              <span role="status">{canResume ? 'Tem uma edição por concluir.' : 'A edição anterior já não pode ser retomada. O acesso ou o registo mudou.'}</span>
+              {canResume && <Button type="button" size="sm" onClick={() => {
+                setPendingTaskId(null);
+                handleTabChange(draftTab);
+                feedback.setResume(resumeDraft);
+                setSaved(null);
+              }}>Retomar edição</Button>}
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSaved(null)}>Descartar</Button>
+            </div>}
+
+            {notice && <div className="flex flex-wrap items-center gap-3 rounded-card border border-success/30 bg-surface p-4 text-body-sm">
+              <span role="status">{notice.message}</span>
+              {notice.target?.kind === 'project' && hasPermission(currentUser, 'projects_read') &&
+                <Button type="button" size="sm" variant="secondary" onClick={() => { handleSelectProject(notice.target!.id); notify(null); }}>Ver projeto</Button>}
+              {notice.target?.kind === 'task' && hasPermission(currentUser, 'tasks_read') &&
+                <Button type="button" size="sm" variant="secondary" onClick={() => { handleTabChange('tarefas'); setPendingTaskId(notice.target!.id); notify(null); }}>Ver tarefa</Button>}
+              <Button type="button" size="sm" variant="ghost" onClick={() => notify(null)}>Fechar</Button>
+            </div>}
+
+            {accessRestricted ? (
+              <section className="rounded-card border border-border bg-surface p-8 text-center space-y-3" aria-labelledby="restricted-title">
+                <h1 id="restricted-title" className="text-xl font-bold">Acesso restrito</h1>
+                <p role="alert" className="text-body-sm text-text-secondary">Esta secção requer permissões adicionais. Contacte um administrador para as solicitar.</p>
+                <Button type="button" onClick={() => handleTabChange('dashboard')}>Voltar ao Dashboard</Button>
+              </section>
+            ) : (
             <div id="active-tab-content" key={`${activeTab}-${navKey}`} className="animate-fade-in">
-              {((requiresProjectMaterials && materialsStatus !== 'loaded') || (requiresDefaultTasks && defaultTasksStatus !== 'loaded')) && (
-                <div
-                  role="status"
-                  aria-label={(requiresProjectMaterials && materialsStatus === 'error') || (requiresDefaultTasks && defaultTasksStatus === 'error') ? 'Não foi possível abrir a secção' : 'A carregar secção'}
-                  className="flex min-h-48 items-center justify-center text-text-muted"
-                >
-                  {(requiresProjectMaterials && materialsStatus === 'error') || (requiresDefaultTasks && defaultTasksStatus === 'error') ? (
-                    <button
-                      type="button"
-                      className="flex items-center gap-2 text-primary-ink font-semibold"
-                      onClick={() => {
-                        if (requiresProjectMaterials && materialsStatus === 'error') void loadProjectMaterials();
-                        if (requiresDefaultTasks && defaultTasksStatus === 'error') void loadDefaultTasks();
-                      }}
-                    >
-                      <RefreshCw className="h-5 w-5" aria-hidden="true" /> Tentar novamente
-                    </button>
-                  ) : (
-                    <Loader2 className="h-8 w-8 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                  )}
-                </div>
-              )}
+              {activeTab !== 'projetos' && requiresProjectMaterials && materialsStatus !== 'loaded' &&
+                <SectionDataFeedback status={materialsStatus} retry={loadProjectMaterials} blocked={writesBlocked} />}
+              {activeTab !== 'projetos' && requiresDefaultTasks && defaultTasksStatus !== 'loaded' &&
+                <SectionDataFeedback status={defaultTasksStatus} retry={loadDefaultTasks} blocked={writesBlocked} />}
               {activeTab === 'dashboard' && materialsStatus === 'loaded' && (
                 <BentoDashboard
                   projects={state.projects}
@@ -924,7 +1070,7 @@ export default function Page() {
                 />
               )}
 
-              {activeTab === 'projetos' && materialsStatus === 'loaded' && (!requiresDefaultTasks || defaultTasksStatus === 'loaded') && (
+              {activeTab === 'projetos' && (
                 <ProjectSection
                   projects={state.projects}
                   clients={state.clients}
@@ -953,6 +1099,10 @@ export default function Page() {
                   selectedProjectId={selectedProjectId}
                   setSelectedProjectId={handleSelectProject}
                   defaultTasks={state.defaultTasks || []}
+                  defaultTasksFeedback={requiresDefaultTasks && defaultTasksStatus !== 'loaded'
+                    ? <SectionDataFeedback status={defaultTasksStatus} retry={loadDefaultTasks} blocked={writesBlocked} /> : undefined}
+                  materialsFeedback={materialsStatus !== 'loaded'
+                    ? <SectionDataFeedback status={materialsStatus} retry={loadProjectMaterials} blocked={writesBlocked} /> : undefined}
                   appConfig={state.appConfig}
                   currentUser={currentUser}
                   userGroups={state.userGroups}
@@ -1051,13 +1201,8 @@ export default function Page() {
                 />
               )}
 
-              {requiresConfigRuntime && configRuntimeStatus !== 'loaded' && (
-                <div role="status" aria-label={configRuntimeStatus === 'error' ? 'Não foi possível abrir a secção' : 'A carregar secção'} className="flex min-h-48 items-center justify-center text-text-muted">
-                  {configRuntimeStatus === 'error' ? (
-                    <button type="button" className="flex items-center gap-2 text-primary-ink font-semibold" onClick={() => void loadConfigRuntime()}><RefreshCw className="h-5 w-5" aria-hidden="true" /> Tentar novamente</button>
-                  ) : <Loader2 className="h-8 w-8 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-                </div>
-              )}
+              {requiresConfigRuntime && configRuntimeStatus !== 'loaded' &&
+                <SectionDataFeedback status={configRuntimeStatus} retry={loadConfigRuntime} blocked={writesBlocked} />}
               {activeTab === 'configuracoes' && (!requiresConfigRuntime || configRuntimeStatus === 'loaded') && (!requiresDefaultTasks || defaultTasksStatus === 'loaded') && (
                 <ConfigSection
                   activeConfigTab={activeConfigTab}
@@ -1103,6 +1248,7 @@ export default function Page() {
                 />
               )}
             </div>
+            )}
 
           </div>
         </main>
@@ -1187,12 +1333,7 @@ export default function Page() {
         <CalendarSubscriptions />
         <button
           type="button"
-          onClick={() => {
-            clearClientSession();
-            fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
-            setIsChangingPassword(false);
-            setCurrentUser(null);
-          }}
+          onClick={() => void logout()}
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-control border border-error/30 px-4 py-2.5 text-body-sm font-semibold text-error hover:bg-error/10"
           aria-label="Terminar sessão"
         >
@@ -1201,11 +1342,11 @@ export default function Page() {
         </button>
       </Dialog>
 
-      {pendingTask && hasPermission(currentUser, 'tasks_read') && (activeTab === 'dashboard' || activeTab === 'reports') && <TaskDetailsModal
+      {pendingTask && hasPermission(currentUser, 'tasks_read') && !accessRestricted && (activeTab === 'dashboard' || activeTab === 'reports' || activeTab === 'tarefas') && <TaskDetailsModal
         key={pendingTask.id}
         isOpen
         task={pendingTask}
-        mode="edit"
+        mode={activeTab === 'tarefas' ? 'view' : 'edit'}
         onClose={() => setPendingTaskId(null)}
         onSaveSuccess={() => setPendingTaskId(null)}
         onDeleteSuccess={() => setPendingTaskId(null)}
@@ -1226,5 +1367,6 @@ export default function Page() {
       />}
 
     </div>
+    </ApplicationFeedbackProvider>
   );
 }

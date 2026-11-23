@@ -1,7 +1,7 @@
 'use client';
 
 import { FlaskConical } from 'lucide-react';
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import { useState } from 'react';
 import type { NotificationSetting } from '../lib/types';
 import Input from './ui/Input';
@@ -35,7 +35,7 @@ export default function NotificationSettingsPanel({ settings, canWrite, updateSe
     setError(null);
     setFeedback(null);
     try {
-      const response = await fetch('/api/notifications/test', {
+      const response = await authenticatedRequest('/api/notifications/test', {
         method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ type: setting.type }),
       });
       const result = await response.json();

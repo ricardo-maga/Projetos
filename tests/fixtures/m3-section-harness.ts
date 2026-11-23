@@ -48,6 +48,11 @@ export function createSectionHarness(file: string, initial: Record<string, any> 
     if (id === 'react') return isolated;
     // The source component runs outside a React renderer in this harness.
     // Keep the async guard without invoking React hooks from an imported module.
+    if (id.endsWith('/components/ApplicationFeedback')) return { useFeedback: () => null, useFormDraft: () => () => {} };
+    if (id.endsWith('/hooks/useFieldErrors')) return {
+      useFieldErrors: () => ({ errors: {}, form: { current: null }, show() {}, clear() {}, clearChanged() {}, clearField() {}, showApiError: () => false }),
+    };
+    if (id.endsWith('/hooks/useSlowRead')) return { useSlowRead: () => false };
     if (id.endsWith('/hooks/useAsyncAction')) return { useAsyncAction: harnessAsyncAction };
     return require(id);
   }, exports);

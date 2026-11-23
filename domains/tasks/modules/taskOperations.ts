@@ -1,5 +1,5 @@
 import { Task } from '@/lib/types';
-import { getAuthHeaders, getApiErrorMessage } from '@/lib/clientAuth';
+import { apiRequestError, authenticatedRequest, getAuthHeaders, getApiErrorMessage } from '@/lib/clientAuth';
 import { getTaskConflictWarnings, TaskConflictParams } from '@/domains/tasks/modules/taskConflicts';
 import { parseTaskHoursToNumber } from '@/domains/tasks/modules/taskService';
 
@@ -95,6 +95,7 @@ export interface TaskUpdateInput {
 }
 
 export interface TaskOperationResult<T = Task> {
+  fieldErrors?: Record<string, string[]>;
   success: boolean;
   data?: T;
   error?: string;
@@ -171,7 +172,7 @@ export function normalizeTaskFromApiResponse(data: any): Task {
 export async function apiGetTask(id: string): Promise<TaskOperationResult<Task>> {
   try {
     const headers = getAuthHeaders();
-    const res = await fetch(`/api/v1/tasks/${id}`, {
+    const res = await authenticatedRequest(`/api/v1/tasks/${id}`, {
       method: 'GET',
       headers,
     });
@@ -296,7 +297,7 @@ export async function apiCreateTask(input: TaskCreateInput): Promise<TaskOperati
       ...getAuthHeaders(),
       'Content-Type': 'application/json',
     };
-    const res = await fetch('/api/v1/tasks', {
+    const res = await authenticatedRequest('/api/v1/tasks', {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
@@ -317,8 +318,8 @@ export async function apiCreateTask(input: TaskCreateInput): Promise<TaskOperati
       return { success: false, error: errMsg, status: 401 };
     }
 
-    const errMsg = getApiErrorMessage(result, `Erro ao criar tarefa (${res.status}).`);
-    return { success: false, error: errMsg, status: res.status };
+    const error = apiRequestError(res, result, 'Não foi possível criar a tarefa.');
+    return { success: false, error: error.message, status: res.status, fieldErrors: error.fieldErrors };
   } catch (err: any) {
     return {
       success: false,
@@ -365,7 +366,7 @@ export async function apiUpdateTask(
       ...getAuthHeaders(),
       'Content-Type': 'application/json',
     };
-    const res = await fetch(`/api/v1/tasks/${id}`, {
+    const res = await authenticatedRequest(`/api/v1/tasks/${id}`, {
       method: 'PATCH',
       headers,
       body: JSON.stringify(patchPayload),
@@ -391,8 +392,8 @@ export async function apiUpdateTask(
       return { success: false, error: errMsg, status: 401 };
     }
 
-    const errMsg = getApiErrorMessage(result, `Erro ao atualizar tarefa (${res.status}).`);
-    return { success: false, error: errMsg, status: res.status };
+    const error = apiRequestError(res, result, 'Não foi possível atualizar a tarefa.');
+    return { success: false, error: error.message, status: res.status, fieldErrors: error.fieldErrors };
   } catch (err: any) {
     return {
       success: false,
@@ -408,7 +409,7 @@ export async function apiUpdateTask(
 export async function apiDeleteTask(id: string): Promise<TaskOperationResult<void>> {
   try {
     const headers = getAuthHeaders();
-    const res = await fetch(`/api/v1/tasks/${id}`, {
+    const res = await authenticatedRequest(`/api/v1/tasks/${id}`, {
       method: 'DELETE',
       headers,
     });

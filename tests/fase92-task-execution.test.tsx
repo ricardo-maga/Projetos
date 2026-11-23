@@ -30,6 +30,12 @@ function submitContext(overrides: Record<string, any> = {}) {
     formActualHours: '3', formStartDate: values.startDate, formStartTime: values.startTime,
     formEndDate: values.endDate, formEndTime: values.endTime, formNotes: values.notes,
     activeTask: { id: 'task', version: 7 },
+    feedback: null,
+    validation: {
+      clear() {},
+      show(fields: Record<string, string>) { context.fieldErrors = fields; },
+      showApiError() { return false; },
+    },
     setFormError: (error: string | null) => { context.error = error; },
     setIsSubmitting: (busy: boolean) => { context.busy = busy; },
     onClose: () => { context.closed = true; },
@@ -102,7 +108,7 @@ describe('FASE 92 — UI and execution allowlist', () => {
     const invalid = submitContext({ formEndDate: '2026-10-03' });
     await invalid.submit();
     expect(invalid.context.payload).toBeUndefined();
-    expect(invalid.context.error).toContain('data de fim');
+    expect(invalid.context.fieldErrors.endDate).toContain('data de fim');
   });
   it('renders planning read-only, execution editable, and exactly one status group first', () => {
     const html = renderToStaticMarkup(<TaskDetailsModal isOpen mode="execute" taskStatuses={statuses} users={[]} projects={[]} clients={[]} onClose={() => {}} />);

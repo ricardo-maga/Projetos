@@ -1,4 +1,4 @@
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 
 export function createCommunicationActions({ state, setState, setSyncError, refreshFromDatabase }: Pick<LegacyActionContext, 'state' | 'setState' | 'setSyncError' | 'refreshFromDatabase'>) {
@@ -7,7 +7,7 @@ export function createCommunicationActions({ state, setState, setSyncError, refr
     const setting = state?.notificationSettings?.find(item => item.id === id);
     if (!setting) return { success: false, message: 'Definição não encontrada.' };
     try {
-      const response = await fetch('/api/notifications/settings', {
+      const response = await authenticatedRequest('/api/notifications/settings', {
         method: 'PATCH', headers: getAuthHeaders(),
         body: JSON.stringify({ type: setting.type, updates }),
       });
@@ -24,7 +24,7 @@ export function createCommunicationActions({ state, setState, setSyncError, refr
   };
 
   const markNotificationAsRead = async (id: string) => {
-    const response = await fetch('/api/notifications/read', {
+    const response = await authenticatedRequest('/api/notifications/read', {
       method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ id }),
     });
     if (!response.ok) return { success: false };
@@ -34,7 +34,7 @@ export function createCommunicationActions({ state, setState, setSyncError, refr
   };
 
   const markAllNotificationsAsRead = (userId: string) => {
-    return fetch('/api/notifications/read', {
+    return authenticatedRequest('/api/notifications/read', {
       method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ all: true }),
     }).then(response => {
       if (!response.ok) return { success: false };
@@ -47,7 +47,7 @@ export function createCommunicationActions({ state, setState, setSyncError, refr
   // ==================== AUTOMATION RULES ====================
   const writeRule = async (url: string, method: 'POST' | 'PATCH' | 'DELETE', body: unknown) => {
     try {
-      const response = await fetch(url, { method,
+      const response = await authenticatedRequest(url, { method,
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const result = await response.json();
       if (!response.ok || result.success !== true) {

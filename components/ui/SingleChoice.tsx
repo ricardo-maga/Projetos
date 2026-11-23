@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useId, useRef } from 'react';
 import { Button } from './Button';
 import { cn } from '../../lib/utils';
 
@@ -23,17 +23,23 @@ export function getNextChoiceIndex(key: string, index: number, count: number): n
 
 // Native buttons with radio semantics: one tab stop, arrow navigation and a
 // stable border/ring geometry. Domain colors are supplied by the caller.
-export function SingleChoice({ label, value, options, onChange, disabled = false }: {
+export function SingleChoice({ label, value, options, onChange, disabled = false, field, error }: {
   label: string;
   value: string;
   options: SingleChoiceOption[];
   onChange: (value: string) => void;
   disabled?: boolean;
+  field?: string;
+  error?: string;
 }) {
+  const errorId = useId();
   const groupRef = useRef<HTMLDivElement>(null);
   const selectedIndex = options.findIndex(option => option.value === value);
   return (
-    <div ref={groupRef} role="radiogroup" aria-label={label} aria-disabled={disabled} className="flex flex-wrap gap-2">
+    <>
+    <div ref={groupRef} role="radiogroup" aria-label={label} aria-disabled={disabled} data-field={field}
+      aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined}
+      tabIndex={error ? -1 : undefined} className="flex flex-wrap gap-2">
       {options.map((option, index) => (
         <Button
           key={option.value}
@@ -59,5 +65,7 @@ export function SingleChoice({ label, value, options, onChange, disabled = false
         </Button>
       ))}
     </div>
+    {error && <p id={errorId} className="text-caption text-error">{error}</p>}
+    </>
   );
 }

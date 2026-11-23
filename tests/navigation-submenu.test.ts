@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { canOpenSection } from '../lib/sectionCatalog';
 
 const source = readFileSync('app/page.tsx', 'utf8');
 const sectionCatalog = readFileSync('lib/sectionCatalog.ts', 'utf8');
 const configSource = readFileSync('domains/administration/ui/ConfigSection.tsx', 'utf8');
 const sectionExpression = source.match(/const isConfigSectionActive = ([\s\S]*?);/)![1];
 const selectionExpression = source.match(/const isSubActive = ([\s\S]*?);/)![1];
-const allowedBlock = source.match(/const nestedPagePermission = ([\s\S]*?)\n      if \(!allowed\)/)![0].split('\n      if')[0];
 const items = [{ id: 'clientes' }, { id: 'ausencias' }, { id: 'tarefas' }, { id: 'sistema' }];
 
 describe('Configuration navigation regression', () => {
@@ -46,14 +46,11 @@ describe('Configuration navigation regression', () => {
     ]);
   });
   it('recognizes nested pages without bypassing their existing permissions', () => {
-    const allowed = new Function('activeTab', 'tabs', 'hasPermission', 'currentUser', 'state',
-      `${allowedBlock.replace(/ as any/g, '')}; return allowed;`);
-    for (const tab of ['clientes', 'ausencias']) {
-      const permission = tab === 'clientes' ? 'clients_read' : 'absences_read';
-      expect(allowed(tab, [], (_user: unknown, p: string) => p === permission, {}, {})).toBe(true);
-      expect(allowed(tab, [], () => false, {}, {})).toBe(false);
-    }
-    expect(allowed('tarefas', [{ id: 'tarefas' }], () => false, {}, {})).toBe(true);
-    expect(allowed('unknown', [], () => true, {}, {})).toBe(false);
+    const viewer = { roleId: '10000000-0000-0000-0000-000000000004', permissions: ['clients.read', 'tasks.read'] };
+    expect(canOpenSection(viewer, 'clientes')).toBe(true);
+    expect(canOpenSection(viewer, 'tarefas')).toBe(true);
+    expect(canOpenSection(viewer, 'ausencias')).toBe(false);
+    expect(canOpenSection(viewer, 'configuracoes', 'auditoria')).toBe(false);
+    expect(canOpenSection(viewer, 'unknown')).toBe(false);
   });
 });

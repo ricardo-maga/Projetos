@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useFeedback, useFormDraft } from '@/components/ApplicationFeedback';
+import { useFieldErrors } from '@/hooks/useFieldErrors';
 import {
   X,
   Calendar,
@@ -179,8 +181,19 @@ export default function TaskDetailsModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Initialize form based on mode and task
+  const feedback = useFeedback();
+  const validation = useFieldErrors();
+  const initializedForm = useRef<string | null>(null);
+  const editingVersion = useRef<number | undefined>(undefined);
+
+  // Initialize once per opening and task so a background refresh preserves edits.
   useEffect(() => {
+    if (!isModalOpen) { initializedForm.current = null; return; }
+    const formKey = JSON.stringify([effectiveMode, activeTask?.id, initialProjectId, initialDate, initialAssigneeId, initialAssigneeIds]);
+    if (initializedForm.current === formKey) return;
+    initializedForm.current = formKey;
+    editingVersion.current = activeTask?.version;
+    validation.clear();
     if (effectiveMode === 'create') {
       if (activeTask) {
         // DADOS PRÉ-PREENCHIDOS PARA DUPLICAÇÃO
@@ -259,7 +272,33 @@ export default function TaskDetailsModal({
       setFormError(null);
 
     }
-  }, [effectiveMode, activeTask, initialProjectId, initialDate, initialAssigneeId, initialAssigneeIds, projects, taskStatuses, getProjectDisplayLabel]);
+  }, [isModalOpen, effectiveMode, activeTask, initialProjectId, initialDate, initialAssigneeId, initialAssigneeIds, projects, taskStatuses, getProjectDisplayLabel]);
+
+  const draftValues = { formProjectId, projectSearchQuery, formTitle, formDescription, formStatusId, formTypeId, formPriorityId, formEstimatedDate, formEstimatedHours, formActualHours, formStartDate, formStartTime, formEndDate, formEndTime, formNotes, formAssignees };
+  const requestedDraft = feedback?.resume;
+  useFormDraft('task', isModalOpen && canWrite && effectiveMode !== 'view' ? {
+    kind: 'task', recordId: activeTask?.id ?? null, version: editingVersion.current,
+    projectId: formProjectId || undefined, mode: effectiveMode, values: draftValues,
+  } : null, draft => {
+    editingVersion.current = draft.version;
+    setFormProjectId(draft.values.formProjectId);
+    setProjectSearchQuery(draft.values.projectSearchQuery);
+    setFormTitle(draft.values.formTitle);
+    setFormDescription(draft.values.formDescription);
+    setFormStatusId(draft.values.formStatusId);
+    setFormTypeId(draft.values.formTypeId);
+    setFormPriorityId(draft.values.formPriorityId);
+    setFormEstimatedDate(draft.values.formEstimatedDate);
+    setFormEstimatedHours(draft.values.formEstimatedHours);
+    setFormActualHours(draft.values.formActualHours);
+    setFormStartDate(draft.values.formStartDate);
+    setFormStartTime(draft.values.formStartTime);
+    setFormEndDate(draft.values.formEndDate);
+    setFormEndTime(draft.values.formEndTime);
+    setFormNotes(draft.values.formNotes);
+    setFormAssignees(draft.values.formAssignees);
+  }, isModalOpen && canWrite && requestedDraft?.mode === effectiveMode &&
+    requestedDraft.recordId === (activeTask?.id ?? null));
 
   // Fast suggestions filtering with early termination (designed for thousands of projects)
   const projectSuggestions = useMemo(() => {
@@ -334,7 +373,7 @@ export default function TaskDetailsModal({
   const handleEndDateChange = (newEndDate: string) => {
     // "Não podes permitir que a data de fim seja anterior à data de início no preenchimento da tarefa"
     if (formStartDate && newEndDate && newEndDate < formStartDate) {
-      setFormError('A data de fim não pode ser anterior à data de início.');
+      validation.show({ endDate: 'A data de fim não pode ser anterior à data de início.' });
       return;
     }
     setFormEndDate(newEndDate);
@@ -382,27 +421,20 @@ export default function TaskDetailsModal({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    validation.clear();
 
     if (effectiveMode === 'view') {
       onClose();
       return;
     }
 
-    if (!canWrite || submittingRef.current) return;
+    if (!canWrite || submittingRef.current || feedback?.writesBlocked) return;
 
-    if (effectiveMode !== 'execute' && !formTitle.trim()) {
-      setFormError('O título da tarefa é obrigatório.');
-      return;
-    }
-
-    if (effectiveMode === 'create' && !formTypeId.trim()) {
-      setFormError('O tipo de tarefa é obrigatório.');
-      return;
-    }
-    if (effectiveMode === 'create' && !formStatusId.trim()) {
-      setFormError('O estado da tarefa é obrigatório.');
-      return;
-    }
+    const fields: Record<string, string> = {};
+    if (effectiveMode !== 'execute' && !formTitle.trim()) fields.title = 'Introduza o título da tarefa.';
+    if (effectiveMode === 'create' && !formTypeId.trim()) fields.taskTypeId = 'Selecione o tipo de tarefa.';
+    if (effectiveMode === 'create' && !formStatusId.trim()) fields.statusId = 'Selecione o estado da tarefa.';
+    if (Object.keys(fields).length) { validation.show(fields); return; }
 
     // Resolve project ID: only assign if formProjectId matches a valid, non-deleted project.
     // If user cleared the selection or typed arbitrary text without selecting, projectId is null.
@@ -416,7 +448,7 @@ export default function TaskDetailsModal({
 
     // "Não podes permitir que a data de fim seja anterior à data de início no preenchimento da tarefa"
     if (formStartDate && formEndDate && formEndDate < formStartDate) {
-      setFormError('A data de fim não pode ser anterior à data de início.');
+      validation.show({ endDate: 'A data de fim não pode ser anterior à data de início.' });
       return;
     }
 
@@ -427,7 +459,7 @@ export default function TaskDetailsModal({
     }
 
     if (formEndDate && !formStartDate) {
-      setFormError('Se preencher a data de fim, é obrigatório preencher a data de início.');
+      validation.show({ startDate: 'Introduza a data de início.' });
       return;
     }
 
@@ -440,7 +472,8 @@ export default function TaskDetailsModal({
     });
 
     if (!timeVal.valid) {
-      setFormError(timeVal.error || 'A hora de fim deve ser estritamente posterior à hora de início.');
+      const field = !formStartTime ? 'startTime' : 'endTime';
+      validation.show({ [field]: timeVal.error || 'Verifique a hora de fim.' });
       return;
     }
 
@@ -468,7 +501,10 @@ export default function TaskDetailsModal({
 
         if (createTask) {
           const result = await createTask(payload);
-          if (onSaveSuccess && result) onSaveSuccess(result);
+          if (result?.id) {
+            onSaveSuccess?.(result);
+            feedback?.notify({ message: 'Tarefa criada.', target: { kind: 'task', id: result.id } });
+          }
         }
         onClose();
       } else if (activeTask && updateTask) {
@@ -491,13 +527,16 @@ export default function TaskDetailsModal({
         });
 
         const result = await updateTask(activeTask.id, payload);
-        if (onSaveSuccess && result) onSaveSuccess(result);
+        if (result) {
+          onSaveSuccess?.(result);
+          feedback?.notify({ message: 'Tarefa atualizada.', target: { kind: 'task', id: activeTask.id } });
+        }
         onClose();
       } else {
         onClose();
       }
     } catch (err: any) {
-      setFormError(err?.message || 'Erro ao processar a tarefa.');
+      if (!validation.showApiError(err)) setFormError(err?.message || 'Não foi possível guardar a tarefa.');
     } finally {
       submittingRef.current = false;
       setIsSubmitting(false);
@@ -544,7 +583,7 @@ export default function TaskDetailsModal({
       className="max-w-2xl max-h-[calc(100dvh-2rem)]"
       bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden p-0 max-h-none"
     >
-      <form onSubmit={handleSave} className="flex min-h-0 flex-1 flex-col">
+      <form ref={validation.form} noValidate onChangeCapture={validation.clearChanged} onSubmit={handleSave} className="flex min-h-0 flex-1 flex-col">
         {/* Read-only banner if in edit/view mode */}
         {effectiveMode !== 'create' && activeTask && (
           <div className="px-6 py-3 bg-primary/5 border-b border-primary/20 text-body-sm text-text-secondary space-y-1.5 shrink-0">
@@ -582,7 +621,7 @@ export default function TaskDetailsModal({
         {formError && (
           <div className="mx-6 mt-4 p-3 bg-error/10 border border-error/20 rounded-control text-body-sm text-error font-medium flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-error shrink-0" />
-            <span>{formError}</span>
+            <span role="alert">{formError}</span>
           </div>
         )}
 
@@ -591,14 +630,14 @@ export default function TaskDetailsModal({
           <div className="space-y-2">
             <p className="text-label font-bold text-text-primary">Estado da tarefa {effectiveMode === 'create' ? '*' : ''}</p>
             <SingleChoice
-              label="Estado da tarefa"
+              label="Estado da tarefa" field="statusId" error={validation.errors.statusId}
               value={taskStatuses.find(s => s.id === formStatusId || matchTaskStatusId(s.id, formStatusId))?.id || formStatusId}
               options={taskStatuses.filter(s => !s.deleted).map(s => ({
                 value: s.id,
                 label: s.name,
                 className: getTaskStatusStyle(s.id, taskStatuses).badgeClass,
               }))}
-              onChange={setFormStatusId}
+              onChange={value => { setFormStatusId(value); validation.clearField('statusId'); }}
               disabled={isReadOnly || isSubmitting}
             />
           </div>
@@ -650,7 +689,7 @@ export default function TaskDetailsModal({
               <label htmlFor="task-formTitle" className="block text-body-sm font-bold text-text-primary">
                 Título da tarefa <span className="text-error">*</span>
               </label>
-              <Input id="task-formTitle"
+              <Input id="task-formTitle" name="title" error={validation.errors.title}
                 type="text"
                 required
                 readOnly={isPlanningReadOnly}
@@ -678,7 +717,7 @@ export default function TaskDetailsModal({
                 <div className="absolute inset-y-0 left-0 z-10 pl-3 flex items-center pointer-events-none text-text-muted">
                   <Search className="w-3.5 h-3.5" />
                 </div>
-                <Input id="task-projectSearchQuery"
+                <Input id="task-projectSearchQuery" name="projectId" error={validation.errors.projectId}
                   ref={projectInputRef}
                   type="text"
                   readOnly={isPlanningReadOnly}
@@ -773,7 +812,7 @@ export default function TaskDetailsModal({
                     Limpar data
                   </Button>
                 )}
-                <Input id="task-formEstimatedDate"
+                <Input id="task-formEstimatedDate" name="estimatedDate" error={validation.errors.estimatedDate}
                   type="date"
                   readOnly={isPlanningReadOnly}
                   value={formEstimatedDate}
@@ -784,7 +823,7 @@ export default function TaskDetailsModal({
 
               <div className="space-y-1">
                 <label htmlFor="task-formEstimatedHours" className="block text-body-sm font-bold text-text-primary">Horas previstas (h)</label>
-                <Input id="task-formEstimatedHours"
+                <Input id="task-formEstimatedHours" name="estimatedHours" error={validation.errors.estimatedHours}
                   type="text"
                   readOnly={isPlanningReadOnly}
                   value={formEstimatedHours}
@@ -798,7 +837,7 @@ export default function TaskDetailsModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label htmlFor="task-formPriorityId" className="block text-body-sm font-bold text-text-primary">Prioridade</label>
-                <Select id="task-formPriorityId"
+                <Select id="task-formPriorityId" name="priorityId" error={validation.errors.priorityId}
                   disabled={isPlanningReadOnly}
                   value={formPriorityId}
                   onChange={e => setFormPriorityId(e.target.value)}
@@ -813,7 +852,7 @@ export default function TaskDetailsModal({
             {/* Task type shares the priority row. */}
               <div className="space-y-1">
                 <label htmlFor="task-formTypeId" className="block text-body-sm font-bold text-text-primary">Tipo de tarefa {effectiveMode === 'create' ? '*' : ''}</label>
-                <Select id="task-formTypeId"
+                <Select id="task-formTypeId" name="taskTypeId" error={validation.errors.taskTypeId}
                   disabled={isPlanningReadOnly}
                   value={formTypeId}
                   onChange={e => setFormTypeId(e.target.value)}
@@ -830,7 +869,7 @@ export default function TaskDetailsModal({
             {/* Description (Instructions) */}
             <div className="space-y-1">
               <label htmlFor="task-formDescription" className="block text-body-sm font-bold text-text-primary">Descrição</label>
-              <Textarea id="task-formDescription"
+              <Textarea id="task-formDescription" name="description" error={validation.errors.description}
                 rows={2}
                 readOnly={isPlanningReadOnly}
                 value={formDescription}
@@ -843,14 +882,17 @@ export default function TaskDetailsModal({
           </div>
 
             {/* Native fieldset disables the existing selector in read-only modes. */}
-            <fieldset disabled={isReadOnly || isSubmitting} className="min-w-0">
+            <fieldset disabled={isReadOnly || isSubmitting} className="min-w-0" data-field="assignedUserIds"
+              tabIndex={-1} aria-invalid={!!validation.errors.assignedUserIds}
+              aria-describedby={validation.errors.assignedUserIds ? 'task-assignees-error' : undefined}>
               <AssigneeSelector
                 users={users}
                 allowedGroupIds={configuredRoleIds(appConfig?.taskAssigneeGroupIds, appConfig?.taskAssigneeGroupId)}
                 selectedIds={formAssignees}
-                onChange={isReadOnly ? () => {} : setFormAssignees}
+                onChange={ids => { if (!isReadOnly) { setFormAssignees(ids); validation.clearField('assignedUserIds'); } }}
                 filterTeamOnly
               />
+              {validation.errors.assignedUserIds && <p id="task-assignees-error" className="text-caption text-error">{validation.errors.assignedUserIds}</p>}
             </fieldset>
 
           {/* ================= SECTION 2: EXECUÇÃO (Available in all modes) ================= */}
@@ -872,7 +914,7 @@ export default function TaskDetailsModal({
               <label htmlFor="task-formActualHours" className="block text-body-sm font-bold text-text-primary">
                 Horas consumidas (h)
               </label>
-              <Input id="task-formActualHours"
+              <Input id="task-formActualHours" name="actualHours" error={validation.errors.actualHours}
                 type="number"
                 min="0"
                 step="0.5"
@@ -889,7 +931,7 @@ export default function TaskDetailsModal({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label htmlFor="task-formStartDate" className="block text-label font-bold text-text-primary">Data de início</label>
-                <Input id="task-formStartDate"
+                <Input id="task-formStartDate" name="startDate" error={validation.errors.startDate}
                   type="date"
                   readOnly={isReadOnly}
                   value={formStartDate}
@@ -899,7 +941,7 @@ export default function TaskDetailsModal({
               </div>
               <div className="space-y-1">
                 <label htmlFor="task-formStartTime" className="block text-label font-bold text-text-primary">Hora de início</label>
-                <Input id="task-formStartTime"
+                <Input id="task-formStartTime" name="startTime" error={validation.errors.startTime}
                   type="time"
                   readOnly={isReadOnly}
                   value={formStartTime}
@@ -912,7 +954,7 @@ export default function TaskDetailsModal({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label htmlFor="task-formEndDate" className="block text-label font-bold text-text-primary">Data de fim</label>
-                <Input id="task-formEndDate"
+                <Input id="task-formEndDate" name="endDate" error={validation.errors.endDate}
                   type="date"
                   readOnly={isReadOnly}
                   min={formStartDate || undefined}
@@ -923,7 +965,7 @@ export default function TaskDetailsModal({
               </div>
               <div className="space-y-1">
                 <label htmlFor="task-formEndTime" className="block text-label font-bold text-text-primary">Hora de fim</label>
-                <Input id="task-formEndTime"
+                <Input id="task-formEndTime" name="endTime" error={validation.errors.endTime}
                   type="time"
                   readOnly={isReadOnly}
                   value={formEndTime}
@@ -936,7 +978,7 @@ export default function TaskDetailsModal({
             {/* Execution Description / Notes */}
             <div className="space-y-1">
               <label htmlFor="task-formNotes" className="block text-body-sm font-bold text-text-primary">Descrição de execução</label>
-              <Textarea id="task-formNotes"
+              <Textarea id="task-formNotes" name="notes" error={validation.errors.notes}
                 rows={2}
                 readOnly={isReadOnly}
                 value={formNotes}
@@ -980,6 +1022,7 @@ export default function TaskDetailsModal({
               {effectiveMode !== 'view' && canWrite && (
                 <Button
                   type="submit"
+                  disabled={feedback?.writesBlocked}
                   variant="primary"
                   size="sm"
                   isLoading={isSubmitting}

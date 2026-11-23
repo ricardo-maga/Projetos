@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export default function Error({
   error,
@@ -9,12 +9,13 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => { console.error('[APP ERROR]', error); }, [error]);
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-surface-muted text-text-primary">
       <div className="max-w-md w-full bg-surface rounded-card p-8 border border-border text-center space-y-4">
         <h2 className="text-xl font-bold text-text-primary">Ocorreu um erro no sistema</h2>
         <p className="text-sm text-text-secondary">
-          {error?.message || 'Ocorreu uma falha inesperada ao carregar a página.'}
+          Ocorreu uma falha inesperada ao carregar a página.
         </p>
         <button
           onClick={() => reset()}

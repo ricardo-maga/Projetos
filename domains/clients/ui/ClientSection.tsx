@@ -1,4 +1,7 @@
 'use client';
+import ListEmptyState from '@/components/ui/ListEmptyState';
+import { useFeedback, useFormDraft } from '@/components/ApplicationFeedback';
+import { useFieldErrors } from '@/hooks/useFieldErrors';
 
 import React, { useState } from 'react';
 import { Client } from '@/lib/types';
@@ -24,8 +27,8 @@ interface ClientSectionProps {
   clients: Client[];
   projects?: any[];
   onSelectProject?: (projId: string | null) => void;
-  addClient: (c: any) => void;
-  updateClient: (id: string, updates: any) => void;
+  addClient: (c: any) => Promise<Client | void> | void;
+  updateClient: (id: string, updates: any) => Promise<Client | void> | void;
   deleteClient: (id: string) => void;
   currentUser?: any;
   userGroups?: any[];
@@ -62,6 +65,28 @@ export default function ClientSection({
   const [formContactPhone, setFormContactPhone] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [showDeleted, setShowDeleted] = useState(false);
+
+  const feedback = useFeedback();
+  const validation = useFieldErrors();
+  const [formError, setFormError] = useState('');
+  const [editingVersion, setEditingVersion] = useState<number>();
+  const draftValues = { formName, formShortName, formLocation, formTaxId, formContactPerson, formContactEmail, formContactPhone, formNotes };
+  useFormDraft('client', isEditing ? {
+    kind: 'client', recordId: editingId, version: editingVersion, values: draftValues,
+  } : null, draft => {
+    if (!canWriteClients) return;
+    setEditingId(draft.recordId);
+    setEditingVersion(draft.version);
+    setIsEditing(true);
+    setFormName(draft.values.formName);
+    setFormShortName(draft.values.formShortName);
+    setFormLocation(draft.values.formLocation);
+    setFormTaxId(draft.values.formTaxId);
+    setFormContactPerson(draft.values.formContactPerson);
+    setFormContactEmail(draft.values.formContactEmail);
+    setFormContactPhone(draft.values.formContactPhone);
+    setFormNotes(draft.values.formNotes);
+  });
 
   // Confirmation Modal state
   const [confirmState, setConfirmState] = useState<{
@@ -111,6 +136,9 @@ export default function ClientSection({
   const paginatedClients = filteredClients.slice(startIndex, startIndex + pageSize);
 
   const openForm = (client: Client | null) => {
+    validation.clear();
+    setFormError('');
+    setEditingVersion(client?.version);
     if (client) {
       if (!canWriteClients) {
         alert('Não tem permissão para editar clientes.');
@@ -146,10 +174,18 @@ export default function ClientSection({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await runClientAction(async () => {
+    validation.clear();
+    setFormError('');
+    if (feedback?.writesBlocked) return;
     if (!canWriteClients) {
       alert('Não tem permissão para criar ou editar clientes.');
       return;
     }
+    const fields: Record<string, string> = {};
+    if (formName.trim().length < 2) fields.clientName = 'Introduza um nome com pelo menos 2 caracteres.';
+    if (!formShortName.trim()) fields.shortName = 'Introduza o nome curto.';
+    if (formContactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formContactEmail)) fields.contactEmail = 'Introduza um endereço de email válido.';
+    if (Object.keys(fields).length) { validation.show(fields); return; }
     const payload = {
       clientName: formName,
       shortName: formShortName,
@@ -162,14 +198,13 @@ export default function ClientSection({
     };
 
     try {
-      if (editingId) {
-        await updateClient(editingId, payload);
-      } else {
-        await addClient(payload);
-      }
+      const result = editingId ? await updateClient(editingId, payload) : await addClient(payload);
+      if (result) feedback?.notify({ message: editingId ? 'Cliente atualizado.' : 'Cliente criado.' });
       setIsEditing(false);
-    } catch (err) {
-      // Error handled in useERP
+    } catch (error) {
+      if (!validation.showApiError(error)) {
+        setFormError(error instanceof Error ? error.message : 'Não foi possível guardar o cliente.');
+      }
     }
     });
   };
@@ -177,7 +212,7 @@ export default function ClientSection({
   return (
     <div className="space-y-6">
       {isEditing ? (
-        <form onSubmit={handleSubmit} className="m3-card p-6 space-y-6 animate-fade-in text-body-sm font-bold text-text-secondary">
+        <form ref={validation.form} noValidate onChangeCapture={validation.clearChanged} onSubmit={handleSubmit} className="m3-card p-6 space-y-6 animate-fade-in text-body-sm font-bold text-text-secondary">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-border-subtle">
             <M3SectionHeader title={editingId ? 'Editar cliente' : 'Novo cliente'} />
             <div className="flex items-center gap-2">
@@ -191,6 +226,7 @@ export default function ClientSection({
               </Button>
               <Button variant="primary" size="sm"
                 type="submit"
+                disabled={feedback?.writesBlocked}
                 isLoading={isSavingClient}
                 className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-inverse hover:bg-primary font-bold rounded-control text-body-sm shadow-raised transition-colors"
               >
@@ -199,13 +235,14 @@ export default function ClientSection({
             </div>
           </div>
 
+          {formError && <p role="alert" className="text-body-sm text-error">{formError}</p>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1">
               <Input label="Nome do cliente *"
 
                 type="text"
                 required
-                value={formName}
+                name="clientName" error={validation.errors.clientName} value={formName}
                 onChange={e => setFormName(e.target.value)}
                 placeholder="Ex: Fábrica de metal, S.A."
                 className=""
@@ -217,7 +254,7 @@ export default function ClientSection({
 
                 type="text"
                 required
-                value={formShortName}
+                name="shortName" error={validation.errors.shortName} value={formShortName}
                 onChange={e => setFormShortName(e.target.value)}
                 placeholder="Ex: Metal SA"
                 className=""
@@ -228,7 +265,7 @@ export default function ClientSection({
               <Input label="NIF (Tax ID)"
 
                 type="text"
-                value={formTaxId}
+                name="taxId" error={validation.errors.taxId} value={formTaxId}
                 onChange={e => setFormTaxId(e.target.value)}
                 placeholder="Ex: PT503768669"
                 className="font-mono"
@@ -239,7 +276,7 @@ export default function ClientSection({
               <Input label="Localização"
 
                 type="text"
-                value={formLocation}
+                name="location" error={validation.errors.location} value={formLocation}
                 onChange={e => setFormLocation(e.target.value)}
                 placeholder="Ex: Maia"
                 className=""
@@ -250,7 +287,7 @@ export default function ClientSection({
               <Input label="Pessoa de contacto"
 
                 type="text"
-                value={formContactPerson}
+                name="contactPerson" error={validation.errors.contactPerson} value={formContactPerson}
                 onChange={e => setFormContactPerson(e.target.value)}
                 placeholder="Ex: Eng. Carlos Gomes"
                 className=""
@@ -261,7 +298,7 @@ export default function ClientSection({
               <Input label="E-mail de contacto"
 
                 type="email"
-                value={formContactEmail}
+                name="contactEmail" error={validation.errors.contactEmail} value={formContactEmail}
                 onChange={e => setFormContactEmail(e.target.value)}
                 placeholder="Ex: compras@ametal.pt"
                 className="font-mono"
@@ -272,7 +309,7 @@ export default function ClientSection({
               <Input label="Telefone"
 
                 type="text"
-                value={formContactPhone}
+                name="contactPhone" error={validation.errors.contactPhone} value={formContactPhone}
                 onChange={e => setFormContactPhone(e.target.value)}
                 placeholder="Ex: +351 912 345 678"
                 className=""
@@ -283,7 +320,7 @@ export default function ClientSection({
               <Textarea label="Notas"
 
                 rows={3}
-                value={formNotes}
+                name="notes" error={validation.errors.notes} value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 placeholder="Observações internas, especificações ou acordos com o cliente..."
                 className=""
@@ -302,6 +339,7 @@ export default function ClientSection({
             </Button>
             <Button variant="primary" size="sm"
               type="submit"
+                disabled={feedback?.writesBlocked}
               isLoading={isSavingClient}
               className="px-6 py-2.5 bg-primary text-inverse font-bold rounded-control hover:bg-primary shadow-raised"
             >
@@ -357,9 +395,13 @@ export default function ClientSection({
 
           <div className="overflow-x-auto w-full">
             {filteredClients.length === 0 ? (
-              <div className="p-10 text-center text-text-muted font-medium text-body-sm">
-                {showDeleted ? 'Nenhum cliente eliminado encontrado.' : 'Nenhum cliente registado ou encontrado.'}
-              </div>
+              <ListEmptyState
+                title={activeClients.length > 0 && search.trim() ? 'Nenhum cliente corresponde à pesquisa.' : showDeleted ? 'Sem clientes eliminados.' : 'Ainda não há clientes registados.'}
+                description={activeClients.length > 0 && search.trim() ? 'Experimente pesquisar por parte do nome ou pela abreviatura.' : undefined}
+                action={activeClients.length > 0 && search.trim()
+                  ? { label: 'Limpar filtros', run: () => { setSearch(''); setCurrentPage(1); } }
+                  : !showDeleted && canWriteClients && !feedback?.writesBlocked ? { label: 'Criar cliente', run: () => openForm(null) } : undefined}
+              />
             ) : (
               <table className="w-full min-w-[750px] text-left border-collapse">
                 <thead className="bg-surface/90 text-caption uppercase tracking-wider text-text-muted font-bold border-b border-border-subtle/80 whitespace-nowrap select-none">

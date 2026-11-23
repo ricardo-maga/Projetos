@@ -1,8 +1,10 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
+import { useSlowRead } from '@/hooks/useSlowRead';
 import Card from './ui/Card';
 
-export default function AppLoadingScreen({ id }: { id: string }) {
+export default function AppLoadingScreen({ id, progress }: { id: string; progress?: number | null }) {
+  const slow = useSlowRead(true);
   return (
     <main id={id} className="min-h-screen flex items-center justify-center bg-background p-6">
       <Card className="w-full max-w-sm p-8 text-center space-y-6" role="status" aria-live="polite" aria-busy="true">
@@ -11,7 +13,10 @@ export default function AppLoadingScreen({ id }: { id: string }) {
         </div>
         <div className="space-y-2">
           <h1 className="text-xl font-semibold tracking-tight">A carregar dados...</h1>
-          <p className="text-body-sm text-text-muted">A aguardar dados da base de dados.</p>
+          {slow && <p className="text-body-sm text-text-muted">Está a demorar mais do que o habitual.</p>}
+          {slow && progress != null && progress > 0 && (
+            <progress className="w-full" value={progress} max={3} aria-label="Carregamento dos dados" />
+          )}
         </div>
       </Card>
     </main>

@@ -1,4 +1,5 @@
 'use client';
+import { authenticatedRequest } from '@/lib/clientAuth';
 
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
@@ -20,7 +21,7 @@ export default function CalendarSubscriptions() {
   useEffect(() => {
     let active = true;
     Promise.all(feeds.map(async feed => {
-      const response = await fetch(`/api/calendar/subscriptions/${feed.scope}`, { cache: 'no-store' });
+      const response = await authenticatedRequest(`/api/calendar/subscriptions/${feed.scope}`, { cache: 'no-store' });
       if (!response.ok) throw new Error('Não foi possível consultar as subscrições.');
       const result = await response.json();
       return [feed.scope, Boolean(result.configured)] as const;
@@ -35,7 +36,7 @@ export default function CalendarSubscriptions() {
     setError('');
     setCopied(null);
     try {
-      const response = await fetch(`/api/calendar/subscriptions/${scope}`, { method: 'POST' });
+      const response = await authenticatedRequest(`/api/calendar/subscriptions/${scope}`, { method: 'POST' });
       const result = await response.json();
       if (!response.ok || !result.path) throw new Error(result.error || 'Não foi possível gerar o endereço.');
       setUrls(previous => ({ ...previous, [scope]: `${window.location.origin}${result.path}` }));
@@ -59,7 +60,7 @@ export default function CalendarSubscriptions() {
     setBusy(scope);
     setError('');
     try {
-      const response = await fetch(`/api/calendar/subscriptions/${scope}`, { method: 'DELETE' });
+      const response = await authenticatedRequest(`/api/calendar/subscriptions/${scope}`, { method: 'DELETE' });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Não foi possível desativar o endereço.');
       setConfigured(previous => ({ ...previous, [scope]: false }));

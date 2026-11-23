@@ -1,5 +1,5 @@
+import { ClientRequestError } from '@/lib/clientAuth';
 import type { Task } from '@/lib/types';
-import { clearClientSession } from '@/lib/clientAuth';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '@/lib/utils';
 import { apiCreateTask, apiUpdateTask, apiDeleteTask, parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
 import type { Dispatch, SetStateAction } from 'react';
@@ -86,21 +86,14 @@ export function createTaskActions({
       } else {
         const errMsg = opResult.error || `A base de dados rejeitou a criação da tarefa.`;
         console.error('Erro na criação da tarefa:', errMsg);
-        setSyncStatus('error');
-        setSyncError(errMsg);
-        if (opResult.status === 401) {
-          clearClientSession();
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message: errMsg } }));
-          }
-        }
-        throw new Error(errMsg);
+        throw new ClientRequestError(errMsg, opResult.fieldErrors);
       }
     } catch (err: any) {
       console.error('Exceção na criação da tarefa:', err);
       const errMsg = err?.message || 'Falha de comunicação com a API de tarefas.';
-      setSyncStatus('error');
-      setSyncError(errMsg);
+      const invalidFields = err instanceof ClientRequestError && Object.keys(err.fieldErrors).length > 0;
+      setSyncStatus(invalidFields ? 'idle' : 'error');
+      setSyncError(invalidFields ? null : errMsg);
       throw err;
     }
   };
@@ -150,15 +143,7 @@ export function createTaskActions({
 
       if (opResult.status === 409 || !opResult.success || !opResult.data) {
         const errMsg = opResult.error || 'Conflito de concorrência ou erro ao atualizar tarefa.';
-        setSyncStatus('error');
-        setSyncError(errMsg);
-        if (opResult.status === 401) {
-          clearClientSession();
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message: errMsg } }));
-          }
-        }
-        throw new Error(errMsg);
+        throw new ClientRequestError(errMsg, opResult.fieldErrors);
       }
 
       const updatedTask = opResult.data;
@@ -187,8 +172,9 @@ export function createTaskActions({
     } catch (err: any) {
       console.error('Exceção na atualização da tarefa:', err);
       const errMsg = err?.message || 'Falha de comunicação com a API de tarefas.';
-      setSyncStatus('error');
-      setSyncError(errMsg);
+      const invalidFields = err instanceof ClientRequestError && Object.keys(err.fieldErrors).length > 0;
+      setSyncStatus(invalidFields ? 'idle' : 'error');
+      setSyncError(invalidFields ? null : errMsg);
       throw err;
     }
   };
@@ -218,21 +204,14 @@ export function createTaskActions({
       } else {
         const errMsg = opResult.error || `A base de dados rejeitou a eliminação da tarefa.`;
         console.error('Erro ao eliminar tarefa:', errMsg);
-        setSyncStatus('error');
-        setSyncError(errMsg);
-        if (opResult.status === 401) {
-          clearClientSession();
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message: errMsg } }));
-          }
-        }
-        throw new Error(errMsg);
+        throw new ClientRequestError(errMsg, opResult.fieldErrors);
       }
     } catch (err: any) {
       console.error('Exceção ao eliminar tarefa:', err);
       const errMsg = err?.message || 'Falha de comunicação com a API de tarefas.';
-      setSyncStatus('error');
-      setSyncError(errMsg);
+      const invalidFields = err instanceof ClientRequestError && Object.keys(err.fieldErrors).length > 0;
+      setSyncStatus(invalidFields ? 'idle' : 'error');
+      setSyncError(invalidFields ? null : errMsg);
       throw err;
     }
   };

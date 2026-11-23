@@ -13,6 +13,8 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, label, error, options = [], children, disabled, id, ...props }, ref) => {
     const generatedId = React.useId();
     const selectId = id || generatedId;
+    const errorId = selectId + '-error';
+    const description = [props['aria-describedby'], error && errorId].filter(Boolean).join(' ');
     return (
       <div className="w-full space-y-1.5 text-left">
         {label ? (
@@ -39,6 +41,8 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
               className
             )}
             {...props}
+            aria-invalid={error ? true : props['aria-invalid']}
+            aria-describedby={description || undefined}
           >
             {children || options.map(opt => (
               <option key={opt.value} value={opt.value}>
@@ -54,7 +58,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </div>
         </div>
         {error ? (
-          <p className="text-caption text-error font-medium animate-fade-in">{error}</p>
+          <p id={errorId} className="text-caption text-error font-medium animate-fade-in">{error}</p>
         ) : null}
       </div>
     );

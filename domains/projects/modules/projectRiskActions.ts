@@ -1,11 +1,11 @@
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import type { ProjectRiskItem } from '@/lib/types';
 import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 
 export function createProjectRiskActions({ state, setState, matchId, refreshFromDatabase }: Pick<LegacyActionContext, 'state' | 'setState' | 'matchId' | 'refreshFromDatabase'>) {
   const request = async (url: string, method: 'POST' | 'PATCH' | 'DELETE', payload: unknown) => {
     try {
-      const response = await fetch(url, {
+      const response = await authenticatedRequest(url, {
         method, headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
       const result = await response.json();

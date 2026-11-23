@@ -1,5 +1,5 @@
 import type { Project } from '@/lib/types';
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { ClientRequestError, apiRequestError, authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import type { Dispatch, SetStateAction } from 'react';
 import type { ERPState } from '@/lib/types';
 
@@ -66,7 +66,7 @@ export function createProjectActions({
       setSyncStatus('syncing');
       setSyncError(null);
       const headers = getAuthHeaders();
-      const res = await fetch('/api/v1/projects', {
+      const res = await authenticatedRequest('/api/v1/projects', {
         method: 'POST',
         headers,
         body: JSON.stringify(apiPayload),
@@ -103,19 +103,14 @@ export function createProjectActions({
         setSyncStatus('synced');
         return newProj;
       } else {
-        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a criação do projeto (${res.status}).`);
-        console.error('Erro na criação do projeto:', errMsg);
-        setSyncStatus('error');
-        setSyncError(errMsg);
-        alert(`Erro ao criar projeto: ${errMsg}`);
-        throw new Error(errMsg);
+        throw apiRequestError(res, result, `A base de dados rejeitou a criação do projeto (${res.status}).`);
       }
     } catch (err: any) {
       console.error('Exceção na criação do projeto:', err);
       const errMsg = err?.message || 'Falha de comunicação com a API de projetos.';
-      setSyncStatus('error');
-      setSyncError(errMsg);
-      alert(`Erro de comunicação: ${errMsg}`);
+      const invalidFields = err instanceof ClientRequestError && Object.keys(err.fieldErrors).length > 0;
+      setSyncStatus(invalidFields ? 'idle' : 'error');
+      setSyncError(invalidFields ? null : errMsg);
       throw err;
     }
   };
@@ -169,7 +164,7 @@ export function createProjectActions({
       setSyncStatus('syncing');
       setSyncError(null);
       const headers = getAuthHeaders();
-      const res = await fetch(`/api/v1/projects/${id}`, {
+      const res = await authenticatedRequest(`/api/v1/projects/${id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify(patchPayload),
@@ -187,7 +182,7 @@ export function createProjectActions({
             : undefined
         );
         if (typeof serverVersion === 'number') {
-          const retryRes = await fetch(`/api/v1/projects/${id}`, {
+          const retryRes = await authenticatedRequest(`/api/v1/projects/${id}`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify({ ...patchPayload, version: serverVersion }),
@@ -210,7 +205,6 @@ export function createProjectActions({
 
       if (finalRes.status === 409) {
         const errMsg = getApiErrorMessage(finalResult, 'Conflito de concorrência ao atualizar projeto. O projeto foi alterado por outro utilizador.');
-        alert(errMsg);
         setSyncStatus('error');
         setSyncError(errMsg);
         throw new Error(errMsg);
@@ -278,19 +272,14 @@ export function createProjectActions({
         setSyncStatus('synced');
         return true;
       } else {
-        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a alteração do projeto (${res.status}).`);
-        console.error('Erro na atualização do projeto:', errMsg);
-        setSyncStatus('error');
-        setSyncError(errMsg);
-        alert(`Erro ao atualizar projeto: ${errMsg}`);
-        throw new Error(errMsg);
+        throw apiRequestError(res, result, `A base de dados rejeitou a alteração do projeto (${res.status}).`);
       }
     } catch (err: any) {
       console.error('Exceção na atualização do projeto:', err);
       const errMsg = err?.message || 'Falha de comunicação com a API de projetos.';
-      setSyncStatus('error');
-      setSyncError(errMsg);
-      alert(`Erro de comunicação: ${errMsg}`);
+      const invalidFields = err instanceof ClientRequestError && Object.keys(err.fieldErrors).length > 0;
+      setSyncStatus(invalidFields ? 'idle' : 'error');
+      setSyncError(invalidFields ? null : errMsg);
       throw err;
     }
   };
@@ -303,7 +292,7 @@ export function createProjectActions({
       setSyncStatus('syncing');
       setSyncError(null);
       const headers = getAuthHeaders();
-      const res = await fetch(`/api/v1/projects/${id}`, {
+      const res = await authenticatedRequest(`/api/v1/projects/${id}`, {
         method: 'DELETE',
         headers,
       });
@@ -321,19 +310,14 @@ export function createProjectActions({
         setSyncStatus('synced');
         return true;
       } else {
-        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a eliminação do projeto (${res.status}).`);
-        console.error('Erro ao eliminar projeto:', errMsg);
-        setSyncStatus('error');
-        setSyncError(errMsg);
-        alert(`Erro ao eliminar projeto: ${errMsg}`);
-        throw new Error(errMsg);
+        throw apiRequestError(res, result, `A base de dados rejeitou a eliminação do projeto (${res.status}).`);
       }
     } catch (err: any) {
       console.error('Exceção ao eliminar projeto:', err);
       const errMsg = err?.message || 'Falha de comunicação com a API de projetos.';
-      setSyncStatus('error');
-      setSyncError(errMsg);
-      alert(`Erro de comunicação: ${errMsg}`);
+      const invalidFields = err instanceof ClientRequestError && Object.keys(err.fieldErrors).length > 0;
+      setSyncStatus(invalidFields ? 'idle' : 'error');
+      setSyncError(invalidFields ? null : errMsg);
       throw err;
     }
   };

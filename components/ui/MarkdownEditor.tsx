@@ -14,6 +14,8 @@ export interface MarkdownEditorProps {
   placeholder?: string;
   maxLength: number;
   heightClassName?: string;
+  field?: string;
+  error?: string;
 }
 
 function readFormatState(editor: Editor | null) {
@@ -26,7 +28,7 @@ function readFormatState(editor: Editor | null) {
 }
 
 export default function MarkdownEditor({
-  value, onChange, ariaLabel, placeholder, maxLength, heightClassName = 'h-24',
+  value, onChange, ariaLabel, placeholder, maxLength, heightClassName = 'h-24', field, error,
 }: MarkdownEditorProps) {
   const callbacks = useRef({ onChange, maxLength });
   callbacks.current = { onChange, maxLength };
@@ -39,6 +41,7 @@ export default function MarkdownEditor({
   const [linkError, setLinkError] = useState('');
   const linkInput = useRef<HTMLInputElement>(null);
   const linkErrorId = useId();
+  const fieldErrorId = useId();
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -72,6 +75,19 @@ export default function MarkdownEditor({
       callbacks.current.onChange(markdown);
     },
   });
+  useEffect(() => {
+    if (!editor) return;
+    const element = editor.view.dom;
+    if (field) element.dataset.field = field;
+    if (error) {
+      element.setAttribute('aria-invalid', 'true');
+      element.setAttribute('aria-describedby', fieldErrorId);
+    } else {
+      element.removeAttribute('aria-invalid');
+      element.removeAttribute('aria-describedby');
+    }
+  }, [editor, error, field, fieldErrorId]);
+
   const selectedState = useEditorState({
     editor,
     selector: ({ editor: current }) => readFormatState(current),
@@ -167,6 +183,7 @@ export default function MarkdownEditor({
         setTouchMode(event.pointerType !== 'mouse');
       }}>
         <EditorContent editor={editor} />
+        {error && <p id={fieldErrorId} className="text-caption text-error">{error}</p>}
         {state.empty && <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-3.5 text-body-sm text-text-muted">{placeholder}</span>}
       </div>
       {touchMode ? toolbar : !editingLink && (

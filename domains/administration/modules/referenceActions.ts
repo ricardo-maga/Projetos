@@ -1,4 +1,4 @@
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 import type { ReferenceCollection } from '../data/referenceData';
 
@@ -8,7 +8,7 @@ const versionOf = (row: Row) => Number(row.sync_version ?? row.syncVersion) || 0
 export function createReferenceActions({ state, setState, refreshFromDatabase }: Pick<LegacyActionContext, 'state' | 'setState' | 'refreshFromDatabase'>) {
   const write = async (method: 'POST' | 'PATCH' | 'DELETE', collection: ReferenceCollection, body: Record<string, unknown>, reorder = false) => {
     try {
-      const response = await fetch(reorder ? '/api/v1/reference-data/reorder' : '/api/v1/reference-data', {
+      const response = await authenticatedRequest(reorder ? '/api/v1/reference-data/reorder' : '/api/v1/reference-data', {
         method: reorder ? 'POST' : method,
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ collection, ...body }),

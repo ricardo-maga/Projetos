@@ -1,12 +1,12 @@
 import type { ProjectMaterial } from '@/lib/types';
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 
 export class ProjectMaterialApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
+  const response = await authenticatedRequest(path, {
     ...init,
     credentials: 'same-origin',
     headers: { ...getAuthHeaders(), ...init?.headers },

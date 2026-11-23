@@ -34,7 +34,7 @@ import { CLEAN_BASELINE_STATE } from '../lib/cleanDefaults';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { mapStateToUUIDs } from '../lib/supabaseSync';
 import { getDefaultTaskStatusId, matchTaskStatusId } from '../lib/utils';
-import { getAuthHeaders, clearClientSession } from '../lib/clientAuth';
+import { apiRequestError, authenticatedRequest, getAuthHeaders, readRequest } from '../lib/clientAuth';
 import { apiCreateTask, apiUpdateTask, apiDeleteTask, parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
 import { listProjectMaterials, createProjectMaterial as apiCreateProjectMaterial, updateProjectMaterial as apiUpdateProjectMaterial, deleteProjectMaterial as apiDeleteProjectMaterial } from '../lib/projectMaterials/client';
 import { mergeSyncPartitions, SYNC_PARTITIONS, type SyncPartition } from '../lib/supabase/syncPartitions';
@@ -64,7 +64,7 @@ const getEmptyState = (): ERPState => ({
   ...CLEAN_BASELINE_STATE
 });
 
-export function useERP() {
+export function useERP(userId?: string) {
   // Start with null so that only authoritative data from the database is rendered
   const [state, setState] = useState<ERPState | null>(null);
   // Public branding must remain available before authenticated ERP data exists.
@@ -73,6 +73,7 @@ export function useERP() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
   const refreshGeneration = useRef(0);
+  const [refreshProgress, setRefreshProgress] = useState<number | null>(null);
   const [materialsStatus, setMaterialsStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
   const materialsGeneration = useRef(0);
   const [configRuntimeStatus, setConfigRuntimeStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
@@ -82,61 +83,68 @@ export function useERP() {
   const [isDbConfigured, setIsDbConfigured] = useState<boolean>(false);
 
 
-  // Authoritative fetch directly from database (bypasses any local stale cache)
-  const refreshFromDatabase = useCallback(async (): Promise<boolean> => {
-    const generation = ++refreshGeneration.current;
+  const resetAuthorizedData = useCallback(() => {
+    refreshGeneration.current += 1;
     materialsGeneration.current += 1;
     configRuntimeGeneration.current += 1;
     defaultTasksGeneration.current += 1;
+    setState(null);
+    setIsInitialDataLoaded(false);
+    setSyncStatus('idle');
+    setSyncError(null);
+    setRefreshProgress(null);
+    setMaterialsStatus('idle');
+    setConfigRuntimeStatus('idle');
+    setDefaultTasksStatus('idle');
+  }, []);
+
+  const refreshFromDatabase = useCallback(async (): Promise<boolean> => {
+    const generation = ++refreshGeneration.current;
+    setRefreshProgress(0);
     setSyncStatus('syncing');
     setSyncError(null);
     try {
       const headers = getAuthHeaders();
-      const responses = await Promise.all((Object.keys(SYNC_PARTITIONS) as SyncPartition[]).map(async partition => {
-        const response = await fetch(`/api/supabase/sync?partition=${partition}`, { headers, cache: 'no-store' });
-        const body = await response.json().catch(() => ({}));
-        return { partition, response, body };
+      const parts = Object.keys(SYNC_PARTITIONS) as SyncPartition[];
+      const responses = await Promise.all(parts.map(async partition => {
+        const response = await authenticatedRequest('/api/supabase/sync?partition=' + partition, { headers, cache: 'no-store' });
+        const body = await response.json();
+        if (!response.ok || body.success !== true || !body.data) {
+          throw apiRequestError(response, body, 'Não foi possível atualizar os dados. Tente novamente.');
+        }
+        if (generation === refreshGeneration.current) {
+          setRefreshProgress(value => (value ?? 0) + 1);
+        }
+        return [partition, body.data] as const;
       }));
       if (generation !== refreshGeneration.current) return false;
-      const failed = responses.find(({ response }) => response.status === 401)
-        || responses.find(({ response, body }) => !response.ok || body.success !== true || !body.data);
-      if (!failed) {
-        const parts = Object.fromEntries(responses.map(({ partition, body }) => [partition, body.data])) as Record<SyncPartition, unknown>;
-        const mapped = mapStateToUUIDs(mergeSyncPartitions(parts));
-        setState(mapped);
-        setMaterialsStatus('idle');
-        setConfigRuntimeStatus('idle');
-        setDefaultTasksStatus('idle');
-        setSyncStatus('synced');
-        setSyncError(null);
-        setIsInitialDataLoaded(true);
-        return true;
-      } else {
-        const msg = failed.body.message || `Erro do servidor ao contactar a base de dados (Status: ${failed.response.status}).`;
-        if (failed.response.status === 401) {
-          // Sessão não autenticada ou expirada: manter não carregado para que o ecrã de login seja exibido
-          setSyncStatus('idle');
-          setSyncError(null);
-          setIsInitialDataLoaded(false);
-        } else {
-          setSyncStatus('error');
-          setSyncError(msg);
-          setIsInitialDataLoaded(false);
-        }
-        return false;
-      }
-    } catch (err: any) {
+      const mapped = mapStateToUUIDs(mergeSyncPartitions(Object.fromEntries(responses) as Record<SyncPartition, unknown>));
+      setState(previous => previous ? {
+        ...mapped,
+        projectMaterials: previous.projectMaterials,
+        defaultTasks: previous.defaultTasks,
+        notificationSettings: previous.notificationSettings,
+        automationRules: previous.automationRules,
+      } : mapped);
+      setSyncStatus('synced');
+      setIsDbConfigured(true);
+      setIsInitialDataLoaded(true);
+      return true;
+    } catch (error) {
       if (generation !== refreshGeneration.current) return false;
-      const msg = err?.message || 'Erro de rede ao contactar a base de dados.';
+      refreshGeneration.current += 1;
+      console.warn('[ERP LOAD]', error);
       setSyncStatus('error');
-      setSyncError(msg);
-      setIsInitialDataLoaded(false);
+      setSyncError('Não foi possível atualizar os dados. Tente novamente.');
+      setRefreshProgress(null);
       return false;
+    } finally {
+      if (generation === refreshGeneration.current) setRefreshProgress(null);
     }
   }, []);
 
   const loadProjectMaterials = useCallback(async () => {
-    const generation = materialsGeneration.current;
+    const generation = ++materialsGeneration.current;
     setMaterialsStatus('loading');
     try {
       const materials = await listProjectMaterials();
@@ -151,10 +159,10 @@ export function useERP() {
   }, []);
 
   const loadConfigRuntime = useCallback(async () => {
-    const generation = configRuntimeGeneration.current;
+    const generation = ++configRuntimeGeneration.current;
     setConfigRuntimeStatus('loading');
     try {
-      const response = await fetch('/api/supabase/config-runtime', { credentials: 'same-origin', cache: 'no-store' });
+      const response = await authenticatedRequest('/api/supabase/config-runtime', { credentials: 'same-origin', cache: 'no-store' });
       const result = await response.json();
       if (!response.ok || result?.success !== true || !Array.isArray(result.data?.notificationSettings) || !Array.isArray(result.data?.automationRules)) {
         throw new Error('Resposta inválida ao carregar as configurações.');
@@ -170,10 +178,10 @@ export function useERP() {
   }, []);
 
   const loadDefaultTasks = useCallback(async () => {
-    const generation = defaultTasksGeneration.current;
+    const generation = ++defaultTasksGeneration.current;
     setDefaultTasksStatus('loading');
     try {
-      const response = await fetch('/api/supabase/default-tasks', { credentials: 'same-origin', cache: 'no-store' });
+      const response = await authenticatedRequest('/api/supabase/default-tasks', { credentials: 'same-origin', cache: 'no-store' });
       const result = await response.json();
       if (!response.ok || result?.success !== true || !Array.isArray(result.data)) {
         throw new Error(`Falha ao carregar templates de tarefas (HTTP ${response.status}): ${result?.message || 'Resposta inválida.'}`);
@@ -203,7 +211,7 @@ export function useERP() {
       let configured = isSupabaseConfigured;
 
       try {
-        const configRes = await fetch('/api/supabase/config', { cache: 'no-store' });
+        const configRes = await readRequest('/api/supabase/config', { cache: 'no-store' });
         if (configRes.ok) {
           const configData = await configRes.json();
           if (configData && typeof configData.isConfigured === 'boolean') {
@@ -229,21 +237,14 @@ export function useERP() {
 
       setIsDbConfigured(configured);
 
-      if (!configured) {
-        setSyncStatus('error');
-        setSyncError('A base de dados não está configurada no servidor. Por razões de integridade, a aplicação não permite operar com dados não gravados na base de dados.');
-        setIsInitialDataLoaded(false);
-        return;
-      }
-
-      const ok = await refreshFromDatabase();
-      if (!ok) {
-        setIsInitialDataLoaded(false);
-      }
     };
 
-    loadState();
-  }, [refreshFromDatabase]);
+    void loadState();
+  }, []);
+
+  useEffect(() => {
+    if (userId) void refreshFromDatabase();
+  }, [userId, refreshFromDatabase]);
 
   const sortedState: ERPState = useMemo(() => {
     if (!state) return CLEAN_BASELINE_STATE;
@@ -297,7 +298,7 @@ export function useERP() {
     setSyncStatus('syncing');
     setSyncError(null);
     try {
-      const response = await fetch('/api/supabase/sync/entity', {
+      const response = await authenticatedRequest('/api/supabase/sync/entity', {
         method: 'DELETE', headers: getAuthHeaders(), body: JSON.stringify({ entity, id }),
       });
       const result = await response.json();
@@ -399,6 +400,8 @@ export function useERP() {
     deleteAutomationRule,
     toggleAutomationRule,
     refreshFromDatabase,
+    refreshProgress,
+    resetAuthorizedData,
     loadProjectMaterials,
     materialsStatus,
     loadConfigRuntime,

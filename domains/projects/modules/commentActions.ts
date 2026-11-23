@@ -1,11 +1,11 @@
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import type { Comment } from '@/lib/types';
 import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 
 export function createCommentActions({ setState, deleteSyncedEntity }: Pick<LegacyActionContext, 'setState' | 'deleteSyncedEntity'>) {
   const addComment = async (projectId: string, _authorId: string, text: string) => {
     try {
-      const response = await fetch('/api/v1/projects/comments', {
+      const response = await authenticatedRequest('/api/v1/projects/comments', {
         method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId, comment: text }),
       });

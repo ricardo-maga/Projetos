@@ -1,4 +1,4 @@
-import { getAuthHeaders, clearClientSession } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 
 export function createDefaultTaskActions({ state, setState, setSyncStatus, setSyncError, isDbConfigured, deleteSyncedEntity, loadDefaultTasks, getApiErrorMessage }: Pick<LegacyActionContext, 'state' | 'setState' | 'setSyncStatus' | 'setSyncError' | 'isDbConfigured' | 'deleteSyncedEntity' | 'loadDefaultTasks' | 'getApiErrorMessage'>) {
@@ -8,7 +8,7 @@ export function createDefaultTaskActions({ state, setState, setSyncStatus, setSy
     setSyncStatus('syncing');
     setSyncError(null);
     try {
-      const response = await fetch(url, {
+      const response = await authenticatedRequest(url, {
         method, headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -16,10 +16,6 @@ export function createDefaultTaskActions({ state, setState, setSyncStatus, setSy
       if (!response.ok || result.success !== true || !result.data?.id) {
         const message = getApiErrorMessage(result, 'Não foi possível guardar o template de tarefa.');
         if (response.status === 409) void loadDefaultTasks();
-        if (response.status === 401) {
-          clearClientSession();
-          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message } }));
-        }
         setSyncStatus('error');
         setSyncError(message);
         return { success: false, message };

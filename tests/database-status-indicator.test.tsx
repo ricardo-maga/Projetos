@@ -40,6 +40,6 @@ describe('SQL header status indicator', () => {
     expect(source).toContain("busy={syncStatus === 'syncing' && isDbConfigured}");
     expect(source).toContain("result={syncStatus === 'syncing' ? null : logoResult}");
     expect(source).toContain('aria-label="Terminar sessão"'); expect(source).toContain('clearClientSession();');
-    expect(source).toContain("{syncStatus === 'error' && (");
+    expect(source).toContain("{syncStatus === 'error' && connection === 'ready' && (");
   });
 });

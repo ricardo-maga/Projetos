@@ -1,5 +1,5 @@
 import type { SpecialDay } from '@/lib/types';
-import { getAuthHeaders, clearClientSession } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 
 export function createSpecialDayActions({ state, setState, setSyncStatus, setSyncError, isDbConfigured, deleteSyncedEntity, refreshFromDatabase, getApiErrorMessage }: Pick<LegacyActionContext, 'state' | 'setState' | 'setSyncStatus' | 'setSyncError' | 'isDbConfigured' | 'deleteSyncedEntity' | 'refreshFromDatabase' | 'getApiErrorMessage'>) {
@@ -9,7 +9,7 @@ export function createSpecialDayActions({ state, setState, setSyncStatus, setSyn
     setSyncStatus('syncing');
     setSyncError(null);
     try {
-      const response = await fetch(url, {
+      const response = await authenticatedRequest(url, {
         method, headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -17,10 +17,6 @@ export function createSpecialDayActions({ state, setState, setSyncStatus, setSyn
       if (!response.ok || result.success !== true || !result.data?.id) {
         const message = getApiErrorMessage(result, 'Não foi possível guardar o dia especial.');
         if (response.status === 409) void refreshFromDatabase();
-        if (response.status === 401) {
-          clearClientSession();
-          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('erp_auth_session_expired', { detail: { message } }));
-        }
         setSyncStatus('error');
         setSyncError(message);
         return { success: false, message };

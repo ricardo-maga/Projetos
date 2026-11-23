@@ -9,11 +9,12 @@ import { useAsyncAction } from '@/hooks/useAsyncAction';
 
 interface NotificationDropdownProps {
   notifications: Notification[];
+  canOpenLink?: (url: string) => boolean;
   markAsRead: (id: string) => void | Promise<unknown>;
   markAllAsRead: () => void | Promise<unknown>;
 }
 
-export default function NotificationDropdown({ notifications, markAsRead, markAllAsRead }: NotificationDropdownProps) {
+export default function NotificationDropdown({ notifications, canOpenLink, markAsRead, markAllAsRead }: NotificationDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { busy, run } = useAsyncAction();
   const ref = useRef<HTMLDivElement>(null);
@@ -91,7 +92,7 @@ export default function NotificationDropdown({ notifications, markAsRead, markAl
                       <span className="text-caption text-text-muted font-mono font-medium">
                         {new Date(notif.createdDate).toLocaleString('pt-PT')}
                       </span>
-                      {notif.linkUrl && (
+                      {notif.linkUrl && (!canOpenLink || canOpenLink(notif.linkUrl)) && (
                         <a
                           href={notif.linkUrl}
                           className="text-caption font-bold text-primary-ink hover:text-primary-hover hover:underline flex items-center gap-0.5"

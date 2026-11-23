@@ -7,7 +7,7 @@ import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import Textarea from './ui/Textarea';
 import type { Project, ProjectPriority, ProjectStatus, User } from '../lib/types';
-import { getAuthHeaders, getApiErrorMessage } from '../lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders, getApiErrorMessage } from '../lib/clientAuth';
 import { TASK_STATUS, isMechanicalDesignManager, type DesignRequest, type DesignTask } from '../lib/mechanicalDesign';
 import { hasPermission } from '../lib/permissions';
 
@@ -108,7 +108,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
 
   const load = useCallback(async (targetPage = 1) => {
     try {
-      const response = await fetch(`/api/v1/mechanical-design?page=${targetPage}`, { cache: 'no-store', headers: getAuthHeaders() });
+      const response = await authenticatedRequest(`/api/v1/mechanical-design?page=${targetPage}`, { cache: 'no-store', headers: getAuthHeaders() });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(getApiErrorMessage(result, 'Falha ao carregar pedidos.'));
       setRequests(current => targetPage === 1 ? result.data : [...current, ...result.data.filter((row: DesignRequest) => !current.some(item => item.id === row.id))]);
@@ -124,7 +124,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
   useEffect(() => {
     if (!initialRequestId || requests.some(request => request.id === initialRequestId)) return;
     let cancelled = false;
-    void fetch(`/api/v1/mechanical-design/${initialRequestId}`, { cache: 'no-store', headers: getAuthHeaders() })
+    void authenticatedRequest(`/api/v1/mechanical-design/${initialRequestId}`, { cache: 'no-store', headers: getAuthHeaders() })
       .then(response => response.ok ? response.json() : null)
       .then(result => { if (!cancelled && result?.success) setRequests(current =>
         current.some(request => request.id === initialRequestId) ? current : [result.data, ...current]); })
@@ -146,12 +146,12 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
     if (inFlight.current) return;
     inFlight.current = true; setBusy(true); setError(''); setNotice('');
     try {
-      const response = await fetch(url, { method, headers: getAuthHeaders(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),
+      const response = await authenticatedRequest(url, { method, headers: getAuthHeaders(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),
         body: JSON.stringify(body) });
       const result = await response.json();
       if (!response.ok || !result.success) {
         if (response.status === 409 && selectedId) {
-          const latest = await fetch(`/api/v1/mechanical-design/${selectedId}`, { cache: 'no-store', headers: getAuthHeaders() });
+          const latest = await authenticatedRequest(`/api/v1/mechanical-design/${selectedId}`, { cache: 'no-store', headers: getAuthHeaders() });
           const latestResult = await latest.json().catch(() => null);
           if (latest.ok && latestResult?.success) setRequests(current => [latestResult.data, ...current.filter(request => request.id !== selectedId)]);
         }
@@ -201,7 +201,7 @@ export default function MechanicalDesignSection({ currentUser, users, projects, 
     if (!selected || busy || !window.confirm(`Eliminar o pedido ${selected.title}?`)) return;
     setBusy(true); setError('');
     try {
-      const response = await fetch(`/api/v1/mechanical-design/${selected.id}?version=${selected.version}`, { method: 'DELETE', headers: getAuthHeaders() });
+      const response = await authenticatedRequest(`/api/v1/mechanical-design/${selected.id}?version=${selected.version}`, { method: 'DELETE', headers: getAuthHeaders() });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(getApiErrorMessage(result,'Não foi possível eliminar.'));
       setRequests(current => current.filter(row => row.id !== selected.id)); setSelectedId(null); setTotal(current => Math.max(0,current-1));

@@ -13,6 +13,8 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, success, disabled, id, rows = 4, ...props }, ref) => {
     const generatedId = React.useId();
     const textareaId = id || generatedId;
+    const errorId = textareaId + '-error';
+    const description = [props['aria-describedby'], error && errorId].filter(Boolean).join(' ');
     return (
       <div className="w-full space-y-1.5 text-left">
         {label ? (
@@ -45,10 +47,12 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
               className
             )}
             {...props}
+            aria-invalid={error ? true : props['aria-invalid']}
+            aria-describedby={description || undefined}
           />
         </div>
         {error ? (
-          <p className="text-caption text-error font-medium animate-fade-in">{error}</p>
+          <p id={errorId} className="text-caption text-error font-medium animate-fade-in">{error}</p>
         ) : null}
       </div>
     );

@@ -15,7 +15,7 @@ import TaskDetailsModal, { TaskModalMode } from '@/domains/tasks/ui/TaskDetailsM
 import { hasPermission } from '@/lib/permissions';
 import { isMechanicalDesignManager, type DesignRequest } from '@/lib/mechanicalDesign';
 import type { PresalesRequest } from '@/lib/presales';
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import { currentForecastMonth, forecastMonth, forecastShortMonth } from '@/domains/projects/modules/projectForecast';
 import { M3Button, M3IconButton, M3SegmentedControl } from '@/components/M3';
 import {
@@ -82,7 +82,7 @@ export default function MyFocusSection({
       try {
         const rows: PresalesRequest[] = [];
         for (let page = 1; !cancelled; page += 1) {
-          const response = await fetch(`/api/v1/presales?scope=mine&page=${page}`, { cache: 'no-store', headers: getAuthHeaders() });
+          const response = await authenticatedRequest(`/api/v1/presales?scope=mine&page=${page}`, { cache: 'no-store', headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Falha ao consultar Presales');
           const payload = await response.json();
           if (!payload.success) throw new Error('Falha ao consultar Presales');
@@ -106,7 +106,7 @@ export default function MyFocusSection({
       try {
         const rows: DesignRequest[] = [];
         for (let page = 1; !cancelled; page += 1) {
-          const response = await fetch(`/api/v1/mechanical-design?owner=mine&page=${page}`, { cache: 'no-store', headers: getAuthHeaders() });
+          const response = await authenticatedRequest(`/api/v1/mechanical-design?owner=mine&page=${page}`, { cache: 'no-store', headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Falha ao consultar desenho mecânico');
           const payload = await response.json();
           if (!payload.success) throw new Error('Falha ao consultar desenho mecânico');
