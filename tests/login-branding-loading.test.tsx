@@ -32,7 +32,7 @@ describe('Public login branding and M3 loading', () => {
   it('renders both existing loading branches through one accessible M3 component', () => {
     const page = readFileSync('app/page.tsx', 'utf8');
     for (const id of ['session-check-screen', 'loading-screen']) {
-      expect(page).toContain(`<AppLoadingScreen id="${id}" />`);
+      expect(page).toContain(`<AppLoadingScreen id="${id}"`);
       const html = renderToStaticMarkup(<AppLoadingScreen id={id} />);
       expect(html).toContain(`id="${id}"`);
       expect(html).toContain('role="status"');

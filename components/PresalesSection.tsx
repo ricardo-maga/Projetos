@@ -6,7 +6,7 @@ import { ArrowDown, ArrowUp, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import type { Project, ProjectPriority, User } from '../lib/types';
 import type { PresalesDocument, PresalesRequest, PresalesTask } from '../lib/presales';
 import { CANONICAL_ROLE_IDS, hasPermission, normalizeRoleId } from '../lib/permissions';
-import { getAuthHeaders } from '../lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '../lib/clientAuth';
 import { M3Button, M3Card, M3SectionHeader } from './M3';
 import { Badge } from './ui/Badge';
 import { Input } from './ui/Input';
@@ -73,7 +73,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
 
   const load = useCallback(async (targetPage = 1) => {
     try {
-      const response = await fetch(`/api/v1/presales?page=${targetPage}`, { cache: 'no-store', headers: getAuthHeaders() });
+      const response = await authenticatedRequest(`/api/v1/presales?page=${targetPage}`, { cache: 'no-store', headers: getAuthHeaders() });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'Falha ao consultar Presales.');
       setRequests(current => targetPage === 1 ? result.data : [...current, ...result.data.filter((row: PresalesRequest) =>
@@ -88,7 +88,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
   useEffect(() => {
     if (!initialRequestId || requests.some(request => request.id === initialRequestId)) return;
     let cancelled = false;
-    void fetch(`/api/v1/presales/${initialRequestId}`, { cache: 'no-store', headers: getAuthHeaders() })
+    void authenticatedRequest(`/api/v1/presales/${initialRequestId}`, { cache: 'no-store', headers: getAuthHeaders() })
       .then(response => response.ok ? response.json() : null)
       .then(result => { if (!cancelled && result?.success) setRequests(current =>
         current.some(request => request.id === initialRequestId) ? current : [result.data, ...current]); })
@@ -110,7 +110,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
     if (inFlight.current) return;
     inFlight.current = true; setBusy(true); setError(''); setNotice('');
     try {
-      const response = await fetch('/api/v1/presales', { method: 'POST',
+      const response = await authenticatedRequest('/api/v1/presales', { method: 'POST',
         headers: getAuthHeaders({ 'Idempotency-Key': createKey.current }),
         body: JSON.stringify({ title, ownerId, plannedStartDate: start, plannedEndDate: end,
           requirements, outcome, commercialManagerId: commercialManagerId || null,
@@ -127,12 +127,12 @@ export default function PresalesSection({ currentUser, users, projects, projectP
     if (!selected || inFlight.current) return false;
     inFlight.current = true; setBusy(true); setError(''); setNotice('');
     try {
-      const response = await fetch(`/api/v1/presales/${selected.id}`, { method: 'PATCH', headers: getAuthHeaders(),
+      const response = await authenticatedRequest(`/api/v1/presales/${selected.id}`, { method: 'PATCH', headers: getAuthHeaders(),
         body: JSON.stringify({ action, version: selected.version, ...payload }) });
       const result = await response.json();
       if (!response.ok || !result.success) {
         if (response.status === 409) {
-          const fresh = await fetch(`/api/v1/presales/${selected.id}`, { cache: 'no-store', headers: getAuthHeaders() });
+          const fresh = await authenticatedRequest(`/api/v1/presales/${selected.id}`, { cache: 'no-store', headers: getAuthHeaders() });
           const latest = await fresh.json().catch(() => null);
           if (fresh.ok && latest?.success) setRequests(current => [latest.data, ...current.filter(row => row.id !== selected.id)]);
         }
@@ -154,7 +154,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
     if (!selected || busy || !window.confirm(`Eliminar o processo ${selected.processNumber || selected.title}?`)) return;
     setBusy(true); setError('');
     try {
-      const response = await fetch(`/api/v1/presales/${selected.id}?version=${selected.version}`, { method: 'DELETE', headers: getAuthHeaders() });
+      const response = await authenticatedRequest(`/api/v1/presales/${selected.id}?version=${selected.version}`, { method: 'DELETE', headers: getAuthHeaders() });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível eliminar.');
       setRequests(current => current.filter(row => row.id !== selected.id)); setSelectedId(null); setTotal(current => Math.max(0,current-1));
@@ -179,7 +179,7 @@ export default function PresalesSection({ currentUser, users, projects, projectP
     try {
       const form = new FormData(); form.append('file',file);
       const headers = getAuthHeaders(); delete headers['Content-Type'];
-      const response = await fetch(`/api/v1/presales/${selected.id}/assets`, { method:'POST', headers, body:form });
+      const response = await authenticatedRequest(`/api/v1/presales/${selected.id}/assets`, { method:'POST', headers, body:form });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'Não foi possível guardar a imagem.');
       setDocument(current => ({ ...current, blocks: [...current.blocks,

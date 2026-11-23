@@ -127,7 +127,7 @@ describe('FASE 66-B-HARDENING-7 — Canonical RBAC Migration & Cutover Verificat
     const filePath = join(process.cwd(), 'domains/administration/ui/UserSection.tsx');
     const content = readFileSync(filePath, 'utf-8');
     expect(content).toContain('setRbacRoles((result.roles || []).filter((role: any) => role.is_active))');
-    expect(content).toContain("fetch('/api/rbac/catalog'");
+    expect(content).toContain("authenticatedRequest('/api/rbac/catalog'");
     expect(content).not.toContain('CANONICAL_ROLES_LIST');
   });
 

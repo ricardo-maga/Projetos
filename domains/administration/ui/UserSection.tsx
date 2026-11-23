@@ -1,4 +1,5 @@
 'use client';
+import { authenticatedRequest } from '@/lib/clientAuth';
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Users, UserCheck, Edit2, ShieldCheck } from 'lucide-react';
@@ -82,7 +83,7 @@ export default function UserSection({
 
   useEffect(() => {
     if (!hasPermission(currentUser, 'roles_read' as any)) return;
-    fetch('/api/rbac/catalog', {
+    authenticatedRequest('/api/rbac/catalog', {
       credentials: 'same-origin',
     }).then(async response => {
       const result = await response.json();
@@ -115,7 +116,7 @@ export default function UserSection({
   };
 
   const assignUserRoles = async (targetUserId: string, roleIds: string[]) => {
-    const response = await fetch(`/api/rbac/users/${targetUserId}/roles`, {
+    const response = await authenticatedRequest(`/api/rbac/users/${targetUserId}/roles`, {
       method: 'PUT',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },

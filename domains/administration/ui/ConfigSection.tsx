@@ -46,7 +46,7 @@ import { M3SectionHeader, M3Button } from '@/components/M3';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import { hasPermission } from '@/lib/permissions';
 import { formatHoursToHHMM, parseTimeToHours } from '@/lib/utils';
 
@@ -268,7 +268,7 @@ export default function ConfigSection({
     setImportingCsv(true);
     setCsvResult(null);
     try {
-      const response = await fetch('/api/v1/projects/import', {
+      const response = await authenticatedRequest('/api/v1/projects/import', {
         method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ csv: csvText.trim() }),
       });
       const result = await response.json();

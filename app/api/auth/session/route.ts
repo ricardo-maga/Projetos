@@ -24,7 +24,7 @@ async function getAuthenticatedUserSession(req?: NextRequest) {
       permissions: user.permissions,
     };
   } catch (error) {
-    if (error instanceof AuthError && error.statusCode >= 500) throw error;
+    if (error instanceof AuthError && (error.statusCode === 403 || error.statusCode >= 500)) throw error;
     return null;
   }
 }

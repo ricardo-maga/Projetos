@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getAuthHeaders } from '../lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '../lib/clientAuth';
 import { M3Button, M3Card, M3SectionHeader } from './M3';
 import { Input } from './ui/Input';
 
@@ -12,16 +12,16 @@ export default function PresalesTemplatesSettings({ canWrite }: { canWrite:boole
   const [origins,setOrigins] = useState<Origin[]>([]);
   const [busy,setBusy] = useState(false);
   const [message,setMessage] = useState('');
-  useEffect(() => { void fetch('/api/v1/presales/templates',{headers:getAuthHeaders(),cache:'no-store'})
+  useEffect(() => { void authenticatedRequest('/api/v1/presales/templates',{headers:getAuthHeaders(),cache:'no-store'})
     .then(response => response.json()).then(result => result.success ? setTemplates(result.data) : setMessage(result.message))
     .catch(() => setMessage('Não foi possível carregar templates.')); },[]);
-  useEffect(() => { void fetch('/api/v1/presales/origins',{headers:getAuthHeaders(),cache:'no-store'})
+  useEffect(() => { void authenticatedRequest('/api/v1/presales/origins',{headers:getAuthHeaders(),cache:'no-store'})
     .then(response => response.json()).then(result => result.success ? setOrigins(result.data) : setMessage(result.message))
     .catch(() => setMessage('Não foi possível carregar origens.')); },[]);
   const save = async (template:Template) => {
     setBusy(true); setMessage('');
     try {
-      const response = await fetch('/api/v1/presales/templates',{method:'PATCH',headers:getAuthHeaders(),body:JSON.stringify(template)});
+      const response = await authenticatedRequest('/api/v1/presales/templates',{method:'PATCH',headers:getAuthHeaders(),body:JSON.stringify(template)});
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'Erro de gravação.');
       setTemplates(current => current.map(item => item.code===template.code ? {...item,version:result.data.version} : item));
@@ -32,7 +32,7 @@ export default function PresalesTemplatesSettings({ canWrite }: { canWrite:boole
   const saveOrigin = async (origin:Origin) => {
     setBusy(true); setMessage('');
     try {
-      const response = await fetch('/api/v1/presales/origins',{method:'PATCH',headers:getAuthHeaders(),body:JSON.stringify(origin)});
+      const response = await authenticatedRequest('/api/v1/presales/origins',{method:'PATCH',headers:getAuthHeaders(),body:JSON.stringify(origin)});
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || 'Erro de gravação.');
       setMessage('Origem guardada.');

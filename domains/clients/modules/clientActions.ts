@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { Client, ERPState } from '@/lib/types';
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { ClientRequestError, apiRequestError, authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 
 type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
@@ -56,7 +56,7 @@ export function createClientActions({
         ...getAuthHeaders(),
         'Content-Type': 'application/json',
       };
-      const res = await fetch('/api/v1/clients', {
+      const res = await authenticatedRequest('/api/v1/clients', {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
@@ -92,19 +92,14 @@ export function createClientActions({
         setSyncStatus('synced');
         return newClient;
       } else {
-        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a criação do cliente (${res.status}).`);
-        console.error('Erro na criação do cliente:', errMsg);
-        setSyncStatus('error');
-        setSyncError(errMsg);
-        alert(`Erro ao criar cliente: ${errMsg}`);
-        throw new Error(errMsg);
+        throw apiRequestError(res, result, `A base de dados rejeitou a criação do cliente (${res.status}).`);
       }
     } catch (err: any) {
       console.error('Exceção na criação do cliente:', err);
       const errMsg = err?.message || 'Falha de comunicação com a API de clientes.';
-      setSyncStatus('error');
-      setSyncError(errMsg);
-      alert(`Erro de comunicação: ${errMsg}`);
+      const invalidFields = err instanceof ClientRequestError && Object.keys(err.fieldErrors).length > 0;
+      setSyncStatus(invalidFields ? 'idle' : 'error');
+      setSyncError(invalidFields ? null : errMsg);
       throw err;
     }
   };
@@ -161,7 +156,7 @@ export function createClientActions({
         ...getAuthHeaders(),
         'Content-Type': 'application/json',
       };
-      const res = await fetch(`/api/v1/clients/${id}`, {
+      const res = await authenticatedRequest(`/api/v1/clients/${id}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify(payload),
@@ -197,19 +192,14 @@ export function createClientActions({
         setSyncStatus('synced');
         return updatedClient;
       } else {
-        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a alteração do cliente (${res.status}).`);
-        console.error('Erro na atualização do cliente:', errMsg);
-        setSyncStatus('error');
-        setSyncError(errMsg);
-        alert(`Erro ao atualizar cliente: ${errMsg}`);
-        throw new Error(errMsg);
+        throw apiRequestError(res, result, `A base de dados rejeitou a alteração do cliente (${res.status}).`);
       }
     } catch (err: any) {
       console.error('Exceção na atualização do cliente:', err);
       const errMsg = err?.message || 'Falha de comunicação com a API de clientes.';
-      setSyncStatus('error');
-      setSyncError(errMsg);
-      alert(`Erro de comunicação: ${errMsg}`);
+      const invalidFields = err instanceof ClientRequestError && Object.keys(err.fieldErrors).length > 0;
+      setSyncStatus(invalidFields ? 'idle' : 'error');
+      setSyncError(invalidFields ? null : errMsg);
       throw err;
     }
   };
@@ -228,7 +218,7 @@ export function createClientActions({
 
       const existingClient = state?.clients?.find(c => matchId(c.id, id));
       const headers = getAuthHeaders();
-      const res = await fetch(`/api/v1/clients/${id}`, {
+      const res = await authenticatedRequest(`/api/v1/clients/${id}`, {
         method: 'DELETE',
         headers,
       });
@@ -248,19 +238,14 @@ export function createClientActions({
         setSyncStatus('synced');
         return true;
       } else {
-        const errMsg = getApiErrorMessage(result, `A base de dados rejeitou a eliminação do cliente (${res.status}).`);
-        console.error('Erro ao eliminar cliente:', errMsg);
-        setSyncStatus('error');
-        setSyncError(errMsg);
-        alert(`Erro ao eliminar cliente: ${errMsg}`);
-        throw new Error(errMsg);
+        throw apiRequestError(res, result, `A base de dados rejeitou a eliminação do cliente (${res.status}).`);
       }
     } catch (err: any) {
       console.error('Exceção ao eliminar cliente:', err);
       const errMsg = err?.message || 'Falha de comunicação com a API de clientes.';
-      setSyncStatus('error');
-      setSyncError(errMsg);
-      alert(`Erro de comunicação: ${errMsg}`);
+      const invalidFields = err instanceof ClientRequestError && Object.keys(err.fieldErrors).length > 0;
+      setSyncStatus(invalidFields ? 'idle' : 'error');
+      setSyncError(invalidFields ? null : errMsg);
       throw err;
     }
   };

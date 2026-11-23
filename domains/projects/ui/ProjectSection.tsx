@@ -1,4 +1,8 @@
 'use client';
+import ListEmptyState from '@/components/ui/ListEmptyState';
+import { useFeedback, useFormDraft } from '@/components/ApplicationFeedback';
+import { useFieldErrors } from '@/hooks/useFieldErrors';
+import { useSlowRead } from '@/hooks/useSlowRead';
 
 import { buildPlannedTaskCopy } from '@/domains/tasks/modules/taskCopy';
 import { M3FilterChip, M3SectionHeader, M3SegmentedControl } from '@/components/M3';
@@ -34,7 +38,7 @@ import Textarea from '@/components/ui/Textarea';
 
 import { hasPermission } from '@/lib/permissions';
 import { stringToUUID } from '@/lib/supabaseSync';
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import { normalizeTaskFromApiResponse } from '@/domains/tasks/modules/taskOperations';
 import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatHoursToHHMM, formatToOnlyHours, parseTimeToHours, getProjectStatusStyle, getTaskStatusStyle } from '@/lib/utils';
 import { configuredRoleIds, userHasAnyRole } from '@/lib/roleAssociations';
@@ -47,11 +51,10 @@ export function getProjectTaskAnalysisMinutes(task: Pick<Task, 'estimatedHours' 
   const perTechnician = actual > 0 ? actual : estimated;
   return { estimated, actual, perTechnician, workload: perTechnician * (task.assigneeIds?.length || 0) };
 }
-const projectPageCache = new Map<string, ProjectPageCacheEntry>();
 const PROJECT_CACHE_MS = 60_000;
 const PROJECT_CACHE_LIMIT = 30;
 
-function cacheProjectPage(key: string, entry: ProjectPageCacheEntry) {
+function cacheProjectPage(projectPageCache: Map<string, ProjectPageCacheEntry>, key: string, entry: ProjectPageCacheEntry) {
   projectPageCache.delete(key);
   projectPageCache.set(key, entry);
   if (projectPageCache.size > PROJECT_CACHE_LIMIT) {
@@ -218,6 +221,8 @@ interface ProjectSectionProps {
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
   defaultTasks?: DefaultTask[];
+  defaultTasksFeedback?: React.ReactNode;
+  materialsFeedback?: React.ReactNode;
   appConfig?: any;
   currentUser?: any;
   userGroups?: any[];
@@ -263,6 +268,8 @@ export default function ProjectSection({
   selectedProjectId,
   setSelectedProjectId,
   defaultTasks = [],
+  defaultTasksFeedback,
+  materialsFeedback,
   appConfig,
   currentUser,
   userGroups = [],
@@ -415,6 +422,53 @@ export default function ProjectSection({
 
   // Retain existing document metadata when saving; document controls are hidden.
   const [formDocs, setFormDocs] = useState<string[]>([]);
+
+  const feedback = useFeedback();
+  const validation = useFieldErrors();
+  const [formError, setFormError] = useState('');
+  const [editingVersion, setEditingVersion] = useState<number>();
+  const draftValues = {
+    formTitle, formDesc, formClient, clientSearchQuery, formCategory, formCategories, formStatus, formProjManager,
+    formFieldManager, formSales, formStartDate, formDeliveryDate, formEstimatedDate, formScheduledDate, formForecastDate, formInstallNo,
+    formSFNo, formPriority, formBudget, formDemo, formTeams, formPartners, formClientContactName, formClientContactEmail, formClientContactPhone, formDocs, selectedDefaultTaskIds,
+  };
+  const projectConfirmed = useRef(false);
+  const finishProjectDraft = useFormDraft('project', isEditing && !projectConfirmed.current ? {
+    kind: 'project', recordId: editingId, version: editingVersion, values: draftValues,
+  } : null, draft => {
+    if (!canWriteProjects) return;
+    projectConfirmed.current = false;
+    setEditingId(draft.recordId);
+    setEditingVersion(draft.version);
+    setIsEditing(true);
+    setFormTitle(draft.values.formTitle);
+    setFormDesc(draft.values.formDesc);
+    setFormClient(draft.values.formClient);
+    setClientSearchQuery(draft.values.clientSearchQuery);
+    setFormCategory(draft.values.formCategory);
+    setFormCategories(draft.values.formCategories);
+    setFormStatus(draft.values.formStatus);
+    setFormProjManager(draft.values.formProjManager);
+    setFormFieldManager(draft.values.formFieldManager);
+    setFormSales(draft.values.formSales);
+    setFormStartDate(draft.values.formStartDate);
+    setFormDeliveryDate(draft.values.formDeliveryDate);
+    setFormEstimatedDate(draft.values.formEstimatedDate);
+    setFormScheduledDate(draft.values.formScheduledDate);
+    setFormForecastDate(draft.values.formForecastDate);
+    setFormInstallNo(draft.values.formInstallNo);
+    setFormSFNo(draft.values.formSFNo);
+    setFormPriority(draft.values.formPriority);
+    setFormBudget(draft.values.formBudget);
+    setFormDemo(draft.values.formDemo);
+    setFormTeams(draft.values.formTeams);
+    setFormPartners(draft.values.formPartners);
+    setFormClientContactName(draft.values.formClientContactName);
+    setFormClientContactEmail(draft.values.formClientContactEmail);
+    setFormClientContactPhone(draft.values.formClientContactPhone);
+    setFormDocs(draft.values.formDocs);
+    setSelectedDefaultTaskIds(draft.values.selectedDefaultTaskIds);
+  });
 
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -630,6 +684,10 @@ export default function ProjectSection({
 
   // Open Form
   const openForm = (proj: Project | null) => {
+    validation.clear();
+    setFormError('');
+    projectConfirmed.current = false;
+    setEditingVersion(proj?.version);
     if (proj) {
       if (!canWriteProjects) {
         alert('Não tem permissão para editar projetos.');
@@ -715,128 +773,138 @@ export default function ProjectSection({
   // Submit Form
   const saveProjectForm = async (duplicatesConfirmed = false) => {
     await runProjectAction(async () => {
-    if (!canWriteProjects) {
-      alert('Não tem permissão para criar ou editar projetos.');
-      return;
-    }
-
-    if (!editingId && (!formTitle.trim() || !clientSearchQuery.trim() || !formProjManager.trim() || formCategories.length === 0)) {
-      alert('Preencha o cliente, o nome do projeto, o Project Leader e selecione pelo menos uma categoria.');
-      return;
-    }
-
-    const duplicateMessages: string[] = [];
-    for (const { field, value, label } of [
-      { field: 'ip', value: formInstallNo.trim(), label: 'Nº de IP' },
-      { field: 'sf', value: formSFNo.trim(), label: 'Oportunidade SF' },
-    ]) {
-      if (!value || duplicatesConfirmed) continue;
-      try {
-        const params = new URLSearchParams({ field, value });
-        if (editingId) params.set('excludeId', editingId);
-        const response = await fetch(`/api/v1/projects/ip-duplicate?${params}`, { headers: getAuthHeaders() });
-        if (!response.ok) throw new Error(`Não foi possível verificar ${label} na base de dados.`);
-        const result = await response.json();
-        if (result.duplicate) {
-          duplicateMessages.push(`${label} ${value} já está associado ao projeto "${result.duplicate.title}" do cliente "${result.duplicate.clientName}".`);
-        }
-      } catch (error) {
-        alert(error instanceof Error ? error.message : `Não foi possível verificar ${label}.`);
+      validation.clear();
+      setFormError('');
+      if (feedback?.writesBlocked) return;
+      if (!canWriteProjects) {
+        alert('Não tem permissão para criar ou editar projetos.');
         return;
       }
-    }
-    if (duplicateMessages.length > 0) {
-      askConfirmation('Identificador já existente', `${duplicateMessages.join(' ')} Deseja confirmar a gravação?`, () => saveProjectForm(true));
-      return;
-    }
 
-    let finalClientId = formClient;
-    const trimmedQuery = clientSearchQuery.trim();
+      const fields: Record<string, string> = {};
+      if (!formTitle.trim()) fields.title = 'Introduza o nome do projeto.';
+      if (!clientSearchQuery.trim()) fields.clientId = 'Introduza o nome do cliente.';
+      if (!editingId && !formProjManager.trim()) fields.projectManagerId = 'Selecione o Project Leader.';
+      if (!editingId && !formCategories.length) fields.categoryIds = 'Selecione pelo menos uma categoria.';
+      if (Object.keys(fields).length) { validation.show(fields); return; }
 
-    if (trimmedQuery) {
-      // 1. Check if the currently set formClient is valid in our client list
-      const clientByFormId = (clients || []).find(c => c && !c.deleted && matchId(c.id, formClient));
-
-      // 2. Search for any client matching by name, shortName, or concatenated format
-      const existingByName = (clients || []).find(c =>
-        c && !c.deleted && (
-          c.clientName.toLowerCase().trim() === trimmedQuery.toLowerCase() ||
-          (c.shortName && c.shortName.toLowerCase().trim() === trimmedQuery.toLowerCase()) ||
-          `${c.clientName} (${c.shortName})`.toLowerCase().trim() === trimmedQuery.toLowerCase() ||
-          (c.shortName ? `${c.clientName} (${c.shortName})` : c.clientName).toLowerCase().trim() === trimmedQuery.toLowerCase()
-        )
-      );
-
-      if (clientByFormId && (!existingByName || existingByName.id === clientByFormId.id)) {
-        finalClientId = clientByFormId.id;
-      } else if (existingByName) {
-        finalClientId = existingByName.id;
-      } else if (!formClient || !(clients || []).some(c => c && !c.deleted && matchId(c.id, formClient))) {
-        // Create new client dynamically since name was typed but doesn't exist
-        let clientNameInput = trimmedQuery;
-        let shortNameInput = trimmedQuery;
-        if (trimmedQuery.includes('(') && trimmedQuery.endsWith(')')) {
-          const parts = trimmedQuery.split('(');
-          clientNameInput = parts[0].trim();
-          shortNameInput = parts[1].replace(')', '').trim();
-        }
-
-        const newClient = await addClient({
-          clientName: clientNameInput,
-          shortName: shortNameInput,
-          location: '',
-          taxId: '',
-          contactPerson: '',
-          contactEmail: '',
-          contactPhone: ''
-        });
-
-        if (newClient && newClient.id) {
-          finalClientId = newClient.id;
+      try {
+      const duplicateMessages: string[] = [];
+      for (const { field, value, label } of [
+        { field: 'ip', value: formInstallNo.trim(), label: 'Nº de IP' },
+        { field: 'sf', value: formSFNo.trim(), label: 'Oportunidade SF' },
+      ]) {
+        if (!value || duplicatesConfirmed) continue;
+        try {
+          const params = new URLSearchParams({ field, value });
+          if (editingId) params.set('excludeId', editingId);
+          const response = await authenticatedRequest(`/api/v1/projects/ip-duplicate?${params}`, { headers: getAuthHeaders() });
+          if (!response.ok) throw new Error(`Não foi possível verificar ${label} na base de dados.`);
+          const result = await response.json();
+          if (result.duplicate) {
+            duplicateMessages.push(`${label} ${value} já está associado ao projeto "${result.duplicate.title}" do cliente "${result.duplicate.clientName}".`);
+          }
+        } catch (error) {
+          setFormError(error instanceof Error ? error.message : 'Não foi possível verificar o identificador.');
+          return;
         }
       }
-    } else {
-      finalClientId = '';
-    }
+      if (duplicateMessages.length > 0) {
+        askConfirmation('Identificador já existente', `${duplicateMessages.join(' ')} Deseja confirmar a gravação?`, () => saveProjectForm(true));
+        return;
+      }
 
-    const finalCategoryIds = formCategories.length > 0 ? formCategories : (formCategory ? [formCategory] : []);
-    const finalCategory = finalCategoryIds[0] || formCategory || '';
+      let finalClientId = formClient;
+      const trimmedQuery = clientSearchQuery.trim();
 
-    const payload = {
-      title: formTitle,
-      description: formDesc,
-      clientId: finalClientId,
-      categoryId: finalCategory,
-      categoryIds: finalCategoryIds,
-      statusId: formStatus,
-      projectManagerId: formProjManager,
-      fieldManagerId: formFieldManager,
-      salesRepId: formSales,
-      startDate: formStartDate,
-      deliveryDate: formDeliveryDate,
-      estimatedDate: formEstimatedDate,
-      scheduledDate: formScheduledDate,
-      forecastDate: formForecastDate ? normalizeForecast(formForecastDate) : '',
-      installProjectNo: formInstallNo,
-      sfOpportunityNo: formSFNo,
-      priorityId: formPriority,
-      budgetValue: Number(formBudget),
-      demo: Boolean(formDemo),
-      teamsInvolvedIds: formTeams,
-      partnersIds: formPartners,
-      documents: formDocs,
-      clientContactName: formClientContactName,
-      clientContactEmail: formClientContactEmail,
-      clientContactPhone: formClientContactPhone,
-      createdById: currentUser?.id || '11111111-1111-1111-1111-111111111111',
-    };
+      if (trimmedQuery) {
+        // 1. Check if the currently set formClient is valid in our client list
+        const clientByFormId = (clients || []).find(c => c && !c.deleted && matchId(c.id, formClient));
 
-    try {
-      if (editingId) {
-        await updateProject(editingId, payload);
+        // 2. Search for any client matching by name, shortName, or concatenated format
+        const existingByName = (clients || []).find(c =>
+          c && !c.deleted && (
+            c.clientName.toLowerCase().trim() === trimmedQuery.toLowerCase() ||
+            (c.shortName && c.shortName.toLowerCase().trim() === trimmedQuery.toLowerCase()) ||
+            `${c.clientName} (${c.shortName})`.toLowerCase().trim() === trimmedQuery.toLowerCase() ||
+            (c.shortName ? `${c.clientName} (${c.shortName})` : c.clientName).toLowerCase().trim() === trimmedQuery.toLowerCase()
+          )
+        );
+
+        if (clientByFormId && (!existingByName || existingByName.id === clientByFormId.id)) {
+          finalClientId = clientByFormId.id;
+        } else if (existingByName) {
+          finalClientId = existingByName.id;
+        } else if (!formClient || !(clients || []).some(c => c && !c.deleted && matchId(c.id, formClient))) {
+          // Create new client dynamically since name was typed but doesn't exist
+          let clientNameInput = trimmedQuery;
+          let shortNameInput = trimmedQuery;
+          if (trimmedQuery.includes('(') && trimmedQuery.endsWith(')')) {
+            const parts = trimmedQuery.split('(');
+            clientNameInput = parts[0].trim();
+            shortNameInput = parts[1].replace(')', '').trim();
+          }
+
+          const newClient = await addClient({
+            clientName: clientNameInput,
+            shortName: shortNameInput,
+            location: '',
+            taxId: '',
+            contactPerson: '',
+            contactEmail: '',
+            contactPhone: ''
+          });
+
+          if (newClient && newClient.id) {
+            finalClientId = newClient.id;
+          }
+        }
+      } else {
+        finalClientId = '';
+      }
+
+      const finalCategoryIds = formCategories.length > 0 ? formCategories : (formCategory ? [formCategory] : []);
+      const finalCategory = finalCategoryIds[0] || formCategory || '';
+
+      const payload = {
+        title: formTitle,
+        description: formDesc,
+        clientId: finalClientId,
+        categoryId: finalCategory,
+        categoryIds: finalCategoryIds,
+        statusId: formStatus,
+        projectManagerId: formProjManager,
+        fieldManagerId: formFieldManager,
+        salesRepId: formSales,
+        startDate: formStartDate,
+        deliveryDate: formDeliveryDate,
+        estimatedDate: formEstimatedDate,
+        scheduledDate: formScheduledDate,
+        forecastDate: formForecastDate ? normalizeForecast(formForecastDate) : '',
+        installProjectNo: formInstallNo,
+        sfOpportunityNo: formSFNo,
+        priorityId: formPriority,
+        budgetValue: Number(formBudget),
+        demo: Boolean(formDemo),
+        teamsInvolvedIds: formTeams,
+        partnersIds: formPartners,
+        documents: formDocs,
+        clientContactName: formClientContactName,
+        clientContactEmail: formClientContactEmail,
+        clientContactPhone: formClientContactPhone,
+        createdById: currentUser?.id || '11111111-1111-1111-1111-111111111111',
+      };
+
+        if (editingId) {
+        const result = await updateProject(editingId, payload);
+        if (result) feedback?.notify({ message: 'Projeto atualizado.', target: { kind: 'project', id: editingId } });
       } else {
         const newProj = await addProject(payload);
         if (newProj && newProj.id) {
+          projectConfirmed.current = true;
+          finishProjectDraft();
+          setIsEditing(false);
+          feedback?.notify({ message: 'Projeto criado.', target: { kind: 'project', id: newProj.id } });
           const tasksToCreate: any[] = [];
           selectedDefaultTaskIds.forEach(dtId => {
             const dt = defaultTasks.find(item => item.id === dtId);
@@ -860,21 +928,27 @@ export default function ProjectSection({
             }
           });
 
-          if (tasksToCreate.length > 0) {
-            if (addTasks) {
-              await addTasks(tasksToCreate);
-            } else {
-              for (const task of tasksToCreate) await addTask(task);
+          try {
+            if (tasksToCreate.length > 0) {
+              if (addTasks) await addTasks(tasksToCreate);
+              else for (const task of tasksToCreate) await addTask(task);
             }
+          } catch (error) {
+            console.warn('[PROJECT TASK TEMPLATES]', error);
+            feedback?.notify({
+              message: 'Projeto criado. Não foi possível confirmar todas as tarefas modelo.',
+              target: { kind: 'project', id: newProj.id },
+            });
           }
           setSelectedProjectId(newProj.id);
         }
       }
       setIsEditing(false);
       setRefreshTrigger(prev => prev + 1);
-    } catch (err) {
-      console.error('[PROJECT FORM ERROR]', err);
-      // Keep form open for correction on failure
+    } catch (error) {
+      if (!validation.showApiError(error)) {
+        setFormError(error instanceof Error ? error.message : 'Não foi possível guardar o projeto.');
+      }
     }
     });
   };
@@ -1005,12 +1079,15 @@ export default function ProjectSection({
   const lastRefreshTrigger = useRef(refreshTrigger);
   const lastProjectsSnapshot = useRef(projects);
   const [serverSelectedProj, setServerSelectedProj] = useState<Project | null>(null);
+  const [detailFailure, setDetailFailure] = useState<{ id: string; status: 'missing' | 'error' } | null>(null);
   const [serverTasks, setServerTasks] = useState<Task[]>([]);
   const [loadedProjectIdForTasks, setLoadedProjectIdForTasks] = useState<string | null>(null);
   const [isServerTasksLoading, setIsServerTasksLoading] = useState(false);
   const projectsQueryKey = JSON.stringify([currentUser?.id || '', projectCurrentPage, projectPageSize, debouncedSearch, filterCategory, filterStatus, filterManager, filterStatusGroup]);
+  const projectPageCache = useRef(new Map<string, ProjectPageCacheEntry>()).current;
   const cachedProjectsPage = projectPageCache.get(projectsQueryKey);
   const projectsListPending = search !== debouncedSearch || isLoadingProjects || settledProjectsKey !== projectsQueryKey;
+  const projectsTakingLonger = useSlowRead(projectsListPending);
 
   useEffect(() => {
     if (selectedProjectId) return;
@@ -1045,13 +1122,13 @@ export default function ProjectSection({
           managerId: filterManager,
           statusGroup: filterStatusGroup
         });
-        const res = await fetch(`/api/v1/projects?${query.toString()}`, { headers: getAuthHeaders(), signal: controller.signal });
+        const res = await authenticatedRequest(`/api/v1/projects?${query.toString()}`, { headers: getAuthHeaders(), signal: controller.signal });
         const result = await res.json();
         if (!res.ok || !result.success || !Array.isArray(result.data)) {
           throw new Error(result.message || 'Não foi possível carregar os projetos.');
         }
         if (isMounted) {
-          cacheProjectPage(projectsQueryKey, { data: result.data, total: result.total ?? result.count ?? 0, savedAt: Date.now() });
+          cacheProjectPage(projectPageCache, projectsQueryKey, { data: result.data, total: result.total ?? result.count ?? 0, savedAt: Date.now() });
           setServerProjects(result.data);
           setTotalServerProjects(result.total ?? result.count ?? 0);
         }
@@ -1082,25 +1159,35 @@ export default function ProjectSection({
       return;
     }
 
+    const controller = new AbortController();
     setServerTasks([]);
     setLoadedProjectIdForTasks(null);
     setIsServerTasksLoading(true);
+    setDetailFailure(null);
 
     const fetchDetails = async () => {
       try {
-        const res = await fetch(`/api/v1/projects/${selectedProjectId}`, { headers: getAuthHeaders() });
-        if (res.ok) {
-          const result = await res.json();
-          if (result.success && isMounted) setServerSelectedProj(result.data);
+        const res = await authenticatedRequest(`/api/v1/projects/${selectedProjectId}`, { headers: getAuthHeaders(), signal: controller.signal });
+        if (res.status === 403 || res.status === 404) {
+          if (isMounted) setDetailFailure({ id: selectedProjectId, status: 'missing' });
+          return;
         }
-      } catch (err) {}
+        const result = await res.json();
+        if (!res.ok || !result.success || !result.data) throw new Error('Não foi possível obter o projeto.');
+        if (isMounted) setServerSelectedProj(result.data);
+      } catch (error) {
+        if (isMounted) {
+          console.warn('[PROJECT DETAIL LOAD]', error);
+          setDetailFailure({ id: selectedProjectId, status: 'error' });
+        }
+      }
 
       try {
         const rawList: any[] = [];
         let page = 1;
         let totalPages = 1;
         do {
-          const taskRes = await fetch(`/api/v1/tasks?projectId=${selectedProjectId}&pageSize=100&page=${page}`, { headers: getAuthHeaders() });
+          const taskRes = await authenticatedRequest(`/api/v1/tasks?projectId=${selectedProjectId}&pageSize=100&page=${page}`, { headers: getAuthHeaders(), signal: controller.signal });
           const taskResult = await taskRes.json();
           if (!taskRes.ok || !taskResult.success || !Array.isArray(taskResult.data)) {
             throw new Error(taskResult.message || 'Não foi possível carregar as tarefas do projeto.');
@@ -1122,7 +1209,7 @@ export default function ProjectSection({
       }
     };
     fetchDetails();
-    return () => { isMounted = false; };
+    return () => { isMounted = false; controller.abort(); };
   }, [selectedProjectId, refreshTrigger]);
 
   // Fallback client-side filtering matching server logic
@@ -1192,9 +1279,12 @@ export default function ProjectSection({
   const endProjectIndex = startProjectIndex + paginatedProjects.length;
 
   // Prefer the updated parent record over an older detail fetch.
-  const canonicalSelectedProj = projects.find(p => p.id === selectedProjectId);
-  const selectedProj = canonicalSelectedProj && (!serverSelectedProj || (canonicalSelectedProj.version ?? 0) >= (serverSelectedProj.version ?? 0))
-    ? canonicalSelectedProj : serverSelectedProj || activeProjects.find(p => p.id === selectedProjectId);
+  const canonicalSelectedProj = projects.find(p => p.id === selectedProjectId && !p.deleted);
+  const serverDetail = serverSelectedProj?.id === selectedProjectId && !serverSelectedProj?.deleted ? serverSelectedProj : null;
+  const selectedFailure = detailFailure?.id === selectedProjectId ? detailFailure.status : null;
+  const selectedProj = selectedFailure === 'missing' ? undefined :
+    canonicalSelectedProj && (!serverDetail || (canonicalSelectedProj.version ?? 0) >= (serverDetail.version ?? 0))
+      ? canonicalSelectedProj : serverDetail || activeProjects.find(p => p.id === selectedProjectId && !p.deleted);
   const projTasks = React.useMemo(() => {
     if (!selectedProjectId) return [];
     if (loadedProjectIdForTasks === selectedProjectId) {
@@ -1594,7 +1684,18 @@ export default function ProjectSection({
     <div className="m3-projects space-y-6">
 
       {/* 1. If viewing detail & NOT editing */}
-      {selectedProj && !isEditing ? (
+      {selectedProjectId && !selectedProj && !isEditing ? (
+        <div className="space-y-3 rounded-card border border-border bg-surface p-8 text-center">
+          <h2 className="text-heading-sm font-semibold">{selectedFailure ? 'Projeto indisponível' : 'A carregar projeto…'}</h2>
+          {selectedFailure && <p role="alert" className="text-body-sm text-text-secondary">
+            {selectedFailure === 'missing' ? 'O projeto já não está disponível para si. Se precisar de acesso, contacte um administrador.' : 'Não foi possível obter os dados do projeto.'}
+          </p>}
+          <div className="flex flex-wrap justify-center gap-2">
+            {selectedFailure === 'error' && <Button type="button" onClick={() => setRefreshTrigger(value => value + 1)}>Tentar novamente</Button>}
+            <Button type="button" variant="secondary" onClick={() => setSelectedProjectId(null)}>Voltar aos projetos</Button>
+          </div>
+        </div>
+      ) : selectedProj && !isEditing ? (
         <Card className="bg-surface rounded-card border border-border shadow-raised overflow-hidden animate-fade-in">
 
           {/* Header Action Row */}
@@ -1757,7 +1858,7 @@ export default function ProjectSection({
                 onClick={() => setActiveDetailTab('material')}
                 className="shrink-0"
               >
-                <Package className="w-4 h-4 shrink-0" /> Material ({projMaterials.length})
+                <Package className="w-4 h-4 shrink-0" /> Material{!materialsFeedback && ` (${projMaterials.length})`}
                 {hasMissingMaterials && (
                   <span className="w-2.5 h-2.5 rounded-full bg-error animate-ping inline-block shrink-0" />
                 )}
@@ -2681,7 +2782,7 @@ export default function ProjectSection({
                     Selecione um ou mais modelos de engenharia para clonar e adicionar de imediato a este projeto.
                   </p>
 
-                  {defaultTasks && defaultTasks.length > 0 ? (
+                  {defaultTasksFeedback || (defaultTasks && defaultTasks.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto pr-1">
                       {defaultTasks.map(dt => {
                         const isChecked = selectedImportModelTaskIds.includes(dt.id);
@@ -2721,7 +2822,7 @@ export default function ProjectSection({
                     </div>
                   ) : (
                     <p className="text-body-sm text-text-muted italic">Não existem tarefas modelo configuradas.</p>
-                  )}
+                  ))}
 
                   <div className="flex justify-end gap-2 pt-3 border-t border-border mt-2">
                     <Button variant="ghost" size="sm"
@@ -2856,7 +2957,7 @@ export default function ProjectSection({
           )}
 
 {/* TAB 3: MATERIAL */}
-          {activeDetailTab === 'material' && (
+          {activeDetailTab === 'material' && (materialsFeedback || (
             <div data-m3-exclude data-theme={appConfig?.theme || 'default'} className="p-6 space-y-6">
               {/* Red Warning Banner if material has warning */}
               {hasMaterialWarning ? (
@@ -3244,7 +3345,7 @@ export default function ProjectSection({
                 </Dialog>
               )}
             </div>
-          )}
+          ))}
 
           {/* TAB 4: GESTÃO DE RISCOS */}
           {activeDetailTab === 'riscos' && (
@@ -3589,7 +3690,7 @@ export default function ProjectSection({
       ) : isEditing ? (
 
         // 2. PROJECT EDIT OR CREATE FORM
-        <form onSubmit={handleSubmit} className="flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-raised animate-fade-in">
+        <form ref={validation.form} noValidate onChangeCapture={validation.clearChanged} onSubmit={handleSubmit} className="flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col overflow-hidden rounded-card border border-border bg-surface shadow-raised animate-fade-in">
           <div className="shrink-0 px-6 pt-6">
             <M3SectionHeader
               title={editingId ? 'Editar projeto' : 'Adicionar novo projeto'}
@@ -3598,6 +3699,7 @@ export default function ProjectSection({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-6">
+            {formError && <p role="alert" className="mb-4 text-body-sm text-error">{formError}</p>}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-body-sm font-bold text-text-secondary">
 
             {/* Client Suggested Select */}
@@ -3607,7 +3709,7 @@ export default function ProjectSection({
                 <Input aria-label="Cliente"
                   type="text"
                   required
-                  value={clientSearchQuery}
+                  name="clientId" error={validation.errors.clientId} value={clientSearchQuery}
                   onChange={e => {
                     const val = e.target.value;
                     setClientSearchQuery(val);
@@ -3673,7 +3775,7 @@ export default function ProjectSection({
               <Input aria-label="Nome do projeto"
                 type="text"
                 required
-                value={formTitle}
+                name="title" error={validation.errors.title} value={formTitle}
                 onChange={e => setFormTitle(e.target.value)}
                 placeholder="Ex: Instalação de Balança Multicabeçal e Tapete Rejeitor"
                 className="w-full p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-none text-body-sm font-semibold"
@@ -3683,7 +3785,8 @@ export default function ProjectSection({
             {/* Description */}
             <div className="space-y-1 md:col-span-2">
               <label className="block text-text-secondary">Descrição</label>
-              <MarkdownEditor ariaLabel="Descrição" value={formDesc} onChange={setFormDesc}
+              <MarkdownEditor ariaLabel="Descrição" field="description" error={validation.errors.description}
+                value={formDesc} onChange={value => { setFormDesc(value); validation.clearField('description'); }}
                 maxLength={10000} heightClassName="h-40"
                 placeholder="Introduza os detalhes do projeto..."
               />
@@ -3697,7 +3800,7 @@ export default function ProjectSection({
                 <span className="absolute left-3 top-3 text-text-muted font-bold">€</span>
                 <Input aria-label="Valor da venda (€)"
                   type="number"
-                  value={formBudget}
+                  name="budgetValue" error={validation.errors.budgetValue} value={formBudget}
                   onChange={e => setFormBudget(Number(e.target.value))}
                   className="w-full pl-8 pr-3 p-2.5 border border-border rounded-control focus:ring-2 focus:ring-primary/20 outline-none font-semibold"
                 />
@@ -3705,8 +3808,10 @@ export default function ProjectSection({
             </div>
 
             {/* Category */}
-            <div className="space-y-1">
-              <label className="block text-text-secondary font-bold">Categorias *</label>
+            <fieldset className="space-y-1" data-field="categoryIds" tabIndex={-1}
+              aria-invalid={!!validation.errors.categoryIds}
+              aria-describedby={validation.errors.categoryIds ? 'project-category-error' : undefined}>
+              <legend className="block text-text-secondary font-bold">Categorias *</legend>
               <div className="border border-border rounded-control p-3 max-h-[120px] overflow-y-auto bg-surface-muted/50 space-y-1.5">
                 {projectCategories.filter(c => !c.deleted).map(c => {
                   const isChecked = formCategories.some(catId => matchId(catId, c.id));
@@ -3714,6 +3819,7 @@ export default function ProjectSection({
                     <label key={c.id} className="flex items-center gap-2 text-body-sm font-semibold text-text-secondary cursor-pointer select-none">
                       <input
                         type="checkbox"
+                        name="categoryIds"
                         checked={isChecked}
                         onChange={() => {
                           if (isChecked) {
@@ -3737,13 +3843,14 @@ export default function ProjectSection({
                   );
                 })}
               </div>
-            </div>
+              {validation.errors.categoryIds && <p id="project-category-error" className="text-caption text-error">{validation.errors.categoryIds}</p>}
+            </fieldset>
 
             {/* Project status */}
             <div className="space-y-1">
               <label className="block text-text-secondary">Estado do projeto</label>
               <Select aria-label="Estado do projeto"
-                value={formStatus}
+                name="statusId" error={validation.errors.statusId} value={formStatus}
                 onChange={e => setFormStatus(e.target.value)}
                 className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
               >
@@ -3756,7 +3863,7 @@ export default function ProjectSection({
               <label className="block text-text-secondary">Project Leader *</label>
               <Select aria-label="Project Leader"
                 required
-                value={formProjManager}
+                name="projectManagerId" error={validation.errors.projectManagerId} value={formProjManager}
                 onChange={e => setFormProjManager(e.target.value)}
                 className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
               >
@@ -3799,7 +3906,7 @@ export default function ProjectSection({
             <div className="space-y-1">
               <label className="block text-text-secondary">Técnico responsável</label>
               <Select aria-label="Técnico responsável"
-                value={formFieldManager}
+                name="fieldManagerId" error={validation.errors.fieldManagerId} value={formFieldManager}
                 onChange={e => setFormFieldManager(e.target.value)}
                 className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
               >
@@ -3842,7 +3949,7 @@ export default function ProjectSection({
             <div className="space-y-1">
               <label className="block text-text-secondary">Gestor de vendas</label>
               <Select aria-label="Gestor de vendas"
-                value={formSales}
+                name="salesRepId" error={validation.errors.salesRepId} value={formSales}
                 onChange={e => setFormSales(e.target.value)}
                 className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
               >
@@ -3900,7 +4007,7 @@ export default function ProjectSection({
               <Input aria-label="Data de adjudicação"
                 type="date"
                 required
-                value={formStartDate}
+                name="startDate" error={validation.errors.startDate} value={formStartDate}
                 onChange={e => setFormStartDate(e.target.value)}
                 className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
               />
@@ -3910,7 +4017,7 @@ export default function ProjectSection({
               <label className="block text-text-secondary">Pazo de entrega da venda</label>
               <Input aria-label="Pazo de entrega da venda"
                 type="date"
-                value={formDeliveryDate}
+                name="deliveryDate" error={validation.errors.deliveryDate} value={formDeliveryDate}
                 onChange={e => setFormDeliveryDate(e.target.value)}
                 className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
               />
@@ -3921,7 +4028,7 @@ export default function ProjectSection({
               <label className="block text-text-secondary">Data estimada real</label>
               <Input aria-label="Data estimada real"
                 type="date"
-                value={formEstimatedDate}
+                name="estimatedDate" error={validation.errors.estimatedDate} value={formEstimatedDate}
                 onChange={e => setFormEstimatedDate(e.target.value)}
                 className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
               />
@@ -3931,7 +4038,7 @@ export default function ProjectSection({
               <label className="block text-text-secondary">Data agendada com cliente</label>
               <Input aria-label="Data agendada com cliente"
                 type="date"
-                value={formScheduledDate}
+                name="scheduledDate" error={validation.errors.scheduledDate} value={formScheduledDate}
                 onChange={e => setFormScheduledDate(e.target.value)}
                 className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary"
               />
@@ -3939,7 +4046,7 @@ export default function ProjectSection({
 
             <div className="space-y-1">
               <label className="block text-text-secondary">Forecast da instalação (mês e ano)</label>
-              <Input aria-label="Forecast da instalação" type="month" value={formForecastDate}
+              <Input aria-label="Forecast da instalação" type="month" name="forecastDate" error={validation.errors.forecastDate} value={formForecastDate}
                 onChange={e => setFormForecastDate(e.target.value)}
                 className="w-full p-2.5 border border-border rounded-control font-semibold text-text-primary" />
             </div>
@@ -3955,7 +4062,7 @@ export default function ProjectSection({
                   <label className="block text-text-secondary text-body-sm">Nome</label>
                   <Input aria-label="Nome"
                     type="text"
-                    value={formClientContactName}
+                    name="clientContactName" error={validation.errors.clientContactName} value={formClientContactName}
                     onChange={e => setFormClientContactName(e.target.value)}
                     placeholder="Nome completo"
                     className="w-full p-2.5 border border-border rounded-control font-semibold"
@@ -3965,7 +4072,7 @@ export default function ProjectSection({
                   <label className="block text-text-secondary text-body-sm">Email</label>
                   <Input aria-label="Email"
                     type="email"
-                    value={formClientContactEmail}
+                    name="clientContactEmail" error={validation.errors.clientContactEmail} value={formClientContactEmail}
                     onChange={e => setFormClientContactEmail(e.target.value)}
                     placeholder="email@cliente.pt"
                     className="w-full p-2.5 border border-border rounded-control font-semibold"
@@ -3975,7 +4082,7 @@ export default function ProjectSection({
                   <label className="block text-text-secondary text-body-sm">Telefone</label>
                   <Input aria-label="Telefone"
                     type="tel"
-                    value={formClientContactPhone}
+                    name="clientContactPhone" error={validation.errors.clientContactPhone} value={formClientContactPhone}
                     onChange={e => setFormClientContactPhone(e.target.value)}
                     placeholder="+351 912345678"
                     className="w-full p-2.5 border border-border rounded-control font-semibold"
@@ -3989,7 +4096,7 @@ export default function ProjectSection({
               <label className="block text-text-secondary">Install Project</label>
               <Input aria-label="Install Project"
                 type="text"
-                value={formInstallNo}
+                name="installProjectNo" error={validation.errors.installProjectNo} value={formInstallNo}
                 onChange={e => setFormInstallNo(e.target.value)}
                 placeholder="Ex: IP-2026-092"
                 className="w-full p-2.5 border border-border rounded-control font-semibold font-mono"
@@ -4000,7 +4107,7 @@ export default function ProjectSection({
               <label className="block text-text-secondary">Oportunidade SF</label>
               <Input aria-label="Oportunidade SF"
                 type="text"
-                value={formSFNo}
+                name="sfOpportunityNo" error={validation.errors.sfOpportunityNo} value={formSFNo}
                 onChange={e => setFormSFNo(e.target.value)}
                 placeholder="Ex: SF-OPP-1044"
                 className="w-full p-2.5 border border-border rounded-control font-semibold font-mono"
@@ -4011,7 +4118,7 @@ export default function ProjectSection({
             <div className="space-y-1">
               <label className="block text-text-secondary">Prioridade</label>
               <Select aria-label="Prioridade"
-                value={formPriority}
+                name="priorityId" error={validation.errors.priorityId} value={formPriority}
                 onChange={e => setFormPriority(e.target.value)}
                 className="w-full p-2.5 border border-border rounded-control bg-surface font-semibold"
               >
@@ -4057,7 +4164,8 @@ export default function ProjectSection({
 
 
             {/* Default Tasks Selection section */}
-            {!editingId && defaultTasks && defaultTasks.length > 0 && (
+            {!editingId && defaultTasksFeedback}
+            {!editingId && !defaultTasksFeedback && defaultTasks && defaultTasks.length > 0 && (
               <div className="space-y-2 md:col-span-2 border-t border-border-subtle pt-5 mt-2">
                 <label className="block text-text-primary font-extrabold text-body-sm flex items-center gap-1.5 mb-1">
                   <ListTodo className="w-4 h-4 text-success-strong" />
@@ -4113,6 +4221,7 @@ export default function ProjectSection({
             </Button>
             <Button variant="primary" size="sm"
               type="submit"
+              disabled={feedback?.writesBlocked}
               isLoading={isSavingProject}
               className="px-6 py-2.5 bg-primary text-inverse rounded-control font-bold hover:bg-primary transition-colors shadow-raised"
             >
@@ -4127,8 +4236,8 @@ export default function ProjectSection({
         <div className="space-y-4">
         <Tabs tabs={[{ id: 'lista', label: 'Lista de projetos', icon: <ListTodo className="w-4 h-4" /> }, { id: 'analise', label: 'Análise de projetos', icon: <BarChart3 className="w-4 h-4" /> }]}
           activeTabId={projectListView} onChange={id => setProjectListView(id as 'lista' | 'analise')} variant="line" className="mobile-operational-tabs" />
-        {projectListView === 'analise' ? <ProjectAnalytics projects={projects} projectStatuses={projectStatuses}
-          categories={projectCategories} users={users} clients={clients} materials={projectMaterials} onSelectProject={setSelectedProjectId} /> : (
+        {projectListView === 'analise' ? (materialsFeedback || <ProjectAnalytics projects={projects} projectStatuses={projectStatuses}
+          categories={projectCategories} users={users} clients={clients} materials={projectMaterials} onSelectProject={setSelectedProjectId} />) : (
         <Card className="mobile-project-section min-w-0 bg-surface rounded-card border border-border shadow-raised overflow-hidden animate-fade-in">
 
           {/* List Header and Filter controls */}
@@ -4186,7 +4295,7 @@ export default function ProjectSection({
           {/* Table list output */}
           {projectsListPending && paginatedProjects.length > 0 && (
             <div role="status" aria-live="polite" className="px-5 py-2 text-body-sm text-text-secondary flex items-center gap-2">
-              <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" /> A atualizar projetos…
+              <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" /> {projectsTakingLonger ? 'A atualização está a demorar mais do que o habitual.' : 'A atualizar projetos…'}
             </div>
           )}
           {projectsLoadError && paginatedProjects.length > 0 && (
@@ -4198,7 +4307,7 @@ export default function ProjectSection({
           <div className="overflow-x-auto w-full">
             {projectsListPending && paginatedProjects.length === 0 ? (
               <div role="status" aria-live="polite" className="p-10 flex items-center justify-center gap-2 text-body-sm text-text-secondary">
-                <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" /> A carregar projetos…
+                <Loader2 aria-hidden="true" className="w-5 h-5 animate-spin" /> {projectsTakingLonger ? 'Está a demorar mais do que o habitual.' : 'A carregar projetos…'}
               </div>
             ) : projectsLoadError && paginatedProjects.length === 0 ? (
               <div role="alert" className="p-10 text-center space-y-3 text-body-sm text-text-secondary">
@@ -4206,7 +4315,16 @@ export default function ProjectSection({
                 <Button variant="secondary" size="sm" onClick={() => setRefreshTrigger(value => value + 1)}>Tentar novamente</Button>
               </div>
             ) : paginatedProjects.length === 0 ? (
-              <div className="p-10 text-center text-text-muted font-medium text-body-sm">Nenhum projeto encontrado para os filtros selecionados.</div>
+              <ListEmptyState
+                title={projects.some(project => !project.deleted) ? 'Nenhum projeto corresponde aos filtros.' : 'Ainda não há projetos registados.'}
+                description={projects.some(project => !project.deleted) ? 'Experimente pesquisar por parte do título ou selecionar todas as fases.' : undefined}
+                action={projects.some(project => !project.deleted)
+                  ? { label: 'Limpar filtros', run: () => {
+                      setSearch(''); setDebouncedSearch(''); handleStatusGroupChange('all');
+                      setFilterCategory(''); setFilterStatus(''); setFilterManager(''); setProjectCurrentPage(1);
+                    } }
+                  : canWriteProjects && !feedback?.writesBlocked ? { label: 'Criar projeto', run: () => openForm(null) } : undefined}
+              />
             ) : (
               <>
               <ul aria-label="Lista compacta de projetos" className="mobile-controls divide-y divide-border md:hidden">

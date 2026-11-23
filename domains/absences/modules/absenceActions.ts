@@ -1,4 +1,4 @@
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import type { UserAbsence } from '@/lib/types';
 import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 
@@ -6,7 +6,7 @@ export function createAbsenceActions({ setState, deleteSyncedEntity }: Pick<Lega
   // ==================== ABSENCES CRUD ====================
   const addAbsence = async (absence: Omit<UserAbsence, 'id' | 'createdDate'>) => {
     try {
-      const response = await fetch('/api/v1/absences', {
+      const response = await authenticatedRequest('/api/v1/absences', {
         method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(absence),
       });

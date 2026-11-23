@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { M3SectionHeader } from '@/components/M3';
-import { getAuthHeaders } from '@/lib/clientAuth';
+import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import { auditModuleLabels, auditActionLabel, auditFieldLabel, auditSourceLabels, auditOutcomeLabels } from '../modules/auditPresentation';
 
 type Change = { before?: unknown; after?: unknown; changed?: boolean };
@@ -62,7 +62,7 @@ export default function AuditLogSection({ projectId }: { projectId?: string }) {
 
     setLoading(true);
     setError('');
-    fetch(`${endpoint}?${params}`, { headers: getAuthHeaders(), cache: 'no-store', signal: controller.signal })
+    authenticatedRequest(`${endpoint}?${params}`, { headers: getAuthHeaders(), cache: 'no-store', signal: controller.signal })
       .then(async response => {
         const result = await response.json() as Page;
         if (!response.ok || !result.success) throw new Error(result.message);
@@ -99,7 +99,7 @@ export default function AuditLogSection({ projectId }: { projectId?: string }) {
     setExportError('');
     try {
       const params = new URLSearchParams(filters);
-      const response = await fetch(`/api/audit/export?${params}`, { method: 'POST', headers: getAuthHeaders(), cache: 'no-store' });
+      const response = await authenticatedRequest(`/api/audit/export?${params}`, { method: 'POST', headers: getAuthHeaders(), cache: 'no-store' });
       if (!response.ok) {
         const result = await response.json();
         throw new Error(result.message);

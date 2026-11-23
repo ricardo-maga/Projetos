@@ -121,7 +121,7 @@ describe('Projects M3 presentation', () => {
       expect(h.state.settledProjectsKey).toBe(projectQueryKey(1, 'completed'));
       expect(h.state.isLoadingProjects).toBe(false);
       const html = renderToStaticMarkup(h.render(projectPreviewProps));
-      expect(html).toContain('Nenhum projeto encontrado');
+      expect(html).toContain('Nenhum projeto corresponde aos filtros.');
       expect(html).not.toContain('A carregar projetos');
     } finally { globalThis.fetch = originalFetch; }
   });
@@ -129,14 +129,14 @@ describe('Projects M3 presentation', () => {
     const h = createProjectHarness();
     let html = renderToStaticMarkup(h.render(projectPreviewProps));
     expect(html).toContain('A carregar projetos');
-    expect(html).not.toContain('Nenhum projeto encontrado');
+    expect(html).not.toContain('Nenhum projeto corresponde aos filtros.');
     h.state.settledProjectsKey = projectQueryKey();
     html = renderToStaticMarkup(h.render(projectPreviewProps));
-    expect(html).toContain('Nenhum projeto encontrado');
+    expect(html).toContain('Nenhum projeto corresponde aos filtros.');
     h.state.filterStatusGroup = 'completed';
     html = renderToStaticMarkup(h.render(projectPreviewProps));
     expect(html).toContain('A carregar projetos');
-    expect(html).not.toContain('Nenhum projeto encontrado');
+    expect(html).not.toContain('Nenhum projeto corresponde aos filtros.');
   });
   it('keeps the previous page visible while a new filter is loading', () => {
     const h = createProjectHarness({ serverProjects: [project], totalServerProjects: 1,
@@ -153,12 +153,12 @@ describe('Projects M3 presentation', () => {
     expect(html).toContain('Abrir projeto Projeto M3 de exemplo');
     h.state.serverProjects = [];
     html = renderToStaticMarkup(h.render(projectPreviewProps));
-    expect(html).toContain('Nenhum projeto encontrado');
+    expect(html).toContain('Nenhum projeto corresponde aos filtros.');
     expect(html).not.toContain('Abrir projeto Projeto M3 de exemplo');
     h.state.projectsLoadError = 'Falha de rede';
     html = renderToStaticMarkup(h.render(projectPreviewProps));
     expect(html).toContain('Falha de rede');
-    expect(html).not.toContain('Nenhum projeto encontrado');
+    expect(html).not.toContain('Nenhum projeto corresponde aos filtros.');
   });
   it('maps lifecycle labels to database scale with one current step and responsive semantic layout', () => {
     const labels = ['Iniciado', 'Preparação', 'FAT', 'Instalação', 'Concluído'];
@@ -222,7 +222,7 @@ describe('Projects M3 presentation', () => {
     const h = createProjectHarness({ settledProjectsKey: projectQueryKey(1, 'active', '') });
     const html = renderToStaticMarkup(h.render({ ...projectPreviewProps,
       projects: [{ ...project, deleted: true }], currentUser: undefined }));
-    expect(html).toContain('Nenhum projeto encontrado para os filtros selecionados.');
+    expect(html).toContain('Ainda não há projetos registados.');
     expect(html).not.toContain('Novo projeto');
     expect(html).not.toContain('Abrir projeto Projeto M3');
   });

@@ -1,4 +1,6 @@
 'use client';
+import ListEmptyState from '@/components/ui/ListEmptyState';
+import { useFeedback } from '@/components/ApplicationFeedback';
 import MobileTaskList from './MobileTaskList';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -180,6 +182,17 @@ export default function TaskSection({
     task: null,
     mode: 'edit',
   });
+
+  const feedback = useFeedback();
+  const resume = feedback?.resume;
+  React.useEffect(() => {
+    if (resume?.kind !== 'task' || !canWriteTasks) return;
+    setTaskModalState({
+      isOpen: true,
+      task: tasks.find(task => task.id === resume.recordId && !task.deleted) || null,
+      mode: resume.mode || 'create',
+    });
+  }, [resume, tasks, canWriteTasks]);
 
   const openTaskModal = (task: Task | null, mode: TaskModalMode = 'edit') => {
     if (mode === 'create' && !canWriteTasks) {
@@ -824,8 +837,14 @@ export default function TaskSection({
               {paginatedTasks.length === 0 ? (
                 <div className="p-12 text-center text-text-muted font-medium text-body-sm space-y-2">
                   <ListTodo className="w-8 h-8 text-text-disabled mx-auto" />
-                  <p className="font-bold text-text-primary">Nenhuma tarefa encontrada.</p>
-                  <p className="text-caption text-text-muted">Tente ajustar a pesquisa ou limpar os filtros operacionais selecionados.</p>
+                  <ListEmptyState
+                    title={tasks.some(task => !task.deleted) ? 'Nenhuma tarefa corresponde aos filtros.' : 'Ainda não há tarefas registadas.'}
+                    description={tasks.some(task => !task.deleted) ? 'Experimente alargar o período ou ajustar a pesquisa.' : undefined}
+                    action={tasks.some(task => !task.deleted) && (search.trim() || filterAssignee || datePreset !== 'all')
+                      ? { label: 'Limpar filtros', run: () => { setSearch(''); setFilterAssignee(''); setFilterDatePreset('all'); setCurrentPage(1); } }
+                      : !tasks.some(task => !task.deleted) && canWriteTasks && !feedback?.writesBlocked
+                        ? { label: 'Nova tarefa', run: () => openTaskModal(null, 'create') } : undefined}
+                  />
                 </div>
               ) : (
                 <>

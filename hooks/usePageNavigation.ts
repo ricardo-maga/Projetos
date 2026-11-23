@@ -20,6 +20,18 @@ const CONFIG_SLUG_TABS = Object.fromEntries(
   Object.entries(CONFIG_TAB_SLUGS).map(([tab, slug]) => [slug, tab])
 );
 
+const TAB_ALIASES: Record<string, string> = { 'meu-foco': 'my-focus', relatorios: 'reports', 'desenho-mecanico': 'mechanical-design' };
+
+export function resolveNavigationTarget(params: URLSearchParams) {
+  const tab = params.get('tab') || (params.has('project') ? 'projetos' : 'dashboard');
+  const configTab = Object.hasOwn(CONFIG_SLUG_TABS, tab) ? CONFIG_SLUG_TABS[tab] : undefined;
+  return {
+    tab: configTab === 'clientes' || configTab === 'ausencias' ? configTab
+      : configTab ? 'configuracoes' : Object.hasOwn(TAB_ALIASES, tab) ? TAB_ALIASES[tab] : tab,
+    configTab,
+  };
+}
+
 export function usePageNavigation(mounted: boolean, hasState: boolean) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMechanicalRequestId, setSelectedMechanicalRequestId] = useState<string | null>(null);
@@ -61,26 +73,15 @@ export function usePageNavigation(mounted: boolean, hasState: boolean) {
     if (mounted && hasState && !hasProcessedDeepLink.current) {
       hasProcessedDeepLink.current = true;
       const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get('tab');
+      const target = resolveNavigationTarget(params);
       const projectParam = params.get('project');
       const requestParam = params.get('request');
 
-      if (tabParam) {
-        const configTab = CONFIG_SLUG_TABS[tabParam];
-        if (configTab) {
-          if (configTab === 'clientes' || configTab === 'ausencias') {
-            setActiveTab(configTab);
-          } else {
-            setActiveTab('configuracoes');
-            setActiveConfigTab(configTab);
-          }
-        } else {
-          setActiveTab(({ 'meu-foco': 'my-focus', 'relatorios': 'reports', 'desenho-mecanico': 'mechanical-design' } as Record<string, string>)[tabParam] || tabParam);
-        }
-      }
-      if (projectParam) setSelectedProjectId(projectParam);
-      if (requestParam && tabParam === 'presales') setSelectedPresalesRequestId(requestParam);
-      else if (requestParam) setSelectedMechanicalRequestId(requestParam);
+      setActiveTab(target.tab);
+      if (target.configTab && target.tab === 'configuracoes') setActiveConfigTab(target.configTab);
+      if (projectParam && target.tab === 'projetos') setSelectedProjectId(projectParam);
+      if (requestParam && target.tab === 'presales') setSelectedPresalesRequestId(requestParam);
+      else if (requestParam && target.tab === 'mechanical-design') setSelectedMechanicalRequestId(requestParam);
     }
   }, [mounted, hasState]);
 

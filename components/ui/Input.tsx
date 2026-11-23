@@ -13,6 +13,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, type = 'text', label, error, success, disabled, id, ...props }, ref) => {
     const generatedId = React.useId();
     const inputId = id || generatedId;
+    const errorId = inputId + '-error';
+    const description = [props['aria-describedby'], error && errorId].filter(Boolean).join(' ');
     return (
       <div className="w-full space-y-1.5 text-left">
         {label ? (
@@ -46,10 +48,12 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               className
             )}
             {...props}
+            aria-invalid={error ? true : props['aria-invalid']}
+            aria-describedby={description || undefined}
           />
         </div>
         {error ? (
-          <p className="text-caption text-error font-medium animate-fade-in">{error}</p>
+          <p id={errorId} className="text-caption text-error font-medium animate-fade-in">{error}</p>
         ) : null}
       </div>
     );

@@ -22,7 +22,8 @@ export function createProjectHarness(initialState: Record<string, any> = {}) {
   visit(component.body);
   const state: Record<string, any> = { ...initialState };
   const effects: (() => any)[] = [];
-  let cursor = 0;
+  const refs: { current: any }[] = [];
+  let cursor = 0, refCursor = 0;
   const isolatedReact = {
     ...React,
     useState(initial: any) {
@@ -31,7 +32,7 @@ export function createProjectHarness(initialState: Record<string, any> = {}) {
       return [state[name], (value: any) => { state[name] = typeof value === 'function' ? value(state[name]) : value; }];
     },
     useEffect(effect: () => any) { effects.push(effect); },
-    useRef: (initial: any) => ({ current: initial }),
+    useRef: (initial: any) => refs[refCursor++] ||= { current: initial },
     useMemo: (calculate: () => any) => calculate(),
     useCallback: (callback: any) => callback,
   };
@@ -43,12 +44,17 @@ export function createProjectHarness(initialState: Record<string, any> = {}) {
   const exports: Record<string, any> = {};
   new Function('require', 'exports', js)((id: string) => {
     if (id === 'react') return isolatedReact;
+    if (id.endsWith('/components/ApplicationFeedback')) return { useFeedback: () => null, useFormDraft: () => () => {} };
+    if (id.endsWith('/hooks/useFieldErrors')) return {
+      useFieldErrors: () => ({ errors: {}, form: { current: null }, show() {}, clear() {}, clearChanged() {}, clearField() {}, showApiError: () => false }),
+    };
+    if (id.endsWith('/hooks/useSlowRead')) return { useSlowRead: () => false };
     if (id.endsWith('/hooks/useAsyncAction')) {
       return { useAsyncAction: () => ({ busy: false, run: (action: () => Promise<unknown>) => action() }) };
     }
     return requireActual(id);
   }, exports);
-  return { state, effects, render(props: any) { cursor = 0; effects.length = 0; return exports.default(props); } };
+  return { state, effects, render(props: any) { cursor = 0; refCursor = 0; effects.length = 0; return exports.default(props); } };
 }
 
 export function findProjectElement(tree: any, predicate: (element: any) => boolean): any {
