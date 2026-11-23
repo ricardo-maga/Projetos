@@ -11,10 +11,10 @@ import { Badge } from '@/components/ui/Badge';
 type OtherDay = { otherTasks: Task[]; absentUsers: { user: User; absence: UserAbsence; conflict: DayConflictInfo }[] };
 
 export default function MobileProjectAgenda({ projects, clients, users, projectStatuses, taskStatuses, days, events, undatedTasks,
-  otherDays, conflictTaskIds, specialDays, expanded, onToggle, onHide, onOpenProject, onOpenTask, onCreate }: {
+  otherDays, otherUndatedTasks, conflictTaskIds, specialDays, expanded, onToggle, onHide, onOpenProject, onOpenTask, onCreate }: {
   projects: Project[]; clients: Client[]; users: User[]; projectStatuses: any[]; taskStatuses: any[];
   days: CalendarDayItem[]; events: ProjectTimelineEvents; undatedTasks: Map<string, Task[]>;
-  otherDays: Map<string, OtherDay>; conflictTaskIds: Map<string, Set<string>>; specialDays: SpecialDay[];
+  otherDays: Map<string, OtherDay>; otherUndatedTasks: Task[]; conflictTaskIds: Map<string, Set<string>>; specialDays: SpecialDay[];
   expanded: Set<string>; onToggle: (id: string) => void; onHide: (id: string) => void;
   onOpenProject: (id: string) => void; onOpenTask: (task: Task) => void; onCreate?: (date: string, projectId?: string) => void;
 }) {
@@ -39,7 +39,7 @@ export default function MobileProjectAgenda({ projects, clients, users, projectS
     <section aria-label="Outras tarefas" className="space-y-3 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold text-text-primary">Outras tarefas</h3>
         {onCreate && <Button variant="outline" onClick={() => onCreate(days[0].dateStr)}>Nova tarefa sem projeto</Button>}</div>
-      {!otherVisible.length && <p className="text-body-sm text-text-secondary">Sem tarefas ou ausências neste período.</p>}
+      {!otherVisible.length && !otherUndatedTasks.length && <p className="text-body-sm text-text-secondary">Sem tarefas ou ausências neste período.</p>}
       {otherVisible.map(day => <div key={day.dateStr} className="space-y-1">
         {dateHeading(day)}
         {otherDays.get(day.dateStr)?.absentUsers.map(({ user, absence, conflict }) => <div key={user.id} className="text-body-sm text-text-secondary">
@@ -48,6 +48,10 @@ export default function MobileProjectAgenda({ projects, clients, users, projectS
         </div>)}
         <div className="divide-y divide-border">{otherDays.get(day.dateStr)?.otherTasks.map(task => renderTask(task, day.dateStr))}</div>
       </div>)}
+      {otherUndatedTasks.length > 0 && <section aria-label="Tarefas sem data">
+        <h4 className="font-bold text-text-secondary">Tarefas sem data</h4>
+        <div className="divide-y divide-border">{otherUndatedTasks.map(task => renderTask(task))}</div>
+      </section>}
     </section>
     {projects.map(project => {
       const pending = undatedTasks.get(project.id) || [];
