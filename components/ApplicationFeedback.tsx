@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { getClientUser } from '@/lib/clientAuth';
 
 export type DraftKind = 'project' | 'task' | 'client';
 
@@ -30,11 +31,14 @@ const Context = createContext<Feedback | null>(null);
 export const ApplicationFeedbackProvider = Context.Provider;
 export const useFeedback = () => useContext(Context);
 
-export function useApplicationFeedback(writesBlocked: boolean) {
+export function useApplicationFeedback(userId: string | undefined, writesBlocked: boolean) {
   const readers = useRef(new Set<() => FormDraft | null>());
   const [saved, setSaved] = useState<{ userId: string; draft: FormDraft } | null>(null);
   const [resume, setResume] = useState<FormDraft | null>(null);
-  const [notice, notify] = useState<SuccessNotice | null>(null);
+  const [notice, setNotice] = useState<SuccessNotice | null>(null);
+  const notify = useCallback((next: SuccessNotice | null) => {
+    if (!next || (userId && getClientUser()?.id === userId)) setNotice(next);
+  }, [userId]);
 
   const register = useCallback<Feedback['register']>(read => {
     readers.current.add(read);
@@ -45,16 +49,16 @@ export function useApplicationFeedback(writesBlocked: boolean) {
     const draft = Array.from(readers.current, read => read()).reverse().find(Boolean);
     if (draft) setSaved({ userId, draft });
     setResume(null);
-    notify(null);
+    setNotice(null);
   }, []);
 
   const discard = useCallback(() => {
     setSaved(null);
     setResume(null);
-    notify(null);
+    setNotice(null);
   }, []);
 
-  const feedback = useMemo(() => ({ register, resume, setResume, notify, writesBlocked }), [register, resume, writesBlocked]);
+  const feedback = useMemo(() => ({ register, resume, setResume, notify, writesBlocked }), [register, resume, notify, writesBlocked]);
   return { feedback, saved, setSaved, capture, discard, notice, notify };
 }
 

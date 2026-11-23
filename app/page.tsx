@@ -89,7 +89,7 @@ export default function Page() {
   const sessionCheck = React.useRef(0);
   const manualSignIn = React.useRef(false);
   const writesBlocked = connection !== 'ready';
-  const { feedback, saved, setSaved, capture, discard, notice, notify } = useApplicationFeedback(writesBlocked);
+  const { feedback, saved, setSaved, capture, discard, notice, notify } = useApplicationFeedback(currentUser?.id, writesBlocked);
   const [logoutPending, setLogoutPending] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const loginInFlight = React.useRef(false);

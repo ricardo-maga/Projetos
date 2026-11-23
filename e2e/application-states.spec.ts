@@ -90,13 +90,13 @@ test('clears a search, shows a field error and confirms the saved client', async
   await editClient(page);
   await page.getByRole('textbox', { name: 'Nome do cliente *' }).fill('Cliente atualizado em teste');
   api.setSaveStatus(422);
-  await page.getByRole('button', { name: 'Gravar Cliente' }).click();
+  await page.getByRole('button', { name: 'Gravar Cliente', exact: true }).last().click();
   const nif = page.getByRole('textbox', { name: 'NIF (Tax ID)' });
   await expect(nif).toBeFocused();
   await expect(nif).toHaveAccessibleDescription('Confirme o NIF.');
   api.setSaveStatus(200);
   await nif.fill('123456789');
-  await page.getByRole('button', { name: 'Gravar Cliente' }).click();
+  await page.getByRole('button', { name: 'Gravar Cliente', exact: true }).last().click();
   await expect(page.getByText('Cliente atualizado.', { exact: true })).toBeVisible();
   await expect(page.getByText('Cliente atualizado em teste', { exact: true })).toBeVisible();
 });
@@ -108,7 +108,7 @@ for (const sameAccount of [true, false]) {
     await editClient(page);
     await page.getByRole('textbox', { name: 'Nome do cliente *' }).fill('Edição ainda por gravar');
     api.setSaveStatus(401);
-    await page.getByRole('button', { name: 'Gravar Cliente' }).click();
+    await page.getByRole('button', { name: 'Gravar Cliente', exact: true }).last().click();
     await expect(page.getByText('A sua sessão expirou. Inicie sessão novamente.')).toBeVisible();
     if (!sameAccount) api.setLoginUser({ ...owner, id: '11111111-1111-4111-8111-000000000002' });
     await signIn(page);
@@ -132,7 +132,7 @@ test('revalidates the session before allowing writes after reconnecting', async 
   await context.setOffline(true);
   await expect(page.getByText('Sem ligação', { exact: true })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Nome do cliente *' })).toHaveValue('Cliente de teste');
-  const save = page.getByRole('button', { name: 'Gravar Cliente' });
+  const save = page.getByRole('button', { name: 'Gravar Cliente', exact: true }).last();
   await expect(save).toBeDisabled();
   await context.setOffline(false);
   await expect(save).toBeEnabled();
