@@ -1,4 +1,5 @@
 import type { Client, Project, ProjectRiskItem, Task } from '@/lib/types';
+import { TASK_STATUS_ID_MAPPINGS } from '@/lib/utils';
 import { addCivilDays, formatDateToYYYYMMDD, getCivilDaysDifference, isTaskOnDate, normalizeDateStr } from '@/domains/calendar/modules/operationalCalendar';
 
 export type TimelineHorizon = 7 | 14 | 21 | 28 | 'all';
@@ -7,9 +8,16 @@ export type ProjectTimelineEvent =
   | { kind: 'milestone'; date: string; title: string }
   | { kind: 'risk'; date: string; title: string; risk: ProjectRiskItem };
 export type ProjectTimelineEvents = Map<string, Map<string, ProjectTimelineEvent[]>>;
+type TimelineStatus = { id: string; scale?: number };
+const COMPLETED_PROJECT_SCALE = 5;
 
-export function getOtherTimelineTasks(tasks: Task[], date: string): Task[] {
-  return tasks.filter(task => !task.projectId && isTaskOnDate(task, date));
+export function getCompletedTimelineProjectIds(projects: Project[], statuses: TimelineStatus[]): Set<string> {
+  const completedStatusIds = new Set(statuses.filter(status => status.scale === COMPLETED_PROJECT_SCALE).map(status => status.id));
+  return new Set(projects.filter(project => !project.deleted && completedStatusIds.has(project.statusId)).map(project => project.id));
+}
+
+export function getOtherTimelineTasks(tasks: Task[], date: string, otherProjectIds?: ReadonlySet<string>): Task[] {
+  return tasks.filter(task => (!task.projectId || otherProjectIds?.has(task.projectId)) && isTaskOnDate(task, date));
 }
 
 function getTimelineTaskDate(task: Task): string {
@@ -80,22 +88,39 @@ export function buildProjectTimelineEvents(projects: Project[], tasks: Task[], r
   return index;
 }
 
-export function filterProjectTimeline(projects: Project[], clients: Client[], statuses: { id: string; scale?: number }[], events: ProjectTimelineEvents,
-  undatedTasks: Map<string, Task[]>, options: { search: string; horizon: TimelineHorizon; visibleStartDate: string; visibleEndDate: string }, now = new Date()) {
+export function filterProjectTimeline(projects: Project[], clients: Client[], statuses: TimelineStatus[], events: ProjectTimelineEvents,
+  undatedTasks: Map<string, Task[]>, options: {
+    search: string;
+    horizon: TimelineHorizon;
+    visibleStartDate: string;
+    visibleEndDate: string;
+    includeCompletedWithTasks?: boolean;
+    taskStatuses?: TimelineStatus[];
+  }, now = new Date()) {
   const today = formatDateToYYYYMMDD(now);
   const end = new Date(now); end.setDate(end.getDate() + (options.horizon === 'all' ? 0 : options.horizon - 1));
   const last = formatDateToYYYYMMDD(end);
   const query = options.search.trim().toLocaleLowerCase('pt-PT');
   const clientMap = new Map(clients.map(c => [c.id, c]));
   const statusMap = new Map(statuses.map(s => [s.id, s.scale]));
+  const taskStatusMap = new Map(options.taskStatuses?.map(status => [status.id.toLowerCase(), status.scale]));
+  const isPending = (task: Task) => {
+    const statusId = task.statusId?.toLowerCase();
+    if (!statusId) return false;
+    const scale = taskStatusMap.get(statusId) ?? taskStatusMap.get(TASK_STATUS_ID_MAPPINGS[statusId]);
+    return scale === 1 || scale === 2;
+  };
   return projects.filter(p => {
     const scale = statusMap.get(p.statusId) ?? 0;
-    if (p.deleted || !(scale >= 1 && scale <= 4 || scale >= 5)) return false;
+    if (p.deleted || !(scale >= 1 && scale <= 4 || scale >= COMPLETED_PROJECT_SCALE)) return false;
+    const completed = scale === COMPLETED_PROJECT_SCALE;
+    if (completed && options.includeCompletedWithTasks === false) return false;
     const client = clientMap.get(p.clientId);
     if (query && !`${p.title} ${client?.clientName || ''} ${client?.shortName || ''} ${p.installProjectNo || ''}`.toLocaleLowerCase('pt-PT').includes(query)) return false;
-    if (undatedTasks.get(p.id)?.length) return true;
-    if (scale >= 5) return [...(events.get(p.id)?.entries() || [])].some(([date, dayEvents]) =>
-      date >= options.visibleStartDate && date <= options.visibleEndDate && dayEvents.some(event => event.kind === 'task'));
+    if (undatedTasks.get(p.id)?.some(task => !completed || isPending(task))) return true;
+    if (scale >= COMPLETED_PROJECT_SCALE) return [...(events.get(p.id)?.entries() || [])].some(([date, dayEvents]) =>
+      date >= options.visibleStartDate && date <= options.visibleEndDate &&
+      dayEvents.some(event => event.kind === 'task' && (!completed || isPending(event.task))));
     return options.horizon === 'all' || [...(events.get(p.id)?.keys() || [])].some(date => date >= today && date <= last);
   });
 }

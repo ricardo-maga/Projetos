@@ -4,7 +4,7 @@ import MobileViewToggle from '@/components/ui/MobileViewToggle';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Maximize2, Minimize2, Plus, Search, ShieldAlert, X } from 'lucide-react';
 import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User, UserAbsence } from '@/lib/types';
-import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getOtherTimelineTasks, type TimelineHorizon } from '@/domains/projects/modules/projectTimeline';
+import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getCompletedTimelineProjectIds, getOtherTimelineTasks, type TimelineHorizon } from '@/domains/projects/modules/projectTimeline';
 import { getOperationalCalendarDays, formatOperationalDateRange, getOperationalDayConflicts, getUserDayAbsence, isTaskOnDate, isUserAssignedToTask } from '@/domains/calendar/modules/operationalCalendar';
 import { parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
 import { cn, getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '@/lib/utils';
@@ -53,6 +53,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const periodDays = view === '56-hd' ? 56 : view;
   const [horizon, setHorizon] = useState<TimelineHorizon>(28);
   const [includeRiskReviews, setIncludeRiskReviews] = useState(false);
+  const [includeCompletedWithTasks, setIncludeCompletedWithTasks] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
@@ -82,15 +83,18 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const days = useMemo(() => getOperationalCalendarDays(anchor, periodDays), [anchor, periodDays]);
   const events = useMemo(() => buildProjectTimelineEvents(projects, tasks, projectRiskItems, includeRiskReviews), [projects, tasks, projectRiskItems, includeRiskReviews]);
   const undatedTasks = useMemo(() => buildUndatedProjectTasks(tasks), [tasks]);
+  const otherProjectIds = useMemo(() => includeCompletedWithTasks ? new Set<string>() : getCompletedTimelineProjectIds(projects, projectStatuses),
+    [includeCompletedWithTasks, projects, projectStatuses]);
+  const otherUndatedTasks = [...otherProjectIds].flatMap(id => undatedTasks.get(id) || []);
   const filtered = filterProjectTimeline(projects, clients, projectStatuses, events, undatedTasks,
-    { search, horizon, visibleStartDate: days[0].dateStr, visibleEndDate: days[days.length - 1].dateStr })
+    { search, horizon, includeCompletedWithTasks, taskStatuses, visibleStartDate: days[0].dateStr, visibleEndDate: days[days.length - 1].dateStr })
     .filter(project => !hiddenProjectIds.has(project.id));
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)), validPage = Math.min(page, pages);
   const start = (validPage - 1) * PAGE_SIZE, visibleProjects = filtered.slice(start, start + PAGE_SIZE);
   const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
   const projectMap = useMemo(() => new Map(projects.map(project => [project.id, project])), [projects]);
   const otherDays = useMemo(() => new Map(days.map(day => {
-    const otherTasks = getOtherTimelineTasks(tasks, day.dateStr);
+    const otherTasks = getOtherTimelineTasks(tasks, day.dateStr, otherProjectIds);
     const dayTasks = tasks.filter(task => isTaskOnDate(task, day.dateStr));
     const absentUsers = users.filter(user => !user.deleted).flatMap(user => {
       const absence = getUserDayAbsence(absences, user.id, day.dateStr);
@@ -100,7 +104,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       return [{ user, absence, conflict }];
     });
     return [day.dateStr, { otherTasks, absentUsers }] as const;
-  })), [days, tasks, users, absences]);
+  })), [days, tasks, users, absences, otherProjectIds]);
   const conflictTaskIds = useMemo(() => new Map(days.map(day => {
     const dayTasks = tasks.filter(task => isTaskOnDate(task, day.dateStr));
     const ids = new Set<string>();
@@ -138,6 +142,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const dropProps = (date: string, projectId: string | null) => {
     const key = `${projectId || 'other'}:${date}`;
     const createTask = () => openOutsideTimeline(() => onCreateTask(date, projectId || undefined));
+    const getTargetProjectId = (task: Task) => projectId ?? (task.projectId && otherProjectIds.has(task.projectId) ? task.projectId : null);
     return {
       onDoubleClick: highDensity && canCreate ? (event: React.MouseEvent<HTMLTableCellElement>) => {
         if ((event.target as HTMLElement).closest?.('button,a,input,select,textarea,[role="button"]')) return;
@@ -152,7 +157,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       'aria-label': highDensity && canCreate ? `Criar tarefa ${projectId ? `em ${projectMap.get(projectId)?.title}` : 'sem projeto'} no dia ${date}: duplo clique ou Enter` : undefined,
       onDragOver: (event: React.DragEvent<HTMLTableCellElement>) => {
         const task = tasks.find(item => item.id === draggingTaskId.current);
-        if (copying.current || !dragContext.current || (dragContext.current.operation === 'copy' ? !canCopy || !onCopyTask : !canMove) || !task || !canDropTimelineTask(task, projectId)) return;
+        if (copying.current || !dragContext.current || (dragContext.current.operation === 'copy' ? !canCopy || !onCopyTask : !canMove) || !task || !canDropTimelineTask(task, getTargetProjectId(task))) return;
         event.preventDefault();
         event.dataTransfer.dropEffect = dragContext.current.operation;
         setDragOverCell(key);
@@ -168,22 +173,35 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
         if (context.operation === 'copy' ? !canCopy || !onCopyTask : !canMove) return;
         const task = tasks.find(item => item.id === id);
         if (!task) return;
-        if (!canDropTimelineTask(task, projectId)) return;
+        const targetProjectId = getTargetProjectId(task);
+        if (!canDropTimelineTask(task, targetProjectId)) return;
         event.preventDefault();
         draggingTaskId.current = null;
         dragContext.current = null;
         if (context.operation === 'copy') {
           if (context.date === date) return;
           copying.current = true; setCopyBusy(true); setMoveError(''); setCopyMessage('A copiar tarefa…');
-          void Promise.resolve().then(() => onCopyTask!(task, date, projectId)).then(created => {
+          void Promise.resolve().then(() => onCopyTask!(task, date, targetProjectId)).then(created => {
             if (!created?.id) throw new Error('O servidor não confirmou a criação da tarefa.');
             setCopyMessage('Tarefa copiada.');
           }).catch(error => { setCopyMessage(''); setMoveError(error instanceof Error ? error.message : 'Não foi possível copiar a tarefa.'); })
             .finally(() => { copying.current = false; setCopyBusy(false); });
-        } else scheduleTask(task, date, projectId);
+        } else scheduleTask(task, date, targetProjectId);
       },
       'data-timeline-drop-cell': key,
     };
+  };
+  const renderUndatedTask = (task: Task) => {
+    const taskStyle = getTaskStatusStyle(task.statusId, taskStatuses);
+    const incomplete = Boolean(task.startDate?.trim() || task.endDate?.trim());
+    return <div key={task.id} className={`rounded-control border border-border border-l-4 ${taskBorderClass(taskStyle)} bg-surface-muted p-1 space-y-1`}>
+      <Button {...dragProps(task)} variant="ghost" size="sm" className={`w-full h-auto min-h-8 px-1 justify-start text-left ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        title={task.title} aria-label={`Abrir tarefa sem data ${task.title}`} onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
+        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${task.assigneeIds?.length ? taskStyle.dotClass : 'bg-error'}`} aria-hidden="true" />
+        <span className="truncate">{task.title}</span>
+      </Button>
+      {incomplete && <span className="block text-caption text-warning">Data incompleta</span>}
+    </div>;
   };
   const dayStyle = (date: string, weekend: boolean) => specialDays.some(s => s.date === date) || weekend ? 'bg-surface-muted' : 'bg-surface';
   const compactDays = new Set(days.filter(day => (day.isWeekend || specialDays.some(s => s.date === day.dateStr)) &&
@@ -260,14 +278,17 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-0 basis-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted z-10 pointer-events-none" />
               <Input aria-label="Pesquisar na timeline" placeholder="Pesquisar projeto, cliente ou nº IP…" className="pl-9 text-body-sm" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} /></div>
-            <Checkbox label="Revisões de risco" checked={includeRiskReviews} onChange={e => { setIncludeRiskReviews(e.target.checked); setPage(1); }} />
+            <div className="flex flex-wrap items-center gap-3">
+              <Checkbox label="Revisões de risco" checked={includeRiskReviews} onChange={e => { setIncludeRiskReviews(e.target.checked); setPage(1); }} />
+              <Checkbox label="Concluídos com tarefas" checked={includeCompletedWithTasks} onChange={e => { setIncludeCompletedWithTasks(e.target.checked); setPage(1); }} />
+            </div>
             {hiddenProjectIds.size > 0 && <Button variant="outline" size="sm" onClick={() => setHiddenProjectIds(new Set())}>Repor todos os projetos</Button>}
           </div>
         </div>
       </div>
       {/* The dock stays at the viewport bottom while the table passes through the vertical scroll area. */}
       {!mobileGrid && <MobileProjectAgenda projects={visibleProjects} clients={clients} users={users} projectStatuses={projectStatuses}
-        taskStatuses={taskStatuses} days={days} events={events} undatedTasks={undatedTasks} otherDays={otherDays}
+        taskStatuses={taskStatuses} days={days} events={events} undatedTasks={undatedTasks} otherDays={otherDays} otherUndatedTasks={otherUndatedTasks}
         conflictTaskIds={conflictTaskIds} specialDays={specialDays} expanded={expandedProjects}
         onToggle={id => setExpandedProjects(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; })}
         onHide={id => setHiddenProjectIds(previous => new Set(previous).add(id))}
@@ -288,7 +309,12 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
             </th>)}
           </tr></thead>
           <tbody><tr className="border-t border-border align-top">
-            <th scope="row" className="p-3 border-b border-border text-left font-medium text-text-primary bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">Outras tarefas</th>
+            <th scope="row" className="p-3 border-b border-border text-left font-medium text-text-primary bg-surface lg:sticky lg:left-0 lg:z-20 lg:border-r lg:border-border">Outras tarefas{otherUndatedTasks.length > 0 &&
+              <div className="mt-2 max-h-32 overflow-y-auto space-y-2" role="group" aria-label="Tarefas sem data">
+                <div className="text-caption text-text-secondary">Tarefas sem data</div>
+                {otherUndatedTasks.map(renderUndatedTask)}
+              </div>}
+            </th>
             {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, null)} className={`${highDensity ? 'p-0.5' : 'p-2'} border-b border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${otherDays.get(day.dateStr)?.otherTasks.some(task => conflictTaskIds.get(day.dateStr)?.has(task.id)) || otherDays.get(day.dateStr)?.absentUsers.some(({ conflict }) => conflict.hasConflict) ? 'project-timeline-conflict-cell' : ''} ${dragOverCell === `other:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
               <div className="space-y-1">
                 {otherDays.get(day.dateStr)?.absentUsers.map(({ user, absence }) => highDensity
@@ -341,14 +367,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
               </div>
               </div>}
               {expanded && pending.length > 0 && <div className="max-h-32 overflow-y-auto space-y-2 pt-1" aria-label={`Tarefas sem data de ${project.title}`}>
-                  {pending.map(task => { const taskStyle = getTaskStatusStyle(task.statusId, taskStatuses); const incomplete = Boolean(task.startDate?.trim() || task.endDate?.trim()); return <div key={task.id} className={`rounded-control border border-border border-l-4 ${taskBorderClass(taskStyle)} bg-surface-muted p-1 space-y-1`}>
-                    <Button {...dragProps(task)} variant="ghost" size="sm" className={`w-full h-auto min-h-8 px-1 justify-start text-left ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                      title={task.title} aria-label={`Abrir tarefa sem data ${task.title}`} onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
-                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${task.assigneeIds?.length ? taskStyle.dotClass : 'bg-error'}`} aria-hidden="true" />
-                      <span className="truncate">{task.title}</span>
-                    </Button>
-                    {incomplete && <span className="block text-caption text-warning">Data incompleta</span>}
-                  </div>; })}
+                  {pending.map(renderUndatedTask)}
               </div>}
             </th>
             {days.map(day => <td key={day.dateStr} {...dropProps(day.dateStr, project.id)} className={`${highDensity ? 'p-0.5' : 'p-2'} border-b border-l border-border ${dayStyle(day.dateStr, day.isWeekend)} ${(events.get(project.id)?.get(day.dateStr) || []).some(event => event.kind === 'task' && conflictTaskIds.get(day.dateStr)?.has(event.task.id)) ? 'project-timeline-conflict-cell' : ''} ${dragOverCell === `${project.id}:${day.dateStr}` ? 'ring-2 ring-inset ring-primary' : ''}`}>
