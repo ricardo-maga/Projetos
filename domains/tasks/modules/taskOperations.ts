@@ -1,7 +1,8 @@
 import { Task, TaskPlanningStatus } from '@/lib/types';
 import { apiRequestError, authenticatedRequest, getAuthHeaders, getApiErrorMessage } from '@/lib/clientAuth';
 import { getTaskConflictWarnings, TaskConflictParams } from '@/domains/tasks/modules/taskConflicts';
-import { countsTowardsPlanning, normalizeTaskPlanningStatus } from './taskPlanning';
+import { normalizeTaskPlanningStatus } from './taskPlanning';
+import { countsTowardsTaskConflict, type TaskConflictStatus } from '@/lib/utils';
 import { parseTaskHoursToNumber } from '@/domains/tasks/modules/taskService';
 
 export { getTaskConflictWarnings, type TaskConflictParams };
@@ -11,6 +12,8 @@ export interface TaskConflictCheckParams {
   date?: string | null;
   hours?: number | string;
   planningStatus?: TaskPlanningStatus;
+  statusId?: string;
+  taskStatuses?: TaskConflictStatus[];
   assigneeIds?: string[];
 }
 
@@ -21,8 +24,8 @@ export function checkTaskConflicts(
   params: TaskConflictCheckParams,
   existingTasks: Task[] = []
 ): { hasConflict: boolean; warnings: string[] } {
-  const { taskId, date, hours = 0, assigneeIds = [] } = params;
-  if (!countsTowardsPlanning(params) || !date || !assigneeIds || assigneeIds.length === 0) {
+  const { taskId, date, hours = 0, assigneeIds = [], taskStatuses } = params;
+  if (!countsTowardsTaskConflict(params, taskStatuses) || !date || !assigneeIds || assigneeIds.length === 0) {
     return { hasConflict: false, warnings: [] };
   }
 
@@ -31,7 +34,7 @@ export function checkTaskConflicts(
 
   for (const userId of assigneeIds) {
     const dayTasks = existingTasks.filter(t => {
-      if (t.deleted || !countsTowardsPlanning(t)) return false;
+      if (!countsTowardsTaskConflict(t, taskStatuses)) return false;
       if (taskId && t.id === taskId) return false;
       if (t.estimatedDate !== date) return false;
       const ids: string[] = t.assigneeIds && t.assigneeIds.length > 0

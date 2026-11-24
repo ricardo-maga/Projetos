@@ -56,6 +56,8 @@ function Preview() {
   const [action, setAction] = useState('');
   const [planningTasks, setPlanningTasks] = useState(() => [
     { ...tasks[0], title: 'Instalação confirmada', taskTypeId: 'qa-type', estimatedHours: '3', planningStatus: 'planned' },
+    ...[3, 4, 5].map(scale => ({ ...tasks[0], id: `qa-inactive-${scale}`, title: `Tarefa de nível ${scale}`,
+      taskTypeId: 'qa-type', statusId: `qa-status-${scale}`, estimatedHours: '0', planningStatus: 'planned' })),
   ]);
   const addPlanningTask = async (payload: any) => {
     const task = { ...payload, id: 'qa-reserve', deleted: false };
@@ -68,7 +70,8 @@ function Preview() {
     return updated;
   };
   const noop = () => {};
-  const shared = { projects, tasks: planningScenario ? planningTasks : tasks, clients, users, taskStatuses, projectStatuses, currentUser,
+  const shared = { projects, tasks: planningScenario ? planningTasks : tasks, clients, users, projectStatuses, currentUser,
+    taskStatuses: planningScenario ? [...taskStatuses, ...[3, 4, 5].map(scale => ({ id: `qa-status-${scale}`, name: `Nível ${scale}`, scale }))] : taskStatuses,
     absences: planningScenario ? [] : absences,
     riskStatuses: [{ id: 'risk-open', name: 'Aberto', scale: 1, deleted: false }],
     projectRiskItems: [{ id: 'qa-risk', projectId: projects[0].id, title: 'Risco de exemplo', probability: 5, impact: 4, statusId: 'risk-open', deleted: false } as any],

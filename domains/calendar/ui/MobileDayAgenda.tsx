@@ -36,7 +36,7 @@ export default function MobileDayAgenda({ date, onDateChange, users, tasksByUser
       const key = `${user.id}_${dateStr}`;
       const tasks = tasksByUserDay.get(key) || [];
       const absence = absencesByUserDay.get(key);
-      const conflict = getOperationalDayConflicts(tasks, absence, user.name, dateStr.split('-').reverse().join('/'));
+      const conflict = getOperationalDayConflicts(tasks, absence, user.name, dateStr.split('-').reverse().join('/'), taskStatuses);
       return <section key={user.id} aria-label={`Agenda de ${user.name}`} className="min-w-0 border-t border-border pt-3 space-y-2">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <h3 className="min-w-0 font-bold text-text-primary [overflow-wrap:anywhere]">{user.name} <span className="text-caption font-normal text-text-secondary">({tasks.length})</span></h3>

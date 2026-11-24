@@ -42,7 +42,7 @@ import { hasPermission } from '@/lib/permissions';
 import { stringToUUID } from '@/lib/supabaseSync';
 import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import { normalizeTaskFromApiResponse } from '@/domains/tasks/modules/taskOperations';
-import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatHoursToHHMM, formatToOnlyHours, parseTimeToHours, getProjectStatusStyle, getTaskStatusStyle } from '@/lib/utils';
+import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, countsTowardsTaskConflict, stripSecondsFromHours, formatHoursToHHMM, formatToOnlyHours, parseTimeToHours, getProjectStatusStyle, getTaskStatusStyle } from '@/lib/utils';
 import { configuredRoleIds, userHasAnyRole } from '@/lib/roleAssociations';
 import { currentForecastMonth, forecastLabel, forecastMonth, normalizeForecast, projectForecastAlert } from '@/domains/projects/modules/projectForecast';
 
@@ -565,7 +565,7 @@ export default function ProjectSection({
   const getTaskCountForUserOnDay = (userId: string, dayStr: string): number => {
     let count = 0;
     tasks.forEach(t => {
-      if (t.deleted || !countsTowardsPlanning(t)) return;
+      if (!countsTowardsTaskConflict(t, taskStatuses)) return;
       if (t.assigneeIds && t.assigneeIds.includes(userId)) {
         if (isTaskActiveOnDay(t, dayStr)) {
           count++;
@@ -586,7 +586,7 @@ export default function ProjectSection({
   // Get conflicts list for a given task based on its scheduled dates and assignees
   const getTaskConflicts = (t: Task) => {
     const conflicts: { userId: string; userName: string; type: 'absence' | 'double_booking'; details: string }[] = [];
-    if (!countsTowardsPlanning(t) || !t.assigneeIds || t.assigneeIds.length === 0) return conflicts;
+    if (!countsTowardsTaskConflict(t, taskStatuses) || !t.assigneeIds || t.assigneeIds.length === 0) return conflicts;
 
     // Find all dates this task is active on
     const datesToCheck: string[] = [];

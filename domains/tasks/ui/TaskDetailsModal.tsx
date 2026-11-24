@@ -401,6 +401,8 @@ export default function TaskDetailsModal({
     return getTaskConflictWarnings({
       date: targetDate,
       planningStatus: formPlanningStatus,
+      statusId: formStatusId,
+      taskStatuses,
       assigneeIds: formAssignees,
       currentTaskId: effectiveMode === 'create' ? null : activeTask?.id,
       tasks,
@@ -408,7 +410,7 @@ export default function TaskDetailsModal({
       absences,
       projects,
     });
-  }, [formStartDate, formEndDate, formEstimatedDate, formPlanningStatus, effectiveMode, activeTask, formAssignees, tasks, users, absences, projects]);
+  }, [formStartDate, formEndDate, formEstimatedDate, formPlanningStatus, formStatusId, taskStatuses, effectiveMode, activeTask, formAssignees, tasks, users, absences, projects]);
 
   const selectedProject = projects.find(p => p.id === formProjectId && !p.deleted);
   const unscheduledProjectTasks = useMemo(() => {
