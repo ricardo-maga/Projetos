@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CalendarFeedScope, FeedClient, FeedProject, FeedTask, FeedUser } from '@/domains/calendar/modules/calendarFeeds';
 
@@ -8,6 +8,18 @@ export function validFeedScope(scope: string): scope is CalendarFeedScope {
 
 export function hashFeedToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
+}
+
+export function deriveCalendarFeedToken(ownerId: string, scope: CalendarFeedScope, nonce: string): string {
+  const encodedKey = process.env.CALENDAR_SUBSCRIPTION_KEY || '';
+  if (!/^[A-Za-z0-9_-]{43}$/.test(encodedKey)) throw new Error('Chave de subscrições indisponível.');
+  return createHmac('sha256', Buffer.from(encodedKey, 'base64url'))
+    .update(JSON.stringify(['calendar-subscription-v1', ownerId, scope, nonce]))
+    .digest('base64url');
+}
+
+export function calendarFeedPath(scope: CalendarFeedScope, token: string): string {
+  return `/api/calendar/feeds/${scope}/${token}.ics`;
 }
 
 export function calendarFeedDb() {

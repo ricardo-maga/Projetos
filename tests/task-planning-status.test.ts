@@ -40,6 +40,34 @@ describe('Tarefas provisórias', () => {
     expect(getProjectTaskAnalysisMinutes(planned).workload).toBe(420);
   });
 
+  it('ignora os níveis 3, 4 e 5 no conflito sem retirar tarefas ou horas', () => {
+    const taskStatuses = [1, 2, 3, 4, 5].map(scale => ({ id: `custom-${scale}`, scale }));
+    const effective: Task = { ...planned, statusId: 'custom-1' };
+    const inProgress: Task = { ...planned, id: 'in-progress', statusId: 'custom-2' };
+    const excluded = taskStatuses.slice(2).map(status => ({ ...planned, id: status.id, statusId: status.id }));
+    const tasks = [effective, ...excluded];
+    const absence = { userId: 'user', absenceStartDate: date, absenceEndDate: date };
+    const day = (records: Task[], absent?: typeof absence) =>
+      getOperationalDayConflicts(records, absent, 'Técnico', '24/11/2026', taskStatuses);
+
+    expect(getUserDayTasks(tasks, 'user', date)).toHaveLength(4);
+    expect(day(excluded, absence)).toMatchObject({ isAbsent: true, hasConflict: false, taskCount: 0 });
+    expect(day(tasks)).toMatchObject({ hasConflict: false, taskCount: 1 });
+    expect(day([...tasks, inProgress])).toMatchObject({ hasConflict: true, taskCount: 2 });
+    expect(getTaskConflictWarnings({
+      date, taskStatuses, assigneeIds: ['user'], currentTaskId: effective.id, statusId: effective.statusId, tasks, users: [],
+    })).toEqual([]);
+    for (const item of excluded) {
+      expect(getTaskConflictWarnings({
+        date, taskStatuses, assigneeIds: ['user'], statusId: item.statusId, tasks, users: [], absences: [absence],
+      })).toEqual([]);
+      expect(getProjectTaskAnalysisMinutes(item).workload).toBe(420);
+    }
+    expect(checkTaskConflicts({ date, taskStatuses, assigneeIds: ['user'], hours: 5 }, excluded).hasConflict).toBe(false);
+    const legacy = ['ts-3', '99999999-9999-9999-9999-999999999904', '5'].map(statusId => ({ ...planned, statusId }));
+    expect(getOperationalDayConflicts(legacy, undefined).taskCount).toBe(0);
+  });
+
   it('transporta e duplica o planeamento e mantém a omissão numa atualização', () => {
     expect(normalizeTaskFromApiResponse({ id: 'old' }).planningStatus).toBe('planned');
     expect(normalizeTaskFromApiResponse({ id: 'reserve', planningStatus: 'provisional' }).planningStatus).toBe('provisional');

@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { ProjectRiskItem, RiskStatus } from "./types"
+import { ProjectRiskItem, RiskStatus, TaskPlanningStatus } from "./types"
+import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning'
 import { parseTaskHoursToNumber } from "./tasks/taskService"
 
 export function cn(...inputs: ClassValue[]) {
@@ -173,24 +174,43 @@ export function formatToOnlyHours(timeStr?: string | null): string {
   return String(Math.round(hours * 100) / 100);
 }
 
+export type TaskConflictStatus = { id: string; scale?: number };
+
+type TaskConflictCandidate = {
+  statusId?: string | null;
+  planningStatus?: TaskPlanningStatus;
+  deleted?: boolean;
+};
+
+export function countsTowardsTaskConflict(task: TaskConflictCandidate, statuses: readonly TaskConflictStatus[] = []): boolean {
+  if (task.deleted || !countsTowardsPlanning(task)) return false;
+
+  const statusId = task.statusId?.toLowerCase();
+  const configuredScale = statuses.find(status => matchTaskStatusId(status.id.toLowerCase(), statusId))?.scale;
+  // Legacy ids encode the level when no configured status is available.
+  const scale = configuredScale ?? Number(statusId?.match(/^(?:ts-|99999999-9999-9999-9999-99999999990)?([1-5])$/)?.[1]);
+  return ![3, 4, 5].includes(scale);
+}
+
 export interface TaskConflictWarning {
   type: 'absence' | 'task';
   userName: string;
   detail: string;
 }
 
-export function checkTaskSchedulingConflicts(params: {
+export function checkTaskSchedulingConflicts(params: TaskConflictCandidate & {
+  taskStatuses?: TaskConflictStatus[];
   taskId?: string | null;
   startDate?: string;
   endDate?: string;
   estimatedDate?: string;
   assigneeIds?: string[];
   users?: { id: string; name: string }[];
-  tasks?: { id: string; title: string; startDate?: string; endDate?: string; estimatedDate?: string; assigneeIds?: string[]; deleted?: boolean }[];
+  tasks?: (TaskConflictCandidate & { id: string; title: string; startDate?: string; endDate?: string; estimatedDate?: string; assigneeIds?: string[] })[];
   userAbsences?: { id?: string; userId: string; absenceStartDate: string; absenceEndDate: string; reason?: string }[];
 }): TaskConflictWarning[] {
-  const { taskId, startDate, endDate, estimatedDate, assigneeIds = [], users = [], tasks = [], userAbsences = [] } = params;
-  if (!assigneeIds || assigneeIds.length === 0) return [];
+  const { taskId, startDate, endDate, estimatedDate, assigneeIds = [], users = [], tasks = [], userAbsences = [], taskStatuses } = params;
+  if (!countsTowardsTaskConflict(params, taskStatuses) || assigneeIds.length === 0) return [];
 
   const taskStart = startDate || estimatedDate || endDate;
   const taskEnd = endDate || estimatedDate || startDate;
@@ -227,7 +247,7 @@ export function checkTaskSchedulingConflicts(params: {
 
     // 2. Check other tasks
     tasks.forEach(t => {
-      if (t.deleted) return;
+      if (!countsTowardsTaskConflict(t, taskStatuses)) return;
       if (taskId && t.id === taskId) return;
       if (t.assigneeIds && t.assigneeIds.includes(userId)) {
         const oStart = t.startDate || t.estimatedDate || t.endDate;

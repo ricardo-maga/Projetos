@@ -198,7 +198,7 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
       });
 
       expect(warnings.length).toBe(1);
-      expect(warnings[0]).toContain('Pedro Correia já tem 2 tarefas planeadas para 24/09');
+      expect(warnings[0]).toContain('Pedro Correia já tem 2 tarefas efetivas para 24/09');
       expect(warnings[0]).toContain('Instalação Cliente X');
       expect(warnings[0]).toContain('FAT Máquina Y');
     });
@@ -236,7 +236,7 @@ describe('FASE 28 — Simplificação e Robustez do Módulo de Tarefas', () => {
       });
 
       expect(warnings.length).toBe(2);
-      expect(warnings.some(w => w.includes('Pedro Correia já tem 2 tarefas planeadas'))).toBe(true);
+      expect(warnings.some(w => w.includes('Pedro Correia já tem 2 tarefas efetivas'))).toBe(true);
       expect(warnings.some(w => w.includes('Hélder Silva está ausente em 24/09'))).toBe(true);
     });
 

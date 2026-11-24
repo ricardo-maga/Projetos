@@ -7,7 +7,7 @@ import type { Client, Project, ProjectRiskItem, SpecialDay, Task, User, UserAbse
 import { buildProjectTimelineEvents, buildUndatedProjectTasks, canDropTimelineTask, computeTimelineTaskDropUpdates, filterProjectTimeline, getCompletedTimelineProjectIds, getOtherTimelineTasks, type TimelineHorizon } from '@/domains/projects/modules/projectTimeline';
 import { getOperationalCalendarDays, formatOperationalDateRange, getOperationalDayConflicts, getUserDayAbsence, isTaskOnDate, isUserAssignedToTask } from '@/domains/calendar/modules/operationalCalendar';
 import { parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
-import { cn, getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '@/lib/utils';
+import { cn, countsTowardsTaskConflict, getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '@/lib/utils';
 import { M3SectionHeader, M3SegmentedControl } from '@/components/M3';
 import { Card } from '@/components/ui/Card';
 import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
@@ -102,21 +102,21 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       const absence = getUserDayAbsence(absences, user.id, day.dateStr);
       if (!absence) return [];
       const conflict = getOperationalDayConflicts(dayTasks.filter(task => isUserAssignedToTask(task, user.id)), absence,
-        user.name, day.dateStr.split('-').reverse().join('/'));
+        user.name, day.dateStr.split('-').reverse().join('/'), taskStatuses);
       return [{ user, absence, conflict }];
     });
     return [day.dateStr, { otherTasks, absentUsers }] as const;
-  })), [days, tasks, users, absences, otherProjectIds]);
+  })), [days, tasks, users, absences, otherProjectIds, taskStatuses]);
   const conflictTaskIds = useMemo(() => new Map(days.map(day => {
-    const dayTasks = tasks.filter(task => isTaskOnDate(task, day.dateStr));
+    const dayTasks = tasks.filter(task => isTaskOnDate(task, day.dateStr) && countsTowardsTaskConflict(task, taskStatuses));
     const ids = new Set<string>();
     for (const user of users.filter(user => !user.deleted)) {
-      const assigned = dayTasks.filter(task => countsTowardsPlanning(task) && isUserAssignedToTask(task, user.id));
+      const assigned = dayTasks.filter(task => isUserAssignedToTask(task, user.id));
       const absence = getUserDayAbsence(absences, user.id, day.dateStr);
-      if (getOperationalDayConflicts(assigned, absence).hasConflict) assigned.forEach(task => ids.add(task.id));
+      if (getOperationalDayConflicts(assigned, absence, undefined, undefined, taskStatuses).hasConflict) assigned.forEach(task => ids.add(task.id));
     }
     return [day.dateStr, ids] as const;
-  })), [days, tasks, users, absences]);
+  })), [days, tasks, users, absences, taskStatuses]);
   const shift = (offset: number) => setAnchor(previous => { const next = new Date(previous); next.setDate(next.getDate() + offset); return next; });
   const dragProps = (task: Task, sourceDate: string | null = null) => ({
     draggable: !copyBusy && (canMove || canCopy && !!onCopyTask),

@@ -681,13 +681,13 @@ export default function BentoDashboard({
                 {activeProjectsThisWeek.length} projeto{activeProjectsThisWeek.length !== 1 ? 's' : ''}
               </span>
             </div>
-            <p className="text-body-sm text-text-secondary mb-4 font-medium">Projetos com tarefas planeadas para os próximos 7 dias</p>
+            <p className="text-body-sm text-text-secondary mb-4 font-medium">Projetos com tarefas previstas para os próximos 7 dias</p>
           </div>
 
           <div className="flex-1 flex flex-col gap-3">
             {activeProjectsThisWeek.length === 0 ? (
               <div className="text-center py-10 text-text-secondary text-body-sm font-medium">
-                Nenhum projeto com tarefas planeadas para os próximos 7 dias.
+                Nenhum projeto com tarefas previstas para os próximos 7 dias.
               </div>
             ) : (
               activeProjectsThisWeek.map(({ project, clientName, projTasksCount, totalTasksThisWeek, progressPct }) => {
