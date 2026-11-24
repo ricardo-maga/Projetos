@@ -1029,7 +1029,7 @@ export default function Page() {
               </section>
             ) : (
             <div id="active-tab-content" key={`${activeTab}-${navKey}`} className="animate-fade-in">
-              {requiresWork && workStatus !== 'loaded' ? <SectionDataFeedback status={workStatus} retry={loadWork} blocked={writesBlocked} /> : requiresActivity && activityStatus !== 'loaded' ? <SectionDataFeedback status={activityStatus} retry={loadActivity} blocked={writesBlocked} /> : <>
+              {!navigationReady ? <SectionLoading /> : requiresWork && workStatus !== 'loaded' ? <SectionDataFeedback status={workStatus} retry={loadWork} blocked={writesBlocked} /> : requiresActivity && activityStatus !== 'loaded' ? <SectionDataFeedback status={activityStatus} retry={loadActivity} blocked={writesBlocked} /> : <>
 
 
               {activeTab !== 'projetos' && requiresProjectMaterials && materialsStatus !== 'loaded' &&

@@ -1,6 +1,9 @@
 name: Remote migration parity
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/migration-parity.mjs', '.github/workflows/migration-parity.yml']
   schedule:
     - cron: '20 7 * * 1-5'
 permissions:
