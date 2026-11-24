@@ -24,6 +24,7 @@ import { Task, Project, Client, TaskType, User, ProjectPriority, TaskPlanningSta
 import { AssigneeSelector } from '@/domains/tasks/ui/AssigneeSelector';
 import { configuredRoleIds } from '@/lib/roleAssociations';
 import { Button } from '@/components/ui/Button';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { IconButton } from '@/components/ui/IconButton';
 import { Dialog } from '@/components/ui/Dialog';
 import { Input } from '@/components/ui/Input';
@@ -605,6 +606,12 @@ export default function TaskDetailsModal({
         : effectiveMode === 'create'
         ? 'Nova tarefa'
         : activeTask?.title || 'Detalhes da Tarefa'}
+      headerAction={<Checkbox
+        label="Tarefa provisória ()"
+        checked={isProvisional}
+        disabled={isPlanningReadOnly || Boolean(savedExecution) || hasExecution}
+        onChange={event => setFormPlanningStatus(event.target.checked ? 'provisional' : 'planned')}
+      />}
       className="max-w-2xl max-h-[calc(100dvh-2rem)]"
       bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden p-0 max-h-none"
     >
@@ -708,14 +715,6 @@ export default function TaskDetailsModal({
                 Dados de planeamento
               </span>
 
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="task-planningStatus" className="block text-label font-bold text-text-primary">Planeamento</label>
-              <Select id="task-planningStatus" value={formPlanningStatus} disabled={isPlanningReadOnly || Boolean(savedExecution) || hasExecution}
-                onChange={event => setFormPlanningStatus(normalizeTaskPlanningStatus(event.target.value))}
-                options={[{ value: 'planned', label: 'Efetiva' }, { value: 'provisional', label: 'Provisória' }]} />
-              {executionLocked && <p className="text-caption text-text-secondary">Confirme o planeamento para registar a execução.</p>}
             </div>
 
             {/* Title */}
@@ -952,8 +951,8 @@ export default function TaskDetailsModal({
                 <PlayCircle className="w-4 h-4 text-warning" />
                 Dados de Execução Real
               </span>
-
             </div>
+            {executionLocked && <p className="text-caption text-text-secondary">Confirme o planeamento para registar a execução.</p>}
 
             {/* Consumed Real Hours */}
             <div className="space-y-1">

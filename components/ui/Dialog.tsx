@@ -11,12 +11,13 @@ export interface DialogProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  headerAction?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   bodyClassName?: string;
 }
 
-export function Dialog({ isOpen, onClose, title, children, className, bodyClassName }: DialogProps) {
+export function Dialog({ isOpen, onClose, title, headerAction, children, className, bodyClassName }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   useModalInteraction(isOpen, onClose, dialogRef);
@@ -52,20 +53,22 @@ export function Dialog({ isOpen, onClose, title, children, className, bodyClassN
             )}
           >
             {/* Header */}
-            <div className="flex shrink-0 items-center justify-between p-5 border-b border-border bg-surface-muted/30">
+            <div className={cn('flex shrink-0 items-center justify-between p-5 border-b border-border bg-surface-muted/30', headerAction && 'gap-2')}>
               {title ? (
-                <h2 id={titleId} className="text-heading-sm font-bold text-text-primary tracking-tight">
+                <h2 id={titleId} title={headerAction ? title : undefined} className={cn('text-heading-sm font-bold text-text-primary tracking-tight',
+                  headerAction && 'min-w-0 flex-1 line-clamp-2 [overflow-wrap:anywhere]')}>
                   {title}
                 </h2>
               ) : (
                 <div />
               )}
+              {headerAction && <div className="ml-auto shrink-0">{headerAction}</div>}
               <IconButton
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
                 aria-label="Fechar diálogo"
-                className="hover:bg-surface-muted hover:text-text-primary rounded-full"
+                className="shrink-0 hover:bg-surface-muted hover:text-text-primary rounded-full"
               >
                 <X className="w-4 h-4" />
               </IconButton>
