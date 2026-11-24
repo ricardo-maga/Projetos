@@ -123,6 +123,8 @@ BEGIN
     RAISE EXCEPTION 'Não é possível eliminar o último Super Administrador.' USING ERRCODE = '23514';
   END IF;
   UPDATE public.users SET deleted = true WHERE id = p_user_id;
+  -- Supabase refresh tokens cascade from sessions. Revoke only the exact linked Auth account.
+  DELETE FROM auth.sessions WHERE user_id = v_target.auth_user_id;
 END;
 $function$;
 

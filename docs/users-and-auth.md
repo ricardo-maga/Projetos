@@ -36,8 +36,8 @@ Depois de ativar cada perfil, confirmar o login com a pessoa responsável pela c
 
 A edição administrativa de credenciais e a ativação de perfis existentes exigem `users.credentials.manage`, inicialmente atribuída só a `SUPER_ADMIN`. Editar ou eliminar outra conta `ADMIN`, `SUPER_ADMIN` ou com `is_admin` exige também `roles.manage`. A palavra-passe da própria conta é alterada nas definições do perfil, com verificação da palavra-passe atual. Os pedidos de edição idênticos ao estado atual não escrevem dados.
 
-O sync legado aceita perfis apenas para leitura. A edição e a eliminação usam a API de contas, que protege a própria conta contra eliminação e impede que a edição, a eliminação ou a alteração de funções retire o último Super Administrador elegível.
+O sync legado aceita perfis apenas para leitura. A edição e a eliminação usam a API de contas, que bloqueia a autoeliminação, revoga as sessões Auth associadas no soft-delete e impede que a edição, a eliminação ou a alteração de funções retire o último Super Administrador elegível.
 
-Aplicar a migração `20261124102000_protect_privileged_accounts` antes de publicar código que use os novos RPCs. Validar em staging com perfis de teste dedicados.
+Aplicar a migração `protect_privileged_accounts` antes de publicar código que use os novos RPCs. Validar em staging com perfis de teste dedicados.
 
 Uma falha ambígua do Auth pode deixar uma reserva em `private.user_profile_changes`. O registo contém o perfil, o operador, o identificador da operação e a data. Antes de libertar uma reserva, confirmar que a execução terminou e reconciliar o perfil com o estado da conta Auth. O identificador da operação deve corresponder ao da reserva que se pretende libertar. A auditoria da aplicação regista falhas parciais, autor, alvo e nomes dos campos alterados.
