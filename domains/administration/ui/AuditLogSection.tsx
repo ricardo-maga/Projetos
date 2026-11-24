@@ -25,7 +25,11 @@ type Event = {
 };
 type Page = { success: boolean; message?: string; data: Event[]; nextCursor: string | null };
 
-function display(value: unknown): string {
+function display(value: unknown, field: string): string {
+  if (field === 'planning_status') {
+    if (value === 'planned') return 'Planeada';
+    if (value === 'provisional') return 'Provisória';
+  }
   if (value == null || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
   return typeof value === 'object' ? JSON.stringify(value) : String(value);
@@ -186,8 +190,8 @@ export default function AuditLogSection({ projectId }: { projectId?: string }) {
                   <div className="grid gap-1 sm:grid-cols-3" key={field}>
                     <strong>{auditFieldLabel(field)}</strong>
                     {change.changed ? <span>Alterado</span> : <>
-                      <span><span className="text-text-muted">Antes </span>{display(change.before)}</span>
-                      <span><span className="text-text-muted">Depois </span>{display(change.after)}</span>
+                      <span><span className="text-text-muted">Antes </span>{display(change.before, field)}</span>
+                      <span><span className="text-text-muted">Depois </span>{display(change.after, field)}</span>
                     </>}
                   </div>
                 ))}

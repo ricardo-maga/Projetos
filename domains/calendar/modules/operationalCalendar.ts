@@ -12,6 +12,8 @@ export interface CalendarDayItem {
   isWeekend: boolean;
 }
 
+import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning';
+
 export interface DayConflictInfo {
   hasConflict: boolean;
   isAbsent: boolean;
@@ -235,7 +237,7 @@ export function getOperationalDayConflicts(
   dateFormatted: string = ''
 ): DayConflictInfo {
   const isAbsent = !!userAbsence;
-  const taskCount = userTasks.length;
+  const taskCount = userTasks.filter(countsTowardsPlanning).length;
   const hasMultipleTasks = taskCount > 1;
 
   if (isAbsent && taskCount > 0) {

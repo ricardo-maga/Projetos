@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TASK_PLANNING_STATUSES } from '@/domains/tasks/modules/taskPlanning';
 
 const optionalDateField = z
   .string()
@@ -35,6 +36,7 @@ export const createTaskSchema = z.object({
   description: z.string().max(10000).optional().default(''),
   statusId: z.string().trim().min(1, 'O estado da tarefa é obrigatório'),
   taskTypeId: z.string().trim().min(1, 'O tipo de tarefa é obrigatório'),
+  planningStatus: z.enum(TASK_PLANNING_STATUSES).optional(),
   priorityId: z.string().nullable().optional().transform((val) => (val === '' ? null : val)),
   estimatedHours: z.number().nonnegative().optional().default(0),
   actualHours: z.number().nonnegative().nullable().optional(),
@@ -95,6 +97,7 @@ export const updateTaskSchema = z.object({
     .nullable()
     .optional()
     .transform((val) => (val === '' ? null : val)),
+  planningStatus: z.enum(TASK_PLANNING_STATUSES).optional(),
   priorityId: z.string().nullable().optional().transform((val) => (val === '' ? null : val)),
   estimatedHours: z.number().nonnegative().optional(),
   actualHours: z.number().nonnegative().nullable().optional(),
@@ -142,6 +145,7 @@ export const queryTaskSchema = z.object({
   search: z.string().max(100).regex(/^[^\u0000-\u001f\u007f]*$/).optional().default(''),
   projectId: z.guid().optional(),
   statusId: z.guid().optional(),
+  planningStatus: z.enum(TASK_PLANNING_STATUSES).optional(),
   taskTypeId: z.guid().optional(),
   userId: z.guid().optional(),
 });

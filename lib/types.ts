@@ -33,11 +33,14 @@ export interface Project {
   version?: number;
 }
 
+export type TaskPlanningStatus = 'planned' | 'provisional';
+
 export interface Task {
   id: string;
   projectId: string | null; // Relation: Projects table (or null if task has no project)
   title: string;
   statusId: string; // Relation: Task status table
+  planningStatus?: TaskPlanningStatus;
   taskTypeId?: string; // Relation: Task types table
   priorityId?: string; // Relation: Project priority table (task-specific priority)
   assigneeIds: string[]; // Relation: Users table (team type)

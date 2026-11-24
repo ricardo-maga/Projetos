@@ -1,5 +1,6 @@
 import type { Task, TaskType } from '@/lib/types';
 import type { TaskCreateInput } from './taskOperations';
+import { normalizeTaskPlanningStatus } from './taskPlanning';
 import { getDefaultTaskStatusId } from '@/lib/utils';
 
 export function buildPlannedTaskCopy(task: Task, date: string, projectId: string | null,
@@ -10,6 +11,7 @@ export function buildPlannedTaskCopy(task: Task, date: string, projectId: string
   if (!statuses.some(status => !status.deleted && status.scale === 1)) throw new Error('Configure um estado inicial para as tarefas antes de copiar.');
   return { projectId, copiedFromTaskId: task.id, title: task.title, description: task.description, notes: task.notes,
     taskTypeId: task.taskTypeId, priorityId: task.priorityId || null, estimatedHours: task.estimatedHours,
+    planningStatus: normalizeTaskPlanningStatus(task.planningStatus),
     assigneeIds: [...task.assigneeIds], estimatedDate: date, statusId: getDefaultTaskStatusId(statuses),
     actualHours: null, startDate: '', startTime: '', endDate: '', endTime: '', completedDate: null };
 }

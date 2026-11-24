@@ -89,6 +89,7 @@ export async function GET() {
             title: { type: "string", example: "Montagem do Quadro Elétrico" },
             projectId: { type: "string", format: "uuid" },
             statusId: { type: "string", example: "ts-1" },
+            planningStatus: { type: 'string', enum: ['planned', 'provisional'], description: 'Tarefas provisórias excluídas dos conflitos e totais de horas. Omissão na criação assume planned; numa atualização mantém o valor.' },
             taskTypeId: { type: "string", format: "uuid", example: "33333333-3333-3333-3333-333333333304", description: "ID do Tipo de Tarefa (configurável em Campos Auxiliares)" },
             copiedFromTaskId: { type: 'string', format: 'uuid', description: 'Tarefa de origem para a auditoria de uma cópia autorizada.' },
             isMilestone: { type: "boolean", default: false, description: "Retrocompatibilidade (Indica se é um Lembrete)" },
@@ -278,6 +279,7 @@ export async function GET() {
           tags: ["Tarefas & Lembretes"],
           parameters: [
             { name: "projectId", in: "query", required: false, schema: { type: "string" } },
+            { name: 'planningStatus', in: 'query', schema: { type: 'string', enum: ['planned', 'provisional'] } },
             { name: "page", in: "query", schema: { type: "integer", minimum: 1, default: 1 } },
             { name: "pageSize", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } }
           ],
@@ -367,8 +369,15 @@ export async function GET() {
   };
   paths['/tasks/{id}'] = {
     get: { summary: 'Consultar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Tarefa' } } },
-    patch: { summary: 'Atualizar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Tarefa atualizada' } } },
-    put: { summary: 'Atualizar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Tarefa atualizada' } } },
+    patch: { summary: 'Atualizar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['version'], properties: {
+        version: { type: 'integer', minimum: 1 },
+        planningStatus: { type: 'string', enum: ['planned', 'provisional'], description: 'Guarde planned antes de registar execução. A omissão preserva o valor atual.' },
+      } } } } },
+      responses: { '200': { description: 'Tarefa atualizada' }, '409': { description: 'Versão desatualizada' } } },
+    put: { summary: 'Atualizar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      description: 'Aceita os mesmos campos e regras de PATCH.',
+      responses: { '200': { description: 'Tarefa atualizada' }, '409': { description: 'Versão desatualizada' } } },
     delete: { summary: 'Eliminar tarefa', tags: ['Tarefas & Lembretes'], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { '200': { description: 'Tarefa eliminada' } } },
   };
   for (const method of ['patch', 'put']) {

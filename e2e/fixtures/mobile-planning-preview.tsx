@@ -9,7 +9,9 @@ import { formatDateToYYYYMMDD, addCivilDays } from '../../domains/calendar/modul
 
 const today = formatDateToYYYYMMDD(new Date());
 const permissions = ['projects.read', 'projects.write', 'projects.delete', 'tasks.read', 'tasks.write', 'tasks.delete', 'calendar.read', 'calendar.write'];
-const readonly = new URLSearchParams(location.search).has('readonly');
+const scenario = new URLSearchParams(location.search);
+const readonly = scenario.has('readonly');
+const planningScenario = scenario.has('provisoria');
 const currentUser = { id: 'mobile-qa-user', name: 'Ana de exemplo', roleId: 'qa-team', roleIds: ['qa-team'], type: 'Team', deleted: false,
   permissions: readonly ? permissions.filter(permission => permission.endsWith('.read')) : permissions };
 const users = [currentUser, { ...currentUser, id: 'mobile-qa-second', name: 'Técnico com nome bastante comprido para testar a apresentação' }];
@@ -49,12 +51,27 @@ function Preview() {
   const [screen, setScreen] = useState('Tarefas');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [action, setAction] = useState('');
+  const [planningTasks, setPlanningTasks] = useState(() => [
+    { ...tasks[0], title: 'Instalação confirmada', taskTypeId: 'qa-type', estimatedHours: '3', planningStatus: 'planned' },
+  ]);
+  const addPlanningTask = async (payload: any) => {
+    const task = { ...payload, id: 'qa-reserve', deleted: false };
+    setPlanningTasks(previous => [...previous, task]);
+    return task;
+  };
+  const updatePlanningTask = async (id: string, updates: any) => {
+    const updated = { ...planningTasks.find(task => task.id === id), ...updates };
+    setPlanningTasks(previous => previous.map(task => task.id === id ? updated : task));
+    return updated;
+  };
   const noop = () => {};
-  const shared = { projects, tasks, clients, users, taskStatuses, projectStatuses, currentUser, absences,
+  const shared = { projects, tasks: planningScenario ? planningTasks : tasks, clients, users, taskStatuses, projectStatuses, currentUser,
+    absences: planningScenario ? [] : absences,
     riskStatuses: [{ id: 'risk-open', name: 'Aberto', scale: 1, deleted: false }],
     projectRiskItems: [{ id: 'qa-risk', projectId: projects[0].id, title: 'Risco de exemplo', probability: 5, impact: 4, statusId: 'risk-open', deleted: false } as any],
     appConfig: { taskAssigneeGroupIds: ['qa-team'] }, userGroups: [{ id: 'qa-team', name: 'Equipa', deleted: false }],
-    taskTypes: [], addTask: noop, updateTask: noop, deleteTask: async () => { setAction('Tarefa eliminada'); return true; } };
+    taskTypes: planningScenario ? [{ id: 'qa-type', name: 'Instalação', scale: 1 }] : [],
+    addTask: planningScenario ? addPlanningTask : noop, updateTask: planningScenario ? updatePlanningTask : noop, deleteTask: async () => { setAction('Tarefa eliminada'); return true; } };
   return <main id="main-root" data-theme="violet" className="min-w-0 bg-background p-4 text-text-primary">
     <nav aria-label="Ecrã de teste" className="mb-4 flex flex-wrap gap-2">{['Tarefas', 'Projetos', 'Calendário', 'Dashboard'].map(label => <button key={label} className="min-h-11 rounded-control border border-border px-3" onClick={() => setScreen(label)}>{label}</button>)}</nav>
     <output>{action}</output>

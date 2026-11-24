@@ -1,7 +1,9 @@
+import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
+import type { TaskPlanningStatus } from '@/lib/types';
 import { Comment, Project, ProjectMaterial, ProjectRiskItem, Task } from '@/lib/types';
 
 type NamedStatus = { id: string; name: string };
-type Activity = { key: string; date: string; kind: string; title: string; detail: string; status: string };
+type Activity = { key: string; date: string; kind: string; title: string; detail: string; status: string; planningStatus?: TaskPlanningStatus };
 
 interface ProjectActivityTableProps {
   project: Project;
@@ -44,7 +46,7 @@ export default function ProjectActivityTable({ project, tasks, comments, risks, 
   });
   tasks.filter(task => !task.deleted).forEach(task => {
     activities.push({
-      key: `task-${task.id}`, date: task.estimatedDate || task.startDate || '', kind: 'Tarefa', title: task.title,
+      key: `task-${task.id}`, date: task.estimatedDate || task.startDate || '', kind: 'Tarefa', title: task.title, planningStatus: task.planningStatus,
       detail: [task.startDate && `Início: ${formatDate(task.startDate)}`, task.endDate && `Fim: ${formatDate(task.endDate)}`].filter(Boolean).join(' · '),
       status: taskStatuses.find(item => item.id === task.statusId)?.name || 'Sem estado',
     });
@@ -83,7 +85,7 @@ export default function ProjectActivityTable({ project, tasks, comments, risks, 
                   <td className="whitespace-nowrap px-4 py-3 font-semibold text-text-secondary">{activity.kind === 'Tarefa' && !activity.date ? '---' : formatDate(activity.date)}</td>
                   <td className="px-4 py-3"><span className="inline-flex rounded-control border border-border bg-surface-muted px-2 py-0.5 text-caption font-semibold text-text-secondary">{activity.kind}</span></td>
                   <td className="px-4 py-3 min-w-[240px] max-w-[480px]"><span className="block font-semibold text-text-primary whitespace-pre-wrap break-words line-clamp-2 [overflow-wrap:anywhere]">{activity.title}</span>{activity.detail && <span className="block text-caption text-text-muted">{activity.detail}</span>}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-text-secondary">{activity.status}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-text-secondary"><div className="flex items-center gap-1.5">{activity.status}<TaskPlanningBadge planningStatus={activity.planningStatus} /></div></td>
                 </tr>
               ))}
             </tbody>

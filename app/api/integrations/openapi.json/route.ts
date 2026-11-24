@@ -23,7 +23,9 @@ export async function GET() {
         ], responses: { '200': { description: 'Página de projetos', content: { 'application/json': { schema: { $ref: '#/components/schemas/Page' } } } },
           '401': { description: 'Credencial inválida' }, '403': { description: 'Sem permissão' }, '429': { description: 'Quota excedida' } } } },
       '/tasks': { get: { summary: 'Tarefas de um projeto autorizado',
+        description: 'Cada tarefa indica planningStatus (planned ou provisional).',
         parameters: [
+          { name: 'planningStatus', in: 'query', schema: { type: 'string', enum: ['planned', 'provisional'] } },
           { name: 'projectId', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
           { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 25 } },
@@ -36,6 +38,7 @@ export async function GET() {
           { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 50 } },
         ], responses: { '200': { description: 'Alterações com hasMore e nextCursor; eliminações têm data=null' } } } },
       '/tasks/changes': { get: { summary: 'Alterações de tarefas num projeto autorizado',
+        description: 'Os dados de cada tarefa incluem planning_status (planned ou provisional).',
         parameters: [
           { name: 'since', in: 'query', required: true, schema: { type: 'string', format: 'date-time' } },
           { name: 'projectId', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },

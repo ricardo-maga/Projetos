@@ -1,3 +1,4 @@
+import { normalizeTaskPlanningStatus } from '@/domains/tasks/modules/taskPlanning';
 /**
  * ============================================================================
  * ARQUITETURA DE DADOS — CONTENÇÃO DO MECANISMO LEGACY DE SINCRONIZAÇÃO
@@ -607,6 +608,7 @@ export async function getActiveStateFromSupabase(
         taskTypeId: resolvedTaskTypeId || (defaultTaskType ? defaultTaskType.id : undefined),
         priorityId: t.priority_id || undefined,
         assigneeIds: assigneesMap[t.id] || [],
+        planningStatus: normalizeTaskPlanningStatus(t.planning_status),
         estimatedDate: t.estimated_date || '',
         description: t.task_description || '',
         estimatedHours: t.estimated_hours || '',
@@ -988,6 +990,7 @@ export async function fetchPaginatedTasksDirectly(params: {
       statusId: row.status_id || '',
       taskTypeId: row.task_type_id || '',
       assigneeIds: [],
+      planningStatus: normalizeTaskPlanningStatus(row.planning_status),
       estimatedDate: row.estimated_date || '',
       description: row.task_description || row.description || '',
       estimatedHours: row.estimated_hours || '00:00',

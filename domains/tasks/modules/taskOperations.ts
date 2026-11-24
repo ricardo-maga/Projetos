@@ -1,6 +1,7 @@
-import { Task } from '@/lib/types';
+import { Task, TaskPlanningStatus } from '@/lib/types';
 import { apiRequestError, authenticatedRequest, getAuthHeaders, getApiErrorMessage } from '@/lib/clientAuth';
 import { getTaskConflictWarnings, TaskConflictParams } from '@/domains/tasks/modules/taskConflicts';
+import { countsTowardsPlanning, normalizeTaskPlanningStatus } from './taskPlanning';
 import { parseTaskHoursToNumber } from '@/domains/tasks/modules/taskService';
 
 export { getTaskConflictWarnings, type TaskConflictParams };
@@ -9,6 +10,7 @@ export interface TaskConflictCheckParams {
   taskId?: string;
   date?: string | null;
   hours?: number | string;
+  planningStatus?: TaskPlanningStatus;
   assigneeIds?: string[];
 }
 
@@ -20,7 +22,7 @@ export function checkTaskConflicts(
   existingTasks: Task[] = []
 ): { hasConflict: boolean; warnings: string[] } {
   const { taskId, date, hours = 0, assigneeIds = [] } = params;
-  if (!date || !assigneeIds || assigneeIds.length === 0) {
+  if (!countsTowardsPlanning(params) || !date || !assigneeIds || assigneeIds.length === 0) {
     return { hasConflict: false, warnings: [] };
   }
 
@@ -29,7 +31,7 @@ export function checkTaskConflicts(
 
   for (const userId of assigneeIds) {
     const dayTasks = existingTasks.filter(t => {
-      if (t.deleted) return false;
+      if (t.deleted || !countsTowardsPlanning(t)) return false;
       if (taskId && t.id === taskId) return false;
       if (t.estimatedDate !== date) return false;
       const ids: string[] = t.assigneeIds && t.assigneeIds.length > 0
@@ -60,6 +62,7 @@ export interface TaskCreateInput {
   title: string;
   description?: string;
   statusId?: string;
+  planningStatus?: TaskPlanningStatus;
   taskTypeId?: string | null;
   priorityId?: string | null;
   estimatedHours?: number | string;
@@ -79,6 +82,7 @@ export interface TaskUpdateInput {
   title?: string;
   description?: string;
   statusId?: string;
+  planningStatus?: TaskPlanningStatus;
   taskTypeId?: string | null;
   priorityId?: string | null;
   estimatedHours?: number | string;
@@ -148,6 +152,7 @@ export function normalizeTaskFromApiResponse(data: any): Task {
     title: data.title || data.task_title || '',
     description: data.description !== undefined ? data.description : (data.task_description || ''),
     statusId: data.statusId || data.status_id || '',
+    planningStatus: normalizeTaskPlanningStatus(data.planningStatus ?? data.planning_status),
     taskTypeId: data.taskTypeId || data.task_type_id || undefined,
     priorityId: data.priorityId || data.priority_id || undefined,
     estimatedHours: String(parseTaskHoursToNumber(data.estimatedHours ?? data.estimated_hours)),
@@ -280,6 +285,7 @@ export async function apiCreateTask(input: TaskCreateInput): Promise<TaskOperati
     statusId: input.statusId || undefined,
     taskTypeId: input.taskTypeId || undefined,
     priorityId: input.priorityId || null,
+    planningStatus: input.planningStatus,
     estimatedHours: parseTaskHoursToFloat(input.estimatedHours),
     actualHours: input.actualHours == null || input.actualHours === '' || parseTaskHoursToFloat(input.actualHours) === 0 ? null : parseTaskHoursToFloat(input.actualHours),
     startDate: input.startDate || undefined,
@@ -350,6 +356,7 @@ export async function apiUpdateTask(
   if (updates.statusId !== undefined) patchPayload.statusId = updates.statusId;
   if (updates.taskTypeId !== undefined) patchPayload.taskTypeId = updates.taskTypeId;
   if (updates.priorityId !== undefined) patchPayload.priorityId = updates.priorityId;
+  if (updates.planningStatus !== undefined) patchPayload.planningStatus = updates.planningStatus;
   if (updates.estimatedHours !== undefined) patchPayload.estimatedHours = parseTaskHoursToFloat(updates.estimatedHours);
   if (updates.actualHours !== undefined) patchPayload.actualHours = updates.actualHours == null || updates.actualHours === '' || parseTaskHoursToFloat(updates.actualHours) === 0 ? null : parseTaskHoursToFloat(updates.actualHours);
   if (updates.startDate !== undefined) patchPayload.startDate = updates.startDate;
