@@ -1,5 +1,61 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+for (const trigger of ['click', 'Enter'] as const) {
+  test(`sends only one comment for five rapid ${trigger} submissions while saving`, async ({ page }) => {
+    let attempts = 0;
+    let finish!: () => void;
+    const pending = new Promise<void>(resolve => { finish = resolve; });
+    await page.route('**/comment-submit', async route => {
+      attempts++;
+      await pending;
+      await route.fulfill({ status: 200, body: '{}' });
+    });
+    await page.goto('/?asyncComments=1');
+    const editor = page.getByRole('textbox', { name: 'Comentário ou nota', includeHidden: true });
+    const send = page.getByRole('button', { name: 'Enviar', exact: true });
+    await editor.fill('Comentário único');
+    if (trigger === 'click') {
+      await send.evaluate(element => { for (let i = 0; i < 5; i++) (element as HTMLButtonElement).click(); });
+    } else {
+      await editor.evaluate(element => {
+        for (let i = 0; i < 5; i++) element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      });
+    }
+    try {
+      await expect.poll(() => attempts).toBe(1);
+      await expect(send).toBeDisabled();
+      await expect(editor).toHaveText('Comentário único');
+      await expect(editor.locator('xpath=ancestor::*[@inert]')).toHaveCount(1);
+    } finally { finish(); }
+    const sent = page.getByRole('region', { name: 'Comentários enviados' });
+    await expect(sent.locator('p')).toHaveCount(1);
+    await expect(editor).toHaveText('');
+    expect(attempts).toBe(1);
+    await editor.fill('Novo comentário');
+    await send.click();
+    await expect(sent.locator('p')).toHaveCount(2);
+    expect(attempts).toBe(2);
+  });
+}
+
+test('keeps the draft and unlocks submission after a failed request', async ({ page }) => {
+  let attempts = 0;
+  await page.route('**/comment-submit', route => route.fulfill({ status: ++attempts === 1 ? 500 : 200, body: '{}' }));
+  await page.goto('/?asyncComments=1');
+  const editor = page.getByRole('textbox', { name: 'Comentário ou nota' });
+  const send = page.getByRole('button', { name: 'Enviar', exact: true });
+  await editor.fill('Texto preservado');
+  await send.click();
+  await expect(page.getByRole('alert')).toContainText('Não foi possível gravar');
+  await expect(editor).toHaveText('Texto preservado');
+  await expect(send).toBeEnabled();
+  await expect(page.getByRole('region', { name: 'Comentários enviados' })).toHaveText('');
+  await send.click();
+  await expect(page.getByRole('region', { name: 'Comentários enviados' })).toHaveText('Texto preservado');
+  await expect(editor).toHaveText('');
+  expect(attempts).toBe(2);
+});
+
 async function selectText(editor: Locator, text: string) {
   await editor.focus();
   await editor.evaluate((element, needle) => {
