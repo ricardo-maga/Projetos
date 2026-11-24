@@ -1,7 +1,8 @@
 import React from 'react';
 import ts from 'typescript';
 import { readFileSync } from 'node:fs';
-import { Button } from '../components/ui/Button';
+import { X } from 'lucide-react';
+import { IconButton } from '../components/ui/IconButton';
 import { describe, expect, it } from 'bun:test';
 import { updateTaskSchema } from '../lib/validations/task';
 import { updateTaskServer } from '../lib/tasks/taskService';
@@ -46,19 +47,28 @@ describe('Planned date clearing', () => {
 // Exercise the real modal action without requiring a database or a login.
 it('clear action only changes editable form state and cannot submit the form', () => {
   const source = readFileSync(new URL('../domains/tasks/ui/TaskDetailsModal.tsx', import.meta.url), 'utf8');
-  const action = source.slice(source.indexOf('{formEstimatedDate &&'), source.indexOf('<Input id="task-formEstimatedDate"')).trim();
-  const js = ts.transpileModule('const action = (' + action.slice(1, -1) + ');', {
+  const condition = source.match(/^\s*const canClearEstimatedDate = .*;$/m)?.[0];
+  const action = source.match(/\{(canClearEstimatedDate && \([\s\S]*?<\/IconButton>\s*\))\}/)?.[1];
+  if (!condition || !action) throw new Error('Could not find the planned date clear action');
+  const js = ts.transpileModule(`${condition}\nconst action = ${action};`, {
     fileName: 'action.tsx', compilerOptions: { jsx: ts.JsxEmit.React },
   }).outputText;
   let value = '2026-11-17';
+  let fieldFocused = false;
+  const inputRef = { current: { focus: () => { fieldFocused = true; } } };
+  const renderAction = new Function(
+    'React', 'IconButton', 'X', 'formEstimatedDate', 'isPlanningReadOnly', 'isSubmitting',
+    'setFormEstimatedDate', 'estimatedDateInputRef', js + '; return action;',
+  );
   const render = (date: string, readOnly: boolean, busy: boolean) =>
-    new Function('React', 'Button', 'formEstimatedDate', 'isPlanningReadOnly', 'isSubmitting', 'setFormEstimatedDate', js + '; return action;')(
-      React, Button, date, readOnly, busy, (next: string) => { value = next; });
-  expect(render('', false, false)).toBe('');
+    renderAction(React, IconButton, X, date, readOnly, busy, (next: string) => { value = next; }, inputRef);
+  expect(render('', false, false)).toBe(false);
   expect(render(value, true, false)).toBe(false);
   expect(render(value, false, true).props.disabled).toBe(true);
   const button = render(value, false, false);
   expect(button.props.type).toBe('button');
+  expect(button.props['aria-label']).toBe('Limpar data planeada');
   button.props.onClick();
   expect(value).toBe('');
+  expect(fieldFocused).toBe(true);
 });

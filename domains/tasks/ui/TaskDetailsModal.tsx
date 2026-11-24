@@ -161,6 +161,7 @@ export default function TaskDetailsModal({
   const [formTypeId, setFormTypeId] = useState('');
   const [formPriorityId, setFormPriorityId] = useState('');
   const [formEstimatedDate, setFormEstimatedDate] = useState('');
+  const estimatedDateInputRef = useRef<HTMLInputElement>(null);
   const [formEstimatedHours, setFormEstimatedHours] = useState('08:00');
   const [formActualHours, setFormActualHours] = useState('');
   const [formStartDate, setFormStartDate] = useState('');
@@ -582,6 +583,7 @@ export default function TaskDetailsModal({
 
   const isReadOnly = effectiveMode === 'view' || !canWrite || isSubmitting;
   const isPlanningReadOnly = isReadOnly || effectiveMode === 'execute';
+  const canClearEstimatedDate = Boolean(formEstimatedDate) && !isPlanningReadOnly;
   const isProvisional = !countsTowardsPlanning({ planningStatus: formPlanningStatus });
   const executionLocked = isProvisional || (wasProvisional && effectiveMode !== 'create');
   const started = (statusId?: string) => Boolean(statusId && !taskStatuses.some(status =>
@@ -835,22 +837,34 @@ export default function TaskDetailsModal({
             {/* Planned Date & Estimated Hours */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label htmlFor="task-formEstimatedDate" className="block text-label font-bold text-text-primary">
-                  Data planeada <span className="text-caption text-text-muted font-normal"></span>
+                <label htmlFor="task-formEstimatedDate" className="block text-body-sm font-bold text-text-primary">
+                  Data planeada
                 </label>
-                {formEstimatedDate && !isPlanningReadOnly && (
-                  <Button type="button" variant="ghost" size="sm" disabled={isSubmitting}
-                    onClick={() => setFormEstimatedDate('')}>
-                    Limpar data
-                  </Button>
-                )}
-                <Input id="task-formEstimatedDate" name="estimatedDate" error={validation.errors.estimatedDate}
-                  type="date"
-                  readOnly={isPlanningReadOnly}
-                  value={formEstimatedDate}
-                  onChange={e => setFormEstimatedDate(e.target.value)}
-                  className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 read-only:bg-surface-muted"
-                />
+                <div className="relative">
+                  <Input id="task-formEstimatedDate" name="estimatedDate" error={validation.errors.estimatedDate}
+                    ref={estimatedDateInputRef}
+                    type="date"
+                    readOnly={isPlanningReadOnly}
+                    value={formEstimatedDate}
+                    onChange={e => setFormEstimatedDate(e.target.value)}
+                    className={`w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 read-only:bg-surface-muted ${canClearEstimatedDate ? '[&::-webkit-calendar-picker-indicator]:ml-11' : ''}`}
+                  />
+                  {canClearEstimatedDate && (
+                    <IconButton
+                      type="button"
+                      className="absolute top-0.5 right-8 h-10"
+                      aria-label="Limpar data planeada"
+                      title="Limpar data planeada"
+                      disabled={isSubmitting}
+                      onClick={() => {
+                        setFormEstimatedDate('');
+                        estimatedDateInputRef.current?.focus();
+                      }}
+                    >
+                      <X className="size-4" aria-hidden="true" />
+                    </IconButton>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-1">
