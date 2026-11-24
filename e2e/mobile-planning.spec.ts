@@ -70,6 +70,10 @@ for (const width of [360, 768, 1280]) {
 
     const forecast = page.locator('div[aria-label="Projetos em Forecast"]');
     const delivered = page.locator('div[aria-label="Projetos entregues com pendentes"]');
+    const forecastHeaderBackground = await forecast.locator(':scope > div').first().evaluate(header => getComputedStyle(header).backgroundColor);
+    await expect(delivered.locator(':scope > div').first()).toHaveCSS('background-color', forecastHeaderBackground);
+    const forecastBorder = await forecast.evaluate(panel => getComputedStyle(panel).borderTopColor);
+    await expect(delivered).toHaveCSS('border-top-color', forecastBorder);
     const deliveredProject = delivered.getByRole('button', { name: 'Abrir projeto Linha entregue com dois ajustes' });
     const taskName = /Abrir tarefa Afinação do equipamento/;
     for (const panel of [forecast, delivered]) {
