@@ -33,6 +33,7 @@ export function resolveNavigationTarget(params: URLSearchParams) {
 }
 
 export function usePageNavigation(mounted: boolean, hasState: boolean) {
+  const [navigationReady, setNavigationReady] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMechanicalRequestId, setSelectedMechanicalRequestId] = useState<string | null>(null);
   const [selectedPresalesRequestId, setSelectedPresalesRequestId] = useState<string | null>(null);
@@ -72,6 +73,7 @@ export function usePageNavigation(mounted: boolean, hasState: boolean) {
   React.useEffect(() => {
     if (mounted && hasState && !hasProcessedDeepLink.current) {
       hasProcessedDeepLink.current = true;
+      setNavigationReady(true);
       const params = new URLSearchParams(window.location.search);
       const target = resolveNavigationTarget(params);
       const projectParam = params.get('project');
@@ -134,7 +136,7 @@ export function usePageNavigation(mounted: boolean, hasState: boolean) {
   };
 
   return {
-    activeTab, setActiveTab, activeConfigTab, selectedProjectId,
+    navigationReady, activeTab, setActiveTab, activeConfigTab, selectedProjectId,
     selectedMechanicalRequestId, setSelectedMechanicalRequestId,
     selectedPresalesRequestId, setSelectedPresalesRequestId,
     sidebarOpen, setSidebarOpen, navKey,

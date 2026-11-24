@@ -156,6 +156,8 @@ export default function Page() {
     refreshFromDatabase,
     refreshProgress,
     resetAuthorizedData,
+    loadWork,
+    workStatus,
     loadActivity,
     activityStatus,
     loadProjectMaterials,
@@ -280,7 +282,7 @@ export default function Page() {
   }, [checkSession, expireSession]);
 
   const {
-    activeTab, activeConfigTab, selectedProjectId,
+    navigationReady, activeTab, activeConfigTab, selectedProjectId,
     selectedMechanicalRequestId, setSelectedMechanicalRequestId,
     selectedPresalesRequestId, setSelectedPresalesRequestId,
     sidebarOpen, setSidebarOpen, navKey,
@@ -303,7 +305,11 @@ export default function Page() {
   }, [setSidebarOpen]);
 
   const canReadActiveTab = canOpenSection(currentUser, activeTab, activeConfigTab);
-  const requiresActivity = canReadActiveTab && ['dashboard', 'my-focus', 'projetos', 'reports', 'tarefas', 'calendario', 'ausencias', 'utilizadores'].includes(activeTab) || (canReadActiveTab && activeTab === 'configuracoes' && activeConfigTab === 'utilizadores');
+  const requiresWork = navigationReady && canReadActiveTab && (activeTab !== 'configuracoes' || activeConfigTab === 'utilizadores');
+  React.useEffect(() => {
+    if (currentUser && !writesBlocked && isInitialDataLoaded && requiresWork && workStatus === 'idle') void loadWork();
+  }, [currentUser, writesBlocked, isInitialDataLoaded, requiresWork, workStatus, loadWork]);
+  const requiresActivity = navigationReady && canReadActiveTab && ['dashboard', 'my-focus', 'projetos', 'reports', 'tarefas', 'calendario', 'ausencias', 'utilizadores'].includes(activeTab) || (navigationReady && canReadActiveTab && activeTab === 'configuracoes' && activeConfigTab === 'utilizadores');
   React.useEffect(() => {
     if (currentUser && !writesBlocked && isInitialDataLoaded && requiresActivity && activityStatus === 'idle') void loadActivity();
   }, [currentUser, writesBlocked, isInitialDataLoaded, requiresActivity, activityStatus, loadActivity]);
@@ -1023,7 +1029,8 @@ export default function Page() {
               </section>
             ) : (
             <div id="active-tab-content" key={`${activeTab}-${navKey}`} className="animate-fade-in">
-              {requiresActivity && activityStatus !== 'loaded' ? <div role="status" className="p-6">{activityStatus === 'error' ? <button onClick={() => void loadActivity()}>Tentar novamente</button> : 'A carregar dados…'}</div> : <>
+              {requiresWork && workStatus !== 'loaded' ? <SectionDataFeedback status={workStatus} retry={loadWork} blocked={writesBlocked} /> : requiresActivity && activityStatus !== 'loaded' ? <SectionDataFeedback status={activityStatus} retry={loadActivity} blocked={writesBlocked} /> : <>
+
 
               {activeTab !== 'projetos' && requiresProjectMaterials && materialsStatus !== 'loaded' &&
                 <SectionDataFeedback status={materialsStatus} retry={loadProjectMaterials} blocked={writesBlocked} />}
