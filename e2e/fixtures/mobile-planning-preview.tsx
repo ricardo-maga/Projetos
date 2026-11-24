@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import TaskSection from '../../domains/tasks/ui/TaskSection';
 import ProjectSection from '../../domains/projects/ui/ProjectSection';
+import CalendarSubscriptions from '../../domains/calendar/ui/CalendarSubscriptions';
 import CalendarSection from '../../domains/calendar/ui/CalendarSection';
 import BentoDashboard from '../../domains/monitoring/ui/BentoDashboard';
 import { formatDateToYYYYMMDD, addCivilDays } from '../../domains/calendar/modules/operationalCalendar';
@@ -36,8 +37,10 @@ const pendingTasks = tasks.slice(0, 3).map((task, index) => ({
 localStorage.setItem(`task-calendar-selected-users-v1:${currentUser.id}`, JSON.stringify(users.map(user => user.id)));
 
 // Only the component's paginated read is simulated. Unexpected requests fail visibly.
-window.fetch = async input => {
+const browserFetch = window.fetch.bind(window);
+window.fetch = async (input, init) => {
   const url = new URL(String(input), location.origin);
+  if (url.pathname.startsWith('/api/calendar/subscriptions/')) return browserFetch(input, init);
   if (url.pathname === '/api/v1/projects') {
     const page = Number(url.searchParams.get('page') || 1), limit = Number(url.searchParams.get('pageSize') || 25);
     const search = (url.searchParams.get('search') || '').toLowerCase();
@@ -72,6 +75,7 @@ function Preview() {
     appConfig: { taskAssigneeGroupIds: ['qa-team'] }, userGroups: [{ id: 'qa-team', name: 'Equipa', deleted: false }],
     taskTypes: planningScenario ? [{ id: 'qa-type', name: 'Instalação', scale: 1 }] : [],
     addTask: planningScenario ? addPlanningTask : noop, updateTask: planningScenario ? updatePlanningTask : noop, deleteTask: async () => { setAction('Tarefa eliminada'); return true; } };
+  if (scenario.has('subscricoes')) return <main className="bg-background p-4"><CalendarSubscriptions /></main>;
   return <main id="main-root" data-theme="violet" className="min-w-0 bg-background p-4 text-text-primary">
     <nav aria-label="Ecrã de teste" className="mb-4 flex flex-wrap gap-2">{['Tarefas', 'Projetos', 'Calendário', 'Dashboard'].map(label => <button key={label} className="min-h-11 rounded-control border border-border px-3" onClick={() => setScreen(label)}>{label}</button>)}</nav>
     <output>{action}</output>

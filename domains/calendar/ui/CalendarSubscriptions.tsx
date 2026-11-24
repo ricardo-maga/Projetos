@@ -1,9 +1,9 @@
 'use client';
-import { authenticatedRequest } from '@/lib/clientAuth';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { authenticatedRequest, getApiErrorMessage, getAuthHeaders } from '@/lib/clientAuth';
 import type { CalendarFeedScope } from '@/domains/calendar/modules/calendarFeeds';
 
 const feeds: { scope: CalendarFeedScope; title: string }[] = [
@@ -11,84 +11,90 @@ const feeds: { scope: CalendarFeedScope; title: string }[] = [
   { scope: 'all', title: 'Todas as tarefas' },
 ];
 
+type Subscription = { configured: boolean; path: string | null };
+
+async function requestSubscription(scope: CalendarFeedScope, fallback: string, init?: RequestInit): Promise<Subscription> {
+  const response = await authenticatedRequest(`/api/calendar/subscriptions/${scope}`, {
+    ...init, cache: 'no-store', headers: getAuthHeaders(),
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok || typeof result?.configured !== 'boolean') throw new Error(getApiErrorMessage(result, fallback));
+  const path = typeof result.path === 'string' ? result.path : null;
+  if (init?.method === 'POST' && !path) throw new Error(fallback);
+  return { configured: result.configured, path };
+}
+
 export default function CalendarSubscriptions() {
-  const [configured, setConfigured] = useState<Record<CalendarFeedScope, boolean>>({ mine: false, all: false });
-  const [urls, setUrls] = useState<Partial<Record<CalendarFeedScope, string>>>({});
+  const [subscriptions, setSubscriptions] = useState<Partial<Record<CalendarFeedScope, Subscription>>>({});
   const [busy, setBusy] = useState<CalendarFeedScope | null>(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState<CalendarFeedScope | null>(null);
 
   useEffect(() => {
-    let active = true;
-    Promise.all(feeds.map(async feed => {
-      const response = await authenticatedRequest(`/api/calendar/subscriptions/${feed.scope}`, { cache: 'no-store' });
-      if (!response.ok) throw new Error('Não foi possível consultar as subscrições.');
-      const result = await response.json();
-      return [feed.scope, Boolean(result.configured)] as const;
-    })).then(rows => {
-      if (active) setConfigured(Object.fromEntries(rows) as Record<CalendarFeedScope, boolean>);
-    }).catch(() => { if (active) setError('Não foi possível consultar as subscrições.'); });
-    return () => { active = false; };
+    const controller = new AbortController();
+    const fallback = 'Não foi possível consultar a subscrição.';
+    for (const { scope } of feeds) {
+      requestSubscription(scope, fallback, { signal: controller.signal }).then(subscription => {
+        if (!controller.signal.aborted) setSubscriptions(previous => ({ ...previous, [scope]: subscription }));
+      }).catch(cause => {
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : fallback);
+      });
+    }
+    return () => controller.abort();
   }, []);
 
-  async function generate(scope: CalendarFeedScope) {
+  async function mutate(scope: CalendarFeedScope, method: 'POST' | 'DELETE') {
     setBusy(scope);
     setError('');
     setCopied(null);
+    const fallback = method === 'POST' ? 'Não foi possível gerar o endereço.' : 'Não foi possível desativar o endereço.';
     try {
-      const response = await authenticatedRequest(`/api/calendar/subscriptions/${scope}`, { method: 'POST' });
-      const result = await response.json();
-      if (!response.ok || !result.path) throw new Error(result.error || 'Não foi possível gerar o endereço.');
-      setUrls(previous => ({ ...previous, [scope]: `${window.location.origin}${result.path}` }));
-      setConfigured(previous => ({ ...previous, [scope]: true }));
+      const updated = await requestSubscription(scope, fallback, { method });
+      setSubscriptions(previous => ({ ...previous, [scope]: updated }));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Não foi possível gerar o endereço.');
-    } finally { setBusy(null); }
+      setError(cause instanceof Error ? cause.message : fallback);
+    } finally {
+      setBusy(null);
+    }
   }
 
-  async function copy(scope: CalendarFeedScope) {
-    const url = urls[scope];
-    if (!url) return;
+  async function copy(scope: CalendarFeedScope, url: string) {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(scope);
       setError('');
-    } catch { setError('Não foi possível copiar automaticamente. Selecione e copie o endereço apresentado.'); }
-  }
-
-  async function revoke(scope: CalendarFeedScope) {
-    setBusy(scope);
-    setError('');
-    try {
-      const response = await authenticatedRequest(`/api/calendar/subscriptions/${scope}`, { method: 'DELETE' });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Não foi possível desativar o endereço.');
-      setConfigured(previous => ({ ...previous, [scope]: false }));
-      setUrls(previous => ({ ...previous, [scope]: undefined }));
-      setCopied(null);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Não foi possível desativar o endereço.');
-    } finally { setBusy(null); }
+    } catch {
+      setError('Não foi possível copiar automaticamente. Selecione e copie o endereço apresentado.');
+    }
   }
 
   return <section className="border-t border-border pt-4 space-y-4" aria-labelledby="calendar-subscriptions-title">
     <h3 id="calendar-subscriptions-title" className="font-bold text-text-primary">Subscrever calendários com aplicação externa</h3>
-    {feeds.map(feed => <div key={feed.scope} className="border-t border-border-subtle pt-3 space-y-2">
-      <h4 className="font-semibold text-body-sm text-text-primary">{feed.title}</h4>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="secondary" size="sm" disabled={busy !== null} onClick={() => generate(feed.scope)}>
-          {configured[feed.scope] ? 'Renovar endereço' : 'Criar endereço'}
-        </Button>
-        {urls[feed.scope] && <Button type="button" variant="outline" size="sm" onClick={() => copy(feed.scope)}>
-          {copied === feed.scope ? 'Copiado' : 'Copiar endereço'}
-        </Button>}
-        {configured[feed.scope] && <Button type="button" variant="ghost" size="sm" disabled={busy !== null} onClick={() => revoke(feed.scope)}>
-          Desativar endereço
-        </Button>}
-      </div>
-      {urls[feed.scope] && <Input readOnly aria-label={`Endereço de ${feed.title}`} value={urls[feed.scope]}
-        onFocus={event => event.currentTarget.select()} />}
-    </div>)}
+    {feeds.map(feed => {
+      const subscription = subscriptions[feed.scope];
+      const url = subscription?.path ? `${window.location.origin}${subscription.path}` : null;
+      return <div key={feed.scope} className="border-t border-border-subtle pt-3 space-y-2">
+        <h4 className="font-semibold text-body-sm text-text-primary">{feed.title}</h4>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" size="sm" disabled={!subscription || busy !== null} onClick={() => mutate(feed.scope, 'POST')}>
+            {subscription?.configured ? 'Renovar endereço' : 'Criar endereço'}
+          </Button>
+          {subscription?.configured && <>
+            <Button type="button" variant="outline" size="sm" disabled={!url || busy !== null} onClick={() => { if (url) void copy(feed.scope, url); }}>
+              {copied === feed.scope ? 'Copiado' : 'Copiar endereço'}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" disabled={busy !== null} onClick={() => mutate(feed.scope, 'DELETE')}>
+              Desativar endereço
+            </Button>
+          </>}
+        </div>
+        {url && <Input readOnly aria-label={`Endereço de ${feed.title}`} value={url}
+          onFocus={event => event.currentTarget.select()} />}
+        {subscription?.configured && !url && <p className="text-caption text-text-secondary">
+          Renove este endereço para ativar a cópia. Após a renovação, substitua o endereço na aplicação de calendário.
+        </p>}
+      </div>;
+    })}
     {error && <p role="alert" className="text-body-sm text-error">{error}</p>}
   </section>;
 }

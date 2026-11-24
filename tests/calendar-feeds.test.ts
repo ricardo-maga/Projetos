@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { calendarFeedPath, deriveCalendarFeedToken, hashFeedToken } from '../domains/calendar/data/calendarFeedServer';
 import { renderCalendarFeed, taskCalendarDate, type FeedTask } from '../lib/calendarFeeds';
 
 const base: FeedTask = {
@@ -16,6 +17,27 @@ const common = {
     { id: 'user-am', name: 'Ana Martins', updated_at: null },
   ],
 };
+
+describe('endereços de subscrição iCalendar', () => {
+  it('reconstrói o mesmo endereço e separa a conta, o calendário e cada renovação', () => {
+    const previousKey = process.env.CALENDAR_SUBSCRIPTION_KEY;
+    process.env.CALENDAR_SUBSCRIPTION_KEY = Buffer.alloc(32, 7).toString('base64url');
+    try {
+      const nonce = '519ae66d-1d02-482c-9789-488308512713';
+      const token = deriveCalendarFeedToken('owner', 'mine', nonce);
+      const hash = hashFeedToken(token);
+      expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(hashFeedToken(deriveCalendarFeedToken('owner', 'mine', nonce))).toBe(hash);
+      expect(calendarFeedPath('mine', token)).toBe(`/api/calendar/feeds/mine/${token}.ics`);
+      expect(deriveCalendarFeedToken('other', 'mine', nonce)).not.toBe(token);
+      expect(deriveCalendarFeedToken('owner', 'all', nonce)).not.toBe(token);
+      expect(deriveCalendarFeedToken('owner', 'mine', 'cf99ac1c-6f7a-424c-b65d-6e3e95788be6')).not.toBe(token);
+    } finally {
+      if (previousKey === undefined) delete process.env.CALENDAR_SUBSCRIPTION_KEY;
+      else process.env.CALENDAR_SUBSCRIPTION_KEY = previousKey;
+    }
+  });
+});
 
 describe('calendários iCalendar', () => {
   it('usa a mesma data operacional e DTEND exclusivo', () => {

@@ -6,6 +6,51 @@ async function fits(page: Page) {
 async function screen(page: Page, label: string) {
   await page.getByRole('navigation', { name: 'Ecrã de teste' }).getByRole('button', { name: label, exact: true }).click();
 }
+test('recopia uma subscrição após recarregar e orienta a renovação de um endereço antigo', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const existing = '/api/calendar/feeds/mine/example.ics';
+  const renewed = '/api/calendar/feeds/all/renewed.ics';
+  let savedAll: string | null = null;
+  let failuresRemaining = 1;
+  let mutations = 0;
+  await page.route('**/api/calendar/subscriptions/*', async route => {
+    const request = route.request();
+    if (request.method() === 'GET') {
+      const path = request.url().endsWith('/mine') ? existing : savedAll;
+      await route.fulfill({ json: { configured: true, path } });
+    } else {
+      mutations += 1;
+      expect(request.headers()['content-type']).toBe('application/json');
+      if (failuresRemaining-- > 0) {
+        await route.fulfill({ status: 415, json: { error: { message: 'Formato do pedido não suportado.' } } });
+      } else {
+        savedAll = renewed;
+        await route.fulfill({ json: { configured: true, path: savedAll } });
+      }
+    }
+  });
+  await page.goto('/?subscricoes');
+  const mine = page.getByRole('heading', { name: 'As minhas tarefas' }).locator('..');
+  const all = page.getByRole('heading', { name: 'Todas as tarefas' }).locator('..');
+  const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
+  await mine.getByRole('button', { name: 'Copiar endereço' }).click();
+  expect(await clipboard()).toBe(new URL(existing, page.url()).href);
+  await page.reload();
+  await mine.getByRole('button', { name: 'Copiar endereço' }).click();
+  expect(await clipboard()).toBe(new URL(existing, page.url()).href);
+  expect(mutations).toBe(0);
+  await expect(all.getByRole('button', { name: 'Copiar endereço' })).toBeDisabled();
+  await expect(all.getByText(/Renove este endereço/)).toBeVisible();
+  await all.getByRole('button', { name: 'Renovar endereço' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Formato do pedido não suportado.');
+  await all.getByRole('button', { name: 'Renovar endereço' }).click();
+  await expect(all.getByRole('button', { name: 'Copiar endereço' })).toBeEnabled();
+  await page.reload();
+  await all.getByRole('button', { name: 'Copiar endereço' }).click();
+  expect(await clipboard()).toBe(new URL(renewed, page.url()).href);
+  expect(mutations).toBe(2);
+});
+
 for (const width of [390, 1280]) {
   test(`confirma uma reserva e atualiza horas e conflitos a ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
