@@ -67,12 +67,18 @@ for (const width of [390, 1280]) {
     await create.click();
 
     const dialog = page.getByRole('dialog');
-    const planning = dialog.getByLabel('Planeamento', { exact: true });
+    const header = dialog.getByRole('heading', { level: 2 }).locator('..');
+    const planning = header.getByRole('checkbox', { name: 'Tarefa provisória ()', exact: true });
+    await expect(planning).not.toBeChecked();
+    await expect(dialog.getByRole('combobox', { name: 'Planeamento', exact: true })).toHaveCount(0);
+    await expect.poll(() => header.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+    await fits(page);
     await expect(dialog.getByLabel('Data planeada', { exact: false }).first()).not.toHaveValue('');
     await dialog.getByLabel('Título da tarefa').fill('Reserva de montagem');
     await dialog.getByLabel('Tipo de tarefa').selectOption('qa-type');
     await dialog.getByLabel('Horas previstas (h)').fill('4');
-    await planning.selectOption('provisional');
+    await header.getByText('Tarefa provisória ()', { exact: true }).click();
+    await expect(planning).toBeChecked();
     await dialog.getByRole('button', { name: 'Criar tarefa', exact: true }).click();
     await expect(dialog).toHaveCount(0);
 
@@ -85,10 +91,12 @@ for (const width of [390, 1280]) {
     await page.getByLabel('Filtrar por planeamento').selectOption('provisional');
     await expect(page.getByText('Instalação confirmada', { exact: true })).toHaveCount(0);
     await page.getByText('Reserva de montagem', { exact: true }).filter({ visible: true }).click();
-    await expect(planning).toHaveValue('provisional');
+    await expect(planning).toBeChecked();
     await expect(dialog.getByLabel('Horas consumidas (h)')).toHaveAttribute('readonly', '');
     await expect(dialog.getByText(/Aviso Informativo de Conflitos/)).toHaveCount(0);
-    await planning.selectOption({ label: 'Efetiva' });
+    await planning.focus();
+    await planning.press('Space');
+    await expect(planning).not.toBeChecked();
     await expect(dialog.getByText(/já tem 1 tarefa efetiva/)).toBeVisible();
     await expect(dialog.getByLabel('Horas consumidas (h)')).toHaveAttribute('readonly', '');
     await dialog.getByRole('button', { name: 'Confirmar planeamento' }).click();
@@ -216,6 +224,7 @@ test('read-only access hides mutation actions and opens a readable task', async 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('button', { name: /Guardar|Eliminar/ })).toHaveCount(0);
+  await expect(dialog.getByRole('checkbox', { name: 'Tarefa provisória ()', exact: true })).toBeDisabled();
   await page.keyboard.press('Escape');
   await screen(page, 'Calendário');
   await expect(page.getByRole('region', { name: 'Agenda diária' }).getByRole('button', { name: /Criar tarefa|Duplicar tarefa/ })).toHaveCount(0);
