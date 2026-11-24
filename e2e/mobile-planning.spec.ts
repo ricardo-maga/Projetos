@@ -62,6 +62,44 @@ for (const width of [360, 390, 430, 768, 1280]) {
   });
 }
 
+for (const width of [360, 768, 1280]) {
+  test(`Dashboard project panels fit and show the right details at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/');
+    await screen(page, 'Dashboard');
+
+    const forecast = page.locator('div[aria-label="Projetos em Forecast"]');
+    const delivered = page.locator('div[aria-label="Projetos entregues com pendentes"]');
+    const deliveredProject = delivered.getByRole('button', { name: 'Abrir projeto Linha entregue com dois ajustes' });
+    const taskName = /Abrir tarefa Afinação do equipamento/;
+    for (const panel of [forecast, delivered]) {
+      await expect(panel).toBeVisible();
+      await expect.poll(() => panel.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+      await expect(panel.locator(':scope > div').first()).toHaveCSS('padding-left', width < 640 ? '12px' : '15px');
+      await expect(panel.getByRole(width < 768 ? 'listitem' : 'columnheader').first()).toHaveCSS('padding-top', '10.5px');
+    }
+    if (width < 768) {
+      await expect(forecast.getByRole('list')).toContainText('Entrega:');
+      await expect(forecast.getByRole('table')).toBeHidden();
+      await expect(forecast.getByText('Em curso', { exact: true })).toBeHidden();
+      await forecast.getByRole('button', { name: /Abrir projeto Linha de embalagem/ }).click();
+      await expect(page.getByText('Projeto qa-project-0', { exact: true })).toBeVisible();
+      await expect(delivered.getByText('2 tarefas abertas', { exact: true })).toBeVisible();
+      await expect(delivered.getByText('1 tarefa aberta', { exact: true })).toBeVisible();
+      await expect(delivered.getByRole('button', { name: taskName })).toBeHidden();
+    } else {
+      await expect(forecast.getByRole('columnheader', { name: 'Estado' })).toBeVisible();
+      await expect(delivered.getByRole('table')).toBeVisible();
+      const [client, title] = await deliveredProject.locator('span').evaluateAll(spans => spans.map(span => span.getBoundingClientRect().toJSON()));
+      expect(title.top - client.bottom).toBeLessThanOrEqual(2);
+      await delivered.getByRole('button', { name: taskName }).click();
+      await expect(page.getByText('Tarefa qa-task-0', { exact: true })).toBeVisible();
+    }
+    await deliveredProject.click();
+    await expect(page.getByText('Projeto qa-delivered', { exact: true })).toBeVisible();
+  });
+}
+
 test('read-only access hides mutation actions and opens a readable task', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto('/?readonly');

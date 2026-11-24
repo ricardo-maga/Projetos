@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import TaskSection from '../../domains/tasks/ui/TaskSection';
 import ProjectSection from '../../domains/projects/ui/ProjectSection';
 import CalendarSection from '../../domains/calendar/ui/CalendarSection';
+import BentoDashboard from '../../domains/monitoring/ui/BentoDashboard';
 import { formatDateToYYYYMMDD, addCivilDays } from '../../domains/calendar/modules/operationalCalendar';
 
 const today = formatDateToYYYYMMDD(new Date());
@@ -22,6 +23,14 @@ const tasks: any[] = Array.from({ length: 27 }, (_, i) => ({ id: `qa-task-${i}`,
   projectId: i === 2 ? null : projects[0].id, statusId: 'ts-1', estimatedDate: i === 1 ? '' : today, estimatedHours: '02:30', actualHours: '',
   startDate: i === 3 ? today : '', endDate: i === 3 ? addCivilDays(today, 2) : '', assigneeIds: i === 1 ? [] : [currentUser.id], deleted: false, description: '' }));
 const absences: any[] = [{ id: 'qa-absence', userId: currentUser.id, absenceStartDate: today, absenceEndDate: today, reason: 'Férias de exemplo', deleted: false }];
+const deliveredProjects = [
+  { ...projects[0], id: 'qa-delivered', title: 'Linha entregue com dois ajustes', statusId: 'ps-5', forecastDate: '' },
+  { ...projects[1], id: 'qa-delivered-second', title: 'Instalação entregue com um ajuste', statusId: 'ps-5', forecastDate: '' },
+];
+const pendingTasks = tasks.slice(0, 3).map((task, index) => ({
+  ...task,
+  projectId: deliveredProjects[index === 2 ? 1 : 0].id,
+}));
 localStorage.setItem(`task-calendar-selected-users-v1:${currentUser.id}`, JSON.stringify(users.map(user => user.id)));
 
 // Only the component's paginated read is simulated. Unexpected requests fail visibly.
@@ -47,12 +56,16 @@ function Preview() {
     appConfig: { taskAssigneeGroupIds: ['qa-team'] }, userGroups: [{ id: 'qa-team', name: 'Equipa', deleted: false }],
     taskTypes: [], addTask: noop, updateTask: noop, deleteTask: async () => { setAction('Tarefa eliminada'); return true; } };
   return <main id="main-root" data-theme="violet" className="min-w-0 bg-background p-4 text-text-primary">
-    <nav aria-label="Ecrã de teste" className="mb-4 flex flex-wrap gap-2">{['Tarefas', 'Projetos', 'Calendário'].map(label => <button key={label} className="min-h-11 rounded-control border border-border px-3" onClick={() => setScreen(label)}>{label}</button>)}</nav>
+    <nav aria-label="Ecrã de teste" className="mb-4 flex flex-wrap gap-2">{['Tarefas', 'Projetos', 'Calendário', 'Dashboard'].map(label => <button key={label} className="min-h-11 rounded-control border border-border px-3" onClick={() => setScreen(label)}>{label}</button>)}</nav>
     <output>{action}</output>
     {screen === 'Tarefas' && <TaskSection {...shared} />}
     {screen === 'Projetos' && <ProjectSection {...shared} comments={[]} projectCategories={[]} projectRisks={[]} projectPriorities={[]} projectTeams={[]} projectPartners={[]}
       selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} addProject={noop} updateProject={noop} deleteProject={noop} addClient={noop} addComment={noop} deleteComment={noop} />}
     {screen === 'Calendário' && <CalendarSection {...shared} specialDays={[{ id: 'qa-special', date: today, name: 'Dia especial de exemplo' } as any]} onSelectProject={id => { setAction(`Projeto ${id}`); }} />}
+    {screen === 'Dashboard' && <BentoDashboard {...shared} projects={[projects[0], ...deliveredProjects]} tasks={pendingTasks}
+      projectStatuses={[...projectStatuses, { id: 'ps-5', name: 'Entregue', scale: 5, color: 'verde' }]}
+      comments={[]} projectCategories={[]} projectPriorities={[]} onNavigate={noop}
+      onSelectProject={id => setAction(`Projeto ${id}`)} onSelectTask={id => setAction(`Tarefa ${id}`)} />}
   </main>;
 }
 createRoot(document.getElementById('preview')!).render(<Preview />);

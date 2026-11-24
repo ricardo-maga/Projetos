@@ -40,6 +40,32 @@ interface BentoDashboardProps {
   canOpenProjects?: boolean;
 }
 
+function CompactProjectRow({ project, clientName, onOpen, children }: {
+  project: Project;
+  clientName: string;
+  onOpen?: () => void;
+  children: React.ReactNode;
+}) {
+  const content = <>
+    <span className="block text-caption text-primary-ink">{clientName}</span>
+    <span className="block text-body font-bold text-text-primary">{project.title}</span>
+    <span className="block text-caption text-text-secondary">IP: {project.installProjectNo || '—'}</span>
+    <span className="block text-body-sm text-text-secondary">{children}</span>
+  </>;
+
+  return <li className="min-w-0 px-3 py-[0.65625rem] sm:px-3.75 [overflow-wrap:anywhere]">
+    {onOpen ? <Button type="button" variant="ghost" size="sm"
+      className="block h-auto min-h-11 w-full space-y-1 border-0 px-0 whitespace-normal text-left focus-visible:ring-inset"
+      aria-label={`Abrir projeto ${project.title}`} onClick={onOpen}>{content}</Button>
+      : <div className="space-y-1">{content}</div>}
+  </li>;
+}
+
+function formatProjectDeliveryDate(project: Project) {
+  const date = project.scheduledDate || project.estimatedDate || project.deliveryDate;
+  return date ? new Date(`${date}T00:00:00`).toLocaleDateString('pt-PT') : '—';
+}
+
 export default function BentoDashboard({
   projects,
   tasks,
@@ -365,8 +391,8 @@ export default function BentoDashboard({
         <MetricCard title="Tarefas abertas" value={summary.openTasks} />
       </div>
 
-      <Card className="md:col-span-12 flex flex-col overflow-hidden" aria-label="Projetos em Forecast">
-        <div className="p-4 sm:p-5 border-b border-border/80 flex flex-wrap items-center justify-between gap-3 bg-surface-muted/60">
+      <Card className="md:col-span-12 min-w-0 flex flex-col overflow-hidden" aria-label="Projetos em Forecast">
+        <div className="mobile-controls p-3 sm:p-3.75 border-b border-border/80 flex flex-wrap items-center justify-between gap-3 bg-surface-muted/60">
           <h2 className="text-heading-sm text-text-primary">Projetos em Forecast</h2>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar mês do Forecast">
             {([-1, 0, 1] as const).map(offset => {
@@ -377,58 +403,75 @@ export default function BentoDashboard({
             })}
           </div>
         </div>
-        <div className="overflow-x-auto w-full">
-          {forecastProjects.length === 0 ? <p className="p-5 text-body-sm text-text-muted">Sem projetos em Forecast neste mês.</p> :
-            <table aria-label="Projetos em Forecast" className="w-full min-w-[760px] table-fixed text-left border-collapse text-body-sm">
+        {forecastProjects.length === 0 ? <p className="p-3.75 text-body-sm text-text-muted">Sem projetos em Forecast neste mês.</p> :
+          <>
+            <ul aria-label="Lista compacta de projetos em Forecast" className="mobile-controls divide-y divide-border md:hidden">
+              {forecastProjects.map(project => <CompactProjectRow key={project.id} project={project} clientName={getClientName(project.clientId)}
+                onOpen={canOpenProjects ? () => onSelectProject(project.id) : undefined}>
+                Entrega: {formatProjectDeliveryDate(project)}
+              </CompactProjectRow>)}
+            </ul>
+            <table aria-label="Projetos em Forecast" className="hidden md:table w-full table-fixed text-left border-collapse text-body-sm [overflow-wrap:anywhere]">
               <colgroup><col className="w-[15%]" /><col className="w-[35%]" /><col className="w-1/5" /><col className="w-[30%]" /></colgroup>
-              <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
-                <tr><th className="px-5 py-3.5">IP</th><th className="px-5 py-3.5">Projeto</th><th className="px-5 py-3.5">Estado</th><th className="px-5 py-3.5">Prazo de entrega</th></tr>
+              <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 select-none">
+                <tr><th scope="col" className="px-3.75 py-[0.65625rem]">IP</th><th scope="col" className="px-3.75 py-[0.65625rem]">Projeto</th><th scope="col" className="px-3.75 py-[0.65625rem]">Estado</th><th scope="col" className="px-3.75 py-[0.65625rem]">Prazo de entrega</th></tr>
               </thead>
               <tbody className="divide-y divide-border-subtle font-medium">
                 {forecastProjects.map(project => {
                   const status = getProjectStatusStyle(project.statusId, projectStatuses);
-                  const deliveryDate = project.scheduledDate || project.estimatedDate || project.deliveryDate;
-                  return <tr key={project.id} tabIndex={0}
-                    onClick={() => onSelectProject(project.id)}
-                    onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectProject(project.id); } }}
-                    className="hover:bg-surface-muted/80 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-primary">
-                    <td className="px-5 py-3.5 font-mono font-bold text-text-primary">{project.installProjectNo || '-'}</td>
-                    <td className="px-5 py-3.5"><div className="text-primary-ink font-medium">{getClientName(project.clientId)}</div><div className="font-semibold text-text-primary">{project.title}</div></td>
-                    <td className="px-5 py-3.5"><Badge className={status.badgeClass}>{status.name}</Badge></td>
-                    <td className="px-5 py-3.5 whitespace-nowrap text-text-primary">{deliveryDate ? new Date(`${deliveryDate}T00:00:00`).toLocaleDateString('pt-PT') : '—'}</td>
+                  const openProject = canOpenProjects ? () => onSelectProject(project.id) : undefined;
+                  return <tr key={project.id} tabIndex={openProject ? 0 : undefined}
+                    onClick={openProject}
+                    onKeyDown={openProject && (event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProject(); } })}
+                    className={openProject ? 'hover:bg-surface-muted/80 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-primary' : undefined}>
+                    <td className="px-3.75 py-[0.65625rem] font-mono font-bold text-text-primary">{project.installProjectNo || '-'}</td>
+                    <td className="px-3.75 py-[0.65625rem]"><div className="text-primary-ink font-medium">{getClientName(project.clientId)}</div><div className="font-semibold text-text-primary">{project.title}</div></td>
+                    <td className="px-3.75 py-[0.65625rem]"><Badge className={`${status.badgeClass} whitespace-normal`}>{status.name}</Badge></td>
+                    <td className="px-3.75 py-[0.65625rem] text-text-primary">{formatProjectDeliveryDate(project)}</td>
                   </tr>;
                 })}
               </tbody>
-            </table>}
-        </div>
+            </table>
+          </>}
       </Card>
 
-      <Card className="md:col-span-12 flex flex-col overflow-hidden" aria-label="Projetos entregues com pendentes">
-        <div className="p-4 sm:p-5 border-b border-border/80 flex flex-wrap items-center justify-between gap-3 bg-surface-muted/60">
+      <Card className="md:col-span-12 min-w-0 flex flex-col overflow-hidden" aria-label="Projetos entregues com pendentes">
+        <div className="p-3 sm:p-3.75 border-b border-border/80 bg-surface-muted/60">
           <h2 className="text-heading-sm text-text-primary">Projetos entregues com pendentes</h2>
         </div>
-        <div className="overflow-x-auto w-full">
-          {deliveredProjects.length === 0 ? <p className="p-5 text-body-sm text-text-muted">Sem projetos entregues com pendentes.</p> :
-            <table aria-label="Projetos entregues com pendentes" className="w-full min-w-[760px] table-fixed text-left border-collapse text-body-sm">
+        {deliveredProjects.length === 0 ? <p className="p-3.75 text-body-sm text-text-muted">Sem projetos entregues com pendentes.</p> :
+          <>
+            <ul aria-label="Lista compacta de projetos entregues com pendentes" className="mobile-controls divide-y divide-border md:hidden">
+              {deliveredProjects.map(({ project, clientName, pendingTasks }) => <CompactProjectRow key={project.id} project={project} clientName={clientName}
+                onOpen={canOpenProjects ? () => onSelectProject(project.id) : undefined}>
+                {pendingTasks.length === 1 ? '1 tarefa aberta' : `${pendingTasks.length} tarefas abertas`}
+              </CompactProjectRow>)}
+            </ul>
+            <table aria-label="Projetos entregues com pendentes" className="hidden md:table w-full table-fixed text-left border-collapse text-body-sm [overflow-wrap:anywhere]">
               <colgroup><col className="w-[15%]" /><col className="w-[35%]" /><col className="w-1/2" /></colgroup>
-              <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 whitespace-nowrap select-none">
-                <tr><th scope="col" className="px-5 py-3.5">IP</th><th scope="col" className="px-5 py-3.5">Projeto</th><th scope="col" className="px-5 py-3.5">Tarefas por concluir</th></tr>
+              <thead className="bg-surface-muted/90 text-caption uppercase tracking-wider text-text-secondary font-bold border-b border-border/80 select-none">
+                <tr><th scope="col" className="px-3.75 py-[0.65625rem]">IP</th><th scope="col" className="px-3.75 py-[0.65625rem]">Projeto</th><th scope="col" className="px-3.75 py-[0.65625rem]">Tarefas por concluir</th></tr>
               </thead>
               <tbody className="divide-y divide-border-subtle font-medium">
-                {deliveredProjects.map(({ project, clientName, pendingTasks }) => <tr key={project.id} className="hover:bg-surface-muted/80 transition-colors align-top">
-                  <td className="px-5 py-3.5 font-mono font-bold text-text-primary whitespace-nowrap">{project.installProjectNo || '-'}</td>
-                  <td className="px-5 py-3.5">
-                    <div className="text-primary-ink font-medium break-words">{clientName}</div>
-                    {canOpenProjects ? <Button type="button" variant="ghost" size="sm"
-                      className="h-auto min-h-9 max-w-full px-0 py-1 whitespace-normal break-words justify-start text-left font-semibold text-text-primary"
-                      aria-label={`Abrir projeto ${project.title}`} onClick={() => onSelectProject(project.id)}>{project.title}</Button>
-                      : <div className="font-semibold text-text-primary break-words">{project.title}</div>}
-                  </td>
-                  <td className="px-5 py-3.5"><PendingProjectTaskList tasks={pendingTasks} onSelectTask={onSelectTask} compactDate /></td>
-                </tr>)}
+                {deliveredProjects.map(({ project, clientName, pendingTasks }) => {
+                  const projectLabel = <>
+                    <span className="block text-primary-ink font-medium">{clientName}</span>
+                    <span className="block font-semibold text-text-primary">{project.title}</span>
+                  </>;
+                  return <tr key={project.id} className="hover:bg-surface-muted/80 transition-colors align-top">
+                    <td className="px-3.75 py-[0.65625rem] font-mono font-bold text-text-primary">{project.installProjectNo || '-'}</td>
+                    <td className="px-3.75 py-[0.65625rem]">
+                      {canOpenProjects ? <Button type="button" variant="ghost" size="sm"
+                        className="block h-auto min-h-11 max-w-full border-0 p-0 whitespace-normal text-left"
+                        aria-label={`Abrir projeto ${project.title}`} onClick={() => onSelectProject(project.id)}>{projectLabel}</Button>
+                        : projectLabel}
+                    </td>
+                    <td className="px-3.75 py-[0.65625rem]"><PendingProjectTaskList tasks={pendingTasks} onSelectTask={onSelectTask} compactDate /></td>
+                  </tr>;
+                })}
               </tbody>
-            </table>}
-        </div>
+            </table>
+          </>}
       </Card>
 
       {/* 1. Full-Width Box: Sorted Active Project Pipeline */}
