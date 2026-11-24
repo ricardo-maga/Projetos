@@ -39,6 +39,7 @@ import {
   ListFilter
 } from 'lucide-react';
 import { Task, Project, ProjectStatus, TaskType, TaskStatus, User, Client } from '@/lib/types';
+import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning';
 import { parseTimeToHours, formatHoursToHHMM, getUserInitials } from '@/lib/utils';
 import { ScrollableChart } from '@/components/ui/ScrollableChart';
 
@@ -89,6 +90,7 @@ export function TaskAnalytics({
 
   // A task's hours apply to every assigned user. Zero actual hours means no work logged yet.
   const taskHours = useCallback((task: Task) => {
+    if (!countsTowardsPlanning(task)) return 0;
     const actual = parseTimeToHours(task.actualHours);
     const hours = actual > 0 ? actual : parseTimeToHours(task.estimatedHours);
     return hours * (task.assigneeIds?.length || 0);
@@ -154,7 +156,7 @@ export function TaskAnalytics({
       return t.estimatedDate < todayStr;
     });
 
-    const totalEstHoursOpen = openTasks.reduce((acc, t) => acc + parseTimeToHours(t.estimatedHours) * (t.assigneeIds?.length || 0), 0);
+    const totalEstHoursOpen = openTasks.filter(countsTowardsPlanning).reduce((acc, t) => acc + parseTimeToHours(t.estimatedHours) * (t.assigneeIds?.length || 0), 0);
     const hours30d = filteredTasks.reduce((acc, t) => {
       const daysAgo = getDaysAgo(t.startDate || t.estimatedDate || t.createdDate);
       return daysAgo !== null && daysAgo >= 0 && daysAgo < 30 ? acc + taskHours(t) : acc;
@@ -374,7 +376,7 @@ export function TaskAnalytics({
       // Include tasks from today up to 30 days ahead (or overdue tasks in 7d load)
       if (daysAhead === null || daysAhead > 30) return;
 
-      const estH = parseTimeToHours(t.estimatedHours);
+      const estH = countsTowardsPlanning(t) ? parseTimeToHours(t.estimatedHours) : 0;
       const assignees = t.assigneeIds || [];
       // Every assignee carries the task's full planned workload.
       const hoursPerUser = estH;

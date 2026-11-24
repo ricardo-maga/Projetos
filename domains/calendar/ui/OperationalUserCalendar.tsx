@@ -1,4 +1,5 @@
 'use client';
+import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
 import MobileDayAgenda from './MobileDayAgenda';
 import MobileViewToggle from '@/components/ui/MobileViewToggle';
 
@@ -659,7 +660,7 @@ export default function OperationalUserCalendar({
                               {conflictInfo.isAbsent && (
                                 <div
                                   className={`p-1.5 rounded-control text-center font-extrabold text-body-sm border shadow-subtle ${
-                                    dayTasks.length > 0
+                                    conflictInfo.hasConflict
                                       ? 'bg-error/10 text-error border-error/20 animate-pulse'
                                       : 'bg-surface-muted/80 text-text-secondary border-border-subtle'
                                   }`}
@@ -721,9 +722,11 @@ export default function OperationalUserCalendar({
                                         return next;
                                       })}>
                                       <span className="text-body-sm font-bold truncate">{cardTitle}</span>
+                                      <TaskPlanningBadge planningStatus={task.planningStatus} compact />
                                       <ChevronDown aria-hidden="true" className={`w-4 h-4 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                                     </Button>
                                     {isExpanded && <div className="space-y-1">
+                                    <TaskPlanningBadge planningStatus={task.planningStatus} />
                                     {/* Linha 2: Nome do projeto */}
                                     <div className="text-body-sm font-bold text-primary-ink truncate leading-tight">
                                       {projectLabel}

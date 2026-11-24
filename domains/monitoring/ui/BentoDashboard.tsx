@@ -17,6 +17,7 @@ import { getProjectCalculatedRisk, matchTaskStatusId, parseTimeToHours, getProje
 import { currentForecastMonth, forecastMonth, offsetForecastMonth } from '@/domains/projects/modules/projectForecast';
 import AbsenceCalendar from '@/domains/absences/ui/AbsenceCalendar';
 import { deliveredProjectsWithPendingTasks } from '@/domains/projects/modules/deliveredProjectsWithPendingTasks';
+import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning';
 import PendingProjectTaskList from '@/domains/projects/ui/PendingProjectTaskList';
 
 interface BentoDashboardProps {
@@ -295,6 +296,7 @@ export default function BentoDashboard({
 
       projTasks.forEach(t => {
         const numUsers = t.assigneeIds?.length || 0;
+        if (!countsTowardsPlanning(t)) return;
         const actualH = parseTimeToHours(t.actualHours);
         const estH = parseTimeToHours(t.estimatedHours || '08:00');
         const isDone = getTaskScale(t.statusId) === 3;

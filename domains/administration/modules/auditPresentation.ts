@@ -64,7 +64,7 @@ const fieldLabels: Record<string, string> = {
   scheduled_date: 'Data agendada', start_date: 'Início', end_date: 'Fim', start_time: 'Hora de início',
   end_time: 'Hora de fim', delivery_date: 'Entrega', completed_date: 'Conclusão',
   forecast_date: 'Forecast', expected_delivery_date: 'Entrega prevista', quantity: 'Quantidade',
-  estimated_hours: 'Horas estimadas', actual_hours: 'Horas realizadas',
+  estimated_hours: 'Horas estimadas', actual_hours: 'Horas realizadas', planning_status: 'Planeamento',
   rule_id: 'Regra', comment: 'Comentário', rule_configuration: 'Configuração da regra',
   assignees: 'Responsáveis', source_task_id: 'Tarefa de origem', row_count: 'Linhas exportadas', filters: 'Filtros',
   compensationCompleted: 'Compensação concluída', accessEnabled: 'Acesso ativo',

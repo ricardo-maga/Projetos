@@ -6,6 +6,56 @@ async function fits(page: Page) {
 async function screen(page: Page, label: string) {
   await page.getByRole('navigation', { name: 'Ecrã de teste' }).getByRole('button', { name: label, exact: true }).click();
 }
+for (const width of [390, 1280]) {
+  test(`confirma uma reserva e atualiza horas e conflitos a ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/?provisoria');
+    const hours = page.getByText('Horas prev. semana', { exact: true }).locator('..');
+    await expect(hours).toContainText(/3\s*h/);
+
+    await screen(page, 'Calendário');
+    const plannedTask = page.getByRole('button', { name: /Expandir tarefa de Indústria/ });
+    const create = width < 768
+      ? page.getByRole('button', { name: 'Criar tarefa para Ana de exemplo', exact: true })
+      : page.getByRole('cell').filter({ has: plannedTask })
+        .getByRole('button', { name: /^Adicionar nova tarefa para Ana de exemplo em / });
+    await create.click();
+
+    const dialog = page.getByRole('dialog');
+    const planning = dialog.getByLabel('Planeamento', { exact: true });
+    await expect(dialog.getByLabel('Data planeada', { exact: false }).first()).not.toHaveValue('');
+    await dialog.getByLabel('Título da tarefa').fill('Reserva de montagem');
+    await dialog.getByLabel('Tipo de tarefa').selectOption('qa-type');
+    await dialog.getByLabel('Horas previstas (h)').fill('4');
+    await planning.selectOption('provisional');
+    await dialog.getByRole('button', { name: 'Criar tarefa', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+
+    const conflicts = width < 768
+      ? page.getByRole('region', { name: 'Agenda diária' }).getByText(/Aviso operacional/)
+      : page.locator('.project-timeline-conflict-cell');
+    await expect(conflicts).toHaveCount(0);
+
+    await screen(page, 'Tarefas');
+    await page.getByLabel('Filtrar por planeamento').selectOption('provisional');
+    await expect(page.getByText('Instalação confirmada', { exact: true })).toHaveCount(0);
+    await page.getByText('Reserva de montagem', { exact: true }).filter({ visible: true }).click();
+    await expect(planning).toHaveValue('provisional');
+    await expect(dialog.getByLabel('Horas consumidas (h)')).toHaveAttribute('readonly', '');
+    await expect(dialog.getByText(/Aviso Informativo de Conflitos/)).toHaveCount(0);
+    await planning.selectOption('planned');
+    await expect(dialog.getByText(/já tem 1 tarefa planeada/)).toBeVisible();
+    await expect(dialog.getByLabel('Horas consumidas (h)')).toHaveAttribute('readonly', '');
+    await dialog.getByRole('button', { name: 'Confirmar planeamento' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(hours).toContainText(/7\s*h/);
+
+    await screen(page, 'Calendário');
+    await expect(conflicts.first()).toBeVisible();
+    await fits(page);
+  });
+}
+
 for (const width of [360, 390, 430, 768, 1280]) {
   test(`four screens fit at ${width}px and preserve task opening`, async ({ page }) => {
     const errors: string[] = [];

@@ -10,6 +10,8 @@ import { parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
 import { cn, getTaskStatusStyle, getProjectStatusStyle, getUserInitials } from '@/lib/utils';
 import { M3SectionHeader, M3SegmentedControl } from '@/components/M3';
 import { Card } from '@/components/ui/Card';
+import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
+import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
@@ -109,7 +111,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
     const dayTasks = tasks.filter(task => isTaskOnDate(task, day.dateStr));
     const ids = new Set<string>();
     for (const user of users.filter(user => !user.deleted)) {
-      const assigned = dayTasks.filter(task => isUserAssignedToTask(task, user.id));
+      const assigned = dayTasks.filter(task => countsTowardsPlanning(task) && isUserAssignedToTask(task, user.id));
       const absence = getUserDayAbsence(absences, user.id, day.dateStr);
       if (getOperationalDayConflicts(assigned, absence).hasConflict) assigned.forEach(task => ids.add(task.id));
     }
@@ -199,6 +201,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
         title={task.title} aria-label={`Abrir tarefa sem data ${task.title}`} onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${task.assigneeIds?.length ? taskStyle.dotClass : 'bg-error'}`} aria-hidden="true" />
         <span className="truncate">{task.title}</span>
+        <TaskPlanningBadge planningStatus={task.planningStatus} compact />
       </Button>
       {incomplete && <span className="block text-caption text-warning">Data incompleta</span>}
     </div>;
@@ -214,14 +217,16 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
   const timelineMinWidth = projectColumnWidth + days.reduce((width, day) => width + dayWidth(day.dateStr), 0);
   const renderHdTask = (task: Task, key: React.Key, date: string) => {
     const names = (task.assigneeIds || []).map(id => users.find(user => user.id === id)?.name || 'Utilizador indisponível');
+    const title = countsTowardsPlanning(task) ? task.title : `${task.title} · Provisória`;
     return <Button key={key} {...dragProps(task, date)} variant="ghost" size="sm"
-      data-timeline-hd-task={task.id} title={[task.title, ...names].join(' · ')}
-      aria-label={`Abrir tarefa ${task.title}${names.length ? ` · ${names.join(', ')}` : ' · Sem utilizador alocado'}`}
+      data-timeline-hd-task={task.id} title={[title, ...names].join(' · ')}
+      aria-label={`Abrir tarefa ${title}${names.length ? ` · ${names.join(', ')}` : ' · Sem utilizador alocado'}`}
       className={`w-full min-h-6 h-auto px-0.5 py-0.5 justify-start text-left bg-surface border border-border border-l-2 ${taskBorderClass(getTaskStatusStyle(task.statusId, taskStatuses))} ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
       onClick={() => openOutsideTimeline(() => onSelectTask(task))}>
       <span className="flex flex-wrap items-center gap-0.5 w-full min-w-0">
         {names.map((name, index) => <span key={index} aria-label={name} className="w-5 h-5 rounded-full bg-primary text-inverse flex items-center justify-center text-micro font-bold shrink-0">{getUserInitials(name)}</span>)}
         {!names.length && <span className="block w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" />}
+        <TaskPlanningBadge planningStatus={task.planningStatus} compact />
       </span>
     </Button>;
   };
@@ -336,6 +341,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                     {!assigneeIds.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                     {assigneeIds.length > 2 && <span className="text-caption">+{assigneeIds.length - 2}</span>}
                     <span className="min-w-0 flex-1 truncate text-caption text-text-primary">{task.title}</span>
+                    <TaskPlanningBadge planningStatus={task.planningStatus} compact />
                     {task.estimatedHours != null && task.estimatedHours !== '' &&
                       <span className="text-caption text-text-secondary">{parseTaskHoursToFloat(task.estimatedHours)}h</span>}
                   </span>
@@ -384,6 +390,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                       {!assigneeIds.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                       {assigneeIds.length > 2 && <span className="text-caption">+{assigneeIds.length - 2}</span>}
                       <span className="min-w-0 flex-1 truncate text-caption text-text-primary">{event.title}</span>
+                      <TaskPlanningBadge planningStatus={event.task.planningStatus} compact />
                       {event.task.estimatedHours != null && event.task.estimatedHours !== '' &&
                         <span className="text-caption text-text-secondary">{parseTaskHoursToFloat(event.task.estimatedHours)}h</span>}
                     </span>
@@ -399,7 +406,9 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
                     onClick={() => openOutsideTimeline(() => event.kind === 'task' ? onSelectTask(event.task) : onSelectProject?.(project.id))}>
                       <span className="flex flex-col gap-1 min-w-0 break-words">
                       <span title={event.title} className={`${event.kind === 'milestone' ? 'text-caption text-text-secondary' : 'text-body-sm font-semibold'} ${highDensity ? 'truncate' : event.kind === 'task' ? 'line-clamp-2' : ''}`}>{event.kind === 'risk' && <ShieldAlert className="inline w-3.5 h-3.5 mr-1" />}{event.title}</span>
-                      {event.kind === 'task' ? <><span className="flex items-center gap-1" aria-label="Técnicos alocados">
+                      {event.kind === 'task' ? <>
+                        <TaskPlanningBadge planningStatus={event.task.planningStatus} />
+                        <span className="flex items-center gap-1" aria-label="Técnicos alocados">
                           {(event.task.assigneeIds || []).slice(0, 2).map(id => { const name = users.find(user => user.id === id)?.name || 'Utilizador indisponível'; return <span key={id} title={name} aria-label={name} className="w-6 h-6 rounded-full bg-primary text-inverse flex items-center justify-center text-caption font-bold shrink-0">{getUserInitials(name)}</span>; })}
                           {!event.task.assigneeIds?.length && <span className="w-3 h-3 rounded-full bg-error" aria-label="Sem utilizador alocado" title="Sem utilizador alocado" />}
                           {(event.task.assigneeIds || []).length > 2 && <span className="text-caption">+{event.task.assigneeIds.length - 2}</span>}

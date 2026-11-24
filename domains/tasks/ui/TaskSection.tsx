@@ -35,6 +35,8 @@ import { TaskAnalytics } from '@/domains/tasks/ui/TaskAnalytics';
 import { hasPermission } from '@/lib/permissions';
 import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, getTaskEffectiveDate, getTaskStatusStyle, getUserInitials, cn } from '@/lib/utils';
 import { parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
+import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
+import { countsTowardsPlanning, normalizeTaskPlanningStatus } from '../modules/taskPlanning';
 import { getTaskDisplayHours } from '@/lib/tasks/displayHours';
 import { Button, IconButton, Badge, Tabs, Select, Checkbox, Card, Input } from '@/components/ui';
 
@@ -109,6 +111,7 @@ export default function TaskSection({
   // Filters state
   const [search, setSearch] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('');
+  const [filterPlanning, setFilterPlanning] = useState('');
   const [datePreset, setFilterDatePreset] = useState<'all' | 'no_date' | 'today' | 'tomorrow' | 'this_week' | 'overdue' | 'completed' | 'completed_this_week'>('all');
 
   // Pagination & Sorting state
@@ -122,7 +125,7 @@ export default function TaskSection({
   // Reset pagination when filter/sorting/grouping variables change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterAssignee, datePreset, pageSize, sortBy, groupByProject]);
+  }, [search, filterAssignee, filterPlanning, datePreset, pageSize, sortBy, groupByProject]);
 
   // Dates computation
   const todayStr = useMemo(() => {
@@ -283,6 +286,7 @@ export default function TaskSection({
 
     let weekHoursSum = 0;
     activeTasks.forEach(t => {
+      if (!countsTowardsPlanning(t)) return;
       const targetDate = getTaskEffectiveDate(t);
       if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end) {
         const isActualHoursFilled = parseTaskHoursToFloat(t.actualHours) > 0;
@@ -368,9 +372,10 @@ export default function TaskSection({
         matchesPreset = Boolean(targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && scale === 3);
       }
 
-      return matchesSearch && matchesAssignee && matchesPreset;
+      const matchesPlanning = !filterPlanning || normalizeTaskPlanningStatus(t.planningStatus) === filterPlanning;
+      return matchesSearch && matchesAssignee && matchesPreset && matchesPlanning;
     });
-  }, [activeTasks, search, filterAssignee, datePreset, projectMap, clientMap, getTaskScale, todayStr, tomorrowStr, weekRange, users]);
+  }, [activeTasks, search, filterAssignee, filterPlanning, datePreset, projectMap, clientMap, getTaskScale, todayStr, tomorrowStr, weekRange, users]);
 
   const sortTasks = (taskList: Task[]) => {
     return [...taskList].sort((a, b) => {
@@ -737,6 +742,15 @@ export default function TaskSection({
                 />
               </div>
 
+              <div className="w-full min-w-0 sm:w-auto sm:min-w-[180px]">
+                <Select aria-label="Filtrar por planeamento" value={filterPlanning} onChange={e => setFilterPlanning(e.target.value)}
+                  className="h-10 text-body-sm font-semibold" options={[
+                    { value: '', label: 'Qualquer planeamento' },
+                    { value: 'planned', label: 'Planeadas' },
+                    { value: 'provisional', label: 'Provisórias' },
+                  ]} />
+              </div>
+
               {/* Assignee Filter */}
               <div className="w-full min-w-0 sm:w-auto sm:min-w-[220px]">
                 <Select aria-label="Filtrar por responsável"
@@ -840,8 +854,8 @@ export default function TaskSection({
                   <ListEmptyState
                     title={tasks.some(task => !task.deleted) ? 'Nenhuma tarefa corresponde aos filtros.' : 'Ainda não há tarefas registadas.'}
                     description={tasks.some(task => !task.deleted) ? 'Experimente alargar o período ou ajustar a pesquisa.' : undefined}
-                    action={tasks.some(task => !task.deleted) && (search.trim() || filterAssignee || datePreset !== 'all')
-                      ? { label: 'Limpar filtros', run: () => { setSearch(''); setFilterAssignee(''); setFilterDatePreset('all'); setCurrentPage(1); } }
+                    action={tasks.some(task => !task.deleted) && (search.trim() || filterAssignee || filterPlanning || datePreset !== 'all')
+                      ? { label: 'Limpar filtros', run: () => { setSearch(''); setFilterAssignee(''); setFilterPlanning(''); setFilterDatePreset('all'); setCurrentPage(1); } }
                       : !tasks.some(task => !task.deleted) && canWriteTasks && !feedback?.writesBlocked
                         ? { label: 'Nova tarefa', run: () => openTaskModal(null, 'create') } : undefined}
                   />
@@ -885,7 +899,7 @@ export default function TaskSection({
                         >
                           {/* 1. Execução */}
                           <td className="px-3 py-3.5 text-center whitespace-nowrap w-10">
-                            {canWriteTasks ? (
+                            {canWriteTasks && countsTowardsPlanning(t) ? (
                               <IconButton
                                 type="button"
                                 size="sm"
@@ -906,7 +920,7 @@ export default function TaskSection({
                                 size="sm"
                                 variant="ghost"
                                 disabled
-                                title="Não tem permissão para registar execução"
+                                title={countsTowardsPlanning(t) ? 'Não tem permissão para registar execução' : 'Confirme o planeamento antes de executar'}
                                 aria-label="Registar execução da tarefa"
                               >
                                 <PlayCircle className="w-5 h-5 text-text-disabled" />
@@ -924,7 +938,8 @@ export default function TaskSection({
                                 </Badge>
                               )}
                             </div>
-                            <div className="mt-1">
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              <TaskPlanningBadge planningStatus={t.planningStatus} />
                               <Badge className={cn("uppercase tracking-wider font-bold text-caption", statusBadgeStyle)}>
                                 {statusName}
                               </Badge>

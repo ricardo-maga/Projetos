@@ -6,6 +6,7 @@ import type { Client, Project, ProjectMaterial, ProjectPriority, ProjectStatus, 
 import PendingProjectTaskList from '@/domains/projects/ui/PendingProjectTaskList';
 import { REPORT_CATALOG, buildReport, type ReportId } from '@/domains/reports/modules/reportBuilder';
 import { M3SectionHeader } from '@/components/M3';
+import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
 import { Badge, Button, Card, Select } from '@/components/ui';
 
 export default function ReportsSection({ projects, tasks, projectMaterials, clients, projectPriorities, taskStatuses, projectStatuses, users, onSelectProject, onSelectTask, canOpenProjects = true }: {
@@ -44,6 +45,7 @@ export default function ReportsSection({ projects, tasks, projectMaterials, clie
           <div className="min-w-0 flex-1"><p className="font-bold text-body-sm truncate">{row.primary}</p><p className="text-caption text-text-secondary truncate">{row.secondary}</p></div>
           {row.date && <span className="text-caption">{row.date.split('-').reverse().join('/')}</span>}
           <Badge>{row.value}</Badge>
+          {'planningStatus' in row && <TaskPlanningBadge planningStatus={row.planningStatus} />}
           {row.projectId && canOpenProjects && <Button variant="ghost" size="sm" onClick={() => onSelectProject(row.projectId)} aria-label={`Abrir projeto ${row.secondary}`} title="Abrir projeto"><ExternalLink className="w-4 h-4" /></Button>}
         </div>) : <p className="p-6 text-body-sm text-text-secondary text-center">
           {reportId === 'delivered-projects-with-pending-tasks' ? 'Sem projetos entregues com pendentes.' : reportId === 'critical-open-tasks' ? 'Sem tarefas com prioridade de nível 3 e estado de nível 1 ou 2. Confirme a prioridade das tarefas.' : reportId === 'unallocated-tasks' ? 'Sem tarefas por alocar.' : 'Sem materiais em atraso.'}

@@ -1,8 +1,10 @@
-import { Task, Project, User } from '@/lib/types';
+import { countsTowardsPlanning } from './taskPlanning';
+import { Task, Project, User, TaskPlanningStatus } from '@/lib/types';
 import { getTaskEffectiveDate } from '@/lib/utils';
 
 export interface TaskConflictParams {
   date?: string | null;
+  planningStatus?: TaskPlanningStatus;
   assigneeIds: string[];
   currentTaskId?: string | null;
   tasks: Task[];
@@ -13,6 +15,7 @@ export interface TaskConflictParams {
 
 export function getTaskConflictWarnings({
   date,
+  planningStatus,
   assigneeIds,
   currentTaskId,
   tasks = [],
@@ -20,7 +23,7 @@ export function getTaskConflictWarnings({
   absences = [],
   projects = [],
 }: TaskConflictParams): string[] {
-  if (!date || !assigneeIds || assigneeIds.length === 0) return [];
+  if (!countsTowardsPlanning({ planningStatus }) || !date || !assigneeIds || assigneeIds.length === 0) return [];
 
   const warnings: string[] = [];
 
@@ -56,7 +59,7 @@ export function getTaskConflictWarnings({
 
     // 2. Check other planned tasks on that same day for this user
     const otherTasksOnDay = tasks.filter((t) => {
-      if (t.deleted) return false;
+      if (t.deleted || !countsTowardsPlanning(t)) return false;
       if (
         currentTaskId &&
         (t.id === currentTaskId || t.id.replace(/[-]/g, '').toLowerCase() === currentTaskId.replace(/[-]/g, '').toLowerCase())
