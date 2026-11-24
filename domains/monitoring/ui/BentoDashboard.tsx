@@ -100,9 +100,14 @@ export default function BentoDashboard({
   const forecastProjects = useMemo(() => projects.filter(project =>
     !project.deleted && forecastMonth(project.forecastDate) === forecastSelectedMonth
   ).sort((a, b) => a.title.localeCompare(b.title, 'pt-PT')), [projects, forecastSelectedMonth]);
-  const deliveredProjects = useMemo(() => deliveredProjectsWithPendingTasks({
-    projects, tasks, clients, users, projectStatuses, taskStatuses,
-  }), [projects, tasks, clients, users, projectStatuses, taskStatuses]);
+  const deliveredProjects = useMemo(() => {
+    const groups = deliveredProjectsWithPendingTasks({ projects, tasks, clients, users, projectStatuses, taskStatuses });
+    for (const group of groups) {
+      group.pendingTasks.sort((a, b) => a.date.localeCompare(b.date));
+    }
+    return groups.sort((a, b) =>
+      a.pendingTasks[0].date.localeCompare(b.pendingTasks[0].date) || a.clientName.localeCompare(b.clientName, 'pt-PT'));
+  }, [projects, tasks, clients, users, projectStatuses, taskStatuses]);
 
   // Robust ID normalization matcher for legacy, short, or standard UUID formats
   const matchId = (idA: string | null | undefined, idB: string | null | undefined) => {
@@ -392,7 +397,7 @@ export default function BentoDashboard({
       </div>
 
       <Card className="md:col-span-12 min-w-0 flex flex-col overflow-hidden" aria-label="Projetos em Forecast">
-        <div className="mobile-controls p-3 sm:p-3.75 border-b border-border/80 flex flex-wrap items-center justify-between gap-3 bg-surface-muted/60">
+        <div className="mobile-controls p-4 sm:p-5 border-b border-border/80 flex flex-wrap items-center justify-between gap-3 bg-surface-muted/60">
           <h2 className="text-heading-sm text-text-primary">Projetos em Forecast</h2>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar mês do Forecast">
             {([-1, 0, 1] as const).map(offset => {
@@ -435,9 +440,9 @@ export default function BentoDashboard({
           </>}
       </Card>
 
-      <Card className="md:col-span-12 min-w-0 flex flex-col overflow-hidden" aria-label="Projetos entregues com pendentes">
-        <div className="p-3 sm:p-3.75 border-b border-border/80 bg-surface-muted/60">
-          <h2 className="text-heading-sm text-text-primary">Projetos entregues com pendentes</h2>
+      <Card className="md:col-span-12 min-w-0 flex flex-col overflow-hidden border-warning/35" aria-label="Projetos entregues com pendentes">
+        <div className="p-4 sm:p-5 border-b border-warning/25 bg-warning/10">
+          <h2 className="text-heading-sm text-text-primary md:flex md:min-h-9 md:items-center">Projetos entregues com pendentes</h2>
         </div>
         {deliveredProjects.length === 0 ? <p className="p-3.75 text-body-sm text-text-muted">Sem projetos entregues com pendentes.</p> :
           <>

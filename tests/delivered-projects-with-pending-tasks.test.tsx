@@ -105,4 +105,25 @@ describe('Delivered projects with pending tasks', () => {
     expect(html).toContain('Acerto final');
     expect(html).not.toContain('<button');
   });
+
+  it('orders dashboard projects by their first pending date and then by client', () => {
+    const data = input();
+    const projects = [
+      { ...data.projects[0], id: 'future', title: 'A por entregar', clientId: 'c' },
+      { ...data.projects[0], id: 'past-z', title: 'B ajuste', clientId: 'z' },
+      { ...data.projects[0], id: 'past-c', title: 'C ajuste', clientId: 'c' },
+      { ...data.projects[0], id: 'undated', title: 'D ajuste', clientId: 'z' },
+    ];
+    const dates = ['2027-01-10', '2026-11-01', '2026-11-01', ''];
+    const tasks = projects.map((project, i) => ({ ...data.tasks[0], id: project.id, projectId: project.id,
+      title: 'Ajuste sem data', estimatedDate: dates[i] }));
+    tasks.push({ ...data.tasks[0], id: 'dated', projectId: 'undated', title: 'Ajuste com data' });
+    const html = renderToStaticMarkup(<Dashboard {...data} projects={projects} tasks={tasks}
+      clients={[...data.clients, { ...data.clients[0], id: 'z', clientName: 'Zeta' }]}
+      absences={[]} comments={[]} projectCategories={[]} projectPriorities={[]} onNavigate={() => {}} onSelectProject={() => {}} />);
+    const panel = html.split('<table aria-label="Projetos entregues com pendentes"')[1].split('</table>')[0];
+    expect([...panel.matchAll(/aria-label="Abrir projeto ([^"]+)"/g)].map(match => match[1]))
+      .toEqual(['D ajuste', 'C ajuste', 'B ajuste', 'A por entregar']);
+    expect(panel.indexOf('Ajuste sem data')).toBeLessThan(panel.indexOf('Ajuste com data'));
+  });
 });
