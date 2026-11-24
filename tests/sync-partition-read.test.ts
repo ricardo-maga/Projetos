@@ -59,3 +59,10 @@ test('a cache só é montada depois de receber todas as coleções obrigatórias
   delete (parts.work as Record<string, unknown>).tasks;
   expect(() => mergeSyncPartitions(parts)).toThrow('Campo obrigatório ausente: tasks.');
 });
+
+test('optional activity stays empty until explicitly loaded; missing required fields still fail closed', () => {
+ const directory = Object.fromEntries(SYNC_PARTITIONS.directory.map(field => [field, field === 'appConfig' ? { appName: 'ERP' } : []]));
+ const initial = mergeSyncPartitions({ directory }, ['directory']);
+ expect(initial.comments).toEqual([]);
+ expect(() => mergeSyncPartitions({ activity: {} }, ['activity'])).toThrow();
+});

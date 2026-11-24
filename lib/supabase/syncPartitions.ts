@@ -11,7 +11,8 @@ export const SYNC_PARTITIONS = {
     'riskCategories', 'riskStatuses', 'riskPriorities',
   ],
   work: ['clients', 'projects', 'tasks'],
-  activity: ['comments', 'userAbsences', 'projectRiskItems', 'notifications'],
+  activity: ['comments', 'userAbsences', 'projectRiskItems'],
+  notifications: ['notifications'],
 } as const satisfies Record<string, readonly (keyof ERPState)[]>;
 
 export type SyncPartition = keyof typeof SYNC_PARTITIONS;
@@ -20,9 +21,10 @@ export function isSyncPartition(value: string): value is SyncPartition {
   return Object.hasOwn(SYNC_PARTITIONS, value);
 }
 
-export function mergeSyncPartitions(parts: Record<SyncPartition, unknown>): ERPState {
+export function mergeSyncPartitions(parts: Partial<Record<SyncPartition, unknown>>, requested: readonly SyncPartition[] = Object.keys(SYNC_PARTITIONS) as SyncPartition[]): ERPState {
   const combined: Record<string, unknown> = { ...CLEAN_BASELINE_STATE };
   for (const [partition, fields] of Object.entries(SYNC_PARTITIONS)) {
+    if (!requested.includes(partition as SyncPartition)) continue;
     const data = parts[partition as SyncPartition];
     if (!data || typeof data !== 'object' || Array.isArray(data))
       throw new Error(`Resposta inválida da partição ${partition}.`);

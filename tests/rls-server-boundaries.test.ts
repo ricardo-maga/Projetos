@@ -24,7 +24,7 @@ describe('RLS server-only boundary safeguards', () => {
       expect(code).not.toContain('getActiveStateFromSupabase()');
       expect(code.match(/persistProjectMaterial\(databaseClient, /g)?.length).toBeGreaterThan(0);
     }
-    expect(read('app/api/supabase/sync/route.ts')).toContain('saveActiveStateToSupabase(state, clientToUse)');
+    expect(read('app/api/supabase/sync/route.ts')).not.toContain('saveActiveStateToSupabase');
   });
   test('operational scope contains only changed rows, never unrelated snapshots or appConfig', () => {
     const original = { users: [{ id: 'user' }], projectMaterials: [{ id: 'other' }],

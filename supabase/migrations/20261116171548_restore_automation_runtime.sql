@@ -49,7 +49,7 @@ BEGIN
           SELECT NEW.id, d.title, coalesce(d.description, ''), d.estimated_hours,
                  interval '0 hours', CURRENT_DATE, time '09:00', CURRENT_DATE,
                  time '18:00', CURRENT_DATE,
-                 'Gerada automaticamente pela regra de automação.', default_status, d.task_type_id
+                 'Gerada automaticamente pela regra de automaÃ§Ã£o.', default_status, d.task_type_id
           FROM public.default_tasks d;
           action_count := action_count + 1;
         END IF;

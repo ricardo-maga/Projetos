@@ -1,3 +1,4 @@
+import { deleteDomainEntity } from '@/lib/supabase/deleteDomainEntity';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -45,4 +46,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (error instanceof AuthError) return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode || 401, headers: noStore });
     return NextResponse.json({ success: false, message: 'Não foi possível alterar o template de tarefa.' }, { status: 503, headers: noStore });
   }
+}
+
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  return deleteDomainEntity(req, 'defaultTasks', (await context.params).id);
 }

@@ -1,10 +1,10 @@
 -- Independent settings; existing notification and automation settings are preserved.
 INSERT INTO public.notification_settings(type,name,enabled,days_before,target_group) VALUES
- ('project_comment','Novo comentário no projeto',true,0,'allocated'),
- ('project_closed','Projeto concluído/cancelado (nível 5)',true,0,'allocated'),
- ('mechanical_design_assignment','Novo pedido de projeto mecânico',true,0,'allocated'),
- ('mechanical_design_due_date','Prazo do projeto mecânico',true,3,'allocated'),
- ('mechanical_design_result','Resultado do projeto mecânico',true,0,'allocated')
+ ('project_comment','Novo comentÃ¡rio no projeto',true,0,'allocated'),
+ ('project_closed','Projeto concluÃ­do/cancelado (nÃ­vel 5)',true,0,'allocated'),
+ ('mechanical_design_assignment','Novo pedido de projeto mecÃ¢nico',true,0,'allocated'),
+ ('mechanical_design_due_date','Prazo do projeto mecÃ¢nico',true,3,'allocated'),
+ ('mechanical_design_result','Resultado do projeto mecÃ¢nico',true,0,'allocated')
 ON CONFLICT(type) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION notification_internal.project_activity_notice() RETURNS trigger
@@ -15,14 +15,14 @@ BEGIN
    SELECT * INTO p FROM public.projects WHERE id=NEW.project_id AND NOT deleted;
    IF NOT FOUND THEN RETURN NEW; END IF;
    notice_type := 'project_comment';
-   notice_message := 'Foi adicionado um comentário: ' || left(NEW.comment,500);
+   notice_message := 'Foi adicionado um comentÃ¡rio: ' || left(NEW.comment,500);
  ELSE
    IF NEW.deleted OR NEW.status_id IS NOT DISTINCT FROM OLD.status_id THEN RETURN NEW; END IF;
    IF NOT EXISTS(SELECT 1 FROM public.project_status WHERE id=NEW.status_id AND scale=5 AND NOT deleted)
      THEN RETURN NEW; END IF;
    p := NEW;
    notice_type := 'project_closed';
-   notice_message := 'O projeto foi concluído/cancelado (nível 5).';
+   notice_message := 'O projeto foi concluÃ­do/cancelado (nÃ­vel 5).';
  END IF;
  SELECT * INTO s FROM public.notification_settings WHERE type=notice_type AND enabled;
  IF NOT FOUND THEN RETURN NEW; END IF;
@@ -58,7 +58,7 @@ BEGIN
  IF NOT FOUND THEN RETURN NEW; END IF;
  INSERT INTO public.notifications(user_id,title,message,link_url,event_key)
  SELECT r.user_id,s.name || ': ' || NEW.title,
-   CASE WHEN TG_OP='INSERT' THEN 'Foi criado um pedido de projeto mecânico.' ELSE 'O pedido passou para ' || NEW.status || '.' END,
+   CASE WHEN TG_OP='INSERT' THEN 'Foi criado um pedido de projeto mecÃ¢nico.' ELSE 'O pedido passou para ' || NEW.status || '.' END,
    '/projects?tab=mechanical-design&request=' || NEW.id,
    notice_type || ':' || NEW.id || ':' || txid_current() || ':' || r.user_id
  FROM notification_internal.presales_recipients(s.target_group,NEW.id) r
@@ -102,5 +102,3 @@ BEGIN
   GET DIAGNOSTICS added = ROW_COUNT;
   RETURN added;
 END; $$;
-
-

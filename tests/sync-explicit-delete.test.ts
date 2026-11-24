@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 const read = (path: string) => readFileSync(new URL('../'+path,import.meta.url),'utf8');
 test('explicit deletion checks permissions and uses a single id with ownership predicate', () => {
-  const code=read('app/api/supabase/sync/entity/route.ts');
+  const code=read('lib/supabase/deleteDomainEntity.ts');
   expect(code).toContain('Object.hasOwn(targets, body.entity)');
   expect(code.indexOf('if (!(await can(target.permission)))')).toBeLessThan(code.indexOf('.delete().eq'));
   expect(code).toContain("deletion.eq('user_id', user.id)");

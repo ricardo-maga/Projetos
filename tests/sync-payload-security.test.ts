@@ -22,13 +22,13 @@ test('notification recipients may change only their own read flag', () => {
 test('project materials are excluded from global snapshot writes', () => {
   expect('projectMaterials' in SYNC_DOMAIN_PERMISSIONS).toBe(false);
   const route = readFileSync(new URL('../app/api/supabase/sync/route.ts', import.meta.url), 'utf8');
-  expect(route).toContain('delete state.projectMaterials;');
+  expect(route).not.toContain('saveActiveStateToSupabase');
 });
 
 test('special days are excluded from legacy writes and rejected by the legacy endpoint', () => {
   expect(buildLegacySyncPayload({}, { specialDays: [{ id: 'day-1', date: '2026-12-25', name: 'Natal' }] })).toEqual({});
   const route = readFileSync(new URL('../app/api/supabase/sync/route.ts', import.meta.url), 'utf8');
-  expect(route).toContain("Object.hasOwn(state, 'specialDays')");
+  expect(route).toContain('status: 410');
   const writer = (readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8') + domainWriteSource());
   expect(writer).not.toContain("supabase.from('special_days').upsert");
 });
@@ -62,8 +62,7 @@ test('non-admin snapshots cannot retain any administrative reference entity', ()
 
 test('absence lookup failure stops before persistence and omitted branding is not written', () => {
   const route = readFileSync(new URL('../app/api/supabase/sync/route.ts', import.meta.url), 'utf8');
-  expect(route).toContain('absenceError || !Array.isArray(dbOtherAbsences)');
-  expect(route.indexOf("throw new AuthError('Não foi possível validar a proteção das ausências.', 503)")).toBeLessThan(route.indexOf('saveActiveStateToSupabase(state, clientToUse)'));
+  expect(route).not.toContain('saveActiveStateToSupabase');
   const writer = (readFileSync(new URL('../lib/supabaseSync.ts', import.meta.url), 'utf8') + domainWriteSource());
   expect(writer).toContain("state.appConfig ? supabase.from('app_configuration')");
 });

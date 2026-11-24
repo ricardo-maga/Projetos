@@ -1,0 +1,19 @@
+name: Remote migration parity
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 7 * * 1-5'
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/migration-parity.mjs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

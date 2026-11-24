@@ -156,6 +156,8 @@ export default function Page() {
     refreshFromDatabase,
     refreshProgress,
     resetAuthorizedData,
+    loadActivity,
+    activityStatus,
     loadProjectMaterials,
     materialsStatus,
     loadConfigRuntime,
@@ -301,6 +303,10 @@ export default function Page() {
   }, [setSidebarOpen]);
 
   const canReadActiveTab = canOpenSection(currentUser, activeTab, activeConfigTab);
+  const requiresActivity = canReadActiveTab && ['dashboard', 'my-focus', 'projetos', 'reports', 'tarefas', 'calendario', 'ausencias', 'utilizadores'].includes(activeTab) || (canReadActiveTab && activeTab === 'configuracoes' && activeConfigTab === 'utilizadores');
+  React.useEffect(() => {
+    if (currentUser && !writesBlocked && isInitialDataLoaded && requiresActivity && activityStatus === 'idle') void loadActivity();
+  }, [currentUser, writesBlocked, isInitialDataLoaded, requiresActivity, activityStatus, loadActivity]);
   const requiresProjectMaterials = canReadActiveTab && ['dashboard', 'projetos', 'reports'].includes(activeTab);
   React.useEffect(() => {
     if (currentUser && !writesBlocked && isInitialDataLoaded && requiresProjectMaterials && materialsStatus === 'idle') {
@@ -1017,6 +1023,8 @@ export default function Page() {
               </section>
             ) : (
             <div id="active-tab-content" key={`${activeTab}-${navKey}`} className="animate-fade-in">
+              {requiresActivity && activityStatus !== 'loaded' ? <div role="status" className="p-6">{activityStatus === 'error' ? <button onClick={() => void loadActivity()}>Tentar novamente</button> : 'A carregar dados…'}</div> : <>
+
               {activeTab !== 'projetos' && requiresProjectMaterials && materialsStatus !== 'loaded' &&
                 <SectionDataFeedback status={materialsStatus} retry={loadProjectMaterials} blocked={writesBlocked} />}
               {activeTab !== 'projetos' && requiresDefaultTasks && defaultTasksStatus !== 'loaded' &&
@@ -1263,6 +1271,7 @@ export default function Page() {
                   toggleAutomationRule={toggleAutomationRule}
                 />
               )}
+              </>}
             </div>
             )}
 
