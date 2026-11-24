@@ -835,7 +835,7 @@ export default function TaskDetailsModal({
             {/* Planned Date & Estimated Hours */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label htmlFor="task-formEstimatedDate" className="block text-label font-bold text-text-primary">
+                <label htmlFor="task-formEstimatedDate" className="block text-body-sm font-bold text-text-primary">
                   Data planeada
                 </label>
                 <div className="relative">
