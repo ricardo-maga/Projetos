@@ -75,9 +75,15 @@ for (const width of [360, 768, 1280]) {
     for (const panel of [forecast, delivered]) {
       await expect(panel).toBeVisible();
       await expect.poll(() => panel.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
-      await expect(panel.locator(':scope > div').first()).toHaveCSS('padding-left', width < 640 ? '12px' : '15px');
+      const header = panel.locator(':scope > div').first();
+      await expect(header).toHaveCSS('padding-left', width < 640 ? '16px' : '20px');
+      await expect(header).toHaveCSS('padding-top', width < 640 ? '16px' : '20px');
       await expect(panel.getByRole(width < 768 ? 'listitem' : 'columnheader').first()).toHaveCSS('padding-top', '10.5px');
     }
+    await expect(delivered.getByRole('button', { name: /Abrir projeto/ })).toHaveText([
+      /Linha entregue com dois ajustes/,
+      /Instalação entregue com um ajuste/,
+    ]);
     if (width < 768) {
       await expect(forecast.getByRole('list')).toContainText('Entrega:');
       await expect(forecast.getByRole('table')).toBeHidden();
