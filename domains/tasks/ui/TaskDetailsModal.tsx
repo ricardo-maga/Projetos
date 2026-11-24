@@ -20,10 +20,11 @@ import {
   ChevronDown,
   Copy
 } from 'lucide-react';
-import { Task, Project, Client, TaskType, User, ProjectPriority } from '@/lib/types';
+import { Task, Project, Client, TaskType, User, ProjectPriority, TaskPlanningStatus } from '@/lib/types';
 import { AssigneeSelector } from '@/domains/tasks/ui/AssigneeSelector';
 import { configuredRoleIds } from '@/lib/roleAssociations';
 import { Button } from '@/components/ui/Button';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { IconButton } from '@/components/ui/IconButton';
 import { Dialog } from '@/components/ui/Dialog';
 import { Input } from '@/components/ui/Input';
@@ -31,6 +32,8 @@ import { Select } from '@/components/ui/Select';
 import Textarea from '@/components/ui/Textarea';
 import { SingleChoice } from '@/components/ui/SingleChoice';
 import { getTaskTypeName, formatToOnlyHours, getDefaultTaskStatusId, getTaskStatusStyle, matchTaskStatusId } from '@/lib/utils';
+import { countsTowardsPlanning, normalizeTaskPlanningStatus } from '@/domains/tasks/modules/taskPlanning';
+import { TaskPlanningBadge } from './TaskPlanningBadge';
 import { getTaskConflictWarnings } from '@/domains/tasks/modules/taskConflicts';
 import { validateTaskExecutionTimes, parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
 import type { TaskUpdateInput } from '@/domains/tasks/modules/taskOperations';
@@ -120,8 +123,11 @@ export default function TaskDetailsModal({
   const isModalOpen = isOpen !== undefined ? isOpen : (Boolean(task) || Boolean(initialMode));
 
   // Mode defaults to edit if task is present, else create
-  const effectiveMode: TaskModalMode = initialMode || (task ? 'edit' : 'create');
   const activeTask = task;
+  const wasProvisional = activeTask?.planningStatus === 'provisional';
+  const effectiveMode: TaskModalMode = initialMode === 'execute' && wasProvisional
+    ? 'edit'
+    : initialMode || (task ? 'edit' : 'create');
   const isDuplication = effectiveMode === 'create' && Boolean(activeTask);
 
   // Client lookup map for fast O(1) client resolution
@@ -152,9 +158,11 @@ export default function TaskDetailsModal({
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formStatusId, setFormStatusId] = useState('');
+  const [formPlanningStatus, setFormPlanningStatus] = useState<TaskPlanningStatus>('planned');
   const [formTypeId, setFormTypeId] = useState('');
   const [formPriorityId, setFormPriorityId] = useState('');
   const [formEstimatedDate, setFormEstimatedDate] = useState('');
+  const estimatedDateInputRef = useRef<HTMLInputElement>(null);
   const [formEstimatedHours, setFormEstimatedHours] = useState('08:00');
   const [formActualHours, setFormActualHours] = useState('');
   const [formStartDate, setFormStartDate] = useState('');
@@ -204,6 +212,7 @@ export default function TaskDetailsModal({
 
         setFormTitle(activeTask.title || '');
         setFormDescription(activeTask.description || '');
+        setFormPlanningStatus(normalizeTaskPlanningStatus(activeTask.planningStatus));
         setFormStatusId(getDefaultTaskStatusId(taskStatuses)); // Reset to default unstarted status on duplicate
         setFormTypeId(activeTask.taskTypeId || '');
         setFormPriorityId(activeTask.priorityId || projectPriorities.filter(p => !p.deleted).sort((a, b) => a.scale - b.scale)[0]?.id || '');
@@ -234,6 +243,7 @@ export default function TaskDetailsModal({
         setFormTitle('');
         setFormDescription('');
         setFormStatusId(defaultStatus);
+        setFormPlanningStatus('planned');
         setFormTypeId('');
         setFormPriorityId(projectPriorities.filter(p => !p.deleted).sort((a, b) => a.scale - b.scale)[0]?.id || '');
         // "Data planeada" prevalece, sem datas reais de início e fim inicialmente preenchidas
@@ -258,6 +268,7 @@ export default function TaskDetailsModal({
       setFormTitle(activeTask.title || '');
       setFormDescription(activeTask.description || '');
       setFormStatusId(activeTask.statusId || getDefaultTaskStatusId(taskStatuses));
+      setFormPlanningStatus(normalizeTaskPlanningStatus(activeTask.planningStatus));
       setFormTypeId(activeTask.taskTypeId || '');
       setFormPriorityId(activeTask.priorityId || '');
       setFormEstimatedDate(activeTask.estimatedDate || '');
@@ -274,7 +285,7 @@ export default function TaskDetailsModal({
     }
   }, [isModalOpen, effectiveMode, activeTask, initialProjectId, initialDate, initialAssigneeId, initialAssigneeIds, projects, taskStatuses, getProjectDisplayLabel]);
 
-  const draftValues = { formProjectId, projectSearchQuery, formTitle, formDescription, formStatusId, formTypeId, formPriorityId, formEstimatedDate, formEstimatedHours, formActualHours, formStartDate, formStartTime, formEndDate, formEndTime, formNotes, formAssignees };
+  const draftValues = { formProjectId, projectSearchQuery, formTitle, formDescription, formStatusId, formPlanningStatus, formTypeId, formPriorityId, formEstimatedDate, formEstimatedHours, formActualHours, formStartDate, formStartTime, formEndDate, formEndTime, formNotes, formAssignees };
   const requestedDraft = feedback?.resume;
   useFormDraft('task', isModalOpen && canWrite && effectiveMode !== 'view' ? {
     kind: 'task', recordId: activeTask?.id ?? null, version: editingVersion.current,
@@ -286,6 +297,7 @@ export default function TaskDetailsModal({
     setFormTitle(draft.values.formTitle);
     setFormDescription(draft.values.formDescription);
     setFormStatusId(draft.values.formStatusId);
+    setFormPlanningStatus(normalizeTaskPlanningStatus(draft.values.formPlanningStatus ?? activeTask?.planningStatus));
     setFormTypeId(draft.values.formTypeId);
     setFormPriorityId(draft.values.formPriorityId);
     setFormEstimatedDate(draft.values.formEstimatedDate);
@@ -390,6 +402,9 @@ export default function TaskDetailsModal({
 
     return getTaskConflictWarnings({
       date: targetDate,
+      planningStatus: formPlanningStatus,
+      statusId: formStatusId,
+      taskStatuses,
       assigneeIds: formAssignees,
       currentTaskId: effectiveMode === 'create' ? null : activeTask?.id,
       tasks,
@@ -397,7 +412,7 @@ export default function TaskDetailsModal({
       absences,
       projects,
     });
-  }, [formStartDate, formEndDate, formEstimatedDate, effectiveMode, activeTask, formAssignees, tasks, users, absences, projects]);
+  }, [formStartDate, formEndDate, formEstimatedDate, formPlanningStatus, formStatusId, taskStatuses, effectiveMode, activeTask, formAssignees, tasks, users, absences, projects]);
 
   const selectedProject = projects.find(p => p.id === formProjectId && !p.deleted);
   const unscheduledProjectTasks = useMemo(() => {
@@ -486,6 +501,7 @@ export default function TaskDetailsModal({
           title: formTitle.trim(),
           description: formDescription.trim(),
           statusId: formStatusId || undefined,
+          planningStatus: formPlanningStatus,
           taskTypeId: formTypeId || undefined,
           priorityId: formPriorityId || undefined,
           estimatedDate: formEstimatedDate || undefined,
@@ -513,6 +529,8 @@ export default function TaskDetailsModal({
           title: formTitle.trim(),
           description: formDescription.trim(),
           statusId: formStatusId || undefined,
+          planningStatus: effectiveMode === 'execute' || formPlanningStatus === normalizeTaskPlanningStatus(activeTask.planningStatus)
+            ? undefined : formPlanningStatus,
           taskTypeId: formTypeId || '',
           priorityId: formPriorityId || null,
           estimatedDate: formEstimatedDate || '',
@@ -566,6 +584,14 @@ export default function TaskDetailsModal({
 
   const isReadOnly = effectiveMode === 'view' || !canWrite || isSubmitting;
   const isPlanningReadOnly = isReadOnly || effectiveMode === 'execute';
+  const canClearEstimatedDate = Boolean(formEstimatedDate) && !isPlanningReadOnly;
+  const isProvisional = !countsTowardsPlanning({ planningStatus: formPlanningStatus });
+  const executionLocked = isProvisional || (wasProvisional && effectiveMode !== 'create');
+  const started = (statusId?: string) => Boolean(statusId && !taskStatuses.some(status =>
+    status.scale === 1 && matchTaskStatusId(status.id, statusId)) && !matchTaskStatusId(statusId, 'ts-1'));
+  const hasExecution = started(formStatusId) || Boolean(formStartDate || formEndDate || formStartTime || formEndTime || parseTaskHoursToFloat(formActualHours));
+  const savedExecution = activeTask && effectiveMode !== 'create' && (started(activeTask.statusId) || Boolean(
+    activeTask.startDate || activeTask.endDate || activeTask.startTime || activeTask.endTime || activeTask.completedDate || parseTaskHoursToFloat(activeTask.actualHours)));
 
   if (!isModalOpen) {
     return null;
@@ -580,6 +606,12 @@ export default function TaskDetailsModal({
         : effectiveMode === 'create'
         ? 'Nova tarefa'
         : activeTask?.title || 'Detalhes da Tarefa'}
+      headerAction={<Checkbox
+        label="Tarefa provisória ()"
+        checked={isProvisional}
+        disabled={isPlanningReadOnly || Boolean(savedExecution) || hasExecution}
+        onChange={event => setFormPlanningStatus(event.target.checked ? 'provisional' : 'planned')}
+      />}
       className="max-w-2xl max-h-[calc(100dvh-2rem)]"
       bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden p-0 max-h-none"
     >
@@ -638,7 +670,7 @@ export default function TaskDetailsModal({
                 className: getTaskStatusStyle(s.id, taskStatuses).badgeClass,
               }))}
               onChange={value => { setFormStatusId(value); validation.clearField('statusId'); }}
-              disabled={isReadOnly || isSubmitting}
+              disabled={isReadOnly || executionLocked}
             />
           </div>
 
@@ -667,6 +699,7 @@ export default function TaskDetailsModal({
                     <button type="button" disabled={isSubmitting} onClick={() => onSelectTask?.(candidate)}
                       className="text-left underline underline-offset-2 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50">
                       {candidate.title}
+                      <TaskPlanningBadge planningStatus={candidate.planningStatus} />
                     </button>
                   </li>
                 ))}
@@ -803,22 +836,34 @@ export default function TaskDetailsModal({
             {/* Planned Date & Estimated Hours */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label htmlFor="task-formEstimatedDate" className="block text-label font-bold text-text-primary">
-                  Data planeada <span className="text-caption text-text-muted font-normal"></span>
+                <label htmlFor="task-formEstimatedDate" className="block text-body-sm font-bold text-text-primary">
+                  Data planeada
                 </label>
-                {formEstimatedDate && !isPlanningReadOnly && (
-                  <Button type="button" variant="ghost" size="sm" disabled={isSubmitting}
-                    onClick={() => setFormEstimatedDate('')}>
-                    Limpar data
-                  </Button>
-                )}
-                <Input id="task-formEstimatedDate" name="estimatedDate" error={validation.errors.estimatedDate}
-                  type="date"
-                  readOnly={isPlanningReadOnly}
-                  value={formEstimatedDate}
-                  onChange={e => setFormEstimatedDate(e.target.value)}
-                  className="w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 read-only:bg-surface-muted"
-                />
+                <div className="relative">
+                  <Input id="task-formEstimatedDate" name="estimatedDate" error={validation.errors.estimatedDate}
+                    ref={estimatedDateInputRef}
+                    type="date"
+                    readOnly={isPlanningReadOnly}
+                    value={formEstimatedDate}
+                    onChange={e => setFormEstimatedDate(e.target.value)}
+                    className={`w-full p-2.5 border border-border rounded-control bg-surface text-body-sm font-semibold text-text-primary focus:ring-2 focus:ring-primary/20 read-only:bg-surface-muted ${canClearEstimatedDate ? '[&::-webkit-calendar-picker-indicator]:ml-11' : ''}`}
+                  />
+                  {canClearEstimatedDate && (
+                    <IconButton
+                      type="button"
+                      className="absolute top-0.5 right-8 h-10"
+                      aria-label="Limpar data planeada"
+                      title="Limpar data planeada"
+                      disabled={isSubmitting}
+                      onClick={() => {
+                        setFormEstimatedDate('');
+                        estimatedDateInputRef.current?.focus();
+                      }}
+                    >
+                      <X className="size-4" aria-hidden="true" />
+                    </IconButton>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -906,8 +951,8 @@ export default function TaskDetailsModal({
                 <PlayCircle className="w-4 h-4 text-warning" />
                 Dados de Execução Real
               </span>
-
             </div>
+            {executionLocked && <p className="text-caption text-text-secondary">Confirme o planeamento para registar a execução.</p>}
 
             {/* Consumed Real Hours */}
             <div className="space-y-1">
@@ -918,7 +963,7 @@ export default function TaskDetailsModal({
                 type="number"
                 min="0"
                 step="0.5"
-                readOnly={isReadOnly}
+                readOnly={isReadOnly || executionLocked}
                 value={formActualHours}
                 onChange={e => setFormActualHours(e.target.value)}
                 placeholder="Ex: 6"
@@ -933,7 +978,7 @@ export default function TaskDetailsModal({
                 <label htmlFor="task-formStartDate" className="block text-label font-bold text-text-primary">Data de início</label>
                 <Input id="task-formStartDate" name="startDate" error={validation.errors.startDate}
                   type="date"
-                  readOnly={isReadOnly}
+                  readOnly={isReadOnly || executionLocked}
                   value={formStartDate}
                   onChange={e => handleStartDateChange(e.target.value)}
                   className="w-full p-2.5 border border-border rounded-control text-body-sm font-semibold bg-surface text-text-primary read-only:bg-surface-muted"
@@ -943,7 +988,7 @@ export default function TaskDetailsModal({
                 <label htmlFor="task-formStartTime" className="block text-label font-bold text-text-primary">Hora de início</label>
                 <Input id="task-formStartTime" name="startTime" error={validation.errors.startTime}
                   type="time"
-                  readOnly={isReadOnly}
+                  readOnly={isReadOnly || executionLocked}
                   value={formStartTime}
                   onChange={e => setFormStartTime(e.target.value)}
                   className="w-full p-2.5 border border-border rounded-control text-body-sm font-semibold bg-surface text-text-primary read-only:bg-surface-muted"
@@ -956,7 +1001,7 @@ export default function TaskDetailsModal({
                 <label htmlFor="task-formEndDate" className="block text-label font-bold text-text-primary">Data de fim</label>
                 <Input id="task-formEndDate" name="endDate" error={validation.errors.endDate}
                   type="date"
-                  readOnly={isReadOnly}
+                  readOnly={isReadOnly || executionLocked}
                   min={formStartDate || undefined}
                   value={formEndDate}
                   onChange={e => handleEndDateChange(e.target.value)}
@@ -967,7 +1012,7 @@ export default function TaskDetailsModal({
                 <label htmlFor="task-formEndTime" className="block text-label font-bold text-text-primary">Hora de fim</label>
                 <Input id="task-formEndTime" name="endTime" error={validation.errors.endTime}
                   type="time"
-                  readOnly={isReadOnly}
+                  readOnly={isReadOnly || executionLocked}
                   value={formEndTime}
                   onChange={e => setFormEndTime(e.target.value)}
                   className="w-full p-2.5 border border-border rounded-control text-body-sm font-semibold bg-surface text-text-primary read-only:bg-surface-muted"
@@ -980,7 +1025,7 @@ export default function TaskDetailsModal({
               <label htmlFor="task-formNotes" className="block text-body-sm font-bold text-text-primary">Descrição de execução</label>
               <Textarea id="task-formNotes" name="notes" error={validation.errors.notes}
                 rows={2}
-                readOnly={isReadOnly}
+                readOnly={isReadOnly || executionLocked}
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 placeholder="Relatório do trabalho efetuado, registos de campo ou observações..."
@@ -1035,7 +1080,7 @@ export default function TaskDetailsModal({
                     ? 'Criar tarefa'
                     : effectiveMode === 'execute'
                     ? 'Gravar execução'
-                    : 'Gravar alterações'}
+                    : wasProvisional && !isProvisional ? 'Confirmar planeamento' : 'Gravar alterações'}
                 </Button>
               )}
             </div>

@@ -6,6 +6,7 @@ import type { CalendarDayItem, DayConflictInfo } from '@/domains/calendar/module
 import { getProjectStatusStyle, getTaskStatusStyle, formatHoursToHHMM } from '@/lib/utils';
 import { parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
 import { Button } from '@/components/ui/Button';
+import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
 import { Badge } from '@/components/ui/Badge';
 
 type OtherDay = { otherTasks: Task[]; absentUsers: { user: User; absence: UserAbsence; conflict: DayConflictInfo }[] };
@@ -24,7 +25,7 @@ export default function MobileProjectAgenda({ projects, clients, users, projectS
     return <button key={task.id} type="button" onClick={() => onOpenTask(task)}
       className="block min-h-11 w-full min-w-0 space-y-1 py-2 text-left [overflow-wrap:anywhere] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
       <span className="block font-semibold text-text-primary">{task.title}</span>
-      <span className="flex flex-wrap items-center gap-2 text-body-sm text-text-secondary"><Badge className={status.badgeClass}>{status.name}</Badge><span>{formatHoursToHHMM(parseTaskHoursToFloat(task.estimatedHours))} h previstas</span></span>
+      <span className="flex flex-wrap items-center gap-2 text-body-sm text-text-secondary"><Badge className={status.badgeClass}>{status.name}</Badge><TaskPlanningBadge planningStatus={task.planningStatus} /><span>{formatHoursToHHMM(parseTaskHoursToFloat(task.estimatedHours))} h previstas</span></span>
       <span className="block text-caption text-text-secondary">{names.length ? names.join(', ') : 'Sem utilizador alocado'}</span>
       {date && conflictTaskIds.get(date)?.has(task.id) && <span className="block text-body-sm text-error">Conflito de planeamento</span>}
       {!date && Boolean(task.startDate?.trim() || task.endDate?.trim()) && <span className="block text-body-sm text-warning">Data incompleta</span>}

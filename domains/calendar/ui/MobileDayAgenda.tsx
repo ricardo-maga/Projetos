@@ -6,6 +6,7 @@ import { formatDateToYYYYMMDD, getOperationalDayConflicts } from '@/domains/cale
 import { formatHoursToHHMM, getTaskStatusStyle } from '@/lib/utils';
 import { parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
 import { Button } from '@/components/ui/Button';
+import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
 import { Badge } from '@/components/ui/Badge';
 
 export default function MobileDayAgenda({ date, onDateChange, users, tasksByUserDay, absencesByUserDay, projects, clients, taskStatuses,
@@ -35,7 +36,7 @@ export default function MobileDayAgenda({ date, onDateChange, users, tasksByUser
       const key = `${user.id}_${dateStr}`;
       const tasks = tasksByUserDay.get(key) || [];
       const absence = absencesByUserDay.get(key);
-      const conflict = getOperationalDayConflicts(tasks, absence, user.name, dateStr.split('-').reverse().join('/'));
+      const conflict = getOperationalDayConflicts(tasks, absence, user.name, dateStr.split('-').reverse().join('/'), taskStatuses);
       return <section key={user.id} aria-label={`Agenda de ${user.name}`} className="min-w-0 border-t border-border pt-3 space-y-2">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <h3 className="min-w-0 font-bold text-text-primary [overflow-wrap:anywhere]">{user.name} <span className="text-caption font-normal text-text-secondary">({tasks.length})</span></h3>
@@ -53,7 +54,7 @@ export default function MobileDayAgenda({ date, onDateChange, users, tasksByUser
               <button type="button" onClick={() => onOpen(task)} className="min-h-11 min-w-0 flex-1 space-y-1 text-left [overflow-wrap:anywhere] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
                 <span className="block text-caption text-primary-ink">{project ? `${client?.clientName || 'Sem cliente'} · ${project.title}` : 'Sem projeto'}</span>
                 <span className="block text-body font-semibold text-text-primary">{task.title}</span>
-                <span className="flex flex-wrap items-center gap-2 text-body-sm text-text-secondary"><Badge className={status.badgeClass}>{status.name}</Badge><span>Previstas: {formatHoursToHHMM(parseTaskHoursToFloat(task.estimatedHours))} h</span></span>
+                <span className="flex flex-wrap items-center gap-2 text-body-sm text-text-secondary"><Badge className={status.badgeClass}>{status.name}</Badge><TaskPlanningBadge planningStatus={task.planningStatus} /><span>Previstas: {formatHoursToHHMM(parseTaskHoursToFloat(task.estimatedHours))} h</span></span>
               </button>
               {onDuplicate && <Button variant="ghost" aria-label={`Duplicar tarefa ${task.title}`} onClick={() => onDuplicate(task)}><Copy aria-hidden="true" className="h-4 w-4" /></Button>}
             </li>;

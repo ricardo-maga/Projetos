@@ -4,6 +4,8 @@ import { useFeedback, useFormDraft } from '@/components/ApplicationFeedback';
 import { useFieldErrors } from '@/hooks/useFieldErrors';
 import { useSlowRead } from '@/hooks/useSlowRead';
 
+import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
+import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning';
 import { buildPlannedTaskCopy } from '@/domains/tasks/modules/taskCopy';
 import { M3FilterChip, M3SectionHeader, M3SegmentedControl } from '@/components/M3';
 import { Tabs } from '@/components/ui/Tabs';
@@ -40,12 +42,13 @@ import { hasPermission } from '@/lib/permissions';
 import { stringToUUID } from '@/lib/supabaseSync';
 import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import { normalizeTaskFromApiResponse } from '@/domains/tasks/modules/taskOperations';
-import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, checkTaskSchedulingConflicts, stripSecondsFromHours, formatHoursToHHMM, formatToOnlyHours, parseTimeToHours, getProjectStatusStyle, getTaskStatusStyle } from '@/lib/utils';
+import { getProjectCalculatedRisk, getTaskStatusName, getDefaultTaskStatusId, matchTaskStatusId, getTaskTypeName, getDefaultTaskTypeId, countsTowardsTaskConflict, stripSecondsFromHours, formatHoursToHHMM, formatToOnlyHours, parseTimeToHours, getProjectStatusStyle, getTaskStatusStyle } from '@/lib/utils';
 import { configuredRoleIds, userHasAnyRole } from '@/lib/roleAssociations';
 import { currentForecastMonth, forecastLabel, forecastMonth, normalizeForecast, projectForecastAlert } from '@/domains/projects/modules/projectForecast';
 
 type ProjectPageCacheEntry = { data: Project[]; total: number; savedAt: number };
-export function getProjectTaskAnalysisMinutes(task: Pick<Task, 'estimatedHours' | 'actualHours' | 'assigneeIds'>) {
+export function getProjectTaskAnalysisMinutes(task: Pick<Task, 'estimatedHours' | 'actualHours' | 'assigneeIds' | 'planningStatus'>) {
+  if (!countsTowardsPlanning(task)) return { estimated: 0, actual: 0, perTechnician: 0, workload: 0 };
   const estimated = Math.round(parseTimeToHours(task.estimatedHours) * 60);
   const actual = Math.round(parseTimeToHours(task.actualHours) * 60);
   const perTechnician = actual > 0 ? actual : estimated;
@@ -562,7 +565,7 @@ export default function ProjectSection({
   const getTaskCountForUserOnDay = (userId: string, dayStr: string): number => {
     let count = 0;
     tasks.forEach(t => {
-      if (t.deleted) return;
+      if (!countsTowardsTaskConflict(t, taskStatuses)) return;
       if (t.assigneeIds && t.assigneeIds.includes(userId)) {
         if (isTaskActiveOnDay(t, dayStr)) {
           count++;
@@ -583,7 +586,7 @@ export default function ProjectSection({
   // Get conflicts list for a given task based on its scheduled dates and assignees
   const getTaskConflicts = (t: Task) => {
     const conflicts: { userId: string; userName: string; type: 'absence' | 'double_booking'; details: string }[] = [];
-    if (!t.assigneeIds || t.assigneeIds.length === 0) return conflicts;
+    if (!countsTowardsTaskConflict(t, taskStatuses) || !t.assigneeIds || t.assigneeIds.length === 0) return conflicts;
 
     // Find all dates this task is active on
     const datesToCheck: string[] = [];
@@ -2116,6 +2119,7 @@ export default function ProjectSection({
                                     >
                                       <span className="shrink-0 text-caption">🔔</span>
                                       <span className="truncate">{m.title}</span>
+                                      <TaskPlanningBadge planningStatus={m.planningStatus} compact />
                                     </div>
                                   ))}
 
@@ -2149,6 +2153,7 @@ export default function ProjectSection({
                                       >
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0"></span>
                                         <span className="truncate">{t.title}</span>
+                                        <TaskPlanningBadge planningStatus={t.planningStatus} compact />
                                       </div>
                                     );
                                   })}
@@ -2394,6 +2399,7 @@ export default function ProjectSection({
                                               ? 'bg-warning/10 text-warning border-warning/50'
                                               : 'bg-primary/10 text-primary-ink border-primary/50'
                                           }`}>{getTaskStatusName(t.statusId, taskStatuses)}</span>
+                                          <TaskPlanningBadge planningStatus={t.planningStatus} />
 
                                           <span className="text-caption text-text-secondary font-bold truncate max-w-[150px]">
                                             👤 {assigneesText}
@@ -2921,6 +2927,7 @@ export default function ProjectSection({
                             <Badge className={getTaskStatusStyle(task.statusId, taskStatuses).badgeClass}>
                               {getTaskStatusStyle(task.statusId, taskStatuses).name}
                             </Badge>
+                            <TaskPlanningBadge planningStatus={task.planningStatus} />
                             <span className="px-2 py-0.5 bg-primary/10 text-primary-ink border border-primary/20 text-caption font-bold rounded-badge flex items-center gap-1">
                               {(getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('lembrete') || getTaskTypeName(task.taskTypeId, taskTypes).toLowerCase().includes('marco')) && <Bell className="w-3 h-3 text-category-purple-600" />}
                               {getTaskTypeName(task.taskTypeId, taskTypes)}
@@ -4705,6 +4712,7 @@ export default function ProjectSection({
                                         </span>
                                       );
                                     })()}
+                                    <TaskPlanningBadge planningStatus={t.planningStatus} />
 
                                     <span className="text-caption text-text-secondary font-bold truncate max-w-[150px]">
                                       👤 {assigneesText}

@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CalendarFeedScope, FeedClient, FeedProject, FeedTask, FeedUser } from '@/domains/calendar/modules/calendarFeeds';
 
@@ -8,6 +8,18 @@ export function validFeedScope(scope: string): scope is CalendarFeedScope {
 
 export function hashFeedToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
+}
+
+export function deriveCalendarFeedToken(ownerId: string, scope: CalendarFeedScope, nonce: string): string {
+  const encodedKey = process.env.CALENDAR_SUBSCRIPTION_KEY || '';
+  if (!/^[A-Za-z0-9_-]{43}$/.test(encodedKey)) throw new Error('Chave de subscrições indisponível.');
+  return createHmac('sha256', Buffer.from(encodedKey, 'base64url'))
+    .update(JSON.stringify(['calendar-subscription-v1', ownerId, scope, nonce]))
+    .digest('base64url');
+}
+
+export function calendarFeedPath(scope: CalendarFeedScope, token: string): string {
+  return `/api/calendar/feeds/${scope}/${token}.ics`;
 }
 
 export function calendarFeedDb() {
@@ -23,6 +35,7 @@ interface CalendarFeedRow {
   start_date: string | null;
   end_date: string | null;
   estimated_date: string | null;
+  planning_status: FeedTask['planning_status'];
   created_at: string | null;
   updated_at: string | null;
   version: number | null;
@@ -38,7 +51,7 @@ export async function loadCalendarFeedData(scope: CalendarFeedScope, ownerId: st
   const db = calendarFeedDb();
   const rows: CalendarFeedRow[] = [];
   for (let from = 0; ; from += 500) {
-    const { data, error } = await db.rpc('list_calendar_feed_events', {
+    const { data, error } = await db.rpc('list_calendar_feed_events_v2', {
       p_scope: scope, p_user_id: ownerId,
     }).range(from, from + 499);
     if (error) throw error;
@@ -61,7 +74,7 @@ export async function loadCalendarFeedData(scope: CalendarFeedScope, ownerId: st
     for (const user of assignees) users.set(user.id, user);
     return {
       id: row.task_id, project_id: row.project_id, task_title: row.task_title,
-      start_date: row.start_date, end_date: row.end_date, estimated_date: row.estimated_date,
+      start_date: row.start_date, end_date: row.end_date, estimated_date: row.estimated_date, planning_status: row.planning_status,
       created_at: row.created_at, updated_at: row.updated_at, version: row.version,
       assigneeIds: assignees.map(user => user.id),
     };

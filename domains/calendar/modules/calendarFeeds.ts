@@ -1,4 +1,6 @@
 import { addCivilDays, normalizeDateStr } from '@/domains/calendar/modules/operationalCalendar';
+import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning';
+import type { TaskPlanningStatus } from '@/lib/types';
 import { getUserInitials } from '@/lib/utils';
 
 export type CalendarFeedScope = 'mine' | 'all';
@@ -10,6 +12,7 @@ export interface FeedTask {
   start_date: string | null;
   end_date: string | null;
   estimated_date: string | null;
+  planning_status?: TaskPlanningStatus;
   created_at: string | null;
   updated_at: string | null;
   version: number | null;
@@ -90,7 +93,8 @@ export function renderCalendarFeed(input: {
     const ip = project?.install_project_no?.trim() || 'Sem IP';
     const names = [...new Set(task.assigneeIds)].map(id => userMap.get(id)?.name).filter((name): name is string => Boolean(name));
     const prefix = names.length ? `[${names.map(getUserInitials).join(', ')}] ` : '[-] ';
-    const summary = `${input.scope === 'all' ? prefix : ''}${clientName} - ${task.task_title} (${ip})`;
+    const planned = countsTowardsPlanning({ planningStatus: task.planning_status });
+    const summary = `${planned ? '' : '[Provisória] '}${input.scope === 'all' ? prefix : ''}${clientName} - ${task.task_title} (${ip})`;
     const changed = [task.updated_at, project?.updated_at, client?.updated_at,
       ...task.assigneeIds.map(id => userMap.get(id)?.updated_at)]
       .filter((value): value is string => Boolean(value)).sort().at(-1) || task.created_at;
@@ -102,7 +106,7 @@ export function renderCalendarFeed(input: {
       `DTSTART;VALUE=DATE:${date.replace(/-/g, '')}`,
       `DTEND;VALUE=DATE:${addCivilDays(date, 1).replace(/-/g, '')}`,
       `SUMMARY:${escapeText(summary)}`,
-      'TRANSP:OPAQUE', 'END:VEVENT');
+      planned ? 'TRANSP:OPAQUE' : 'TRANSP:TRANSPARENT', 'END:VEVENT');
   }
   lines.push('END:VCALENDAR');
   return lines.map(fold).join('\r\n') + '\r\n';

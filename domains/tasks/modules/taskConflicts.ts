@@ -1,8 +1,11 @@
-import { Task, Project, User } from '@/lib/types';
-import { getTaskEffectiveDate } from '@/lib/utils';
+import { Task, Project, User, TaskPlanningStatus } from '@/lib/types';
+import { countsTowardsTaskConflict, getTaskEffectiveDate, type TaskConflictStatus } from '@/lib/utils';
 
 export interface TaskConflictParams {
   date?: string | null;
+  planningStatus?: TaskPlanningStatus;
+  statusId?: string;
+  taskStatuses?: TaskConflictStatus[];
   assigneeIds: string[];
   currentTaskId?: string | null;
   tasks: Task[];
@@ -13,6 +16,9 @@ export interface TaskConflictParams {
 
 export function getTaskConflictWarnings({
   date,
+  planningStatus,
+  statusId,
+  taskStatuses,
   assigneeIds,
   currentTaskId,
   tasks = [],
@@ -20,7 +26,7 @@ export function getTaskConflictWarnings({
   absences = [],
   projects = [],
 }: TaskConflictParams): string[] {
-  if (!date || !assigneeIds || assigneeIds.length === 0) return [];
+  if (!countsTowardsTaskConflict({ planningStatus, statusId }, taskStatuses) || !date || !assigneeIds || assigneeIds.length === 0) return [];
 
   const warnings: string[] = [];
 
@@ -56,7 +62,7 @@ export function getTaskConflictWarnings({
 
     // 2. Check other planned tasks on that same day for this user
     const otherTasksOnDay = tasks.filter((t) => {
-      if (t.deleted) return false;
+      if (!countsTowardsTaskConflict(t, taskStatuses)) return false;
       if (
         currentTaskId &&
         (t.id === currentTaskId || t.id.replace(/[-]/g, '').toLowerCase() === currentTaskId.replace(/[-]/g, '').toLowerCase())
@@ -84,7 +90,7 @@ export function getTaskConflictWarnings({
       });
 
       warnings.push(
-        `⚠️ ${userName} já tem ${otherTasksOnDay.length} tarefa${otherTasksOnDay.length > 1 ? 's' : ''} planeada${otherTasksOnDay.length > 1 ? 's' : ''} para ${dFormatted}:\n${taskLines.join('\n')}`
+        `⚠️ ${userName} já tem ${otherTasksOnDay.length} tarefa${otherTasksOnDay.length > 1 ? 's' : ''} efetiva${otherTasksOnDay.length > 1 ? 's' : ''} para ${dFormatted}:\n${taskLines.join('\n')}`
       );
     }
   }

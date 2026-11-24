@@ -1,4 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { TaskPlanningStatus } from '@/lib/types';
+import { normalizeTaskPlanningStatus } from './taskPlanning';
 import { orLike } from '@/lib/security/postgrestSearch';
 
 export interface TaskDTO {
@@ -7,6 +9,7 @@ export interface TaskDTO {
   title: string;
   description: string;
   statusId: string;
+  planningStatus: TaskPlanningStatus;
   taskTypeId: string;
   priorityId: string | null;
   estimatedHours: number;
@@ -33,6 +36,7 @@ export interface CreateTaskParams {
   title: string;
   description?: string;
   statusId?: string;
+  planningStatus?: TaskPlanningStatus;
   taskTypeId?: string | null;
   priorityId?: string | null;
   estimatedHours?: number;
@@ -55,6 +59,7 @@ export interface UpdateTaskParams {
   title?: string;
   description?: string;
   statusId?: string;
+  planningStatus?: TaskPlanningStatus;
   taskTypeId?: string | null;
   priorityId?: string | null;
   estimatedHours?: number;
@@ -77,6 +82,7 @@ export interface ListTasksParams {
   search?: string;
   projectId?: string;
   statusId?: string;
+  planningStatus?: TaskPlanningStatus;
   taskTypeId?: string;
 }
 
@@ -177,6 +183,7 @@ export function mapRowToTaskDTO(row: any, assigneesMap: Record<string, string[]>
     title: row.task_title || row.title || '',
     description: row.task_description || row.description || '',
     statusId: row.status_id || row.statusId || 'ts-1',
+    planningStatus: normalizeTaskPlanningStatus(row.planning_status ?? row.planningStatus),
     taskTypeId: row.task_type_id || row.taskTypeId || '',
     priorityId: row.priority_id || row.priorityId || null,
     estimatedHours: parseTaskHoursToNumber(row.estimated_hours ?? row.estimatedHours),
@@ -254,6 +261,7 @@ export async function createTaskServer(
     p_project_id: finalProjectId,
     p_task_title: params.title.trim(),
     p_status_id: resolvedStatus,
+    ...(params.planningStatus === undefined ? {} : { p_planning_status: params.planningStatus }),
     p_task_type_id: resolvedType,
     p_priority_id: params.priorityId || null,
     p_estimated_hours: estimatedHoursStr,
@@ -327,6 +335,7 @@ export async function updateTaskServer(
     p_project_id: finalProjectId,
     p_task_title: params.title ? params.title.trim() : null,
     p_status_id: resolvedStatus,
+    ...(params.planningStatus === undefined ? {} : { p_planning_status: params.planningStatus }),
     p_task_type_id: resolvedType,
     p_priority_id: params.priorityId === undefined ? null : params.priorityId,
     p_update_priority: params.priorityId !== undefined,
@@ -477,6 +486,7 @@ export async function listTasksServer(
 
   if (params.projectId) query = query.eq('project_id', params.projectId);
   if (params.statusId) query = query.eq('status_id', params.statusId);
+  if (params.planningStatus) query = query.eq('planning_status', params.planningStatus);
   if (params.taskTypeId) query = query.eq('task_type_id', params.taskTypeId);
   if (params.search && params.search.trim()) {
     query = query.or(orLike(['task_title', 'task_description', 'notes'], params.search));

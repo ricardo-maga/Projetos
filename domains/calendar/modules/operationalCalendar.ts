@@ -1,4 +1,5 @@
 import { Task, Project, User, UserAbsence } from '@/lib/types';
+import { countsTowardsTaskConflict, type TaskConflictStatus } from '@/lib/utils';
 
 export interface CalendarDayItem {
   date: Date;
@@ -232,10 +233,11 @@ export function getOperationalDayConflicts(
   userTasks: Task[],
   userAbsence: any | undefined,
   userName: string = 'Utilizador',
-  dateFormatted: string = ''
+  dateFormatted: string = '',
+  taskStatuses: readonly TaskConflictStatus[] = [],
 ): DayConflictInfo {
   const isAbsent = !!userAbsence;
-  const taskCount = userTasks.length;
+  const taskCount = userTasks.filter(task => countsTowardsTaskConflict(task, taskStatuses)).length;
   const hasMultipleTasks = taskCount > 1;
 
   if (isAbsent && taskCount > 0) {
@@ -269,7 +271,7 @@ export function getOperationalDayConflicts(
       hasMultipleTasks: true,
       taskCount,
       badgeText: `⚠️ ${taskCount} tarefas`,
-      tooltipText: `Aviso operacional: ${userName} tem ${taskCount} tarefas planeadas para ${dateFormatted}.`,
+      tooltipText: `Aviso operacional: ${userName} tem ${taskCount} tarefas efetivas para ${dateFormatted}.`,
     };
   }
 

@@ -25,7 +25,13 @@ function Preview() {
     <output data-testid="save-count">{saveCount}</output>
     <section aria-label="Descrição guardada"><MarkdownBody text={saved} /></section>
     <h2>Notas e comentários</h2>
-    <MarkdownCommentComposer value={comment} onChange={setComment} onSubmit={text => { setComments(items => [...items, text]); setComment(''); }} />
+    <MarkdownCommentComposer value={comment} onChange={setComment} onSubmit={async text => {
+      if (new URLSearchParams(window.location.search).has('asyncComments')) {
+        const response = await fetch('/comment-submit', { method: 'POST', body: text });
+        if (!response.ok) throw new Error('Synthetic comment submission failed');
+      }
+      setComments(items => [...items, text]); setComment('');
+    }} />
     <output data-testid="comment">{comment}</output>
     <section aria-label="Comentários enviados">{comments.map((text, index) => <MarkdownBody key={index} text={text} collapsible />)}</section>
   </main>;

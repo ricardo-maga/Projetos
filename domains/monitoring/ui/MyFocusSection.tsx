@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { assignedFocusRisks, focusHours, paginateFocus } from '@/domains/monitoring/modules/myFocus';
 import { FocusPagination, useFocusPagination, FOCUS_TASK_SIZES, FOCUS_PROJECT_SIZES } from './FocusPagination';
+import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
+import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning';
 import TaskDetailsModal, { TaskModalMode } from '@/domains/tasks/ui/TaskDetailsModal';
 import { hasPermission } from '@/lib/permissions';
 import { isMechanicalDesignManager, type DesignRequest } from '@/lib/mechanicalDesign';
@@ -561,12 +563,12 @@ export default function MyFocusSection({
                       title="Clique para preencher ou editar a tarefa"
                     >
                       <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <IconButton size="sm" aria-label={`Executar tarefa ${task.title}`}
+                          {countsTowardsPlanning(task) && <IconButton size="sm" aria-label={`Executar tarefa ${task.title}`}
                             className={`rounded-full shrink-0 ${scaleInfo.badgeClass}`}
                             title="Executar tarefa" disabled={!hasPermission(currentUser, 'tasks_write')}
                             onClick={e => { e.stopPropagation(); openTaskDetailsModal(task, 'execute'); }}>
                             <Play className="w-4 h-4" />
-                          </IconButton>
+                          </IconButton>}
                         <div className="space-y-1.5 min-w-0 flex-1">
                           {proj && (
                             <Button variant="ghost" size="sm"
@@ -584,6 +586,7 @@ export default function MyFocusSection({
                             <span className={`text-body-sm font-bold tracking-tight group-hover:text-primary-ink transition-colors ${isDone ? 'line-through text-text-muted' : 'text-text-primary'}`}>
                               {task.title}
                             </span>
+                            <TaskPlanningBadge planningStatus={task.planningStatus} />
                             <span className="text-body-sm text-text-muted shrink-0">{focusHours(task.estimatedHours)}</span>
                           </div>
                         {task.notes && (
@@ -940,6 +943,7 @@ export default function MyFocusSection({
                                 <span className="font-bold text-text-primary group-hover:text-primary-ink transition-colors flex items-center gap-1.5 truncate">
                                   <CheckSquare className="w-3.5 h-3.5 text-primary-ink shrink-0" />
                                   <span className="truncate">{t.title}</span>
+                                  <TaskPlanningBadge planningStatus={t.planningStatus} />
                                 </span>
                                 <div className="text-caption font-medium text-text-secondary flex items-center gap-1 flex-wrap pl-5">
                                   <span className="text-text-primary font-bold">{client?.clientName || client?.shortName || 'Cliente N/D'}</span>

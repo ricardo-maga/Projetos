@@ -3,6 +3,8 @@
 import { useRef } from 'react';
 import { MoreHorizontal, PlayCircle } from 'lucide-react';
 import type { Task } from '@/lib/types';
+import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
+import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning';
 import { getTaskEffectiveDate, getTaskStatusStyle } from '@/lib/utils';
 import { formatDateToYYYYMMDD } from '@/domains/calendar/modules/operationalCalendar';
 import { Button } from '@/components/ui/Button';
@@ -47,10 +49,11 @@ export default function MobileTaskList({ tasks, taskStatuses, projectLabel, getT
           <span className="flex flex-wrap items-center gap-2 text-body-sm text-text-secondary">
             <span>{date ? date.split('-').reverse().join('/') : 'Sem data'}</span>
             <Badge className={status.badgeClass}>{status.name}</Badge>
+            <TaskPlanningBadge planningStatus={task.planningStatus} />
             {overdue && <Badge variant="error">Atrasada</Badge>}
           </span>
         </button>
-        {onExecute && <Button type="button" variant="ghost" className="shrink-0 px-2" aria-label={`Registar execução de ${task.title}`} onClick={() => onExecute(task)}><PlayCircle aria-hidden="true" className="h-5 w-5" /></Button>}
+        {onExecute && countsTowardsPlanning(task) && <Button type="button" variant="ghost" className="shrink-0 px-2" aria-label={`Registar execução de ${task.title}`} onClick={() => onExecute(task)}><PlayCircle aria-hidden="true" className="h-5 w-5" /></Button>}
         <TaskActions task={task} onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} />
       </li>;
     })}

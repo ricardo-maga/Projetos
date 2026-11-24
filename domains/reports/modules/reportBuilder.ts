@@ -55,5 +55,5 @@ export function buildReport(id: ReportId, input: ReportsInput) {
         ? !(task.assigneeIds || []).length || !iso(task.estimatedDate)
         : input.projectPriorities.find(item => matchId(item.id, task.priorityId))?.scale === 3);
   }).map(task => ({ task, project: task.projectId ? activeProjects.get(task.projectId) : undefined, effectiveDate: iso(id === 'unallocated-tasks' ? task.estimatedDate : getTaskEffectiveDate(task)) }));
-  return { rows, total: rows.length, details: rows.map(({ task, project, effectiveDate }) => ({ id: task.id, primary: task.title, secondary: project ? `${clientName(project)} · ${project.title}` : 'Sem projeto', date: effectiveDate, projectId: project?.id || '', value: id === 'unallocated-tasks' ? [!(task.assigneeIds || []).length && 'Sem responsável', !iso(task.estimatedDate) && 'Sem data prevista'].filter(Boolean).join(' · ') : 'Crítica' })) };
+  return { rows, total: rows.length, details: rows.map(({ task, project, effectiveDate }) => ({ id: task.id, primary: task.title, planningStatus: task.planningStatus, secondary: project ? `${clientName(project)} · ${project.title}` : 'Sem projeto', date: effectiveDate, projectId: project?.id || '', value: id === 'unallocated-tasks' ? [!(task.assigneeIds || []).length && 'Sem responsável', !iso(task.estimatedDate) && 'Sem data prevista'].filter(Boolean).join(' · ') : 'Crítica' })) };
 }

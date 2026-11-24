@@ -29,7 +29,7 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             checked={checked}
             disabled={disabled}
             onChange={onChange}
-            className="sr-only"
+            className="peer sr-only"
             {...props}
           />
           <div className={cn(
