@@ -558,6 +558,25 @@ describe('Project timeline M3', () => {
     expect(html).toContain('8h</span>');
     expect(html).not.toContain('8 h previstas');
   });
+  it('does not mark a finished task even when the same technician has an active conflict', () => {
+    const day = '2026-10-05';
+    const tasks = [
+      { id: 'active', projectId: 'one', title: 'Ativa', estimatedDate: day, assigneeIds: ['u'], statusId: 'pending' },
+      { id: 'active-other', projectId: null, title: 'Outra ativa', estimatedDate: day, assigneeIds: ['u'], statusId: 'pending' },
+      { id: 'closed', projectId: 'two', title: 'Terminada', estimatedDate: day, assigneeIds: ['u'], statusId: 'closed' },
+    ];
+    const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
+    const tree = h.render({
+      ...timelinePreviewProps, projects: [project('one'), project('two')], users: [{ id: 'u', name: 'Ana' }], tasks,
+      taskStatuses: [{ id: 'pending', scale: 1 }, { id: 'closed', scale: 5 }],
+    });
+    const cellClass = (projectId: string) => find(tree, element =>
+      element.props?.['data-timeline-drop-cell'] === `${projectId}:${day}`).props.className;
+    expect(cellClass('one')).toContain('project-timeline-conflict-cell');
+    expect(cellClass('two')).not.toContain('project-timeline-conflict-cell');
+    expect(renderToStaticMarkup(tree)).toContain('Terminada');
+  });
+
   it('reports absences in other tasks, including days without tasks, and highlights assigned conflicts', () => {
     const h = createSectionHarness('ProjectTimeline.tsx', { anchor: today, horizon: 'all' });
     const props = {

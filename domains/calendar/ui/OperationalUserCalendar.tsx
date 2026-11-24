@@ -595,7 +595,8 @@ export default function OperationalUserCalendar({
                           dayTasks,
                           dayAbsence,
                           user.name,
-                          day.dateStr.split('-').reverse().join('/')
+                          day.dateStr.split('-').reverse().join('/'),
+                          taskStatuses,
                         );
 
                         const isCellDragOver = dragOverCell === cellKey;

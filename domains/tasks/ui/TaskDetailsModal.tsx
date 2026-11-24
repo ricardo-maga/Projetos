@@ -401,6 +401,8 @@ export default function TaskDetailsModal({
     return getTaskConflictWarnings({
       date: targetDate,
       planningStatus: formPlanningStatus,
+      statusId: formStatusId,
+      taskStatuses,
       assigneeIds: formAssignees,
       currentTaskId: effectiveMode === 'create' ? null : activeTask?.id,
       tasks,
@@ -408,7 +410,7 @@ export default function TaskDetailsModal({
       absences,
       projects,
     });
-  }, [formStartDate, formEndDate, formEstimatedDate, formPlanningStatus, effectiveMode, activeTask, formAssignees, tasks, users, absences, projects]);
+  }, [formStartDate, formEndDate, formEstimatedDate, formPlanningStatus, formStatusId, taskStatuses, effectiveMode, activeTask, formAssignees, tasks, users, absences, projects]);
 
   const selectedProject = projects.find(p => p.id === formProjectId && !p.deleted);
   const unscheduledProjectTasks = useMemo(() => {
@@ -710,7 +712,7 @@ export default function TaskDetailsModal({
               <label htmlFor="task-planningStatus" className="block text-label font-bold text-text-primary">Planeamento</label>
               <Select id="task-planningStatus" value={formPlanningStatus} disabled={isPlanningReadOnly || Boolean(savedExecution) || hasExecution}
                 onChange={event => setFormPlanningStatus(normalizeTaskPlanningStatus(event.target.value))}
-                options={[{ value: 'planned', label: 'Planeada' }, { value: 'provisional', label: 'Provisória' }]} />
+                options={[{ value: 'planned', label: 'Efetiva' }, { value: 'provisional', label: 'Provisória' }]} />
               {executionLocked && <p className="text-caption text-text-secondary">Confirme o planeamento para registar a execução.</p>}
             </div>
 

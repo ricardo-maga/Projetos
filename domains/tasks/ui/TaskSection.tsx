@@ -746,7 +746,7 @@ export default function TaskSection({
                 <Select aria-label="Filtrar por planeamento" value={filterPlanning} onChange={e => setFilterPlanning(e.target.value)}
                   className="h-10 text-body-sm font-semibold" options={[
                     { value: '', label: 'Qualquer planeamento' },
-                    { value: 'planned', label: 'Planeadas' },
+                    { value: 'planned', label: 'Efetivas' },
                     { value: 'provisional', label: 'Provisórias' },
                   ]} />
               </div>
