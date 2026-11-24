@@ -21,6 +21,7 @@ function setup(options: {
   const writes: Array<{ table: string; operation: string; values?: any; filters: Record<string, any> }> = [];
   const createUser = mock(async () => ({ data: { user: options.authError ? null : { id: authId } }, error: options.authError ? { status: 422 } : null }));
   const deleteUser = mock(async () => ({ error: null }));
+  const getUserById = mock(async () => ({ data: { user: { id: authId, email: options.authEmail ?? input.email } }, error: null }));
   const updateUserById = mock(async (_id: string, _attributes: object): Promise<{ error: { status: number } | null }> => ({ error: null }));
   let operation: string | null = null;
   let version = profile.sync_version;
@@ -45,8 +46,7 @@ function setup(options: {
   });
   const admin = {
     rpc,
-    auth: { admin: { createUser, deleteUser, updateUserById,
-      getUserById: mock(async () => ({ data: { user: { id: authId, email: options.authEmail ?? input.email } }, error: null })) } },
+    auth: { admin: { createUser, deleteUser, updateUserById, getUserById } },
     from(table: string) {
       let operation = 'select';
       let values: any;
@@ -77,7 +77,7 @@ function setup(options: {
   }));
   spies.push(spyOn(server, 'createAdminClient').mockReturnValue(admin as any));
   spies.push(spyOn(audit, 'logAuditEvent').mockResolvedValue(undefined as any));
-  return { writes, createUser, deleteUser, updateUserById, rpc };
+  return { writes, createUser, deleteUser, updateUserById, getUserById, rpc };
 }
 
 function request(method: string, body: any) {
@@ -228,4 +228,14 @@ it('holds uncertain Auth changes for reconciliation', async () => {
   expect(response.status).toBe(409);
   expect(h.writes).toHaveLength(1);
   expect(h.rpc.mock.calls.some(([name]) => name === 'admin_end_user_profile_change')).toBe(false);
+});
+
+it('rejects a stale Auth email snapshot after acquiring the reservation', async () => {
+  const h = setup({ linked: true });
+  h.getUserById.mockResolvedValueOnce({ data: { user: { id: authId, email: input.email } }, error: null });
+  h.getUserById.mockResolvedValueOnce({ data: { user: { id: authId, email: 'concurrent@example.invalid' } }, error: null });
+  expect((await PATCH(request('PATCH', { ...input, id, name: 'Nome atualizado' }))).status).toBe(409);
+  expect(h.writes).toHaveLength(0);
+  expect(h.updateUserById).not.toHaveBeenCalled();
+  expect(h.rpc.mock.calls.at(-1)?.[0]).toBe('admin_end_user_profile_change');
 });

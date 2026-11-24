@@ -15,7 +15,7 @@ function profileChangeError(error: RpcError): AuthError {
 // A transport failure can hide a committed Auth change. Only a definite
 // rejection permits automatic compensation and release of the reservation.
 export function isDefinitiveAuthError(error: { status?: number } | null): boolean {
-  return typeof error?.status === 'number' && error.status >= 400 && error.status < 500;
+  return typeof error?.status === 'number' && error.status >= 400 && error.status < 500 && error.status !== 408;
 }
 
 export async function beginProfileChange(

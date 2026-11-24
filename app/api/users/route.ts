@@ -137,6 +137,15 @@ async function updateUser(req: NextRequest) {
     let activated = false;
     let keepReservation = false;
     try {
+      // The first read may have overlapped an earlier operation that wrote its
+      // profile before finishing in Auth. Verify the authorized email snapshot
+      // after acquiring the reservation and before making either write.
+      if (authId && authUser) {
+        const { data, error } = await admin.auth.admin.getUserById(authId);
+        if (error || !data.user || data.user.email?.toLowerCase() !== authUser.email?.toLowerCase()) {
+          throw new AuthError('A conta Auth foi alterada entretanto. Recarregue e tente novamente.', 409);
+        }
+      }
       if (!authId && password) {
         keepReservation = true;
         const { data, error } = await admin.auth.admin.createUser({
@@ -186,6 +195,9 @@ async function updateUser(req: NextRequest) {
           keepReservation = false;
         }
       }
+      await logAuditEvent({ action: activated ? 'USER_ACCESS_ACTIVATED' : 'USER_UPDATED',
+        userId: actor.id, userName: actor.name, entity: 'users', entityId: id, requestId: actor.requestId,
+        details: { accessEnabled: activated || Boolean(authId), changedFields } });
     } catch (error) {
       if (keepReservation) {
         await recordUserFailure(actor, id, true);
@@ -197,9 +209,6 @@ async function updateUser(req: NextRequest) {
       if (!keepReservation) await change.release();
     }
 
-    await logAuditEvent({ action: activated ? 'USER_ACCESS_ACTIVATED' : 'USER_UPDATED',
-      userId: actor.id, userName: actor.name, entity: 'users', entityId: id, requestId: actor.requestId,
-      details: { accessEnabled: activated || Boolean(authId), changedFields } });
     return NextResponse.json({ success: true, id });
   } catch (error) { return failure(error); }
 }
