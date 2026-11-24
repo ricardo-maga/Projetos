@@ -7,10 +7,10 @@ BEGIN
   RAISE EXCEPTION 'Concurrency conflict: current version is %, expected %',v_current_version,p_expected_version USING ERRCODE='P0001';
  END IF;
  IF EXISTS(SELECT 1 FROM public.tasks WHERE project_id=p_id AND deleted IS NOT TRUE) THEN
-  RAISE EXCEPTION 'NÃ£o Ã© possÃ­vel eliminar o projeto porque existem tarefas ativas associadas.' USING ERRCODE='P0001';
+  RAISE EXCEPTION 'Não é possível eliminar o projeto porque existem tarefas ativas associadas.' USING ERRCODE='P0001';
  END IF;
  IF EXISTS(SELECT 1 FROM public.project_materials WHERE project_id=p_id AND deleted IS NOT TRUE) THEN
-  RAISE EXCEPTION 'NÃ£o Ã© possÃ­vel eliminar o projeto porque existem materiais associados.' USING ERRCODE='P0001';
+  RAISE EXCEPTION 'Não é possível eliminar o projeto porque existem materiais associados.' USING ERRCODE='P0001';
  END IF;
  v_next_version:=v_current_version+1;
  UPDATE public.projects SET deleted=true,version=v_next_version,updated_by=p_updated_by,updated_at=CURRENT_TIMESTAMP WHERE id=p_id;

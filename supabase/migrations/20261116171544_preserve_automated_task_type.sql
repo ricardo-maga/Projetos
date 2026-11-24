@@ -17,8 +17,8 @@ BEGIN
     'estimated_date, notes, status_id)',
     'estimated_date, notes, status_id, task_type_id)');
   updated := replace(updated,
-    '''Gerada automaticamente pela regra de automaÃ§Ã£o.'', default_status',
-    '''Gerada automaticamente pela regra de automaÃ§Ã£o.'', default_status, d.task_type_id');
+    '''Gerada automaticamente pela regra de automação.'', default_status',
+    '''Gerada automaticamente pela regra de automação.'', default_status, d.task_type_id');
   IF updated = original OR position('status_id, task_type_id)' in updated) = 0
       OR position('default_status, d.task_type_id' in updated) = 0 THEN
     RAISE EXCEPTION 'Unexpected project-status automation definition; review before applying.';

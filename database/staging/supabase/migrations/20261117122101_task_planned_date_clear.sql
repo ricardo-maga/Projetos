@@ -18,10 +18,10 @@ BEGIN
   -- 1. Authorization check
   IF auth.role() = 'authenticated' THEN
     IF NOT public.is_approved() THEN
-      RAISE EXCEPTION 'Utilizador nÃ£o autorizado ou inativo.' USING ERRCODE = '42501';
+      RAISE EXCEPTION 'Utilizador não autorizado ou inativo.' USING ERRCODE = '42501';
     END IF;
     IF NOT public.has_permission('tasks:write', auth.uid()) THEN
-      RAISE EXCEPTION 'Sem permissÃ£o para editar tarefas.' USING ERRCODE = '42501';
+      RAISE EXCEPTION 'Sem permissão para editar tarefas.' USING ERRCODE = '42501';
     END IF;
 
     SELECT id INTO v_caller_user_id
@@ -36,7 +36,7 @@ BEGIN
     END IF;
   ELSIF p_updated_by IS NOT NULL THEN
     IF NOT public.has_permission('tasks:write', p_updated_by) THEN
-      RAISE EXCEPTION 'Sem permissÃ£o para editar tarefas.' USING ERRCODE = '42501';
+      RAISE EXCEPTION 'Sem permissão para editar tarefas.' USING ERRCODE = '42501';
     END IF;
   END IF;
 
@@ -46,11 +46,11 @@ BEGIN
   WHERE id = p_id AND (deleted IS NOT TRUE) FOR UPDATE;
 
   IF v_current_version IS NULL THEN
-    RAISE EXCEPTION 'Tarefa nÃ£o encontrada.' USING ERRCODE = 'P0002';
+    RAISE EXCEPTION 'Tarefa não encontrada.' USING ERRCODE = 'P0002';
   END IF;
 
   IF p_expected_version IS NOT NULL AND v_current_version <> p_expected_version THEN
-    RAISE EXCEPTION 'Conflito de concorrÃªncia (OCC): a tarefa foi modificada por outro utilizador.' USING ERRCODE = 'P0001';
+    RAISE EXCEPTION 'Conflito de concorrência (OCC): a tarefa foi modificada por outro utilizador.' USING ERRCODE = 'P0001';
   END IF;
 
   -- Determine target dates to validate
@@ -64,17 +64,17 @@ BEGIN
 
   -- Validate temporal constraints
   IF (v_target_start_date IS NOT NULL AND v_target_end_date IS NULL) OR (v_target_start_date IS NULL AND v_target_end_date IS NOT NULL) THEN
-    RAISE EXCEPTION 'Data de inÃ­cio e data de fim devem ser preenchidas em conjunto.' USING ERRCODE = '23514';
+    RAISE EXCEPTION 'Data de início e data de fim devem ser preenchidas em conjunto.' USING ERRCODE = '23514';
   END IF;
 
   IF v_target_start_date IS NOT NULL AND v_target_end_date IS NOT NULL AND v_target_end_date < v_target_start_date THEN
-    RAISE EXCEPTION 'Data de fim nÃ£o pode ser anterior Ã  data de inÃ­cio.' USING ERRCODE = '23514';
+    RAISE EXCEPTION 'Data de fim não pode ser anterior à data de início.' USING ERRCODE = '23514';
   END IF;
 
   -- 3. Validate target project if project_id is being updated and is not null
   IF p_update_project_id AND p_project_id IS NOT NULL THEN
     IF NOT EXISTS (SELECT 1 FROM public.projects WHERE id = p_project_id AND (deleted IS NOT TRUE)) THEN
-      RAISE EXCEPTION 'Projeto associado nÃ£o existe ou foi eliminado.' USING ERRCODE = '23503';
+      RAISE EXCEPTION 'Projeto associado não existe ou foi eliminado.' USING ERRCODE = '23503';
     END IF;
   END IF;
 
@@ -105,7 +105,7 @@ BEGIN
   END IF;
 
   IF p_update_priority AND p_priority_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.project_priority WHERE id = p_priority_id AND deleted IS NOT TRUE) THEN
-    RAISE EXCEPTION 'Prioridade da tarefa invÃ¡lida ou eliminada.' USING ERRCODE = '23503';
+    RAISE EXCEPTION 'Prioridade da tarefa inválida ou eliminada.' USING ERRCODE = '23503';
   END IF;
 
   -- 6. Update task row
