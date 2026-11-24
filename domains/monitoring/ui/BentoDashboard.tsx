@@ -440,8 +440,8 @@ export default function BentoDashboard({
           </>}
       </Card>
 
-      <Card className="md:col-span-12 min-w-0 flex flex-col overflow-hidden border-warning/35" aria-label="Projetos entregues com pendentes">
-        <div className="p-4 sm:p-5 border-b border-warning/25 bg-warning/10">
+      <Card className="md:col-span-12 min-w-0 flex flex-col overflow-hidden" aria-label="Projetos entregues com pendentes">
+        <div className="p-4 sm:p-5 border-b border-border/80 bg-surface-muted/60">
           <h2 className="text-heading-sm text-text-primary md:flex md:min-h-9 md:items-center">Projetos entregues com pendentes</h2>
         </div>
         {deliveredProjects.length === 0 ? <p className="p-3.75 text-body-sm text-text-muted">Sem projetos entregues com pendentes.</p> :
