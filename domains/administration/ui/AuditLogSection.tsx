@@ -27,7 +27,7 @@ type Page = { success: boolean; message?: string; data: Event[]; nextCursor: str
 
 function display(value: unknown, field: string): string {
   if (field === 'planning_status') {
-    if (value === 'planned') return 'Planeada';
+    if (value === 'planned') return 'Efetiva';
     if (value === 'provisional') return 'Provisória';
   }
   if (value == null || value === '') return '—';

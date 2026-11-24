@@ -88,8 +88,8 @@ for (const width of [390, 1280]) {
     await expect(planning).toHaveValue('provisional');
     await expect(dialog.getByLabel('Horas consumidas (h)')).toHaveAttribute('readonly', '');
     await expect(dialog.getByText(/Aviso Informativo de Conflitos/)).toHaveCount(0);
-    await planning.selectOption('planned');
-    await expect(dialog.getByText(/já tem 1 tarefa planeada/)).toBeVisible();
+    await planning.selectOption({ label: 'Efetiva' });
+    await expect(dialog.getByText(/já tem 1 tarefa efetiva/)).toBeVisible();
     await expect(dialog.getByLabel('Horas consumidas (h)')).toHaveAttribute('readonly', '');
     await dialog.getByRole('button', { name: 'Confirmar planeamento' }).click();
     await expect(dialog).toHaveCount(0);

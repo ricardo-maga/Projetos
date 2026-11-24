@@ -271,7 +271,7 @@ export function getOperationalDayConflicts(
       hasMultipleTasks: true,
       taskCount,
       badgeText: `⚠️ ${taskCount} tarefas`,
-      tooltipText: `Aviso operacional: ${userName} tem ${taskCount} tarefas planeadas para ${dateFormatted}.`,
+      tooltipText: `Aviso operacional: ${userName} tem ${taskCount} tarefas efetivas para ${dateFormatted}.`,
     };
   }
 

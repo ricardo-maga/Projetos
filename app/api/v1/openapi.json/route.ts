@@ -89,7 +89,7 @@ export async function GET() {
             title: { type: "string", example: "Montagem do Quadro Elétrico" },
             projectId: { type: "string", format: "uuid" },
             statusId: { type: "string", example: "ts-1" },
-            planningStatus: { type: 'string', enum: ['planned', 'provisional'], description: 'Tarefas provisórias excluídas dos conflitos e totais de horas. Omissão na criação assume planned; numa atualização mantém o valor.' },
+            planningStatus: { type: 'string', enum: ['planned', 'provisional'], description: 'planned corresponde a Efetiva e provisional a Provisória. Apenas as tarefas efetivas contam para conflitos e totais de horas. A omissão assume planned na criação e preserva o valor em atualizações.' },
             taskTypeId: { type: "string", format: "uuid", example: "33333333-3333-3333-3333-333333333304", description: "ID do Tipo de Tarefa (configurável em Campos Auxiliares)" },
             copiedFromTaskId: { type: 'string', format: 'uuid', description: 'Tarefa de origem para a auditoria de uma cópia autorizada.' },
             isMilestone: { type: "boolean", default: false, description: "Retrocompatibilidade (Indica se é um Lembrete)" },

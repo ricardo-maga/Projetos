@@ -87,7 +87,7 @@ export function getTaskConflictWarnings({
       });
 
       warnings.push(
-        `⚠️ ${userName} já tem ${otherTasksOnDay.length} tarefa${otherTasksOnDay.length > 1 ? 's' : ''} planeada${otherTasksOnDay.length > 1 ? 's' : ''} para ${dFormatted}:\n${taskLines.join('\n')}`
+        `⚠️ ${userName} já tem ${otherTasksOnDay.length} tarefa${otherTasksOnDay.length > 1 ? 's' : ''} efetiva${otherTasksOnDay.length > 1 ? 's' : ''} para ${dFormatted}:\n${taskLines.join('\n')}`
       );
     }
   }

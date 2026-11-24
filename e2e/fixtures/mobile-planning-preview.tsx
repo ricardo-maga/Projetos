@@ -18,7 +18,7 @@ const currentUser = { id: 'mobile-qa-user', name: 'Ana de exemplo', roleId: 'qa-
 const users = [currentUser, { ...currentUser, id: 'mobile-qa-second', name: 'Técnico com nome bastante comprido para testar a apresentação' }];
 const clients = [{ id: 'qa-client', clientName: 'Indústria alimentar de exemplo com designação extensa', deleted: false }];
 const projectStatuses = [{ id: 'ps-2', name: 'Em curso', scale: 2, color: 'azul' }];
-const taskStatuses = [{ id: 'ts-1', name: 'Planeada', scale: 1, color: 'azul' }, { id: 'ts-3', name: 'Concluída', scale: 3, color: 'verde' }];
+const taskStatuses = [{ id: 'ts-1', name: 'Por iniciar', scale: 1, color: 'azul' }, { id: 'ts-3', name: 'Concluída', scale: 3, color: 'verde' }];
 const projects: any[] = Array.from({ length: 27 }, (_, i) => ({ id: `qa-project-${i}`, title: i === 0 ? 'Linha de embalagem com título extenso e identificação industrial' : `Projeto de exemplo ${i}`,
   clientId: 'qa-client', statusId: 'ps-2', installProjectNo: `IP-${i}`, deleted: false, projectManagerId: currentUser.id,
   startDate: today, deliveryDate: addCivilDays(today, 5), scheduledDate: addCivilDays(today, 3), forecastDate: i === 0 ? `${today.slice(0, 7)}-01` : '', priorityId: '', categoryIds: [], teamsInvolvedIds: [], partnersIds: [], description: '' }));

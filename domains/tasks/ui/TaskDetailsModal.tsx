@@ -710,7 +710,7 @@ export default function TaskDetailsModal({
               <label htmlFor="task-planningStatus" className="block text-label font-bold text-text-primary">Planeamento</label>
               <Select id="task-planningStatus" value={formPlanningStatus} disabled={isPlanningReadOnly || Boolean(savedExecution) || hasExecution}
                 onChange={event => setFormPlanningStatus(normalizeTaskPlanningStatus(event.target.value))}
-                options={[{ value: 'planned', label: 'Planeada' }, { value: 'provisional', label: 'Provisória' }]} />
+                options={[{ value: 'planned', label: 'Efetiva' }, { value: 'provisional', label: 'Provisória' }]} />
               {executionLocked && <p className="text-caption text-text-secondary">Confirme o planeamento para registar a execução.</p>}
             </div>
 
