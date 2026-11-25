@@ -658,7 +658,7 @@ export default function TaskDetailsModal({
               <p className="text-label font-bold text-text-primary">Estado da tarefa {effectiveMode === 'create' ? '*' : ''}</p>
               <div className="ml-auto">
                 <Checkbox
-                  label="Tarefa provisória ()"
+                  label="Agendamento provisório"
                   checked={isProvisional}
                   disabled={isPlanningReadOnly || Boolean(savedExecution) || hasExecution}
                   onChange={event => setFormPlanningStatus(event.target.checked ? 'provisional' : 'planned')}
