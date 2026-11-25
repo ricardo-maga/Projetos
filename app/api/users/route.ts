@@ -3,11 +3,13 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { requirePermission, AuthError } from '@/lib/auth/requireAuth';
+import type { User } from '@supabase/supabase-js';
+import { requirePermission, AuthError, ForbiddenError } from '@/lib/auth/requireAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { logAuditEvent } from '@/lib/audit';
 import { CANONICAL_ROLE_IDS } from '@/lib/permissions';
 import { withCanonicalErrors } from '@/lib/apiErrors';
+import { beginProfileChange, isDefinitiveAuthError } from '@/lib/users/profileChange';
 import { getIdempotentEntityId, runIdempotent } from '@/lib/apiIdempotency';
 
 const fields = z.object({
@@ -98,52 +100,115 @@ async function updateUser(req: NextRequest) {
     if (!admin) throw new AuthError('Serviço de autenticação indisponível.', 503);
     const { id, name, email, type, password } = parsed.data;
     const { data: profile, error: lookupError } = await admin.from('users')
-      .select('id,auth_user_id,name,email,type,approved,deleted').eq('id', id).single();
-    if (lookupError || !profile || profile.deleted) return NextResponse.json({ success: false, message: 'Perfil não encontrado.' }, { status: 404 });
-    const { data: duplicate, error: duplicateError } = await admin.from('users').select('id').ilike('email', email).neq('id', id).maybeSingle();
-    if (duplicateError) throw duplicateError;
-    if (duplicate) return NextResponse.json({ success: false, message: 'O email já pertence a outro perfil.' }, { status: 409 });
+      .select('auth_user_id,name,email,type,deleted,sync_version').eq('id', id).single();
+    if (lookupError || !profile || profile.deleted) throw new AuthError('Perfil não encontrado.', 404);
 
-    let authId = profile.auth_user_id as string | null;
-    if (!authId && !password) {
-      const { data: updatedProfile, error: profileError } = await admin.from('users')
-        .update({ name, email, type }).eq('id', id).select('id').single();
-      if (profileError || !updatedProfile) return NextResponse.json({ success: false, message: 'Não foi possível atualizar o perfil.' }, { status: 500 });
-    } else if (!authId) {
-      if (email !== profile.email?.toLowerCase()) return NextResponse.json({ success: false, message: 'Associe primeiro a conta Auth usando o email atual; altere o email depois.' }, { status: 409 });
-      const { data: created, error: createError } = await admin.auth.admin.createUser({
-        email, password, email_confirm: true, user_metadata: { name },
-      });
-      if (createError || !created.user) return NextResponse.json({ success: false, message: 'Não foi possível criar a conta Auth. Verifique se o email já está registado.' }, { status: 409 });
-      authId = created.user.id;
-      const { error: linkError } = await admin.from('users').update({ auth_user_id: authId, name, type }).eq('id', id);
-      if (linkError) {
-        const { error: rollbackError } = await admin.auth.admin.deleteUser(authId);
-        await recordUserFailure(actor, id, Boolean(rollbackError));
-        return NextResponse.json({ success: false, message: rollbackError
-          ? 'O perfil não pôde ser associado e a reversão da conta Auth falhou. Requer reconciliação.'
-          : 'A conta Auth foi revertida porque o perfil não pôde ser associado.' }, { status: 500 });
-      }
-    } else {
-      const { data: authUser, error: getAuthError } = await admin.auth.admin.getUserById(authId);
-      if (getAuthError || !authUser.user) return NextResponse.json({ success: false, message: 'A conta Auth associada não foi encontrada.' }, { status: 409 });
-      const { data: updatedProfile, error: profileError } = await admin.from('users')
-        .update({ name, email, type }).eq('id', id).select('id').single();
-      if (profileError || !updatedProfile) return NextResponse.json({ success: false, message: 'Não foi possível atualizar o perfil.' }, { status: 500 });
-      const { error: authError } = await admin.auth.admin.updateUserById(authId, {
-        ...(email !== authUser.user.email?.toLowerCase() ? { email, email_confirm: true } : {}),
-        ...(password ? { password } : {}),
-        user_metadata: { ...authUser.user.user_metadata, name },
-      });
-      if (authError) {
-        const { error: rollbackError } = await admin.from('users').update({ name: profile.name, email: profile.email, type: profile.type }).eq('id', id);
-        await recordUserFailure(actor, id, Boolean(rollbackError));
-        return NextResponse.json({ success: false, message: rollbackError
-          ? 'A conta Auth não foi alterada e a reversão do perfil falhou. Requer reconciliação.'
-          : 'Não foi possível atualizar a conta Auth; o perfil foi revertido.' }, { status: 409 });
-      }
+    const authId = profile.auth_user_id as string | null;
+    let authUser: User | null = null;
+    if (authId) {
+      const { data, error } = await admin.auth.admin.getUserById(authId);
+      if (error || !data.user) throw new AuthError('A conta Auth associada não foi encontrada.', 409);
+      authUser = data.user;
     }
-    await logAuditEvent({ action: !profile.auth_user_id && authId ? 'USER_ACCESS_ACTIVATED' : 'USER_UPDATED', userId: actor.id, userName: actor.name, entity: 'users', entityId: id, details: { accessEnabled: Boolean(authId) } });
+
+    const authEmailChange = authUser !== null && email !== authUser.email?.toLowerCase();
+    const emailChange = email !== profile.email?.toLowerCase() || authEmailChange;
+    const nameChange = name !== profile.name;
+    const changedFields = [
+      ...(nameChange ? ['name'] : []),
+      ...(emailChange ? ['email'] : []),
+      ...(type !== profile.type ? ['type'] : []),
+      ...(password ? ['password'] : []),
+    ];
+    if (!changedFields.length) return NextResponse.json({ success: true, id });
+    if (actor.id === id && emailChange) throw new ForbiddenError('Para alterar o próprio email é necessário confirmar o novo endereço.');
+    if (actor.id === id && password) throw new ForbiddenError('Altere a sua palavra-passe nas definições do perfil.');
+    if (!authId && password && emailChange) {
+      throw new AuthError('Associe primeiro a conta Auth usando o email atual.', 409);
+    }
+    if (emailChange) {
+      const { data: duplicate, error } = await admin.from('users').select('id')
+        .ilike('email', email.replace(/[\\%_]/g, '\\$&')).neq('id', id).maybeSingle();
+      if (error) throw error;
+      if (duplicate) throw new AuthError('O email já pertence a outro perfil.', 409);
+    }
+
+    const change = await beginProfileChange(admin, actor.id, id, profile.sync_version, emailChange || Boolean(password));
+    let activated = false;
+    let keepReservation = false;
+    try {
+      // The first read may have overlapped an earlier operation that wrote its
+      // profile before finishing in Auth. Verify the authorized email snapshot
+      // after acquiring the reservation and before making either write.
+      if (authId && authUser) {
+        const { data, error } = await admin.auth.admin.getUserById(authId);
+        if (error || !data.user || data.user.email?.toLowerCase() !== authUser.email?.toLowerCase()) {
+          throw new AuthError('A conta Auth foi alterada entretanto. Recarregue e tente novamente.', 409);
+        }
+      }
+      if (!authId && password) {
+        keepReservation = true;
+        const { data, error } = await admin.auth.admin.createUser({
+          email, password, email_confirm: true, user_metadata: { name },
+        });
+        if (error || !data.user) {
+          keepReservation = !isDefinitiveAuthError(error);
+          throw new AuthError('Não foi possível criar a conta de autenticação.', 409);
+        }
+
+        try {
+          await change.write({ name, email, type, authId: data.user.id }, profile.sync_version);
+        } catch (error) {
+          // Only undo a known rejection. A lost RPC response may have committed the link.
+          if (error instanceof AuthError && error.statusCode < 500) {
+            const { error: undoError } = await admin.auth.admin.deleteUser(data.user.id);
+            keepReservation = Boolean(undoError);
+          }
+          throw error;
+        }
+        activated = true;
+        keepReservation = false;
+      } else {
+        keepReservation = true;
+        let written: number;
+        try {
+          written = await change.write({ name, email, type, authId }, profile.sync_version);
+        } catch (error) {
+          keepReservation = !(error instanceof AuthError && error.statusCode < 500);
+          throw error;
+        }
+        keepReservation = false;
+        if (authId && (authEmailChange || password || nameChange)) {
+          keepReservation = true;
+          const { error } = await admin.auth.admin.updateUserById(authId, {
+            ...(authEmailChange ? { email, email_confirm: true } : {}),
+            ...(password ? { password } : {}),
+            ...(nameChange ? { user_metadata: { name } } : {}),
+          });
+          if (error) {
+            if (isDefinitiveAuthError(error)) {
+              await change.write({ name: profile.name, email: profile.email, type: profile.type, authId }, written);
+              keepReservation = false;
+            }
+            throw new AuthError('Não foi possível atualizar a conta Auth.', 409);
+          }
+          keepReservation = false;
+        }
+      }
+      await logAuditEvent({ action: activated ? 'USER_ACCESS_ACTIVATED' : 'USER_UPDATED',
+        userId: actor.id, userName: actor.name, entity: 'users', entityId: id, requestId: actor.requestId,
+        details: { accessEnabled: activated || Boolean(authId), changedFields } });
+    } catch (error) {
+      if (keepReservation) {
+        await recordUserFailure(actor, id, true);
+        throw new AuthError('A alteração requer reconciliação antes de voltar a editar esta conta.', 409);
+      }
+      await recordUserFailure(actor, id, false);
+      throw error;
+    } finally {
+      if (!keepReservation) await change.release();
+    }
+
     return NextResponse.json({ success: true, id });
   } catch (error) { return failure(error); }
 }

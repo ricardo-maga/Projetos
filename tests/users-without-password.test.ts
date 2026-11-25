@@ -13,14 +13,40 @@ const password = 'Synthetic-test-password-123!';
 const spies: Array<{ mockRestore(): void }> = [];
 afterEach(() => spies.splice(0).forEach(spy => spy.mockRestore()));
 
-function setup(options: { linked?: boolean; deleted?: boolean; duplicate?: boolean; profileError?: boolean; roleError?: boolean; authError?: boolean; forbidden?: boolean } = {}) {
-  const profile = { id, ...input, auth_user_id: options.linked ? authId : null, approved: true, deleted: !!options.deleted };
+function setup(options: {
+  linked?: boolean; deleted?: boolean; duplicate?: boolean; profileError?: boolean; roleError?: boolean;
+  authError?: boolean; forbidden?: boolean; self?: boolean; credentials?: boolean; authEmail?: string;
+} = {}) {
+  const profile = { id, ...input, auth_user_id: options.linked ? authId : null, sync_version: 7, deleted: !!options.deleted };
   const writes: Array<{ table: string; operation: string; values?: any; filters: Record<string, any> }> = [];
-  const createUser = mock(async () => ({ data: { user: options.authError ? null : { id: authId } }, error: options.authError ? new Error('Auth conflict') : null }));
+  const createUser = mock(async () => ({ data: { user: options.authError ? null : { id: authId } }, error: options.authError ? { status: 422 } : null }));
   const deleteUser = mock(async () => ({ error: null }));
-  const updateUserById = mock(async () => ({ error: null }));
+  const getUserById = mock(async () => ({ data: { user: { id: authId, email: options.authEmail ?? input.email } }, error: null }));
+  const updateUserById = mock(async (_id: string, _attributes: object): Promise<{ error: { status: number } | null }> => ({ error: null }));
+  let operation: string | null = null;
+  let version = profile.sync_version;
+  const rpc = mock(async (name: string, args: Record<string, any>) => {
+    if (name === 'admin_begin_user_profile_change') {
+      if (args.p_changes_credentials && options.credentials === false) return { error: { code: '42501', message: 'Sem permissão.' } };
+      if (operation) return { error: { code: '40001', message: 'Alteração pendente.' } };
+      operation = args.p_operation_id;
+      return { error: null };
+    }
+    if (name === 'admin_end_user_profile_change') {
+      expect(args.p_operation_id).toBe(operation!);
+      operation = null;
+      return { error: null };
+    }
+    if (name !== 'admin_update_user_profile') throw new Error(`Unexpected RPC: ${name}`);
+    expect(args.p_operation_id).toBe(operation!);
+    expect(args.p_expected_version).toBe(version);
+    if (options.profileError) return { error: { code: '40001', message: 'Versão desatualizada.' } };
+    writes.push({ table: 'users', operation: 'rpc', values: args, filters: { id: args.p_user_id } });
+    return { data: ++version, error: null };
+  });
   const admin = {
-    auth: { admin: { createUser, deleteUser, updateUserById, getUserById: mock(async () => ({ data: { user: { id: authId, email: input.email } }, error: null })) } },
+    rpc,
+    auth: { admin: { createUser, deleteUser, updateUserById, getUserById } },
     from(table: string) {
       let operation = 'select';
       let values: any;
@@ -47,11 +73,11 @@ function setup(options: { linked?: boolean; deleted?: boolean; duplicate?: boole
   };
   spies.push(spyOn(access, 'requirePermission').mockImplementation(async () => {
     if (options.forbidden) throw new access.AuthError('Sem permissão.', 403);
-    return { id: 'actor' } as any;
+    return { id: options.self ? id : 'actor' } as any;
   }));
   spies.push(spyOn(server, 'createAdminClient').mockReturnValue(admin as any));
   spies.push(spyOn(audit, 'logAuditEvent').mockResolvedValue(undefined as any));
-  return { writes, createUser, deleteUser, updateUserById };
+  return { writes, createUser, deleteUser, updateUserById, getUserById, rpc };
 }
 
 function request(method: string, body: any) {
@@ -75,7 +101,8 @@ for (const empty of [undefined, '']) {
     const updates = { ...input, id, name: 'Nome atualizado', email: 'changed@example.invalid', password: empty };
     expect((await PATCH(request('PATCH', updates))).status).toBe(200);
     expect(h.createUser).not.toHaveBeenCalled();
-    expect(h.writes).toEqual([{ table: 'users', operation: 'update', values: { name: updates.name, email: updates.email, type: input.type }, filters: { id } }]);
+    expect(h.writes).toHaveLength(1);
+    expect(h.writes[0]).toMatchObject({ operation: 'rpc', values: { p_name: updates.name, p_email: updates.email, p_auth_user_id: null, p_expected_version: 7 }, filters: { id } });
   });
 }
 
@@ -90,14 +117,16 @@ it('activates the existing profile while preserving its ID and role assignments'
   const h = setup();
   expect((await PATCH(request('PATCH', { ...input, id, password }))).status).toBe(200);
   expect(h.createUser).toHaveBeenCalledTimes(1);
-  expect(h.writes).toEqual([{ table: 'users', operation: 'update', values: { auth_user_id: authId, name: input.name, type: input.type }, filters: { id } }]);
+  expect(h.writes).toHaveLength(1);
+  expect(h.writes[0]).toMatchObject({ operation: 'rpc', values: { p_auth_user_id: authId, p_name: input.name, p_expected_version: 7 }, filters: { id } });
 });
 
-it('leaves an existing linked account password unchanged when omitted', async () => {
+it('leaves a linked profile unchanged when the request is identical', async () => {
   const h = setup({ linked: true });
   expect((await PATCH(request('PATCH', { ...input, id }))).status).toBe(200);
   expect(h.createUser).not.toHaveBeenCalled();
-  expect(h.updateUserById.mock.calls[0][1]).not.toHaveProperty('password');
+  expect(h.updateUserById).not.toHaveBeenCalled();
+  expect(h.rpc).not.toHaveBeenCalled();
 });
 
 it('rejects short passwords instead of silently creating profiles without access', async () => {
@@ -113,7 +142,7 @@ it('rejects short passwords instead of silently creating profiles without access
 it('rejects duplicate emails without creating or reactivating a profile', async () => {
   const h = setup({ duplicate: true });
   expect((await POST(request('POST', input))).status).toBe(409);
-  expect((await PATCH(request('PATCH', { ...input, id }))).status).toBe(409);
+  expect((await PATCH(request('PATCH', { ...input, id, email: 'duplicate@example.invalid' }))).status).toBe(409);
   expect(h.writes).toHaveLength(0);
   expect(h.createUser).not.toHaveBeenCalled();
 });
@@ -150,6 +179,63 @@ it('keeps an unlinked profile unchanged when activation encounters an Auth confl
 
 it('rolls back a newly created Auth account if linking the existing profile fails', async () => {
   const h = setup({ profileError: true });
-  expect((await PATCH(request('PATCH', { ...input, id, password }))).status).toBe(500);
+  expect((await PATCH(request('PATCH', { ...input, id, password }))).status).toBe(409);
   expect(h.deleteUser).toHaveBeenCalledWith(authId);
+});
+
+it('requires credential permission for a divergent Auth email and for activation', async () => {
+  const linked = setup({ linked: true, authEmail: 'other@example.invalid', credentials: false });
+  expect((await PATCH(request('PATCH', { ...input, id }))).status).toBe(403);
+  expect(linked.updateUserById).not.toHaveBeenCalled();
+  spies.splice(0).forEach(spy => spy.mockRestore());
+  const unlinked = setup({ credentials: false });
+  expect((await PATCH(request('PATCH', { ...input, id, password }))).status).toBe(403);
+  expect(unlinked.createUser).not.toHaveBeenCalled();
+});
+
+it('routes self-service credential changes away from the administrative endpoint', async () => {
+  const h = setup({ linked: true, self: true });
+  for (const change of [{ password }, { email: 'new@example.invalid' }]) {
+    expect((await PATCH(request('PATCH', { ...input, id, ...change }))).status).toBe(403);
+  }
+  expect(h.rpc).not.toHaveBeenCalled();
+  expect(h.updateUserById).not.toHaveBeenCalled();
+});
+
+it('keeps the reservation during Auth and reverses a definite rejection using the written version', async () => {
+  const h = setup({ linked: true });
+  let finishAuth!: () => void;
+  let startAuth!: () => void;
+  const authStarted = new Promise<void>(resolve => { startAuth = resolve; });
+  h.updateUserById.mockImplementation(async () => {
+    startAuth();
+    await new Promise<void>(resolve => { finishAuth = resolve; });
+    return { error: { status: 422 } };
+  });
+  const first = PATCH(request('PATCH', { ...input, id, email: 'new@example.invalid' }));
+  await authStarted;
+  expect((await PATCH(request('PATCH', { ...input, id, name: 'Outra alteração' }))).status).toBe(409);
+  finishAuth();
+  expect((await first).status).toBe(409);
+  expect(h.writes.map(write => write.values.p_expected_version)).toEqual([7, 8]);
+  expect(h.rpc.mock.calls.at(-1)?.[0]).toBe('admin_end_user_profile_change');
+});
+
+it('holds uncertain Auth changes for reconciliation', async () => {
+  const h = setup({ linked: true });
+  h.updateUserById.mockResolvedValue({ error: { status: 503 } });
+  const response = await PATCH(request('PATCH', { ...input, id, password }));
+  expect(response.status).toBe(409);
+  expect(h.writes).toHaveLength(1);
+  expect(h.rpc.mock.calls.some(([name]) => name === 'admin_end_user_profile_change')).toBe(false);
+});
+
+it('rejects a stale Auth email snapshot after acquiring the reservation', async () => {
+  const h = setup({ linked: true });
+  h.getUserById.mockResolvedValueOnce({ data: { user: { id: authId, email: input.email } }, error: null });
+  h.getUserById.mockResolvedValueOnce({ data: { user: { id: authId, email: 'concurrent@example.invalid' } }, error: null });
+  expect((await PATCH(request('PATCH', { ...input, id, name: 'Nome atualizado' }))).status).toBe(409);
+  expect(h.writes).toHaveLength(0);
+  expect(h.updateUserById).not.toHaveBeenCalled();
+  expect(h.rpc.mock.calls.at(-1)?.[0]).toBe('admin_end_user_profile_change');
 });

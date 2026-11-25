@@ -101,6 +101,7 @@ export async function GET(req: NextRequest) {
 // Retired after all UI mutations moved to domain APIs.
 export async function POST(req: NextRequest) {
   try {
+    // All legacy writes are retired, including the profile writes prohibited by main.
     await requireAuth(req);
     return NextResponse.json({ success: false, message: 'Use as APIs de domínio.' }, { status: 410 });
   } catch (error) {
