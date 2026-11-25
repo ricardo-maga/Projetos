@@ -67,7 +67,7 @@ for (const width of [390, 1280]) {
     await create.click();
 
     const dialog = page.getByRole('dialog');
-    const header = dialog.getByRole('heading', { level: 2 }).locator('..');
+    const header = dialog.getByText(/^Estado da tarefa\s*\*?$/).locator('..');
     const planning = header.getByRole('checkbox', { name: 'Tarefa provisória ()', exact: true });
     await expect(planning).not.toBeChecked();
     await expect(dialog.getByRole('combobox', { name: 'Planeamento', exact: true })).toHaveCount(0);

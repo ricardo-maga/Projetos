@@ -606,12 +606,6 @@ export default function TaskDetailsModal({
         : effectiveMode === 'create'
         ? 'Nova tarefa'
         : activeTask?.title || 'Detalhes da Tarefa'}
-      headerAction={<Checkbox
-        label="Tarefa provisória ()"
-        checked={isProvisional}
-        disabled={isPlanningReadOnly || Boolean(savedExecution) || hasExecution}
-        onChange={event => setFormPlanningStatus(event.target.checked ? 'provisional' : 'planned')}
-      />}
       className="max-w-2xl max-h-[calc(100dvh-2rem)]"
       bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden p-0 max-h-none"
     >
@@ -660,7 +654,17 @@ export default function TaskDetailsModal({
         {/* Form Body */}
         <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-5">
           <div className="space-y-2">
-            <p className="text-label font-bold text-text-primary">Estado da tarefa {effectiveMode === 'create' ? '*' : ''}</p>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <p className="text-label font-bold text-text-primary">Estado da tarefa {effectiveMode === 'create' ? '*' : ''}</p>
+              <div className="ml-auto">
+                <Checkbox
+                  label="Tarefa provisória ()"
+                  checked={isProvisional}
+                  disabled={isPlanningReadOnly || Boolean(savedExecution) || hasExecution}
+                  onChange={event => setFormPlanningStatus(event.target.checked ? 'provisional' : 'planned')}
+                />
+              </div>
+            </div>
             <SingleChoice
               label="Estado da tarefa" field="statusId" error={validation.errors.statusId}
               value={taskStatuses.find(s => s.id === formStatusId || matchTaskStatusId(s.id, formStatusId))?.id || formStatusId}
