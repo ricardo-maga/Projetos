@@ -33,10 +33,11 @@ import TaskDetailsModal, { TaskModalMode } from '@/domains/tasks/ui/TaskDetailsM
 import { TaskAnalytics } from '@/domains/tasks/ui/TaskAnalytics';
 
 import { hasPermission } from '@/lib/permissions';
-import { getTaskStatusName, matchTaskStatusId, getTaskTypeName, getTaskEffectiveDate, getTaskStatusStyle, getUserInitials, cn } from '@/lib/utils';
+import { getTaskStatusName, getTaskTypeName, getTaskEffectiveDate, getTaskStatusStyle, getUserInitials, cn } from '@/lib/utils';
 import { parseTaskHoursToFloat } from '@/domains/tasks/modules/taskOperations';
 import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
 import { countsTowardsPlanning, normalizeTaskPlanningStatus } from '../modules/taskPlanning';
+import { getOperationalTaskScale, getTaskFilterDates, matchesTaskDateFilter, type TaskDateFilter } from '../modules/taskDateFilters';
 import { getTaskDisplayHours } from '@/lib/tasks/displayHours';
 import { Button, IconButton, Badge, Tabs, Select, Checkbox, Card, Input } from '@/components/ui';
 
@@ -112,7 +113,7 @@ export default function TaskSection({
   const [search, setSearch] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('');
   const [filterPlanning, setFilterPlanning] = useState('');
-  const [datePreset, setFilterDatePreset] = useState<'all' | 'no_date' | 'today' | 'tomorrow' | 'this_week' | 'overdue' | 'completed' | 'completed_this_week'>('all');
+  const [datePreset, setFilterDatePreset] = useState<TaskDateFilter>('all');
 
   // Pagination & Sorting state
   const [pageSize, setPageSize] = useState<number>(25);
@@ -127,31 +128,7 @@ export default function TaskSection({
     setCurrentPage(1);
   }, [search, filterAssignee, filterPlanning, datePreset, pageSize, sortBy, groupByProject]);
 
-  // Dates computation
-  const todayStr = useMemo(() => {
-    const d = new Date();
-    return d.toISOString().split('T')[0];
-  }, []);
-
-  const tomorrowStr = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
-  }, []);
-
-  const weekRange = useMemo(() => {
-    const d = new Date();
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
-    const monday = new Date(d);
-    monday.setDate(diff);
-    const sunday = new Date(monday);
-    sunday.setDate(sunday.getDate() + 6);
-    return {
-      start: monday.toISOString().split('T')[0],
-      end: sunday.toISOString().split('T')[0],
-    };
-  }, []);
+  const filterDates = useMemo(() => getTaskFilterDates(new Date()), []);
 
   // Confirmation Modal state
   const [confirmState, setConfirmState] = useState<{
@@ -245,67 +222,14 @@ export default function TaskSection({
     });
   }, [tasks, projectMap]);
 
-  // Helper to resolve scale for task status
-  const getTaskScale = React.useCallback((statusId: string) => {
-    const status = taskStatuses.find(s => s.id === statusId || matchTaskStatusId(s.id, statusId));
-    if (status && typeof status.scale === 'number') return status.scale;
-    if (statusId === 'ts-1' || statusId === '99999999-9999-9999-9999-999999999901') return 1;
-    if (statusId === 'ts-2' || statusId === '99999999-9999-9999-9999-999999999902') return 2;
-    if (statusId === 'ts-3' || statusId === '99999999-9999-9999-9999-999999999903') return 3;
-    if (statusId === 'ts-4' || statusId === '99999999-9999-9999-9999-999999999904') return 4;
-    return 1;
-  }, [taskStatuses]);
-
-  // Operational KPIs
-  const operationalStats = useMemo(() => {
-    let todayCount = 0;
-    let thisWeekCount = 0;
-    let overdueCount = 0;
-    let completedThisWeekCount = 0;
-
-    activeTasks.forEach(t => {
-      const scale = getTaskScale(t.statusId);
-      const targetDate = getTaskEffectiveDate(t);
-
-      if (targetDate === todayStr && (scale === 1 || scale === 2 || scale === 3)) {
-        todayCount++;
-      }
-
-      if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && (scale === 1 || scale === 2 || scale === 3)) {
-        thisWeekCount++;
-      }
-
-      if (targetDate && targetDate < todayStr && (scale === 1 || scale === 2)) {
-        overdueCount++;
-      }
-
-      if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && scale === 3) {
-        completedThisWeekCount++;
-      }
-    });
-
-    let weekHoursSum = 0;
-    activeTasks.forEach(t => {
-      if (!countsTowardsPlanning(t)) return;
-      const targetDate = getTaskEffectiveDate(t);
-      if (targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end) {
-        const isActualHoursFilled = parseTaskHoursToFloat(t.actualHours) > 0;
-        const baseHours = isActualHoursFilled
-          ? parseTaskHoursToFloat(t.actualHours)
-          : parseTaskHoursToFloat(t.estimatedHours);
-        const userCount = (t.assigneeIds || []).length;
-        weekHoursSum += baseHours * userCount;
-      }
-    });
-
-    return {
-      todayCount,
-      thisWeekCount,
-      overdueCount,
-      completedThisWeekCount,
-      weekHoursSum: Math.round(weekHoursSum * 10) / 10,
-    };
-  }, [activeTasks, getTaskScale, todayStr, weekRange]);
+  const getTaskScale = React.useCallback(
+    (statusId: string) => getOperationalTaskScale(statusId, taskStatuses),
+    [taskStatuses],
+  );
+  const matchesDateFilter = React.useCallback(
+    (task: Task, filter: TaskDateFilter) => matchesTaskDateFilter(task, getTaskScale(task.statusId), filter, filterDates),
+    [getTaskScale, filterDates],
+  );
 
   // Users with at least 1 defined task assigned to them
   const usersWithTasks = useMemo(() => {
@@ -321,7 +245,7 @@ export default function TaskSection({
   }, [activeTasks, users]);
 
   // Filtered tasks logic
-  const filteredTasks = useMemo(() => {
+  const tasksMatchingSearch = useMemo(() => {
     const q = search.toLowerCase().trim();
     return activeTasks.filter(t => {
       const proj = t.projectId ? projectMap.get(t.projectId) : null;
@@ -349,33 +273,47 @@ export default function TaskSection({
                             hasMatchingAssignee;
       const matchesAssignee = filterAssignee ? t.assigneeIds.some(id => matchUserId(id, filterAssignee)) : true;
 
-      // Date Preset Filter
-      let matchesPreset = true;
-      const targetDate = getTaskEffectiveDate(t);
-      const scale = getTaskScale(t.statusId);
-
-      if (datePreset === 'all') {
-        matchesPreset = scale !== 3; // default: do NOT show level 3
-      } else if (datePreset === 'no_date') {
-        matchesPreset = !t.estimatedDate?.trim() && (scale === 1 || scale === 2);
-      } else if (datePreset === 'today') {
-        matchesPreset = targetDate === todayStr && (scale === 1 || scale === 2);
-      } else if (datePreset === 'tomorrow') {
-        matchesPreset = targetDate === tomorrowStr && (scale === 1 || scale === 2);
-      } else if (datePreset === 'this_week') {
-        matchesPreset = Boolean(targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && (scale === 1 || scale === 2));
-      } else if (datePreset === 'overdue') {
-        matchesPreset = Boolean(targetDate && targetDate < todayStr && (scale === 1 || scale === 2));
-      } else if (datePreset === 'completed') {
-        matchesPreset = scale === 3;
-      } else if (datePreset === 'completed_this_week') {
-        matchesPreset = Boolean(targetDate && targetDate >= weekRange.start && targetDate <= weekRange.end && scale === 3);
-      }
-
       const matchesPlanning = !filterPlanning || normalizeTaskPlanningStatus(t.planningStatus) === filterPlanning;
-      return matchesSearch && matchesAssignee && matchesPreset && matchesPlanning;
+      return matchesSearch && matchesAssignee && matchesPlanning;
     });
-  }, [activeTasks, search, filterAssignee, filterPlanning, datePreset, projectMap, clientMap, getTaskScale, todayStr, tomorrowStr, weekRange, users]);
+  }, [activeTasks, search, filterAssignee, filterPlanning, projectMap, clientMap, users]);
+
+  const filteredTasks = useMemo(
+    () => tasksMatchingSearch.filter(task => matchesDateFilter(task, datePreset)),
+    [tasksMatchingSearch, matchesDateFilter, datePreset],
+  );
+
+  const operationalStats = useMemo(() => {
+    let todayCount = 0;
+    let thisWeekCount = 0;
+    let overdueCount = 0;
+    let completedThisWeekCount = 0;
+
+    tasksMatchingSearch.forEach(task => {
+      if (matchesDateFilter(task, 'today')) todayCount++;
+      if (matchesDateFilter(task, 'overdue')) overdueCount++;
+      if (matchesDateFilter(task, 'completed_this_week')) completedThisWeekCount++;
+      if (matchesDateFilter(task, 'this_week')) thisWeekCount++;
+    });
+
+    return {
+      todayCount,
+      thisWeekCount,
+      overdueCount,
+      completedThisWeekCount,
+    };
+  }, [tasksMatchingSearch, matchesDateFilter]);
+
+  const weekHoursSum = useMemo(() => {
+    const hours = activeTasks.reduce((sum, task) => {
+      if (!countsTowardsPlanning(task) || !matchesDateFilter(task, 'this_week')) return sum;
+
+      const actualHours = parseTaskHoursToFloat(task.actualHours);
+      const hoursPerAssignee = actualHours > 0 ? actualHours : parseTaskHoursToFloat(task.estimatedHours);
+      return sum + hoursPerAssignee * (task.assigneeIds?.length || 0);
+    }, 0);
+    return Math.round(hours * 10) / 10;
+  }, [activeTasks, matchesDateFilter]);
 
   const sortTasks = (taskList: Task[]) => {
     return [...taskList].sort((a, b) => {
@@ -387,11 +325,7 @@ export default function TaskSection({
         if (!dateB) return -1;
         return dateA.localeCompare(dateB);
       } else {
-        const statusA = taskStatuses.find(s => s.id === a.statusId || matchTaskStatusId(s.id, a.statusId));
-        const statusB = taskStatuses.find(s => s.id === b.statusId || matchTaskStatusId(s.id, b.statusId));
-        const scaleA = statusA ? (statusA.scale ?? 999) : 999;
-        const scaleB = statusB ? (statusB.scale ?? 999) : 999;
-        return scaleA - scaleB;
+        return (getTaskScale(a.statusId) ?? 999) - (getTaskScale(b.statusId) ?? 999);
       }
     });
   };
@@ -557,7 +491,7 @@ export default function TaskSection({
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Esta semana</div>
               <div className="text-xl font-black text-text-primary mt-1 flex items-center gap-2">
                 <span className="font-mono tabular-nums">{operationalStats.thisWeekCount}</span>
-                <Badge variant="primary" className="text-caption">ativas</Badge>
+                <Badge variant="primary" className="text-caption">tarefas</Badge>
               </div>
             </Card>
 
@@ -594,6 +528,7 @@ export default function TaskSection({
               hoverable
               role="button"
               tabIndex={0}
+              title="Hoje e os seis dias anteriores"
               onClick={() => setFilterDatePreset(datePreset === 'completed_this_week' ? 'all' : 'completed_this_week')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -619,7 +554,7 @@ export default function TaskSection({
             <Card className="p-3.5 col-span-2 sm:col-span-1 select-none">
               <div className="text-caption font-bold text-text-muted uppercase tracking-wider">Horas prev. semana</div>
               <div className="text-xl font-black text-text-primary mt-1 flex items-center gap-1">
-                <span className="font-mono tabular-nums">{operationalStats.weekHoursSum}</span>
+                <span className="font-mono tabular-nums">{weekHoursSum}</span>
                 <span className="text-body-sm font-bold text-text-secondary">h</span>
               </div>
             </Card>
@@ -697,6 +632,7 @@ export default function TaskSection({
               <Button
                 type="button"
                 size="sm"
+                title="Hoje e os seis dias anteriores"
                 variant={datePreset === 'completed_this_week' ? 'primary' : 'secondary'}
                 onClick={() => setFilterDatePreset('completed_this_week')}
                 className="h-8 px-3 text-caption font-bold"
@@ -862,7 +798,7 @@ export default function TaskSection({
                 </div>
               ) : (
                 <>
-                <MobileTaskList tasks={paginatedTasks} taskStatuses={taskStatuses} projectLabel={getProjectTitle} getTaskScale={getTaskScale}
+                <MobileTaskList tasks={paginatedTasks} taskStatuses={taskStatuses} projectLabel={getProjectTitle} isTaskOverdue={task => matchesDateFilter(task, 'overdue')}
                   onOpen={task => openTaskModal(task, canWriteTasks || canDeleteTasks ? 'edit' : 'view')}
                   onExecute={canWriteTasks ? task => openTaskModal(task, 'execute') : undefined}
                   onEdit={canWriteTasks ? task => openTaskModal(task, 'edit') : undefined}
@@ -882,12 +818,11 @@ export default function TaskSection({
                   </thead>
                   <tbody className="text-body-sm divide-y divide-border">
                     {paginatedTasks.map(t => {
-                      const scale = getTaskScale(t.statusId);
                       const tStyle = getTaskStatusStyle(t.statusId, taskStatuses);
                       const statusName = tStyle.name;
                       const displayHours = getTaskDisplayHours(t);
                       const targetDate = getTaskEffectiveDate(t);
-                      const isOverdue = Boolean(targetDate && targetDate < todayStr && scale !== 3);
+                      const isOverdue = matchesDateFilter(t, 'overdue');
 
                       const statusBadgeStyle = tStyle.badgeClass;
 
@@ -1123,7 +1058,7 @@ export default function TaskSection({
         {/* ANÁLISE DE TAREFAS */}
         {activeTaskViewTab === 'analise' && (
           <TaskAnalytics
-            tasks={tasks}
+            tasks={activeTasks}
             projects={projects}
             taskTypes={taskTypes || []}
             taskStatuses={taskStatuses}
