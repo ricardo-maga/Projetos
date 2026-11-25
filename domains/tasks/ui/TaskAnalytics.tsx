@@ -40,6 +40,8 @@ import {
 } from 'lucide-react';
 import { Task, Project, ProjectStatus, TaskType, TaskStatus, User, Client } from '@/lib/types';
 import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning';
+import { getOperationalTaskScale, getTaskFilterDates, isOpenTaskStatus, matchesTaskDateFilter } from '@/domains/tasks/modules/taskDateFilters';
+import { getCivilDaysDifference, normalizeDateStr, parseDateParts } from '@/domains/calendar/modules/operationalCalendar';
 import { parseTimeToHours, formatHoursToHHMM, getUserInitials } from '@/lib/utils';
 import { ScrollableChart } from '@/components/ui/ScrollableChart';
 
@@ -96,28 +98,18 @@ export function TaskAnalytics({
     return hours * (task.assigneeIds?.length || 0);
   }, []);
 
-  // Helper to map status scale
-  const getTaskScale = useMemo(() => {
-    return (statusId: string) => {
-      const st = taskStatuses.find(s => s.id === statusId);
-      if (st && typeof st.scale === 'number') return st.scale;
-      if (statusId === 'ts-1') return 1;
-      if (statusId === 'ts-2') return 2;
-      if (statusId === 'ts-3') return 3;
-      return 1;
-    };
-  }, [taskStatuses]);
+  const getTaskScale = useCallback(
+    (statusId: string) => getOperationalTaskScale(statusId, taskStatuses),
+    [taskStatuses],
+  );
+  const activeTasks = useMemo(() => tasks.filter(task => !task.deleted), [tasks]);
+  const openTasks = useMemo(
+    () => activeTasks.filter(task => isOpenTaskStatus(getTaskScale(task.statusId))),
+    [activeTasks, getTaskScale],
+  );
 
-  // Non-deleted tasks base set - worked on directly
-  const activeTasks = useMemo(() => {
-    return tasks.filter(t => !t.deleted);
-  }, [tasks]);
-
-  const filteredTasks = activeTasks;
-
-  // Date boundaries
   const now = useMemo(() => new Date(), []);
-  const todayStr = useMemo(() => now.toISOString().slice(0, 10), [now]);
+  const filterDates = useMemo(() => getTaskFilterDates(now), [now]);
 
   // Helper: Get days ago for past dates
   const getDaysAgo = useCallback((dateStr?: string) => {
@@ -128,64 +120,41 @@ export function TaskAnalytics({
     return Math.floor(diff / (1000 * 3600 * 24));
   }, [now]);
 
-  // Helper: Get days ahead for future dates
-  const getDaysAhead = useCallback((dateStr?: string) => {
-    if (!dateStr) return null;
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return null;
-    // Set both dates to midnight for accurate day difference
-    const dMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const diff = dMidnight.getTime() - nowMidnight.getTime();
-    return Math.floor(diff / (1000 * 3600 * 24));
-  }, [now]);
-
   // -------------------------------------------------------------
   // KPI METRICS (Summary Overview)
   // -------------------------------------------------------------
   const kpis = useMemo(() => {
-    const openTasks = filteredTasks.filter(t => {
-      const scale = getTaskScale(t.statusId);
-      return scale === 1 || scale === 2;
-    });
+    const completedTasks = activeTasks.filter(t => getTaskScale(t.statusId) === 3);
 
-    const completedTasks = filteredTasks.filter(t => getTaskScale(t.statusId) === 3);
-
-    const overdueTasks = openTasks.filter(t => {
-      if (!t.estimatedDate) return false;
-      return t.estimatedDate < todayStr;
-    });
+    const overdueTasks = openTasks.filter(task =>
+      matchesTaskDateFilter(task, getTaskScale(task.statusId), 'overdue', filterDates),
+    );
 
     const totalEstHoursOpen = openTasks.filter(countsTowardsPlanning).reduce((acc, t) => acc + parseTimeToHours(t.estimatedHours) * (t.assigneeIds?.length || 0), 0);
-    const hours30d = filteredTasks.reduce((acc, t) => {
+    const hours30d = activeTasks.reduce((acc, t) => {
       const daysAgo = getDaysAgo(t.startDate || t.estimatedDate || t.createdDate);
       return daysAgo !== null && daysAgo >= 0 && daysAgo < 30 ? acc + taskHours(t) : acc;
     }, 0);
 
-    const completionRate = filteredTasks.length > 0
-      ? Math.round((completedTasks.length / filteredTasks.length) * 100)
+    const completionRate = activeTasks.length > 0
+      ? Math.round((completedTasks.length / activeTasks.length) * 100)
       : 0;
 
     return {
       totalOpen: openTasks.length,
       totalCompleted: completedTasks.length,
-      totalAll: filteredTasks.length,
+      totalAll: activeTasks.length,
       overdueCount: overdueTasks.length,
       totalEstHoursOpen,
       hours30d,
       completionRate
     };
-  }, [filteredTasks, getTaskScale, getDaysAgo, taskHours, todayStr]);
+  }, [activeTasks, openTasks, getTaskScale, getDaysAgo, taskHours, filterDates]);
 
   // -------------------------------------------------------------
   // 1 & 2. TAREFAS EM ABERTO POR TIPO DE TAREFA
   // -------------------------------------------------------------
   const openTasksByType = useMemo(() => {
-    const openTasks = filteredTasks.filter(t => {
-      const scale = getTaskScale(t.statusId);
-      return scale === 1 || scale === 2;
-    });
-
     const typeMap: Record<string, {
       typeId: string;
       typeName: string;
@@ -224,7 +193,7 @@ export function TaskAnalytics({
       percentage: Math.round((item.count / totalOpen) * 100),
       formattedHours: formatHoursToHHMM(item.hours)
     })).sort((a, b) => b.count - a.count);
-  }, [filteredTasks, getTaskScale, taskTypes, taskHours]);
+  }, [openTasks, taskTypes, taskHours]);
 
   // -------------------------------------------------------------
   // 3 & 4. NÚMERO E HORAS DE TAREFAS DOS ÚLTIMOS 30, 60, 90 DIAS POR TIPO
@@ -259,7 +228,7 @@ export function TaskAnalytics({
       hours7: 0, hours30: 0, hours60: 0, hours90: 0
     };
 
-    filteredTasks.forEach(t => {
+    activeTasks.forEach(t => {
       const refDate = t.createdDate || t.startDate || t.estimatedDate;
       const daysAgo = getDaysAgo(refDate);
       if (daysAgo === null || daysAgo < 0) return; // ignore future dates for past analytics
@@ -288,7 +257,7 @@ export function TaskAnalytics({
     return Object.values(typeMap)
       .filter(item => item.count90 > 0)
       .sort((a, b) => b.count90 - a.count90);
-  }, [filteredTasks, taskTypes, getDaysAgo, taskHours]);
+  }, [activeTasks, taskTypes, getDaysAgo, taskHours]);
 
   // Chart dataset for past days (based on selected timeHorizon or comparison)
   const pastDaysChartData = useMemo(() => {
@@ -363,18 +332,13 @@ export function TaskAnalytics({
       tasksCount30d: 0
     };
 
-    // Filter open/pending tasks scheduled in future
-    const openTasks = filteredTasks.filter(t => {
-      const scale = getTaskScale(t.statusId);
-      return scale === 1 || scale === 2;
-    });
-
     openTasks.forEach(t => {
-      const targetDate = t.estimatedDate || t.startDate || t.endDate;
-      const daysAhead = getDaysAhead(targetDate);
+      const plannedDate = normalizeDateStr(t.estimatedDate);
+      if (!parseDateParts(plannedDate)) return;
 
-      // Include tasks from today up to 30 days ahead (or overdue tasks in 7d load)
-      if (daysAhead === null || daysAhead > 30) return;
+      const daysAhead = getCivilDaysDifference(filterDates.today, plannedDate);
+      // Carry overdue work into the upcoming workload.
+      if (daysAhead > 30) return;
 
       const estH = countsTowardsPlanning(t) ? parseTimeToHours(t.estimatedHours) : 0;
       const assignees = t.assigneeIds || [];
@@ -407,7 +371,7 @@ export function TaskAnalytics({
           formatted30d: formatHoursToHHMM(item.hours30d)
         }))
       .sort((a, b) => b.hours30d - a.hours30d);
-  }, [filteredTasks, users, getTaskScale, getDaysAhead]);
+  }, [openTasks, users, filterDates.today]);
 
   // -------------------------------------------------------------
   // 6. PROJETOS ATIVOS COM MAIS HORAS GASTAS E PREVISTAS
@@ -424,10 +388,7 @@ export function TaskAnalytics({
       const projTasks = activeTasks.filter(t => t.projectId === proj.id);
       const hours = projTasks.reduce((acc, t) => acc + taskHours(t), 0);
 
-      const openTasksCount = projTasks.filter(t => {
-        const scale = getTaskScale(t.statusId);
-        return scale === 1 || scale === 2;
-      }).length;
+      const openTasksCount = projTasks.filter(task => isOpenTaskStatus(getTaskScale(task.statusId))).length;
 
       const completedTasksCount = projTasks.filter(t => getTaskScale(t.statusId) === 3).length;
 

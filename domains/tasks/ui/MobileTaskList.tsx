@@ -6,7 +6,6 @@ import type { Task } from '@/lib/types';
 import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
 import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning';
 import { getTaskEffectiveDate, getTaskStatusStyle } from '@/lib/utils';
-import { formatDateToYYYYMMDD } from '@/domains/calendar/modules/operationalCalendar';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 
@@ -30,18 +29,16 @@ function TaskActions({ task, onEdit, onDuplicate, onDelete }: {
   </details>;
 }
 
-export default function MobileTaskList({ tasks, taskStatuses, projectLabel, getTaskScale, onOpen, onExecute, onEdit, onDuplicate, onDelete }: {
+export default function MobileTaskList({ tasks, taskStatuses, projectLabel, isTaskOverdue, onOpen, onExecute, onEdit, onDuplicate, onDelete }: {
   tasks: Task[]; taskStatuses: any[]; projectLabel: (id?: string | null) => string;
-  getTaskScale: (statusId: string) => number;
+  isTaskOverdue: (task: Task) => boolean;
   onOpen: (task: Task) => void; onExecute?: (task: Task) => void; onEdit?: (task: Task) => void;
   onDuplicate?: (task: Task) => void; onDelete?: (task: Task) => void;
 }) {
-  const today = formatDateToYYYYMMDD(new Date());
   return <ul aria-label="Lista compacta de tarefas" className="mobile-controls divide-y divide-border md:hidden">
     {tasks.map(task => {
       const date = getTaskEffectiveDate(task);
       const status = getTaskStatusStyle(task.statusId, taskStatuses);
-      const overdue = Boolean(date && date < today && getTaskScale(task.statusId) !== 3);
       return <li key={task.id} className="flex min-w-0 items-start gap-1 p-3">
         <button type="button" className="min-h-11 min-w-0 flex-1 space-y-1 text-left [overflow-wrap:anywhere] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" onClick={() => onOpen(task)}>
           <span className="block text-caption text-primary-ink">{projectLabel(task.projectId)}</span>
@@ -50,7 +47,7 @@ export default function MobileTaskList({ tasks, taskStatuses, projectLabel, getT
             <span>{date ? date.split('-').reverse().join('/') : 'Sem data'}</span>
             <Badge className={status.badgeClass}>{status.name}</Badge>
             <TaskPlanningBadge planningStatus={task.planningStatus} />
-            {overdue && <Badge variant="error">Atrasada</Badge>}
+            {isTaskOverdue(task) && <Badge variant="error">Atrasada</Badge>}
           </span>
         </button>
         {onExecute && countsTowardsPlanning(task) && <Button type="button" variant="ghost" className="shrink-0 px-2" aria-label={`Registar execução de ${task.title}`} onClick={() => onExecute(task)}><PlayCircle aria-hidden="true" className="h-5 w-5" /></Button>}
