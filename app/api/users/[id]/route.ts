@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth, AuthError, ForbiddenError } from '@/lib/auth/requireAuth';
 import { requireServerDbClient } from '@/lib/supabase/requireServerDbClient';
+import { softDeleteUser } from '@/lib/users/softDelete';
+import { clientIp } from '@/lib/security/clientIp';
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -17,13 +19,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     });
     if (permissionError) throw new AuthError('Serviço de autorização indisponível.', 503);
     if (allowed !== true) throw new ForbiddenError();
-    const { data: target, error: readError } = await db.from('users').select('id,name,email,deleted').eq('id', id).maybeSingle();
+    const { data: target, error: readError } = await db.from('users').select('id,name,email,deleted,sync_version').eq('id', id).maybeSingle();
     if (readError) throw readError;
     if (!target || target.deleted) return NextResponse.json({ success: false, message: 'Utilizador não encontrado.' }, { status: 404 });
     // This deliberately deleted account is excluded from all operations.
     if (target.email?.toLowerCase() === 'ricardo75@gmail.com') throw new ForbiddenError();
-    const { data, error } = await db.from('users').update({ deleted: true }).eq('id', id).eq('deleted', false).select('id').single();
-    if (error || !data) throw error || new Error('Missing updated user');
+    await softDeleteUser(db, actor, id, { expectedVersion: target.sync_version, ip: clientIp(req), userAgent: req.headers.get('user-agent'), requestId: req.headers.get('x-request-id') });
     return NextResponse.json({ success: true, id });
   } catch (error) {
     if (error instanceof AuthError) return NextResponse.json({ success: false, message: error.message }, { status: error.statusCode });
