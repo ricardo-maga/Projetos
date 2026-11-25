@@ -92,40 +92,8 @@ export default function ApiDocsPage() {
               </a>
             </div>
 
-            {/* Embedded Redoc/Swagger UI Frame using standard CDN */}
             <iframe
-              srcDoc={`
-                <!DOCTYPE html>
-                <html>
-                  <head>
-                    <title>ERP OpenAPI Swagger UI</title>
-                    <meta charset="utf-8"/>
-                    <meta name="viewport" content="width=device-width, initial-scale=1">
-                    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
-                    <style>
-                      body { margin: 0; background-color: Canvas; color: CanvasText; color-scheme: light; font-family: sans-serif; }
-                      .swagger-ui .topbar { display: none; }
-                    </style>
-                  </head>
-                  <body>
-                    <div id="swagger-ui"></div>
-                    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-                    <script>
-                      window.onload = function() {
-                        SwaggerUIBundle({
-                          url: "/api/v1/openapi.json",
-                          dom_id: '#swagger-ui',
-                          deepLinking: true,
-                          presets: [
-                            SwaggerUIBundle.presets.apis,
-                            SwaggerUIBundle.SwaggerUIStandalonePreset
-                          ],
-                        });
-                      }
-                    </script>
-                  </body>
-                </html>
-              `}
+              src="/docs/openapi"
               className="w-full flex-1 border-0"
               title="OpenAPI Swagger Documentation"
             />

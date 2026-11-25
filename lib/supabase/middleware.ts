@@ -2,13 +2,17 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { authCookieLifetime, SESSION_PREFERENCE_COOKIE } from '@/lib/auth/sessionPersistence';
 import { consumeEdgeQuota, quotaHeaders, quotaResponse, quotaUnavailable } from '@/lib/security/edgeRateLimit';
+import { documentContentSecurityPolicy } from '@/lib/security/contentSecurityPolicy';
 
 export async function updateSession(request: NextRequest, requestId: string) {
+  const policy = documentContentSecurityPolicy(request.nextUrl.pathname);
   const forwardRequest = () => {
     const headers = new Headers(request.headers);
     headers.set('x-request-id', requestId);
+    if (policy) headers.set('Content-Security-Policy', policy);
     const response = NextResponse.next({ request: { headers } });
     response.headers.set('x-request-id', requestId);
+    if (policy) response.headers.set('Content-Security-Policy', policy);
     return response;
   };
 
