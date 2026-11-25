@@ -83,11 +83,53 @@ export function useERP(userId?: string) {
   const [isDbConfigured, setIsDbConfigured] = useState<boolean>(false);
 
 
+  const workLoaded = useRef(false);
+  const [workStatus, setWorkStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const loadWork = useCallback(async () => {
+    const generation = refreshGeneration.current;
+    setWorkStatus('loading');
+    try {
+      const response = await authenticatedRequest('/api/supabase/sync?partition=work', { cache: 'no-store' });
+      const body = await response.json();
+      if (!response.ok || !body.success) throw new Error('Work read failed');
+      const data = mergeSyncPartitions({ work: body.data }, ['work']);
+      if (generation !== refreshGeneration.current) return;
+      setState(previous => previous ? { ...previous, clients: data.clients, projects: data.projects, tasks: data.tasks } : previous);
+      workLoaded.current = true;
+      setWorkStatus('loaded');
+    } catch {
+      if (generation === refreshGeneration.current) setWorkStatus('error');
+    }
+  }, []);
+
+  const activityLoaded = useRef(false);
+  const [activityStatus, setActivityStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const loadActivity = useCallback(async () => {
+    const generation = refreshGeneration.current;
+    setActivityStatus('loading');
+    try {
+      const response = await authenticatedRequest('/api/supabase/sync?partition=activity', { cache: 'no-store' });
+      const body = await response.json();
+      if (!response.ok || !body.success) throw new Error('Falha ao carregar atividade.');
+      const data = mergeSyncPartitions({ activity: body.data }, ['activity']);
+      if (generation !== refreshGeneration.current) return;
+      setState(previous => previous ? { ...previous, comments: data.comments, userAbsences: data.userAbsences, projectRiskItems: data.projectRiskItems } : previous);
+      activityLoaded.current = true;
+      setActivityStatus('loaded');
+    } catch {
+      if (generation === refreshGeneration.current) setActivityStatus('error');
+    }
+  }, []);
+
   const resetAuthorizedData = useCallback(() => {
     refreshGeneration.current += 1;
     materialsGeneration.current += 1;
     configRuntimeGeneration.current += 1;
     defaultTasksGeneration.current += 1;
+    workLoaded.current = false;
+    setWorkStatus('idle');
+    activityLoaded.current = false;
+    setActivityStatus('idle');
     setState(null);
     setIsInitialDataLoaded(false);
     setSyncStatus('idle');
@@ -100,12 +142,14 @@ export function useERP(userId?: string) {
 
   const refreshFromDatabase = useCallback(async (): Promise<boolean> => {
     const generation = ++refreshGeneration.current;
+    if (!workLoaded.current) setWorkStatus('idle');
+    if (!activityLoaded.current) setActivityStatus('idle');
     setRefreshProgress(0);
     setSyncStatus('syncing');
     setSyncError(null);
     try {
       const headers = getAuthHeaders();
-      const parts = Object.keys(SYNC_PARTITIONS) as SyncPartition[];
+      const parts: SyncPartition[] = ['directory', 'notifications', ...(workLoaded.current ? ['work' as const] : []), ...(activityLoaded.current ? ['activity' as const] : [])];
       const responses = await Promise.all(parts.map(async partition => {
         const response = await authenticatedRequest('/api/supabase/sync?partition=' + partition, { headers, cache: 'no-store' });
         const body = await response.json();
@@ -118,7 +162,7 @@ export function useERP(userId?: string) {
         return [partition, body.data] as const;
       }));
       if (generation !== refreshGeneration.current) return false;
-      const mapped = mapStateToUUIDs(mergeSyncPartitions(Object.fromEntries(responses) as Record<SyncPartition, unknown>));
+      const mapped = mapStateToUUIDs(mergeSyncPartitions(Object.fromEntries(responses) as Record<SyncPartition, unknown>, parts));
       setState(previous => previous ? {
         ...mapped,
         projectMaterials: previous.projectMaterials,
@@ -298,8 +342,9 @@ export function useERP(userId?: string) {
     setSyncStatus('syncing');
     setSyncError(null);
     try {
-      const response = await authenticatedRequest('/api/supabase/sync/entity', {
-        method: 'DELETE', headers: getAuthHeaders(), body: JSON.stringify({ entity, id }),
+      const paths = { comments: '/api/v1/projects/comments', userAbsences: '/api/v1/absences', specialDays: '/api/supabase/special-days', defaultTasks: '/api/supabase/default-tasks' };
+      const response = await authenticatedRequest(paths[entity] + '/' + encodeURIComponent(id), {
+        method: 'DELETE', headers: getAuthHeaders(),
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(getApiErrorMessage(result, 'Não foi possível eliminar o registo.'));
@@ -402,6 +447,10 @@ export function useERP(userId?: string) {
     refreshFromDatabase,
     refreshProgress,
     resetAuthorizedData,
+    loadWork,
+    workStatus,
+    loadActivity,
+    activityStatus,
     loadProjectMaterials,
     materialsStatus,
     loadConfigRuntime,

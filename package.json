@@ -21,7 +21,8 @@
     "test:ci": "node scripts/run-full-test-regression.mjs",
     "test:e2e:security": "playwright test --config=playwright.config.ts",
     "test:e2e:markdown": "playwright test --config=playwright.markdown.config.ts",
-    "clean": "next clean"
+    "clean": "next clean",
+    "check:migrations:remote": "node scripts/migration-parity.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

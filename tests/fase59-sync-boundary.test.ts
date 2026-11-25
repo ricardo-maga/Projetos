@@ -193,7 +193,7 @@ describe('FASE 59 — Supabase Sync Boundary & ERPState Containment', () => {
       for (const table of ['comments', 'user_absences', 'special_days', 'default_tasks']) {
         expect(saveFnBody).not.toContain(`supabase.from('${table}').delete()`);
       }
-      const explicitDelete = readFileSync(join(process.cwd(), 'app/api/supabase/sync/entity/route.ts'), 'utf8');
+      const explicitDelete = readFileSync(join(process.cwd(), 'lib/supabase/deleteDomainEntity.ts'), 'utf8');
       expect(explicitDelete).toContain('.delete().eq(\'id\', body.id)');
     });
   });

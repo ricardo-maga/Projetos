@@ -102,5 +102,3 @@ BEGIN
   GET DIAGNOSTICS added = ROW_COUNT;
   RETURN added;
 END; $$;
-
-

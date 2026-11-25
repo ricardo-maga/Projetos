@@ -12,6 +12,7 @@ coverage/
 supabase/.temp/
 database/staging/supabase/.temp/
 .baseline-*/
+.baseline-*.json
 *.tsbuildinfo
 .vercel/
 .qa-runtime/

@@ -72,7 +72,7 @@ describe('FASE 61 — Hardening Transversal Pós-Contenção do Supabase Sync', 
     it('o endpoint /api/supabase/sync valida a autenticação e autorização explicitamente antes do processamento', () => {
       const routeContent = readFileSync(join(process.cwd(), 'app/api/supabase/sync/route.ts'), 'utf-8');
       expect(routeContent).toContain('const user = await requireAuth(req);');
-      expect(routeContent).toContain('if (!isAdmin)');
+      expect(routeContent).toContain('status: 410');
     });
 
     it('as rotas REST de clientes e tarefas verificam erros de base de dados e não engolem excepções', () => {
