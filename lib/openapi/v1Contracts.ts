@@ -62,6 +62,14 @@ export function addV1Contracts(paths: Paths) {
   paths['/automation-rules'] = { post: operation('Criar regra de automação', 201) };
   paths['/automation-rules/{id}'] = { patch: operation('Atualizar regra de automação'), delete: operation('Eliminar regra de automação') };
   paths['/absences'] = { post: operation('Registar ausência', 201) };
+  for (const [path, summary] of [
+    ['/absences/{id}', 'Eliminar ausência'],
+    ['/projects/comments/{id}', 'Eliminar comentário'],
+  ]) paths[path] = { delete: {
+    ...operation(summary),
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+    responses: { 200: { description: 'Registo eliminado' }, 400: { description: 'ID inválido' }, 404: { description: 'Registo inexistente ou inacessível' } },
+  } };
   paths['/jobs/{id}'] = { get: { ...operation('Consultar um processamento ou descarregar o resultado'),
     parameters: [{ name: 'download', in: 'query', schema: { type: 'string', enum: ['1'] } }] } };
   paths['/projects/import'].post.parameters = [{ name: 'Prefer', in: 'header', schema: { type: 'string', enum: ['respond-async'] } }];
