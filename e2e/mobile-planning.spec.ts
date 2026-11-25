@@ -68,7 +68,7 @@ for (const width of [390, 1280]) {
 
     const dialog = page.getByRole('dialog');
     const header = dialog.getByText(/^Estado da tarefa\s*\*?$/).locator('..');
-    const planning = header.getByRole('checkbox', { name: 'Tarefa provisória ()', exact: true });
+    const planning = header.getByRole('checkbox', { name: 'Agendamento provisório', exact: true });
     await expect(planning).not.toBeChecked();
     await expect(dialog.getByRole('combobox', { name: 'Planeamento', exact: true })).toHaveCount(0);
     await expect.poll(() => header.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
@@ -77,7 +77,7 @@ for (const width of [390, 1280]) {
     await dialog.getByLabel('Título da tarefa').fill('Reserva de montagem');
     await dialog.getByLabel('Tipo de tarefa').selectOption('qa-type');
     await dialog.getByLabel('Horas previstas (h)').fill('4');
-    await header.getByText('Tarefa provisória ()', { exact: true }).click();
+    await header.getByText('Agendamento provisório', { exact: true }).click();
     await expect(planning).toBeChecked();
     await dialog.getByRole('button', { name: 'Criar tarefa', exact: true }).click();
     await expect(dialog).toHaveCount(0);
@@ -224,7 +224,7 @@ test('read-only access hides mutation actions and opens a readable task', async 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('button', { name: /Guardar|Eliminar/ })).toHaveCount(0);
-  await expect(dialog.getByRole('checkbox', { name: 'Tarefa provisória ()', exact: true })).toBeDisabled();
+  await expect(dialog.getByRole('checkbox', { name: 'Agendamento provisório', exact: true })).toBeDisabled();
   await page.keyboard.press('Escape');
   await screen(page, 'Calendário');
   await expect(page.getByRole('region', { name: 'Agenda diária' }).getByRole('button', { name: /Criar tarefa|Duplicar tarefa/ })).toHaveCount(0);
