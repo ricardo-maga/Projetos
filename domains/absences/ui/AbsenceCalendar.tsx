@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { SpecialDay, UserAbsence } from '@/lib/types';
@@ -48,21 +48,21 @@ export default function AbsenceCalendar({
   };
 
   const cells = [];
-  for (let i = 0; i < startingDayOfWeek; i++) {
-    cells.push(<div key={`empty-${i}`} className="min-h-[80px] p-2 border-b border-r border-border bg-surface-muted/50" />);
-  }
-  for (let day = 1; day <= totalDaysInMonth; day++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const currentDate = new Date(year, month, day);
+  const totalCells = Math.ceil((startingDayOfWeek + totalDaysInMonth) / 7) * 7;
+  for (let index = 0; index < totalCells; index++) {
+    const currentDate = new Date(year, month, index - startingDayOfWeek + 1);
+    const day = currentDate.getDate();
+    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const isOutsideMonth = currentDate.getMonth() !== month;
     const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
     const specialDay = specialDays.find(item => item.date === dateStr);
     const dayAbsences = calendarAbsences.filter(absence => absence.absenceStartDate <= dateStr && absence.absenceEndDate >= dateStr);
     cells.push(
-      <div key={`day-${day}`} className={`min-h-[80px] p-1.5 border-b border-r border-border relative transition-colors hover:bg-surface-muted/50 flex flex-col justify-between ${isWeekend || specialDay ? 'bg-surface-muted/60' : 'bg-surface'}`}>
+      <div key={dateStr} data-date={dateStr} data-outside-month={isOutsideMonth} className={`min-h-[80px] p-1.5 border-b border-r border-border relative transition-colors flex flex-col justify-between ${isOutsideMonth ? 'bg-surface-muted hover:bg-surface-muted' : `hover:bg-surface-muted/50 ${isWeekend || specialDay ? 'bg-surface-muted/60' : 'bg-surface'}`}`}>
         <div className="flex justify-between items-start mb-1 select-none">
-          <span className={`inline-flex items-center justify-center w-7 h-7 text-center rounded-full font-bold text-caption ${dateStr === todayStr ? 'bg-primary text-inverse font-black' : 'text-text-secondary'}`}>
+          <time dateTime={dateStr} title={new Intl.DateTimeFormat('pt-PT', { dateStyle: 'long' }).format(currentDate)} className={`inline-flex items-center justify-center w-7 h-7 text-center rounded-full font-bold text-caption ${dateStr === todayStr ? 'bg-primary text-inverse font-black' : isOutsideMonth ? 'text-text-muted' : 'text-text-secondary'}`}>
             {day}
-          </span>
+          </time>
           {specialDay && <span className="text-caption font-extrabold text-text-primary bg-warning/10 border border-warning/20 px-1 py-0.5 rounded-badge truncate max-w-[50px]" title={specialDay.name}>{specialDay.name}</span>}
         </div>
         <div className="flex flex-wrap gap-1 mt-2">
@@ -74,10 +74,6 @@ export default function AbsenceCalendar({
         </div>
       </div>
     );
-  }
-  const remainingPadding = (7 - (startingDayOfWeek + totalDaysInMonth) % 7) % 7;
-  for (let i = 0; i < remainingPadding; i++) {
-    cells.push(<div key={`empty-end-${i}`} className="min-h-[80px] p-2 border-b border-r border-border bg-surface-muted/50" />);
   }
 
   return (
