@@ -50,6 +50,7 @@ import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import { waitForApiJob } from '@/lib/clientApiJobs';
 import { hasPermission } from '@/lib/permissions';
 import { formatHoursToHHMM, parseTimeToHours } from '@/lib/utils';
+import { COLOR_SCHEMES, type ColorSchemeId } from '@/lib/presentationTheme';
 
 interface ConfigSectionProps {
   activeConfigTab?: string;
@@ -92,6 +93,7 @@ interface ConfigSectionProps {
   toggleAutomationRule?: any;
   canReadAudit?: boolean;
   onRefreshFromDatabase?: () => Promise<boolean>;
+  onPreviewTheme?: (theme: ColorSchemeId | null) => void;
 }
 
 export { PASTEL_COLORS, getPastelColor } from './ReferenceDataSection';
@@ -137,6 +139,7 @@ export default function ConfigSection({
   toggleAutomationRule,
   canReadAudit = false,
   onRefreshFromDatabase,
+  onPreviewTheme,
 }: ConfigSectionProps) {
   const canReadConfig = hasPermission(currentUser, 'config_read');
   const canWriteConfig = hasPermission(currentUser, 'config_write');
@@ -367,18 +370,10 @@ export default function ConfigSection({
             <section aria-labelledby="portal-theme-heading" className="pt-6 border-t border-border-subtle space-y-4">
               <div>
                 <h3 id="portal-theme-heading" className="text-heading-sm text-text-primary">Esquema de cores</h3>
-                <p className="mt-1 text-body-sm text-text-secondary">A paleta é aplicada imediatamente à sessão atual.</p>
+                <p className="mt-1 text-body-sm text-text-secondary">Paleta usada por quem segue o esquema da aplicação.</p>
               </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {[
-                    { id: 'domino', name: 'Domino Institucional', desc: 'Paleta oficial Domino', hex: '#003b5c' },
-                    { id: 'blue', name: 'Azul Clássico', desc: 'Padrão original azul', hex: '#2563eb' },
-                    { id: 'emerald', name: 'Verde Esmeralda', desc: 'Moderno e sofisticado', hex: '#059669' },
-                    { id: 'violet', name: 'Violeta Elegante', desc: 'Design criativo', hex: '#7c3aed' },
-                    { id: 'amber', name: 'Âmbar Solar', desc: 'Quente e acolhedor', hex: '#d97706' },
-                    { id: 'slate', name: 'Cinzento Minimal', desc: 'Industrial e limpo', hex: '#475569' },
-                    { id: 'rose', name: 'Rosa Coral', desc: 'Vibrante e inovador', hex: '#e11d48' },
-                  ].map(t => (
+                  {COLOR_SCHEMES.map(t => (
                     <button
                       key={t.id}
                       type="button"
@@ -387,26 +382,14 @@ export default function ConfigSection({
                       onClick={async () => {
                         if (!canWriteConfig) return;
                         await runConfigAction(async () => {
-                        const previousTheme = theme;
-                        setTheme(t.id);
-                        if (typeof window !== 'undefined') {
-                          localStorage.setItem('erp_theme', t.id);
-                        }
-                        if (typeof document !== 'undefined') {
-                          document.documentElement.setAttribute('data-theme', t.id);
-                          document.body?.setAttribute('data-theme', t.id);
-                          const root = document.getElementById('main-root');
-                          if (root) root.setAttribute('data-theme', t.id);
-                        }
-                        const result = await updateConfig({ theme: t.id });
-                        if (!result.success) {
-                          setTheme(previousTheme);
-                          localStorage.setItem('erp_theme', previousTheme);
-                          document.documentElement.setAttribute('data-theme', previousTheme);
-                          document.body?.setAttribute('data-theme', previousTheme);
-                          document.getElementById('main-root')?.setAttribute('data-theme', previousTheme);
-                          alert(result.message || 'Não foi possível guardar o tema.');
-                        }
+                          onPreviewTheme?.(t.id);
+                          try {
+                            const result = await updateConfig({ theme: t.id });
+                            if (result.success) setTheme(t.id);
+                            else alert(result.message || 'Não foi possível guardar o tema.');
+                          } finally {
+                            onPreviewTheme?.(null);
+                          }
                         });
                       }}
                       aria-pressed={theme === t.id || (theme === 'default' && t.id === 'domino')}
@@ -418,11 +401,11 @@ export default function ConfigSection({
                     >
                       <span
                         className="w-4 h-4 rounded-full border border-scrim/10 shrink-0 shadow-subtle"
-                        style={{ backgroundColor: t.hex }}
+                        style={{ backgroundColor: t.swatch }}
                       />
                       <div>
                         <div className="font-semibold text-text-primary text-body-sm leading-tight">{t.name}</div>
-                        <div className="text-caption text-text-secondary font-medium mt-1">{t.desc}</div>
+                        <div className="text-caption text-text-secondary font-medium mt-1">{t.description}</div>
                       </div>
                     </button>
                   ))}

@@ -2965,7 +2965,7 @@ export default function ProjectSection({
 
 {/* TAB 3: MATERIAL */}
           {activeDetailTab === 'material' && (materialsFeedback || (
-            <div data-m3-exclude data-theme={appConfig?.theme || 'default'} className="p-6 space-y-6">
+            <div data-m3-exclude className="p-6 space-y-6">
               {/* Red Warning Banner if material has warning */}
               {hasMaterialWarning ? (
                 <div className="bg-feedback-danger-50 border-2 border-feedback-danger-300 rounded-card p-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between text-feedback-danger-900 shadow-raised animate-fade-in">

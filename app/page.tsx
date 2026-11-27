@@ -9,27 +9,25 @@ import { useFieldErrors } from '../hooks/useFieldErrors';
 import { useSlowRead } from '../hooks/useSlowRead';
 import { ApplicationFeedbackProvider, useApplicationFeedback } from '../components/ApplicationFeedback';
 import Button from '../components/ui/Button';
-import { useAsyncAction } from '../hooks/useAsyncAction';
 import BentoDashboard from '@/domains/monitoring/ui/BentoDashboard';
 import NotificationDropdown from '@/domains/communication/ui/NotificationDropdown';
 import { hasPermission } from '../lib/permissions';
 import { APP_SECTIONS, canOpenSection } from '../lib/sectionCatalog';
 import AppLogo from '../components/AppLogo';
 import AppLoadingScreen from '../components/AppLoadingScreen';
-import Dialog from '../components/ui/Dialog';
 import IconButton from '../components/ui/IconButton';
 import { cn } from '../lib/utils';
-import { getPresentationTheme } from '../lib/presentationTheme';
+import { getPresentationTheme, normalizeApplicationTheme, normalizePreferredTheme, type ApplicationTheme, type ColorSchemeId } from '../lib/presentationTheme';
 
 import {
   LayoutDashboard, Briefcase, CheckSquare, Building, FileText,
-  Package, Users, Settings, LogOut, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw,
+  Package, Users, Settings, Menu, X, HelpCircle, Calendar, Link2, Compass, RefreshCw,
   Bell, ShieldCheck, Database, ListTodo, Loader2, Eye, EyeOff, AlertCircle
 } from 'lucide-react';
 
 import {
-  apiRequestError, authenticatedRequest, clearClientSession, CONNECTION_INTERRUPTED_EVENT,
-  getClientUser, readRequest, SESSION_EXPIRED_EVENT, setCheckingConnection, setClientUser,
+  apiRequestError, clearClientSession, CONNECTION_INTERRUPTED_EVENT,
+  getAuthHeaders, getClientUser, readRequest, SESSION_EXPIRED_EVENT, setCheckingConnection, setClientUser,
 } from '../lib/clientAuth';
 
 function SectionLoading() {
@@ -63,7 +61,7 @@ const ClientSection = dynamic(() => import('@/domains/clients/ui/ClientSection')
 const AbsencesSection = dynamic(() => import('@/domains/absences/ui/AbsencesSection'), { loading: SectionLoading });
 const ConfigSection = dynamic(() => import('@/domains/administration/ui/ConfigSection'), { loading: SectionLoading });
 const CalendarSection = dynamic(() => import('@/domains/calendar/ui/CalendarSection'), { loading: SectionLoading });
-const CalendarSubscriptions = dynamic(() => import('@/domains/calendar/ui/CalendarSubscriptions'), { loading: SectionLoading });
+const ProfilePage = dynamic(() => import('@/domains/administration/ui/ProfilePage'), { loading: SectionLoading });
 const MyFocusSection = dynamic(() => import('@/domains/monitoring/ui/MyFocusSection'), { loading: SectionLoading });
 const ReportsSection = dynamic(() => import('@/domains/reports/ui/ReportsSection'), { loading: SectionLoading });
 const TaskDetailsModal = dynamic(() => import('@/domains/tasks/ui/TaskDetailsModal'));
@@ -93,16 +91,8 @@ export default function Page() {
   const [logoutPending, setLogoutPending] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const loginInFlight = React.useRef(false);
-  const { busy: isSavingProfile, run: runProfileAction } = useAsyncAction();
-
-  // Change password state
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [profileName, setProfileName] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [changePasswordError, setChangePasswordError] = useState('');
-  const [changePasswordSuccess, setChangePasswordSuccess] = useState(false);
+  const [cachedTheme, setCachedTheme] = useState<ApplicationTheme | null>(null);
+  const [globalThemePreview, setGlobalThemePreview] = useState<{ userId: string; theme: ColorSchemeId } | null>(null);
 
   const {
     isInitialDataLoaded,
@@ -178,9 +168,7 @@ export default function Page() {
     clearClientSession();
     setCurrentUser(null);
     setPendingTaskId(null);
-    setIsChangingPassword(false);
-    setNewPassword('');
-    setConfirmNewPassword('');
+    setGlobalThemePreview(null);
     setLoginError('A sua sessão expirou. Inicie sessão novamente.');
     const next = navigator.onLine === false ? 'offline' : 'ready';
     setCheckingConnection(next !== 'ready');
@@ -215,7 +203,7 @@ export default function Page() {
         resetAuthorizedData();
         clearClientSession();
         setPendingTaskId(null);
-        setIsChangingPassword(false);
+        setGlobalThemePreview(null);
         setCurrentUser(null);
         setSessionDenied(true);
       } else {
@@ -231,7 +219,7 @@ export default function Page() {
           else discard();
           resetAuthorizedData();
           setPendingTaskId(null);
-          setIsChangingPassword(false);
+          setGlobalThemePreview(null);
         }
         setSessionDenied(false);
         setClientUser(result.user);
@@ -305,7 +293,7 @@ export default function Page() {
   }, [setSidebarOpen]);
 
   const canReadActiveTab = canOpenSection(currentUser, activeTab, activeConfigTab);
-  const requiresWork = navigationReady && canReadActiveTab && (activeTab !== 'configuracoes' || activeConfigTab === 'utilizadores');
+  const requiresWork = navigationReady && canReadActiveTab && activeTab !== 'perfil' && (activeTab !== 'configuracoes' || activeConfigTab === 'utilizadores');
   React.useEffect(() => {
     if (currentUser && !writesBlocked && isInitialDataLoaded && requiresWork && workStatus === 'idle') void loadWork();
   }, [currentUser, writesBlocked, isInitialDataLoaded, requiresWork, workStatus, loadWork]);
@@ -346,19 +334,38 @@ export default function Page() {
     return () => window.clearTimeout(timeout);
   }, [syncStatus]);
 
-  // Synchronize active theme attribute on document.documentElement for global styling
+  const configuredTheme = (currentUser && isInitialDataLoaded ? normalizeApplicationTheme(state?.appConfig?.theme) : null)
+    ?? normalizeApplicationTheme(publicAppConfig?.theme);
+  const applicationTheme = getPresentationTheme(Boolean(currentUser && isInitialDataLoaded), state?.appConfig?.theme, publicAppConfig?.theme, cachedTheme);
+  const preferredTheme = normalizePreferredTheme(currentUser?.preferredTheme);
+  const previewTheme = globalThemePreview && globalThemePreview.userId === currentUser?.id ? globalThemePreview.theme : null;
+  const effectiveTheme = preferredTheme ?? previewTheme ?? applicationTheme;
+
   React.useEffect(() => {
-    const cachedTheme = typeof window !== 'undefined' ? localStorage.getItem('erp_theme') : null;
-    const currentTheme = getPresentationTheme(isInitialDataLoaded, state?.appConfig?.theme, publicAppConfig?.theme, cachedTheme);
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-theme', currentTheme);
-      document.body?.setAttribute('data-theme', currentTheme);
-      const root = document.getElementById('main-root');
-      if (root) {
-        root.setAttribute('data-theme', currentTheme);
-      }
-    }
-  }, [isInitialDataLoaded, state?.appConfig?.theme, publicAppConfig?.theme]);
+    try { setCachedTheme(normalizeApplicationTheme(localStorage.getItem('erp_theme'))); }
+    catch { /* Storage is optional. */ }
+  }, []);
+
+  React.useEffect(() => {
+    if (!configuredTheme) return;
+    setCachedTheme(configuredTheme);
+    try { localStorage.setItem('erp_theme', configuredTheme); }
+    catch { /* Storage is optional. */ }
+  }, [configuredTheme]);
+
+  React.useLayoutEffect(() => {
+    document.documentElement.setAttribute('data-theme', effectiveTheme);
+    document.body.setAttribute('data-theme', effectiveTheme);
+  }, [effectiveTheme]);
+
+  const applySavedProfile = (profile: { name: string; preferredTheme: ColorSchemeId | null }) => {
+    const signedInUser = getClientUser();
+    if (!signedInUser || signedInUser.id !== currentUser?.id) return;
+    const updatedUser = { ...signedInUser, ...profile };
+    setClientUser(updatedUser);
+    setCurrentUser(updatedUser);
+    if (profile.name !== signedInUser.name) void refreshFromDatabase();
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -438,64 +445,6 @@ export default function Page() {
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await runProfileAction(async () => {
-    setChangePasswordError('');
-    setChangePasswordSuccess(false);
-
-    if (newPassword && newPassword !== confirmNewPassword) {
-      setChangePasswordError('As passwords não coincidem.');
-      return;
-    }
-    if (newPassword && newPassword.length < 12) {
-      setChangePasswordError('A password deve ter pelo menos 12 caracteres.');
-      return;
-    }
-    if (newPassword && !currentPassword) {
-      setChangePasswordError('Indique a palavra-passe atual.');
-      return;
-    }
-
-    const nameChanged = Boolean(profileName && profileName !== currentUser.name);
-    const headers = { 'Content-Type': 'application/json' };
-    if (newPassword) {
-      const response = await authenticatedRequest('/api/auth/password', {
-        method: 'POST', headers, body: JSON.stringify({ currentPassword, password: newPassword }),
-      });
-      if (!response.ok) {
-        const result = await response.json().catch(() => null);
-        setChangePasswordError(result?.error?.message || 'Não foi possível alterar a password.');
-        return;
-      }
-    }
-
-    if (nameChanged) {
-      const response = await authenticatedRequest('/api/auth/profile', { method: 'PATCH', headers, body: JSON.stringify({ name: profileName }) });
-      if (!response.ok) {
-        setChangePasswordError(newPassword ? 'A password foi alterada, mas não foi possível atualizar o nome.' : 'Não foi possível atualizar o nome.');
-        return;
-      }
-      setClientUser({ ...currentUser, name: profileName });
-      setCurrentUser({ ...currentUser, name: profileName });
-      await refreshFromDatabase();
-    }
-
-    setChangePasswordSuccess(true);
-    setTimeout(() => {
-      setIsChangingPassword(false);
-      setNewPassword('');
-      setCurrentPassword('');
-      setConfirmNewPassword('');
-      setChangePasswordSuccess(false);
-    }, 2000);
-      });
-    } catch (error) {
-      setChangePasswordError(error instanceof Error ? error.message : 'Não foi possível guardar o perfil.');
-    }
-  };
-
   const tabs = React.useMemo(() => APP_SECTIONS.filter(section => canOpenSection(currentUser, section.id)), [currentUser]);
   const canReadAudit = canOpenSection(currentUser, 'configuracoes', 'auditoria');
   const accessRestricted = !canReadActiveTab;
@@ -531,12 +480,10 @@ export default function Page() {
     clearClientSession();
     setCurrentUser(null);
     setPendingTaskId(null);
-    setIsChangingPassword(false);
-    setNewPassword('');
-    setConfirmNewPassword('');
+    setGlobalThemePreview(null);
     setLogoutPending(true);
     try {
-      const result = await fetch('/api/auth/session', { method: 'DELETE' });
+      const result = await fetch('/api/auth/session', { method: 'DELETE', headers: getAuthHeaders() });
       if (!result.ok) throw new Error('HTTP ' + result.status);
     } catch (error) {
       console.warn('[LOGOUT]', error);
@@ -748,7 +695,7 @@ export default function Page() {
 
   return (
     <ApplicationFeedbackProvider value={feedback}>
-    <div className="min-h-screen flex flex-col bg-background text-text-primary" id="main-root" data-active-tab={activeTab} data-theme={appConfig.theme || 'default'}>
+    <div className="min-h-screen flex flex-col bg-background text-text-primary" id="main-root" data-active-tab={activeTab} data-theme={effectiveTheme}>
 
       {/* HEADER BAR (Gmail / Material inspired contract: exactly 3 zones) */}
       <header className="m3-top-app-bar sticky top-0 z-50 h-16 px-4 flex items-center justify-between shrink-0" id="app-header">
@@ -809,17 +756,14 @@ export default function Page() {
             markAllAsRead={() => markAllNotificationsAsRead(currentUser.id)}
           />
 
-          <button
-            type="button"
+          <Link
+            href="/?tab=perfil"
             aria-label="Editar perfil"
-            aria-haspopup="dialog"
-            aria-expanded={isChangingPassword}
-            onClick={() => {
-              setProfileName(currentUser.name);
-              setNewPassword('');
-              setCurrentPassword('');
-              setConfirmNewPassword('');
-              setIsChangingPassword(true);
+            aria-current={activeTab === 'perfil' ? 'page' : undefined}
+            onClick={event => {
+              if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              if (activeTab !== 'perfil') handleTabChange('perfil');
             }}
             className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-all p-1.5 hover:bg-surface-muted rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             id="user-profile"
@@ -835,7 +779,7 @@ export default function Page() {
               })()}
             </div>
 
-          </button>
+          </Link>
         </div>
       </header>
 
@@ -1031,6 +975,9 @@ export default function Page() {
             <div id="active-tab-content" key={`${activeTab}-${navKey}`} className="animate-fade-in">
               {!navigationReady ? <SectionLoading /> : requiresWork && workStatus !== 'loaded' ? <SectionDataFeedback status={workStatus} retry={loadWork} blocked={writesBlocked} /> : requiresActivity && activityStatus !== 'loaded' ? <SectionDataFeedback status={activityStatus} retry={loadActivity} blocked={writesBlocked} /> : <>
 
+              {activeTab === 'perfil' && <ProfilePage key={currentUser.id}
+                user={{ name: currentUser.name, email: currentUser.email, preferredTheme }} applicationTheme={applicationTheme}
+                onSaved={applySavedProfile} onLogout={() => void logout()} writesBlocked={writesBlocked} />}
 
               {activeTab !== 'projetos' && requiresProjectMaterials && materialsStatus !== 'loaded' &&
                 <SectionDataFeedback status={materialsStatus} retry={loadProjectMaterials} blocked={writesBlocked} />}
@@ -1236,6 +1183,7 @@ export default function Page() {
                 <SectionDataFeedback status={configRuntimeStatus} retry={loadConfigRuntime} blocked={writesBlocked} />}
               {activeTab === 'configuracoes' && (!requiresConfigRuntime || configRuntimeStatus === 'loaded') && (!requiresDefaultTasks || defaultTasksStatus === 'loaded') && (
                 <ConfigSection
+                  onPreviewTheme={theme => setGlobalThemePreview(theme ? { userId: currentUser.id, theme } : null)}
                   activeConfigTab={activeConfigTab}
                   onChangeConfigTab={handleConfigTabChange}
                   config={appConfig}
@@ -1291,103 +1239,6 @@ export default function Page() {
       <footer className="bg-surface border-t border-border py-3 px-6 text-center text-caption text-text-muted font-medium" id="app-footer-copyright">
         {appConfig.footerCopyrightText}
       </footer>
-
-      {/* CHANGE PASSWORD MODAL USING NEW UI DIALOG */}
-      <Dialog
-        isOpen={isChangingPassword}
-        onClose={() => { if (!isSavingProfile) setIsChangingPassword(false); }}
-        title="Editar Perfil"
-      >
-        {changePasswordSuccess ? (
-          <div className="p-4 bg-success/10 text-success border border-success/20 rounded-control text-body-sm text-center font-semibold">
-            Perfil atualizado com sucesso!
-          </div>
-        ) : (
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            {changePasswordError && (
-              <div role="alert" className="p-3 bg-error/10 text-error rounded-control text-caption font-semibold border border-error/20">
-                {changePasswordError}
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label htmlFor="profile-name" className="block text-label font-bold text-text-secondary select-none">Nome</label>
-              <input id="profile-name"
-                type="text"
-                value={profileName}
-                onChange={e => setProfileName(e.target.value)}
-                className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20 font-bold"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="profile-current-password" className="block text-label font-bold text-text-secondary">Palavra-passe atual</label>
-              <input id="profile-current-password"
-                type="password"
-                autoComplete="current-password"
-                value={currentPassword}
-                onChange={e => setCurrentPassword(e.target.value)}
-                required={Boolean(newPassword)}
-                maxLength={1024}
-                className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="profile-password" className="block text-label font-bold text-text-secondary select-none">Nova password (Opcional)</label>
-              <input id="profile-password"
-                type="password"
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                placeholder="Deixe em branco para manter a atual"
-                className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="profile-password-confirm" className="block text-label font-bold text-text-secondary select-none">Confirmar nova password</label>
-              <input id="profile-password-confirm"
-                type="password"
-                autoComplete="new-password"
-                value={confirmNewPassword}
-                onChange={e => setConfirmNewPassword(e.target.value)}
-                placeholder="Deixe em branco para manter a atual"
-                className="w-full h-11 px-3.5 text-body bg-surface text-text-primary rounded-control border border-border shadow-flat transition-all outline-none hover:border-text-disabled focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            <div className="pt-4 flex gap-3">
-              <button
-                type="button"
-                disabled={isSavingProfile}
-                onClick={() => setIsChangingPassword(false)}
-                className="flex-1 h-11 bg-surface-muted text-text-primary hover:bg-border border border-border rounded-control text-body-sm font-semibold transition-all cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isSavingProfile}
-                className="flex-1 h-11 bg-primary text-inverse hover:bg-primary-hover active:bg-primary-active rounded-control text-body-sm font-semibold transition-all shadow-raised cursor-pointer"
-              >
-                {isSavingProfile ? 'A guardar...' : 'Guardar'}
-              </button>
-            </div>
-          </form>
-        )}
-        <CalendarSubscriptions />
-        <button
-          type="button"
-          onClick={() => void logout()}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-control border border-error/30 px-4 py-2.5 text-body-sm font-semibold text-error hover:bg-error/10"
-          aria-label="Terminar sessão"
-        >
-          <LogOut className="h-4 w-4" />
-          Terminar sessão
-        </button>
-      </Dialog>
 
       {pendingTask && hasPermission(currentUser, 'tasks_read') && !accessRestricted && (activeTab === 'dashboard' || activeTab === 'reports' || activeTab === 'tarefas') && <TaskDetailsModal
         key={pendingTask.id}

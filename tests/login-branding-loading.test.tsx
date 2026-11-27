@@ -20,8 +20,9 @@ describe('Public login branding and M3 loading', () => {
   });
   it('retains public branding independently from the authenticated ERP state', () => {
     const hook = readFileSync('hooks/useERP.ts', 'utf8');
-    expect(hook).toContain('setPublicAppConfig(configData.appConfig)');
-    expect(hook.indexOf('setPublicAppConfig(configData.appConfig)')).toBeLessThan(hook.indexOf('if (!prev) return null'));
+    const brandingRead = hook.slice(hook.indexOf('const configRes ='), hook.indexOf('setIsDbConfigured(configured)'));
+    expect(brandingRead).toContain('setPublicAppConfig(previous => ({ ...configData.appConfig, ...previous }))');
+    expect(brandingRead).not.toContain('setState(');
     expect(hook).toContain('useState<ERPState | null>(null)');
     expect(hook).toContain('    publicAppConfig,');
     const page = readFileSync('app/page.tsx', 'utf8');

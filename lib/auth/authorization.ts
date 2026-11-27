@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unauthorized, forbidden, createErrorResponse } from '@/lib/apiErrors';
 import { GroupPermissions, normalizeRoleId, CANONICAL_ROLE_IDS } from '@/lib/permissions';
+import type { ColorSchemeId } from '@/lib/presentationTheme';
 import {
   requireAuth as requireCentralAuth,
   requirePermission as requireCentralPermission,
@@ -16,6 +17,7 @@ export interface AuthenticatedUser {
   requestId?: string;
   email: string;
   name: string;
+  preferredTheme?: ColorSchemeId | null;
   type?: string;
   roleId: string;
   roleName?: string;
@@ -193,6 +195,7 @@ export async function authenticateRequest(req?: NextRequest): Promise<{ authenti
       id: centralUser.id,
       email: centralUser.email,
       name: centralUser.name,
+      preferredTheme: centralUser.preferredTheme,
       type: centralUser.type,
       roleId: centralUser.role_id || centralUser.role_ids[0] || '',
       roleIds: centralUser.role_ids,
