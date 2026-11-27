@@ -71,20 +71,25 @@ export function usePageNavigation(mounted: boolean, hasState: boolean) {
   }, [activeTab, selectedProjectId, navKey, scrollToTop]);
 
   React.useEffect(() => {
-    if (mounted && hasState && !hasProcessedDeepLink.current) {
-      hasProcessedDeepLink.current = true;
-      setNavigationReady(true);
+    if (!mounted || !hasState) return;
+    const openLocation = () => {
       const params = new URLSearchParams(window.location.search);
       const target = resolveNavigationTarget(params);
-      const projectParam = params.get('project');
-      const requestParam = params.get('request');
-
       setActiveTab(target.tab);
-      if (target.configTab && target.tab === 'configuracoes') setActiveConfigTab(target.configTab);
-      if (projectParam && target.tab === 'projetos') setSelectedProjectId(projectParam);
-      if (requestParam && target.tab === 'presales') setSelectedPresalesRequestId(requestParam);
-      else if (requestParam && target.tab === 'mechanical-design') setSelectedMechanicalRequestId(requestParam);
+      if (target.tab === 'configuracoes') setActiveConfigTab(target.configTab ?? 'sistema');
+      setSelectedProjectId(target.tab === 'projetos' ? params.get('project') : null);
+      setSelectedPresalesRequestId(target.tab === 'presales' ? params.get('request') : null);
+      setSelectedMechanicalRequestId(target.tab === 'mechanical-design' ? params.get('request') : null);
+      setSidebarOpen(false);
+      setNavKey(previous => previous + 1);
+    };
+    if (!hasProcessedDeepLink.current) {
+      hasProcessedDeepLink.current = true;
+      openLocation();
+      setNavigationReady(true);
     }
+    window.addEventListener('popstate', openLocation);
+    return () => window.removeEventListener('popstate', openLocation);
   }, [mounted, hasState]);
 
   const handleTabChange = (tabId: string) => {
@@ -93,7 +98,7 @@ export function usePageNavigation(mounted: boolean, hasState: boolean) {
     setNavKey(prev => prev + 1);
     setSidebarOpen(false);
     if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(tabId === 'perfil' ? '' : window.location.search);
       params.set('tab', tabId === 'configuracoes'
         ? CONFIG_TAB_SLUGS[activeConfigTab] || CONFIG_TAB_SLUGS.sistema
         : tabId);

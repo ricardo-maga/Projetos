@@ -1,6 +1,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { GroupPermissions } from '@/lib/permissions';
 import { profileEligibility } from './profileEligibility';
+import { normalizePreferredTheme, type ColorSchemeId } from '@/lib/presentationTheme';
 
 export interface AuthenticatedUser {
   requestId?: string;
@@ -8,6 +9,7 @@ export interface AuthenticatedUser {
   auth_user_id: string;
   name: string;
   email: string;
+  preferredTheme: ColorSchemeId | null;
   role_id: string | null;
   role_ids: string[];
   role_codes: string[];
@@ -56,6 +58,7 @@ type ActorContext = {
   profile: {
     id: string; name: string | null; email: string | null; role_id: string | null;
     is_admin: boolean; type: string | null; deleted: boolean | null; approved: boolean | null;
+    preferred_theme?: unknown;
   } | null;
   roles: { id: string; code: string; name: string }[];
   permissions: string[];
@@ -94,6 +97,7 @@ async function loadActor(req: Request | undefined, options: ContextOptions): Pro
     auth_user_id: userAuth.id,
     name: profile.name || '',
     email: profile.email || userAuth.email || '',
+    preferredTheme: normalizePreferredTheme(profile.preferred_theme),
     role_id: profile.role_id || null,
     role_ids: roles.map(role => role.id),
     role_codes: roles.map(role => role.code),

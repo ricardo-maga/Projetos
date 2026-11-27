@@ -39,7 +39,11 @@ describe('SQL header status indicator', () => {
     expect(source).not.toContain('<DatabaseStatusIndicator');
     expect(source).toContain("busy={syncStatus === 'syncing' && isDbConfigured}");
     expect(source).toContain("result={syncStatus === 'syncing' ? null : logoResult}");
-    expect(source).toContain('aria-label="Terminar sessão"'); expect(source).toContain('clearClientSession();');
+    const profilePage = readFileSync(new URL('../domains/administration/ui/ProfilePage.tsx', import.meta.url), 'utf8');
+    expect(profilePage).toContain('Terminar sessão');
+    expect(profilePage).toContain('onClick={onLogout}');
+    expect(source).toContain('onLogout={() => void logout()}');
+    expect(source).toContain('clearClientSession();');
     expect(source).toContain("{syncStatus === 'error' && connection === 'ready' && (");
   });
 });

@@ -10,12 +10,16 @@ const owner = {
 const clientId = '22222222-2222-4222-8222-000000000001';
 
 async function fixture(page: Page) {
-  let user = owner;
-  let loginUser = owner;
+  type FixtureUser = typeof owner & { preferredTheme?: string | null };
+  let user: FixtureUser = owner;
+  let loginUser: FixtureUser = owner;
   let sessionStatus = 200;
   let syncStatus = 200;
-  let delayWork = 0;
+  let delayDirectory = 0;
   let saveStatus = 200;
+  let profileSaveStatus = 200;
+  let applicationTheme = 'default';
+  let calendarConfigured = false;
   let clients = [{ id: clientId, clientName: 'Cliente de teste', shortName: 'CT', deleted: false, version: 1 }];
   let writes = 0;
 
@@ -23,6 +27,11 @@ async function fixture(page: Page) {
     const url = new URL(route.request().url());
     const json = (data: unknown, status = 200) => route.fulfill({ status, json: data });
     if (url.pathname === '/api/auth/session') {
+      if (route.request().method() === 'DELETE') {
+        if (route.request().headers()['content-type'] !== 'application/json') return json({ success: false }, 415);
+        sessionStatus = 401;
+        return json({ success: true });
+      }
       if (sessionStatus !== 200) return json({ success: false }, sessionStatus);
       return json({ success: true, user });
     }
@@ -33,13 +42,36 @@ async function fixture(page: Page) {
       return json({ success: true, user });
     }
     if (url.pathname === '/api/supabase/config') {
-      return json({ isConfigured: true, appConfig: CLEAN_BASELINE_STATE.appConfig });
+      return json({ isConfigured: true, appConfig: { ...CLEAN_BASELINE_STATE.appConfig, theme: applicationTheme } });
+    }
+    if (url.pathname === '/api/auth/profile') {
+      if (profileSaveStatus !== 200) return json({ success: false }, profileSaveStatus);
+      user = { ...user, ...route.request().postDataJSON() };
+      return json({ success: true, profile: { name: user.name, preferredTheme: user.preferredTheme } });
+    }
+    if (url.pathname === '/api/auth/password') {
+      if (route.request().postDataJSON().currentPassword === 'incorrecta') {
+        return json({ error: { message: 'Palavra-passe atual incorreta.' } }, 403);
+      }
+      return json({ success: true });
+    }
+    if (url.pathname === '/api/calendar/subscriptions/mine') {
+      const method = route.request().method();
+      if (method === 'POST') calendarConfigured = true;
+      if (method === 'DELETE') calendarConfigured = false;
+      return json({ configured: calendarConfigured, path: calendarConfigured ? '/calendar/fixture.ics' : null });
+    }
+    if (url.pathname === '/api/calendar/subscriptions/all') return json({ configured: false, path: null });
+    if (url.pathname === '/api/v1/configuration') {
+      applicationTheme = route.request().postDataJSON().updates.theme;
+      return json({ success: true, data: { theme: applicationTheme, syncVersion: 43 } });
     }
     if (url.pathname === '/api/supabase/sync') {
       const partition = url.searchParams.get('partition') as SyncPartition;
-      if (partition === 'work' && delayWork) await new Promise(resolve => setTimeout(resolve, delayWork));
+      if (partition === 'directory' && delayDirectory) await new Promise(resolve => setTimeout(resolve, delayDirectory));
       if (syncStatus !== 200) return json({ success: false }, syncStatus);
-      const state = { ...CLEAN_BASELINE_STATE, users: [user], clients };
+      const appConfig = { ...CLEAN_BASELINE_STATE.appConfig, theme: applicationTheme, syncVersion: 42 };
+      const state = { ...CLEAN_BASELINE_STATE, users: [user], clients, appConfig };
       const data = Object.fromEntries(SYNC_PARTITIONS[partition].map(field => [field, state[field] || []]));
       return json({ success: true, data });
     }
@@ -60,12 +92,14 @@ async function fixture(page: Page) {
   });
 
   return {
-    setUser: (value: typeof owner) => { user = value; },
-    setLoginUser: (value: typeof owner) => { loginUser = value; },
+    setUser: (value: FixtureUser) => { user = value; },
+    setLoginUser: (value: FixtureUser) => { loginUser = value; },
     setSessionStatus: (value: number) => { sessionStatus = value; },
     setSaveStatus: (value: number) => { saveStatus = value; },
     setSyncStatus: (value: number) => { syncStatus = value; },
-    setDelayWork: (value: number) => { delayWork = value; },
+    setDelayDirectory: (value: number) => { delayDirectory = value; },
+    setProfileSaveStatus: (value: number) => { profileSaveStatus = value; },
+    setApplicationTheme: (value: string) => { applicationTheme = value; },
     getWrites: () => writes,
   };
 }
@@ -141,12 +175,12 @@ test('revalidates the session before allowing writes after reconnecting', async 
 
 test('reports slow progress and exits an unauthorized initial data load', async ({ page }) => {
   const api = await fixture(page);
-  api.setDelayWork(4500);
+  api.setDelayDirectory(4500);
   await page.goto('/?tab=clients');
   await expect(page.getByText('Está a demorar mais do que o habitual.')).toBeVisible();
-  await expect(page.getByRole('progressbar', { name: 'Carregamento dos dados' })).toHaveAttribute('value', '2');
+  await expect(page.getByRole('progressbar', { name: 'Carregamento dos dados' })).toHaveAttribute('value', '1');
   await expect(page.locator('#main-root')).toBeVisible();
-  api.setDelayWork(0);
+  api.setDelayDirectory(0);
   api.setSyncStatus(401);
   await page.reload();
   await expect(page.getByText('A sua sessão expirou. Inicie sessão novamente.')).toBeVisible();
@@ -181,4 +215,117 @@ test('distinguishes an empty task list and focuses the invalid task field on mob
   await expect(dialog.locator('#task-formTypeId')).toHaveAccessibleDescription('Selecione o tipo de tarefa.');
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: '.qa-runtime/states/task-validation-mobile.png' });
+});
+
+test('opens a standalone profile and applies a saved scheme across navigation and account changes', async ({ page }) => {
+  const api = await fixture(page);
+  api.setApplicationTheme('emerald');
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/?tab=clients');
+  const theme = page.locator('#main-root');
+  const title = page.getByRole('heading', { name: 'Editar perfil' });
+  await page.getByRole('link', { name: 'Editar perfil' }).click();
+  await expect(page).toHaveURL(/\?tab=perfil$/);
+  await expect(title).toBeFocused();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Email' })).toHaveValue(owner.email);
+  await expect(theme).toHaveAttribute('data-theme', 'emerald');
+  await page.getByText('Violeta Elegante', { exact: true }).click();
+  await expect(theme).toHaveAttribute('data-theme', 'emerald');
+  await page.getByRole('textbox', { name: 'Nome', exact: true }).fill('Conta atualizada');
+  const save = page.getByRole('button', { name: 'Guardar', exact: true });
+  api.setProfileSaveStatus(503);
+  await save.click();
+  await expect(page.getByRole('main').getByRole('alert')).toHaveText('Não foi possível guardar o perfil.');
+  await expect(theme).toHaveAttribute('data-theme', 'emerald');
+  api.setProfileSaveStatus(200);
+  await save.click();
+  await expect(page.getByText('Perfil atualizado.', { exact: true })).toBeVisible();
+  for (const selector of ['html', 'body', '#main-root']) {
+    await expect(page.locator(selector)).toHaveAttribute('data-theme', 'violet');
+  }
+  await page.goBack();
+  await expect(page.getByRole('textbox', { name: 'Pesquisar clientes' })).toBeVisible();
+  await expect(theme).toHaveAttribute('data-theme', 'violet');
+  await page.goForward();
+  await expect(title).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('radio', { name: 'Violeta Elegante' })).toBeChecked();
+  await expect(page.getByRole('textbox', { name: 'Nome', exact: true })).toHaveValue('Conta atualizada');
+  expect(await page.evaluate(() => localStorage.getItem('erp_theme'))).toBe('emerald');
+  await page.screenshot({ path: '.qa-runtime/states/profile-desktop.png', fullPage: true });
+
+  const [logout] = await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/session' && response.request().method() === 'DELETE'),
+    page.getByRole('button', { name: 'Terminar sessão' }).click(),
+  ]);
+  expect(logout.status()).toBe(200);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'emerald');
+  api.setLoginUser({ ...owner, id: '11111111-1111-4111-8111-000000000002', permissions: [], preferredTheme: 'invalid' });
+  await signIn(page);
+  await expect(page.getByRole('radio', { name: /Usar o esquema da aplicação/ })).toBeChecked();
+  await expect(theme).toHaveAttribute('data-theme', 'emerald');
+  await page.getByText('Rosa Coral', { exact: true }).click();
+  await save.click();
+  await expect(theme).toHaveAttribute('data-theme', 'rose');
+  await page.getByText('Usar o esquema da aplicação', { exact: true }).click();
+  await save.click();
+  await expect(theme).toHaveAttribute('data-theme', 'emerald');
+});
+
+test('keeps a personal scheme when saving the general configuration', async ({ page }) => {
+  const api = await fixture(page);
+  api.setUser({ ...owner, permissions: ['config.read', 'config.write'], preferredTheme: 'violet' });
+  await page.goto('/?tab=configuration');
+  await page.getByRole('button', { name: /Verde Esmeralda/ }).click();
+  await expect(page.getByRole('button', { name: /Verde Esmeralda/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#main-root')).toHaveAttribute('data-theme', 'violet');
+  await page.getByRole('link', { name: 'Editar perfil' }).click();
+  await expect(page.getByRole('radio', { name: /Usar o esquema da aplicação Verde Esmeralda/ })).toBeVisible();
+  await page.getByText('Usar o esquema da aplicação', { exact: true }).click();
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(page.locator('#main-root')).toHaveAttribute('data-theme', 'emerald');
+});
+
+test('supports mobile profile, keyboard selection, password validation and calendar subscriptions', async ({ page }) => {
+  await fixture(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/?tab=perfil');
+  await expect(page.getByRole('heading', { name: 'Editar perfil' })).toBeVisible();
+  const inherited = page.getByRole('radio', { name: /Usar o esquema da aplicação/ });
+  await inherited.focus();
+  await inherited.press('ArrowDown');
+  await expect(page.getByRole('radio', { name: 'Domino Institucional', exact: true })).toBeChecked();
+  await expect(page.locator('#main-root')).toHaveAttribute('data-theme', 'default');
+  const current = page.getByLabel('Palavra-passe atual');
+  const password = page.getByLabel('Nova palavra-passe', { exact: true });
+  const confirmation = page.getByLabel('Confirmar nova palavra-passe');
+  const changePassword = page.getByRole('button', { name: 'Alterar palavra-passe' });
+  await current.fill('incorrecta');
+  await password.fill('password-de-teste');
+  await confirmation.fill('diferente-em-teste');
+  await changePassword.click();
+  await expect(confirmation).toBeFocused();
+  await expect(confirmation).toHaveAccessibleDescription('As palavras-passe não coincidem.');
+  await confirmation.fill('password-de-teste');
+  await changePassword.click();
+  await expect(page.getByRole('main').getByRole('alert')).toHaveText('Palavra-passe atual incorreta.');
+  await current.fill('password-atual-de-teste');
+  await changePassword.click();
+  await expect(page.getByText('Palavra-passe alterada.', { exact: true })).toBeVisible();
+  await expect(password).toHaveValue('');
+
+  const calendar = page.getByRole('region', { name: 'Subscrições de calendário' });
+  await calendar.getByRole('button', { name: 'Criar endereço' }).first().click();
+  await expect(calendar.getByRole('textbox', { name: 'Endereço de As minhas tarefas' })).toHaveValue(/fixture\.ics$/);
+  await calendar.getByRole('button', { name: 'Desativar endereço' }).click();
+  await expect(calendar.getByRole('button', { name: 'Criar endereço' })).toHaveCount(2);
+  for (const viewport of [{ width: 375, height: 812 }, { width: 812, height: 375 }]) {
+    await page.setViewportSize(viewport);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  }
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: '.qa-runtime/states/profile-mobile.png', fullPage: true });
 });

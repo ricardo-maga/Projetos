@@ -24,7 +24,7 @@ async function requestSubscription(scope: CalendarFeedScope, fallback: string, i
   return { configured: result.configured, path };
 }
 
-export default function CalendarSubscriptions() {
+export default function CalendarSubscriptions({ writesBlocked = false }: { writesBlocked?: boolean }) {
   const [subscriptions, setSubscriptions] = useState<Partial<Record<CalendarFeedScope, Subscription>>>({});
   const [busy, setBusy] = useState<CalendarFeedScope | null>(null);
   const [error, setError] = useState('');
@@ -68,22 +68,23 @@ export default function CalendarSubscriptions() {
     }
   }
 
-  return <section className="border-t border-border pt-4 space-y-4" aria-labelledby="calendar-subscriptions-title">
-    <h3 id="calendar-subscriptions-title" className="font-bold text-text-primary">Subscrever calendários com aplicação externa</h3>
+  return <section className="space-y-4" aria-labelledby="calendar-subscriptions-title">
+    <h2 id="calendar-subscriptions-title" className="text-heading-sm text-text-primary">Subscrições de calendário</h2>
+    <p className="text-body-sm text-text-secondary">Subscreva as tarefas numa aplicação de calendário externa.</p>
     {feeds.map(feed => {
       const subscription = subscriptions[feed.scope];
       const url = subscription?.path ? `${window.location.origin}${subscription.path}` : null;
       return <div key={feed.scope} className="border-t border-border-subtle pt-3 space-y-2">
-        <h4 className="font-semibold text-body-sm text-text-primary">{feed.title}</h4>
+        <h3 className="font-semibold text-body-sm text-text-primary">{feed.title}</h3>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" size="sm" disabled={!subscription || busy !== null} onClick={() => mutate(feed.scope, 'POST')}>
+          <Button type="button" variant="secondary" className="min-h-11" disabled={!subscription || busy !== null || writesBlocked} onClick={() => mutate(feed.scope, 'POST')}>
             {subscription?.configured ? 'Renovar endereço' : 'Criar endereço'}
           </Button>
           {subscription?.configured && <>
-            <Button type="button" variant="outline" size="sm" disabled={!url || busy !== null} onClick={() => { if (url) void copy(feed.scope, url); }}>
+            <Button type="button" variant="outline" className="min-h-11" disabled={!url || busy !== null} onClick={() => { if (url) void copy(feed.scope, url); }}>
               {copied === feed.scope ? 'Copiado' : 'Copiar endereço'}
             </Button>
-            <Button type="button" variant="ghost" size="sm" disabled={busy !== null} onClick={() => mutate(feed.scope, 'DELETE')}>
+            <Button type="button" variant="ghost" className="min-h-11" disabled={busy !== null || writesBlocked} onClick={() => mutate(feed.scope, 'DELETE')}>
               Desativar endereço
             </Button>
           </>}

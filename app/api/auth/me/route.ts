@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
         id: user.id,
         name: user.name,
         email: user.email,
+        preferredTheme: user.preferredTheme ?? null,
         type: user.type,
         approved: user.approved,
         deleted: false,

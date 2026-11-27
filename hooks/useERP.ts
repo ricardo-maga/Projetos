@@ -163,6 +163,7 @@ export function useERP(userId?: string) {
       }));
       if (generation !== refreshGeneration.current) return false;
       const mapped = mapStateToUUIDs(mergeSyncPartitions(Object.fromEntries(responses) as Record<SyncPartition, unknown>, parts));
+      setPublicAppConfig(previous => ({ ...previous, theme: mapped.appConfig.theme }));
       setState(previous => previous ? {
         ...mapped,
         projectMaterials: previous.projectMaterials,
@@ -262,17 +263,7 @@ export function useERP(userId?: string) {
             configured = configData.isConfigured;
           }
           if (configData?.appConfig) {
-            setPublicAppConfig(configData.appConfig);
-            setState(prev => {
-              if (!prev) return null; // Never use CLEAN_BASELINE_STATE during boot
-              return {
-                ...prev,
-                appConfig: {
-                  ...prev.appConfig,
-                  ...configData.appConfig,
-                },
-              };
-            });
+            setPublicAppConfig(previous => ({ ...configData.appConfig, ...previous }));
           }
         }
       } catch (configErr) {
@@ -372,7 +363,9 @@ export function useERP(userId?: string) {
 
   const { addProjectRiskItem, updateProjectRiskItem, deleteProjectRiskItem } = createProjectRiskActions({ state, setState, matchId, refreshFromDatabase });
 
-  const { updateConfig } = createConfigActions({ state, setState, refreshFromDatabase });
+  const { updateConfig } = createConfigActions({ state, setState, refreshFromDatabase, onSaved: ({ theme }) => {
+    if (theme !== undefined) setPublicAppConfig(previous => ({ ...previous, theme }));
+  } });
   const { addAuxRecord, updateAuxRecord, deleteAuxRecord, reorderAuxRecords } = createReferenceActions({ state, setState, refreshFromDatabase });
 
   const { addSpecialDay, updateSpecialDay, deleteSpecialDay } = createSpecialDayActions({ state, setState, setSyncStatus, setSyncError, isDbConfigured, deleteSyncedEntity, refreshFromDatabase, getApiErrorMessage });

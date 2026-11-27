@@ -2,7 +2,8 @@ import type { LegacyActionContext } from '@/platform/sync/legacyActionContext';
 import { authenticatedRequest, getAuthHeaders } from '@/lib/clientAuth';
 import type { AppConfiguration } from '@/lib/types';
 
-export function createConfigActions({ state, setState, refreshFromDatabase }: Pick<LegacyActionContext, 'state' | 'setState' | 'refreshFromDatabase'>) {
+export function createConfigActions({ state, setState, refreshFromDatabase, onSaved }:
+  Pick<LegacyActionContext, 'state' | 'setState' | 'refreshFromDatabase'> & { onSaved: (config: AppConfiguration) => void }) {
   // ==================== APP CONFIGURATION ====================
   const updateConfig = async (updates: Partial<AppConfiguration>) => {
     const syncVersion = state?.appConfig?.syncVersion;
@@ -18,6 +19,7 @@ export function createConfigActions({ state, setState, refreshFromDatabase }: Pi
         return { success: false, message: result.message || 'Não foi possível guardar a configuração.' };
       }
       setState(prev => prev ? ({ ...prev, appConfig: { ...prev.appConfig, ...result.data } }) : prev);
+      onSaved(result.data);
       return { success: true };
     } catch { return { success: false, message: 'Falha de comunicação ao guardar a configuração.' }; }
   };

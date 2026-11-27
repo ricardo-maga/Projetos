@@ -8,6 +8,7 @@ import { badRequest, serviceUnavailable, rateLimitExceeded, validationError, una
 import { logAuditEvent } from '@/lib/audit';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { profileEligibility } from '@/lib/auth/profileEligibility';
+import { normalizePreferredTheme } from '@/lib/presentationTheme';
 import { cookies } from 'next/headers';
 import { preferenceCookieLifetime, sessionPreference, SESSION_PREFERENCE_COOKIE } from '@/lib/auth/sessionPersistence';
 import { clientIp } from '@/lib/security/clientIp';
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient();
     if (!admin) return internalServerError('Serviço de autenticação não configurado.', requestId);
     const { data: profile, error: profileError } = await admin.from('users')
-      .select('id, auth_user_id, name, email, role_id, is_admin, type, approved, deleted')
+      .select('id, auth_user_id, name, email, role_id, is_admin, type, approved, deleted, preferred_theme')
       .eq('auth_user_id', signIn.user.id).maybeSingle();
     if (profileError || !profile) { await supabase.auth.signOut(); return unauthorized('A conta não está autorizada para aceder à aplicação.', requestId); }
     const eligibility = profileEligibility(profile);
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
     }
     const user = {
       id: profile.id, name: profile.name, email: profile.email, type: profile.type || 'Team',
+      preferredTheme: normalizePreferredTheme(profile.preferred_theme),
       approved: true, deleted: false,
       roleId: profile.role_id, roleIds: activeRoleIds, roleNames: (roles || []).map((role: any) => role.name),
       isAdmin: Boolean(profile.is_admin), isSuperAdmin: (roles || []).some((role: any) => role.code === 'SUPER_ADMIN'),

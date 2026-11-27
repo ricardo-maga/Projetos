@@ -29,6 +29,7 @@ export const APP_SECTIONS: readonly AppSection[] = [
 
 export function canOpenSection(user: Parameters<typeof hasPermission>[0], tab: string, configTab?: string) {
   if (!user) return false;
+  if (tab === 'perfil') return true;
   if (tab === 'clientes' || tab === 'ausencias') {
     return hasPermission(user, tab === 'clientes' ? 'clients_read' : 'absences_read');
   }
