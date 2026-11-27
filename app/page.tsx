@@ -17,6 +17,7 @@ import AppLogo from '../components/AppLogo';
 import AppLoadingScreen from '../components/AppLoadingScreen';
 import IconButton from '../components/ui/IconButton';
 import { cn } from '../lib/utils';
+import UserInitialsBadge from '@/components/ui/UserInitialsBadge';
 import { getPresentationTheme, normalizeApplicationTheme, normalizePreferredTheme, type ApplicationTheme, type ColorSchemeId } from '../lib/presentationTheme';
 
 import {
@@ -769,15 +770,7 @@ export default function Page() {
             id="user-profile"
             title="Editar perfil"
           >
-            <div className="w-8 h-8 rounded-full bg-primary text-inverse flex items-center justify-center font-bold text-caption border border-border shadow-raised uppercase shrink-0">
-              {(() => {
-                const parts = (currentUser.name || '').trim().split(/\s+/);
-                if (parts.length >= 2) {
-                  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-                }
-                return (parts[0] || '').charAt(0).toUpperCase();
-              })()}
-            </div>
+            <UserInitialsBadge name={currentUser.name} />
 
           </Link>
         </div>

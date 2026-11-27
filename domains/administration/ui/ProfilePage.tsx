@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Check, LockKeyhole, LogOut, Palette, UserRound } from 'lucide-react';
+import { Check, LockKeyhole, LogOut, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import UserInitialsBadge from '@/components/ui/UserInitialsBadge';
 import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import CalendarSubscriptions from '@/domains/calendar/ui/CalendarSubscriptions';
@@ -139,23 +140,28 @@ export default function ProfilePage({ user, applicationTheme, writesBlocked, onS
   return (
     <section aria-labelledby="profile-heading" className="mx-auto max-w-5xl space-y-6">
       <header className="flex items-center gap-4 rounded-container border border-border-subtle bg-surface-muted px-4 py-5 sm:px-6">
-        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-surface text-primary-ink shadow-subtle" aria-hidden="true">
-          <UserRound className="size-6" />
-        </span>
+        <UserInitialsBadge name={user.name} />
         <h1 id="profile-heading" ref={heading} tabIndex={-1} className="text-heading-lg focus:outline-none">Editar perfil</h1>
       </header>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <form aria-label="Dados pessoais e esquema de cores" onSubmit={save} className="min-w-0 space-y-4">
-          <Card className="space-y-4 p-4 sm:p-5">
-            <h2 className="text-heading-sm">Dados pessoais</h2>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-              <Input id="profile-name" label="Nome" autoComplete="name" value={name} required minLength={2} maxLength={200}
-                onChange={event => { setNameDraft(event.target.value); setFeedback(null); }} disabled={busy} />
-              <Input id="profile-email" label="Email" type="email" value={user.email ?? ''} readOnly className="bg-surface-muted" />
-            </div>
-          </Card>
+        <div className="min-w-0 space-y-4">
+          <form id="profile-details-form" aria-label="Dados pessoais e esquema de cores" onSubmit={save}>
+            <Card className="space-y-4 p-4 sm:p-5">
+              <h2 className="text-heading-sm">Dados pessoais</h2>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <Input id="profile-name" label="Nome" autoComplete="name" value={name} required minLength={2} maxLength={200}
+                  onChange={event => { setNameDraft(event.target.value); setFeedback(null); }} disabled={busy} />
+                <Input id="profile-email" label="Email" type="email" value={user.email ?? ''} readOnly className="bg-surface-muted" />
+              </div>
+            </Card>
 
+          </form>
+          <PasswordForm writesBlocked={writesBlocked} />
+          <Card className="p-4 sm:p-5"><CalendarSubscriptions writesBlocked={writesBlocked} /></Card>
+        </div>
+
+        <div className="min-w-0 space-y-4">
           <Card className="p-4 sm:p-5">
             <fieldset disabled={busy} className="min-w-0">
               <legend className="mb-4 flex items-center gap-2.5 text-heading-sm">
@@ -164,7 +170,7 @@ export default function ProfilePage({ user, applicationTheme, writesBlocked, onS
               <div className="grid gap-2 sm:grid-cols-2">
                 {choices.map(scheme => (
                   <label key={scheme.id ?? 'application'} className={scheme.id === null ? 'relative sm:col-span-2' : 'relative'}>
-                    <input type="radio" name="profile-color-scheme" value={scheme.id ?? 'application'}
+                    <input type="radio" form="profile-details-form" name="profile-color-scheme" value={scheme.id ?? 'application'}
                       checked={selectedTheme === scheme.id} className="peer sr-only"
                       onChange={() => { setThemeDraft(scheme.id); setFeedback(null); }} />
                     <span className="flex min-h-12 items-center gap-3 rounded-control border border-border px-3 py-2.5 text-body-sm font-medium transition-colors peer-checked:border-primary peer-checked:bg-primary/5 peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-enabled:cursor-pointer peer-enabled:hover:bg-surface-muted peer-disabled:opacity-60">
@@ -183,15 +189,10 @@ export default function ProfilePage({ user, applicationTheme, writesBlocked, onS
 
           <div className="flex flex-wrap items-center justify-between gap-3 px-1">
             <FormFeedback feedback={feedback} />
-            <Button type="submit" className="ml-auto min-h-11" disabled={busy || writesBlocked || (!nameChanged && !themeChanged)}>
+            <Button type="submit" form="profile-details-form" className="ml-auto min-h-11" disabled={busy || writesBlocked || (!nameChanged && !themeChanged)}>
               {busy ? 'A guardar…' : 'Guardar'}
             </Button>
           </div>
-        </form>
-
-        <div className="min-w-0 space-y-4">
-          <PasswordForm writesBlocked={writesBlocked} />
-          <Card className="p-4 sm:p-5"><CalendarSubscriptions writesBlocked={writesBlocked} /></Card>
           <Button type="button" variant="outline" className="min-h-11 w-full border-error/30 text-error hover:bg-error/10" onClick={onLogout}>
             <LogOut aria-hidden="true" className="size-4" /> Terminar sessão
           </Button>
