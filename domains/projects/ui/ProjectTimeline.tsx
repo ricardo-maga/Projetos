@@ -1,4 +1,5 @@
 'use client';
+import { calendarDayBackground } from '@/domains/calendar/ui/calendarDayBackground';
 import MobileProjectAgenda from './MobileProjectAgenda';
 import MobileViewToggle from '@/components/ui/MobileViewToggle';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -206,8 +207,10 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
       {incomplete && <span className="block text-caption text-warning">Data incompleta</span>}
     </div>;
   };
-  const dayStyle = (date: string, weekend: boolean) => specialDays.some(s => s.date === date) || weekend ? 'bg-surface-muted' : 'bg-surface';
-  const compactDays = new Set(days.filter(day => (day.isWeekend || specialDays.some(s => s.date === day.dateStr)) &&
+  const specialDayNames = new Map(specialDays.map(day => [day.date, day.name]));
+  const dayStyle = (date: string, weekend: boolean) =>
+    calendarDayBackground(weekend, specialDayNames.has(date)) || 'bg-surface';
+  const compactDays = new Set(days.filter(day => (day.isWeekend || specialDayNames.has(day.dateStr)) &&
     !otherDays.get(day.dateStr)?.otherTasks.length && !otherDays.get(day.dateStr)?.absentUsers.length &&
     !visibleProjects.some(project => (events.get(project.id)?.get(day.dateStr) || []).some(event => event.kind === 'task'))
   ).map(day => day.dateStr));
@@ -310,7 +313,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
             <th scope="col" className="p-3 border-b border-border text-left text-body-sm font-semibold bg-surface-muted lg:sticky lg:left-0 lg:z-30 lg:border-r lg:border-border">Projeto</th>
             {days.map(day => <th scope="col" key={day.dateStr} className={`${highDensity ? 'px-0 py-1 text-micro text-center' : 'p-3 text-body-sm text-left'} border-b border-l border-border font-semibold ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
               <span className="block">{day.weekdayShort.slice(0, 3).toUpperCase()}{highDensity ? <span className="block whitespace-nowrap">{day.dayNum}/{day.date.getMonth() + 1}</span> : ` ${day.dayNum}/${day.date.getMonth() + 1}`}</span>
-              {specialDays.find(s => s.date === day.dateStr) && <span title={specialDays.find(s => s.date === day.dateStr)?.name} className="block truncate text-caption font-normal text-text-secondary">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
+              {specialDayNames.has(day.dateStr) && <span title={specialDayNames.get(day.dateStr)} className="block truncate text-caption font-normal text-text-secondary">{specialDayNames.get(day.dateStr)}</span>}
             </th>)}
           </tr></thead>
           <tbody><tr className="border-t border-border align-top">
@@ -435,7 +438,7 @@ export default function ProjectTimeline({ projects, clients, tasks, users = [], 
             <th className="p-3 text-left text-body-sm font-semibold bg-surface-muted lg:sticky lg:left-0 lg:z-30 lg:border-r lg:border-border">Projeto</th>
             {days.map(day => <th key={day.dateStr} className={`${highDensity ? 'px-0 py-1 text-micro text-center' : 'p-3 text-body-sm text-left'} border-l border-border font-semibold ${dayStyle(day.dateStr, day.isWeekend)} ${day.isToday ? 'ring-1 ring-inset ring-primary' : ''}`}>
               <span className="block">{day.weekdayShort.slice(0, 3).toUpperCase()}{highDensity ? <span className="block whitespace-nowrap">{day.dayNum}/{day.date.getMonth() + 1}</span> : ` ${day.dayNum}/${day.date.getMonth() + 1}`}</span>
-              {specialDays.find(s => s.date === day.dateStr) && <span title={specialDays.find(s => s.date === day.dateStr)?.name} className="block truncate text-caption font-normal text-text-secondary">{specialDays.find(s => s.date === day.dateStr)?.name}</span>}
+              {specialDayNames.has(day.dateStr) && <span title={specialDayNames.get(day.dateStr)} className="block truncate text-caption font-normal text-text-secondary">{specialDayNames.get(day.dateStr)}</span>}
             </th>)}
           </tr></thead>
         </table>

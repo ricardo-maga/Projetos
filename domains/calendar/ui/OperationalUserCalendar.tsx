@@ -1,4 +1,5 @@
 'use client';
+import { calendarDayBackground } from '@/domains/calendar/ui/calendarDayBackground';
 import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
 import MobileDayAgenda from './MobileDayAgenda';
 import MobileViewToggle from '@/components/ui/MobileViewToggle';
@@ -265,6 +266,7 @@ export default function OperationalUserCalendar({
   };
 
   // 8. Computed days for the operational period
+  const specialDaysByDate = new Map(specialDays.map(day => [day.date, day]));
   const calendarDays: CalendarDayItem[] = useMemo(() => {
     return getOperationalCalendarDays(anchorDate, periodDays, true);
   }, [anchorDate, periodDays]);
@@ -482,19 +484,15 @@ export default function OperationalUserCalendar({
 
                 {/* Day Columns */}
                 {calendarDays.map(day => {
-                  const specialDay = specialDays.find(sd => sd.date === day.dateStr);
+                  const specialDay = specialDaysByDate.get(day.dateStr);
+                  const dayBackground = calendarDayBackground(day.isWeekend, !!specialDay);
 
                   return (
                     <th
                       key={day.dateStr}
                       className={`p-2.5 text-center text-body-sm font-semibold border-l border-border transition-colors ${
-                        (day.isWeekend || !!specialDay)
-                          ? (day.isToday
-                              ? 'bg-surface-muted text-warning border-x-2 border-warning'
-                              : 'bg-surface-muted/70 text-text-muted')
-                          : (day.isToday
-                              ? 'bg-warning/10 text-warning border-warning/20'
-                              : 'bg-surface text-text-secondary')
+                        dayBackground || (day.isToday ? 'bg-warning/10' : 'bg-surface')
+                      } ${day.isToday ? 'text-warning ring-1 ring-inset ring-warning' : 'text-text-secondary'
                       }`}
                       title={specialDay ? specialDay.name : undefined}
                     >
@@ -600,6 +598,7 @@ export default function OperationalUserCalendar({
                         );
 
                         const isCellDragOver = dragOverCell === cellKey;
+                        const dayBackground = calendarDayBackground(day.isWeekend, specialDaysByDate.has(day.dateStr));
 
                         return (
                           <td
@@ -629,10 +628,10 @@ export default function OperationalUserCalendar({
                             }}
                             className={`p-2 border-l border-border-subtle align-top transition-all group relative ${conflictInfo.hasMultipleTasks ? 'project-timeline-conflict-cell' : ''} ${
                               isCellDragOver
-                                ? 'bg-primary/10 ring-2 ring-primary ring-inset'
-                                : (day.isWeekend || !!specialDays.find(sd => sd.date === day.dateStr))
-                                  ? (day.isToday ? 'bg-surface-muted/80 border-x border-warning/20' : 'bg-surface/70')
-                                  : (day.isToday ? 'bg-warning/10' : '')
+                                ? 'ring-2 ring-primary ring-inset'
+                                : day.isToday && dayBackground ? 'border-x border-warning/20' : ''
+                            } ${
+                              dayBackground || (isCellDragOver ? 'bg-primary/10' : day.isToday ? 'bg-warning/10' : '')
                             }`}
                           >
                             <div className="min-h-[70px] space-y-1.5 flex flex-col justify-start">

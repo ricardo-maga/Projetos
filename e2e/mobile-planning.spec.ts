@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 async function fits(page: Page) {
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
@@ -6,6 +6,62 @@ async function fits(page: Page) {
 async function screen(page: Page, label: string) {
   await page.getByRole('navigation', { name: 'Ecrã de teste' }).getByRole('button', { name: label, exact: true }).click();
 }
+test('sinaliza dias especiais e fins de semana nas células dos calendários', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.clock.setFixedTime(new Date('2026-11-27T12:00:00Z'));
+  await page.goto('/?dias-especiais');
+
+  async function verifyColumns(table: Locator, monday: number) {
+    await expect(table).toBeVisible();
+    const colors = await table.evaluate((element: HTMLTableElement, start) => {
+      const columns = [start, start + 4, start + 5, start + 6];
+      const background = (row: HTMLTableRowElement) =>
+        columns.map(index => getComputedStyle(row.cells[index]).backgroundColor);
+      return {
+        header: background(element.tHead!.rows[0]),
+        rows: Array.from(element.tBodies[0].rows)
+          .filter(row => row.cells.length === element.tHead!.rows[0].cells.length)
+          .map(background),
+      };
+    }, monday);
+    expect(colors.rows.length).toBeGreaterThan(1);
+    const [weekday, special, weekend, specialWeekend] = colors.header;
+    expect(new Set([weekday, special, weekend]).size).toBe(3);
+    expect(specialWeekend).toBe(special);
+    for (const row of colors.rows) {
+      expect(row.slice(1)).toEqual([special, weekend, special]);
+      expect(row[0]).not.toBe(special);
+      expect(row[0]).not.toBe(weekend);
+    }
+  }
+
+  await screen(page, 'Calendário');
+  await verifyColumns(page.getByRole('table'), 1);
+  await page.getByRole('button', { name: 'Timeline de projetos', exact: true }).click();
+  await verifyColumns(page.getByRole('table', { name: /^Timeline de projetos/ }), 1);
+
+  await screen(page, 'Projetos');
+  await page.getByText('Linha de embalagem com título extenso e identificação industrial', { exact: true }).filter({ visible: true }).click();
+  const monthlyTitle = 'Clique no dia para adicionar uma nova tarefa ou lembrete';
+  await page.getByRole('button', { name: 'Calendário mensal', exact: true }).click();
+  const monthlyColors = await page.getByTitle(monthlyTitle, { exact: true }).evaluateAll(cells =>
+    [22, 26, 27, 28].map(index => getComputedStyle(cells[index]).backgroundColor));
+  expect(new Set(monthlyColors.slice(0, 3)).size).toBe(3);
+  expect(monthlyColors[3]).toBe(monthlyColors[1]);
+
+  await page.getByRole('button', { name: 'Cronograma', exact: true }).click();
+  await verifyColumns(page.getByRole('table').filter({ hasText: 'Lembretes do Projeto' }), 2);
+  await page.getByRole('button', { name: 'Abrir cronograma em ecrã cheio' }).click();
+  await verifyColumns(page.getByRole('dialog').getByRole('table'), 2);
+
+  await page.goto('/?dias-especiais&ausencias');
+  const absenceColors = await page.locator('[data-date]').evaluateAll(cells =>
+    ['2026-11-23', '2026-11-27', '2026-11-28', '2026-11-29'].map(date =>
+      getComputedStyle(cells.find(cell => cell.getAttribute('data-date') === date)!).backgroundColor));
+  expect(new Set(absenceColors.slice(0, 3)).size).toBe(3);
+  expect(absenceColors[3]).toBe(absenceColors[1]);
+});
+
 test('recopia uma subscrição após recarregar e orienta a renovação de um endereço antigo', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const existing = '/api/calendar/feeds/mine/example.ics';
