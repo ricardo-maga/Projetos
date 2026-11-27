@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import TaskSection from '../../domains/tasks/ui/TaskSection';
 import ProjectSection from '../../domains/projects/ui/ProjectSection';
 import CalendarSubscriptions from '../../domains/calendar/ui/CalendarSubscriptions';
+import AbsenceCalendar from '../../domains/absences/ui/AbsenceCalendar';
 import CalendarSection from '../../domains/calendar/ui/CalendarSection';
 import BentoDashboard from '../../domains/monitoring/ui/BentoDashboard';
 import { formatDateToYYYYMMDD, addCivilDays } from '../../domains/calendar/modules/operationalCalendar';
@@ -13,6 +14,10 @@ const permissions = ['projects.read', 'projects.write', 'projects.delete', 'task
 const scenario = new URLSearchParams(location.search);
 const readonly = scenario.has('readonly');
 const planningScenario = scenario.has('provisoria');
+const specialDays = [
+  { id: 'qa-special', date: today, name: 'Dia especial de exemplo' },
+  ...(scenario.has('dias-especiais') ? [{ id: 'qa-special-weekend', date: addCivilDays(today, 2), name: 'Dia especial no domingo' }] : []),
+];
 const currentUser = { id: 'mobile-qa-user', name: 'Ana de exemplo', roleId: 'qa-team', roleIds: ['qa-team'], type: 'Team', deleted: false,
   permissions: readonly ? permissions.filter(permission => permission.endsWith('.read')) : permissions };
 const users = [currentUser, { ...currentUser, id: 'mobile-qa-second', name: 'Técnico com nome bastante comprido para testar a apresentação' }];
@@ -70,7 +75,7 @@ function Preview() {
     return updated;
   };
   const noop = () => {};
-  const shared = { projects, tasks: planningScenario ? planningTasks : tasks, clients, users, projectStatuses, currentUser,
+  const shared = { projects, specialDays, tasks: planningScenario ? planningTasks : tasks, clients, users, projectStatuses, currentUser,
     taskStatuses: planningScenario ? [...taskStatuses, ...[3, 4, 5].map(scale => ({ id: `qa-status-${scale}`, name: `Nível ${scale}`, scale }))] : taskStatuses,
     absences: planningScenario ? [] : absences,
     riskStatuses: [{ id: 'risk-open', name: 'Aberto', scale: 1, deleted: false }],
@@ -78,6 +83,7 @@ function Preview() {
     appConfig: { taskAssigneeGroupIds: ['qa-team'] }, userGroups: [{ id: 'qa-team', name: 'Equipa', deleted: false }],
     taskTypes: planningScenario ? [{ id: 'qa-type', name: 'Instalação', scale: 1 }] : [],
     addTask: planningScenario ? addPlanningTask : noop, updateTask: planningScenario ? updatePlanningTask : noop, deleteTask: async () => { setAction('Tarefa eliminada'); return true; } };
+  if (scenario.has('ausencias')) return <main id="main-root" data-theme="domino"><AbsenceCalendar absences={absences} users={users} specialDays={specialDays} /></main>;
   if (scenario.has('subscricoes')) return <main className="bg-background p-4"><CalendarSubscriptions /></main>;
   return <main id="main-root" data-theme="violet" className="min-w-0 bg-background p-4 text-text-primary">
     <nav aria-label="Ecrã de teste" className="mb-4 flex flex-wrap gap-2">{['Tarefas', 'Projetos', 'Calendário', 'Dashboard'].map(label => <button key={label} className="min-h-11 rounded-control border border-border px-3" onClick={() => setScreen(label)}>{label}</button>)}</nav>
@@ -85,7 +91,7 @@ function Preview() {
     {screen === 'Tarefas' && <TaskSection {...shared} />}
     {screen === 'Projetos' && <ProjectSection {...shared} comments={[]} projectCategories={[]} projectRisks={[]} projectPriorities={[]} projectTeams={[]} projectPartners={[]}
       selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} addProject={noop} updateProject={noop} deleteProject={noop} addClient={noop} addComment={noop} deleteComment={noop} />}
-    {screen === 'Calendário' && <CalendarSection {...shared} specialDays={[{ id: 'qa-special', date: today, name: 'Dia especial de exemplo' } as any]} onSelectProject={id => { setAction(`Projeto ${id}`); }} />}
+    {screen === 'Calendário' && <CalendarSection {...shared} onSelectProject={id => { setAction(`Projeto ${id}`); }} />}
     {screen === 'Dashboard' && <BentoDashboard {...shared} projects={[projects[0], ...deliveredProjects]} tasks={pendingTasks}
       projectStatuses={[...projectStatuses, { id: 'ps-5', name: 'Entregue', scale: 5, color: 'verde' }]}
       comments={[]} projectCategories={[]} projectPriorities={[]} onNavigate={noop}

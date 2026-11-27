@@ -19,10 +19,16 @@ describe('Shared absence calendar month boundaries', () => {
         absences: [absence('previous', 'ana', '2026-11-29', '2026-12-02'), absence('next', 'bruno', '2026-12-31', '2027-01-02')],
         specialDays: [{ id: 'previous', date: '2026-11-30', name: 'Data especial' }, { id: 'next', date: '2027-01-01', name: 'Ano Novo' }],
       });
-      for (const date of ['2026-11-29', '2026-11-30', '2027-01-01', '2027-01-02']) {
+      const adjacentDayBackgrounds = {
+        '2026-11-29': 'bg-calendar-weekend',
+        '2026-11-30': 'bg-category-purple-100',
+        '2027-01-01': 'bg-category-purple-100',
+        '2027-01-02': 'bg-calendar-weekend',
+      };
+      for (const [date, background] of Object.entries(adjacentDayBackgrounds)) {
         const day = cell(tree, date);
         expect(day.props['data-outside-month']).toBe(true);
-        expect(day.props.className).toContain('bg-surface-muted');
+        expect(day.props.className).toContain(background);
         const html = renderToStaticMarkup(day);
         expect(html).toContain(`dateTime="${date}"`);
         expect(html).toContain('text-text-muted');
@@ -42,7 +48,9 @@ describe('Shared absence calendar month boundaries', () => {
       absence('a', 'ana', '2026-12-31'), absence('b', 'bruno', '2026-12-31'),
     ] };
     let tree = h.render(props);
-    const html = renderToStaticMarkup(cell(tree, '2026-12-31'));
+    const outsideWeekday = cell(tree, '2026-12-31');
+    expect(outsideWeekday.props.className).toContain('bg-surface-muted');
+    const html = renderToStaticMarkup(outsideWeekday);
     expect(html).toContain('Ana Silva (Ausente:');
     expect(html).not.toContain('Bruno Costa (Ausente:');
     find(tree, element => element.props?.['aria-label'] === 'Mês anterior').props.onClick();

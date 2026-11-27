@@ -1,4 +1,5 @@
 'use client';
+import { calendarDayBackground } from '@/domains/calendar/ui/calendarDayBackground';
 
 import React, { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -56,9 +57,10 @@ export default function AbsenceCalendar({
     const isOutsideMonth = currentDate.getMonth() !== month;
     const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
     const specialDay = specialDays.find(item => item.date === dateStr);
+    const dayBackground = calendarDayBackground(isWeekend, !!specialDay);
     const dayAbsences = calendarAbsences.filter(absence => absence.absenceStartDate <= dateStr && absence.absenceEndDate >= dateStr);
     cells.push(
-      <div key={dateStr} data-date={dateStr} data-outside-month={isOutsideMonth} className={`min-h-[80px] p-1.5 border-b border-r border-border relative transition-colors flex flex-col justify-between ${isOutsideMonth ? 'bg-surface-muted hover:bg-surface-muted' : `hover:bg-surface-muted/50 ${isWeekend || specialDay ? 'bg-surface-muted/60' : 'bg-surface'}`}`}>
+      <div key={dateStr} data-date={dateStr} data-outside-month={isOutsideMonth} className={`min-h-[80px] p-1.5 border-b border-r border-border relative transition-colors flex flex-col justify-between ${dayBackground || (isOutsideMonth ? 'bg-surface-muted' : 'bg-surface hover:bg-surface-muted/50')}`}>
         <div className="flex justify-between items-start mb-1 select-none">
           <time dateTime={dateStr} title={new Intl.DateTimeFormat('pt-PT', { dateStyle: 'long' }).format(currentDate)} className={`inline-flex items-center justify-center w-7 h-7 text-center rounded-full font-bold text-caption ${dateStr === todayStr ? 'bg-primary text-inverse font-black' : isOutsideMonth ? 'text-text-muted' : 'text-text-secondary'}`}>
             {day}
@@ -95,7 +97,9 @@ export default function AbsenceCalendar({
       </div>
       <div className="bg-surface border border-border rounded-control overflow-hidden">
         <div className="grid grid-cols-7 border-b border-border bg-surface-muted text-caption font-bold text-text-secondary uppercase text-center select-none">
-          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => <div key={day} className="py-2 border-r border-border last:border-0">{day}</div>)}
+          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => (
+            <div key={day} className={`py-2 border-r border-border last:border-0 ${calendarDayBackground(index === 0 || index === 6, false)}`}>{day}</div>
+          ))}
         </div>
         <div className="grid grid-cols-7 text-body-sm">{cells}</div>
       </div>

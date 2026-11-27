@@ -1,4 +1,5 @@
 'use client';
+import { calendarDayBackground } from '@/domains/calendar/ui/calendarDayBackground';
 import ListEmptyState from '@/components/ui/ListEmptyState';
 import { useFeedback, useFormDraft } from '@/components/ApplicationFeedback';
 import { useFieldErrors } from '@/hooks/useFieldErrors';
@@ -18,7 +19,7 @@ import MarkdownCommentComposer from '@/components/ui/MarkdownCommentComposer';
 import MarkdownEditor from '@/components/ui/MarkdownEditor';
 import MarkdownBody from '@/components/ui/MarkdownBody';
 import React, { useState, useEffect, useRef } from 'react';
-import { Project, Client, Comment, Task, TaskType, DefaultTask, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '@/lib/types';
+import { Project, Client, Comment, Task, TaskType, DefaultTask, SpecialDay, UserAbsence, ProjectMaterial, ProjectRiskItem, RiskCategory, RiskStatus, RiskPriority } from '@/lib/types';
 import {
   Plus, Search, Edit2, Trash2, ArrowLeft, Calendar, FileText,
   Sparkles, DollarSign, Users, ShieldAlert, PlusCircle, MessageSquare, ListTodo, CheckSquare, BrainCircuit,
@@ -220,7 +221,7 @@ interface ProjectSectionProps {
   deleteTask?: (id: string) => Promise<boolean>;
   taskStatuses: any[];
   taskTypes?: TaskType[];
-  specialDays?: any[];
+  specialDays?: SpecialDay[];
   selectedProjectId: string | null;
   setSelectedProjectId: (id: string | null) => void;
   defaultTasks?: DefaultTask[];
@@ -545,6 +546,19 @@ export default function ProjectSection({
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
+
+  const specialDaysByDate = new Map(specialDays.map(day => [day.date, day]));
+  const todayDate = formatDateToString(new Date());
+  const cronogramaDays = Array.from({ length: 30 }, (_, offset) => {
+    const date = new Date(cronogramaStartDate);
+    date.setDate(date.getDate() + offset);
+    const dayStr = formatDateToString(date);
+    const specialDay = specialDaysByDate.get(dayStr);
+    return {
+      date, dayStr, specialDay, isToday: dayStr === todayDate,
+      dayBackground: calendarDayBackground(date.getDay() === 0 || date.getDay() === 6, !!specialDay),
+    };
+  });
 
   // Helper to check if a task is active on a given day
   const isTaskActiveOnDay = (t: Task, dayStr: string): boolean => {
@@ -1959,8 +1973,8 @@ export default function ProjectSection({
                     {monthlyCopyError && <p role="alert" className="text-caption text-error">{monthlyCopyError}</p>}
                     <div className="bg-surface border border-border rounded-control overflow-hidden shadow-raised">
                       <div className="grid grid-cols-7 border-b border-border-subtle bg-surface-muted text-caption font-bold text-text-secondary uppercase text-center">
-                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-                          <div key={d} className="py-2 border-r border-border-subtle last:border-0">{d}</div>
+                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, index) => (
+                          <div key={day} className={`py-2 border-r border-border-subtle last:border-0 ${calendarDayBackground(index === 0 || index === 6, false)}`}>{day}</div>
                         ))}
                       </div>
                       <div className="grid grid-cols-7 text-body-sm">
@@ -1985,8 +1999,8 @@ export default function ProjectSection({
                             const currentDate = new Date(year, month, d);
                             const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
                             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                            const sd = specialDays?.find(s => s.date === dateStr);
-                            const isSpecial = !!sd;
+                            const sd = specialDaysByDate.get(dateStr);
+                            const dayBackground = calendarDayBackground(isWeekend, !!sd);
 
                             const isProjStart = selectedProj.startDate === dateStr;
                             const isProjDelivery = selectedProj.deliveryDate === dateStr;
@@ -2039,8 +2053,8 @@ export default function ProjectSection({
                                   openCreateTaskModal(dateStr);
                                   setShowImportTaskForm(false);
                                 }}
-                                className={`min-h-[110px] p-1.5 border-b border-r border-border-subtle last:border-r-0 relative group transition-colors hover:bg-surface-muted/50 cursor-pointer flex flex-col justify-start ${
-                                  isWeekend || isSpecial ? 'bg-surface-muted/60' : 'bg-surface'
+                                className={`min-h-[110px] p-1.5 border-b border-r border-border-subtle last:border-r-0 relative group transition-colors hover:ring-1 hover:ring-inset hover:ring-border cursor-pointer flex flex-col justify-start ${
+                                  dayBackground || 'bg-surface'
                                 }`}
                                 title="Clique no dia para adicionar uma nova tarefa ou lembrete"
                               >
@@ -2260,12 +2274,7 @@ export default function ProjectSection({
                               </th>
                               {(() => {
                                 const days = [];
-                                for (let i = 0; i < 30; i++) {
-                                  const d = new Date(cronogramaStartDate);
-                                  d.setDate(cronogramaStartDate.getDate() + i);
-                                  const dayStr = formatDateToString(d);
-                                  const isToday = dayStr === formatDateToString(new Date());
-                                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                for (const { date: d, specialDay, dayStr, isToday, dayBackground } of cronogramaDays) {
 
                                   days.push(
                                     <th
@@ -2274,11 +2283,10 @@ export default function ProjectSection({
                                         openCreateTaskModal(dayStr);
                                         setShowImportTaskForm(false);
                                       }}
-                                      className={`p-2 border-r border-border/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-border/50 transition-colors ${
-                                        isToday ? 'bg-feedback-warning-100 text-warning border-x border-warning/20' :
-                                        isWeekend ? 'bg-surface-muted/70 text-text-secondary hover:bg-border/40' : 'text-text-secondary'
+                                      className={`p-2 border-r border-border/80 text-center min-w-[55px] font-bold cursor-pointer hover:ring-1 hover:ring-inset hover:ring-border transition-colors ${
+                                        dayBackground || (isToday ? 'bg-feedback-warning-100' : '')} ${isToday ? 'text-warning ring-1 ring-inset ring-warning' : 'text-text-secondary'
                                       }`}
-                                      title="Clique para adicionar tarefa neste dia"
+                                      title={specialDay?.name || 'Clique para adicionar tarefa neste dia'}
                                     >
                                       <div className="text-caption uppercase font-semibold text-text-muted">
                                         {d.toLocaleDateString('pt-PT', { weekday: 'short' }).charAt(0).toUpperCase()}
@@ -2287,6 +2295,7 @@ export default function ProjectSection({
                                       <div className="text-caption font-normal text-text-muted">
                                         {d.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '')}
                                       </div>
+                                      {specialDay && <span className="block truncate text-caption text-category-purple-700">{specialDay.name}</span>}
                                     </th>
                                   );
                                 }
@@ -2305,12 +2314,7 @@ export default function ProjectSection({
                               </td>
                               {(() => {
                                 const cells = [];
-                                for (let i = 0; i < 30; i++) {
-                                  const d = new Date(cronogramaStartDate);
-                                  d.setDate(cronogramaStartDate.getDate() + i);
-                                  const dayStr = formatDateToString(d);
-                                  const isToday = dayStr === formatDateToString(new Date());
-                                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                for (const { dayStr, isToday, dayBackground } of cronogramaDays) {
 
                                   const isProjStart = selectedProj.startDate === dayStr;
                                   const isProjDelivery = selectedProj.deliveryDate === dayStr;
@@ -2319,7 +2323,7 @@ export default function ProjectSection({
                                   const risksOnDay = projRiskItems.filter(ri => !ri.deleted && matchId(ri.projectId, selectedProj.id) && ri.reviewDate === dayStr);
 
                                   cells.push(
-                                    <td key={dayStr} className={`p-1 border-r border-border/80 text-center align-middle ${isToday ? 'bg-warning/40' : isWeekend ? 'bg-surface-muted/40' : ''}`}>
+                                    <td key={dayStr} className={`p-1 border-r border-border/80 text-center align-middle ${dayBackground || (isToday ? 'bg-warning/40' : '')}`}>
                                       <div className="flex flex-col gap-0.5 items-center justify-center">
                                         {isProjStart && (
                                           <span className="px-1.5 py-0.5 bg-primary text-inverse text-caption font-extrabold rounded-badge shadow-raised scale-90" title="Data de Início do Projeto">
@@ -2425,12 +2429,7 @@ export default function ProjectSection({
                                     </td>
                                     {(() => {
                                       const dayCells = [];
-                                      for (let i = 0; i < 30; i++) {
-                                        const d = new Date(cronogramaStartDate);
-                                        d.setDate(cronogramaStartDate.getDate() + i);
-                                        const dayStr = formatDateToString(d);
-                                        const isToday = dayStr === formatDateToString(new Date());
-                                        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                      for (const { dayStr, isToday, dayBackground } of cronogramaDays) {
                                         const isActive = isTaskActiveOnDay(t, dayStr);
 
                                         dayCells.push(
@@ -2456,12 +2455,7 @@ export default function ProjectSection({
                                                 });
                                               }
                                             }}
-                                            className={`p-1 border-r border-border/80 text-center align-middle relative min-w-[55px] ${
-                                              isActive ? 'bg-primary/10' : ''
-                                            } ${
-                                              isToday ? 'bg-warning/30' :
-                                              isWeekend ? 'bg-surface-muted/60' : ''
-                                            }`}
+                                            className={`p-1 border-r border-border/80 text-center align-middle relative min-w-[55px] ${dayBackground || (isToday ? 'bg-warning/30' : isActive ? 'bg-primary/10' : '')}`}
                                           >
                                             {isActive && (
                                               <div
@@ -4577,12 +4571,7 @@ export default function ProjectSection({
                         </th>
                         {(() => {
                           const days = [];
-                          for (let i = 0; i < 30; i++) {
-                            const d = new Date(cronogramaStartDate);
-                            d.setDate(cronogramaStartDate.getDate() + i);
-                            const dayStr = formatDateToString(d);
-                            const isToday = dayStr === formatDateToString(new Date());
-                            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                          for (const { date: d, specialDay, dayStr, isToday, dayBackground } of cronogramaDays) {
 
                             days.push(
                               <th
@@ -4592,11 +4581,10 @@ export default function ProjectSection({
                                   openCreateTaskModal(dayStr);
                                   setShowImportTaskForm(false);
                                 }}
-                                className={`p-2 border-r border-border/80 text-center min-w-[55px] font-bold cursor-pointer hover:bg-border/50 transition-colors ${
-                                  isToday ? 'bg-feedback-warning-100 text-warning border-x border-warning/20' :
-                                  isWeekend ? 'bg-surface-muted/70 text-text-secondary hover:bg-border/40' : 'text-text-secondary'
+                                className={`p-2 border-r border-border/80 text-center min-w-[55px] font-bold cursor-pointer hover:ring-1 hover:ring-inset hover:ring-border transition-colors ${
+                                  dayBackground || (isToday ? 'bg-feedback-warning-100' : '')} ${isToday ? 'text-warning ring-1 ring-inset ring-warning' : 'text-text-secondary'
                                 }`}
-                                title="Clique para adicionar tarefa neste dia"
+                                title={specialDay?.name || 'Clique para adicionar tarefa neste dia'}
                               >
                                 <div className="text-caption uppercase font-semibold text-text-muted">
                                   {d.toLocaleDateString('pt-PT', { weekday: 'short' }).charAt(0).toUpperCase()}
@@ -4605,6 +4593,7 @@ export default function ProjectSection({
                                 <div className="text-caption font-normal text-text-muted">
                                   {d.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '')}
                                 </div>
+                                {specialDay && <span className="block truncate text-caption text-category-purple-700">{specialDay.name}</span>}
                               </th>
                             );
                           }
@@ -4623,12 +4612,7 @@ export default function ProjectSection({
                         </td>
                         {(() => {
                           const cells = [];
-                          for (let i = 0; i < 30; i++) {
-                            const d = new Date(cronogramaStartDate);
-                            d.setDate(cronogramaStartDate.getDate() + i);
-                            const dayStr = formatDateToString(d);
-                            const isToday = dayStr === formatDateToString(new Date());
-                            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                          for (const { dayStr, isToday, dayBackground } of cronogramaDays) {
 
                             const isProjStart = selectedProj.startDate === dayStr;
                             const isProjDelivery = selectedProj.deliveryDate === dayStr;
@@ -4636,7 +4620,7 @@ export default function ProjectSection({
                             const isProjScheduled = selectedProj.scheduledDate === dayStr;
 
                             cells.push(
-                              <td key={`modal-cell-proj-${dayStr}`} className={`p-1 border-r border-border/80 text-center align-middle ${isToday ? 'bg-warning/40' : isWeekend ? 'bg-surface-muted/40' : ''}`}>
+                              <td key={`modal-cell-proj-${dayStr}`} className={`p-1 border-r border-border/80 text-center align-middle ${dayBackground || (isToday ? 'bg-warning/40' : '')}`}>
                                 <div className="flex flex-col gap-0.5 items-center justify-center">
                                   {isProjStart && (
                                     <span className="px-1.5 py-0.5 bg-primary text-inverse text-caption font-extrabold rounded-badge shadow-raised scale-90" title="Data de Início do Projeto">
@@ -4738,12 +4722,7 @@ export default function ProjectSection({
                               </td>
                               {(() => {
                                 const dayCells = [];
-                                for (let i = 0; i < 30; i++) {
-                                  const d = new Date(cronogramaStartDate);
-                                  d.setDate(cronogramaStartDate.getDate() + i);
-                                  const dayStr = formatDateToString(d);
-                                  const isToday = dayStr === formatDateToString(new Date());
-                                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                for (const { dayStr, isToday, dayBackground } of cronogramaDays) {
                                   const isActive = isTaskActiveOnDay(t, dayStr);
 
                                   dayCells.push(
@@ -4769,12 +4748,7 @@ export default function ProjectSection({
                                           });
                                         }
                                       }}
-                                      className={`p-1 border-r border-border/80 text-center align-middle relative min-w-[55px] ${
-                                        isActive ? 'bg-primary/10' : ''
-                                      } ${
-                                        isToday ? 'bg-warning/30' :
-                                        isWeekend ? 'bg-surface-muted/60' : ''
-                                      }`}
+                                      className={`p-1 border-r border-border/80 text-center align-middle relative min-w-[55px] ${dayBackground || (isToday ? 'bg-warning/30' : isActive ? 'bg-primary/10' : '')}`}
                                     >
                                       {isActive && (
                                         <div
