@@ -1,7 +1,11 @@
 import { z } from 'zod';
+import { getProjectSharepointUrl, projectSharepointUrlError } from './sharepointUrl';
 
 const forecastDate = z.string().refine(value => value === '' || /^\d{4}-(0[1-9]|1[0-2])-01$/.test(value), 'O Forecast deve indicar mês e ano válidos.');
 const description = z.string().max(10000);
+const sharepointUrl = z.string().trim()
+  .refine(value => value === '' || Boolean(getProjectSharepointUrl(value)), projectSharepointUrlError)
+  .describe('Ligação HTTPS para o SharePoint. Um valor vazio remove a ligação e a omissão preserva-a numa atualização.');
 const shortText = z.string().max(255);
 const relationIds = z.array(z.string().trim().max(64)).max(100);
 const documents = z.array(z.string().max(2048)).max(100);
@@ -10,6 +14,7 @@ export const createProjectSchema = z.object({
   title: z.string().trim().min(1, 'O título do projeto é obrigatório').max(255, 'O título do projeto não pode ter mais de 255 caracteres'),
   clientId: z.string().trim().min(1, 'O cliente é obrigatório'),
   description: description.optional().default(''),
+  sharepointUrl: sharepointUrl.optional(),
   installProjectNo: shortText.optional().default(''),
   sfOpportunityNo: shortText.optional().default(''),
   statusId: z.string().optional().default(''),
@@ -50,6 +55,7 @@ export const updateProjectSchema = z.object({
   title: z.string().trim().min(1, 'O título do projeto é obrigatório').max(255, 'O título do projeto não pode ter mais de 255 caracteres').optional(),
   clientId: z.string().optional(),
   description: description.optional(),
+  sharepointUrl: sharepointUrl.optional(),
   installProjectNo: shortText.optional(),
   sfOpportunityNo: shortText.optional(),
   statusId: z.string().optional(),
@@ -96,7 +102,7 @@ export const queryProjectSchema = z.object({
 
 export const projectSort = z.enum(['createdAt', '-createdAt']);
 export const projectFields = z.enum([
-  'id', 'title', 'description', 'clientId', 'statusId', 'categoryId', 'projectManagerId', 'fieldManagerId',
+  'id', 'title', 'description', 'sharepointUrl', 'clientId', 'statusId', 'categoryId', 'projectManagerId', 'fieldManagerId',
   'salesRepId', 'startDate', 'deliveryDate', 'estimatedDate', 'scheduledDate', 'forecastDate', 'completedDate',
   'installProjectNo', 'sfOpportunityNo', 'budgetValue', 'isUrgent', 'createdAt', 'updatedAt', 'version',
 ]);

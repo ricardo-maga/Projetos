@@ -348,3 +348,75 @@ test.describe('touch actions', () => {
     await fits(page);
   });
 });
+
+for (const width of [1280, 390]) {
+  test(`adiciona, abre e remove a ligação SharePoint a ${width}px`, async ({ page, context }) => {
+    const firstUrl = 'https://empresa.sharepoint.com/:f:/s/Projetos/Pasta%20A?e=abc&d=123#ficheiros';
+    const nextUrl = 'https://empresa.sharepoint.com/sites/Projetos/Pasta%20B?e=xyz';
+    await context.route('https://empresa.sharepoint.com/**', route => route.fulfill({ body: 'SharePoint QA' }));
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/?sharepoint');
+    await screen(page, 'Projetos');
+
+    const title = 'Projeto SharePoint QA';
+    const input = page.getByRole('textbox', { name: 'Ligação SharePoint' });
+    const save = page.getByRole('button', { name: 'Gravar Alterações', exact: true });
+    const edit = page.getByRole('button', { name: 'Editar Projeto', exact: true });
+    const sections = page.getByRole('navigation', { name: 'Secções do projeto' });
+    const link = sections.getByRole('link', { name: /^Sharepoint/ });
+    const analysis = sections.getByRole('button', { name: 'Análise', exact: true });
+    const expectLast = async (label: string) => {
+      await expect(sections.locator('button, a').last()).toHaveText(label);
+    };
+    const reopen = async () => {
+      await page.getByRole('button', { name: 'Voltar', exact: true }).click();
+      await page.getByRole('button', { name: 'Abrir projeto ' + title, exact: true }).filter({ visible: true }).click();
+    };
+
+    await page.getByRole('button', { name: 'Novo projeto', exact: true }).click();
+    await expect(input).toHaveValue('');
+    await page.getByRole('textbox', { name: 'Nome do projeto', exact: true }).fill(title);
+    await page.getByRole('textbox', { name: 'Cliente', exact: true }).fill('Indústria alimentar de exemplo com designação extensa');
+    await page.getByRole('checkbox', { name: 'Categoria QA' }).check();
+    await page.getByRole('combobox', { name: 'Project Leader' }).selectOption('mobile-qa-user');
+    await save.click();
+    await expectLast('Análise');
+
+    await edit.click();
+    await input.fill('http://empresa.sharepoint.com/sites/Projetos');
+    await save.click();
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    await input.fill(firstUrl);
+    await save.click();
+    await expectLast('Sharepoint');
+    await expect(link).toHaveAttribute('href', firstUrl);
+    await expect(link.locator('img')).toHaveJSProperty('complete', true);
+    await expect.poll(() => link.locator('img').evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    await fits(page);
+    await analysis.focus();
+    await page.keyboard.press('Tab');
+    await expect(link).toBeFocused();
+    await expect(link).toBeInViewport();
+    const popup = page.waitForEvent('popup');
+    await page.keyboard.press('Enter');
+    const opened = await popup;
+    await expect(opened).toHaveURL(firstUrl);
+    await opened.close();
+
+    await reopen();
+    await expect(link).toHaveAttribute('href', firstUrl);
+    await edit.click();
+    await expect(input).toHaveValue(firstUrl);
+    await input.fill(nextUrl);
+    await save.click();
+    await reopen();
+    await expect(link).toHaveAttribute('href', nextUrl);
+
+    await edit.click();
+    await input.clear();
+    await save.click();
+    await reopen();
+    await expectLast('Análise');
+    await expect(link).toHaveCount(0);
+  });
+}

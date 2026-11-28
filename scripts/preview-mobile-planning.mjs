@@ -14,6 +14,7 @@ const server = Bun.serve({ hostname: '127.0.0.1', port: 3106, fetch(request) {
   const path = new URL(request.url).pathname;
   if (path === '/style.css') return new Response(css.css, { headers: { 'Content-Type': 'text/css' } });
   if (path === '/app.js') return new Response(js, { headers: { 'Content-Type': 'application/javascript' } });
+  if (path === '/icons/sharepoint.svg') return new Response(Bun.file(resolve(root, 'public/icons/sharepoint.svg')));
   return new Response('<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>QA móvel</title><link rel="stylesheet" href="/style.css"></head><body><div id="preview"></div><script type="module" src="/app.js"></script></body></html>', { headers: { 'Content-Type': 'text/html' } });
 } });
 console.log(`Revisão local móvel: ${server.url}`);

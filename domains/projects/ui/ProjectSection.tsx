@@ -4,6 +4,7 @@ import ListEmptyState from '@/components/ui/ListEmptyState';
 import { useFeedback, useFormDraft } from '@/components/ApplicationFeedback';
 import { useFieldErrors } from '@/hooks/useFieldErrors';
 import { useSlowRead } from '@/hooks/useSlowRead';
+import { getProjectSharepointUrl, projectSharepointUrlError } from '@/domains/projects/contracts/sharepointUrl';
 
 import { TaskPlanningBadge } from '@/domains/tasks/ui/TaskPlanningBadge';
 import { countsTowardsPlanning } from '@/domains/tasks/modules/taskPlanning';
@@ -399,6 +400,7 @@ export default function ProjectSection({
 
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
+  const [formSharepointUrl, setFormSharepointUrl] = useState<string>();
   const [formClient, setFormClient] = useState('');
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
@@ -432,7 +434,7 @@ export default function ProjectSection({
   const [formError, setFormError] = useState('');
   const [editingVersion, setEditingVersion] = useState<number>();
   const draftValues = {
-    formTitle, formDesc, formClient, clientSearchQuery, formCategory, formCategories, formStatus, formProjManager,
+    formTitle, formDesc, formSharepointUrl, formClient, clientSearchQuery, formCategory, formCategories, formStatus, formProjManager,
     formFieldManager, formSales, formStartDate, formDeliveryDate, formEstimatedDate, formScheduledDate, formForecastDate, formInstallNo,
     formSFNo, formPriority, formBudget, formDemo, formTeams, formPartners, formClientContactName, formClientContactEmail, formClientContactPhone, formDocs, selectedDefaultTaskIds,
   };
@@ -447,6 +449,7 @@ export default function ProjectSection({
     setIsEditing(true);
     setFormTitle(draft.values.formTitle);
     setFormDesc(draft.values.formDesc);
+    setFormSharepointUrl(draft.values.formSharepointUrl);
     setFormClient(draft.values.formClient);
     setClientSearchQuery(draft.values.clientSearchQuery);
     setFormCategory(draft.values.formCategory);
@@ -716,6 +719,7 @@ export default function ProjectSection({
         return;
       }
     }
+    setFormSharepointUrl(undefined);
     setSelectedDefaultTaskIds([]);
     if (proj) {
       setEditingId(proj.id);
@@ -799,6 +803,8 @@ export default function ProjectSection({
       }
 
       const fields: Record<string, string> = {};
+      const sharepointUrl = formSharepointUrl?.trim();
+      if (sharepointUrl && !getProjectSharepointUrl(sharepointUrl)) fields.sharepointUrl = projectSharepointUrlError;
       if (!formTitle.trim()) fields.title = 'Introduza o nome do projeto.';
       if (!clientSearchQuery.trim()) fields.clientId = 'Introduza o nome do cliente.';
       if (!editingId && !formProjManager.trim()) fields.projectManagerId = 'Selecione o Project Leader.';
@@ -886,6 +892,7 @@ export default function ProjectSection({
       const payload = {
         title: formTitle,
         description: formDesc,
+        sharepointUrl,
         clientId: finalClientId,
         categoryId: finalCategory,
         categoryIds: finalCategoryIds,
@@ -1302,6 +1309,9 @@ export default function ProjectSection({
   const selectedProj = selectedFailure === 'missing' ? undefined :
     canonicalSelectedProj && (!serverDetail || (canonicalSelectedProj.version ?? 0) >= (serverDetail.version ?? 0))
       ? canonicalSelectedProj : serverDetail || activeProjects.find(p => p.id === selectedProjectId && !p.deleted);
+  const selectedSharepointUrl = getProjectSharepointUrl(selectedProj?.sharepointUrl);
+  const editingProject = selectedProj?.id === editingId
+    ? selectedProj : projects.find(project => project.id === editingId && !project.deleted);
   const projTasks = React.useMemo(() => {
     if (!selectedProjectId) return [];
     if (loadedProjectIdForTasks === selectedProjectId) {
@@ -1900,6 +1910,15 @@ export default function ProjectSection({
               >
                 <BarChart3 className="w-4 h-4 shrink-0" /> Análise
               </M3FilterChip>
+              {selectedSharepointUrl && (
+                <a className="m3-filter-chip inline-flex shrink-0 items-center gap-2"
+                  href={selectedSharepointUrl} target="_blank" rel="noopener noreferrer"
+                  aria-label="Sharepoint (abre num novo separador)"
+                >
+                  <img src="/icons/sharepoint.svg" alt="" width={16} height={16} className="shrink-0" />
+                  Sharepoint
+                </a>
+              )}
             </div>
           </nav>
 
@@ -3792,6 +3811,16 @@ export default function ProjectSection({
                 placeholder="Introduza os detalhes do projeto..."
               />
               <p className="text-caption text-text-muted">{formDesc.length}/10000</p>
+            </div>
+
+            <div className="md:col-span-2">
+              <Input label="Ligação SharePoint" type="url" name="sharepointUrl"
+                error={validation.errors.sharepointUrl}
+                value={formSharepointUrl ?? editingProject?.sharepointUrl ?? ''}
+                onChange={event => setFormSharepointUrl(event.target.value)}
+                placeholder="https://"
+                autoComplete="off"
+              />
             </div>
 
             {/* Budget */}

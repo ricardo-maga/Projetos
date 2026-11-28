@@ -47,7 +47,14 @@ export async function integrationChanges(req: NextRequest, kind: 'projects' | 't
     const page = rows.slice(0, query.data.pageSize);
     const last = page.at(-1);
     return NextResponse.json({
-      data: page.map(row => ({ id: row.id, updatedAt: row.changed_at, deleted: row.deleted, data: row.deleted ? null : row.data })),
+      data: page.map(row => {
+        let data = row.deleted ? null : row.data;
+        if (kind === 'projects' && data && 'sharepoint_url' in data) {
+          const { sharepoint_url: _sharepointUrl, ...project } = data;
+          data = project;
+        }
+        return { id: row.id, updatedAt: row.changed_at, deleted: row.deleted, data };
+      }),
       hasMore,
       nextCursor: last ? encodeCursor({ changedAt: last.changed_at, id: last.id, kind,
         projectId: query.data.projectId || null, since: query.data.since }) : null,
