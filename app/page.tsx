@@ -335,6 +335,19 @@ export default function Page() {
     return () => window.clearTimeout(timeout);
   }, [syncStatus]);
 
+  // Use public branding until the authenticated configuration is loaded.
+  const loginBranding = publicAppConfig || (isInitialDataLoaded ? state?.appConfig : null);
+  const savedConfig = currentUser && isInitialDataLoaded && state?.appConfig?.syncVersion ? state.appConfig : null;
+  const portalTitle = savedConfig?.appName?.trim()
+    || loginBranding?.appName?.trim();
+
+  React.useEffect(() => {
+    if (!portalTitle) return;
+    const previousTitle = document.title;
+    document.title = portalTitle;
+    return () => { document.title = previousTitle; };
+  }, [portalTitle]);
+
   const configuredTheme = (currentUser && isInitialDataLoaded ? normalizeApplicationTheme(state?.appConfig?.theme) : null)
     ?? normalizeApplicationTheme(publicAppConfig?.theme);
   const applicationTheme = getPresentationTheme(Boolean(currentUser && isInitialDataLoaded), state?.appConfig?.theme, publicAppConfig?.theme, cachedTheme);
@@ -493,10 +506,6 @@ export default function Page() {
       setLogoutPending(false);
     }
   };
-
-  // useERP exposes a clean baseline before authenticated data loads; never let
-  // its default branding override the public configuration on a fresh login.
-  const loginBranding = publicAppConfig || (isInitialDataLoaded ? state?.appConfig : null);
 
   if (connection !== 'ready' && connection !== 'checking' && !isInitialDataLoaded) {
     return <main className={AUTH_SCREEN}>
