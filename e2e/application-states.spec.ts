@@ -115,6 +115,20 @@ async function signIn(page: Page) {
   await page.getByRole('button', { name: /Entrar|Iniciar sessão/i }).click();
 }
 
+test('uses the configured browser title before and after sign-in', async ({ page }) => {
+  const api = await fixture(page);
+  api.setSessionStatus(401);
+  await page.route('**/api/supabase/config', route => route.fulfill({
+    json: { isConfigured: true, appConfig: { appName: 'Portal público de teste' } },
+  }));
+
+  await page.goto('/');
+  await expect(page).toHaveTitle('Portal público de teste');
+
+  await signIn(page);
+  await expect(page).toHaveTitle(CLEAN_BASELINE_STATE.appConfig.appName);
+});
+
 test('clears a search, shows a field error and confirms the saved client', async ({ page }) => {
   const api = await fixture(page);
   await page.goto('/?tab=clients');

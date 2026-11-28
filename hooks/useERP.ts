@@ -363,8 +363,13 @@ export function useERP(userId?: string) {
 
   const { addProjectRiskItem, updateProjectRiskItem, deleteProjectRiskItem } = createProjectRiskActions({ state, setState, matchId, refreshFromDatabase });
 
-  const { updateConfig } = createConfigActions({ state, setState, refreshFromDatabase, onSaved: ({ theme }) => {
-    if (theme !== undefined) setPublicAppConfig(previous => ({ ...previous, theme }));
+  const { updateConfig } = createConfigActions({ state, setState, refreshFromDatabase, onSaved: ({ appName, theme }) => {
+    if (appName === undefined && theme === undefined) return;
+    setPublicAppConfig(previous => ({
+      ...previous,
+      ...(appName !== undefined ? { appName } : {}),
+      ...(theme !== undefined ? { theme } : {}),
+    }));
   } });
   const { addAuxRecord, updateAuxRecord, deleteAuxRecord, reorderAuxRecords } = createReferenceActions({ state, setState, refreshFromDatabase });
 
