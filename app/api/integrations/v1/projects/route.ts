@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
       allowedProjectIds: auth.integration.project_ids,
       includeDeleted: false,
     });
-    return NextResponse.json({ success: true, ...result, count: result.data.length });
+    const data = result.data.map(({ sharepointUrl: _sharepointUrl, ...project }) => project);
+    return NextResponse.json({ success: true, ...result, data, count: data.length });
   } catch {
     return NextResponse.json({ error: 'Falha ao consultar projetos.' }, { status: 500 });
   }

@@ -4,6 +4,7 @@ export interface Project {
   clientId: string; // Relation: Clients table
   title: string;
   description: string;
+  sharepointUrl?: string;
   categoryId: string; // Relation: Project category table
   categoryIds?: string[]; // Relation: Multiple Project categories
   statusId: string; // Relation: Project status table

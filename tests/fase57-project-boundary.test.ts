@@ -78,6 +78,7 @@ describe('FASE 57-FINAL — Strict PostgreSQL RPC Persistence Boundary & Canonic
             client_id: args.p_client_id,
             project_title: args.p_project_title,
             project_description: args.p_project_description,
+            sharepoint_url: args.p_sharepoint_url ?? null,
             status_id: args.p_status_id,
             category_id: args.p_category_ids?.[0] || null,
             project_manager_id: args.p_project_manager_id,
@@ -121,6 +122,7 @@ describe('FASE 57-FINAL — Strict PostgreSQL RPC Persistence Boundary & Canonic
           proj.version = (proj.version || 1) + 1;
           proj.project_title = args.p_project_title;
           proj.project_description = args.p_project_description;
+          if ('p_sharepoint_url' in args) proj.sharepoint_url = args.p_sharepoint_url;
           proj.client_id = args.p_client_id;
           proj.status_id = args.p_status_id;
           proj.category_id = args.p_category_ids?.[0] || null;
@@ -234,6 +236,22 @@ describe('FASE 57-FINAL — Strict PostgreSQL RPC Persistence Boundary & Canonic
     expect(rpcCalls.length).toBe(1);
     expect(rpcCalls[0].fn).toBe('update_project_transaction');
     expect(fromUpdatesCount).toBe(0); // Zero direct table updates
+  });
+
+  it('persiste a ligação SharePoint e distingue a omissão de uma remoção', async () => {
+    const sharepointUrl = 'https://empresa.sharepoint.com/:f:/s/Projetos/Pasta%20A?e=abc#ficheiros';
+    const created = await createProject(mockSb, { clientId: cId, title: 'Projeto SharePoint', sharepointUrl }, 'u-1');
+    expect(created.sharepointUrl).toBe(sharepointUrl);
+    expect(rpcCalls.at(-1)?.args.p_sharepoint_url).toBe(sharepointUrl);
+
+    const updated = await updateProject(mockSb, created.id, { title: 'Novo título' }, 'u-1', created.version);
+    expect(updated.sharepointUrl).toBe(sharepointUrl);
+    expect(rpcCalls.at(-1)?.args).not.toHaveProperty('p_sharepoint_url');
+
+    const cleared = await updateProject(mockSb, created.id, { sharepointUrl: '' }, 'u-1', updated.version);
+    expect(rpcCalls.at(-1)?.args.p_sharepoint_url).toBeNull();
+    expect(cleared.sharepointUrl).toBe('');
+    expect((await getProject(mockSb, created.id))?.sharepointUrl).toBe('');
   });
 
   it('C. Erro da RPC em createProject é imediatamente propagado sem tentativa de fallback', async () => {

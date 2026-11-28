@@ -562,6 +562,7 @@ export async function getActiveStateFromSupabase(
         clientId: p.client_id || p.clientId || '',
         title: p.project_title || p.title || '',
         description: p.project_description || p.description || '',
+        sharepointUrl: p.sharepoint_url ?? p.sharepointUrl ?? '',
         categoryId: p.category_id || p.categoryId || finalCatIds[0] || '',
         categoryIds: finalCatIds,
         statusId: p.status_id || p.statusId || '',

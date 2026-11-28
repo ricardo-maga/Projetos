@@ -52,6 +52,7 @@ export async function GET() {
             projectManagerId: { type: "string", format: "uuid", description: "Project Leader" },
             categoryIds: { type: "array", minItems: 1, items: { type: "string", format: "uuid" } },
             description: { type: "string" },
+            sharepointUrl: { type: "string", description: "Ligação HTTPS para o SharePoint. Vazio quando não definida." },
             statusId: { type: "string", example: "ps-1" },
             categoryId: { type: "string", minLength: 1, example: "pc-1" },
             riskId: { type: "string", example: "pr-1" },

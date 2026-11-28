@@ -14,6 +14,9 @@ const permissions = ['projects.read', 'projects.write', 'projects.delete', 'task
 const scenario = new URLSearchParams(location.search);
 const readonly = scenario.has('readonly');
 const planningScenario = scenario.has('provisoria');
+const sharepointScenario = scenario.has('sharepoint');
+const sharepointCategory = { id: 'qa-category', name: 'Categoria QA', deleted: false };
+let sharepointProjects: any[] = [];
 const specialDays = [
   { id: 'qa-special', date: today, name: 'Dia especial de exemplo' },
   ...(scenario.has('dias-especiais') ? [{ id: 'qa-special-weekend', date: addCivilDays(today, 2), name: 'Dia especial no domingo' }] : []),
@@ -41,7 +44,7 @@ const pendingTasks = tasks.slice(0, 3).map((task, index) => ({
 }));
 localStorage.setItem(`task-calendar-selected-users-v1:${currentUser.id}`, JSON.stringify(users.map(user => user.id)));
 
-// Only the component's paginated read is simulated. Unexpected requests fail visibly.
+// Simulate the fixture's project reads. Unexpected requests fail visibly.
 const browserFetch = window.fetch.bind(window);
 window.fetch = async (input, init) => {
   const url = new URL(String(input), location.origin);
@@ -49,8 +52,12 @@ window.fetch = async (input, init) => {
   if (url.pathname === '/api/v1/projects') {
     const page = Number(url.searchParams.get('page') || 1), limit = Number(url.searchParams.get('pageSize') || 25);
     const search = (url.searchParams.get('search') || '').toLowerCase();
-    const filtered = projects.filter(project => !search || `${project.title} ${project.installProjectNo}`.toLowerCase().includes(search));
+    const filtered = (sharepointScenario ? sharepointProjects : projects).filter(project => !search || `${project.title} ${project.installProjectNo}`.toLowerCase().includes(search));
     return new Response(JSON.stringify({ success: true, data: filtered.slice((page - 1) * limit, page * limit), total: filtered.length }), { headers: { 'Content-Type': 'application/json' } });
+  }
+  if (sharepointScenario && url.pathname.startsWith('/api/v1/projects/')) {
+    const project = sharepointProjects.find(item => url.pathname === '/api/v1/projects/' + item.id);
+    return Response.json({ success: Boolean(project), data: project }, { status: project ? 200 : 404 });
   }
   throw new Error(`Unexpected fixture request: ${url.pathname}`);
 };
@@ -59,6 +66,21 @@ function Preview() {
   const [screen, setScreen] = useState('Tarefas');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [action, setAction] = useState('');
+  const [sharepointProjectState, setSharepointProjectState] = useState(sharepointProjects);
+  const addSharepointProject = async (payload: any) => {
+    const project = { ...payload, id: 'qa-sharepoint', deleted: false, version: 1 };
+    sharepointProjects = [project];
+    setSharepointProjectState(sharepointProjects);
+    return project;
+  };
+  const updateSharepointProject = async (id: string, updates: any) => {
+    const project = sharepointProjects.find(item => item.id === id);
+    if (!project) return;
+    const updated = { ...project, ...updates, sharepointUrl: updates.sharepointUrl ?? project.sharepointUrl, version: project.version + 1 };
+    sharepointProjects = sharepointProjects.map(item => item.id === id ? updated : item);
+    setSharepointProjectState(sharepointProjects);
+    return updated;
+  };
   const [planningTasks, setPlanningTasks] = useState(() => [
     { ...tasks[0], title: 'Instalação confirmada', taskTypeId: 'qa-type', estimatedHours: '3', planningStatus: 'planned' },
     ...[3, 4, 5].map(scale => ({ ...tasks[0], id: `qa-inactive-${scale}`, title: `Tarefa de nível ${scale}`,
@@ -89,8 +111,13 @@ function Preview() {
     <nav aria-label="Ecrã de teste" className="mb-4 flex flex-wrap gap-2">{['Tarefas', 'Projetos', 'Calendário', 'Dashboard'].map(label => <button key={label} className="min-h-11 rounded-control border border-border px-3" onClick={() => setScreen(label)}>{label}</button>)}</nav>
     <output>{action}</output>
     {screen === 'Tarefas' && <TaskSection {...shared} />}
-    {screen === 'Projetos' && <ProjectSection {...shared} comments={[]} projectCategories={[]} projectRisks={[]} projectPriorities={[]} projectTeams={[]} projectPartners={[]}
-      selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} addProject={noop} updateProject={noop} deleteProject={noop} addClient={noop} addComment={noop} deleteComment={noop} />}
+    {screen === 'Projetos' && <ProjectSection {...shared} comments={[]} projectRisks={[]} projectPriorities={[]} projectTeams={[]} projectPartners={[]}
+      projects={sharepointScenario ? sharepointProjectState : projects}
+      projectCategories={sharepointScenario ? [sharepointCategory] : []}
+      appConfig={sharepointScenario ? { ...shared.appConfig, projManagerGroupIds: ['qa-team'] } : shared.appConfig}
+      selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId}
+      addProject={sharepointScenario ? addSharepointProject : noop} updateProject={sharepointScenario ? updateSharepointProject : noop}
+      deleteProject={noop} addClient={noop} addComment={noop} deleteComment={noop} />}
     {screen === 'Calendário' && <CalendarSection {...shared} onSelectProject={id => { setAction(`Projeto ${id}`); }} />}
     {screen === 'Dashboard' && <BentoDashboard {...shared} projects={[projects[0], ...deliveredProjects]} tasks={pendingTasks}
       projectStatuses={[...projectStatuses, { id: 'ps-5', name: 'Entregue', scale: 5, color: 'verde' }]}

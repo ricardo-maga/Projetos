@@ -35,6 +35,7 @@ export function createProjectActions({
       installProjectNo: project.installProjectNo || undefined,
       sfOpportunityNo: (project as any).sfOpportunityNo || undefined,
       description: project.description || '',
+      sharepointUrl: project.sharepointUrl,
       statusId: project.statusId || undefined,
       categoryId: project.categoryId || undefined,
       categoryIds: project.categoryIds || (project.categoryId ? [project.categoryId] : []),
@@ -149,6 +150,7 @@ export function createProjectActions({
     if (updates.estimatedDate !== undefined) patchPayload.estimatedDate = updates.estimatedDate;
     if (updates.scheduledDate !== undefined) patchPayload.scheduledDate = updates.scheduledDate;
     if (updates.forecastDate !== undefined) patchPayload.forecastDate = updates.forecastDate;
+    if (updates.sharepointUrl !== undefined) patchPayload.sharepointUrl = updates.sharepointUrl;
     if ((updates as any).completedDate !== undefined) patchPayload.completedDate = (updates as any).completedDate;
     if (updates.budgetValue !== undefined) patchPayload.budgetValue = Number(updates.budgetValue || 0);
     if ((updates as any).isUrgent !== undefined) patchPayload.isUrgent = (updates as any).isUrgent;
@@ -222,6 +224,7 @@ export function createProjectActions({
             title: serverProj.title || '',
             clientId: serverProj.clientId || '',
             description: serverProj.description || '',
+            sharepointUrl: serverProj.sharepointUrl || '',
             installProjectNo: serverProj.installProjectNo || '',
             sfOpportunityNo: serverProj.sfOpportunityNo || '',
             statusId: serverProj.statusId || '',
