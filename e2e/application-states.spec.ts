@@ -229,11 +229,20 @@ test('opens a standalone profile and applies a saved scheme across navigation an
   await expect(title).toBeFocused();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Email' })).toHaveValue(owner.email);
+  const header = page.locator('header').filter({ has: title });
+  const save = header.getByRole('button', { name: 'Guardar', exact: true });
+  const logoutButton = header.getByRole('button', { name: 'Terminar sessão' });
+  await expect(save).toBeVisible();
+  await expect(logoutButton).toBeVisible();
+  const [titleBox, saveBox, logoutBox] = await Promise.all([title.boundingBox(), save.boundingBox(), logoutButton.boundingBox()]);
+  expect(saveBox!.x).toBeGreaterThan(titleBox!.x + titleBox!.width);
+  expect(logoutBox!.x).toBeGreaterThan(saveBox!.x);
+  const schemeOptions = page.getByRole('group', { name: 'Esquema de cores' }).locator('label');
+  expect(await schemeOptions.evaluateAll(options => new Set(options.map(option => option.getBoundingClientRect().left)).size)).toBe(1);
   await expect(theme).toHaveAttribute('data-theme', 'emerald');
   await page.getByText('Violeta Elegante', { exact: true }).click();
   await expect(theme).toHaveAttribute('data-theme', 'emerald');
   await page.getByRole('textbox', { name: 'Nome', exact: true }).fill('Conta atualizada');
-  const save = page.getByRole('button', { name: 'Guardar', exact: true });
   api.setProfileSaveStatus(503);
   await save.click();
   await expect(page.getByRole('main').getByRole('alert')).toHaveText('Não foi possível guardar o perfil.');
@@ -257,7 +266,7 @@ test('opens a standalone profile and applies a saved scheme across navigation an
 
   const [logout] = await Promise.all([
     page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/session' && response.request().method() === 'DELETE'),
-    page.getByRole('button', { name: 'Terminar sessão' }).click(),
+    logoutButton.click(),
   ]);
   expect(logout.status()).toBe(200);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'emerald');

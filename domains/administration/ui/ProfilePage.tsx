@@ -139,9 +139,20 @@ export default function ProfilePage({ user, applicationTheme, writesBlocked, onS
 
   return (
     <section aria-labelledby="profile-heading" className="mx-auto max-w-5xl space-y-6">
-      <header className="flex items-center gap-4 rounded-container border border-border-subtle bg-surface-muted px-4 py-5 sm:px-6">
-        <UserInitialsBadge name={user.name} />
-        <h1 id="profile-heading" ref={heading} tabIndex={-1} className="text-heading-lg focus:outline-none">Editar perfil</h1>
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-container border border-border-subtle bg-surface-muted px-4 py-5 sm:px-6">
+        <div className="flex min-w-0 items-center gap-4">
+          <UserInitialsBadge name={user.name} />
+          <h1 id="profile-heading" ref={heading} tabIndex={-1} className="text-heading-lg focus:outline-none">Editar perfil</h1>
+        </div>
+        <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
+          <Button type="submit" form="profile-details-form" className="min-h-11" disabled={busy || writesBlocked || (!nameChanged && !themeChanged)}>
+            {busy ? 'A guardar…' : 'Guardar'}
+          </Button>
+          <Button type="button" variant="outline" className="min-h-11 border-error/30 text-error hover:bg-error/10" onClick={onLogout}>
+            <LogOut aria-hidden="true" className="size-4" /> Terminar sessão
+          </Button>
+        </div>
+        {feedback && <div className="basis-full text-right"><FormFeedback feedback={feedback} /></div>}
       </header>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
@@ -155,7 +166,6 @@ export default function ProfilePage({ user, applicationTheme, writesBlocked, onS
                 <Input id="profile-email" label="Email" type="email" value={user.email ?? ''} readOnly className="bg-surface-muted" />
               </div>
             </Card>
-
           </form>
           <PasswordForm writesBlocked={writesBlocked} />
           <Card className="p-4 sm:p-5"><CalendarSubscriptions writesBlocked={writesBlocked} /></Card>
@@ -167,9 +177,9 @@ export default function ProfilePage({ user, applicationTheme, writesBlocked, onS
               <legend className="mb-4 flex items-center gap-2.5 text-heading-sm">
                 <Palette aria-hidden="true" className="size-5 text-primary-ink" /> Esquema de cores
               </legend>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2">
                 {choices.map(scheme => (
-                  <label key={scheme.id ?? 'application'} className={scheme.id === null ? 'relative sm:col-span-2' : 'relative'}>
+                  <label key={scheme.id ?? 'application'} className="relative">
                     <input type="radio" form="profile-details-form" name="profile-color-scheme" value={scheme.id ?? 'application'}
                       checked={selectedTheme === scheme.id} className="peer sr-only"
                       onChange={() => { setThemeDraft(scheme.id); setFeedback(null); }} />
@@ -187,15 +197,6 @@ export default function ProfilePage({ user, applicationTheme, writesBlocked, onS
             </fieldset>
           </Card>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-            <FormFeedback feedback={feedback} />
-            <Button type="submit" form="profile-details-form" className="ml-auto min-h-11" disabled={busy || writesBlocked || (!nameChanged && !themeChanged)}>
-              {busy ? 'A guardar…' : 'Guardar'}
-            </Button>
-          </div>
-          <Button type="button" variant="outline" className="min-h-11 w-full border-error/30 text-error hover:bg-error/10" onClick={onLogout}>
-            <LogOut aria-hidden="true" className="size-4" /> Terminar sessão
-          </Button>
         </div>
       </div>
     </section>
