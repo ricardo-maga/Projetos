@@ -337,7 +337,8 @@ export default function Page() {
 
   // Use public branding until the authenticated configuration is loaded.
   const loginBranding = publicAppConfig || (isInitialDataLoaded ? state?.appConfig : null);
-  const portalTitle = (currentUser && isInitialDataLoaded ? state?.appConfig?.appName?.trim() : undefined)
+  const savedConfig = currentUser && isInitialDataLoaded && state?.appConfig?.syncVersion ? state.appConfig : null;
+  const portalTitle = savedConfig?.appName?.trim()
     || loginBranding?.appName?.trim();
 
   React.useEffect(() => {
